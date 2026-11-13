@@ -322,10 +322,13 @@ class MetricasApuRespuesta(BaseModel):
 
 class DesperdicioLineaRespuesta(BaseModel):
     """La neta y el porcentaje de desperdicio de la fila `fila` (desde 1) de Materiales, «0,50 +
-    4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye."""
+    4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye. `neta` y `porcentaje`, con
+    coma decimal, siembran los campos de la Hoja, que los edita (2026-11-13)."""
 
     fila: int
     texto: str
+    neta: str
+    porcentaje: str
 
 
 class DetalleApuRespuesta(BaseModel):
@@ -663,6 +666,9 @@ class EdicionApu(BaseModel):
     materiales: LineasDeApu
     equipos: LineasDeApu
     mano_obra: LineasDeApu
+    #: Un porcentaje de desperdicio por material («» sin desperdicio; 2026-11-13): con uno, la
+    #: cantidad del material es su neta y el servidor guarda neta × (1 + porcentaje / 100).
+    desperdicios: LineasDeApu | None = None
 
 
 class EdicionApuRespuesta(BaseModel):

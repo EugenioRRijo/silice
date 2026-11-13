@@ -21,6 +21,7 @@ import {
   FRASE_DE_APU,
   RUBROS,
   cambiarCantidadDeLinea,
+  cambiarDesperdicioDeLinea,
   cambiarRendimiento,
   conLineaAgregada,
   conLineaQuitada,
@@ -205,11 +206,20 @@ export function EditorDelDetalle({
               idDelError={idDelError}
               quitable={conLineas}
               soloLectura={!puedeEditar}
+              conDesperdicio={g.clave === "materiales"}
               desperdicios={g.clave === "materiales" ? detalle.desperdicios : undefined}
               alCambiar={(indice, texto) => edicion.cambiar((previo) => cambiarCantidadDeLinea(previo, g.clave, indice, texto))}
               alRestaurar={(indice) =>
                 edicion.cambiar((previo) =>
                   cambiarCantidadDeLinea(previo, g.clave, indice, edicion.aceptado().cantidades[g.clave]?.[indice] ?? ""),
+                )
+              }
+              alCambiarDesperdicio={(indice, texto) =>
+                edicion.cambiar((previo) => cambiarDesperdicioDeLinea(previo, indice, texto))
+              }
+              alRestaurarDesperdicio={(indice) =>
+                edicion.cambiar((previo) =>
+                  cambiarDesperdicioDeLinea(previo, indice, edicion.aceptado().desperdicios[indice] ?? ""),
                 )
               }
               alQuitar={(linea) => {

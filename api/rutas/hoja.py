@@ -895,7 +895,9 @@ def editar_apu(
 ) -> EdicionApuRespuesta:
     """E6: escribe el rendimiento y la cantidad de cada línea del APU de una partida (en la copia
     de la versión, DA-SF-7) y devuelve el APU recalculado (3c-B10). Una partida sin APU en el
-    borrador es 404; un APU igual al vigente no sube `rev`."""
+    borrador es 404; un APU igual al vigente no sube `rev`. Con `desperdicios`, la cantidad de un
+    material con porcentaje es su neta y el servidor calcula la cantidad; la traza se escribe en la
+    base al guardar la versión, no aquí (2026-11-13)."""
     vivo = _vivo(request, activa, id)
     resumen, vista = _editar(
         sesion,
@@ -910,6 +912,7 @@ def editar_apu(
             datos.materiales,
             datos.equipos,
             datos.mano_obra,
+            datos.desperdicios,
         ),
         lambda editado: _vista_apu(sesion, editado, partida),
     )

@@ -33,8 +33,9 @@ from adapters.espacio.modelo import (
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.cifras import texto_de_cifra
-from aplicacion.desperdicio import TrazaDesperdicio, desperdicios_por_fila
+from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje, trazas_de_las_filas
 from aplicacion.hoja_borradores import BorradorVivo
+from aplicacion.hoja_desperdicio import trazas_del_borrador, unir
 from aplicacion.hoja_partidas import PREFIJO_A_MANO, calculo_tecleable, texto_llano
 from aplicacion.hoja_vial import PREFIJO_TRAMO
 from aplicacion.plural import plural
@@ -516,10 +517,13 @@ class MetricasDeApu:
 @dataclass(frozen=True, slots=True)
 class DesperdicioDeLinea:
     """La neta y el porcentaje de desperdicio de una fila de Materiales (desde 1), «0,50 + 4 %»
-    (F5 vial, punto 1). La cantidad de la fila ya los incluye: esto solo la explica."""
+    (F5 vial, punto 1). La cantidad de la fila ya los incluye: esto solo la explica. `neta` y
+    `porcentaje`, con coma decimal, son lo que siembra los campos de la Hoja (2026-11-13)."""
 
     fila: int
     texto: str
+    neta: str
+    porcentaje: str
 
 
 #: Las trazas vigentes del desperdicio de una partida, por su código (la ruta las lee de la base
@@ -603,11 +607,20 @@ def _detalle_de_apu(
         ),
         solo_lectura_insumos=vivo.abierta is None,
         desperdicios=tuple(
-            DesperdicioDeLinea(fila, texto)
-            for fila, texto in desperdicios_por_fila(tablas[0], trazas(codigo))
-        )
-        if trazas is not None
-        else (),
+            DesperdicioDeLinea(
+                fila,
+                neta_y_porcentaje(traza),
+                texto_de_cifra(traza.cantidad_neta),
+                texto_de_cifra(traza.desperdicio_pct),
+            )
+            for fila, traza in trazas_de_las_filas(
+                tablas[0],
+                unir(
+                    trazas_del_borrador(vivo, codigo),
+                    trazas(codigo) if trazas is not None else (),
+                ),
+            )
+        ),
     )
 
 
@@ -625,7 +638,8 @@ def vista_apu(
     lista, P:1604).
 
     Con `trazas`, el detalle trae la neta y el porcentaje de desperdicio de cada material cuya
-    descripción, unidad y cantidad son las de una traza vigente de la partida (F5 vial, punto 1)."""
+    descripción, unidad y cantidad son las de una traza vigente de la partida (F5 vial, punto 1).
+    Las que la Hoja dejó en el borrador (aún sin guardar) van antes (`hoja_desperdicio.unir`)."""
     resultado, _ = calculo(vivo)
     valoradas = resultado.elaboracion.presupuesto.partidas
     codigos = list(dict.fromkeys(p.item.codigo_partida for p in valoradas))

@@ -232,6 +232,13 @@ export interface GrupoApu {
   subtotal: Monto;
 }
 
+export interface DesperdicioDeApu {
+  fila: number;
+  texto: string;
+  neta: string;
+  porcentaje: string;
+}
+
 export interface DetalleApu {
   codigo: string;
   descripcion: string;
@@ -242,8 +249,9 @@ export interface DetalleApu {
   metricas: { materiales: Monto; equipos: Monto; mano_obra: Monto; precio_unitario: Monto };
   estados: string[];
   solo_lectura_insumos: boolean;
-  // F5 vial, punto 1: la neta y el porcentaje de desperdicio por fila de Materiales (desde 1), escritos por el servidor.
-  desperdicios: Array<{ fila: number; texto: string }>;
+  // F5 vial: la neta, el porcentaje y la traza de desperdicio por fila de Materiales (desde 1),
+  // escritos por el servidor.
+  desperdicios: DesperdicioDeApu[];
 }
 
 export interface VistaApu {

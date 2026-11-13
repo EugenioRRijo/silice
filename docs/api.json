@@ -6938,7 +6938,7 @@
           "hoja"
         ],
         "summary": "Editar Apu",
-        "description": "E6: escribe el rendimiento y la cantidad de cada línea del APU de una partida (en la copia\nde la versión, DA-SF-7) y devuelve el APU recalculado (3c-B10). Una partida sin APU en el\nborrador es 404; un APU igual al vigente no sube `rev`.",
+        "description": "E6: escribe el rendimiento y la cantidad de cada línea del APU de una partida (en la copia\nde la versión, DA-SF-7) y devuelve el APU recalculado (3c-B10). Una partida sin APU en el\nborrador es 404; un APU igual al vigente no sube `rev`. Con `desperdicios`, la cantidad de un\nmaterial con porcentaje es su neta y el servidor calcula la cantidad; la traza se escribe en la\nbase al guardar la versión, no aquí (2026-11-13).",
         "operationId": "editar_apu_v1_hoja_borradores__id__apu__partida__put",
         "parameters": [
           {
@@ -17514,15 +17514,25 @@
           "texto": {
             "type": "string",
             "title": "Texto"
+          },
+          "neta": {
+            "type": "string",
+            "title": "Neta"
+          },
+          "porcentaje": {
+            "type": "string",
+            "title": "Porcentaje"
           }
         },
         "type": "object",
         "required": [
           "fila",
-          "texto"
+          "texto",
+          "neta",
+          "porcentaje"
         ],
         "title": "DesperdicioLineaRespuesta",
-        "description": "La neta y el porcentaje de desperdicio de la fila `fila` (desde 1) de Materiales, «0,50 +\n4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye."
+        "description": "La neta y el porcentaje de desperdicio de la fila `fila` (desde 1) de Materiales, «0,50 +\n4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye. `neta` y `porcentaje`, con\ncoma decimal, siembran los campos de la Hoja, que los edita (2026-11-13)."
       },
       "Detalle": {
         "properties": {
@@ -17828,6 +17838,22 @@
             "type": "array",
             "maxItems": 500,
             "title": "Mano Obra"
+          },
+          "desperdicios": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "type": "array",
+                "maxItems": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desperdicios"
           }
         },
         "additionalProperties": false,

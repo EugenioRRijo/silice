@@ -359,7 +359,8 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     alPonerApu = () => json({ detalle: DETALLE }, 422);
     fireEvent.change(campo("Desperdicio en porcentaje, Materiales fila 1"), { target: { value: "x" } });
     await pausa(400);
-    expect(await esperar(() => aviso())).toHaveTextContent(`${DETALLE}. La hoja sigue con el último APU válido.`);
+    // El detalle ya termina en punto: la frase de la clásica va detrás, sin otro.
+    expect(await esperar(() => aviso())).toHaveTextContent(`${DETALLE} La hoja sigue con el último APU válido.`);
     const invalido = campo("Desperdicio en porcentaje, Materiales fila 1");
     await esperar(() => expect(invalido).toHaveAttribute("aria-invalid", "true"));
     expect(invalido).toHaveValue("x");

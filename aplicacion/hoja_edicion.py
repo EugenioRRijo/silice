@@ -46,8 +46,10 @@ from sqlalchemy.orm import Session
 from aplicacion import hoja, hoja_borradores, hoja_lineas_apu, hoja_vista
 from aplicacion.cifras import BLANCOS, MENSAJE_CIFRA, CifraInvalida, cifra_escrita
 from aplicacion.composicion import texto_de_celda
+from aplicacion.desperdicio import TrazaDesperdicio
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
+from aplicacion.hoja_desperdicio import con_desperdicio_en_materiales
 from aplicacion.hoja_lineas_apu import SinVersionGuardada
 from aplicacion.hoja_partidas import (
     CalculoInvalido,
@@ -432,6 +434,7 @@ def editar_apu(
     materiales: Sequence[str],
     equipos: Sequence[str],
     mano_obra: Sequence[str],
+    desperdicios: Sequence[str] | None = None,
 ) -> BorradorVivo:
     """Escribe el rendimiento y la cantidad de cada linea del APU de `partida` (P:1633-1677).
 
@@ -439,9 +442,16 @@ def editar_apu(
     APU; `composicion_con_cantidades` valida con el texto de la clasica (cuenta de lineas, negativa,
     decimal). `PartidaSinApu` si la partida no tiene composicion en el borrador. Un APU igual al
     vigente no es cambio.
+
+    Con `desperdicios` (un porcentaje por material, «» sin desperdicio; 2026-11-13), la cantidad de
+    un material con porcentaje es su neta y se guarda la cantidad con desperdicio; las trazas de la
+    partida quedan en el borrador hasta guardar la version (`aplicacion.hoja_desperdicio`). Sin
+    `desperdicios`, las trazas que el borrador ya tenia no cambian (siguen casando por la linea).
     """
+    trazas: tuple[TrazaDesperdicio, ...] | None = None
 
     def construir(vivo: BorradorVivo) -> hoja.Borrador | None:
+        nonlocal trazas
         borrador = vivo.borrador
         actual = borrador.composiciones.get(partida)
         if actual is None:
@@ -453,11 +463,19 @@ def editar_apu(
             [{"cantidad": c} for c in mano_obra],
             rendimiento,
         )
+        if desperdicios is not None:
+            nueva, trazas = con_desperdicio_en_materiales(nueva, desperdicios)
         if nueva == actual:
             return None
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return cambiar_borrador(sesion, huella, id, rev, construir)
+    # el cerrojo del borrador (reentrante) cubre la edicion y sus trazas: nadie ve una sin la otra
+    vivo = hoja_borradores.obtener(huella, id)
+    with vivo.cerrojo:
+        editado = cambiar_borrador(sesion, huella, id, rev, construir)
+        if trazas is not None:
+            editado.desperdicios = {**editado.desperdicios, partida: trazas}
+        return editado
 
 
 def _insumo_de_la_lista(

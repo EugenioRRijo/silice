@@ -42,16 +42,21 @@ fusionado, cómputo llevado) se escriben con la versión, en esta misma transacc
 `crear_primera_version`, sin tocar `aplicacion/hoja.py`): si algo falla no queda ni la version ni
 el registro.
 
+2026-11-13 (desperdicio en la Hoja): las trazas de la neta y el porcentaje que la Hoja dejo en el
+borrador se escriben en esta misma transaccion, antes de la version
+(`hoja_desperdicio.guardar_con_la_version`, sin `commit`); si algo falla no queda ninguna.
+
 Sin FastAPI ni Streamlit (RM-1).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from aplicacion import hoja, hoja_borradores, hoja_vista, importaciones
+from aplicacion import hoja, hoja_borradores, hoja_desperdicio, hoja_vista, importaciones
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
@@ -112,6 +117,11 @@ class Guardado:
     total: hoja_vista.Monto
     primera: bool
     mensaje: str
+
+
+def _ahora() -> datetime:
+    """La hora del guardado de las trazas del desperdicio, sin microsegundos (como Componer)."""
+    return datetime.now().replace(microsecond=0)
 
 
 def _mensaje(codigo: str, cambios: int, total: hoja_vista.Monto, proyecto: str, primera: bool):
@@ -191,6 +201,8 @@ def _version(
             )
             if mas_nueva is not None:
                 raise VersionMasNueva(mas_nueva, abierta.codigo)
+        # 2026-11-13: las trazas del desperdicio que dejo la Hoja, en esta misma transaccion
+        hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
         with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
             guardada = hoja.guardar_version(
                 sesion, Catalogo(sesion), abierta, borrador, fuente=fuente, responsable=responsable
@@ -236,6 +248,7 @@ def _primera(
             borrador = hoja.con_precios_de_la_lista(Catalogo(sesion), borrador, lista)
         except hoja.ApuSinPreciosDeLaLista as error:
             raise SinListaDeLaObra(str(error)) from None
+        hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
         with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
             guardada = hoja.crear_primera_version(
                 sesion,

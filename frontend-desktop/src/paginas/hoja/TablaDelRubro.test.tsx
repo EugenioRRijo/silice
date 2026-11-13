@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { TablaDelRubro } from "./TablaDelRubro";
@@ -103,6 +103,7 @@ describe("TablaDelRubro: el desperdicio de los materiales", () => {
   test("si se escribe otra neta o porcentaje, «Cantidad con desperdicio» de esa fila se oculta", () => {
     const tablaNeta = pintar({ desperdicios: [TRAZA], cantidades: ["1,2", "0,60"] });
     expect(within(tablaNeta).queryByText("0,52")).toBeNull();
+    cleanup();
     const tablaPct = pintar({ desperdicios: [TRAZA], porcentajes: ["", "5"] });
     expect(within(tablaPct).queryByText("0,52")).toBeNull();
   });

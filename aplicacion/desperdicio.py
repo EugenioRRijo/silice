@@ -52,6 +52,8 @@ __all__ = [
     "guardar_trazas",
     "leyenda",
     "neta_y_porcentaje",
+    "porcentaje_escrito",
+    "trazas_de_las_filas",
     "trazas_por_fila",
     "trazas_vigentes",
 ]
@@ -70,17 +72,20 @@ def leyenda(traza: TrazaDesperdicio) -> str:
     )
 
 
-def _porcentaje(texto: str, lugar: str) -> Decimal:
+def porcentaje_escrito(texto: str, lugar: str, separador: str = ", ") -> Decimal:
+    """El porcentaje tecleado (coma decimal, de 0 a menos de 100), o `ComposicionInvalida` con
+    «{lugar}{separador}el desperdicio «…» …». Componer dice «En Materiales, fila 2 («…»), el…»; la
+    Hoja, «materiales, fila 2: el…», el prefijo con que ubica el error en su campo."""
     try:
         valor = cifra_escrita(texto)
     except CifraInvalida as error:
         raise ComposicionInvalida(
-            f"{lugar}, el desperdicio «{texto}» no se entiende como número. {error}"
+            f"{lugar}{separador}el desperdicio «{texto}» no se entiende como número. {error}"
         ) from error
     if not Decimal(0) <= valor < _CIEN:
         raise ComposicionInvalida(
-            f"{lugar}, el desperdicio «{texto}» debe estar entre 0 y 100 (es un porcentaje: 4 "
-            "es 4 %)."
+            f"{lugar}{separador}el desperdicio «{texto}» debe estar entre 0 y 100 (es un "
+            "porcentaje: 4 es 4 %)."
         )
     return valor
 
@@ -94,7 +99,7 @@ def trazas_por_fila(filas: Sequence[Mapping[str, str]]) -> list[tuple[int, Traza
         if not texto:
             continue
         lugar = f"En Materiales, fila {indice} («{texto_de_celda(fila, 'descripcion')}»)"
-        porcentaje = _porcentaje(texto, lugar)
+        porcentaje = porcentaje_escrito(texto, lugar)
         if porcentaje.is_zero():
             continue
         try:
@@ -185,16 +190,24 @@ def neta_y_porcentaje(traza: TrazaDesperdicio) -> str:
     return f"{texto_de_cifra(traza.cantidad_neta)} + {texto_de_cifra(traza.desperdicio_pct)} %"
 
 
+def trazas_de_las_filas(
+    filas: Sequence[Mapping[str, str]], trazas: Sequence[TrazaDesperdicio]
+) -> list[tuple[int, TrazaDesperdicio]]:
+    """El número de fila (desde 1) y la traza de cada fila de materiales que la tiene, con la misma
+    regla que `con_desperdicio`: descripción, unidad y cantidad iguales, cada traza una vez."""
+    return [
+        (indice, traza)
+        for indice, traza in enumerate(_emparejar(filas, trazas), start=1)
+        if traza is not None
+    ]
+
+
 def desperdicios_por_fila(
     filas: Sequence[Mapping[str, str]], trazas: Sequence[TrazaDesperdicio]
 ) -> list[tuple[int, str]]:
     """El número de fila (desde 1) y la neta con su porcentaje de cada fila de materiales que tiene
     traza, con la misma regla que `con_desperdicio` (la Hoja, F5 vial, punto 1)."""
-    return [
-        (indice, neta_y_porcentaje(traza))
-        for indice, traza in enumerate(_emparejar(filas, trazas), start=1)
-        if traza is not None
-    ]
+    return [(indice, neta_y_porcentaje(t)) for indice, t in trazas_de_las_filas(filas, trazas)]
 
 
 def guardar_trazas(
