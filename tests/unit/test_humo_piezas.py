@@ -665,6 +665,9 @@ def test_humo_no_pisa_la_politica_de_webview2_que_ya_tuviera_el_equipo() -> None
     # el valor previo (y su tipo) se guarda antes de escribir el de la humo
     assert "GetValue('python.exe'" in poner and "GetValueKind('python.exe')" in poner
     assert poner.index("$script:PoliticaPrevia =") < poner.index("New-ItemProperty")
+    # el tipo se guarda antes que el valor: un corte entre los dos no deja un valor sin su tipo
+    # (arbitraje de Argon, 2026-11-12)
+    assert poner.index("$script:TipoPrevio =") < poner.index("$script:PoliticaPrevia =")
     # quitar devuelve el previo si lo había y, si no, borra el valor; dos veces no rompe nada
     assert "$script:PoliticaPrevia" in quitar
     assert "-PropertyType $script:TipoPrevio" in quitar
