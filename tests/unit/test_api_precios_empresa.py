@@ -807,3 +807,64 @@ def test_la_clave_de_api_lee_los_atipicos_y_sin_sesion_es_401(_entorno) -> None:
     assert r.status_code == 200, r.text
     assert [v["insumo"] for v in r.json()["variaciones"]] == [INSUMO]
     assert cliente(app).get(f"{URL}/listas/{lista}/atipicos").status_code == 401
+
+
+# --- insumos que el catálogo no conoce (prueba de punta a punta 2026-11-13, D-8) ----------------
+
+ARCHIVO_CON_NUEVOS = (
+    b"tipo,insumo,unidad,precio,fecha,fuente\n"
+    b"material,ARENA LAVADA,m3,49078.775,2026-09-20,Cotizacion interna (ficticia)\n"
+    b"material,INSUMO INEXISTENTE DEMO,pza,10.00,2026-09-20,Cotizacion interna (ficticia)\n"
+    b"material,ARENA LAVADA,saco,3.00,2026-09-20,Cotizacion interna (ficticia)\n"
+)
+OTRA_UNIDAD_ARENA = (
+    "«ARENA LAVADA» viene en saco y el catálogo lo tiene en m3: no entró; escriba en el archivo "
+    "la unidad del catálogo."
+)
+
+
+def test_revisar_el_archivo_dice_los_nuevos_y_los_de_otra_unidad_sin_escribir(_entorno) -> None:
+    navegador, cabeceras = _admin()
+    _cargar_referencia(navegador, cabeceras)
+    antes = _cuantas_listas(_entorno)
+    r = navegador.post(
+        f"{URL}/listas/revision",
+        files={"archivo": ("precios.csv", ARCHIVO_CON_NUEVOS)},
+        headers=cabeceras,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "reconocidos": 1,
+        "nuevos": [
+            {
+                "tipo": "material",
+                "insumo": "INSUMO INEXISTENTE DEMO",
+                "unidad": "pza",
+                "precio": "10.00",
+            }
+        ],
+        "otra_unidad": [OTRA_UNIDAD_ARENA],
+    }
+    assert _cuantas_listas(_entorno) == antes
+
+
+def test_con_el_alta_confirmada_el_insumo_nuevo_entra_a_la_lista(_entorno) -> None:
+    navegador, cabeceras = _admin()
+    _cargar_referencia(navegador, cabeceras)
+    r = _crear(
+        navegador,
+        cabeceras,
+        _id_de_la_referencia(navegador),
+        archivo={"archivo": ("precios.csv", ARCHIVO_CON_NUEVOS)},
+        dar_de_alta="true",
+    )
+    assert r.status_code == 201, r.text
+    cuerpo = r.json()
+    assert cuerpo["propios"] == 2
+    assert cuerpo["dados_de_alta"] == ["INSUMO INEXISTENTE DEMO"]
+    assert cuerpo["desconocidos"] == ["ARENA LAVADA"]
+    assert cuerpo["otra_unidad"] == [OTRA_UNIDAD_ARENA]
+    assert cuerpo["mensaje"] == (
+        f"Lista «{cuerpo['nombre']}» creada con 2 precios propios; se dio de alta 1 insumo nuevo "
+        "en el catálogo."
+    )
