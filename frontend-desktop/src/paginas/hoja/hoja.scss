@@ -222,6 +222,14 @@
   min-inline-size: 0;
 }
 
+// E2E-3i (2026-11-13): en la columna estrecha el campo `sm` de Carbon dejaba 31 px de texto y «0,001» (40 px) se leía
+// «0,00». El campo de la cantidad y el del desperdicio miden lo que mide lo escrito, con un mínimo de 4 cifras; la tabla
+// ya se desplaza dentro de su región. Sin `field-sizing` (un navegador que no es Chromium) queda como antes.
+.silice-hoja__apu-centro td .cds--text-input {
+  field-sizing: content;
+  min-inline-size: calc(4ch + 2rem);
+}
+
 // El APU en el panel lateral de «Partidas» (Tarea 7 de F4): sin lista, el editor y el cierre uno bajo el otro.
 .silice-hoja__apu-en-panel {
   display: grid;
