@@ -91,3 +91,36 @@ mismo, sobre lo que entrega openpyxl.
 Queda anotado y sin decidir otro hallazgo del mismo agente: el lector de la báscula no acota las
 columnas de cada fila (`produccion/conectores/bascula.py`). La propuesta, `iter_rows(max_col=61)`,
 cambia lo que se ve de un reporte ancho; la decide Eugenio.
+
+## 6. Decisiones (d), (e) y (f), simuladas con Eugenio ausente
+
+Eugenio pidió el 2026-11-12 seguir hasta el final y decidir cada caso simulándolo. El registro completo, con
+qué hace cada decisión, cómo y qué toca, vive en el Word «Decisiones arbitradas por Claude - Silice.docx» del
+Escritorio de Eugenio (fuera del repositorio).
+
+**(d) La báscula lee del .xlsx una columna más que su tope** (`produccion/conectores/bascula.py`,
+`iter_rows(max_col=MAX_COLUMNAS + 1)`). Los reportes legítimos (5.000 y 100.000 pesajes, columna 60 usada) dan lo
+mismo, y la columna 61 se sigue rechazando. 20.000 filas con una celda vacía en XFD pasan de 95 s a 9 s. Lo único
+que cambia: datos solo en la columna 70 se ignoran en vez de rechazar el reporte. Esa columna no puede asignarse a
+ningún campo, como toda columna que la báscula no usa.
+
+**(e) Sin permiso explícito, el puerto de depuración abre el navegador** (`operacion/lanzador.py`,
+`ventana.VARIABLE_PERMITIR_DEPURACION`).
+
+| Escenario | Avisar y abrir | Nunca abrir | Permiso explícito (elegida) |
+|---|---|---|---|
+| Humo de la CI | funciona | rompe V4 | funciona: la humo pone el permiso |
+| Política olvidada o directiva con `*` | ventana con el puerto expuesto; aviso en una consola minimizada | navegador | navegador con aviso |
+| Desarrollador que depura | funciona | no puede | funciona con el permiso |
+
+**(f) El firmante del instalador de WebView2 debe ser `O=Microsoft Corporation`** (`.github/workflows/instalador.yml`).
+El bootstrapper real, leído con `Get-AuthenticodeSignature` el 2026-11-12, y `notepad.exe` pasan. Tres firmantes
+ficticios que la regla «contiene Microsoft» dejaba pasar se rechazan: Microsoft en el CN de otra organización, una
+O que empieza igual y Microsoft en la L. La prueba extrae la regla del workflow y la aplica a esos firmantes.
+
+Auditorías de Gemini de esta tanda:
+- **Argon high**, arbitraje corto de la seguridad de la ventana: aprobado con cambios. Pidió guardar el tipo del
+  valor previo antes que el valor, y ya está aplicado.
+- **Hydrogen xhigh**, sobre el repositorio entero: agotó los 25 min sin responder.
+- **Hydrogen high**, sobre el diff de los topes: aprobado. Su único MENOR, un comentario de `comprobar_libro_legible`,
+  está corregido.

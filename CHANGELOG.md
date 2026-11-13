@@ -199,6 +199,11 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   filas de hueco cuentan para el tope del libro (mil hojas con A20000: 3 s en vez de 12 s). El rechazo por tope de una
   lista da el aviso del lector, sin «no se puede leer».
 - **Paso 7 de la humo**: exige el juego de respaldo nuevo de la migración, no cualquiera.
+- **Decisiones (d), (e) y (f)** (2026-11-12, simuladas; `docs/bitacora/2026-11-12-decisiones-topes-simulacion.md` §6):
+  la báscula lee del .xlsx `MAX_COLUMNAS + 1` columnas (una celda en XFD ya no cuesta 16.384 valores por fila);
+  sin el permiso `SILICE_PERMITIR_DEPURACION_VENTANA=1` de la humo, algo que pide el puerto de depuración de
+  WebView2 abre Sílice en el navegador; el instalador de WebView2 de la CI exige el firmante `O=Microsoft
+  Corporation`.
 - **Pruebas intermitentes** de `Retomar`, `AutocompletadoDeInsumos` y `Edicion` (vitest): esperan el efecto en vez de
   afirmarlo al instante (`docs/bitacora/2026-11-12-pruebas-intermitentes.md`).
 - **Metas en PowerShell**: todas las `scripts/meta_*.py` y `fusion_verificar.py` imprimen en UTF-8 aunque la consola sea

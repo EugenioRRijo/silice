@@ -30,7 +30,7 @@ instalador con huella SHA-256 firmada.
 | `feature/tanda-detalles` | Tanda de detalles D1–D17 (§3), sobre F6 y el autocompletado unidos | Aprobada (rondas 2 y 3 del árbitro); sin PR hasta que se fusionen #106 y #107 |
 | `feature/integracion-fases` | F7 Ayuda, F8 Cierre, F5 vial y F5 ventana, sobre la tanda (§3) | Construidas en paralelo el 2026-11-06, una por árbol; espera el árbitro único y la prueba de Eugenio |
 | `feature/lector-topes` | Topes de la guardia en el lector del libro conocido y en la réplica del visor (§5.3), sobre la integración | Árbitro xhigh: aprobado con condiciones, ya corregidas ([acta](bitacora/arbitrajes/lector-topes-claude-xhigh.md)); sin PR, como la integración |
-| `feature/tanda-2026-11-12` | V4 (humo de la ventana en la CI de Windows), topes del lector en todas las subidas de .xlsx, aviso del puerto de depuración por política, pruebas intermitentes y metas en UTF-8, sobre `feature/lector-topes` | Árbitro xhigh: aprobado con cambios, ya corregidos; humo verde en windows-2025 (corrida 43358266674); segunda opinión de Gemini (Hydrogen xhigh y Argon) en curso; sin PR, como la integración |
+| `feature/tanda-2026-11-12` | V4 (humo de la ventana en la CI de Windows), topes del lector en todas las subidas de .xlsx, aviso del puerto de depuración por política, pruebas intermitentes y metas en UTF-8, sobre `feature/lector-topes` | Árbitro xhigh: aprobado con cambios, ya corregidos; humo verde en windows-2025 (corrida 43358266674); Argon y Hydrogen: aprobado (con un cambio de Argon, aplicado); decisiones (d), (e) y (f) simuladas y aplicadas (§4, punto 10); sin PR, como la integración |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor. Ya tiene `main` unido y el experimento recongelado con acta (`docs/bitacora/2026-11-04-recongelado-experimento.md` en su rama) |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -104,10 +104,12 @@ lectura sale con tildes por `aplicacion/hoja_guardado.py`, la ruta del producto;
    esa rama se **simularon** y quedan como están
    ([acta](bitacora/2026-11-12-decisiones-topes-simulacion.md)): las combinadas cuentan; las valuaciones pasan por la
    guardia (el .xlsm se rechaza como en toda subida); se recorren todas las hojas; 20.000 filas por hoja también en las
-   listas. Eugenio puede revertir cualquiera. Quedan por decidir: (d) la báscula no acota las columnas de cada fila
-   (`produccion/conectores/bascula.py`; acotarlas con `max_col` cambia lo que se ve de un reporte ancho); (e) el aviso
-   del puerto de depuración **avisa pero no impide** abrir la ventana (podría abrir el navegador en su lugar); (f) el
-   firmante del instalador de WebView2 en la CI se compara con «Microsoft» y no con `O=Microsoft Corporation`.
+   listas. Eugenio puede revertir cualquiera. Con Eugenio ausente se simularon y decidieron también
+   ([acta §6](bitacora/2026-11-12-decisiones-topes-simulacion.md); registro completo en el Word «Decisiones arbitradas
+   por Claude - Silice.docx» de su Escritorio): (d) la báscula lee del .xlsx `MAX_COLUMNAS + 1` columnas; (e) sin el
+   permiso explícito `SILICE_PERMITIR_DEPURACION_VENTANA=1`, que solo pone la humo, algo que pide el puerto de
+   depuración abre el navegador en vez de la ventana; (f) el instalador de WebView2 de la CI exige el firmante
+   `O=Microsoft Corporation`. Todas son reversibles y esperan su ratificación.
 9. Tesis: aval del tutor para el PR #100, mediciones con personas (Med) y la respuesta de la Dirección de Investigación.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
@@ -121,7 +123,7 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
 3. **Libros con celdas lejanas: hecho** (2026-11-07, rama `feature/lector-topes`; 2026-11-12, `feature/tanda-2026-11-12`).
    El lector del libro conocido, la réplica del visor (con fórmulas o sin ellas), el lector de un APU por hoja y, antes
    del núcleo, las listas, los presupuestos de terceros, el Excel externo, las valuaciones y los índices del BCV pasan por
-   los topes del lector; un libro hostil se rechaza en décimas de segundo con 422. Queda la báscula (§4, punto 10 d).
+   los topes del lector; un libro hostil se rechaza en décimas de segundo con 422. La báscula lee como mucho 61 columnas (§4, punto 10 d).
 4. **F7, F8 y F5**: construidas y corregidas tras el árbitro único (§3); faltan la prueba de Eugenio, ratificar las
    decisiones provisionales de F5, mostrar el desperdicio en la Hoja y poner tildes a dos avisos de `aplicacion/hoja.py` y
    `composicion.py` (los dos exigen re-congelar el experimento con acta), V5 (V4 hecha el 2026-11-12),
