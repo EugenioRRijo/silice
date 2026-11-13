@@ -335,6 +335,17 @@ def _mas_nueva(vivo: BorradorVivo, vigente: str | None) -> str | None:
     return hoja_vista.version_mas_nueva(vivo, vigente)
 
 
+def _vista_apu(
+    sesion, vivo: BorradorVivo, partida: str | None, buscar: str | None = None
+) -> hoja_vista.VistaApu:
+    """La vista del APU (R7) con el desperdicio de sus materiales (F5 vial, punto 1), la misma en
+    la lectura y en la respuesta de cada edición (E6 y las líneas): la traza vigente se lee de la
+    base del caso y vale solo para la línea cuya cantidad sigue siendo la que resultó."""
+    return hoja_vista.vista_apu(
+        vivo, partida, buscar, trazas=lambda codigo: trazas_vigentes(sesion, codigo)
+    )
+
+
 def _respuesta(sesion, vivo: BorradorVivo) -> dict:
     vigente = hoja.codigo_vigente(sesion, vivo.proyecto)
     mas_nueva = _mas_nueva(vivo, vigente)
@@ -900,7 +911,7 @@ def editar_apu(
             datos.equipos,
             datos.mano_obra,
         ),
-        lambda editado: hoja_vista.vista_apu(editado, partida),
+        lambda editado: _vista_apu(sesion, editado, partida),
     )
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
@@ -934,7 +945,7 @@ def cambiar_insumo(
             datos.indice,
             datos.insumo,
         ),
-        lambda editado: hoja_vista.vista_apu(editado, partida),
+        lambda editado: _vista_apu(sesion, editado, partida),
     )
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
@@ -974,7 +985,7 @@ def agregar_linea_apu(
             depreciacion=datos.depreciacion,
             modalidad=datos.modalidad,
         ),
-        lambda editado: hoja_vista.vista_apu(editado, partida),
+        lambda editado: _vista_apu(sesion, editado, partida),
     )
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
@@ -1002,7 +1013,7 @@ def quitar_linea_apu(
         lambda: hoja_edicion.quitar_linea_apu(
             sesion, activa.huella_ficha, id, datos.rev, partida, datos.tipo, datos.indice
         ),
-        lambda editado: hoja_vista.vista_apu(editado, partida),
+        lambda editado: _vista_apu(sesion, editado, partida),
     )
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
@@ -1112,9 +1123,7 @@ def vista_apu(
     vigente de su desperdicio traen la neta y el porcentaje (F5 vial, punto 1); no escribe."""
     vivo = _vivo(request, activa, id)
     try:
-        vista = hoja_vista.vista_apu(
-            vivo, partida, buscar, trazas=lambda codigo: trazas_vigentes(sesion, codigo)
-        )
+        vista = _vista_apu(sesion, vivo, partida, buscar)
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
     return vista_apu_a_respuesta(vista)

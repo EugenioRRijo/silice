@@ -7489,7 +7489,7 @@
           "hoja"
         ],
         "summary": "Vista Apu",
-        "description": "R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el\nservidor; sin coincidencias se devuelven todas las partidas.",
+        "description": "R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el\nservidor; sin coincidencias se devuelven todas las partidas. Los materiales con la traza\nvigente de su desperdicio traen la neta y el porcentaje (F5 vial, punto 1); no escribe.",
         "operationId": "vista_apu_v1_hoja_borradores__id__vistas_apu_get",
         "parameters": [
           {
@@ -17505,6 +17505,25 @@
         ],
         "title": "DesperdicioLeidoRespuesta"
       },
+      "DesperdicioLineaRespuesta": {
+        "properties": {
+          "fila": {
+            "type": "integer",
+            "title": "Fila"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fila",
+          "texto"
+        ],
+        "title": "DesperdicioLineaRespuesta",
+        "description": "La neta y el porcentaje de desperdicio de la fila `fila` (desde 1) de Materiales, «0,50 +\n4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye."
+      },
       "Detalle": {
         "properties": {
           "detalle": {
@@ -17563,6 +17582,14 @@
           "solo_lectura_insumos": {
             "type": "boolean",
             "title": "Solo Lectura Insumos"
+          },
+          "desperdicios": {
+            "items": {
+              "$ref": "#/components/schemas/DesperdicioLineaRespuesta"
+            },
+            "type": "array",
+            "title": "Desperdicios",
+            "default": []
           }
         },
         "type": "object",
