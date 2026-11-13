@@ -54,6 +54,7 @@
     "financiamiento": ["Financiamiento"],
     "impuesto": ["Impuesto"]
   },
+  "lado_de_los_porcentajes": "derecha",
   "precio_unitario": ["PRECIO UNITARIO"],
   "unidades": {
     "lt": "l",

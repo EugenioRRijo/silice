@@ -937,7 +937,12 @@ esta instalación) · …» o «(del paquete)».
 `unidades` (lo que escribe el libro → la unidad de Sílice; cada traducción usada sale como AH8) y
 `patron_banda` (expresión regular con los grupos `minimo` y `maximo`, cuyas cifras se leen con la
 coma decimal y el punto de miles de `aplicacion.cifras`: «1.000» es mil; una que no sigue la regla
-no se adivina y el AH9 lo dice). Se valida entero al cargar: claves
+no se adivina y el AH9 lo dice). Si el libro escribe cada porcentaje del pie a la **izquierda** de
+su rótulo («p | Administración (%) | … | monto»), ponga `"lado_de_los_porcentajes": "izquierda"`:
+por omisión es `"derecha"` (el primer número a la derecha), y con el lado equivocado Sílice toma el
+monto por porcentaje y da un AH1 en cada hoja (prueba local del libro vial real, 2026-11-13). Las
+cifras se leen con 15 dígitos significativos, la precisión de Excel: el valor en caché de una
+fórmula llega sin su ruido binario. Se valida entero al cargar: claves
 que faltan o sobran, listas vacías y un patrón que no compila se rechazan.
 
 **Entrada hostil.** De cada libro se leen solo las hojas cuyo nombre empieza por `prefijo_hoja` y,

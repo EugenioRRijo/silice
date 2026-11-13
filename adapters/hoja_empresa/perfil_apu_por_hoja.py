@@ -58,6 +58,10 @@ VARIABLE_PERFILES = "SILICE_PERFILES_LIBROS"
 BLOQUES = ("materiales", "equipos", "mano_obra")
 _CABECERA = ("numero", "codigo", "descripcion", "unidad", "cantidad", "rendimiento")
 _PORCENTAJES = ("prestaciones", "administracion", "utilidad", "financiamiento", "impuesto")
+#: De qué lado de su rótulo escribe el libro cada porcentaje del pie: «derecha» (el primer número a
+#: la derecha, como el libro ficticio) o «izquierda» (el más cercano a la izquierda: «p |
+#: Administración (%) | … | monto», prueba local del libro vial real del 2026-11-13).
+LADOS_DE_LOS_PORCENTAJES = ("derecha", "izquierda")
 _COLUMNAS_OBLIGATORIAS = ("descripcion", "cantidad", "precio")
 _COLUMNAS_OPCIONALES = {
     "materiales": ("numero", "unidad", "desperdicio"),
@@ -91,6 +95,7 @@ class PerfilApuPorHoja:
     patron_banda: str | None
     hoja_presupuesto: str
     encabezado_presupuesto: Mapping[str, tuple[str, ...]]
+    lado_de_los_porcentajes: str = "derecha"
     origen: str = "paquete"
 
 
@@ -167,6 +172,13 @@ def _construir(nombre: str, crudo: Any, origen: str) -> PerfilApuPorHoja:
         if not {"minimo", "maximo"} <= set(compilado.groupindex):
             raise _error(nombre, "patron_banda debe tener los grupos «minimo» y «maximo»")
     presupuesto = _dic(nombre, raiz.get("presupuesto"), "presupuesto")
+    lado = raiz.get("lado_de_los_porcentajes", "derecha")
+    if not isinstance(lado, str) or lado not in LADOS_DE_LOS_PORCENTAJES:
+        raise _error(
+            nombre,
+            "lado_de_los_porcentajes debe ser «derecha» o «izquierda» (de qué lado del "
+            "rótulo está cada porcentaje del pie)",
+        )
     return PerfilApuPorHoja(
         nombre=declarado,
         prefijo_hoja=_texto(nombre, raiz.get("prefijo_hoja"), "prefijo_hoja"),
@@ -180,6 +192,7 @@ def _construir(nombre: str, crudo: Any, origen: str) -> PerfilApuPorHoja:
         encabezado_presupuesto=_variantes(
             nombre, presupuesto.get("encabezado"), _PRESUPUESTO, (), "presupuesto.encabezado"
         ),
+        lado_de_los_porcentajes=lado,
         origen=origen,
     )
 
