@@ -124,6 +124,8 @@ const POR_OMISION = "apu_por_hoja";
 const POR_OMISION_HOJA = "PRESUPUESTO";
 const RUTA_PERFILES = "/v1/libros/perfiles-apu-por-hoja";
 const AVISO_OTRA_OBRA = "AH11";
+const ID_TITULO_OTRA_OBRA = "auditoria-apu-por-hoja-otra-obra";
+const TITULO_OTRA_OBRA = "La hoja del presupuesto parece de otra obra";
 const origenDe = (origen: "paquete" | "local") => (origen === "local" ? "de esta instalación" : "del paquete");
 
 function textoDelPerfil(p: PerfilDisponible): string {
@@ -340,14 +342,23 @@ function Informe({ informe }: { informe: InformeApuPorHoja }): JSX.Element {
           : " · sin libro de presupuesto"}
       </p>
       {otraObra && (
-        <InlineNotification
-          kind="warning"
-          role="status"
-          title="La hoja del presupuesto parece de otra obra"
-          subtitle={otraObra.descripcion}
-          lowContrast
-          hideCloseButton
-        />
+        <>
+          {/* Nombre accesible del aviso: su título (ola 2, 2026-11-13). Todo el texto se leería dos veces y sin nombre no se
+              distingue de los otros avisos. Carbon no da id al título (`title` es texto), así que el nombre va en un texto
+              oculto que `aria-labelledby` sí lee. */}
+          <span id={ID_TITULO_OTRA_OBRA} hidden>
+            {TITULO_OTRA_OBRA}
+          </span>
+          <InlineNotification
+            kind="warning"
+            role="status"
+            aria-labelledby={ID_TITULO_OTRA_OBRA}
+            title={TITULO_OTRA_OBRA}
+            subtitle={otraObra.descripcion}
+            lowContrast
+            hideCloseButton
+          />
+        </>
       )}
       <TablaDensa etiqueta="Precio unitario de cada hoja" columnas={COLUMNAS_PRECIOS} filas={precios} />
       <TablaDensa

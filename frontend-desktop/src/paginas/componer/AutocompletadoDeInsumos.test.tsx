@@ -155,7 +155,11 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     render(<Arnes tipo="mano_obra" filas={[OBRERO]} />);
     await u.type(descripcion(), "alba");
     await u.click(await screen.findByRole("option", { name: /Albañil ficticio/ }));
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "Sueldo, fila 1" })).toHaveValue("12,3400"));
+    // El jornal llega con cuatro decimales («12.3400»): en reposo se lee con dos y la celda guarda el texto completo (ola 2,
+    // 2026-11-13: la celda del precio o del sueldo como una de Excel).
+    const sueldo = () => screen.getByRole("textbox", { name: "Sueldo, fila 1" });
+    await waitFor(() => expect(sueldo()).toHaveValue("12,34"));
+    expect(sueldo()).toHaveAttribute("data-valor-exacto", "12,3400");
     expect(descripcion()).toHaveValue("Albañil ficticio");
     expect(screen.getByRole("combobox", { name: "Modalidad, fila 1" })).toHaveValue("JORNAL");
     expect(llamadas.some((l) => l.startsWith("/v1/consulta/salarios_cct?"))).toBe(true);

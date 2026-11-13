@@ -70,7 +70,9 @@ export function ComponerEnPanel({ partida, alCerrar, alGuardar }: Props): JSX.El
 
   const alEnfocar = (e: FocusEvent<HTMLDivElement>) => {
     const campo = campoDeTexto(e.target);
-    if (campo !== null) alEntrar.current.set(campo, campo.value);
+    // Un precio que en reposo se lee con dos decimales (`TablaInsumos`, ola 2) guarda el número completo en
+    // `data-valor-exacto`: ese es su valor al entrar, no la lectura que aún se ve en este instante.
+    if (campo !== null) alEntrar.current.set(campo, campo.dataset.valorExacto ?? campo.value);
   };
 
   const alEsc = (e: KeyboardEvent<HTMLDivElement>) => {

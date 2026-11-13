@@ -767,6 +767,27 @@ Si el porcentaje está mal escrito, el desglose muestra un «Aviso», por ejempl
 Por ahora la Hoja no muestra la neta ni el porcentaje: para verlos o cambiarlos, abra la partida en
 Componer.
 
+### 4.12 Los parámetros del precio unitario en Componer
+
+El bloque «Parámetros del precio unitario», encima de «Desglose en vivo», trae los cuatro parámetros con
+que Sílice calcula el precio unitario: FCAS, bono de alimentación, administración y utilidad.
+
+- Si Componer está abierto dentro de una obra («Presupuesto › Componer» o el panel de «Agregar
+  partida»), son los de la pestaña «Ajustes de costo» de esa obra: el precio unitario de Componer es el
+  mismo que tendrá la partida en el presupuesto.
+- Sin obra abierta, son los de omisión de Sílice (FCAS 6,00, bono 1,00, administración 0,15 y
+  utilidad 0,10), y el bloque lo dice.
+
+Puede cambiarlos para ensayar, por ejemplo una utilidad de `0,12`: el desglose se recalcula. Ese cambio
+**solo vale para este cálculo**: no cambia la obra ni se guarda con la partida (la partida es del
+catálogo y sirve a todas las obras). Para cambiarlos en el presupuesto, use «Ajustes de costo».
+«Volver a los de la obra» (o «Volver a los de omisión») deshace lo escrito. Si escribe una cifra con
+punto decimal o negativa, el campo queda marcado con el motivo y el desglose espera a que la corrija.
+
+En las tablas de insumos, un precio de la lista con más de dos decimales (por ejemplo uno convertido
+de bolívares) se lee con dos, como en Excel; al entrar en la celda se ve y se edita el número completo,
+que es el que se guarda. Lo que usted escribe se ve siempre tal cual.
+
 ## 5. La franja del paso: «Te falta» y «Siguiente paso»
 
 Arriba de cada sección, Sílice dice **un solo** paso a la vez. Hay dos tipos:
