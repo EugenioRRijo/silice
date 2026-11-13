@@ -108,6 +108,15 @@ describe("TablaDelRubro: el desperdicio de los materiales", () => {
     expect(within(tablaPct).queryByText("0,52")).toBeNull();
   });
 
+  test("la misma cifra escrita de otra forma no oculta «Cantidad con desperdicio» (árbitro 13/11, M5)", () => {
+    // «0,5» es la neta «0,50» y «4,0» o « 4» el porcentaje «4»: lo que el servidor aceptó, sin cálculo en la interfaz.
+    const tabla = pintar({ desperdicios: [TRAZA], cantidades: ["1,2", "0,5"], porcentajes: ["", "4,0"] });
+    expect(within(tabla).getByText("0,52")).toBeTruthy();
+    cleanup();
+    const otra = pintar({ desperdicios: [{ ...TRAZA, neta: "1.234,5" }], cantidades: ["1,2", "1234,5"], porcentajes: ["", " 4"] });
+    expect(within(otra).getByText("0,52")).toBeTruthy();
+  });
+
   test("un error ubicado en el desperdicio marca ese campo con aria-invalid y lo liga al id del error", () => {
     const tabla = pintar({ desperdicios: [TRAZA], ubicacion: { campo: "desperdicio", fila: 2 } });
     const campo = within(tabla).getByRole("textbox", { name: "Desperdicio en porcentaje, Materiales fila 2" });
