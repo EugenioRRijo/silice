@@ -38,11 +38,28 @@ honestas.
 | # | Hallazgo | Respuesta |
 |---|---|---|
 | 1 | BLOQUEANTE (NORMAS §1): una cifra del informe real seguía en la historia, escrita como expresión regular | Historia de `b19f8e27` en adelante reescrita con `filter-branch` (sin subir); grep tolerante a separadores sobre `git log -p`: 0; ramas, árboles temporales, respaldo y reflogs borrados; ningún commit viejo alcanzable |
-| 2 | MENOR: la bitácora de la línea de front citaba hashes de antes de su primera reescritura | Todas las bitácoras con los hashes nuevos (`bf3df1a6`) |
+| 2 | MENOR: la bitácora de la línea de front citaba hashes de antes de su primera reescritura | Todas las bitácoras con los hashes nuevos (`31d56ceb`) |
 | 3 | MENOR: el acta y un mensaje repetían una cifra del pie atribuida a un libro real | Quitada de la historia en la misma reescritura y, en la ronda 3, también de esta fila y de un mensaje |
-| 4 | MENOR: «Usarla como lista para armar» se mostraba a quien no puede armar | Solo con `editar_hoja`; a los demás se les dice quién la crea (`f2510aaf`) |
-| 5 | MENOR: la tabla de insumos nuevos mostraba claves del servidor | «Mano de obra», «m³» (`f2510aaf`) |
-| 6 | MENOR: faltaba «Recuperación» en el motivo de Versiones | Agregado (`f2510aaf`) |
-| 7 | MENOR: CHANGELOG, ESTADO, ERS y manual de usuario sin las tres líneas | Al día, RF-190 a RF-195 (`97399b3d`) |
+| 4 | MENOR: «Usarla como lista para armar» se mostraba a quien no puede armar | Solo con `editar_hoja`; a los demás se les dice quién la crea (`bba7bca7`) |
+| 5 | MENOR: la tabla de insumos nuevos mostraba claves del servidor | «Mano de obra», «m³» (`bba7bca7`) |
+| 6 | MENOR: faltaba «Recuperación» en el motivo de Versiones | Agregado (`bba7bca7`) |
+| 7 | MENOR: CHANGELOG, ESTADO, ERS y manual de usuario sin las tres líneas | Al día, RF-190 a RF-195 (`40a8f10c`) |
 | 8 | MENOR (DRY): `PREFIJO_TRAMO` definido dos veces y el origen escrito como literal | Ver la ronda 3 |
 | N | El plan «Mes n» en la pestaña del plan y en Control; VR4 depende del perfil local; AH11 relajado sin declararlo en `2b436af1` | Anotadas en ESTADO §5, punto 6 (ronda 3, M3); la de `2b436af1` queda declarada aquí |
+
+## Ronda 3 (2026-11-13): APROBADO CON CAMBIOS
+
+**Juzgado:** la rama tras la reescritura, hasta la corrección del M8 de la ronda 2. **Veredicto:** 0 BLOQUEANTE, 0
+MAYOR, 5 MENOR y 3 NOTA; el código, aprobado. Historia limpia: 228 blobs nuevos y 77 mensajes recorridos con una búsqueda
+tolerante a separadores (con control positivo sobre la historia vieja); ninguna referencia alcanza la historia vieja;
+`core/` y los archivos del auditor sin cambios; `docs/api.json` igual a la API; 681 pruebas de Python y 87 de vitest de
+lo tocado; cada rojo falla por su razón.
+
+| # | Hallazgo | Respuesta |
+|---|---|---|
+| 1 | La descripción de la corrección repetía la cifra del pie (un mensaje y una fila de esta acta) | Historia reescrita otra vez desde el padre de ese commit (mensaje y fila); 0 apariciones |
+| 2 | Un hash de la historia vieja en la fila «N» de la ronda 2 | Puesto al día |
+| 3 | La fila «N» decía que tres notas estaban en ESTADO §5, y no estaban | Anotadas en ESTADO §5, punto 6 |
+| 4 | El CHANGELOG decía que `PREFIJO_TRAMO` vive en `hoja_partidas` | Dice que se define en `adapters/vial/modelo.py` y `hoja_partidas` lo reexporta |
+| 5 | El manual decía que «Usarla como lista para armar» exige una carpeta sin lista, y el código no lo comprueba | Decisión simulada: se permite (la copia, con fecha de hoy, pasa a ser la vigente y así se renuevan los precios); el manual lo dice |
+| N | Objetos viejos sueltos en el equipo; el rojo del M8 relajado en su verde (declarado); la cifra de 27 decimales sale de un precio público de MaPreX | Aceptadas; `git gc --prune=now` queda a decisión de Eugenio |
