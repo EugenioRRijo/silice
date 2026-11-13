@@ -171,6 +171,9 @@ describe("Entregar paquete", () => {
     expect(
       await screen.findByText(/no dirá quién lo emite/),
     ).toBeInTheDocument();
+    // La empresa se da de alta en la Cuenta («Empresa y tema»), ya no en una pantalla «Administración».
+    expect(screen.getByText(/Todavía no hay empresa en la Cuenta \(«Empresa y tema»\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/en Administración/)).toBeNull();
   });
 
   test("una cadena rota se dice con su mensaje y no deja generar el paquete", async () => {
@@ -186,6 +189,9 @@ describe("Entregar paquete", () => {
       await screen.findByText("Cadena rota en la versión 001."),
     ).toBeInTheDocument();
     expect(screen.getByText("Rota")).toBeInTheDocument(); // VB-16: mayúscula inicial, no «ROTA»
+    // Los respaldos viven en la Cuenta, sección «Especialidades, IA e instalación» (/cuenta/sistema).
+    expect(screen.getByText(/respaldo \(en la Cuenta, sección «Especialidades, IA e instalación»\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/pestaña Instalación/)).toBeNull();
     expect(
       screen.getByRole("button", { name: "Generar paquete" }),
     ).toBeDisabled();

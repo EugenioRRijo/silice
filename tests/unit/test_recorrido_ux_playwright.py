@@ -114,9 +114,11 @@ def test_cada_ruta_se_lee_del_registro_sin_modulos() -> None:
 
     rutas = {r["id"]: r for r in rutas_de_la_interfaz()}
     # + costos, receta_planta, costo_tonelada y producir_mezcla (plan vial, T2-T6b), tramos (T8) y
-    # riesgo (T16); F4: + archivos (T11), - elaborar (T12, baja 19) y - historico (T13)
-    assert len(rutas) == 31
-    assert "inicio" not in rutas
+    # riesgo (T16); F4: + archivos (T11), - elaborar (T12, baja 19) y - historico (T13); F6, T8:
+    # + inicio (la Vista general, de toda cuenta).
+    assert len(rutas) == 32
+    assert rutas["inicio"]["titulo"] == "Vista general"
+    assert rutas["inicio"]["accion"] is None
     # F4, Tarea 4 (baja 7): la pantalla de la Hoja se titula «Presupuesto».
     assert rutas["hoja"]["titulo"] == "Presupuesto"
     # F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura; la pantalla pide
@@ -243,8 +245,191 @@ def test_el_recorrido_funcional_tiene_una_fila_por_pantalla_y_ninguna_de_mas() -
     rutas = [f["ruta"] for f in filas]
     assert sorted(rutas) == sorted(r["id"] for r in rutas_de_la_interfaz())
     assert len(rutas) == len(set(rutas))
-    # Los tres inicios reemplazan la fila del Inicio de antes (plan de modulos, MOD-5 paso 3).
-    assert {"auditoria", "obras", "produccion"} <= set(rutas)
+    # Los tres inicios reemplazan la fila del Inicio de antes (plan de modulos, MOD-5 paso 3); F6
+    # suma la Vista general («inicio»).
+    assert {"auditoria", "obras", "produccion", "inicio"} <= set(rutas)
+
+
+# Las pestañas de la Administración de antes de F6: hoy sus bloques se apilan en las secciones de
+# la Cuenta (`/cuenta/cuentas`, `/cuenta/empresa`…) y ninguna pestaña lleva esos nombres.
+PESTANAS_DE_ADMINISTRACION_DE_ANTES = {
+    "Cuentas",
+    "Empresa y clave de firma",
+    "Empresas registradas",
+    "Claves de API",
+    "Asistente de IA",
+    "Accesos",
+    "Instalación",
+}
+
+
+def test_las_filas_de_administracion_entran_por_las_secciones_de_la_cuenta() -> None:
+    from scripts.recorrido_ux_playwright import ACCIONES_TOML, cargar_filas_funcionales
+
+    filas = cargar_filas_funcionales(ACCIONES_TOML)
+    de_admin = [f for tipo in filas.values() for f in tipo if f["ruta"] == "administracion"]
+    assert len(de_admin) == 2  # la siembra de la empresa y la fila de la pantalla
+    for fila in de_admin:
+        for paso in fila.get("pasos", []):
+            assert not (
+                paso.get("rol") == "tab"
+                and paso.get("nombre") in PESTANAS_DE_ADMINISTRACION_DE_ANTES
+            ), paso
+    # La empresa y su clave de firma viven en «Empresa y tema» (`/cuenta/empresa`), no en la ruta
+    # canónica de la pantalla (`/cuenta/cuentas`): la siembra pulsa esa sección en la barra.
+    siembra = next(f for f in filas["siembra"] if f["ruta"] == "administracion")
+    assert siembra["pasos"][0] == {"accion": "pulsar", "rol": "link", "nombre": "Empresa y tema"}
+
+
+# --------------------------- rutas canónicas de F6 -----------------------------------------------
+#
+# Oráculo escrito a mano desde el contrato de rutas (§2.1 a §2.3 y §4 de
+# docs/especificaciones/2026-11-04-f6a-contrato-de-rutas.md), no desde `espacios.ts`: si el script
+# lee mal el registro, falla.
+
+# Sin obra: las 16 pantallas de la obra van a su dirección corta, que el marco lleva a la obra de la
+# sesión (contrato §2.4); las demás, a su espacio, a la Cuenta o a la Vista general.
+RUTAS_SIN_OBRA = {
+    "obras": "/obras",
+    "tablero": "/tablero",
+    "hoja": "/hoja",
+    "componer": "/componer",
+    "tramos": "/tramos",
+    "archivos": "/archivos",
+    "versiones": "/versiones",
+    "aprobar": "/aprobar",
+    "revisar": "/revisar",
+    "entregar": "/entregar",
+    "mercado": "/mercado",
+    "actualizacion": "/actualizacion",
+    "control": "/control",
+    "reajuste": "/reajuste",
+    "escenarios": "/escenarios",
+    "riesgo": "/riesgo",
+    "produccion": "/produccion/resumen",
+    "existencias": "/produccion/existencias",
+    "costos": "/produccion/costos",
+    "costo_tonelada": "/produccion/costo-tonelada",
+    "receta_planta": "/produccion/receta",
+    "producir_mezcla": "/produccion/mezcla",
+    "auditoria": "/auditoria/subir",
+    "libros": "/auditoria/libros",
+    "historial": "/auditoria/historial",
+    "precios_empresa": "/precios/listas",
+    "catalogo": "/precios/catalogo",
+    "indices": "/precios/indices",
+    "simulador": "/precios/simulador",
+    "administracion": "/cuenta/cuentas",
+    "acerca": "/cuenta/ayuda",
+    "inicio": "/inicio/general",
+}
+
+# Con obra (carpeta «demo.db», obra 3): la sección y, si la pantalla es subvista, su segmento.
+RUTAS_DE_OBRA = {
+    "obras": "resumen",
+    "tablero": "resumen/tablero",
+    "hoja": "presupuesto",
+    "componer": "presupuesto/componer",
+    "tramos": "tramos",
+    "archivos": "archivos",
+    "versiones": "versiones",
+    "aprobar": "aprobaciones",
+    "revisar": "aprobaciones/revisar",
+    "entregar": "aprobaciones/entregar",
+    "mercado": "mercado",
+    "actualizacion": "mercado/actualizar",
+    "control": "control",
+    "reajuste": "control/reajuste",
+    "escenarios": "control/escenarios",
+    "riesgo": "riesgo",
+}
+
+
+def test_cada_pantalla_tiene_su_ruta_canonica_sin_obra() -> None:
+    from scripts.recorrido_ux_playwright import ruta_canonica, rutas_de_la_interfaz
+
+    assert {r["id"] for r in rutas_de_la_interfaz()} == set(RUTAS_SIN_OBRA)
+    assert {i: ruta_canonica(i) for i in RUTAS_SIN_OBRA} == RUTAS_SIN_OBRA
+
+
+def test_con_obra_las_pantallas_de_la_obra_van_a_su_seccion_y_subvista() -> None:
+    from scripts.recorrido_ux_playwright import ruta_canonica
+
+    obra = ("demo.db", 3)
+    for id_, resto in RUTAS_DE_OBRA.items():
+        assert ruta_canonica(id_, obra) == f"/obra/demo.db/3/{resto}", id_
+    # La carpeta de la empresa se escribe «empresa».
+    assert ruta_canonica("tablero", (None, 7)) == "/obra/empresa/7/resumen/tablero"
+    # Las demás no cambian con la obra.
+    assert ruta_canonica("libros", obra) == "/auditoria/libros"
+    assert ruta_canonica("administracion", obra) == "/cuenta/cuentas"
+    assert ruta_canonica("inicio", obra) == "/inicio/general"
+
+
+def test_una_pantalla_que_no_existe_no_tiene_ruta() -> None:
+    from scripts.recorrido_ux_playwright import ruta_canonica
+
+    for id_ in ("pendientes", "elaborar", "historico", ""):
+        with pytest.raises(ValueError):
+            ruta_canonica(id_)
+
+
+@pytest.mark.parametrize(
+    ("id_", "hash_", "es"),
+    [
+        ("libros", "#/auditoria/libros", True),
+        ("libros", "#/auditoria/libros?x=1", True),
+        ("libros", "#/libros", False),
+        ("libros", "#/auditoria/librosx", False),
+        ("auditoria", "#/auditoria/subir", True),
+        ("auditoria", "#/auditoria", False),
+        ("costo_tonelada", "#/produccion/costo-tonelada", True),
+        ("inicio", "#/inicio/general", True),
+        ("inicio", "#/inicio/pendientes", False),
+        ("acerca", "#/cuenta/ayuda", True),
+        # La dirección corta de la obra lleva a la obra de la sesión: vale cualquier carpeta y obra.
+        ("hoja", "#/obra/demo.db/3/presupuesto", True),
+        ("hoja", "#/obra/empresa/12/presupuesto?proyecto=X", True),
+        ("hoja", "#/obra/demo.db/3/presupuesto/componer", False),
+        ("componer", "#/obra/demo.db/3/presupuesto/componer", True),
+        ("revisar", "#/obra/s1.db/1/aprobaciones/revisar", True),
+        ("aprobar", "#/obra/s1.db/1/aprobaciones", True),
+        ("aprobar", "#/inicio/pendientes", False),
+    ],
+)
+def test_patron_del_hash_de_cada_pantalla(id_: str, hash_: str, es: bool) -> None:
+    import re
+
+    from scripts.recorrido_ux_playwright import patron_de_hash
+
+    assert bool(re.search(patron_de_hash(id_), hash_)) is es
+
+
+@pytest.mark.parametrize(
+    ("enlace", "id_"),
+    [
+        ("#/auditoria/libros", "libros"),
+        ("http://127.0.0.1:1/app/#/produccion/costo-tonelada", "costo_tonelada"),
+        ("#/precios/listas?x=1", "precios_empresa"),
+        ("#/inicio/general", "inicio"),
+        ("#/inicio/pendientes", None),
+        ("#/cuenta/cuentas", "administracion"),
+        ("#/cuenta/sistema", "administracion"),
+        ("#/cuenta/ayuda", "acerca"),
+        ("#/cuenta/preferencias", None),
+        ("#/obra/demo.db/3/presupuesto", "hoja"),
+        ("#/obra/demo.db/3/presupuesto/componer", "componer"),
+        ("#/obra/empresa/2/control/escenarios", "escenarios"),
+        ("#/obra/empresa/2/riesgo", "riesgo"),
+        ("#/hoja", "hoja"),
+        ("#/", None),
+        ("#/auditoria/nada", None),
+    ],
+)
+def test_la_pantalla_de_cada_enlace(enlace: str, id_: str | None) -> None:
+    from scripts.recorrido_ux_playwright import pagina_de_la_ruta
+
+    assert pagina_de_la_ruta(enlace) == id_
 
 
 # --------------------------- ronda 2 del arbitro de MOD-5a ---------------------------------------

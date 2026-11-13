@@ -16,9 +16,10 @@ Rutas finas sobre `aplicacion.aprobaciones` (la regla y el rastro, en la carpeta
   (`aplicacion.mesa.dias_habiles_entre`), marcada desde 3.
 - `POST /abrir` (`aprobar_version`, solo con sesión) `{caso, envio_id}` → `{caso}`: cambia la
   carpeta de la sesión a la del envío (`caso_web.fijar`) y la recuerda para la cuenta
-  (`aplicacion.eleccion.recordar_caso`, MOD-0); así llega quien revisa sin `cambiar_caso`
-  (decisión 1 ratificada). 404 «No se encontró ese envío.» si la carpeta no está en la carpeta de
-  casos (o el nombre trae rutas) o no tiene ese envío; la sesión no cambia.
+  (`aplicacion.eleccion.recordar_caso`, MOD-0); así llegaba quien revisa sin `cambiar_caso`
+  (decisión 1 ratificada; desde la enmienda 2026-11-05 tiene además `abrir_carpeta`). 404 «No se
+  encontró ese envío.» si la carpeta no está en la carpeta de casos (o el nombre trae rutas) o no
+  tiene ese envío; la sesión no cambia.
 - `GET /{envio_id}` (`aprobar_version`) → lo que se aprueba, en solo lectura: los renglones y los
   hallazgos GUARDADOS de la versión (lo que su sello cubre), el total, el rastro de la obra, quién
   envió y si quien mira la armó. No abre borrador ni registra instantánea.

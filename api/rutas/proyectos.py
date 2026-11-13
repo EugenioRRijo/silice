@@ -25,7 +25,7 @@ nombre dan 201 y 409.
 `carpeta` (opcional; rediseño del marco, Tarea 6b): la carpeta donde se crea la obra, el nombre que
 lista `GET /v1/obras/todas` (`Obra Norte.db`) o `"empresa"` para la carpeta de la empresa (la del
 proceso; el `null` de esa lista no cabe aquí porque `null` es «la de la sesión»). Sin `carpeta`, o
-con la que ya tiene la sesión, todo sigue como arriba. Con otra: exige `CAMBIAR_CASO` (403; 409 con
+con la que ya tiene la sesión, todo sigue como arriba. Con otra: exige `ABRIR_CARPETA` (403; 409 con
 la clave de API, que trabaja en la carpeta del proceso), valida el nombre como
 `POST /v1/casos/actual` (`aplicacion.casos.carpeta_de_la_lista`: 422 con un texto fijo, sin repetir
 lo enviado, si lleva rutas, `..` o no es una carpeta que existe; no se crea ningún archivo) y crea
@@ -170,7 +170,7 @@ def _sesion_de_destino(
     if activa is None:
         raise HTTPException(409, MENSAJE_CON_CLAVE)
     try:
-        exigir(activa.roles, Accion.CAMBIAR_CASO)
+        exigir(activa.roles, Accion.ABRIR_CARPETA)
     except PermisoDenegado as error:
         raise HTTPException(403, str(error)) from None
     with abrir_sesion_de_escritura(obtener_motor(url_de_ruta(destino))) as sesion:
@@ -185,7 +185,7 @@ def _sesion_de_destino(
     responses={
         403: {
             "model": Detalle,
-            "description": "Sin `EDITAR_HOJA`, o sin `CAMBIAR_CASO` para crear en otra carpeta, "
+            "description": "Sin `EDITAR_HOJA`, o sin `ABRIR_CARPETA` para crear en otra carpeta, "
             "o sin CSRF u origen propio.",
         },
         409: {

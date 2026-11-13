@@ -3,7 +3,7 @@
 //   0. `GET /v1/obras/todas` da la carpeta abierta y dice si la obra existe (`PUT /v1/sesion/proyecto` también
 //      contesta 404 si la obra no existe, pero esta lectura evita cambiar de carpeta antes de saberlo);
 //   1. si la carpeta de la ruta no es la abierta, `POST /v1/casos/actual` (o `DELETE`, si la ruta dice `empresa`);
-//      sin `cambiar_caso` y en la misma carpeta no se llama (Tarea 3);
+//      sin `abrir_carpeta` y en la misma carpeta no se llama (Tarea 3);
 //   2. `PUT /v1/sesion/proyecto` con la obra;
 //   3. solo entonces `lista`, y se anuncia a las demás pestañas (marco/otraPestana).
 // Cambiar de sección dentro de la misma obra no repite nada.

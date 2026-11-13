@@ -4,6 +4,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import type { Carga } from "./useCarga";
+import { TEXTOS } from "./textos";
 
 // Una auditoria guardada (GET /v1/auditorias-libro). Solo resumen: el libro y el PDF nunca se guardan.
 export interface AuditoriaGuardadaRespuesta {
@@ -25,7 +26,13 @@ export function resultadoEnUnaLinea(errores: number, advertencias: number): stri
   return `${plural(errores, "error", "errores")}, ${plural(advertencias, "advertencia", "advertencias")}`;
 }
 
-export function UltimasAuditorias({ carga }: { carga: Carga<AuditoriaGuardadaRespuesta[]> }) {
+interface Props {
+  carga: Carga<AuditoriaGuardadaRespuesta[]>;
+  // Dónde se muestra: en Auditoría hay una zona arriba donde soltar el Excel; en la Vista general no, y el vacío manda a Auditoría.
+  desde?: "auditoria" | "vista-general";
+}
+
+export function UltimasAuditorias({ carga, desde = "auditoria" }: Props) {
   if (carga.estado === "cargando") {
     return (
       <div role="status" aria-busy="true" aria-label="Cargando las auditorías">
@@ -47,7 +54,11 @@ export function UltimasAuditorias({ carga }: { carga: Carga<AuditoriaGuardadaRes
     return (
       <EstadoVacio
         titulo="Todavía no hay auditorías guardadas"
-        descripcion="Suelte arriba el Excel de un presupuesto: el resumen y los hallazgos quedarán aquí."
+        descripcion={
+          desde === "vista-general"
+            ? TEXTOS.auditorias.vacioEnLaVistaGeneral
+            : "Suelte arriba el Excel de un presupuesto: el resumen y los hallazgos quedarán aquí."
+        }
       />
     );
   }

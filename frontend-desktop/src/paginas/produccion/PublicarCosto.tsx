@@ -6,6 +6,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import { empresaDeAdministracion, publicarCalculo } from "../../api/produccionPlanta";
 import type { CalculoDeCosto, EmpresaDeAdministracion } from "../../api/produccionPlanta";
 import { AvisoError } from "../../comun/AvisoError";
+import { rutaDeCuenta } from "../../marco/espacios";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
 import { fuenteDelPrecio, mensajeAlPublicar, nombreDeLista, pideConfigurarEmpresa } from "./logicaPlanta";
 
@@ -20,7 +21,8 @@ interface Props {
 
 type Empresa = { estado: "cargando" } | { estado: "listo"; datos: EmpresaDeAdministracion } | { estado: "error" };
 
-const ADMINISTRACION = "/administracion";
+// Los datos de la empresa viven en la Cuenta, sección «Empresa y tema» (F6, T6).
+const ADMINISTRACION = rutaDeCuenta("empresa");
 
 // Publicar un cálculo como precio propio de la empresa. Solo se monta con la acción `publicar_costo_propio`; la ruta no
 // lleva cuerpo (el servidor publica el cálculo tal como lo guardó). La empresa es la de Administración y se lee, no se
@@ -75,7 +77,7 @@ export function PublicarCosto({ calculo, alPublicar, alExpirar, alConflicto }: P
       </p>
       {empresa.estado === "listo" && empresa.datos.empresa && (
         <p className="cds--type-body-compact-01">
-          Empresa que publica (de Administración):{" "}
+          Empresa que publica (de la Cuenta, «Empresa y tema»):{" "}
           <strong>
             {empresa.datos.empresa.nombre} ({empresa.datos.empresa.rif})
           </strong>
@@ -83,14 +85,14 @@ export function PublicarCosto({ calculo, alPublicar, alExpirar, alConflicto }: P
       )}
       {empresa.estado === "error" && (
         <p className="planta-nota cds--type-body-compact-01">
-          No se pudo leer la empresa de Administración; el servidor la comprobará al publicar.
+          No se pudo leer la empresa de la Cuenta; el servidor la comprobará al publicar.
         </p>
       )}
       {sinEmpresa && (
         <p className="cds--type-body-compact-01">
-          Todavía no se configuró la empresa en Administración: sin ella no se puede publicar.{" "}
+          Todavía no se configuró la empresa en la Cuenta («Empresa y tema»): sin ella no se puede publicar.{" "}
           <Link className="cds--link" to={ADMINISTRACION}>
-            Ir a Administración
+            Ir a «Empresa y tema»
           </Link>
         </p>
       )}
@@ -131,7 +133,7 @@ export function PublicarCosto({ calculo, alPublicar, alExpirar, alConflicto }: P
             {pideConfigurarEmpresa(error) && (
               <p className="cds--type-body-compact-01">
                 <Link className="cds--link" to={ADMINISTRACION} onClick={() => setConfirmando(false)}>
-                  Ir a Administración
+                  Ir a «Empresa y tema»
                 </Link>
               </p>
             )}

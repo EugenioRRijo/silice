@@ -91,7 +91,7 @@ describe("Acerca de Sílice", () => {
     fetchFalso.mockResolvedValue(json(DATOS));
     const { container } = montar();
     const h1 = await screen.findByRole("heading", { level: 1 });
-    expect(h1).toHaveTextContent("Acerca de Sílice");
+    expect(h1).toHaveTextContent("Ayuda y acerca de Sílice");
     expect(screen.queryByText(/pyproject/)).not.toBeInTheDocument();
     expect(screen.getByText(/^Versión:/)).toBeInTheDocument();
     expect(container.querySelector(".silice-pagina")).not.toBeNull();

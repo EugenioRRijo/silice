@@ -30,19 +30,29 @@ describe("destinoDelPendiente (D-F3-2)", () => {
     expect(destinoDelPendiente(pendiente(pagina))).toBe(ruta);
   });
 
-  test("«catalogo» abre Empresa › Precios y catálogo", () => {
-    expect(destinoDelPendiente(pendiente("catalogo"))).toBe("/empresa/precios");
+  test("«catalogo» abre Precios y catálogo › Catálogo", () => {
+    expect(destinoDelPendiente(pendiente("catalogo"))).toBe("/precios/catalogo");
   });
 
-  test("«actualizacion», que aún no tiene sección, va a Mercado", () => {
-    expect(destinoDelPendiente(pendiente("actualizacion"))).toBe("/obra/Carpeta%20Norte.db/2/mercado");
+  // Contrato de rutas 2.4: «actualizar precios» y «entregar» son subvistas de su sección (F6, T5) y el pendiente abre la
+  // subvista, no la sección que las absorbía (`ABSORBIDAS`).
+  test("«actualizacion» abre Mercado › Actualizar precios", () => {
+    expect(destinoDelPendiente(pendiente("actualizacion"))).toBe("/obra/Carpeta%20Norte.db/2/mercado/actualizar");
   });
 
-  test("«entregar», que aún no tiene sección, va a Aprobaciones", () => {
-    expect(destinoDelPendiente(pendiente("entregar"))).toBe("/obra/Carpeta%20Norte.db/2/aprobaciones");
+  test("«tablero» abre Resumen › Tablero (es subvista, no una pantalla desconocida)", () => {
+    expect(destinoDelPendiente(pendiente("tablero"))).toBe("/obra/Carpeta%20Norte.db/2/resumen/tablero");
   });
 
-  test.each(["tablero", "", "toString", "constructor"])("una pantalla desconocida («%s») va al Resumen de la obra", (pagina) => {
+  test("«entregar» abre Aprobaciones › Entregar", () => {
+    expect(destinoDelPendiente(pendiente("entregar"))).toBe("/obra/Carpeta%20Norte.db/2/aprobaciones/entregar");
+  });
+
+  test("las subvistas de una obra de la empresa llevan por `empresa`", () => {
+    expect(destinoDelPendiente(pendiente("entregar", null, 7))).toBe("/obra/empresa/7/aprobaciones/entregar");
+  });
+
+  test.each(["", "toString", "constructor", "no_existe"])("una pantalla desconocida («%s») va al Resumen de la obra", (pagina) => {
     expect(destinoDelPendiente(pendiente(pagina))).toBe("/obra/Carpeta%20Norte.db/2/resumen");
   });
 
@@ -57,9 +67,10 @@ describe("paginaQueAbre", () => {
     ["hoja", "hoja"],
     ["aprobar", "aprobar"],
     ["catalogo", "catalogo"],
-    ["actualizacion", "mercado"],
-    ["entregar", "aprobar"],
-    ["tablero", "obras"],
+    ["actualizacion", "actualizacion"],
+    ["entregar", "entregar"],
+    ["tablero", "tablero"],
+    ["no_existe", "obras"],
   ])("«%s» monta «%s»", (pagina, montada) => {
     expect(paginaQueAbre(pendiente(pagina))).toBe(montada);
   });
@@ -128,7 +139,7 @@ describe("destinoDeLaAccion", () => {
   test.each([
     ["hoja", "/obra/Carpeta%20Sur.db/3/presupuesto"],
     ["desconocida", "/obra/Carpeta%20Sur.db/3/resumen"],
-    ["catalogo", "/empresa/precios"],
+    ["catalogo", "/precios/catalogo"],
   ])("«%s» lleva a %s", (pagina, ruta) => {
     expect(destinoDeLaAccion("Carpeta Sur.db", 3, pagina)).toBe(ruta);
   });

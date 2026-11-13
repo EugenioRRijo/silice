@@ -298,11 +298,52 @@ def carpetas_con_archivo(
     aún no se creó) no tiene obras ni pendientes: no es un fallo y no se avisa. Una corrupta sí
     existe y la tratan los lectores.
 
-    Cuando la lista la arma `_carpetas_visibles` con `CAMBIAR_CASO`, las demás carpetas ya vienen
+    Cuando la lista la arma `_carpetas_visibles` con `ABRIR_CARPETA`, las demás carpetas ya vienen
     filtradas de `listar_casos` (que solo devuelve archivos `.db` existentes) y este filtro solo
-    puede quitar la de la empresa (`None`). Sin `CAMBIAR_CASO` la carpeta abierta no sale de
+    puede quitar la de la empresa (`None`). Sin `ABRIR_CARPETA` la carpeta abierta no sale de
     `listar_casos`; por eso se aplica a toda la lista, sin depender de quién la armó."""
     return [(nombre, ruta) for nombre, ruta in carpetas if Path(ruta).is_file()]
+
+
+def _orden_de_carpeta(carpeta: tuple[str | None, Path]) -> tuple[bool, str]:
+    """La carpeta de la empresa (`None`) primero; las demás por nombre sin distinguir mayúsculas."""
+    return carpeta[0] is not None, (carpeta[0] or "").casefold()
+
+
+def leer_cada_carpeta[T](
+    carpetas: list[tuple[str | None, Path]],
+    leer: Callable[[Session], T],
+    *,
+    registro: logging.Logger,
+    que: str,
+) -> tuple[list[tuple[str | None, T]], int]:
+    """`leer(sesion)` en cada carpeta con archivo (`carpetas_con_archivo`), en el orden de
+    `_orden_de_carpeta`, abierta en **solo lectura** (`motor_solo_lectura`) y cerrada al terminar.
+    Devuelve `(nombre, lo leído)` por carpeta y cuántas se omitieron.
+
+    Una carpeta cuya lectura lanza cualquier error (no SQLite, sin las tablas, datos que el lector
+    no entiende) se omite y se cuenta; nunca tumba las demás. Queda en `registro`: en el aviso,
+    solo el nombre del archivo y el tipo del error (`que` dice qué se omite: «las obras», «los
+    pendientes»), porque el texto de una excepción puede traer SQL o datos; la traza completa, solo
+    en el registro local y a nivel debug, nunca en una respuesta."""
+    leidas: list[tuple[str | None, T]] = []
+    omitidas = 0
+    for nombre, ruta in sorted(carpetas_con_archivo(carpetas), key=_orden_de_carpeta):
+        motor = motor_solo_lectura(ruta)
+        try:
+            with abrir_sesion(motor) as sesion:
+                leido = leer(sesion)
+        except Exception as error:  # noqa: BLE001 - una carpeta con datos raros no tumba las demás
+            omitidas += 1
+            registro.warning(
+                "Se omiten %s de la carpeta «%s»: %s.", que, ruta.name, type(error).__name__
+            )
+            registro.debug("Traza de la carpeta «%s» omitida.", ruta.name, exc_info=True)
+            continue
+        finally:
+            motor.dispose()
+        leidas.append((nombre, leido))
+    return leidas, omitidas
 
 
 def obras_de_las_carpetas(carpetas: list[tuple[str | None, Path]]) -> list[ObraDeCarpeta]:
@@ -314,9 +355,7 @@ def obras_de_las_carpetas(carpetas: list[tuple[str | None, Path]]) -> list[ObraD
     carpeta que no se puede leer: archivo no SQLite, tabla o columna que falta. Una más
     nueva que abre sin error se lista; abrirla dará el error de `preparar_base`."""
     filas: list[ObraDeCarpeta] = []
-    for nombre, ruta in sorted(
-        carpetas_con_archivo(carpetas), key=lambda c: (c[0] is not None, (c[0] or "").casefold())
-    ):
+    for nombre, ruta in sorted(carpetas_con_archivo(carpetas), key=_orden_de_carpeta):
         motor = motor_solo_lectura(ruta)
         try:
             with abrir_sesion(motor) as sesion:

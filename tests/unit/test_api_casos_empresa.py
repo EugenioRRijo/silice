@@ -21,6 +21,7 @@ from api.main import app
 from api.rutas import casos as rutas_casos
 from operacion import config
 from operacion.base_datos import preparar_base
+from seguridad.permisos import PERMISOS, Rol
 from tests.fixtures.carpetas_trabajo import copiar
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
@@ -187,7 +188,17 @@ def test_volver_no_pasa_si_la_instalacion_falla() -> None:
     assert navegador.get("/v1/sesion").json()["eleccion"]["caso"] == "s1.db"
 
 
-def test_rita_no_vuelve() -> None:
+def test_rita_abre_otra_y_vuelve() -> None:
+    """Enmienda 2026-11-05: quien revisa abre otras carpetas (`ABRIR_CARPETA`) y también vuelve."""
+    navegador, ficha = con_cuenta(app, "rita")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    respuesta = _volver(navegador, ficha)
+    assert respuesta.status_code == 200, respuesta.text
+    assert navegador.get("/v1/casos").json()["actual"]["nombre"] == "silice.db"
+
+
+def test_sin_abrir_carpeta_no_vuelve(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(PERMISOS, "abrir_carpeta", frozenset({Rol.ARMA, Rol.ADMINISTRADOR}))
     navegador, ficha = con_cuenta(app, "rita")
     respuesta = _volver(navegador, ficha)
     assert (respuesta.status_code, respuesta.json()) == (403, {"detalle": MENSAJE_PERMISO})

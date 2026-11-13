@@ -23,7 +23,8 @@ function anuncioDe(cantidad: number): string {
   return cantidad === 1 ? "1 resultado" : `${cantidad} resultados`;
 }
 
-// Buscador global (Ctrl+K) del marco nuevo: obras, secciones, entradas de Empresa y pantallas sin sitio en el árbol. Es
+// Buscador global (Ctrl+K) del marco nuevo: obras, sus secciones, las secciones de la Cuenta y las herramientas de los
+// espacios (Producción, Auditoría y Precios). Es
 // un diálogo propio, no el Modal de Carbon (como los demás del armazón: su archivo trae una URL que `npm run dist`
 // rechaza, RNF-22), con el patrón WAI-ARIA combobox + listbox: el foco se queda en el campo y la opción activa se
 // señala con aria-activedescendant. Lo monta marco/Marco junto a la barra superior.

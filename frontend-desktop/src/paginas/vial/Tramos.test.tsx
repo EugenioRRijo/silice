@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import Tramos from "./Tramos";
 
@@ -54,12 +55,15 @@ describe("Tramos de la vía", () => {
   let usuario: ReturnType<typeof userEvent.setup>;
   const alExpirar = vi.fn();
 
-  function montar(nombreProyecto: string | null = "Vía Demo") {
+  // `obra`: la que provee EspacioDeObra en la app (sin ella, la pantalla suelta no sabe en qué obra está).
+  function montar(nombreProyecto: string | null = "Vía Demo", obra: { carpeta: string | null; obraId: number } | null = null) {
     render(
       <ContextoAplicacion.Provider value={{ sesion: ANA, proyecto: "7", nombreProyecto, caso: null, recargarProyectos: vi.fn(), alExpirar }}>
-        <MemoryRouter>
-          <Tramos />
-        </MemoryRouter>
+        <ContextoDeLaObra.Provider value={obra === null ? null : { ...obra, ficha: { estado: "sin_dato" }, recargarFicha: vi.fn() }}>
+          <MemoryRouter>
+            <Tramos />
+          </MemoryRouter>
+        </ContextoDeLaObra.Provider>
       </ContextoAplicacion.Provider>,
     );
   }
@@ -166,6 +170,16 @@ describe("Tramos de la vía", () => {
     expect(await screen.findByText(/La versión VIA-002 está aprobada/)).toBeInTheDocument();
     expect(campoDeArchivo()).toBeNull();
     expect(screen.getByRole("table", { name: "Cantidades del tramo T1" })).toBeInTheDocument();
+  });
+
+  // Hallazgo MENOR 7 del árbitro final: dentro de una obra, el enlace va a la ruta canónica de su Presupuesto, no a la
+  // dirección corta (`/hoja`), que redirige y vuelve a montar el espacio de la obra.
+  test("dentro de una obra, «Abrir el presupuesto» enlaza a la ruta del Presupuesto de esa obra", async () => {
+    montar("Vía Demo", { carpeta: "Carpeta Sur.db", obraId: 3 });
+    await screen.findByRole("table", { name: "Cantidades del tramo T1" });
+    await usuario.click(screen.getByRole("button", { name: "Llevar al presupuesto" }));
+    await screen.findByText("Se llevaron 18 renglones de VIA-002 al Presupuesto de la obra.");
+    expect(screen.getByRole("link", { name: "Abrir el presupuesto" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/presupuesto");
   });
 
   test("llevar muestra cuántos renglones, de qué versión, y enlaza al Presupuesto", async () => {

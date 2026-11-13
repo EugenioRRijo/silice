@@ -4,7 +4,7 @@ Contrato del plan (`docs/planes/PLAN_SESION_2B_MIGRACION.md` §4, ola 0a):
 
 - `GET /v1/casos` → `{actual: {nombre, ruta_relativa}, casos: [{nombre, ruta_relativa}]}` sin rutas
   absolutas; cualquier rol con sesión, o la clave de API (que ve el caso del proceso).
-- `POST /v1/casos/actual` `{nombre}` → 200 con el actual; 403 sin `CAMBIAR_CASO` o sin CSRF;
+- `POST /v1/casos/actual` `{nombre}` → 200 con el actual; 403 sin `ABRIR_CARPETA` o sin CSRF;
   404 si no está en la carpeta de casos; 422 si el nombre lleva rutas o `..`.
 - La elección vive en memoria del proceso por ficha; al salir o expirar se olvida; la clave de
   API sigue usando el caso del proceso.
@@ -35,6 +35,7 @@ from operacion.instalacion import sesion_de_instalacion
 from scripts.seed import NOMBRE_PROYECTO
 from seguridad import sesiones
 from seguridad.modelo import Sesion
+from seguridad.permisos import PERMISOS, Rol
 from tests.fixtures import bases_prueba
 from tests.fixtures.base_con_pendiente import guardar_base_con_pendiente
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
@@ -162,7 +163,26 @@ def test_el_nombre_sin_extension_tambien_vale() -> None:
     assert _elegir(navegador, ficha, "Obra Norte").json() == _caso("Obra Norte.db")
 
 
-def test_revisa_no_puede_cambiar_de_caso() -> None:
+def test_revisa_abre_otra_carpeta_para_su_ficha() -> None:
+    """Enmienda 2026-11-05 (decisión de Eugenio): quien revisa abre las obras de toda carpeta."""
+    navegador, ficha = con_cuenta(app, "rita")
+    respuesta = _elegir(navegador, ficha, "anexo.db")
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == _caso("anexo.db")
+    assert navegador.get("/v1/casos").json()["actual"] == _caso("anexo.db")
+
+
+def test_la_carpeta_que_abre_quien_revisa_no_cambia_la_de_otra_persona() -> None:
+    """La carpeta es de la ficha (`api.caso_web`, por huella), no del proceso."""
+    ana, _ = con_cuenta(app, "ana")
+    rita, ficha_rita = con_cuenta(app, "rita")
+    assert _elegir(rita, ficha_rita, "anexo.db").status_code == 200
+    assert ana.get("/v1/casos").json()["actual"] == _caso("silice.db")
+    assert rita.get("/v1/casos").json()["actual"] == _caso("anexo.db")
+
+
+def test_sin_abrir_carpeta_no_se_cambia(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(PERMISOS, "abrir_carpeta", frozenset({Rol.ARMA, Rol.ADMINISTRADOR}))
     navegador, ficha = con_cuenta(app, "rita")
     respuesta = _elegir(navegador, ficha, "anexo.db")
     assert respuesta.status_code == 403

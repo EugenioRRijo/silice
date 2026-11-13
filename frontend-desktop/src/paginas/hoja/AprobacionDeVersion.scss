@@ -1,10 +1,24 @@
 // La aprobacion de la version, junto a ella en la Hoja (Tarea 19; DESIGN.md). Carbon g10: esquinas rectas, divisor de 1 px,
 // sin sombras ni animacion; la etiqueta es texto con borde (no un color que signifique «bien»): la devuelta lleva su icono.
+// Dentro de la línea de estado (cabecera compacta): la fila de la etiqueta corre en línea; las notas, el aviso y el diálogo
+// ocupan su propia fila y solo cuando hay algo que decir.
 .silice-hoja__aprobacion {
-  display: grid;
-  justify-items: start;
-  gap: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
   min-inline-size: 0;
+
+  > .silice-hoja__aprobacion-notas,
+  > .silice-hoja__aprobacion-aviso,
+  > .cds--type-helper-text-01 {
+    flex-basis: 100%;
+  }
+}
+
+// Con notas, un aviso o un diálogo la región ocupa toda la fila de la línea de estado, para que ese texto use el ancho.
+.silice-hoja__aprobacion:has(> .silice-hoja__aprobacion-notas, > .silice-hoja__aprobacion-aviso:not(:empty), > .cds--type-helper-text-01) {
+  flex-basis: 100%;
 }
 
 .silice-hoja__aprobacion-fila {

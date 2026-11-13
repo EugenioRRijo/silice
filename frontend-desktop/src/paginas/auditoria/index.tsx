@@ -2,9 +2,10 @@ import { Button } from "@carbon/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
+import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, pasoDeRuta, useRecorrido } from "../../shell/recorrido";
-import { paginaPorId, rutaDe, usable } from "../../shell/rutas";
+import { paginaPorId, usable } from "../../shell/rutas";
 import { fijarArchivoPendiente } from "../inicio/archivoPendiente";
 import type { ModoDeAuditoria } from "../inicio/archivoPendiente";
 import { UltimasAuditorias } from "../inicio/UltimasAuditorias";
@@ -26,7 +27,7 @@ export default function PaginaAuditoria() {
 
   const recorrido = useRecorrido();
   // El paso que sigue a este, solo si su pantalla existe aqui y la cuenta puede abrirla.
-  const posicion = recorrido ? pasoDeRuta(recorrido, "/auditoria") : null;
+  const posicion = recorrido ? pasoDeRuta(recorrido, rutaOPendientes("auditoria")) : null;
   const siguiente = recorrido && posicion !== null ? recorrido.pasos[posicion + 1] : undefined;
   const paginaSiguiente = siguiente ? paginaPorId(siguiente.pagina) : undefined;
   const puedeSeguir = paginaSiguiente !== undefined && usable(paginaSiguiente, sesion.acciones, sesion.modo_entrega, modulosApagados);
@@ -35,7 +36,7 @@ export default function PaginaAuditoria() {
     if (!archivo) return;
     fijarArchivoPendiente(archivo, modo);
     if (modo === "guiado") iniciarRecorrido(RECORRIDO_AUDITAR);
-    void navegar("/libros");
+    void navegar(rutaOPendientes("libros"));
   };
 
   return (
@@ -98,7 +99,7 @@ export default function PaginaAuditoria() {
               {siguiente && paginaSiguiente && puedeSeguir && (
                 <>
                   {" "}
-                  <Link className="cds--link" to={rutaDe(paginaSiguiente)}>
+                  <Link className="cds--link" to={rutaOPendientes(paginaSiguiente.id)}>
                     {`Seguir con el paso ${(posicion ?? 0) + 2}: ${siguiente.titulo}`}
                   </Link>
                 </>

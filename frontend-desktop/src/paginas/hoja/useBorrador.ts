@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { sesionTerminada } from "../../sesion/useSesion";
 import { esperarEnvios } from "./envioPendiente";
 import type { BorradorAbierto, BorradorVivo, Resumen } from "./logica";
 
@@ -16,6 +17,8 @@ interface Abierto {
 }
 
 function descartar(id: string): void {
+  // Salir (o vencer) de la sesion: el servidor ya descarto los borradores al cerrarla y la cookie ya no vale; pedirlo daria 401.
+  if (sesionTerminada()) return;
   // Sin esperar la respuesta: un borrador que quede por un fallo se va solo a las 8 horas.
   pedir(`/v1/hoja/borradores/${id}`, { metodo: "DELETE" }).catch(() => undefined);
 }

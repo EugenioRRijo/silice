@@ -182,7 +182,7 @@ describe("App: primer arranque y recuperar acceso", () => {
     await usuario.click(screen.getByRole("button", { name: "Crear la cuenta y entrar" }));
 
     expect(await screen.findByText("Ana Pérez", {}, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cuenta de Ana Pérez" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cuenta de Ana Pérez" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Bienvenida a Sílice" })).not.toBeInTheDocument();
     expect(recibido).toEqual([
       { codigo: CODIGO, usuario: "admin", nombre: "Ana Pérez", contrasena: CLAVE, tambien_arma: true },
@@ -202,8 +202,8 @@ describe("App: primer arranque y recuperar acceso", () => {
     render(<App />);
     await llenarBienvenida(usuario);
     await usuario.click(screen.getByRole("button", { name: "Crear la cuenta y entrar" }));
-    await usuario.click(await screen.findByRole("button", { name: "Cuenta de Ana Pérez" }, { timeout: 5000 }));
-    await usuario.click(screen.getByRole("button", { name: "Salir" }));
+    await usuario.click(await screen.findByRole("link", { name: "Cuenta de Ana Pérez" }, { timeout: 5000 }));
+    await usuario.click(await screen.findByRole("button", { name: "Salir de la sesión" }, { timeout: 5000 }));
     const borrado = fetchFalso.mock.calls.find((c) => c[1]?.method === "DELETE");
     expect(new Headers(borrado?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok-nuevo");
   });
@@ -268,8 +268,8 @@ describe("App: primer arranque y recuperar acceso", () => {
     await llenarBienvenida(usuario);
     await usuario.click(screen.getByRole("button", { name: "Crear la cuenta y entrar" }));
     primerArranque = () => json({ ...estadoSinCuentas, sin_cuentas: false });
-    await usuario.click(await screen.findByRole("button", { name: "Cuenta de Ana Pérez" }, { timeout: 5000 }));
-    await usuario.click(screen.getByRole("button", { name: "Salir" }));
+    await usuario.click(await screen.findByRole("link", { name: "Cuenta de Ana Pérez" }, { timeout: 5000 }));
+    await usuario.click(await screen.findByRole("button", { name: "Salir de la sesión" }, { timeout: 5000 }));
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
   });
 });

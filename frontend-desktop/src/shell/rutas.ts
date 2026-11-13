@@ -30,6 +30,16 @@ export interface PaginaDef {
 // Cada entrada de PAGINAS queda en una sola llave (sin objetos anidados): `scripts/recorrido_ux_playwright.py` lee
 // el registro como texto.
 export const PAGINAS: readonly PaginaDef[] = [
+  // F6, T8: la Vista general, entrada de la app (`/inicio/general`, contrato de rutas 1 y 4). La ve toda cuenta; sus bloques
+  // piden por su cuenta lo que cada rol puede leer (cartera y auditorías con `leer_proyecto`, arenera con `operar_arenera`).
+  {
+    id: "inicio",
+    titulo: "Vista general",
+    enUnaLinea: "Lo que bloquea, la cartera y el avance de las obras",
+    seccion: "Trabajo",
+    accion: null,
+    cargar: () => import("../paginas/inicio"),
+  },
   {
     id: "auditoria",
     titulo: "Inicio de auditoría",
@@ -287,7 +297,7 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   {
     id: "acerca",
-    titulo: "Acerca de Sílice",
+    titulo: "Ayuda y acerca de Sílice",
     enUnaLinea: "Versión, licencia y datos del programa",
     seccion: "Trabajo",
     accion: null,

@@ -293,8 +293,8 @@ function Entrega({
           />
           <p className="silice-entregar__nota cds--type-body-compact-01">
             Un paquete con la cadena rota no se entrega: restaure la base desde
-            un respaldo (Administración, pestaña Instalación) o avise a quien
-            administra Sílice.
+            un respaldo (en la Cuenta, sección «Especialidades, IA e instalación»)
+            o avise a quien administra Sílice.
           </p>
         </>
       )}
@@ -315,7 +315,7 @@ function Entrega({
         <InlineNotification
           kind="warning"
           title="Sin empresa"
-          subtitle="Todavía no hay empresa en Administración: el paquete no dirá quién lo emite."
+          subtitle="Todavía no hay empresa en la Cuenta («Empresa y tema»): el paquete no dirá quién lo emite."
           lowContrast
           hideCloseButton
         />

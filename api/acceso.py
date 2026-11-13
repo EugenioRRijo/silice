@@ -27,7 +27,10 @@ Ruta → acción (y la página Streamlit que lo justifica):
   - `POST /presupuestos/{codigo}/escenarios`: Escenarios.
   - `POST /ejecuciones`, `POST /partidas/{codigo}/rendimientos`: Componer una partida.
 - `REVISAR_PAQUETE` (revisa): `POST /v1/auditorias`, que reaudita como Revisar un paquete.
-- `CAMBIAR_CASO` (arma y administrador): `POST /v1/casos/actual` («Cambiar de caso» del Inicio).
+- `ABRIR_CARPETA` (arma, revisa y administrador; enmienda 2026-11-05): `POST` y
+  `DELETE /v1/casos/actual` (abrir otra carpeta y volver a la de la empresa).
+- `CAMBIAR_CASO` (arma y administrador): `POST /v1/casos` y `POST /v1/casos/subida` (crear y subir
+  carpetas).
 - Cualquier rol con sesión: `GET /v1/casos` (el caso abierto y la lista los ven todos).
 
 Sin clave ni sesión: `GET /salud` y `POST /v1/sesion` (la entrada). `GET`/`DELETE /v1/sesion` y

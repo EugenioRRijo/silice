@@ -424,6 +424,11 @@ S1, S2 y S3:
 | Red local y API; claves de API (crear solo desde el propio equipo) | no | no | sí |
 | Cambiar la carpeta de datos (S5) | no | no | sí, solo desde el propio equipo |
 
+> **Enmienda 2026-11-05 (decisión de Eugenio): quien revisa ve todas las carpetas.** La fila «Cambiar de caso» se parte
+> en dos acciones: **abrir otra carpeta de la lista y ver sus obras** (`abrir_carpeta`: arma **sí**, revisa **sí**,
+> administrador **sí**) y **crear o subir una carpeta de trabajo** (`cambiar_caso`: arma sí, revisa no, administrador
+> sí, como antes). Quien revisa sigue en solo lectura dentro de la carpeta que abre.
+
 Una cuenta puede tener varios roles (en una empresa pequeña una persona es las tres cosas); una misma persona
 **puede** tener *arma* y *revisa* (P2, ratificada). La pantalla de cuentas lo **informa** sin impedirlo («esta cuenta
 podrá revisar paquetes que ella misma armó; la vista de revisión lo indicará»); el paquete y la cadena registran

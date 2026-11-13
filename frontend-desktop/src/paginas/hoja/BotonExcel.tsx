@@ -4,7 +4,8 @@ import { NOMBRE_POR_OMISION, rutaDelExcel } from "./logicaExcel";
 import "./excel.scss";
 
 // «Descargar Excel» (3e-1): el servidor arma el libro del borrador vivo y propone el nombre (Content-Disposition). Si no se
-// puede preparar, el aviso trae el detalle de la API tal cual («No se pudo preparar el Excel: …»).
+// puede preparar, el aviso trae el detalle de la API tal cual («No se pudo preparar el Excel: …»). Va en la franja de acciones
+// del Presupuesto, junto al botón del paso (`FranjaDelPresupuesto`): terciario, nunca el principal.
 export function BotonExcel({ id }: { id: string }) {
   const { alExpirar } = useAplicacion();
   return (
@@ -15,7 +16,7 @@ export function BotonExcel({ id }: { id: string }) {
         nombrePorOmision={NOMBRE_POR_OMISION}
         alExpirar={alExpirar}
         kind="tertiary"
-        size="sm"
+        size="md"
       />
     </div>
   );

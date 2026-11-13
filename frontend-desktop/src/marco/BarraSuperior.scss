@@ -5,8 +5,9 @@
 // Barra superior del marco nuevo (maqueta aprobada): fondo del marco, 48 px, raya inferior de 3 px del acento. Texto
 // claro sobre el fondo oscuro. Sin hexadecimales: solo --silice-* y --cds-*. Rem, sin sombra ni animacion.
 // Cuando no cabe todo (1366 px con letra Normal en una obra, hallazgo 7 del recorrido del 01-11-2026) cede primero el
-// buscador, hasta su icono; luego las migas intermedias, que se recortan con puntos suspensivos. La seccion actual, el
-// tamano de letra y la cuenta no ceden: la cuenta, al ceder su envoltorio, sacaba el boton por el borde derecho.
+// buscador, hasta su icono; luego la carpeta activa, que se recorta con puntos suspensivos. La marca y la persona no
+// ceden: la cuenta, al ceder su envoltorio, sacaba el boton por el borde derecho. Plan F6, T6: sin migas ni tamano de
+// letra (vive en la Cuenta); la persona es un enlace a ella.
 .silice-marco-barra {
   display: flex;
   align-items: center;
@@ -31,58 +32,40 @@
   @include type.type-style("body-compact-01");
 }
 
-.silice-marco-barra__migas {
+// La marca lleva a la ruta indice. Es un enlace, no un boton: sin subrayado, con el hover y el foco del resto de la barra.
+.silice-marco-barra__marca {
+  display: flex;
+  flex: none;
+  align-items: center;
+  align-self: stretch;
+  padding-inline: 0.5rem;
+  margin-inline-start: -0.5rem;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    background-color: var(--cds-background-inverse-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus-inverse);
+    outline-offset: -2px;
+  }
+}
+
+// La carpeta abierta ocupa el hueco flexible que antes ocupaban las migas, para que el buscador y la persona queden a la
+// derecha; si no cabe, se recorta con puntos suspensivos y cede despues del buscador.
+.silice-marco-barra__carpeta {
   flex: 1 1 auto;
   min-inline-size: 0;
-
-  ol {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    white-space: nowrap;
-    @include type.type-style("body-compact-01");
-  }
-
-  a {
-    color: var(--cds-text-inverse);
-    text-decoration: underline;
-
-    &:focus-visible {
-      outline: 2px solid var(--cds-focus-inverse);
-      outline-offset: 2px;
-    }
-  }
-}
-
-// Las intermedias ceden cien veces antes que la ultima (el reparto de flex pondera por el ancho); recortadas conservan
-// unas letras. La ultima, la seccion donde se esta, solo cede si ni con las intermedias al minimo cabe.
-.silice-marco-barra__migas li {
-  flex: 0 100 auto;
-  min-inline-size: 2.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cds-text-inverse);
+  @include type.type-style("label-01");
 }
 
-.silice-marco-barra__migas li:last-child {
-  flex: 0 1 auto;
-  min-inline-size: 0;
-}
-
-// Mas especifica que `.silice-marco-barra__migas li`: el «/» no cede ni guarda un minimo.
-.silice-marco-barra__migas .silice-marco-barra__separador {
-  flex: none;
-  min-inline-size: 0;
-  opacity: 0.7;
-}
-
-.silice-marco-barra__miga-actual {
-  font-weight: 600;
-}
-
-// Cede mil veces antes que las migas: con poco ancho queda en su icono (el texto se recorta, el nombre accesible no).
+// Cede mil veces antes que la carpeta activa: con poco ancho queda en su icono (el texto se recorta, el nombre accesible no).
 .silice-marco-barra__buscar {
   display: flex;
   flex: 0 1000 28rem;
@@ -122,35 +105,14 @@
   white-space: nowrap;
 }
 
-// Los controles existentes se pintaron para fondo claro: aqui heredan el texto claro de la barra.
-.silice-marco-barra .silice-letra {
-  flex: none;
-  border-inline-start-color: var(--cds-border-strong-01);
-}
-
+// La cuenta se pinto para fondo claro: aqui hereda el texto claro de la barra.
 .silice-marco-barra .silice-cuenta {
   flex: none;
 }
 
-.silice-marco-barra .silice-letra__opcion {
-  color: inherit;
-
-  &:hover {
-    background-color: var(--cds-background-inverse-hover);
-  }
-
-  &[aria-pressed="true"] {
-    background-color: var(--cds-background-inverse-hover);
-    border-block-end-color: var(--silice-acento);
-  }
-
-  &:focus-visible {
-    outline-color: var(--cds-focus-inverse);
-  }
-}
-
 .silice-marco-barra .silice-cuenta .silice-cuenta__boton {
   color: inherit;
+  text-decoration: none;
 
   &:hover {
     background-color: var(--cds-background-inverse-hover);
@@ -160,6 +122,12 @@
     outline: 2px solid var(--cds-focus-inverse);
     outline-offset: -2px;
   }
+}
+
+// En la Cuenta (`aria-current="page"`) la persona queda marcada con el fondo y la raya del acento, no solo con el color.
+.silice-marco-barra .silice-cuenta .silice-cuenta__boton[aria-current="page"] {
+  background-color: var(--cds-background-inverse-hover);
+  border-block-end: 2px solid var(--silice-acento);
 }
 
 // En pantallas estrechas (umbral de cada escala de letra) el buscador queda en icono; el nombre accesible no cambia.

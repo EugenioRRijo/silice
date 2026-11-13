@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -28,6 +29,23 @@ const ANA: Cuenta = { id: 2, login: "ana", nombre: "Ana", roles: ["arma"], activ
 const LUIS: Cuenta = { id: 3, login: "luis", nombre: "Luis", roles: ["revisa"], activa: false };
 const TEMPORAL = "temporal ficticia 123";
 const PIDE = { timeout: 5000 };
+
+// F6, T6: «Administración» ya no es una pantalla con pestañas: cada sección de la Cuenta (/cuenta/:seccion) monta lo suyo.
+// El marco pone el h1 y la barra de secciones; aquí se prueba el contenido. Los enlaces de prueba hacen de barra.
+function EnLaCuenta({ seccion, children }: { seccion: string; children: React.ReactNode }) {
+  return (
+    <MemoryRouter initialEntries={[`/cuenta/${seccion}`]}>
+      <nav aria-label="Ir a otra sección">
+        {["cuentas", "empresa", "carpetas", "sistema"].map((s) => (
+          <Link key={s} to={`/cuenta/${s}`}>{`Ir a ${s}`}</Link>
+        ))}
+      </nav>
+      <Routes>
+        <Route path="/cuenta/:seccion" element={children} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
 const ASISTENTE_DE_FABRICA = {
   activo: false,
   proveedor: "claude",
@@ -84,11 +102,13 @@ describe("Administracion: Cuentas y Accesos", () => {
     vi.unstubAllGlobals();
   });
 
-  function montar(sesion = SESION, alExpirar = vi.fn()) {
+  function montar(sesion = SESION, alExpirar = vi.fn(), seccion = "cuentas") {
     const valor: Aplicacion = { sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar };
     const vista = render(
       <ContextoAplicacion.Provider value={valor}>
-        <PaginaAdministracion />
+        <EnLaCuenta seccion={seccion}>
+          <PaginaAdministracion />
+        </EnLaCuenta>
       </ContextoAplicacion.Provider>,
     );
     return { alExpirar, ...vista };
@@ -106,66 +126,90 @@ describe("Administracion: Cuentas y Accesos", () => {
     return usuario;
   }
 
-  test("muestra las siete pestanas y la tabla de cuentas con sus datos", async () => {
+  test("«cuentas» apila Cuentas y Accesos, sin pestañas, con la tabla de cuentas y sus datos", async () => {
     montar();
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
-      "Cuentas",
-      "Empresa y clave de firma",
-      "Empresas registradas",
-      "Claves de API",
-      "Asistente de IA",
-      "Accesos",
-      "Instalación",
-    ]);
+    expect(screen.queryAllByRole("tab")).toHaveLength(0);
     const tabla = await cargada();
     expect(within(tabla).getByText("luis")).toBeInTheDocument();
     expect(within(tabla).getAllByText("no")).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 2, name: "Cuentas" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "Accesos" }, PIDE)).toBeInTheDocument();
+    expect(await screen.findByRole("table", { name: "Eventos de acceso" }, PIDE)).toBeInTheDocument();
+    // El h1 y la barra son del marco; el contenido no pone otro.
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 
-  test("la pestana «Especialidades» solo la tiene quien puede activar modulos (plan vial, Tarea 19)", () => {
+  test("«cuentas» no monta lo de las otras secciones: ni la empresa, ni el asistente", async () => {
     montar();
-    expect(screen.queryByRole("tab", { name: "Especialidades" })).toBeNull();
+    await cargada();
+    expect(fetchFalso.mock.calls.map(([r]) => String(r))).not.toContain("/v1/admin/empresas-registradas");
+    expect(fetchFalso.mock.calls.map(([r]) => String(r))).not.toContain("/v1/admin/asistente");
+  });
+
+  test("«Especialidades», en «sistema», solo la tiene quien puede activar módulos (plan vial, Tarea 19)", async () => {
+    montar(SESION, vi.fn(), "sistema");
+    expect(await screen.findByLabelText("Activar el asistente de IA (viene apagado)", {}, PIDE)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: "Especialidades" })).toBeNull();
     cleanup();
-    montar({ ...SESION, acciones: [...SESION.acciones, "activar_modulos"] });
-    expect(screen.getByRole("tab", { name: "Especialidades" })).toBeInTheDocument();
+    montar({ ...SESION, acciones: [...SESION.acciones, "activar_modulos"] }, vi.fn(), "sistema");
+    expect(await screen.findByRole("heading", { level: 2, name: "Especialidades" })).toBeInTheDocument();
   });
 
-  test("ninguna pestana queda en la interfaz clasica: ni marca «clásica» ni enlace a ella", () => {
-    montar();
-    for (const pestana of screen.getAllByRole("tab")) {
-      expect(pestana).not.toHaveTextContent("clásica");
-      expect(pestana).not.toHaveAttribute("title");
+  test("«sistema» trae Asistente de IA, Claves de API e Instalación, en ese orden, cada una con su título", async () => {
+    montar({ ...SESION, acciones: [...SESION.acciones, "activar_modulos"] }, vi.fn(), "sistema");
+    await screen.findByRole("heading", { level: 2, name: "Especialidades" });
+    const titulos = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(titulos.indexOf("Especialidades")).toBeLessThan(titulos.indexOf("Claves de API"));
+    expect(titulos).toContain("Claves de API");
+    expect(titulos.indexOf("Configuración del asistente")).toBeLessThan(titulos.indexOf("Claves de API"));
+  });
+
+  test("ninguna sección lleva la marca «clásica»", async () => {
+    for (const seccion of ["cuentas", "empresa", "carpetas", "sistema"]) {
+      const vista = montar({ ...SESION, acciones: [...SESION.acciones, "cambiar_caso"] }, vi.fn(), seccion);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(document.body.textContent, seccion).not.toMatch(/clásica/);
+      vista.unmount();
     }
   });
 
-  test("«Empresas registradas» ya se administra aqui: la pestana pide sus datos a la API", async () => {
-    montar();
-    await userEvent.setup().click(screen.getByRole("tab", { name: "Empresas registradas" }));
+  test("«empresa» trae Empresas registradas, que pide sus datos a la API", async () => {
+    montar(SESION, vi.fn(), "empresa");
     expect(await screen.findByText("Todavía no hay empresas registradas", {}, PIDE)).toBeInTheDocument();
     expect(fetchFalso.mock.calls.map(([r]) => String(r))).toContain("/v1/admin/empresas-registradas");
     expect(screen.queryByText("En la interfaz clásica")).toBeNull();
   });
 
-  test("los avisos de contraste del tema salen en «Empresa y clave de firma» y no en las otras pestañas", async () => {
+  test("los avisos de contraste del tema salen en «empresa» y no en «cuentas»", async () => {
     montar();
     await cargada();
     expect(screen.queryByText(AVISO_DE_TEMA)).toBeNull();
-    await userEvent.setup().click(screen.getByRole("tab", { name: "Empresa y clave de firma" }));
+    cleanup();
+    montar(SESION, vi.fn(), "empresa");
     expect(await screen.findByText(AVISO_DE_TEMA, {}, PIDE)).toBeInTheDocument();
   });
 
-  test("«Asistente de IA» ya se administra aqui: la pestana pide su estado a la API", async () => {
-    montar();
-    await userEvent.setup().click(screen.getByRole("tab", { name: "Asistente de IA" }));
+  test("«sistema» trae el Asistente de IA, que pide su estado a la API", async () => {
+    montar(SESION, vi.fn(), "sistema");
     expect(await screen.findByLabelText("Activar el asistente de IA (viene apagado)", {}, PIDE)).toBeInTheDocument();
     expect(fetchFalso.mock.calls.map(([r]) => String(r))).toContain("/v1/admin/asistente");
     expect(screen.queryByText("En la interfaz clásica")).toBeNull();
   });
 
-  test("sin la accion administrar_cuentas no se ofrece nada", () => {
+  test("sin la accion administrar_cuentas no se ofrece nada (también aquí, aunque el marco ya lo filtra)", () => {
     montar({ ...SESION, acciones: [] });
     expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.getByText("Su cuenta no tiene permiso para administrar la instalación.")).toBeInTheDocument();
+    expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  test("una sección que no es de administración (preferencias, ayuda o una que no existe) no monta nada", () => {
+    for (const seccion of ["preferencias", "ayuda", "xyz"]) {
+      const vista = montar(SESION, vi.fn(), seccion);
+      expect(vista.container.querySelector(".silice-adm")?.textContent ?? "", seccion).toBe("");
+      vista.unmount();
+    }
+    expect(fetchFalso).not.toHaveBeenCalled();
   });
 
   describe("crear una cuenta", () => {
@@ -453,15 +497,16 @@ describe("Administracion: Cuentas y Accesos", () => {
   });
 
   describe("secretos y desmontaje", () => {
-    test("la contrasena del alta y la del restablecer se vacian al cambiar de pestana y volver", async () => {
+    test("la contrasena del alta y la del restablecer se vacian al irse a otra seccion y volver", async () => {
       montar();
       const usuario = await elegir("ana");
       await usuario.type(screen.getByLabelText("Contraseña temporal"), TEMPORAL);
       await usuario.type(screen.getByLabelText("Contraseña temporal nueva"), TEMPORAL);
-      await usuario.click(screen.getByRole("tab", { name: "Accesos" }));
-      await screen.findByRole("table", { name: "Eventos de acceso" }, PIDE);
+      await usuario.click(screen.getByRole("link", { name: "Ir a sistema" }));
+      await screen.findByLabelText("Activar el asistente de IA (viene apagado)", {}, PIDE);
       expect(screen.queryByLabelText("Contraseña temporal")).toBeNull();
-      await usuario.click(screen.getByRole("tab", { name: "Cuentas" }));
+      expect(document.body.innerHTML).not.toContain(TEMPORAL);
+      await usuario.click(screen.getByRole("link", { name: "Ir a cuentas" }));
       await cargada();
       expect(screen.getByLabelText("Contraseña temporal")).toHaveValue("");
       expect(document.body.innerHTML).not.toContain(TEMPORAL);
@@ -493,15 +538,15 @@ describe("Administracion: Cuentas y Accesos", () => {
     test("muestra la nota con el tope de la API, la fecha legible y ninguna escritura", async () => {
       accesos = { ...accesos, maximo: 50 };
       montar();
-      const usuario = userEvent.setup();
-      await usuario.click(screen.getByRole("tab", { name: "Accesos" }));
       expect(
         await screen.findByText("Los 50 últimos eventos de acceso; este registro solo se agrega, no se edita."),
       ).toBeInTheDocument();
       const tabla = await screen.findByRole("table", { name: "Eventos de acceso" }, PIDE);
       expect(within(tabla).getByText("10 nov 2026, 09:00")).toBeInTheDocument();
       expect(within(tabla).getByText("10.0.0.7")).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Crear|Guardar|Desactivar|Reactivar|Desbloquear|Restablecer/ })).toBeNull();
+      // Accesos solo se lee: sus botones no son de escritura (los de arriba, de Cuentas, sí lo son y no cuentan aquí).
+      const seccion = screen.getByRole("region", { name: "Accesos" });
+      expect(within(seccion).queryByRole("button", { name: /Crear|Guardar|Desactivar|Reactivar|Desbloquear|Restablecer/ })).toBeNull();
       expect(posts()).toHaveLength(0);
     });
   });
@@ -526,21 +571,23 @@ describe("Administracion: capa de los campos", () => {
     vi.unstubAllGlobals();
   });
 
-  test("el contenido de la pestaña activa está dentro de una capa de nivel dos", async () => {
+  test("el contenido de la sección está dentro de una capa de nivel dos", async () => {
     const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
-    render(
+    const { container } = render(
       <ContextoAplicacion.Provider value={valor}>
-        <PaginaAdministracion />
+        <EnLaCuenta seccion="cuentas">
+          <PaginaAdministracion />
+        </EnLaCuenta>
       </ContextoAplicacion.Provider>,
     );
-    const panel = await screen.findByRole("tabpanel");
-    await waitFor(() => expect(panel.querySelector(".cds--layer-two")).not.toBeNull());
+    const pagina = container.querySelector(".silice-adm");
+    await waitFor(() => expect(pagina?.querySelector(".cds--layer-two")).not.toBeNull());
   });
 });
 
 
-// Plan de modulos, MOD-3b (diseno de modulos §7 y §12.2): las carpetas de trabajo se administran en Administración ›
-// Carpetas de trabajo (BCP-5). El administrador puede cambiar de carpeta pero no editar la hoja: sin «Demostración».
+// Plan de modulos, MOD-3b (diseno de modulos §7 y §12.2): las carpetas de trabajo se administran en la Cuenta, sección
+// «Carpetas» (BCP-5; F6, T6). El administrador puede cambiar de carpeta pero no editar la hoja: sin «Demostración».
 describe("Administracion: Carpetas de trabajo", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const CASOS = {
@@ -574,16 +621,16 @@ describe("Administracion: Carpetas de trabajo", () => {
     const valor: Aplicacion = { sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), abrirCarpeta };
     render(
       <ContextoAplicacion.Provider value={valor}>
-        <PaginaAdministracion />
+        <EnLaCuenta seccion="carpetas">
+          <PaginaAdministracion />
+        </EnLaCuenta>
       </ContextoAplicacion.Provider>,
     );
     return abrirCarpeta;
   }
 
-  test("el admin ve la pestaña «Carpetas de trabajo» con la lista y «Crear», sin «Demostración»", async () => {
-    const u = userEvent.setup();
+  test("el admin ve «Carpetas» con la lista y «Crear», sin «Demostración»", async () => {
     montarConCarpetas(ADMIN_CON_CARPETAS);
-    await u.click(screen.getByRole("tab", { name: "Carpetas de trabajo" }));
     const lista = await screen.findByRole("list", { name: "Carpetas de trabajo de la instalación" }, PIDE);
     expect(within(lista).getAllByRole("listitem").map((li) => li.querySelector(".silice-carpetas__nombre")?.textContent)).toEqual([
       "silice",
@@ -593,16 +640,17 @@ describe("Administracion: Carpetas de trabajo", () => {
     expect(screen.queryByRole("tab", { name: "Demostración" })).not.toBeInTheDocument();
   });
 
-  test("abrir una carpeta desde la pestaña pasa por la aplicación (confirmación y aviso del armazón)", async () => {
+  test("abrir una carpeta desde la sección pasa por la aplicación (confirmación y aviso del armazón)", async () => {
     const u = userEvent.setup();
     const abrirCarpeta = montarConCarpetas(ADMIN_CON_CARPETAS);
-    await u.click(screen.getByRole("tab", { name: "Carpetas de trabajo" }));
     await u.click(await screen.findByRole("button", { name: "Abrir s1" }, PIDE));
     expect(abrirCarpeta).toHaveBeenCalledWith("s1.db");
   });
 
-  test("sin cambiar de carpeta no hay pestaña «Carpetas de trabajo»", () => {
+  test("sin cambiar de carpeta la sección no ofrece nada (también aquí, aunque el marco ya lo filtra)", () => {
     montarConCarpetas(SESION);
-    expect(screen.queryByRole("tab", { name: "Carpetas de trabajo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Carpetas de trabajo de la instalación" })).not.toBeInTheDocument();
+    expect(screen.getByText("Su cuenta no tiene permiso para administrar la instalación.")).toBeInTheDocument();
+    expect(fetchFalso).not.toHaveBeenCalled();
   });
 });

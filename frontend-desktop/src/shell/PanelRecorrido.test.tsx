@@ -26,13 +26,13 @@ describe("PanelRecorrido", () => {
   afterEach(() => terminarRecorrido());
 
   test("sin recorrido en curso no pinta nada", () => {
-    const { container } = montar("/auditoria");
+    const { container } = montar("/auditoria/subir");
     expect(container).toBeEmptyDOMElement();
   });
 
   test("en el paso 1 muestra el titulo, «Paso 1 de 3», que hacer y cuando se sabe que termino", () => {
     iniciarRecorrido(RECORRIDO_AUDITAR);
-    montar("/auditoria");
+    montar("/auditoria/subir");
     const region = screen.getByRole("region", { name: "Recorrido en curso" });
     expect(within(region).getByText("Auditar un libro de la empresa")).toBeInTheDocument();
     expect(within(region).getByText("Paso 1 de 3")).toBeInTheDocument();
@@ -44,12 +44,12 @@ describe("PanelRecorrido", () => {
 
   test("marca el paso actual con aria-current=step y enlaza a los otros", () => {
     iniciarRecorrido(RECORRIDO_AUDITAR);
-    montar("/libros");
+    montar("/auditoria/libros");
     const region = screen.getByRole("region", { name: "Recorrido en curso" });
     expect(within(region).getByText("Paso 2 de 3")).toBeInTheDocument();
     expect(within(region).getByText("Lea el resumen y los hallazgos").closest("li")).toHaveAttribute("aria-current", "step");
-    expect(within(region).getByRole("link", { name: "Suba el libro" })).toHaveAttribute("href", "/auditoria");
-    expect(within(region).getByRole("link", { name: "Compruebe que quedó guardada" })).toHaveAttribute("href", "/historial");
+    expect(within(region).getByRole("link", { name: "Suba el libro" })).toHaveAttribute("href", "/auditoria/subir");
+    expect(within(region).getByRole("link", { name: "Compruebe que quedó guardada" })).toHaveAttribute("href", "/auditoria/historial");
   });
 
   test("fuera de las pantallas del recorrido no hay paso actual, pero sigue a la vista", () => {
@@ -63,7 +63,7 @@ describe("PanelRecorrido", () => {
 
   test("un paso cuya pantalla no esta disponible se ve como texto, sin enlace", () => {
     iniciarRecorrido(RECORRIDO_AUDITAR);
-    montar("/libros", PAGINAS.filter((p) => p.id !== "historial"));
+    montar("/auditoria/libros", PAGINAS.filter((p) => p.id !== "historial"));
     const region = screen.getByRole("region", { name: "Recorrido en curso" });
     expect(within(region).queryByRole("link", { name: "Compruebe que quedó guardada" })).not.toBeInTheDocument();
     expect(within(region).getByText("Compruebe que quedó guardada")).toBeInTheDocument();
@@ -72,14 +72,14 @@ describe("PanelRecorrido", () => {
   test("«Terminar recorrido» lo cierra y el panel desaparece", async () => {
     const usuario = userEvent.setup();
     iniciarRecorrido(RECORRIDO_AUDITAR);
-    montar("/libros");
+    montar("/auditoria/libros");
     await usuario.click(screen.getByRole("button", { name: "Terminar recorrido" }));
     expect(recorridoEnCurso()).toBeNull();
     expect(screen.queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
   });
 
   test("aparece cuando se inicia con el panel ya montado", () => {
-    montar("/auditoria");
+    montar("/auditoria/subir");
     expect(screen.queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
     act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
     expect(screen.getByRole("region", { name: "Recorrido en curso" })).toBeInTheDocument();
@@ -89,7 +89,7 @@ describe("PanelRecorrido", () => {
     const usuario = userEvent.setup();
     iniciarRecorrido(RECORRIDO_AUDITAR);
     render(
-      <MemoryRouter initialEntries={["/libros"]}>
+      <MemoryRouter initialEntries={["/auditoria/libros"]}>
         <PanelRecorrido paginas={PAGINAS} acciones={["leer_proyecto"]} modoEntrega={false} />
         <main id="contenido">
           <h1>Libro de la empresa</h1>

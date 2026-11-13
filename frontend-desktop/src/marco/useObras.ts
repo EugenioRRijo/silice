@@ -17,7 +17,7 @@ export interface ObrasCargadas {
 }
 
 // Las obras de todas las carpetas a las que la cuenta tiene acceso (`GET /v1/obras/todas`, Tarea 3 del plan del marco):
-// con `cambiar_caso` son las de todas las carpetas; sin él, solo las de la abierta. La barra lateral y el buscador la
+// con `abrir_carpeta` son las de todas las carpetas; sin él, solo las de la abierta. La barra lateral y el buscador la
 // comparten. Mientras recarga conserva la lista anterior y el estado vuelve a «cargando». Sin `leer_proyecto` la API
 // contestaría 403: no se pide (VB-9). El marco, que la usa fuera de su propio contexto, da las acciones de la sesión.
 export function useObras(acciones?: readonly string[]): ObrasCargadas {

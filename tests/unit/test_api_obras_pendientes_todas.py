@@ -7,6 +7,10 @@ escrito a mano). Oráculos a mano: la forma del cuerpo, el orden (bloquea primer
 rol: «arma» (`EDITAR_HOJA`) ve todo; «revisa» (solo `APROBAR_VERSION`) ve únicamente lo que espera
 su dictamen, nunca «devuelta», precios ni calidad (foco de revisión 1); sin ninguno de los dos
 permisos, la lista va vacía. Con la clave de API, la carpeta del proceso con alcance «todo».
+Las carpetas son las de `GET /v1/obras/todas`: con `ABRIR_CARPETA` (arma, revisa y administrador;
+enmienda 2026-11-05, decisión de Eugenio) todas; sin él, solo la abierta. La demostración
+(`demostracion.db`, con «Obra inventada») nunca se mezcla con las demás (MAYOR 2 del árbitro final
+de F6): fuera de ella sus pendientes no salen; con ella abierta, solo los suyos.
 """
 
 from __future__ import annotations
@@ -42,6 +46,8 @@ OBRAS = {
     NORTE: ["Galpón", "Clínica"],
     SUR: ["Vialidad"],
 }
+DEMO = "demostracion.db"  # solo en las pruebas de la demostración
+OBRAS_DE_LA_DEMO = {DEMO: ["Obra inventada"]}
 VER_EL_ENVIO = Siguiente("Ver el envío", "aprobar")
 ABRIR_EL_PRESUPUESTO = Siguiente("Abrir el presupuesto", "hoja")
 ACTUALIZAR = Siguiente("Actualizar precios", "actualizacion")
@@ -50,6 +56,7 @@ ESCENARIO: dict[tuple[str, str], tuple[str, Siguiente]] = {
     ("aprobar", "Galpón"): ("V2 devuelta: falta acero", ABRIR_EL_PRESUPUESTO),
     ("precios", "Clínica"): ("Precios viejos", ACTUALIZAR),
     ("calidad", "Edificio Central"): ("Hallazgo grave", ABRIR_EL_PRESUPUESTO),
+    ("aprobar", "Obra inventada"): ("V9 inventada espera dictamen", VER_EL_ENVIO),
 }
 
 
@@ -74,7 +81,7 @@ def _fuentes_falsas(monkeypatch: pytest.MonkeyPatch) -> None:
 def _plantillas(tmp_path_factory) -> dict[str, Path]:
     carpeta = tmp_path_factory.mktemp("plantillas_pendientes_todas")
     plantillas = {"instalacion": plantilla_con_cuentas(carpeta)}
-    for nombre, obras in OBRAS.items():
+    for nombre, obras in {**OBRAS, **OBRAS_DE_LA_DEMO}.items():
         ruta = carpeta / nombre
         preparar_base(ruta)
         with closing(sqlite3.connect(ruta)) as conexion:
@@ -116,6 +123,7 @@ VIALIDAD = (SUR, "Vialidad", "aprobar", "bloquea")
 GALPON = (NORTE, "Galpón", "aprobar", "bloquea")
 CENTRAL = (None, "Edificio Central", "calidad", "aviso")
 CLINICA = (NORTE, "Clínica", "precios", "aviso")
+INVENTADA = (DEMO, "Obra inventada", "aprobar", "bloquea")
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
@@ -139,19 +147,33 @@ def test_forma_de_la_respuesta() -> None:
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
-def test_con_cambiar_caso_ve_todas_las_carpetas() -> None:
-    navegador, _ = con_cuenta(app, "ana")  # arma: EDITAR_HOJA y CAMBIAR_CASO
+def test_con_abrir_carpeta_ve_todas_las_carpetas() -> None:
+    navegador, _ = con_cuenta(app, "ana")  # arma: EDITAR_HOJA y ABRIR_CARPETA
     cuerpo = navegador.get("/v1/obras/pendientes/todas").json()
     # bloquea: Norte antes que Sur; luego avisos: la empresa antes que Norte
     assert _filas(cuerpo) == [GALPON, VIALIDAD, CENTRAL, CLINICA]
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
-def test_sin_cambiar_caso_solo_la_carpeta_abierta_y_solo_lo_que_espera_dictamen() -> None:
-    navegador, ficha = con_cuenta(app, "rita")  # revisa: LEER y APROBAR_VERSION, sin CAMBIAR_CASO
-    _abrir(ficha, SUR)
+def test_quien_revisa_ve_lo_que_espera_dictamen_en_todas_las_carpetas() -> None:
+    """Enmienda 2026-11-05 (decisión de Eugenio): con Norte abierta, el envío de Sur también."""
+    navegador, ficha = con_cuenta(app, "rita")  # revisa: LEER, APROBAR_VERSION y ABRIR_CARPETA
+    _abrir(ficha, NORTE)
     cuerpo = navegador.get("/v1/obras/pendientes/todas").json()
     assert _filas(cuerpo) == [VIALIDAD]
+    otro, _ = con_cuenta(app, "rita")  # sin carpeta abierta: la de la empresa, y las demás
+    assert _filas(otro.get("/v1/obras/pendientes/todas").json()) == [VIALIDAD]
+
+
+@pytest.mark.usefixtures("_fuentes_falsas")
+def test_sin_abrir_carpeta_solo_la_carpeta_abierta(monkeypatch: pytest.MonkeyPatch) -> None:
+    quitado = frozenset({permisos.Rol.ARMA, permisos.Rol.ADMINISTRADOR})
+    monkeypatch.setitem(permisos.PERMISOS, "abrir_carpeta", quitado)
+    navegador, ficha = con_cuenta(app, "rita")
+    _abrir(ficha, NORTE)  # Norte no tiene nada que espere dictamen
+    assert navegador.get("/v1/obras/pendientes/todas").json()["pendientes"] == []
+    _abrir(ficha, SUR)
+    assert _filas(navegador.get("/v1/obras/pendientes/todas").json()) == [VIALIDAD]
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
@@ -169,9 +191,10 @@ def test_revisa_no_ve_devueltas_precios_ni_calidad(monkeypatch: pytest.MonkeyPat
     navegador, ficha = con_cuenta(app, "rita")
     _abrir(ficha, NORTE)  # Norte tiene una devuelta (Galpón) y precios (Clínica)
     cuerpo = navegador.get("/v1/obras/pendientes/todas").json()
-    assert cuerpo == {"pendientes": [], "carpetas_omitidas": 0}
-    otro, _ = con_cuenta(app, "rita")  # sin carpeta abierta: la de la empresa, que tiene calidad
-    assert otro.get("/v1/obras/pendientes/todas").json()["pendientes"] == []
+    # de todas las carpetas, solo el envío de Sur espera dictamen: ni la devuelta, ni los precios,
+    # ni la calidad de la empresa, ni «Entregar» ni compras
+    assert _filas(cuerpo) == [VIALIDAD]
+    assert cuerpo["carpetas_omitidas"] == 0
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
@@ -255,3 +278,37 @@ def test_carpeta_con_datos_raros_da_200_sin_el_texto_del_error(_entorno: Path) -
     assert respuesta.json() == {"pendientes": [], "carpetas_omitidas": 1}
     assert "28/10/2026" not in respuesta.text
     assert "isoformat" not in respuesta.text
+
+
+def _con_la_demostracion(carpeta: Path, plantillas: dict[str, Path]) -> None:
+    (carpeta / DEMO).write_bytes(plantillas[DEMO].read_bytes())
+
+
+@pytest.mark.usefixtures("_fuentes_falsas")
+def test_fuera_de_la_demostracion_no_salen_sus_pendientes(
+    _entorno: Path, _plantillas: dict[str, Path]
+) -> None:
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _filas(navegador.get("/v1/obras/pendientes/todas").json()) == [
+        GALPON, VIALIDAD, CENTRAL, CLINICA,
+    ]  # fmt: skip
+    _abrir(ficha, SUR)
+    assert _filas(navegador.get("/v1/obras/pendientes/todas").json()) == [
+        GALPON, VIALIDAD, CENTRAL, CLINICA,
+    ]  # fmt: skip
+    revisa, _ = con_cuenta(app, "rita")  # el envío inventado también espera dictamen: no sale
+    assert _filas(revisa.get("/v1/obras/pendientes/todas").json()) == [VIALIDAD]
+
+
+@pytest.mark.usefixtures("_fuentes_falsas")
+@pytest.mark.parametrize("login", ["ana", "rita"])
+def test_dentro_de_la_demostracion_solo_sus_pendientes(
+    _entorno: Path, _plantillas: dict[str, Path], login: str
+) -> None:
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, login)
+    _abrir(ficha, DEMO)
+    cuerpo = navegador.get("/v1/obras/pendientes/todas").json()
+    assert _filas(cuerpo) == [INVENTADA]
+    assert cuerpo["carpetas_omitidas"] == 0

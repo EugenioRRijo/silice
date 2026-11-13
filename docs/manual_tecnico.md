@@ -574,7 +574,7 @@ C3‑3). Para que su informe recargado declare los pendientes, esa base se vuelv
 
 ## 11. Interfaz del sprint final: menú superior, barra de herramientas y subidas (SF4)
 
-> **Retirado el 2026‑10‑21:** este apartado describe la interfaz de Streamlit (`ui/app.py`, `ui/barra.py`, `st.navigation`), que ya no existe. Se conserva como registro; el menú, la barra y las subidas de la interfaz actual están en `frontend-desktop/` y en `api/`.
+> **Retirado el 2026‑10‑21:** este apartado describe la interfaz de Streamlit (`ui/app.py`, `ui/barra.py`, `st.navigation`), que ya no existe. Se conserva como registro; el menú, la barra y las subidas de la interfaz actual están en `frontend-desktop/` y en `api/`. Desde F6 (contrato de rutas del 2026‑11‑04, `docs/especificaciones/2026-11-04-f6a-contrato-de-rutas.md`) dónde vive cada pantalla lo dicen dos tablas: `frontend-desktop/src/marco/secciones.ts` (Inicio en `#/inicio/general` y `#/inicio/pendientes`; las secciones de la obra en `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]`) y `frontend-desktop/src/marco/espacios.ts` (las subvistas, los espacios `#/auditoria/…`, `#/precios/…` y `#/produccion/…`, y la Cuenta en `#/cuenta/<sección>`). `#/pendientes` y `#/empresa/<entrada>` solo redirigen a su sitio nuevo.
 
 **Menú y marco.** `ui/app.py` llama a `st.navigation(secciones, position="top")` (Streamlit ≥ 1.62,
 fijado en el extra `ui` de `pyproject.toml`; test_ui_app.py (retirado con Streamlit) falla con una versión sin
@@ -833,8 +833,8 @@ enmascaran (`FiltroDeSecretos`). Si el almacén no está disponible, se guarda u
   `ia_config.json` viajan en él. Tras restaurar en otro equipo (u otro usuario de Windows), el
   administrador debe volver a activar el asistente y registrar la clave.
 - **La clave se recarga del almacén al construir los proveedores.** Al reiniciar el servidor, la
-  memoria del proceso está vacía: `proveedores_de_la_instalacion` y la pestaña de Administración
-  llaman a `cargar_clave_guardada`, que trae la clave del almacén de credenciales sin mostrarla.
+  memoria del proceso está vacía: `proveedores_de_la_instalacion` y el bloque «Asistente de IA» (Cuenta ›
+  «Especialidades, IA e instalación») llaman a `cargar_clave_guardada`, que trae la clave del almacén de credenciales sin mostrarla.
 - **Hueco abierto.** No se puede reactivar la clave **desde el respaldo cifrado por pantalla**:
   `cargar_clave_guardada` no pide la contraseña del respaldo y ninguna pantalla lo hace. Si el
   almacén de credenciales no responde tras reiniciar, la hoja se queda sin Claude hasta que se
@@ -857,8 +857,8 @@ protocolo `ProveedorIA` de `asistente/proveedores/base.py`: los atributos `nombr
 1. Escribir el adaptador en `asistente/proveedores/<nombre>.py`, importando el SDK solo ahí y de
    forma diferida; agregar el SDK al extra `ia` y a `PAQUETES_DE_TERCEROS` de la prueba de
    arquitectura.
-2. Agregar el nombre a `PROVEEDORES` en `configuracion.py` y a `ETIQUETAS_DE_PROVEEDOR` de la
-   pestaña de Administración.
+2. Agregar el nombre a `PROVEEDORES` en `configuracion.py` y a `ETIQUETAS_DE_PROVEEDOR` de
+   `asistente/administracion.py`, las etiquetas que muestra el bloque «Asistente de IA» de la Cuenta.
 3. Ofrecerlo en `fabrica.proveedores`, con el motivo cuando no esté disponible.
 4. Agregar su tarifa con fecha a `precios_ia.json`.
 5. Probarlo primero con `ProveedorGuionado` (turnos escritos a mano, sin red) y con un cliente

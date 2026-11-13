@@ -46,7 +46,7 @@ function Fila({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-// «Acerca de Sílice» (RF-99): versión, revisiones de las dos bases, carpeta de datos (solo quien administra) y
+// «Ayuda y acerca de Sílice» (RF-99; su h1 es el nombre de su pestaña en la Cuenta): versión, revisiones de las dos bases, carpeta de datos (solo quien administra) y
 // módulos instalados. Solo lectura.
 export default function PaginaAcerca() {
   const { alExpirar } = useAplicacion();
@@ -56,19 +56,19 @@ export default function PaginaAcerca() {
     return (
       <section className="silice-pagina" aria-labelledby="acerca-titulo">
         <h1 id="acerca-titulo" className="cds--type-heading-04">
-          Acerca de Sílice
+          Ayuda y acerca de Sílice
         </h1>
         <AvisoError error={carga.error} titulo="No se pudo cargar la información" />
       </section>
     );
   }
-  if (carga.estado !== "listo") return <EsqueletoPagina titulo="Acerca de Sílice" />;
+  if (carga.estado !== "listo") return <EsqueletoPagina titulo="Ayuda y acerca de Sílice" />;
   const d = carga.datos;
 
   return (
     <section className="silice-pagina" aria-labelledby="acerca-titulo">
       <h1 id="acerca-titulo" className="cds--type-heading-04">
-        Acerca de Sílice
+        Ayuda y acerca de Sílice
       </h1>
       <h2 className="cds--type-heading-compact-02">Sílice {d.semver}</h2>
       <p className="cds--type-body-compact-01">Versión: {d.version}</p>

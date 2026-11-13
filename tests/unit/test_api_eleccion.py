@@ -37,6 +37,7 @@ from api.rutas import sesion as rutas_sesion
 from operacion import config
 from operacion.base_datos import preparar_base
 from seguridad import sesiones
+from seguridad.permisos import PERMISOS, Rol
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
     ORIGEN,
@@ -439,8 +440,30 @@ def _cambiar_roles(login: str, roles: list[str]) -> None:
     assert respuesta.status_code == 200, respuesta.text
 
 
-def test_sin_cambiar_caso_no_se_restaura_la_carpeta_recordada() -> None:
-    """§12.2: quien perdió `cambiar_caso` no vuelve a una carpeta que ya no podría elegir."""
+def _revisa_sin_abrir_carpeta(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Desde la enmienda 2026-11-05 revisa tiene `ABRIR_CARPETA`; para perder el permiso al pasar
+    a revisa, la prueba se lo quita a ese rol."""
+    monkeypatch.setitem(PERMISOS, "abrir_carpeta", frozenset({Rol.ARMA, Rol.ADMINISTRADOR}))
+
+
+def test_quien_revisa_vuelve_a_la_carpeta_que_abrio() -> None:
+    """Enmienda 2026-11-05 (decisión de Eugenio): revisa abre otras carpetas y se le recuerdan."""
+    navegador, ficha = con_cuenta(app, "rita")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    _salir(navegador, ficha)
+
+    respuesta = entrar(navegador, "rita")
+
+    assert respuesta.json()["eleccion"] == {"caso": "s1.db", "proyecto": "7", "aviso": None}
+    assert navegador.get("/v1/casos").json()["actual"]["nombre"] == "s1.db"
+
+
+def test_sin_abrir_carpeta_no_se_restaura_la_carpeta_recordada(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """§12.2: quien perdió `abrir_carpeta` no vuelve a una carpeta que ya no podría elegir."""
+    _revisa_sin_abrir_carpeta(monkeypatch)
     navegador, ficha = con_cuenta(app, "ana")
     assert _elegir(navegador, ficha, "s1.db").status_code == 200
     assert _obra(navegador, ficha, "7").status_code == 204
@@ -454,7 +477,10 @@ def test_sin_cambiar_caso_no_se_restaura_la_carpeta_recordada() -> None:
     assert navegador.get("/v1/casos").json()["actual"]["nombre"] == "silice.db"
 
 
-def test_la_fila_se_conserva_y_vuelve_si_recupera_cambiar_caso() -> None:
+def test_la_fila_se_conserva_y_vuelve_si_recupera_abrir_carpeta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _revisa_sin_abrir_carpeta(monkeypatch)
     navegador, ficha = con_cuenta(app, "ana")
     assert _elegir(navegador, ficha, "s1.db").status_code == 200
     assert _obra(navegador, ficha, "7").status_code == 204
@@ -502,9 +528,12 @@ def test_si_la_restauracion_no_se_confirma_la_ficha_no_cambia(
 # --- menor 1 del árbitro: un código de obra es de su carpeta ------------------------------------
 
 
-def test_sin_cambiar_caso_la_obra_de_otra_carpeta_no_se_cruza_con_la_por_omision() -> None:
+def test_sin_abrir_carpeta_la_obra_de_otra_carpeta_no_se_cruza_con_la_por_omision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """El «7» de s1 no es el «7» de silice.db; y una obra guardada sin el permiso es de la carpeta
     por omisión, así que no vuelve pegada a s1 cuando lo recupera."""
+    _revisa_sin_abrir_carpeta(monkeypatch)
     navegador, ficha = con_cuenta(app, "ana")
     assert _elegir(navegador, ficha, "s1.db").status_code == 200
     assert _obra(navegador, ficha, "7").status_code == 204
@@ -599,7 +628,7 @@ def test_soltar_la_obra_con_null_no_necesita_mirar_la_carpeta(
 
 
 def test_el_administrador_puro_no_puede_sondear_si_una_obra_existe() -> None:
-    """CAMBIAR_CASO sin LEER_PROYECTO: ni 204 ni 404 según exista; siempre 403 y no guarda."""
+    """ABRIR_CARPETA sin LEER_PROYECTO: ni 204 ni 404 según exista; siempre 403 y no guarda."""
     navegador, ficha = con_cuenta(app, "admin")
     for codigo in ("3", "no-existe"):
         respuesta = _obra(navegador, ficha, codigo)
@@ -609,8 +638,8 @@ def test_el_administrador_puro_no_puede_sondear_si_una_obra_existe() -> None:
     assert _obra(navegador, ficha, None).status_code == 204
 
 
-def test_sin_cambiar_caso_un_codigo_que_no_esta_en_la_carpeta_por_omision_da_404() -> None:
-    """El rol revisa (LEER_PROYECTO sin CAMBIAR_CASO) trabaja en la carpeta por omisión."""
+def test_sin_carpeta_elegida_un_codigo_que_no_esta_en_la_carpeta_por_omision_da_404() -> None:
+    """Sin carpeta elegida, la ficha de revisa trabaja en la carpeta por omisión."""
     navegador, ficha = con_cuenta(app, "rita")
     respuesta = _obra(navegador, ficha, "99")
     assert respuesta.status_code == 404

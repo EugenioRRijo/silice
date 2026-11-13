@@ -49,7 +49,7 @@ export interface CasosRespuesta {
 }
 
 // `GET /v1/obras/todas` (rediseño del marco, Tarea 3): las obras de todas las carpetas que la cuenta puede abrir (solo
-// la abierta sin `cambiar_caso`). `carpeta` es el nombre con su .db que acepta `POST /v1/casos/actual`; null = la
+// la abierta sin `abrir_carpeta`). `carpeta` es el nombre con su .db que acepta `POST /v1/casos/actual`; null = la
 // carpeta de la empresa, la primera de la lista.
 export interface ObraDeCarpetaRespuesta {
   carpeta: string | null;
@@ -82,6 +82,38 @@ export interface PendienteDeObra {
 
 export interface PendientesTodasRespuesta {
   pendientes: PendienteDeObra[];
+  carpetas_omitidas: number;
+}
+
+// `GET /v1/obras/resumen/todas` (F6, T7): la cartera de las carpetas que la cuenta puede abrir, una fila por moneda (nunca
+// sumadas entre sí) y una por obra. Los montos y los porcentajes llegan como texto decimal («334570.50», «62.5») y la
+// interfaz solo los formatea. `carpeta` como en `ObraDeCarpetaRespuesta`; `etapa` es una de `Etapa`; `total` es el del
+// presupuesto: el de la línea base o, sin ella, el de la versión vigente (null sin ninguna); los avances son null sin
+// línea base. `carpetas_omitidas`: las que no se pudieron leer. La demostración nunca entra junto a otras carpetas.
+export interface MonedaDeLaCartera {
+  moneda: string;
+  obras: number;
+  total: string;
+  en_ejecucion: number;
+}
+
+export interface ObraDeLaCartera {
+  carpeta: string | null;
+  carpeta_titulo: string;
+  obra_id: number;
+  nombre: string;
+  moneda: string;
+  etapa: string;
+  etapa_texto: string;
+  total: string | null;
+  avance_real: string | null;
+  avance_plan: string | null;
+}
+
+export interface ResumenTodasRespuesta {
+  hoy: string;
+  por_moneda: MonedaDeLaCartera[];
+  obras: ObraDeLaCartera[];
   carpetas_omitidas: number;
 }
 

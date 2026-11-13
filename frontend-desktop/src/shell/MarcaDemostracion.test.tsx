@@ -87,7 +87,7 @@ describe("MarcaDemostracion en el armazón", () => {
 
   const marca = () => within(screen.getByRole("banner")).findByRole("button", { name: /^Demostración/ });
 
-  test.each(["/libros", "/hoja", "/existencias"])("con es_demostracion la barra dice «Demostración» en %s", async (ruta) => {
+  test.each(["/auditoria/libros", "/hoja", "/produccion/existencias"])("con es_demostracion la barra dice «Demostración» en %s", async (ruta) => {
     montarMarco(sesionDe("ana"), ruta);
     expect(await marca()).toHaveTextContent("Demostración");
   });
@@ -103,7 +103,7 @@ describe("MarcaDemostracion en el armazón", () => {
 
   test("«Volver a la carpeta de la empresa» llama DELETE /v1/casos/actual, avisa y la marca se va", async () => {
     const u = userEvent.setup();
-    montarMarco(sesionDe("ana"), "/libros");
+    montarMarco(sesionDe("ana"), "/auditoria/libros");
     await u.click(await marca());
     await u.click(screen.getByRole("button", { name: "Volver a la carpeta de la empresa" }));
     await waitFor(() => expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1));
@@ -117,7 +117,8 @@ describe("MarcaDemostracion en el armazón", () => {
       useFormularioSucio("componer", true);
       return <h1>Componer una partida</h1>;
     }
-    montarMarco(sesionDe("ana"), "/componer", ligeras({ componer: ComponerSucio }));
+    // F6, T5: Componer es una subvista de Presupuesto; `/componer` sin obra ya no se abre en su sitio.
+    montarMarco(sesionDe("ana"), "/obra/demostracion.db/7/presupuesto/componer", ligeras({ componer: ComponerSucio }));
     await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
     await u.click(await marca());
     await u.click(screen.getByRole("button", { name: "Volver a la carpeta de la empresa" }));
@@ -130,9 +131,17 @@ describe("MarcaDemostracion en el armazón", () => {
     expect(servidor.de("DELETE", "/v1/casos/actual")).toEqual([]);
   });
 
-  test("rita en la demostración ve la marca sin el botón de volver", async () => {
+  test("rita (revisa, con abrir_carpeta desde el 2026-11-05) en la demostración puede volver a la carpeta de la empresa", async () => {
     const u = userEvent.setup();
-    montarMarco(sesionDe("rita"), "/libros");
+    montarMarco(sesionDe("rita"), "/auditoria/libros");
+    await u.click(await marca());
+    expect(screen.getByText("Está viendo datos inventados.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Volver a la carpeta de la empresa" })).toBeInTheDocument();
+  });
+
+  test("una cuenta sin abrir_carpeta en la demostración ve la marca sin el botón de volver", async () => {
+    const u = userEvent.setup();
+    montarMarco(sesionDe("rita", { acciones: sesionDe("rita").acciones.filter((a) => a !== "abrir_carpeta") }), "/auditoria/libros");
     await u.click(await marca());
     expect(screen.getByText("Está viendo datos inventados.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Volver a la carpeta de la empresa" })).not.toBeInTheDocument();

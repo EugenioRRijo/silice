@@ -56,13 +56,23 @@ describe("entregar desde Aprobaciones (tanda 2 del pulido F5, Tarea 6)", () => {
     expect(usable(entregar, ACCIONES.rita, false)).toBe(false);
   });
 
-  test("quien arma va del pendiente «Entregar» a Aprobaciones de la obra y de ahí a «Entregar paquete»", async () => {
+  // Contrato de rutas 2.4 (F6, T5): el pendiente «Entregar» abre la subvista «Entregar» de Aprobaciones, ya sin pasar por
+  // «Aprobar una versión». (Antes llegaba a la sección y de ahí a «Entregar paquete» por el enlace.)
+  test("quien arma va del pendiente «Entregar» directo a «Entregar paquete» de Aprobaciones", async () => {
     const u = montar("ana", "/pendientes");
     const detalle = await screen.findByRole("region", { name: "Detalle del pendiente" });
     await u.click(within(detalle).getByRole("button", { name: "Entregar" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Entregar paquete" })).toBeInTheDocument();
+  });
+
+  test("desde «Aprobar una versión», quien arma sigue llegando a «Entregar paquete» por el enlace", async () => {
+    const u = montar("ana", "/obra/empresa/7/aprobaciones");
     expect(await screen.findByRole("heading", { level: 1, name: "Aprobar una versión" })).toBeInTheDocument();
 
-    await u.click(await screen.findByRole("link", { name: "Entregar paquete" }));
+    // MENOR 7 del árbitro final: el enlace es la ruta de la obra abierta, no la dirección corta (`/entregar`).
+    const enlace = await screen.findByRole("link", { name: "Entregar paquete" });
+    expect(enlace).toHaveAttribute("href", "/obra/empresa/7/aprobaciones/entregar");
+    await u.click(enlace);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Entregar paquete" })).toBeInTheDocument();
   });

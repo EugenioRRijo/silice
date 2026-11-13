@@ -51,6 +51,7 @@ from core.catalog.moneda import convertir
 from core.contracts.verificacion import Severidad
 
 __all__ = [
+    "EN_CURSO",
     "ETAPA_TEXTO",
     "FUENTES",
     "GRUPOS",
@@ -90,7 +91,8 @@ ETAPA_TEXTO = {
     EN_EJECUCION: "En ejecución",
     ATRASADA: "Atrasada",
 }
-_EN_CURSO = frozenset({EN_EJECUCION, ATRASADA})
+#: Las etapas de una obra en curso (en ejecución o atrasada); también las cuenta la cartera.
+EN_CURSO = frozenset({EN_EJECUCION, ATRASADA})
 
 SIN_AVANCE = "Sin avance registrado"
 #: Lo que dice la mesa cuando el control de una obra con valuaciones no se puede calcular: el
@@ -389,7 +391,7 @@ def obras_de_la_mesa(sesion: Session, catalogo: Catalogo, hoy: date) -> list[Obr
 
 
 def _sumables(obras: Sequence[ObraEnMesa]) -> list[ObraEnMesa]:
-    return [o for o in obras if o.etapa in _EN_CURSO and o.ev is not None and o.pv is not None]
+    return [o for o in obras if o.etapa in EN_CURSO and o.ev is not None and o.pv is not None]
 
 
 def moneda_de_la_suma(obras: Sequence[ObraEnMesa], moneda: str | None) -> str | None:

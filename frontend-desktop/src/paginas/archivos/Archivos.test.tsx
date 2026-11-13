@@ -174,9 +174,10 @@ function montar(en = "/obra/empresa/7/archivos", sesion: SesionRespuesta = sesio
 }
 
 const ruta = () => screen.getByTestId("ruta").textContent;
-const arbol = () => screen.findByRole("tree", { name: "Obras" });
+// F6, T5: las secciones de la obra están en su barra, bajo la cabecera (ya no cuelgan de la barra lateral).
+const barraDeLaObra = () => screen.findByRole("navigation", { name: "Secciones de la obra" });
 const irA = async (u: ReturnType<typeof userEvent.setup>, seccion: string) =>
-  u.click(await within(await arbol()).findByRole("treeitem", { name: seccion }));
+  u.click(await within(await barraDeLaObra()).findByRole("link", { name: seccion }));
 const tablaDelRegistro = () => screen.findByRole("table", { name: "Registro de importaciones" });
 const filas = (tabla: HTMLElement) =>
   within(tabla)
@@ -373,20 +374,20 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
 
   // Tarea 12 (decisión del orquestador): edificación apaga los planos y el espacio, no los cómputos. La sección se sigue
   // ofreciendo; lo que cambia dentro lo prueba `CargarComputo.test.tsx`.
-  test("con «edificación» apagada, «Archivos y planos» sigue en el árbol de la obra y se abre", async () => {
+  test("con «edificación» apagada, «Archivos y planos» sigue en la barra de la obra y se abre", async () => {
     apagados = ["edificacion"];
     const u = montar("/obra/empresa/7/presupuesto");
-    const lista = await arbol();
-    await within(lista).findByRole("treeitem", { name: "Presupuesto" });
+    const barra = await barraDeLaObra();
+    await within(barra).findByRole("link", { name: "Presupuesto" });
     await pausa();
-    await u.click(await within(lista).findByRole("treeitem", { name: "Archivos y planos" }));
+    await u.click(await within(barra).findByRole("link", { name: "Archivos y planos" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/archivos"));
     expect(await screen.findByRole("heading", { level: 1, name: "Archivos y planos" })).toBeInTheDocument();
   });
 
-  test("con «edificación» encendida, «Archivos y planos» está en el árbol de la obra", async () => {
+  test("con «edificación» encendida, «Archivos y planos» está en la barra de la obra", async () => {
     montar("/obra/empresa/7/presupuesto");
-    const lista = await arbol();
-    expect(await within(lista).findByRole("treeitem", { name: "Archivos y planos" })).toBeInTheDocument();
+    const barra = await barraDeLaObra();
+    expect(await within(barra).findByRole("link", { name: "Archivos y planos" })).toBeInTheDocument();
   });
 });

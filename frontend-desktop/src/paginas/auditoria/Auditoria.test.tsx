@@ -73,7 +73,7 @@ describe("Inicio de auditoría", () => {
         <MemoryRouter initialEntries={["/auditoria"]}>
           <Routes>
             <Route path="/auditoria" element={<PaginaAuditoria />} />
-            <Route path="/libros" element={<h1>Pantalla del libro</h1>} />
+            <Route path="/auditoria/libros" element={<h1>Pantalla del libro</h1>} />
           </Routes>
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
@@ -186,7 +186,7 @@ describe("Inicio de auditoría", () => {
       expect(within(seccion).getByText(/Recorrido en curso: Auditar un libro de la empresa/)).toBeInTheDocument();
       expect(
         within(seccion).getByRole("link", { name: "Seguir con el paso 2: Lea el resumen y los hallazgos" }),
-      ).toHaveAttribute("href", "/libros");
+      ).toHaveAttribute("href", "/auditoria/libros");
     });
 
     test("no enlaza al paso siguiente si la cuenta no puede abrir esa pantalla", async () => {
@@ -245,6 +245,8 @@ describe("Inicio de auditoría", () => {
     test("sin auditorías guardadas, lo dice y enseña cómo empezar", async () => {
       montar();
       expect(await screen.findByText("Todavía no hay auditorías guardadas")).toBeInTheDocument();
+      // En Auditoría sí hay una zona arriba donde soltar el Excel (en la Vista general no: allí el texto manda a Auditoría).
+      expect(screen.getByText("Suelte arriba el Excel de un presupuesto: el resumen y los hallazgos quedarán aquí.")).toBeInTheDocument();
     });
 
     test("si el historial aún no existe en la API, avisa sin romper la página", async () => {
