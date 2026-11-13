@@ -10,6 +10,7 @@ el doble falla igual que el de verdad.
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -104,6 +105,132 @@ def test_con_webview2_y_pywebview_hay_ventana() -> None:
 def test_leer_el_registro_de_una_clave_que_no_existe_da_none() -> None:
     """En Windows abre el registro de verdad; en otro sistema no hay `winreg`: los dos, `None`."""
     assert ventana._leer_registro("HKEY_CURRENT_USER", r"Software\Silice\NoExiste\{0}") is None
+
+
+# --- El puerto de depuración: variable y políticas de WebView2 (diseño §7.2, enmienda 2026-11-12) -
+
+POLITICA = r"SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments"
+PIDE = "--remote-debugging-port=9222"
+
+
+def _politicas(
+    valores: dict[tuple[str, str], str | None],
+) -> Callable[[str, str, str], str | None]:
+    """Un registro de mentira: `(raíz, nombre del valor)` dentro de la clave de la política."""
+
+    def leer(raiz: str, clave: str, nombre: str) -> str | None:
+        assert clave == POLITICA
+        return valores.get((raiz, nombre))
+
+    return leer
+
+
+def test_la_politica_es_la_de_la_documentacion_de_microsoft() -> None:
+    """«CreateCoreWebView2EnvironmentWithOptions»: primero HKLM y luego HKCU; el nombre del valor
+    es el AUMID del proceso, luego el nombre del ejecutable y luego `*`."""
+    assert ventana.POLITICA_ARGUMENTOS_WEBVIEW2 == POLITICA
+    assert ventana.RAICES_POLITICA_WEBVIEW2 == ("HKEY_LOCAL_MACHINE", "HKEY_CURRENT_USER")
+    assert ventana.nombres_de_la_politica("python.exe") == (
+        ventana.IDENTIFICADOR_APLICACION,
+        "python.exe",
+        "*",
+    )
+
+
+def test_sin_variable_ni_politica_no_hay_fuentes() -> None:
+    assert ventana.fuentes_puerto_depuracion({}, leer=_politicas({}), ejecutable="python.exe") == []
+
+
+def test_la_variable_es_una_fuente() -> None:
+    fuentes = ventana.fuentes_puerto_depuracion(
+        {"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": PIDE},
+        leer=_politicas({}),
+        ejecutable="python.exe",
+    )
+    assert fuentes == ["la variable WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"]
+
+
+def test_una_variable_sin_depuracion_no_es_fuente() -> None:
+    fuentes = ventana.fuentes_puerto_depuracion(
+        {"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": "--lang=es"},
+        leer=_politicas({("HKEY_LOCAL_MACHINE", "python.exe"): "--disable-gpu"}),
+        ejecutable="python.exe",
+    )
+    assert fuentes == []
+
+
+@pytest.mark.parametrize("raiz", ["HKEY_LOCAL_MACHINE", "HKEY_CURRENT_USER"])
+@pytest.mark.parametrize("nombre", ["EugenioRijo.Silice", "pythonw.exe", "*"])
+def test_cada_raiz_y_cada_nombre_de_la_politica_es_una_fuente(raiz: str, nombre: str) -> None:
+    fuentes = ventana.fuentes_puerto_depuracion(
+        {},
+        leer=_politicas({(raiz, nombre): f"--lang=es {PIDE.upper()}"}),
+        ejecutable="pythonw.exe",
+    )
+    assert fuentes == [f"la política {raiz}\\{POLITICA} (valor «{nombre}»)"]
+
+
+def test_un_valor_con_el_nombre_de_otro_ejecutable_no_es_fuente() -> None:
+    fuentes = ventana.fuentes_puerto_depuracion(
+        {},
+        leer=_politicas({("HKEY_LOCAL_MACHINE", "msedge.exe"): PIDE}),
+        ejecutable="python.exe",
+    )
+    assert fuentes == []
+
+
+def test_se_nombran_todas_las_fuentes_en_el_orden_de_microsoft() -> None:
+    fuentes = ventana.fuentes_puerto_depuracion(
+        {"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": PIDE},
+        leer=_politicas(
+            {("HKEY_CURRENT_USER", "*"): PIDE, ("HKEY_LOCAL_MACHINE", "python.exe"): PIDE}
+        ),
+        ejecutable="python.exe",
+    )
+    assert fuentes == [
+        "la variable WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+        f"la política HKEY_LOCAL_MACHINE\\{POLITICA} (valor «python.exe»)",
+        f"la política HKEY_CURRENT_USER\\{POLITICA} (valor «*»)",
+    ]
+
+
+def test_por_omision_el_ejecutable_es_el_de_este_proceso() -> None:
+    vistos: list[str] = []
+
+    def leer(_raiz: str, _clave: str, nombre: str) -> str | None:
+        vistos.append(nombre)
+        return None
+
+    ventana.fuentes_puerto_depuracion({}, leer=leer)
+    assert Path(sys.executable).name in vistos
+
+
+def test_leer_un_valor_de_una_clave_que_no_existe_da_none() -> None:
+    """En Windows abre el registro de verdad; en Linux (sin `winreg`) no falla: `None`."""
+    assert (
+        ventana._leer_valor_registro(
+            "HKEY_LOCAL_MACHINE", r"SOFTWARE\Silice\NoExiste\{0}", "python.exe"
+        )
+        is None
+    )
+
+
+def test_sin_winreg_las_fuentes_por_omision_no_fallan(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Como en Linux: `import winreg` da `ImportError` y solo cuenta la variable."""
+    import builtins
+
+    importar = builtins.__import__
+
+    def sin_winreg(nombre: str, *args, **kwargs):
+        if nombre == "winreg":
+            raise ImportError(nombre)
+        return importar(nombre, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", sin_winreg)
+    assert ventana.fuentes_puerto_depuracion({}) == []
+    assert ventana.fuentes_puerto_depuracion({"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": PIDE}) == [
+        "la variable WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
+    ]
 
 
 # --- El doble de pywebview -------------------------------------------------------------------
