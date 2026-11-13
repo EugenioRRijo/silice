@@ -611,6 +611,12 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     # sin consola propia: con una, `MainWindowHandle` y `CloseMainWindow()` podrían ser los de la
     # consola (Windows la atribuye al proceso) y no los de la ventana «Sílice»
     assert "-NoNewWindow" in iniciar_ventana
+    # el permiso explícito que el lanzador exige para abrir la ventana con el puerto de
+    # depuración (decisión (e)): se pone solo aquí y se quita al lanzar
+    assert "$env:SILICE_PERMITIR_DEPURACION_VENTANA = '1'" in iniciar_ventana
+    finally_ = iniciar_ventana[iniciar_ventana.index("} finally {") :]
+    assert "Env:SILICE_PERMITIR_DEPURACION_VENTANA" in finally_
+    assert texto.count("SILICE_PERMITIR_DEPURACION_VENTANA = ") == 1
     # Python con la salida en archivo la guarda en búfer: los textos del lanzador se leen cuando
     # ya terminó (`WaitForExit`), no mientras la ventana sigue abierta
     # el puerto CDP lo da Windows (puerto 0): uno fijo puede caer en un rango reservado de

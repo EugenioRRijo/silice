@@ -817,25 +817,59 @@ def test_si_alguien_pide_el_puerto_de_depuracion_se_avisa(entorno) -> None:
     assert all("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" not in e for e in escenario.entornos)
 
 
+_POLITICA_HKLM = (
+    r"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\WebView2"
+    r"\AdditionalBrowserArguments (valor «python.exe»)"
+)
+
+
 def test_si_la_politica_de_maquina_pide_el_puerto_de_depuracion_se_avisa_y_se_nombra(
     entorno,
 ) -> None:
     """La humo corre elevada y abre el puerto con la política de HKLM, no con la variable (que
-    WebView2 ignora ahí): el aviso tiene que verla y decir cuál es."""
+    WebView2 ignora ahí): el aviso tiene que verla y decir cuál es. La humo da además el permiso
+    explícito, así que la ventana se abre."""
+    escenario = Escenario()
+    escenario.motivo = None
+    escenario.politicas[("HKEY_LOCAL_MACHINE", "python.exe")] = "--remote-debugging-port=50123"
+    permiso = {**entorno, ventana.VARIABLE_PERMITIR_DEPURACION: "1"}
+    assert escenario.correr(permiso) == 0
+    avisos = [linea for linea in escenario.salida if linea.startswith("AVISO:")]
+    assert [a for a in avisos if "depuración" in a] == [
+        f"AVISO: La política {_POLITICA_HKLM} pide un puerto de depuración: la ventana de Sílice "
+        "lo abrirá y cualquier programa de este equipo podría manejarla. Solo la prueba de humo "
+        "debe ponerla; si no es esa prueba, quítela."
+    ]
+    assert escenario.ventanas and not escenario.abiertas
+
+
+def test_sin_permiso_el_puerto_de_depuracion_no_abre_la_ventana_y_va_al_navegador(entorno) -> None:
+    """Decisión (e), simulada el 2026-11-12: una política olvidada (una humo cortada a mitad) o
+    una directiva con `*` abriría la ventana con el puerto expuesto, y el aviso queda en una consola
+    minimizada. Sin el permiso explícito de la humo, Sílice se abre en el navegador, que no hereda
+    los argumentos de WebView2."""
     escenario = Escenario()
     escenario.motivo = None
     escenario.politicas[("HKEY_LOCAL_MACHINE", "python.exe")] = "--remote-debugging-port=50123"
     assert escenario.correr(entorno) == 0
+    assert escenario.ventanas == []
+    assert len(escenario.abiertas) == 1
     avisos = [linea for linea in escenario.salida if linea.startswith("AVISO:")]
-    politica = (
-        r"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\WebView2"
-        r"\AdditionalBrowserArguments (valor «python.exe»)"
-    )
     assert [a for a in avisos if "depuración" in a] == [
-        f"AVISO: La política {politica} pide un puerto de depuración: la ventana de Sílice lo "
-        "abrirá y cualquier programa de este equipo podría manejarla. Solo la prueba de humo "
-        "debe ponerla; si no es esa prueba, quítela."
+        f"AVISO: La política {_POLITICA_HKLM} pide un puerto de depuración: por seguridad la "
+        "ventana de Sílice no se abre (cualquier programa de este equipo podría manejarla). Solo "
+        "la prueba de humo debe ponerla; si no es esa prueba, quítela.",
+        "AVISO: La ventana de Sílice no se abre: algo pide a WebView2 un puerto de depuración "
+        "(vea el aviso anterior). Sílice se abre en el navegador.",
     ]
+
+
+def test_el_permiso_sin_nada_que_pida_el_puerto_no_cambia_nada(entorno) -> None:
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr({**entorno, ventana.VARIABLE_PERMITIR_DEPURACION: "1"}) == 0
+    assert escenario.ventanas and not escenario.abiertas
+    assert not [linea for linea in escenario.salida if "depuración" in linea]
 
 
 def test_sin_variable_ni_politica_no_hay_aviso_de_depuracion(entorno) -> None:
