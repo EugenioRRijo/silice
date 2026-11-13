@@ -159,11 +159,12 @@ function IniciarSilice {
     }
 }
 
-function IniciarVentana([int]$PuertoCdp, [string]$Registro) {
+function IniciarVentana([string]$Registro) {
+    # El puerto de depuración lo abre la política de HKLM (PonerPoliticaCdp), no una variable: el
+    # proceso es elevado y WebView2 ignora ahí sus variables de entorno.
     $env:HTTP_PROXY = "http://127.0.0.1:$PuertoProxy"
     $env:HTTPS_PROXY = $env:HTTP_PROXY
     $env:NO_PROXY = '127.0.0.1,localhost'
-    $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=$PuertoCdp"
     try {
         # -NoNewWindow: sin consola propia, la ventana principal del proceso es la de Sílice
         return Start-Process -FilePath $Python -PassThru -NoNewWindow `
@@ -172,7 +173,6 @@ function IniciarVentana([int]$PuertoCdp, [string]$Registro) {
             -RedirectStandardOutput "$Registro.out" -RedirectStandardError "$Registro.err"
     } finally {
         Remove-Item Env:HTTP_PROXY, Env:HTTPS_PROXY, Env:NO_PROXY -ErrorAction SilentlyContinue
-        Remove-Item Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS -ErrorAction SilentlyContinue
     }
 }
 
@@ -337,7 +337,7 @@ try {
     $puertoCdp = PuertoLibre
     $regVentana = Nombre 'ventana'
     PonerPoliticaCdp $puertoCdp
-    $ventana = IniciarVentana $puertoCdp $regVentana
+    $ventana = IniciarVentana $regVentana
     $segVentana = EsperarSalud $Url 60
     Afirmar ($null -ne $segVentana) "la salud con ventana respondió 200 en <= 60 s (fueron $segVentana s)"
     $segCdp = EsperarCdp $puertoCdp 60
@@ -367,8 +367,11 @@ try {
     Afirmar ($null -eq (EsperarSalud $Url 3)) 'el puerto quedó libre tras cerrar la ventana'
     Afirmar (-not (Test-Path (Join-Path $Usuario 'estado\servidor.json'))) 'estado\servidor.json se borró'
     # Python guarda en búfer la salida a un archivo: se lee cuando el lanzador ya terminó
-    $textoVentana = Get-Content "$regVentana.out" -Raw -Encoding utf8 -ErrorAction SilentlyContinue
-    Afirmar ($textoVentana -match 'puerto de depuración') 'el lanzador avisó que WEBVIEW2 pide un puerto de depuración'
+    $textoVentana = [string](Get-Content "$regVentana.out" -Raw -Encoding utf8 -ErrorAction SilentlyContinue)
+    # El aviso tiene que nombrar la política que abrió el puerto (operacion.ventana y el lanzador)
+    $avisoPolitica = 'AVISO: La política HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments (valor «python.exe») pide un puerto de depuración'
+    Afirmar ($textoVentana -match 'puerto de depuración') 'el lanzador avisó que algo pide un puerto de depuración'
+    Afirmar ($textoVentana.Contains($avisoPolitica)) 'el aviso del lanzador nombra la política de HKLM con el valor «python.exe»'
     Afirmar ($textoVentana -match 'Se cerró la ventana de Sílice') 'el lanzador registró «Se cerró la ventana de Sílice»'
     $vivosVentana = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
         Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($Programa) })
