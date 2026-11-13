@@ -23,6 +23,7 @@ from adapters.hoja_empresa.lector_apu_por_hoja import (
     leer_hojas,
     leer_libro_apu_por_hoja,
     letra,
+    numero_de,
 )
 from adapters.hoja_empresa.modelo import Celda, LibroNoInterpretable, Rotulo, TipoInsumo
 from adapters.hoja_empresa.perfil import PerfilInvalido
@@ -402,8 +403,7 @@ def test_una_celda_lejana_que_la_dimension_no_declara_rechaza_el_libro(
         "tiene filas con datos o con formato más allá de la 20.000"
         if variante == "C"
         else (
-            "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, "
-            "más allá de la CV"
+            "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, más allá de la CV"
         )
     )
     assert str(error) == f"El libro «hostil.xlsx», hoja «{hoja}»: {donde}. {SIGUE}"
@@ -503,3 +503,101 @@ def test_el_libro_entero_tiene_un_tope_de_celdas():
         "El libro «grande.xlsx» tiene más de 10 celdas con datos o con formato entre sus hojas."
     )
 
+
+# --- El porcentaje del pie a la izquierda de su rótulo (libro vial real, 2026-11-13) ---
+# Un libro real escribe «p | Administración (%) | … | monto»: el porcentaje a la IZQUIERDA del
+# rótulo y el monto a la derecha. Leer «el primer número a la derecha» tomaba el monto por
+# porcentaje y daba un AH1 falso en cada hoja. El perfil dice de qué lado está
+# (`lado_de_los_porcentajes`, «derecha» por omisión, como el libro ficticio). Datos FICTICIOS.
+
+_ROTULOS_DEL_PIE = (
+    "Prestaciones sociales",
+    "Administración",
+    "Utilidad",
+    "Financiamiento",
+    "Impuesto",
+)
+#: Un monto ficticio a la derecha del rótulo, como el del libro real: con el lado equivocado se lee
+#: como porcentaje.
+_MONTO_A_LA_DERECHA = 123.45
+
+
+def _con_porcentajes_a_la_izquierda(datos: bytes) -> bytes:
+    import io
+
+    import openpyxl
+
+    libro = openpyxl.load_workbook(io.BytesIO(datos))
+    for hoja in libro.worksheets:
+        for fila in hoja.iter_rows(max_col=7):
+            rotulo = fila[0].value
+            if not (isinstance(rotulo, str) and rotulo.startswith(_ROTULOS_DEL_PIE)):
+                continue
+            numeros = [c.value for c in fila[1:] if isinstance(c.value, (int, float))]
+            for celda in fila:
+                celda.value = None
+            fila[0].value, fila[1].value = numeros[0], rotulo
+            fila[6].value = numeros[1] if len(numeros) > 1 else _MONTO_A_LA_DERECHA
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def _perfil_con_lado(tmp_path: Path, lado: object):
+    crudo = json.loads(
+        (
+            Path(__file__).resolve().parents[2] / "adapters/hoja_empresa/perfiles/apu_por_hoja.json"
+        ).read_text(encoding="utf-8")
+    )
+    crudo = {**crudo, "nombre": "lado", "lado_de_los_porcentajes": lado}
+    (tmp_path / "lado.json").write_text(json.dumps(crudo), encoding="utf-8")
+    return cargar_perfil_apu_por_hoja("lado", carpetas=(tmp_path,))
+
+
+def _pie(apu) -> tuple:
+    return (apu.prestaciones, apu.administracion, apu.utilidad, apu.financiamiento, apu.impuesto)
+
+
+def test_el_perfil_del_paquete_lee_los_porcentajes_a_la_derecha():
+    assert cargar_perfil_apu_por_hoja("apu_por_hoja").lado_de_los_porcentajes == "derecha"
+
+
+def test_con_el_lado_izquierdo_el_pie_se_lee_igual_que_el_libro_de_siempre(libro, tmp_path: Path):
+    perfil = _perfil_con_lado(tmp_path, "izquierda")
+    datos = _con_porcentajes_a_la_izquierda(libro_apu())
+    leido = leer_libro_apu_por_hoja(datos, "izquierda.xlsx", perfil)
+    for original in libro.apus:
+        assert _pie(leido.apu(original.hoja)) == _pie(original), original.hoja
+    # con el lado de siempre, ese mismo libro toma el monto por porcentaje (lo que pasaba)
+    a_la_derecha = leer_libro_apu_por_hoja(
+        datos, "izquierda.xlsx", _perfil_con_lado(tmp_path, "derecha")
+    )
+    assert a_la_derecha.apu("APU 1").administracion == D("1.2345")
+
+
+@pytest.mark.parametrize("lado", ["arriba", "", 3, None])
+def test_un_lado_desconocido_se_rechaza_al_cargar(tmp_path: Path, lado: object):
+    with pytest.raises(PerfilInvalido, match="lado_de_los_porcentajes"):
+        _perfil_con_lado(tmp_path, lado)
+
+
+# --- Cifras con la precisión de Excel (15 dígitos significativos) ---
+# Excel guarda el valor en caché de una fórmula como doble: 0,1 + 0,2 queda 0.30000000000000004 y
+# `Decimal(str(float))` arrastraba el ruido (AH6 falsos). Excel garantiza 15 dígitos
+# significativos: el lector toma la cifra con esa precisión.
+
+
+@pytest.mark.parametrize(
+    ("valor", "esperado"),
+    [
+        (0.1 + 0.2, D("0.3")),
+        (1000.0000000000001, D("1000")),
+        (1 / 3, D("0.333333333333333")),
+        (2.08, D("2.08")),
+        (123456789012.5, D("123456789012.5")),
+        (7, D("7")),
+        (D("0.30000000000000004"), D("0.30000000000000004")),  # un Decimal ya es exacto
+    ],
+)
+def test_la_cifra_de_una_celda_tiene_la_precision_de_excel(valor, esperado):
+    assert numero_de(valor) == esperado

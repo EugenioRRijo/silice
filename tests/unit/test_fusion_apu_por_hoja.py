@@ -406,3 +406,39 @@ def test_una_banda_con_una_cifra_mal_escrita_no_se_adivina(
         "APU 2: la descripción sigue el patrón de la banda de distancia, pero «1.5» no es una "
         "cifra con coma decimal y punto de miles: Sílice no adivina la banda."
     )
+
+
+def test_el_ruido_de_coma_flotante_de_la_cantidad_no_es_un_ah6():
+    """La cantidad del renglón 1 (1000, la de su APU) guardada como el doble que deja una fórmula,
+    1000.0000000000001: con la precisión de Excel (15 dígitos) es 1000 y no hay AH6 en E4
+    (prueba local del libro vial real, 2026-11-13). Datos FICTICIOS.
+
+    El valor se escribe en el XML de la celda, con los 17 dígitos con que lo guarda Excel:
+    openpyxl lo escribiría redondeado a 16 y el ruido desaparecería antes de la prueba."""
+    import io
+    import re
+    import zipfile
+
+    origen = zipfile.ZipFile(io.BytesIO(libro_presupuesto()))
+    salida = io.BytesIO()
+    with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as destino:
+        for entrada in origen.infolist():
+            contenido = origen.read(entrada)
+            if entrada.filename == "xl/worksheets/sheet1.xml":
+                contenido, cambios = re.subn(
+                    rb'(<c r="E4"[^>]*><v>)1000(</v>)', rb"\g<1>1000.0000000000001\g<2>", contenido
+                )
+                assert cambios == 1
+            destino.writestr(entrada, contenido)
+    resultado = auditar_apu_por_hoja(
+        libro_apu(),
+        "frente_ficticio.xlsx",
+        presupuesto=salida.getvalue(),
+        presupuesto_nombre="presupuesto_ficticio.xlsx",
+    )
+    assert _resumen(resultado) == [
+        *HALLAZGOS_APU,
+        ("AH6", "ADVERTENCIA", "PRESUPUESTO!E6"),
+        ("AH5", "ERROR", "PRESUPUESTO!F8"),
+        ("AH7", "ADVERTENCIA", "PRESUPUESTO!A9"),
+    ]
