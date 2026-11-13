@@ -74,3 +74,20 @@ Las listas de MaPreX del repositorio tienen 112 filas y son CSV, así que los to
 «no se puede leer como libro de Excel (…)», aunque el libro sí se lee. Ahora sale el aviso del lector
 tal cual: nombra el libro, la hoja y el tope, y dice qué borrar. «No se puede leer» queda solo para lo
 que rechaza la guardia.
+
+## 5. Las filas de hueco cuentan para el tope del libro
+
+El agente de los índices del BCV encontró un libro que pasaba `MAX_CELDAS_LIBRO`. Tenía 1.000 hojas
+sin `<dimension>`, cada una con una sola celda en A20000, y pesaba 466 KB. openpyxl entrega las filas
+de hueco como tuplas vacías, que no sumaban nada a la cuenta, así que el libro costaba 20 millones
+de filas: 12,1 s. Ahora cada fila entregada cuenta como una celda por lo menos
+(`lector.filas_acotadas`). El mismo libro se rechaza en **3,0 s**, sin subir la memoria, con el
+aviso de celdas de más.
+
+Un libro legítimo no cambia: los reales tienen pocas decenas de hojas de unos cientos de filas. El
+oráculo de `test_el_tope_del_libro_conocido_es_por_pasada_y_su_frontera_se_lee` cuenta ahora lo
+mismo, sobre lo que entrega openpyxl.
+
+Queda anotado y sin decidir otro hallazgo del mismo agente: el lector de la báscula no acota las
+columnas de cada fila (`produccion/conectores/bascula.py`). La propuesta, `iter_rows(max_col=61)`,
+cambia lo que se ve de un reporte ancho; la decide Eugenio.

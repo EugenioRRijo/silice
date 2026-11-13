@@ -297,7 +297,9 @@ def filas_acotadas(
             raise _filas_de_mas(nombre, ws.title)
         if len(fila) > MAX_COLUMNAS_HOJA:
             raise _fila_ancha(nombre, ws.title, leidas + 1, len(fila))
-        cuenta[0] += len(fila)
+        # Una fila de hueco llega como tupla vacía y también cuesta recorrerla: cuenta como una
+        # celda, o mil hojas con una celda en A20000 pasarían el tope tras 20 millones de filas.
+        cuenta[0] += max(len(fila), 1)
         if cuenta[0] > tope_libro:
             raise ArchivoRechazado(
                 f"El libro «{nombre}» tiene más de {miles(tope_libro)} celdas con datos o con "

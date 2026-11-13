@@ -437,16 +437,19 @@ SIGUE_LEYENDO = (
 
 
 def _contar_filas(monkeypatch: pytest.MonkeyPatch) -> list[int]:
-    """[filas, celdas] que openpyxl entrega al recorrer las hojas en solo lectura."""
+    """[filas, celdas, peso] que openpyxl entrega al recorrer las hojas en solo lectura. El peso es
+    lo que cuenta el tope del libro: las celdas de cada fila y una por lo menos, porque una fila de
+    hueco llega vacía y también cuesta recorrerla (decisión del 2026-11-12)."""
     from openpyxl.worksheet._read_only import ReadOnlyWorksheet
 
-    medida = [0, 0]
+    medida = [0, 0, 0]
     original = ReadOnlyWorksheet.iter_rows
 
     def contando(self, *args, **kwargs):
         for fila in original(self, *args, **kwargs):
             medida[0] += 1
             medida[1] += len(fila)
+            medida[2] += max(len(fila), 1)
             yield fila
 
     monkeypatch.setattr(ReadOnlyWorksheet, "iter_rows", contando)
@@ -461,8 +464,8 @@ def test_una_celda_lejana_rechaza_el_libro_sin_recorrerla(
     limpio_ = construir_libro().datos
     medida = _contar_filas(monkeypatch)
     leer_libro(limpio_, NOMBRE)
-    base_filas, base_celdas = medida
-    medida[:] = [0, 0]
+    base_filas, base_celdas, _ = medida
+    medida[:] = [0, 0, 0]
     celdas = (
         {"A1048576": "fin ficticio"}
         if variante == "C"
@@ -471,7 +474,7 @@ def test_una_celda_lejana_rechaza_el_libro_sin_recorrerla(
     datos = con_celdas(limpio_, hoja, celdas)
     with pytest.raises(ArchivoRechazado) as error:
         leer_libro(datos, "hostil.xlsx")
-    filas, celdas_ = medida
+    filas, celdas_, _ = medida
     assert (
         filas <= base_filas + TOPE_FILAS_ENTREGADAS,
         celdas_ <= base_celdas + TOPE_CELDAS_ENTREGADAS,
@@ -528,7 +531,7 @@ def test_el_tope_del_libro_conocido_es_por_pasada_y_su_frontera_se_lee(
     datos = construir_libro().datos
     medida = _contar_filas(monkeypatch)
     leer_libro(datos, NOMBRE)
-    total = medida[1]
+    total = medida[2]
     assert total % 2 == 0
     por_pasada = total // 2
     monkeypatch.setattr(lector, "MAX_CELDAS_LIBRO", por_pasada)
