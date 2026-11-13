@@ -2,7 +2,7 @@
 // venezolanas (partidas viales, insumos del catalogo, tasa del BCV, salarios del CCT). No hay un componente nuevo: el
 // campo con busqueda (combobox ARIA, flechas, Enter, Esc y region viva) ya existe y es el que se reutiliza.
 import { pedir } from "../api/cliente";
-import { fechaEsVe, formatoEsVe } from "../indicadores/formatoEsVe";
+import { centesimasEsVe, fechaEsVe } from "../indicadores/formatoEsVe";
 import { materialesDeArenera } from "../api/produccionPlanta";
 import type { GrupoDeResultados } from "./logicaBusqueda";
 
@@ -59,13 +59,14 @@ export function rutaDeConsulta(tabla: TablaDeConsulta, q: string, limite: number
 const SIN_PRECIO_EN_LA_LISTA = "sin precio en la lista para armar";
 
 // Lo que se lee debajo de un insumo cuando se ofrece con su precio: la unidad (si la trae), el precio con su moneda y la fecha
-// de su lista. El precio llega como decimal con punto y solo se reescribe con la coma; en otra moneda que la de la carpeta el
+// de su lista. El precio llega como decimal con punto y se lee con dos decimales y la coma (NORMAS §2.3; 2026-11-13, D-8: uno
+// convertido de Bs traía 27); la celda recibe el exacto (`valoresAlElegir`). En otra moneda que la de la carpeta el
 // servidor no lo manda y si su aviso, que es lo que se lee. Sin nada de eso, «sin precio en la lista para armar».
 function lineaConPrecio(s: SugerenciaDeConsulta): string[] {
   const partes = [s.valor];
   if (s.unidad) partes.push(s.unidad);
   if (s.precio && s.moneda) {
-    partes.push(`${formatoEsVe(s.precio)} ${s.moneda}`);
+    partes.push(`${centesimasEsVe(s.precio)} ${s.moneda}`);
     if (s.fecha_precio) partes.push(`lista del ${fechaEsVe(s.fecha_precio)}`);
   } else {
     partes.push(s.aviso_precio || SIN_PRECIO_EN_LA_LISTA);
