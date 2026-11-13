@@ -340,6 +340,33 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
 
   // --- prever antes de guardar (D-MP2) ---------------------------------------------------------------
 
+  // Prueba de punta a punta del 2026-11-13 (D-8): un precio de la lista convertido de Bs (28 cifras) se leía con 27
+  // decimales. Se lee con dos; si con dos los dos precios se leen igual, van exactos para que se vea en qué difieren.
+  test("el diálogo de variantes lee los precios con dos decimales salvo que así se lean iguales", async () => {
+    const u = userEvent.setup();
+    const largo = "5.041157684630738522954091816";
+    prevision = () =>
+      json({
+        ...CON_VARIANTE,
+        variantes: [
+          { ...CON_VARIANTE.variantes[0], precio_en_lista: largo, precio_tecleado: "2.71" },
+          { ...CON_VARIANTE.variantes[0], descripcion: "Arena lavada", codigo_variante: "MAT-FIC-002-B", precio_en_lista: largo, precio_tecleado: "5.04" },
+        ],
+      });
+    montar();
+    await conCondiciones(u);
+    await u.click(screen.getByRole("button", { name: "Guardar composición" }));
+    const dialogo = await screen.findByRole("dialog", {}, ESPERA);
+    expect(
+      within(dialogo).getByText("“Cemento gris” ya está a 5,04 Bs; con 2,71 Bs se creará una variante solo para este APU."),
+    ).toBeInTheDocument();
+    expect(
+      within(dialogo).getByText(
+        "“Arena lavada” ya está a 5,041157684630738522954091816 Bs; con 5,04 Bs se creará una variante solo para este APU.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   test("Guardar pregunta primero a prever; con una variante abre el diálogo y «Volver» no guarda", async () => {
     const u = userEvent.setup();
     prevision = () => json(CON_VARIANTE);
