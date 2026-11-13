@@ -196,9 +196,12 @@ function PonerPoliticaCdp([int]$PuertoCdp) {
         $script:ClaveCreada = $true
     }
     $clave = Get-Item -Path $PoliticaCdp
-    $script:PoliticaPrevia = $clave.GetValue('python.exe', $null, 'DoNotExpandEnvironmentNames')
-    if ($null -ne $script:PoliticaPrevia) {
+    $previo = $clave.GetValue('python.exe', $null, 'DoNotExpandEnvironmentNames')
+    if ($null -ne $previo) {
+        # El tipo antes que el valor: un corte entre las dos asignaciones no deja un valor previo
+        # sin su tipo (arbitraje de Argon, 2026-11-12)
         $script:TipoPrevio = [string]$clave.GetValueKind('python.exe')
+        $script:PoliticaPrevia = $previo
         Write-Host "  la política ya tenía un valor python.exe: se devuelve al terminar"
     }
     New-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -PropertyType String -Force `
