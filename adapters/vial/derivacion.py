@@ -51,7 +51,7 @@ from adapters.vial.constantes import (
     PARTIDAS_VIALES,
     PINTURA_POR_DEFECTO_L_KM,
 )
-from adapters.vial.modelo import TRANSPORTE_BANDA, Capa, Tramo
+from adapters.vial.modelo import PREFIJO_TRAMO, TRANSPORTE_BANDA, Capa, Tramo
 from core.contracts import Dominio, ItemComputo, OrigenTipo
 
 AREA = "longitud*ancho"
@@ -134,7 +134,7 @@ def _items_de_capa(tramo: Tramo, n: int, capa: Capa) -> list[ItemComputo]:
     ):
         if valor is not None:
             valores[nombre] = valor
-    origen_id = f"tramo:{tramo.id}:capa:{n}"
+    origen_id = f"{PREFIJO_TRAMO}{tramo.id}:capa:{n}"
     especificaciones = {"_especialidad": "vial", "_capa": capa.tipo}
     de_la_mezcla = dict(especificaciones)
     if capa.asfalto_pct is not None:
@@ -197,7 +197,7 @@ def derivar_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
         for n, capa in enumerate(tramo.capas, start=1):
             items.extend(_items_de_capa(tramo, n, capa))
         for n, linea in enumerate(tramo.demarcacion, start=1):
-            origen = f"tramo:{tramo.id}:demarcacion:{n}"
+            origen = f"{PREFIJO_TRAMO}{tramo.id}:demarcacion:{n}"
             especificaciones = {"_especialidad": "vial", "_demarcacion": linea.tipo}
             if linea.tipo == "superficie" and linea.area_m2 is not None:
                 valores = {"area_elemento": linea.area_m2, "elementos": Decimal(linea.lineas)}

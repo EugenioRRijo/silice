@@ -9,6 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
+#: Prefijo del `origen_id` de una cantidad derivada de un tramo («tramo:T1:capa:3»). La única
+#: definición: la escriben `derivacion` y las reglas viales y la leen la Hoja y `aplicacion`.
+PREFIJO_TRAMO = "tramo:"
+
 TIPOS_CAPA = (
     "fresado",
     "base_granular",

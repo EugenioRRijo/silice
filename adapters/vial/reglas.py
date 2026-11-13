@@ -67,7 +67,7 @@ from adapters.vial.constantes import (
     TOLERANCIA_TRANSPORTE,
 )
 from adapters.vial.derivacion import derivar_tramos
-from adapters.vial.modelo import Tramo
+from adapters.vial.modelo import PREFIJO_TRAMO, Tramo
 from core.contracts import ItemComputo, Presupuesto
 from core.contracts.presupuesto import PartidaPresupuestada
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
@@ -88,8 +88,6 @@ ESPEC_PORCENTAJE_ASFALTO = "_porcentaje_asfalto"
 ESPEC_ANCHO_LINEA_CM = "_ancho_linea_cm"
 #: La banda de distancia de una partida de transporte por banda, «mínimo-máximo» en km (F5 vial).
 ESPEC_BANDA_KM = "_tramo_km"
-#: Prefijo del `origen_id` de una cantidad derivada de un tramo («tramo:T1:capa:3»; `derivacion`).
-PREFIJO_TRAMO = "tramo:"
 _KM = re.compile(r"[0-9]+(?:[.,][0-9]+)?")
 #: Lee la banda de la descripción del APU de una partida: (mínimo, máximo) en km, `None` si no la
 #: dice, o `ValueError` con el texto para la persona si la dice con una cifra mal escrita
@@ -273,7 +271,7 @@ def _vr3(tramos: Sequence[Tramo]) -> list[Hallazgo]:
         for n, capa in enumerate(tramo.capas, start=1):
             if capa.tipo not in minimos or capa.dosis_l_m2 is None:
                 continue
-            origen = f"tramo:{tramo.id}:capa:{n}"
+            origen = f"{PREFIJO_TRAMO}{tramo.id}:capa:{n}"
             residual = _residual_g_m2(capa.dosis_l_m2)
             minimo, constante = minimos[capa.tipo]
             limite, fuente, lado = None, constante.fuente, ""
@@ -469,7 +467,7 @@ def _vr6(tramos: Sequence[Tramo]) -> list[Hallazgo]:
     previo: Tramo | None = None  # el que llega más lejos hasta ahora
     for tramo in ordenados:
         if previo is not None:
-            origenes = (f"tramo:{previo.id}", f"tramo:{tramo.id}")
+            origenes = (f"{PREFIJO_TRAMO}{previo.id}", f"{PREFIJO_TRAMO}{tramo.id}")
             if tramo.progresiva_ini_km < previo.progresiva_fin_km:
                 solape = (
                     min(tramo.progresiva_fin_km, previo.progresiva_fin_km) - tramo.progresiva_ini_km

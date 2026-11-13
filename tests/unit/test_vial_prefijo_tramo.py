@@ -1,6 +1,6 @@
-"""El prefijo del origen de una cantidad derivada de un tramo se define una sola vez (árbitro xhigh del
-2026-11-13, ronda 2, M8): en `adapters/vial/modelo.py`, y lo importan la derivación, las reglas
-viales y la Hoja; nadie lo escribe como literal."""
+"""El prefijo del origen de una cantidad derivada de un tramo se define una sola vez (árbitro
+xhigh del 2026-11-13, ronda 2, M8): en `adapters/vial/modelo.py`, y lo importan la derivación,
+las reglas viales y la Hoja; nadie lo escribe como literal."""
 
 from __future__ import annotations
 
@@ -27,6 +27,8 @@ def test_nadie_escribe_el_prefijo_como_literal() -> None:
         for carpeta in ("adapters", "aplicacion", "api", "fusion")
         for ruta in (RAIZ / carpeta).rglob("*.py")
         for n, linea in enumerate(ruta.read_text(encoding="utf-8").splitlines(), start=1)
-        if literal.search(linea) and "PREFIJO_TRAMO =" not in linea
+        if literal.search(linea)
+        and "PREFIJO_TRAMO =" not in linea
+        and not linea.lstrip().startswith("#")  # un comentario que lo cita no es código
     ]
     assert fuera == []
