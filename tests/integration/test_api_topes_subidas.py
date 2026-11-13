@@ -47,11 +47,10 @@ def _ancha(fila: int, columna: str) -> str:
 
 
 def _rechazo(nombre: str, hoja: str, donde: str) -> str:
-    """El 422 de `comprobar_libro_legible`: el nombre del archivo y el aviso del lector."""
-    return (
-        f"{nombre}: no se puede leer como libro de Excel (El libro «{nombre}», hoja «{hoja}»: "
-        f"{donde}. {SIGUE})"
-    )
+    """El 422 de `comprobar_libro_legible`: el aviso del lector tal cual, que ya nombra el libro y
+    la hoja. Sin «no se puede leer como libro de Excel»: el libro se lee, lo que pasa es que tiene
+    algo escrito más allá de los topes (simulación de las decisiones, 2026-11-12)."""
+    return f"El libro «{nombre}», hoja «{hoja}»: {donde}. {SIGUE}"
 
 
 def _lista(celdas: dict[str, object] | None = None, **forma) -> bytes:
@@ -138,9 +137,9 @@ def test_el_tope_de_celdas_del_libro_suma_todas_las_hojas(
     with pytest.raises(ValueError) as error:
         comprobar_libro_legible(ruta)
     assert str(error.value) == (
-        "dos_hojas.xlsx: no se puede leer como libro de Excel (El libro «dos_hojas.xlsx» tiene "
-        "más de 15 celdas con datos o con formato entre sus hojas. Se rechaza por seguridad: "
-        "quite las hojas o las filas que sobran y guárdelo de nuevo.)"
+        "El libro «dos_hojas.xlsx» tiene más de 15 celdas con datos o con formato entre sus "
+        "hojas. Se rechaza por seguridad: quite las hojas o las filas que sobran y guárdelo de "
+        "nuevo."
     )
 
 
