@@ -307,6 +307,28 @@ def test_llevar_otra_vez_usa_el_mismo_borrador_y_no_duplica(ana) -> None:
     assert len([f for f in filas.json()["filas"] if "|tramo:" in f["clave"]]) == 20
 
 
+def test_el_riego_a_mano_y_el_llevado_de_los_tramos_dan_vr8_en_la_auditoria(ana) -> None:
+    """Prueba de punta a punta del 2026-11-13, D1: el riego de T1 (8.760 m², memoria del README
+    de la muestra) escrito también a mano se suma dos veces; la auditoría lo advierte (VR8)."""
+    navegador, ficha = ana
+    assert _importar(ana, MUESTRA.read_bytes()).status_code == 200
+    id_ = _llevar(ana).json()["borrador_id"]
+    (borrador,) = _borradores(navegador)
+    agregada = navegador.post(
+        f"/v1/hoja/borradores/{id_}/partidas",
+        json={"rev": borrador["rev"], "codigo": "C-000.000.006", "cantidad": "8760"},
+        headers=protegida(ficha),
+    )
+    assert agregada.status_code == 200, agregada.text
+
+    informe = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/auditoria").json()
+    viales = [h for h in informe["hallazgos"] if h["regla"].startswith("VR")]
+    assert [(h["regla"], h["origen"]) for h in viales] == [
+        ("VR8", ["tramo:T1:capa:2", "a-mano:1"])
+    ]
+    assert "el presupuesto suma 17.520 m2" in viales[0]["descripcion"]
+
+
 # --- la versión que se ve es la del borrador (ronda 2) --------------------------------------------
 
 
