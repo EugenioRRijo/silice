@@ -313,12 +313,21 @@ def arrancar(
             abrir_archivo(codigo)  # el acceso directo del instalador deja esta ventana minimizada
     direccion, de_direccion = elegir_direccion(ajustes, ips())
     avisos.extend(de_direccion)
-    # La variable y las políticas de WebView2 (HKLM y HKCU) que piden el puerto de depuración
-    for fuente in fuentes_depuracion(os.environ if entorno is None else entorno):
+    # La variable y las políticas de WebView2 (HKLM y HKCU) que piden el puerto de depuración.
+    # Sin el permiso explícito de la prueba de humo la ventana no se abre (decisión (e)).
+    variables = os.environ if entorno is None else entorno
+    fuentes = fuentes_depuracion(variables)
+    depuracion_permitida = variables.get(ventana.VARIABLE_PERMITIR_DEPURACION) == "1"
+    for fuente in fuentes:
+        consecuencia = (
+            "la ventana de Sílice lo abrirá y cualquier programa de este equipo podría manejarla"
+            if depuracion_permitida
+            else "por seguridad la ventana de Sílice no se abre (cualquier programa de este "
+            "equipo podría manejarla)"
+        )
         avisos.append(
-            f"{fuente[:1].upper()}{fuente[1:]} pide un puerto de depuración: la ventana de Sílice "
-            "lo abrirá y cualquier programa de este equipo podría manejarla. Solo la prueba de "
-            "humo debe ponerla; si no es esa prueba, quítela."
+            f"{fuente[:1].upper()}{fuente[1:]} pide un puerto de depuración: {consecuencia}. "
+            "Solo la prueba de humo debe ponerla; si no es esa prueba, quítela."
         )
     for aviso in avisos:
         logger.warning("%s", aviso)
@@ -370,6 +379,8 @@ def arrancar(
         en_ventana = False
         if not sin_navegador:
             motivo = _motivo_del_navegador(ajustes, sin_ventana, motivo_sin_ventana)
+            if motivo is None and fuentes and not depuracion_permitida:
+                motivo = "algo pide a WebView2 un puerto de depuración (vea el aviso anterior)"
             if motivo is None:
                 salida("Para detener Sílice, cierre la ventana de Sílice (o esta consola).")
                 try:

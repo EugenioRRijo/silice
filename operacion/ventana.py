@@ -47,6 +47,9 @@ ICONO = Path(__file__).with_name("silice.ico")
 #: depuración). Sílice nunca la pone; el entorno de Uvicorn nunca la hereda
 #: (`lanzador.entorno_hijos`). En un proceso elevado WebView2 la ignora (bitácora V0 §3.4).
 VARIABLE_ARGUMENTOS_WEBVIEW2 = "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
+#: El permiso explícito para abrir la ventana aunque algo pida el puerto de depuración (decisión
+#: (e) del 2026-11-12): sin él, el lanzador abre el navegador. Solo la prueba de humo lo pone.
+VARIABLE_PERMITIR_DEPURACION = "SILICE_PERMITIR_DEPURACION_VENTANA"
 #: La política que hace lo mismo que la variable («CreateCoreWebView2EnvironmentWithOptions»,
 #: documentación de Microsoft): el cargador mira primero HKLM y luego HKCU, y en cada una un valor
 #: REG_SZ con el AUMID del proceso, luego con el nombre del ejecutable y luego `*`. La prueba de

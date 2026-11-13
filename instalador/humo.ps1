@@ -165,6 +165,9 @@ function IniciarVentana([string]$Registro) {
     $env:HTTP_PROXY = "http://127.0.0.1:$PuertoProxy"
     $env:HTTPS_PROXY = $env:HTTP_PROXY
     $env:NO_PROXY = '127.0.0.1,localhost'
+    # El permiso explícito para abrir la ventana con el puerto de depuración: sin él, el lanzador
+    # abre el navegador (decisión (e) del 2026-11-12). Solo aquí, y se quita al lanzar.
+    $env:SILICE_PERMITIR_DEPURACION_VENTANA = '1'
     try {
         # -NoNewWindow: sin consola propia, la ventana principal del proceso es la de Sílice
         return Start-Process -FilePath $Python -PassThru -NoNewWindow `
@@ -172,7 +175,8 @@ function IniciarVentana([string]$Registro) {
             -WorkingDirectory $Codigo `
             -RedirectStandardOutput "$Registro.out" -RedirectStandardError "$Registro.err"
     } finally {
-        Remove-Item Env:HTTP_PROXY, Env:HTTPS_PROXY, Env:NO_PROXY -ErrorAction SilentlyContinue
+        Remove-Item Env:HTTP_PROXY, Env:HTTPS_PROXY, Env:NO_PROXY, Env:SILICE_PERMITIR_DEPURACION_VENTANA `
+            -ErrorAction SilentlyContinue
     }
 }
 
