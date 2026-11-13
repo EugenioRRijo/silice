@@ -101,7 +101,7 @@ from aplicacion.composicion import (
 from aplicacion.errores import HojaInvalida
 from aplicacion.estilo import porcentaje
 from aplicacion.parametros_de_costo import parametros_de_version
-from aplicacion.plan_rendimientos import plan_del_borrador
+from aplicacion.plan_rendimientos import PlanDemasiadoLargo, plan_que_cabe
 from aplicacion.plural import plural
 from aplicacion.subidas import Subida, guardar_subida
 from aplicacion.tablas_medicion import guardar_notas, notas_de_version
@@ -519,7 +519,7 @@ def _enum[E: StrEnum](clase: type[E], valor: str, campo: str) -> E:
         return clase(valor)
     except ValueError:
         validos = ", ".join(m.value for m in clase)
-        raise ValueError(f"{campo}: {valor!r} no es un valor valido ({validos})") from None
+        raise ValueError(f"{campo}: {valor!r} no es un valor válido ({validos})") from None
 
 
 def _pares_desde_texto(texto: str, campo: str) -> dict[str, str]:
@@ -554,7 +554,7 @@ def _vertices(texto: str) -> tuple[Coord, ...]:
         # la coma separa coordenadas: los decimales de los vertices van siempre con punto
         vertices.append(_coord(*partes, campo="vertices", leer=decimal_desde_texto))
     if len(vertices) < 2:
-        raise ValueError("vertices: un tramo necesita dos vertices x,y,z o mas, separados por «;»")
+        raise ValueError("vertices: un tramo necesita dos vértices x,y,z o más, separados por «;»")
     return tuple(vertices)
 
 
@@ -1024,11 +1024,11 @@ def filas_de_cierre(
         },
         {"Concepto": "= Costo directo", "Monto": monto(r.costo_directo), "Nota": ""},
         {
-            "Concepto": "+ Administracion",
+            "Concepto": "+ Administración",
             "Monto": monto(r.con_administracion - r.costo_directo),
             "Nota": f"{porcentaje(parametros.administracion)} del costo directo",
         },
-        {"Concepto": "= Con administracion", "Monto": monto(r.con_administracion), "Nota": ""},
+        {"Concepto": "= Con administración", "Monto": monto(r.con_administracion), "Nota": ""},
         {
             "Concepto": "+ Utilidad",
             "Monto": monto(r.precio_unitario - r.con_administracion),
@@ -1138,7 +1138,7 @@ def cambiar_insumo(
     """El APU con la linea `indice` (desde 0) del grupo `tipo` apuntando a otro insumo: toma su
     descripcion, su unidad y su precio; conserva la cantidad (y la depreciacion de un equipo)."""
     if tipo not in TIPOS_DE_LINEA:
-        raise HojaInvalida(f"tipo de linea {tipo!r} desconocido; se espera uno de {TIPOS_DE_LINEA}")
+        raise HojaInvalida(f"tipo de línea {tipo!r} desconocido; se espera uno de {TIPOS_DE_LINEA}")
     grupo = {
         "material": composicion.materiales,
         "equipo": composicion.equipos,
@@ -1270,9 +1270,16 @@ def con_plan_secuencial(borrador: Borrador) -> Borrador:
 def con_plan_por_rendimientos(borrador: Borrador) -> Borrador:
     """El borrador con el plan desde los rendimientos (Tarea 21): la duracion de cada partida es
     su cantidad entre el rendimiento de su APU, una cuadrilla, encadenadas en el orden del
-    presupuesto y en dias habiles (`aplicacion.plan_rendimientos`). El que se propone al guardar
-    la primera version (decision 4 del plan, choque 10)."""
-    plan, _ = plan_del_borrador(items_elaborados(borrador), borrador.composiciones)
+    presupuesto. El que se propone al guardar la primera version (decision 4 del plan, choque 10).
+
+    Va en la primera unidad que cabe en la matriz, dias, semanas o meses
+    (`aplicacion.plan_rendimientos.plan_que_cabe`, D-2 de la prueba de punta a punta del
+    2026-11-13), como la ruta del producto (`aplicacion.hoja_guardado`); si ni en meses cabe,
+    `HojaInvalida` con la salida."""
+    try:
+        plan, _, _ = plan_que_cabe(items_elaborados(borrador), borrador.composiciones)
+    except PlanDemasiadoLargo as error:
+        raise HojaInvalida(str(error)) from None
     return replace(borrador, plan=tuple(plan))
 
 
@@ -1319,7 +1326,7 @@ def plan_desde_filas(
                 raise HojaInvalida(f"plan, partida {codigo}: {error}") from error
             if fraccion < 0:
                 raise HojaInvalida(
-                    f"plan, partida {codigo}: la fraccion de {etiqueta} no puede ser negativa"
+                    f"plan, partida {codigo}: la fracción de {etiqueta} no puede ser negativa"
                 )
             suma += fraccion
             if fraccion > 0:
@@ -1327,7 +1334,7 @@ def plan_desde_filas(
         if suma != Decimal(1):
             raise HojaInvalida(
                 f"plan, partida {codigo}: las fracciones suman {texto_editable(suma)} y deben "
-                "sumar exactamente 1; repartala entre los periodos hasta completar 1"
+                "sumar exactamente 1; repártala entre los períodos hasta completar 1"
             )
     return [(etiqueta, tuple(reparto[etiqueta])) for etiqueta in etiquetas]
 
@@ -1697,19 +1704,24 @@ def estado_de_items(
 ) -> dict[str, EstadoFila]:
     """El Estado de cada renglon del presupuesto, por su clave (`claves_de_items`).
 
-    Un hallazgo toca un item si cita su `origen_id` o si el informe lo atribuye a su partida
-    (`InformeAuditoria.partida_de`). Un hallazgo `PENDIENTE` es solo del item que cita (partida y
-    origen). Mismo formato que `estado_de_filas`.
+    Un hallazgo toca un item si cita su `origen_id` o, si no cita ningun renglon de `items`, si el
+    informe lo atribuye a su partida (`InformeAuditoria.partida_de`): el que ya cita su renglon no
+    se reparte a los demas renglones de la misma partida (E2E-3f de la prueba de punta a punta del
+    2026-11-13). Un hallazgo `PENDIENTE` es solo del item que cita (partida y origen). Mismo
+    formato que `estado_de_filas`.
     """
     por_origen: dict[str, list[Hallazgo]] = {}
     por_partida: dict[str, list[Hallazgo]] = {}
     pendientes: dict[tuple[str, ...], bool] = {}
+    renglones = {item.origen_id for item in items}
     for hallazgo in informe.hallazgos:
         if hallazgo.regla == CODIGO_PENDIENTE:
             pendientes[hallazgo.origen_ids] = True
             continue
         for origen in hallazgo.origen_ids:
             por_origen.setdefault(origen, []).append(hallazgo)
+        if renglones.intersection(hallazgo.origen_ids):
+            continue
         partida = informe.partida_de(hallazgo)
         if partida is not None:
             por_partida.setdefault(partida, []).append(hallazgo)
@@ -2084,9 +2096,9 @@ def motivo_para_no_guardar(
     if not cambios_entre(base, actual):
         return "No hay cambios para guardar: edite alguna celda primero."
     if not fuente.strip():
-        return "Escriba la fuente del cambio: por que se cambia y con que respaldo."
+        return "Escriba la fuente del cambio: por qué se cambia y con qué respaldo."
     if not responsable.strip():
-        return "Escriba el responsable del cambio: quien lo hace."
+        return "Escriba el responsable del cambio: quién lo hace."
     return None
 
 
@@ -2650,9 +2662,33 @@ def _erosion_por_indice_de(
     return erosion_por_indice(origen.precio_original, inicial.valor, final.valor)
 
 
-def _estado_de_precio(o: OrigenPrecio) -> str:
+def _fuentes_heredadas(sesion: Session, insumos: Iterable[int]) -> dict[int, set[str]]:
+    """Por insumo, el `origen` de cada lista que tiene su precio sin `PrecioOrigen` propio: el
+    texto que `core.catalog.origen.origenes_efectivos` le da como fuente y que las copias de esa
+    lista arrastran a su propia fila. No es una fuente declarada para ese precio (D-17)."""
+    heredadas: dict[int, set[str]] = {}
+    filas = sesion.execute(
+        select(models.PrecioInsumo.insumo_id, models.ListaPrecios.origen)
+        .join(models.ListaPrecios, models.ListaPrecios.id == models.PrecioInsumo.lista_id)
+        .outerjoin(models.PrecioOrigen, models.PrecioOrigen.precio_id == models.PrecioInsumo.id)
+        .where(
+            models.PrecioInsumo.insumo_id.in_(list(insumos)),
+            models.PrecioOrigen.precio_id.is_(None),
+        )
+    )
+    for insumo_id, origen in filas:
+        heredadas.setdefault(insumo_id, set()).add(origen)
+    return heredadas
+
+
+def _estado_de_precio(o: OrigenPrecio, heredadas: Iterable[str] = ()) -> str:
+    """«Sin referencia ni cotización» si el precio no trae Ref, ni cotización, ni una fuente
+    declarada: la de su `PrecioOrigen` (la fila de una lista de empresa, un precio tecleado) que
+    no sea el `origen` de una lista heredado (`_fuentes_heredadas`, D-17 de la prueba de punta a
+    punta del 2026-11-13)."""
     avisos = []
-    if not o.referencia and not o.cotizacion:
+    declarada = bool(o.fuente.strip()) and o.fuente not in set(heredadas)
+    if not o.referencia and not o.cotizacion and not declarada:
         avisos.append("Sin referencia ni cotización: el precio no tiene fuente")
     if o.tasa is not None and o.fecha_tasa is None:
         avisos.append("La tasa de cambio no declara su fecha")
@@ -2687,10 +2723,13 @@ def precios_de_version(
         textos = estado_por_insumo(instantanea)
         tasa_evaluacion = instantanea.tasa_evaluacion
     filas = []
-    for o in origen_de_precios(sesion, modelo):
+    origenes = origen_de_precios(sesion, modelo)
+    heredadas = _fuentes_heredadas(sesion, (o.insumo_id for o in origenes))
+    for o in origenes:
         heredado = es_heredado(sesion, lista, por_insumo[o.insumo_id])
         perdida = _erosion_de(auditados.get(o.insumo_id), tasa_evaluacion)
-        avisos = [aviso for aviso in (_estado_de_precio(o),) if aviso != TEXTO_OK]
+        estado = _estado_de_precio(o, heredadas.get(o.insumo_id, ()))
+        avisos = [aviso for aviso in (estado,) if aviso != TEXTO_OK]
         avisos += textos.get(o.insumo_id, [])
         filas.append(
             FilaPrecio(
@@ -3050,8 +3089,8 @@ def _altura(identificador: str, texto: str) -> Decimal:
         valor = None
     if valor is None or not Decimal(0) < valor <= ALTURA_MAXIMA_M:
         raise HojaInvalida(
-            f"Altura de «{identificador}»: «{texto}» no es una altura valida. "
-            f"Escriba un numero de metros mayor que 0 y hasta {ALTURA_MAXIMA_M}, por ejemplo 2,50."
+            f"Altura de «{identificador}»: «{texto}» no es una altura válida. "
+            f"Escriba un número de metros mayor que 0 y hasta {ALTURA_MAXIMA_M}, por ejemplo 2,50."
         )
     return valor
 
@@ -3089,8 +3128,8 @@ def _entero(identificador: str, rotulo: str, texto: str, minimo: int) -> int:
         valor = None
     if valor is None or valor < minimo:
         raise HojaInvalida(
-            f"Circuito «{identificador}»: {rotulo} debe ser un numero entero de {minimo} o mas "
-            f"(se escribio «{texto}»)."
+            f"Circuito «{identificador}»: {rotulo} debe ser un número entero de {minimo} o más "
+            f"(se escribió «{texto}»)."
         )
     return valor
 
@@ -3109,7 +3148,7 @@ def declarar_circuitos_desde_texto(
             _entero(identificador, "los conductores de neutro", neutro, 0),
             _entero(identificador, "los conductores de tierra", tierra, 0),
         )
-        maximo = _entero(identificador, "los puntos maximos", puntos, 1)
+        maximo = _entero(identificador, "los puntos máximos", puntos, 1)
         declarados[identificador] = (conductores, maximo)
     return declarar_circuitos(resultado, declarados)
 
