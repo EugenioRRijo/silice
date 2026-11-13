@@ -260,11 +260,11 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     };
   }, [atender, lecturaCarpeta]);
 
-  const crearLista = async (desde: Desde) => {
+  const crearLista = async (desde: Desde, listaId?: number) => {
     setCreandoLista(true);
     setErrorLista(null);
     try {
-      const nueva = await crearListaParaArmar(desde);
+      const nueva = await crearListaParaArmar(desde, listaId);
       setCarpeta(nueva);
       setListaCreada(nueva.aviso === null ? nueva.lista : null);
     } catch (e) {
@@ -444,7 +444,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         creada={listaCreada}
         creando={creandoLista}
         error={errorLista}
-        alCrear={(desde) => void crearLista(desde)}
+        alCrear={(desde, listaId) => void crearLista(desde, listaId)}
       />
       <AvisoError error={errorOpciones} titulo="No se pudieron cargar las opciones" />
 

@@ -123,6 +123,8 @@ export interface CarpetaRespuesta {
   declarada: boolean;
   lista: { nombre: string; moneda: string; fecha: string; origen: string } | null;
   aviso: string | null;
+  // Las listas de empresa en la moneda de la carpeta, que se pueden copiar como lista para armar sin tasa (2026-11-13).
+  empresa?: { id: number; nombre: string; moneda: string }[];
 }
 
 export interface ProyectoRespuesta {

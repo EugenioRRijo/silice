@@ -2352,7 +2352,7 @@
           "carpeta"
         ],
         "summary": "Crear La Lista Para Armar",
-        "description": "Crea la lista para armar a partir de MaPreX o convirtiendo la vigente (tasa del BCV). Desde\nMaPreX, si la carpeta ya tiene lista para armar, 409 y no crea otra.",
+        "description": "Crea la lista para armar a partir de MaPreX, convirtiendo la vigente (tasa del BCV) o\ncopiando una lista de empresa en su moneda (`lista_id`). Desde MaPreX, si la carpeta ya tiene\nlista para armar, 409 y no crea otra.",
         "operationId": "crear_la_lista_para_armar_v1_carpeta_lista_para_armar_post",
         "requestBody": {
           "content": {
@@ -15426,6 +15426,14 @@
               }
             ],
             "title": "Aviso"
+          },
+          "empresa": {
+            "items": {
+              "$ref": "#/components/schemas/ListaDeEmpresa"
+            },
+            "type": "array",
+            "title": "Empresa",
+            "default": []
           }
         },
         "type": "object",
@@ -21722,6 +21730,29 @@
         ],
         "title": "ListaCreadaRespuesta"
       },
+      "ListaDeEmpresa": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "moneda"
+        ],
+        "title": "ListaDeEmpresa"
+      },
       "ListaDeHoy": {
         "properties": {
           "nombre": {
@@ -21816,9 +21847,21 @@
             "type": "string",
             "enum": [
               "maprex",
-              "convertir"
+              "convertir",
+              "empresa"
             ],
             "title": "Desde"
+          },
+          "lista_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lista Id"
           }
         },
         "type": "object",

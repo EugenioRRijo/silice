@@ -17,7 +17,10 @@ carpeta, declarada una sola vez, y una lista vigente en esa moneda con la que se
   misma forma; 409 con el mensaje de `SinListaParaArmar` (sin lista, sin tasa del BCV de los
   últimos 7 días, o nada que convertir) y, desde MaPreX, 409 «La carpeta de trabajo ya tiene lista
   para armar («{nombre}»): no se creó otra.» si ya la tiene (T4: un aviso viejo de otra pestaña no
-  crea «… (2)»).
+  crea «… (2)»). Desde el 2026-11-13 (prueba de punta a punta, D-7), `{desde: "empresa", lista_id}`
+  copia la lista de empresa `lista_id` como lista para armar, en su moneda y sin tasa; `GET` dice
+  en `empresa` las listas de empresa `{id, nombre, moneda}` de la moneda de la carpeta, para
+  ofrecerlas.
 
 Quien declara o crea consta como la cuenta de la sesión (o `USUARIO_API` con la clave de API). Las
 dos escrituras van sobre la sesión de escritura (`BEGIN IMMEDIATE`) y se confirman aquí; un error
@@ -30,7 +33,7 @@ from __future__ import annotations
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
 
 from api.acceso import CUALQUIER_ROL
@@ -45,6 +48,7 @@ from aplicacion.listas_para_armar import (
     describir,
     describir_vigente,
     lista_para_armar,
+    listas_de_empresa_para_armar,
     moneda_de_la_carpeta,
 )
 from aplicacion.tablas_carpeta import CarpetaDeTrabajo
@@ -52,7 +56,8 @@ from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
 MENSAJE_CUERPO_INVALIDO = (
-    "Indique la moneda (Bs o USD) o de dónde crear la lista (maprex o convertir)."
+    "Indique la moneda (Bs o USD) o de dónde crear la lista (maprex, convertir o empresa, con "
+    "el número de la lista de la empresa)."
 )
 
 #: El 409 de crear desde MaPreX con lista para armar ya creada. Componer lo reconoce por su comienzo
@@ -77,11 +82,18 @@ class ListaDeLaCarpeta(BaseModel):
     origen: str
 
 
+class ListaDeEmpresa(BaseModel):
+    id: int
+    nombre: str
+    moneda: str
+
+
 class CarpetaRespuesta(BaseModel):
     moneda: str | None
     declarada: bool
     lista: ListaDeLaCarpeta | None
     aviso: str | None
+    empresa: list[ListaDeEmpresa] = []
 
 
 class MonedaPeticion(BaseModel):
@@ -89,7 +101,14 @@ class MonedaPeticion(BaseModel):
 
 
 class ListaPeticion(BaseModel):
-    desde: Literal["maprex", "convertir"]
+    desde: Literal["maprex", "convertir", "empresa"]
+    lista_id: int | None = None
+
+    @model_validator(mode="after")
+    def _empresa_con_lista(self) -> ListaPeticion:
+        if (self.desde == "empresa") != (self.lista_id is not None):
+            raise ValueError("lista_id va solo, y siempre, desde empresa")
+        return self
 
 
 def _estado(sesion: Session) -> CarpetaRespuesta:
@@ -114,6 +133,10 @@ def _estado(sesion: Session) -> CarpetaRespuesta:
             origen=descrita.origen,
         ),
         aviso=aviso,
+        empresa=[
+            ListaDeEmpresa(id=i, nombre=n, moneda=m)
+            for i, n, m in listas_de_empresa_para_armar(sesion, hoy)
+        ],
     )
 
 
@@ -157,8 +180,9 @@ def crear_la_lista_para_armar(
     peticion: ListaPeticion,
     activa: Annotated[SesionActiva | None, EDITAR_HOJA],
 ) -> CarpetaRespuesta:
-    """Crea la lista para armar a partir de MaPreX o convirtiendo la vigente (tasa del BCV). Desde
-    MaPreX, si la carpeta ya tiene lista para armar, 409 y no crea otra."""
+    """Crea la lista para armar a partir de MaPreX, convirtiendo la vigente (tasa del BCV) o
+    copiando una lista de empresa en su moneda (`lista_id`). Desde MaPreX, si la carpeta ya tiene
+    lista para armar, 409 y no crea otra."""
     if peticion.desde == "maprex":
         ya = describir(sesion, ahora().date())
         if ya is not None:
@@ -172,6 +196,7 @@ def crear_la_lista_para_armar(
             desde=peticion.desde,
             fecha=ahora().date(),
             responsable=USUARIO_API if activa is None else activa.usuario,
+            lista_id=peticion.lista_id,
         )
     except SinListaParaArmar as error:
         raise HTTPException(409, str(error)) from None
