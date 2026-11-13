@@ -201,7 +201,14 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
     expect(escrituras(/\/apu\//)).toEqual([
       {
         ruta: `/v1/hoja/borradores/${ID}/apu/E-01`,
-        cuerpo: { rev: 0, rendimiento: "20", materiales: ["2,5"], equipos: ["1"], mano_obra: ["1", "1"] },
+        cuerpo: {
+          rev: 0,
+          rendimiento: "20",
+          materiales: ["2,5"],
+          equipos: ["1"],
+          mano_obra: ["1", "1"],
+          desperdicios: [""],
+        },
       },
     ]);
     await waitFor(() =>
