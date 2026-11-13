@@ -308,14 +308,16 @@ describe("Costos del período", () => {
     await usuario.click(within(dialogo).getByRole("button", { name: "Anular costo" }));
     await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(3)); // lista, totales y la anulación
     expect(screen.getByRole("row", { name: /Equipo/ })).toBeInTheDocument(); // sigue ahí mientras tanto
+    expect(screen.getByText("Equipo", { selector: "td" })).toBeInTheDocument(); // la celda que espera la espera de abajo
     soltar(json({ id: 10 }, 201));
-    // Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §5): se espera lo barato (el total nuevo, por su texto) y la
-    // fila se mira una sola vez. Antes `waitFor` repetía la búsqueda de la fila por su rol y su nombre, que tras cada cambio
-    // grande del DOM cuesta ~300 ms en jsdom: la espera llegaba a ~1,1 s sin carga, al borde del segundo de `waitFor`, y con
-    // la máquina cargada lo pasaba. La recarga trae la lista y los totales juntos (un solo estado), así que el total nuevo
-    // dice que la lista nueva ya está pintada.
-    expect(await screen.findByText("Cantera: 1.250,50 USD")).toBeInTheDocument();
+    // Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §5): antes `waitFor` repetía la búsqueda de la fila por su rol
+    // y su nombre, que tras cada cambio grande del DOM cuesta ~300 ms en jsdom: la espera llegaba a ~1,1 s sin carga, al
+    // borde del segundo de `waitFor`, y con la máquina cargada lo pasaba. Ahora la espera mira lo barato (la celda
+    // «Equipo», por su texto) y la fila por su rol se comprueba una vez al final. No basta con esperar el total nuevo: la
+    // tabla de Carbon pinta sus filas nuevas un render después (se vio con carga).
+    await waitFor(() => expect(screen.queryByText("Equipo", { selector: "td" })).not.toBeInTheDocument());
     expect(screen.queryByRole("row", { name: /Equipo/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Cantera: 1.250,50 USD")).toBeInTheDocument();
     const aviso = await screen.findByRole("status");
     expect(aviso).toHaveTextContent("Costo anulado.");
     // El botón que tenía el foco desapareció con su fila: el foco pasa al aviso, no a BODY.

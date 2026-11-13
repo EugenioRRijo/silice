@@ -491,8 +491,13 @@ describe("Pendientes: la lectura de la carga inicial no deja datos viejos", () =
       if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
       return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
     };
-    montar({ inicial: "/obras", ir: "/inicio/pendientes" });
+    // Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §5): la prueba arrancaba en «/obras», una dirección corta que
+    // el marco lleva sola a Pendientes en cuanto sabe que la sesión no tiene obra. Si esa redirección llegaba antes del clic
+    // (la CI de Linux), ella misma pedía la segunda lectura, la respuesta llegaba y el clic pedía una tercera. Se arranca en
+    // una ruta que se queda (la de una obra) y se comprueba que sigue ahí antes de entrar.
+    montar({ inicial: "/obra/empresa/7/presupuesto", ir: "/inicio/pendientes" });
     await waitFor(() => expect(pedidas()).toBe(1));
+    expect(ruta()).toBe("/obra/empresa/7/presupuesto");
     await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     // La lectura de antes de entrar se descarta: entrar en Pendientes pide siempre una nueva.
     await waitFor(() => expect(pedidas()).toBe(2));
