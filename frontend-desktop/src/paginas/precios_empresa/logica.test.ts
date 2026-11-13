@@ -9,6 +9,7 @@ import {
   rutaAtipicos,
   faltaAlgo,
   filasDesconocidos,
+  filasNuevos,
   filasHallazgos,
   formularioLista,
   hoyIso,
@@ -146,5 +147,18 @@ describe("logica de Precios de la empresa", () => {
     expect(filasAtipicos(CON_EXACTO)).toEqual([
       { id: "0", insumo: "ATIP-001", porcentaje: "0.390625", desde: "2026-09-01", hasta: "2026-10-01", severidad: "ADVERTENCIA" },
     ]);
+  });
+});
+
+
+describe("filasNuevos (árbitro 13/11, M5: sin claves del servidor)", () => {
+  test("el tipo con su nombre y la unidad como se escribe", () => {
+    const filas = filasNuevos([
+      { insumo: "Chofer ficticio", tipo: "mano_obra", unidad: "dia", precio: "12.5" },
+      { insumo: "Arena ficticia", tipo: "material", unidad: "m3", precio: "8" },
+      { insumo: "Rodillo ficticio", tipo: "equipo", unidad: "", precio: "40" },
+    ]);
+    expect(filas.map((f) => f.tipo)).toEqual(["Mano de obra", "Material", "Equipo"]);
+    expect(filas[1]!.unidad).toBe("m³");
   });
 });

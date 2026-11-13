@@ -22,6 +22,9 @@ const SESION: SesionRespuesta = {
   modo_entrega: false,
 };
 
+// Quien además arma (árbitro 13/11, M4): solo ella puede crear la lista para armar (`editar_hoja`).
+const SESION_ARMA: SesionRespuesta = { ...SESION, roles: ["administrador", "arma"], acciones: ["administrar_precios", "editar_hoja"] };
+
 const SOLO_BASES: Estado = {
   bases: [
     { id: 2, nombre: "MaPreX julio 2026 en Bs", moneda: "Bs" },
@@ -121,9 +124,9 @@ describe("Precios de la empresa", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  function montar(alExpirar = vi.fn()) {
+  function montar(alExpirar = vi.fn(), sesion: SesionRespuesta = SESION) {
     const valor: Aplicacion = {
-      sesion: SESION,
+      sesion,
       proyecto: null,
       caso: { nombre: "clinica", ruta_relativa: "data/clinica.db" },
       recargarProyectos: vi.fn(),
@@ -319,7 +322,7 @@ describe("Precios de la empresa", () => {
         },
         201,
       );
-    montar();
+    montar(vi.fn(), SESION_ARMA);
     const usuario = await llenarYEnviar("USD");
     expect(await screen.findByText(/se dio de alta 1 insumo nuevo en el catálogo/)).toBeInTheDocument();
     const altas = screen.getByRole("table", { name: "Insumos dados de alta en el catálogo" });
@@ -332,6 +335,15 @@ describe("Precios de la empresa", () => {
     expect(
       await screen.findByText("Lista para armar creada: Empresa ficticia 2026-10-05 al 13/11/2026. Ya puede componer con ella."),
     ).toBeInTheDocument();
+  });
+
+  test("sin permiso de armar no se ofrece usarla como lista para armar y se dice quién la crea (árbitro 13/11, M4)", async () => {
+    crear = () => json({ ...CREADA, id: 9, nombre: "Empresa ficticia 2026-10-05" }, 201);
+    montar();
+    await llenarYEnviar("USD");
+    expect(await screen.findByText(/creada con/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Usarla como lista para armar" })).toBeNull();
+    expect(screen.getByText("La lista para armar la crea quien arma el presupuesto, desde Componer.")).toBeInTheDocument();
   });
 
   test("un rechazo del servidor sale como aviso con su detalle", async () => {

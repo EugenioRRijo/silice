@@ -84,6 +84,8 @@ describe("motivoDeVersion (E2E-3: la fuente escrita, no la clave del servidor)",
     expect(motivoDeVersion(fila("VIV-004", false, { motivo: "cotizacion" }))).toBe("Cotización");
     expect(motivoDeVersion(fila("VIV-005", false, { motivo: "revaloracion" }))).toBe("Revaloración");
     expect(motivoDeVersion(fila("VIV-006", false, { motivo: "conversion" }))).toBe("Conversión");
+    // árbitro 13/11, M6: la versión que crea Control › Opciones de recuperación
+    expect(motivoDeVersion(fila("VIV-008", false, { motivo: "recuperacion" }))).toBe("Recuperación");
   });
 
   test("una clave que no conoce se muestra tal cual", () => {
