@@ -1,5 +1,6 @@
 import { Button } from "@carbon/react";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
+import { leerCifra } from "../../indicadores/cifraEscrita";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { TablaPaginada } from "./TablaPaginada";
@@ -10,6 +11,18 @@ import type { EdicionDeApu, LineaApu, UbicacionDeApu } from "./logicaApu";
 // Una tabla del APU por rubro (materiales, equipos, mano de obra) con su subtotal. Sale de `PestanaApu.tsx` en la Tarea 7
 // del plan F4 junto con `EditorDeApu`, que la usa en la pestaña y en el panel lateral; aparte porque es una pieza con sus
 // propias columnas y el editor ya es largo.
+
+// Dos textos que escriben la misma cifra («0,5» y «0,50», «1234,5» y «1.234,5», « 4» y «4»), con la regla de
+// `leerCifra` y sin ceros decimales de más: solo texto, sin aritmética (árbitro del 2026-11-13, M5). Lo que no se lee
+// como cifra solo es igual a sí mismo.
+function mismaCifra(a: string, b: string): boolean {
+  const canonica = (texto: string) => {
+    const lectura = leerCifra(texto);
+    return "valor" in lectura ? lectura.valor.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "") : null;
+  };
+  const [x, y] = [canonica(a), canonica(b)];
+  return x !== null && y !== null ? x === y : a === b;
+}
 
 const NUMERICAS = new Set(["precio", "depreciacion", "sueldo"]);
 
@@ -134,7 +147,7 @@ export function TablaDelRubro({
         if (!traza) return "";
         const neta = edicion.cantidades[grupo.clave]?.[n - 1] ?? f.cantidad;
         const porcentaje = edicion.desperdicios[n - 1] ?? "";
-        return neta === traza.neta && porcentaje === traza.porcentaje ? (f.cantidad ?? "") : "";
+        return mismaCifra(neta, traza.neta) && mismaCifra(porcentaje, traza.porcentaje) ? (f.cantidad ?? "") : "";
       },
     });
   }
