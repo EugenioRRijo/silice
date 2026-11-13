@@ -93,7 +93,7 @@ desperdicio» compara la neta y el porcentaje como cifras, solo con texto, y ya 
 nombre de quien guarda», y no lleva responsable (M8). Lo que el árbitro comprobó con guiones (atomicidad, primera
 versión, porcentajes de frontera) quedó en la suite (M6).
 
-**Historia de TDD (M7), declarada y sin reescribir:** el verde del lector (`b3c877bc`) tiene una fecha de autor anterior
-a su rojo (`81159f96`) porque los dos se recrearon con `cherry-pick` para quitar del mensaje un recuento derivado del
+**Historia de TDD (M7), declarada y sin reescribir:** el verde del lector (`5d2d2683`) tiene una fecha de autor anterior
+a su rojo (`b8c992e4`) porque los dos se recrearon con `cherry-pick` para quitar del mensaje un recuento derivado del
 libro real; el rojo falla igual (10 fallos, lo comprobó el árbitro). `d2b9a654` (tildes) dejó tres pruebas de Componer en
 rojo, corregidas en `01a7e3a2`, y `c3ec646c` corrigió dos pruebas del front que traía el parche de Hydrogen.

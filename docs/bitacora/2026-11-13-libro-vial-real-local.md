@@ -19,8 +19,8 @@ en el Escritorio de Eugenio («Prueba libro vial real (solo local) 2026-11-13.md
 
 | # | Defecto | Corrección | Commits |
 |---|---|---|---|
-| 1 | El libro escribe cada porcentaje del pie a la **izquierda** de su rótulo y el monto a la derecha; el lector tomaba «el primer número a la derecha», es decir el monto, y daba AH1 ERROR falso en cada hoja | El perfil declara `lado_de_los_porcentajes` («derecha» por omisión, como hasta hoy; «izquierda» toma el número más cercano a la izquierda). Un valor distinto rechaza el perfil | `81159f96` (rojo), `b3c877bc` (verde) |
-| 2 | La cantidad del presupuesto es el valor en caché de una fórmula y llega como doble con ruido binario (0,1 + 0,2 = 0.30000000000000004): AH6 falsos y un mensaje con la cifra ruidosa | `numero_de` toma cada `float` con 15 dígitos significativos, la precisión que Excel garantiza. Un `Decimal` o un entero no cambian | `81159f96` (rojo), `b3c877bc` (verde) |
+| 1 | El libro escribe cada porcentaje del pie a la **izquierda** de su rótulo y el monto a la derecha; el lector tomaba «el primer número a la derecha», es decir el monto, y daba AH1 ERROR falso en cada hoja | El perfil declara `lado_de_los_porcentajes` («derecha» por omisión, como hasta hoy; «izquierda» toma el número más cercano a la izquierda). Un valor distinto rechaza el perfil | `b8c992e4` (rojo), `5d2d2683` (verde) |
+| 2 | La cantidad del presupuesto es el valor en caché de una fórmula y llega como doble con ruido binario (0,1 + 0,2 = 0.30000000000000004): AH6 falsos y un mensaje con la cifra ruidosa | `numero_de` toma cada `float` con 15 dígitos significativos, la precisión que Excel garantiza. Un `Decimal` o un entero no cambian | `b8c992e4` (rojo), `5d2d2683` (verde) |
 
 **Por qué declarar el lado y no adivinarlo.** Adivinar (el número que «parece» porcentaje) confundiría el monto con el
 porcentaje sin avisar en cuanto los dos sean parecidos; el perfil ya es quien dice dónde está cada cosa (por rótulos), y
