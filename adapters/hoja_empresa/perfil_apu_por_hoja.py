@@ -44,8 +44,10 @@ __all__ = [
     "VARIABLE_PERFILES",
     "Bloque",
     "PerfilApuPorHoja",
+    "PerfilDisponible",
     "cargar_perfil_apu_por_hoja",
     "carpetas_locales",
+    "perfiles_apu_por_hoja",
 ]
 
 _DIR_PERFILES = Path(__file__).parent / "perfiles"
@@ -97,6 +99,18 @@ class PerfilApuPorHoja:
     encabezado_presupuesto: Mapping[str, tuple[str, ...]]
     lado_de_los_porcentajes: str = "derecha"
     origen: str = "paquete"
+
+
+@dataclass(frozen=True, slots=True)
+class PerfilDisponible:
+    """Un perfil que se puede elegir (E2E-2): su nombre, de dónde viene y qué hoja del presupuesto
+    lee; si está mal escrito, `hoja_presupuesto` es `None` y `motivo` dice por qué (el mensaje de
+    `PerfilInvalido`, que nombra el perfil y nunca una ruta del disco)."""
+
+    nombre: str
+    origen: str
+    hoja_presupuesto: str | None
+    motivo: str | None = None
 
 
 def _error(nombre: str, msg: str) -> PerfilInvalido:
@@ -217,10 +231,41 @@ def cargar_perfil_apu_por_hoja(
     for carpeta in buscadas:
         ruta = Path(carpeta) / f"{nombre}.json"
         if ruta.is_file():
-            try:
-                crudo = json.loads(ruta.read_text(encoding="utf-8"))
-            except json.JSONDecodeError as exc:
-                raise _error(nombre, f"JSON mal formado: {exc}") from exc
             origen = "paquete" if Path(carpeta) == _DIR_PERFILES else "local"
-            return _construir(nombre, crudo, origen)
+            return _construir(nombre, _leer_json(nombre, ruta), origen)
     raise PerfilInvalido(f"no existe el perfil {nombre!r}")
+
+
+def _leer_json(nombre: str, ruta: Path) -> Any:
+    try:
+        return json.loads(ruta.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise _error(nombre, f"JSON mal formado: {exc}") from exc
+
+
+def perfiles_apu_por_hoja(carpetas: Sequence[Path] | None = None) -> tuple[PerfilDisponible, ...]:
+    """Los perfiles de libro con un APU por hoja que se pueden elegir (E2E-2): los de `carpetas`
+    (por omisión, la carpeta local de la instalación) y los del paquete, con la misma precedencia
+    que `cargar_perfil_apu_por_hoja` (uno local reemplaza al del paquete con su nombre). Un JSON de
+    otro tipo de perfil (sin `"tipo": "apu_por_hoja"`, como el de la plantilla conocida) no sale;
+    uno local que no se puede usar sale con su `motivo`. Primero los válidos y después los demás,
+    cada grupo por nombre."""
+    vistos: dict[str, PerfilDisponible] = {}
+    for carpeta in [*(carpetas_locales() if carpetas is None else carpetas), _DIR_PERFILES]:
+        origen = "paquete" if Path(carpeta) == _DIR_PERFILES else "local"
+        for ruta in sorted(Path(carpeta).glob("*.json")):
+            nombre = ruta.stem
+            if nombre in vistos or not ruta.is_file():
+                continue
+            try:
+                if not _NOMBRE.fullmatch(nombre):
+                    raise PerfilInvalido(f"nombre de perfil no válido: {nombre!r}")
+                crudo = _leer_json(nombre, ruta)
+                if not isinstance(crudo, dict) or crudo.get("tipo") != "apu_por_hoja":
+                    continue  # otro tipo de perfil: no es de esta pantalla
+                perfil = _construir(nombre, crudo, origen)
+            except PerfilInvalido as exc:
+                vistos[nombre] = PerfilDisponible(nombre, origen, None, str(exc))
+                continue
+            vistos[nombre] = PerfilDisponible(nombre, origen, perfil.hoja_presupuesto)
+    return tuple(sorted(vistos.values(), key=lambda p: (p.motivo is not None, p.nombre.casefold())))

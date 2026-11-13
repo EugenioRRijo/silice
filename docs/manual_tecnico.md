@@ -925,13 +925,23 @@ carpeta de perfiles locales y después en el paquete:
 Si la carpeta no existe, solo valen los perfiles del paquete. Ninguna función la crea: la crea quien
 pone el primer perfil.
 
-**Cómo se elige.** La pantalla no manda el campo `perfil`, así que usa `apu_por_hoja`: un
-`apu_por_hoja.json` en la carpeta local **reemplaza** al del paquete para toda la instalación. Un
-perfil con otro nombre solo se alcanza por la API, con el campo de formulario `perfil`. El nombre
-es `[a-z0-9_]+` y debe coincidir con el campo `nombre` del JSON. Un perfil que no existe o que está
+**Cómo se elige** (E2E-2, 2026-11-13; antes la pantalla no mandaba el campo). La pantalla pide
+`GET /v1/libros/perfiles-apu-por-hoja` (`adapters.hoja_empresa.perfil_apu_por_hoja.perfiles_apu_por_hoja`):
+los perfiles locales y los del paquete con su nombre, su origen y la hoja del presupuesto que leen,
+nunca una ruta del disco. Uno local con el nombre de uno del paquete lo **reemplaza** (la misma
+precedencia que al cargar); un JSON de otro tipo de perfil (sin `"tipo": "apu_por_hoja"`, como el de
+la plantilla conocida) no sale; uno local mal escrito sale con su `motivo` y la pantalla lo muestra
+sin dejar elegirlo. La pantalla propone `apu_por_hoja` (o el primero que se pueda usar) y manda el
+campo de formulario `perfil`; si la lista no se lee, audita sin el campo y lo dice. Para un
+presupuesto de varios frentes basta un perfil por frente que cambie solo `presupuesto.hoja`. El
+nombre es `[a-z0-9_]+` y debe coincidir con el campo `nombre` del JSON. Un perfil que no existe o que está
 mal escrito (`PerfilInvalido`) responde 422 con el motivo; el informe dice cuál se usó y de dónde
-(`perfil`, `origen_perfil`: `local` o `paquete`), y la pantalla lo escribe: «Perfil apu_por_hoja (de
-esta instalación) · …» o «(del paquete)».
+(`perfil`, `origen_perfil`: `local` o `paquete`) y qué hoja del presupuesto leyó (`hoja_presupuesto`),
+y la pantalla lo escribe: «Perfil apu_por_hoja (de esta instalación) · … · con … (hoja …)» o «(del
+paquete)». Si esa hoja parece de otra obra (de los renglones enlazados con cantidad en los dos lados,
+dos o más, menos de la mitad tienen la de su APU), AH11 lo dice como ADVERTENCIA en el encabezado de
+la cantidad, y la pantalla lo repite arriba del informe (umbral simulado en
+`docs/bitacora/2026-11-13-e2e-front.md`).
 
 **Escribir uno.** Copie el del paquete en la carpeta local y cambie solo los rótulos, la tabla
 `unidades` (lo que escribe el libro → la unidad de Sílice; cada traducción usada sale como AH8) y

@@ -193,7 +193,8 @@ def _variaciones(
     completos = meses_completos(historia, series, p)
     minimo = int(MINIMO_DE_MESES.valor)
     if len(completos) < minimo:
-        raise ValueError(f"solo hay {len(completos)} meses completos; se necesitan {minimo}")
+        hay = "1 mes completo" if len(completos) == 1 else f"{len(completos)} meses completos"
+        raise ValueError(f"solo hay {hay}; se necesitan {minimo}")
     variaciones: dict[str, list[Decimal]] = {}
     for s in series:
         valores = historia[s]

@@ -1,11 +1,12 @@
-import { Button } from "@carbon/react";
-import { InlineLoading } from "../../comun/carbonEs";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { useCarga } from "../../comun/useCarga";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { unidadEscrita } from "../../comun/unidades";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -14,6 +15,12 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 // (`POST /v1/libros/apu-por-hoja`). El servidor recalcula cada hoja, la compara con lo impreso y dice cada hallazgo con
 // su celda; aquí no se calcula nada: los precios llegan ya presentados a dos decimales y solo se escriben en es-VE.
 // Nada se guarda: ni los libros ni el informe.
+//
+// E2E-2 (prueba de punta a punta del 2026-11-13): el perfil se elige de la lista del servidor
+// (`GET /v1/libros/perfiles-apu-por-hoja`: los del paquete y los de esta instalación, con la hoja del presupuesto
+// que lee cada uno; uno mal escrito sale sin poder elegirse y con su motivo). Si la lista no se lee, se audita con el
+// de siempre (`apu_por_hoja`, sin mandar el campo) y se dice. El aviso AH11 (la hoja del presupuesto parece de otra
+// obra) sale arriba del informe, además de en la tabla.
 
 interface ApuPorHoja {
   hoja: string;
@@ -49,6 +56,7 @@ export interface InformeApuPorHoja {
   perfil: string;
   origen_perfil: "paquete" | "local";
   presupuesto: string | null;
+  hoja_presupuesto: string | null;
   cumple: boolean;
   por_severidad: Record<string, number>;
   apus: ApuPorHoja[];
@@ -56,11 +64,36 @@ export interface InformeApuPorHoja {
   desperdicios: DesperdicioLeido[];
 }
 
-export function auditarApuPorHoja(libro: File, presupuesto: File | null): Promise<InformeApuPorHoja> {
+export interface PerfilDisponible {
+  nombre: string;
+  origen: "paquete" | "local";
+  hoja_presupuesto: string | null;
+  motivo: string | null;
+}
+
+export function auditarApuPorHoja(libro: File, presupuesto: File | null, perfil: string | null = null): Promise<InformeApuPorHoja> {
   const cuerpo = new FormData();
   cuerpo.append("libro", libro);
   if (presupuesto) cuerpo.append("presupuesto", presupuesto);
+  if (perfil) cuerpo.append("perfil", perfil);
   return pedir<InformeApuPorHoja>("/v1/libros/apu-por-hoja", { metodo: "POST", cuerpo });
+}
+
+const POR_OMISION = "apu_por_hoja";
+const RUTA_PERFILES = "/v1/libros/perfiles-apu-por-hoja";
+const AVISO_OTRA_OBRA = "AH11";
+const origenDe = (origen: "paquete" | "local") => (origen === "local" ? "de esta instalación" : "del paquete");
+
+function textoDelPerfil(p: PerfilDisponible): string {
+  return p.motivo !== null || p.hoja_presupuesto === null
+    ? `${p.nombre} · no se puede usar: ${p.motivo ?? "sin hoja de presupuesto"}`
+    : `${p.nombre} · lee la hoja ${p.hoja_presupuesto} (${origenDe(p.origen)})`;
+}
+
+// El perfil que se propone: el de siempre si se puede usar; si no, el primero que se pueda.
+function perfilInicial(perfiles: PerfilDisponible[]): string | null {
+  const usables = perfiles.filter((p) => p.motivo === null && p.hoja_presupuesto !== null);
+  return (usables.find((p) => p.nombre === POR_OMISION) ?? usables[0])?.nombre ?? null;
 }
 
 const NO_EVALUABLE = "No evaluable";
@@ -90,6 +123,11 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
   const [informe, setInforme] = useState<InformeApuPorHoja | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [auditando, setAuditando] = useState(false);
+  const lista = useCarga<PerfilDisponible[]>(RUTA_PERFILES, alExpirar);
+  const perfiles = lista.estado === "listo" ? lista.datos : null;
+  const sinLista = lista.estado !== "listo" && lista.estado !== "cargando";
+  const [elegido, setElegido] = useState<string | null>(null);
+  const perfil = elegido ?? (perfiles ? perfilInicial(perfiles) : null);
 
   async function auditar() {
     if (libro === null) return;
@@ -97,7 +135,7 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
     setInforme(null);
     setAuditando(true);
     try {
-      setInforme(await auditarApuPorHoja(libro, presupuesto));
+      setInforme(await auditarApuPorHoja(libro, presupuesto, perfil));
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       else setError(razon);
@@ -116,6 +154,30 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
         recalcula cada hoja, la compara con lo impreso y enlaza cada renglón del presupuesto con su hoja por el número.
         Sílice no conserva ninguno de los dos archivos.
       </p>
+      {perfiles !== null && perfiles.length > 0 && (
+        <Select
+          id="auditoria-apu-perfil"
+          labelText="Perfil del libro"
+          helperText="Dice cómo leer las hojas de APU y qué hoja del presupuesto comparar. Con un presupuesto de varios frentes, elija el del frente de este libro."
+          value={perfil ?? ""}
+          onChange={(e) => setElegido(e.target.value)}
+          disabled={auditando}
+        >
+          {perfiles.map((p) => (
+            <SelectItem
+              key={p.nombre}
+              value={p.nombre}
+              text={textoDelPerfil(p)}
+              disabled={p.motivo !== null || p.hoja_presupuesto === null}
+            />
+          ))}
+        </Select>
+      )}
+      {sinLista && (
+        <p className="silice-inicio__nota cds--type-body-compact-01">
+          {`No se pudo leer la lista de perfiles: se audita con ${POR_OMISION}.`}
+        </p>
+      )}
       <SubidaArchivo
         id="auditoria-apu-libro"
         etiqueta="Suelte aquí el .xlsx de los APU (una hoja por partida), o haga clic para elegirlo"
@@ -149,7 +211,8 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
 }
 
 function Informe({ informe }: { informe: InformeApuPorHoja }): JSX.Element {
-  const origen = informe.origen_perfil === "local" ? "de esta instalación" : "del paquete";
+  const origen = origenDe(informe.origen_perfil);
+  const otraObra = informe.hallazgos.find((h) => h.codigo === AVISO_OTRA_OBRA);
   const precios = informe.apus.map((a) => ({
     id: a.hoja,
     hoja: a.hoja,
@@ -169,8 +232,20 @@ function Informe({ informe }: { informe: InformeApuPorHoja }): JSX.Element {
     <>
       <p className="silice-inicio__nota cds--type-body-compact-01">
         {`Perfil ${informe.perfil} (${origen}) · ${informe.libro.nombre}`}
-        {informe.presupuesto ? ` · con ${informe.presupuesto}` : " · sin libro de presupuesto"}
+        {informe.presupuesto
+          ? ` · con ${informe.presupuesto}${informe.hoja_presupuesto ? ` (hoja ${informe.hoja_presupuesto})` : ""}`
+          : " · sin libro de presupuesto"}
       </p>
+      {otraObra && (
+        <InlineNotification
+          kind="warning"
+          role="status"
+          title="La hoja del presupuesto parece de otra obra"
+          subtitle={otraObra.descripcion}
+          lowContrast
+          hideCloseButton
+        />
+      )}
       <TablaDensa etiqueta="Precio unitario de cada hoja" columnas={COLUMNAS_PRECIOS} filas={precios} />
       <TablaDensa
         etiqueta="Hallazgos del libro"

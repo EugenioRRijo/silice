@@ -207,8 +207,8 @@ describe("Versiones: la tabla de las versiones de la obra", () => {
     ]);
     await waitFor(async () =>
       expect(await celdas()).toEqual([
-        ["VIV-002 (abierta)", "21/10/2026", "edicion", "VIV-001", "4", "Guardada", "Sí"],
-        ["VIV-001", "20/10/2026", "elaborada", "", "0", "Devuelta", ""],
+        ["VIV-002 (abierta)", "21/10/2026", "Edición", "VIV-001", "4", "Guardada", "Sí"],
+        ["VIV-001", "20/10/2026", "Elaborada", "", "0", "Devuelta", ""],
       ]),
     );
   });

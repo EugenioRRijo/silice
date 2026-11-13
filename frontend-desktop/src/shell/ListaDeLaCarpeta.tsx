@@ -4,6 +4,15 @@ import { ErrorDeApi, pedir } from "../api/cliente";
 import type { CarpetaRespuesta } from "../api/tipos";
 import { fechaEsVe } from "../indicadores/formatoEsVe";
 
+// E2E-3: la cabecera se leía solo al montarse y, tras crear la lista para armar en Componer, seguía diciendo que la carpeta
+// no la tenía hasta recargar. Quien cambia la lista de la carpeta lo avisa con `avisarCambioDeLaCarpeta` (un evento de la
+// ventana, sin estado compartido) y la cabecera la vuelve a leer.
+const CAMBIO_DE_LA_CARPETA = "silice:cambio-de-la-carpeta";
+
+export function avisarCambioDeLaCarpeta(): void {
+  window.dispatchEvent(new Event(CAMBIO_DE_LA_CARPETA));
+}
+
 // «{nombre}, al {dd/mm/aaaa}», sin repetir la fecha cuando el nombre ya termina con ella: las listas derivadas se
 // llaman «… al 26/10/2026» (o «… al 26/10/2026 (2)»). Decision por defecto del orquestador, por ratificar de Eugenio.
 export function nombreConFecha(lista: { nombre: string; fecha: string }): string {
@@ -19,12 +28,21 @@ export function ListaDeLaCarpeta(props: { alExpirar: () => void; monedaDeLaObra:
   const { alExpirar, monedaDeLaObra } = props;
   const [carpeta, setCarpeta] = useState<CarpetaRespuesta | null>(null);
   const [fallo, setFallo] = useState(false);
+  const [lecturas, setLecturas] = useState(0);
+
+  useEffect(() => {
+    const releer = () => setLecturas((n) => n + 1);
+    window.addEventListener(CAMBIO_DE_LA_CARPETA, releer);
+    return () => window.removeEventListener(CAMBIO_DE_LA_CARPETA, releer);
+  }, []);
 
   useEffect(() => {
     let vigente = true;
     pedir<CarpetaRespuesta>("/v1/carpeta")
       .then((r) => {
-        if (vigente) setCarpeta(r);
+        if (!vigente) return;
+        setCarpeta(r);
+        setFallo(false);
       })
       .catch((e: unknown) => {
         if (!vigente) return;
@@ -34,7 +52,7 @@ export function ListaDeLaCarpeta(props: { alExpirar: () => void; monedaDeLaObra:
     return () => {
       vigente = false;
     };
-  }, [alExpirar]);
+  }, [alExpirar, lecturas]);
 
   let texto: string;
   if (fallo) texto = "No se pudo leer la moneda de la carpeta.";

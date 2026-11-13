@@ -149,7 +149,14 @@ def _partidas_viales(texto: str, limite: int) -> list[Sugerencia]:
         (
             codigo,
             descripcion,
-            Sugerencia(codigo, f"{descripcion} ({codigo}, {unidad})", FUENTE_PARTIDAS),
+            # E2E-3: la descripción y la unidad aparte, para que Componer las ponga al elegirla
+            Sugerencia(
+                codigo,
+                f"{descripcion} ({codigo}, {unidad})",
+                FUENTE_PARTIDAS,
+                descripcion=descripcion,
+                unidad=unidad,
+            ),
         )
         for codigo, descripcion, unidad in PARTIDAS_VIALES.values()
     ]

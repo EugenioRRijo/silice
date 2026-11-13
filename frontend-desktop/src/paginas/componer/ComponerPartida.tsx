@@ -196,7 +196,23 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     cambiarCabecera(parcial);
     setAvisoDeCabecera(avisos.join(" "));
   };
-  // Cualquier cambio del codigo que no sea elegir una partida del catalogo (teclear, «Usar … como codigo», una partida vial).
+  // E2E-3: una partida vial de Sílice pone su código y su descripción y su unidad donde estén vacías (o donde siga lo que puso
+  // otra partida elegida); lo tecleado no se pisa: la partida es nueva en el catálogo y su nombre lo decide quien compone.
+  const elegirVial = (codigo: string, vial: { descripcion: string; unidad: string }) => {
+    const parcial: Partial<Cabecera> = { codigo };
+    for (const campo of ["descripcion", "unidad"] as const) {
+      const actual = cabecera[campo];
+      if (actual.trim() === "" || actual === delCatalogo.current[campo]) {
+        parcial[campo] = vial[campo];
+        delCatalogo.current[campo] = vial[campo];
+      }
+    }
+    delCatalogo.current.codigo = codigo;
+    retirado.current = {};
+    cambiarCabecera(parcial);
+    setAvisoDeCabecera("");
+  };
+  // Cualquier cambio del codigo que no sea elegir una partida del catalogo o una vial (teclear, «Usar … como codigo»).
   const cambiarCodigo = (codigo: string) => {
     const parcial: Partial<Cabecera> = { codigo };
     for (const campo of ["descripcion", "unidad"] as const) {
@@ -457,6 +473,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             texto={cabecera.codigo}
             alCambiar={cambiarCodigo}
             alElegirDelCatalogo={elegirDelCatalogo}
+            alElegirVial={elegirVial}
             alExpirar={expirar}
           />
           <CampoTexto

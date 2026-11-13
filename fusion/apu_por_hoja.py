@@ -28,6 +28,11 @@ Hallazgos (`FilaHallazgo`, con su `HOJA!CELDA`; la acción es siempre «informad
   sigue el patrón, no hay hallazgo, y si una cifra no sigue la regla, el AH9 dice que no se adivina.
 - **AH10** dos hojas con el mismo número de renglón (ADVERTENCIA, en la celda del número de la
   segunda): el presupuesto se enlaza con la primera y la otra no se compara con ningún renglón.
+- **AH11** la hoja del presupuesto parece de otra obra (ADVERTENCIA, en el encabezado de su
+  cantidad): de los renglones enlazados con cantidad en los dos lados (dos o más), menos de la
+  mitad tienen la misma que su APU. Pasa cuando el perfil lee la hoja de otro frente (prueba de
+  punta a punta del 2026-11-13, E2E-2; umbral simulado en `docs/bitacora/2026-11-13-e2e-front.md`):
+  cada renglón da su AH6 y este hallazgo dice la causa probable y qué hoja leyó el perfil.
 
 El enlace presupuesto ↔ APU es el número de renglón (la cabecera «Partida N°» de la hoja). Un
 libro de solo valores no trae fórmulas: las reglas L del libro conocido no aplican y la evidencia es
@@ -116,6 +121,8 @@ class ResultadoApuPorHoja:
     hallazgos: tuple[FilaHallazgo, ...]
     trazas: tuple[TrazaDesperdicio, ...]
     presupuesto: str | None = None
+    #: La hoja del libro de presupuesto que se leyó (la del perfil), `None` sin presupuesto.
+    hoja_presupuesto: str | None = None
 
 
 def _es(valor: Decimal, decimales: int | None = None) -> str:
@@ -321,6 +328,7 @@ class _Renglon:
     cantidad: Decimal | None
     precio: Decimal | None
     columnas: Mapping[str, int]
+    encabezado: int  # la fila (1-base) de los encabezados de la hoja
 
 
 def _encabezado(filas: Sequence[Sequence[Any]], perfil: PerfilApuPorHoja):
@@ -385,6 +393,7 @@ def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str
                 cantidad,
                 precio,
                 columnas,
+                i + 1,
             )
         )
     return titulo, renglones
@@ -412,6 +421,36 @@ def _repetidos(apus: Sequence[ApuLeido]) -> list[FilaHallazgo]:
         )
         for apu in apus
         if apu.numero is not None and primeras[apu.numero] is not apu
+    ]
+
+
+def _otra_obra(
+    titulo: str, renglones: Sequence[_Renglon], apus: Sequence[ApuLeido], perfil: str
+) -> list[FilaHallazgo]:
+    """AH11: de los renglones enlazados con cantidad en los dos lados (dos o más), menos de la
+    mitad tienen la misma que su APU (ver la cabecera del módulo)."""
+    por_numero = _primeras(apus)
+    pares = [
+        (r, por_numero[r.numero])
+        for r in renglones
+        if r.numero in por_numero
+        and r.cantidad is not None
+        and por_numero[r.numero].cantidad is not None
+    ]
+    casan = sum(1 for r, apu in pares if r.cantidad == apu.cantidad)
+    if len(pares) < 2 or casan * 2 >= len(pares):
+        return []
+    primero = pares[0][0]
+    cuantos = "ninguno tiene" if casan == 0 else f"solo {casan} tiene{'' if casan == 1 else 'n'}"
+    return [
+        _hallazgo(
+            "AH11",
+            "ADVERTENCIA",
+            f"{titulo}!{letra(primero.columnas['cantidad'])}{primero.encabezado}",
+            f"La hoja {titulo} del presupuesto parece de otra obra: de {len(pares)} renglones "
+            f"enlazados con su APU, {cuantos} la misma cantidad. Revise el perfil: {perfil} lee "
+            f"la hoja {titulo}.",
+        )
     ]
 
 
@@ -506,8 +545,10 @@ def auditar_apu_por_hoja(
         hallazgos.extend(propios)
         trazas.extend(suyas)
     hallazgos.extend(_repetidos(libro.apus))
+    titulo = None
     if presupuesto is not None:
         titulo, renglones = _renglones(presupuesto, presupuesto_nombre or "presupuesto", elegido)
+        hallazgos.extend(_otra_obra(titulo, renglones, libro.apus, elegido.nombre))
         hallazgos.extend(_enlace(titulo, renglones, libro.apus))
     return ResultadoApuPorHoja(
         libro=libro,
@@ -517,4 +558,5 @@ def auditar_apu_por_hoja(
         hallazgos=tuple(hallazgos),
         trazas=tuple(trazas),
         presupuesto=presupuesto_nombre or None if presupuesto is not None else None,
+        hoja_presupuesto=titulo,
     )

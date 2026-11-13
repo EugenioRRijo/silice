@@ -12,6 +12,18 @@ export function formatoEsVe(decimal: string): string {
   return `${signo}${miles}${fraccion !== undefined ? `,${fraccion}` : ""}`;
 }
 
+// Una cantidad de la API, que puede traer los ceros de la columna («12345.600000»), a es-VE sin ceros de más
+// («12.345,6»; «20.000» -> «20»; «-0.000» -> «0»). Para cantidades, no para montos: un monto se lee en centésimas
+// (`centesimasEsVe`). Lo que no es un decimal se devuelve tal cual.
+export function cantidadEsVe(texto: string): string {
+  const m = DECIMAL.exec(texto.trim());
+  if (!m) return texto;
+  const [, signo, entera, fraccion = ""] = m;
+  const resto = fraccion.replace(/0+$/, "");
+  const esCero = /^0*$/.test(entera) && resto === "";
+  return formatoEsVe(`${signo === "-" && !esCero ? "-" : ""}${entera}${resto ? `.${resto}` : ""}`);
+}
+
 // Un monto con su unidad ("95066.60 USD") a es-VE ("95.066,60 USD"): se formatea el decimal inicial y lo que sigue
 // (la unidad) queda igual. Lo que no empieza por un decimal (un porcentaje ya presentado, "no disponible") no se toca.
 const MONTO = /^([-+]?[0-9]+(?:\.[0-9]+)?)(\s.*)?$/;

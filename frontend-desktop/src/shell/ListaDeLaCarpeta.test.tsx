@@ -46,6 +46,27 @@ describe("La lista de la carpeta de trabajo", () => {
     expect(fetchFalso).toHaveBeenCalledTimes(1);
   });
 
+  test("E2E-3: al crear la lista para armar (en Componer u otra pantalla) la cabecera la vuelve a leer sin recargar", async () => {
+    con({ moneda: "USD", declarada: true, lista: null, aviso: SIN_LISTA });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
+    expect(await screen.findByText(`Moneda: USD · ${SIN_LISTA}`)).toBeInTheDocument();
+    con({
+      moneda: "USD",
+      declarada: true,
+      lista: { nombre: "MaPreX ficticio en USD al 13/11/2026", moneda: "USD", fecha: "2026-11-13", origen: "derivada" },
+      aviso: null,
+    });
+    fijarCsrf("tok");
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      if (String(entrada) === "/v1/carpeta/lista-para-armar" && init?.method === "POST") return respuesta();
+      return String(entrada) === "/v1/carpeta" ? respuesta() : json({ detalle: "No encontrado." }, 404);
+    });
+    const { crearListaParaArmar } = await import("../paginas/componer/cliente");
+    await crearListaParaArmar("maprex");
+    expect(await screen.findByText("Moneda: USD · Lista para armar: MaPreX ficticio en USD al 13/11/2026")).toBeInTheDocument();
+    fijarCsrf(null);
+  });
+
   test("una lista derivada que ya trae su fecha en el nombre no la repite", async () => {
     con({
       moneda: "Bs",

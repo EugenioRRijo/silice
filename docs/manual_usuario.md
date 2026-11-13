@@ -1392,17 +1392,26 @@ Algunos programas de APU exportan un libro con **una hoja por partida** (solo va
 aparte, el libro del presupuesto. Ese libro no es el de la plantilla de la sección 12.1: se audita en su
 propio bloque, «Libro con un APU por hoja», más abajo en «Inicio de auditoría».
 
-1. Suelte el `.xlsx` de los APU en «Suelte aquí el .xlsx de los APU (una hoja por partida), o haga clic
+1. En «Perfil del libro», elija cómo se lee el libro. Cada opción dice qué hoja del presupuesto compara y
+   de dónde viene: «apu_por_hoja · lee la hoja PRESUPUESTO (del paquete)», o «(de esta instalación)» si
+   quien administra puso un perfil propio. Con un presupuesto de varios frentes (una hoja por frente),
+   elija el del frente de este libro. Un perfil mal escrito sale con «no se puede usar:» y el motivo, y
+   no se puede elegir. Si la lista no se pudo leer, dice «No se pudo leer la lista de perfiles: se audita
+   con apu_por_hoja.».
+2. Suelte el `.xlsx` de los APU en «Suelte aquí el .xlsx de los APU (una hoja por partida), o haga clic
    para elegirlo».
-2. Si tiene el del presupuesto, suéltelo en «Opcional: suelte aquí el .xlsx del presupuesto, o haga clic
+3. Si tiene el del presupuesto, suéltelo en «Opcional: suelte aquí el .xlsx del presupuesto, o haga clic
    para elegirlo». Debajo se lee lo elegido: «Libro de APU: … · Presupuesto: …».
-3. Pulse «Auditar el libro de APU». Mientras trabaja dice «Recalculando cada hoja...».
+4. Pulse «Auditar el libro de APU». Mientras trabaja dice «Recalculando cada hoja...».
 
 **El resultado.**
 
 - Arriba, el perfil con que se leyó y los archivos: «Perfil apu_por_hoja (del paquete) · …», o «(de esta
-  instalación)» si quien administra puso un perfil propio; al final, «· con …» o «· sin libro de
-  presupuesto».
+  instalación)» si quien administra puso un perfil propio; al final, «· con …» y la hoja que se leyó
+  («(hoja PRESUPUESTO)»), o «· sin libro de presupuesto».
+- Si la hoja del presupuesto parece de otra obra (casi ningún renglón tiene la cantidad de su hoja de
+  APU), un aviso «La hoja del presupuesto parece de otra obra» lo dice arriba de las tablas: revise el
+  perfil elegido.
 - La tabla «Precio unitario de cada hoja»: «Hoja», «Código», «Partida», «P.U. impreso» y «P.U. de
   Sílice». Sílice no cree el precio impreso: recalcula cada hoja con sus renglones. «No evaluable» quiere
   decir que esa hoja trae algo que Sílice no reproduce (lo explica un hallazgo).
@@ -1423,6 +1432,7 @@ propio bloque, «Libro con un APU por hoja», más abajo en «Inicio de auditor�
 | AH8 | Una unidad del libro leída como otra («lt» como «l»): la traducción queda dicha | Información |
 | AH9 | La banda de distancia del transporte, leída de la descripción («mayor de 8 km y hasta 10 km») | Información |
 | AH10 | Dos hojas con el mismo número de renglón: el presupuesto se enlaza con la primera | Advertencia |
+| AH11 | La hoja del presupuesto parece de otra obra: de los renglones enlazados (dos o más), menos de la mitad tienen la cantidad de su hoja. Suele ser un perfil que lee la hoja de otro frente | Advertencia |
 
 Cada renglón del presupuesto se enlaza con la hoja que tiene su número («Partida N°» en la cabecera de la
 hoja). Con el perfil del paquete, Sílice lee solo las hojas cuyo nombre empieza por «APU» y, del

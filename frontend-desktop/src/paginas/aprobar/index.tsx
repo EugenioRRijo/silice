@@ -11,7 +11,7 @@ import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { unidadEscrita } from "../../comun/unidades";
 import { nombreDeResponsable } from "../../comun/responsable";
-import { centesimasEsVe, fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import { cantidadEsVe, centesimasEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { EntregaDeLaObra } from "./EntregaDeLaObra";
@@ -249,12 +249,14 @@ function Partidas({ datos }: { datos: DetalleDeEnvio }) {
           { clave: "precio", titulo: "Precio unitario", numerica: true, ordenable: false },
           { clave: "total", titulo: "Total", numerica: true, ordenable: false },
         ]}
-        filas={datos.partidas.map((p) => ({
-          id: p.codigo,
+        // E2E-1: la misma partida puede ir en varios renglones (una parte A y otra B); la fila se identifica por su
+        // posición en el envío, no por el código, o la tabla repetiría la cantidad y el total de uno de ellos.
+        filas={datos.partidas.map((p, i) => ({
+          id: `renglon-${i}`,
           codigo: p.codigo,
           descripcion: p.descripcion,
           unidad: unidadEscrita(p.unidad),
-          cantidad: formatoEsVe(p.cantidad),
+          cantidad: cantidadEsVe(p.cantidad),
           precio: p.pendiente || p.precio_unitario === null ? "Sin precio" : centesimasEsVe(p.precio_unitario),
           total: p.total === null ? "" : centesimasEsVe(p.total),
         }))}

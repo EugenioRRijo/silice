@@ -362,6 +362,21 @@ def test_restaurar_la_001_crea_la_003_copia_de_la_001_y_la_deja_vigente(_casos) 
     assert _cerca(_resumen_de(navegador, ficha, "002")["total"]["exacto"], D("2821.4208"))
 
 
+def test_cada_version_dice_la_fuente_escrita_al_crearla(_casos) -> None:
+    """E2E-3 (prueba de punta a punta del 2026-11-13): la columna «Motivo» de Versiones decía
+    «edicion» o «elaborada» y no lo que escribió quien guardó. Ahora cada versión trae `fuente`:
+    la de su registro de cambios (la misma de `registros`), o vacía si no tiene registro."""
+    ruta = _poner(_casos["dos"])
+    navegador, ficha = _ana()
+    assert _restaurar(navegador, ficha).status_code == 200
+    esperadas = {
+        codigo: next((r[5] for r in registros(ruta, NOMBRE_OF001, codigo)), "")
+        for codigo in ("001", "002", "003")
+    }
+    assert esperadas["003"] == FUENTE
+    assert {v["codigo"]: v["fuente"] for v in _versiones(navegador)["versiones"]} == esperadas
+
+
 @pytest.mark.parametrize("fuente", ["", "   ", "\t\n"])
 def test_restaurar_sin_fuente_es_422_con_el_texto_del_nucleo_y_no_escribe_nada(
     fuente, _casos

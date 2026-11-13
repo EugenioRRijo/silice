@@ -13,6 +13,7 @@ const INFORME = {
   perfil: "apu_por_hoja",
   origen_perfil: "paquete",
   presupuesto: "presupuesto.xlsx",
+  hoja_presupuesto: "PRESUPUESTO",
   cumple: false,
   por_severidad: { ERROR: 1, INFO: 1 },
   apus: [
@@ -25,6 +26,13 @@ const INFORME = {
   ],
   desperdicios: [{ descripcion: "Emulsión ficticia", unidad: "l", cantidad_neta: "0.5", desperdicio_pct: "4", cantidad: "0.52" }],
 };
+
+// E2E-2: los perfiles que se pueden elegir (`GET /v1/libros/perfiles-apu-por-hoja`), ficticios.
+const PERFILES = [
+  { nombre: "apu_por_hoja", origen: "paquete", hoja_presupuesto: "PRESUPUESTO", motivo: null },
+  { nombre: "frente_b", origen: "local", hoja_presupuesto: "FRENTE B", motivo: null },
+  { nombre: "roto", origen: "local", hoja_presupuesto: null, motivo: "perfil 'roto': JSON mal formado" },
+];
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -40,8 +48,11 @@ describe("Auditar un libro con un APU por hoja", () => {
     fijarCsrf("tok");
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
-    fetchFalso.mockImplementation(async () => json(INFORME));
+    fetchFalso.mockImplementation(async (ruta) =>
+      String(ruta) === "/v1/libros/perfiles-apu-por-hoja" ? json(PERFILES) : json(INFORME),
+    );
   });
+  const auditorias = () => fetchFalso.mock.calls.filter(([ruta]) => String(ruta) === "/v1/libros/apu-por-hoja");
   afterEach(() => vi.unstubAllGlobals());
 
   test("sube los dos libros y muestra el informe del servidor con coma decimal", async () => {
@@ -55,7 +66,7 @@ describe("Auditar un libro con un APU por hoja", () => {
     await usuario.click(boton);
 
     await screen.findByRole("table", { name: "Precio unitario de cada hoja" });
-    const [ruta, opciones] = fetchFalso.mock.calls[0];
+    const [ruta, opciones] = auditorias()[0]!;
     expect(ruta).toBe("/v1/libros/apu-por-hoja");
     const cuerpo = opciones?.body as FormData;
     expect((cuerpo.get("libro") as File).name).toBe("frente.xlsx");
@@ -70,6 +81,7 @@ describe("Auditar un libro con un APU por hoja", () => {
     const hallazgos = screen.getByRole("table", { name: "Hallazgos del libro" });
     expect(within(hallazgos).getByText("PRESUPUESTO!F8")).toBeInTheDocument();
     expect(screen.getByText(/Perfil apu_por_hoja \(del paquete\)/)).toBeInTheDocument();
+    expect(screen.getByText(/con presupuesto\.xlsx \(hoja PRESUPUESTO\)/)).toBeInTheDocument();
     expect(screen.getByText("Emulsión ficticia: 0,52 l (0,5 + 4 %)")).toBeInTheDocument();
   });
 
@@ -77,9 +89,62 @@ describe("Auditar un libro con un APU por hoja", () => {
     render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
     await usuario.upload(campos()[0], new File(["x"], "frente.xlsx"));
     await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
-    await waitFor(() => expect(fetchFalso).toHaveBeenCalled());
-    const cuerpo = fetchFalso.mock.calls[0][1]?.body as FormData;
+    await waitFor(() => expect(auditorias()).toHaveLength(1));
+    const cuerpo = auditorias()[0]![1]?.body as FormData;
     expect(cuerpo.get("presupuesto")).toBeNull();
+  });
+
+  test("E2E-2: se elige el perfil de la lista del servidor y se manda; el mal escrito dice por qué y no se elige", async () => {
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    const selector = await screen.findByRole("combobox", { name: "Perfil del libro" });
+    await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(3));
+    expect((selector as HTMLSelectElement).value).toBe("apu_por_hoja");
+    const opciones = within(selector).getAllByRole("option") as HTMLOptionElement[];
+    expect(opciones.map((o) => [o.textContent, o.disabled])).toEqual([
+      ["apu_por_hoja · lee la hoja PRESUPUESTO (del paquete)", false],
+      ["frente_b · lee la hoja FRENTE B (de esta instalación)", false],
+      ["roto · no se puede usar: perfil 'roto': JSON mal formado", true],
+    ]);
+    await usuario.selectOptions(selector, "frente_b");
+    await usuario.upload(campos()[0], new File(["x"], "frente.xlsx"));
+    await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
+    await waitFor(() => expect(auditorias()).toHaveLength(1));
+    expect((auditorias()[0]![1]?.body as FormData).get("perfil")).toBe("frente_b");
+  });
+
+  test("E2E-2: si no se lee la lista de perfiles, audita con el de siempre y lo dice", async () => {
+    fetchFalso.mockImplementation(async (ruta) =>
+      String(ruta) === "/v1/libros/perfiles-apu-por-hoja" ? json({ detalle: "fallo" }, 500) : json(INFORME),
+    );
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    expect(await screen.findByText("No se pudo leer la lista de perfiles: se audita con apu_por_hoja.")).toBeInTheDocument();
+    await usuario.upload(campos()[0], new File(["x"], "frente.xlsx"));
+    await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
+    await waitFor(() => expect(auditorias()).toHaveLength(1));
+    expect((auditorias()[0]![1]?.body as FormData).get("perfil")).toBeNull();
+  });
+
+  test("E2E-2: el aviso AH11 de una hoja de otra obra sale arriba del informe", async () => {
+    const aviso =
+      "La hoja FRENTE B del presupuesto parece de otra obra: de 5 renglones enlazados con su APU, solo 1 tiene la misma cantidad. Revise el perfil: frente_b lee la hoja FRENTE B.";
+    fetchFalso.mockImplementation(async (ruta) =>
+      String(ruta) === "/v1/libros/perfiles-apu-por-hoja"
+        ? json(PERFILES)
+        : json({
+            ...INFORME,
+            perfil: "frente_b",
+            origen_perfil: "local",
+            hoja_presupuesto: "FRENTE B",
+            hallazgos: [{ codigo: "AH11", severidad: "ADVERTENCIA", descripcion: aviso, celda: "FRENTE B!E3", impacto: null, accion: "informado" }, ...INFORME.hallazgos],
+          }),
+    );
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    await usuario.upload(campos()[0], new File(["x"], "frente.xlsx"));
+    await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
+    await screen.findByRole("table", { name: "Hallazgos del libro" });
+    const nota = screen.getAllByRole("status").find((n) => n.textContent?.includes("parece de otra obra"));
+    expect(nota).toHaveTextContent("La hoja del presupuesto parece de otra obra");
+    expect(nota).toHaveTextContent(aviso);
   });
 
   test("el mensaje del servidor se muestra si rechaza el libro", async () => {

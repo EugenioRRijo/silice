@@ -1532,6 +1532,32 @@
         }
       }
     },
+    "/v1/libros/perfiles-apu-por-hoja": {
+      "get": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Perfiles Apu Por Hoja Ruta",
+        "description": "Los perfiles del libro con un APU por hoja: los locales de la instalación y los del paquete\n(E2E-2). Solo nombres y hojas: ninguna ruta del disco.",
+        "operationId": "perfiles_apu_por_hoja_ruta_v1_libros_perfiles_apu_por_hoja_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PerfilApuPorHojaRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Perfiles Apu Por Hoja Ruta V1 Libros Perfiles Apu Por Hoja Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/libros/apu-por-hoja": {
       "post": {
         "tags": [
@@ -21402,6 +21428,17 @@
             ],
             "title": "Presupuesto"
           },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto"
+          },
           "cumple": {
             "type": "boolean",
             "title": "Cumple"
@@ -21441,6 +21478,7 @@
           "perfil",
           "origen_perfil",
           "presupuesto",
+          "hoja_presupuesto",
           "cumple",
           "por_severidad",
           "apus",
@@ -24096,6 +24134,53 @@
           "carpetas_omitidas"
         ],
         "title": "PendientesTodasRespuesta"
+      },
+      "PerfilApuPorHojaRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "origen": {
+            "type": "string",
+            "enum": [
+              "paquete",
+              "local"
+            ],
+            "title": "Origen"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "origen",
+          "hoja_presupuesto",
+          "motivo"
+        ],
+        "title": "PerfilApuPorHojaRespuesta",
+        "description": "Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el\nperfil local está mal escrito (entonces no se puede elegir)."
       },
       "PeriodoPlanPeticion": {
         "properties": {
@@ -28647,6 +28732,11 @@
           "motivo": {
             "type": "string",
             "title": "Motivo"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente",
+            "default": ""
           },
           "origen": {
             "type": "string",

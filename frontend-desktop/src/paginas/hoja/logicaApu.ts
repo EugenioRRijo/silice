@@ -155,6 +155,31 @@ export function textoDeEstado(estado: string): string {
   return estado.replace(/^Estado de .*?: (?=[A-ZÁÉÍÓÚÑ]+(?::| \|))/, "");
 }
 
+// E2E-3: el Estado de la partida trae uno por renglón, y con la misma partida en varios renglones el servidor da a cada
+// uno los mismos avisos en otro orden (primero el suyo). Se muestra cada conjunto una vez, el primero tal como llega: dos
+// estados son el mismo si tienen los mismos avisos por severidad, sin importar el orden. Solo texto; nada se calcula.
+export function estadosDeLaPartida(estados: readonly string[]): string[] {
+  const forma = (texto: string) =>
+    texto
+      .split(" | ")
+      .map((segmento) => {
+        const m = /^([A-ZÁÉÍÓÚÑ]+): (.*)$/.exec(segmento);
+        return m ? `${m[1]}: ${m[2]!.split("; ").sort().join("; ")}` : segmento;
+      })
+      .sort()
+      .join(" | ");
+  const vistos = new Set<string>();
+  const unicos: string[] = [];
+  for (const estado of estados) {
+    const texto = textoDeEstado(estado);
+    const clave = forma(texto);
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    unicos.push(texto);
+  }
+  return unicos;
+}
+
 // --- agregar y quitar líneas (Tarea 26) ---
 
 export const rutaDeLineas = (id: string, partida: string) => `${rutaDeApu(id, partida)}/lineas`;

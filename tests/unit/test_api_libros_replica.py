@@ -552,6 +552,54 @@ def test_sin_mandar_perfil_usa_el_local_de_la_carpeta_de_datos():
     assert (r.json()["perfil"], r.json()["origen_perfil"]) == ("apu_por_hoja", "local")
 
 
+# E2E-2 (prueba de punta a punta del 2026-11-13): la pantalla elige el perfil de una lista
+# (`GET /v1/libros/perfiles-apu-por-hoja`, los del paquete y los de la carpeta de datos, sin
+# rutas del disco) y el informe dice qué hoja del presupuesto leyó. Datos FICTICIOS.
+RUTA_PERFILES = "/v1/libros/perfiles-apu-por-hoja"
+
+
+def test_la_lista_de_perfiles_sin_perfiles_locales():
+    r = _con_clave().get(RUTA_PERFILES)
+    assert r.status_code == 200, r.text
+    assert r.json() == [
+        {
+            "nombre": "apu_por_hoja",
+            "origen": "paquete",
+            "hoja_presupuesto": "PRESUPUESTO",
+            "motivo": None,
+        }
+    ]
+
+
+def test_la_lista_de_perfiles_con_uno_local_y_la_auditoria_con_el_elegido():
+    crudo = json.loads(PERFIL_DEL_PAQUETE.read_text(encoding="utf-8"))
+    carpeta = config.carpeta_datos() / "perfiles_libros"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    local = {**crudo, "nombre": "frente_local", "presupuesto": {**crudo["presupuesto"]}}
+    (carpeta / "frente_local.json").write_text(json.dumps(local), encoding="utf-8")
+    cliente, ficha = _con_cuenta("ana")
+    r = cliente.get(RUTA_PERFILES)
+    assert r.status_code == 200, r.text
+    assert [(p["nombre"], p["origen"]) for p in r.json()] == [
+        ("apu_por_hoja", "paquete"),
+        ("frente_local", "local"),
+    ]
+    assert str(carpeta) not in r.text
+    auditado = _auditar(
+        cliente, presupuesto=True, data={"perfil": "frente_local"}, headers=_protegida(ficha)
+    )
+    assert auditado.status_code == 200, auditado.text
+    assert (auditado.json()["perfil"], auditado.json()["origen_perfil"]) == (
+        "frente_local",
+        "local",
+    )
+    assert auditado.json()["hoja_presupuesto"] == "PRESUPUESTO"
+
+
+def test_sin_presupuesto_el_informe_no_tiene_hoja():
+    assert _auditar(_con_clave()).json()["hoja_presupuesto"] is None
+
+
 def test_un_libro_sin_hojas_de_apu_es_422_con_el_mensaje():
     r = _con_clave().post(RUTA_APU, files={"libro": ("p.xlsx", libro_presupuesto())})
     assert r.status_code == 422

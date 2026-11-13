@@ -87,7 +87,15 @@ const DEL_CATALOGO = {
 };
 const VIALES = {
   tabla: "partidas_viales",
-  resultados: [{ valor: "C-000.000.002", etiqueta: "Base granular compactada (C-000.000.002, m3)", fuente: "Partidas viales de Sílice" }],
+  resultados: [
+    {
+      valor: "C-000.000.002",
+      etiqueta: "Base granular compactada (C-000.000.002, m3)",
+      fuente: "Partidas viales de Sílice",
+      descripcion: "Base granular compactada",
+      unidad: "m3",
+    },
+  ],
   hay_mas: false,
 };
 // AC4: las unidades que ya usa el catalogo, con la forma de `GET /v1/consulta/unidades`.
@@ -435,7 +443,7 @@ describe("ComponerPartida (Tarea 9)", () => {
     });
   });
 
-  test("elegir una partida vial deja su código y no pisa la descripción escrita", async () => {
+  test("elegir una partida vial deja su código y no pisa la descripción escrita; la unidad vacía se llena (E2E-3)", async () => {
     const u = userEvent.setup();
     montar(2);
     await u.type(screen.getByLabelText("Descripción"), "Base ficticia");
@@ -444,7 +452,18 @@ describe("ComponerPartida (Tarea 9)", () => {
     await u.click(await screen.findByRole("option", { name: /C-000\.000\.002/ }, ESPERA));
     expect(codigo).toHaveValue("C-000.000.002");
     expect(screen.getByLabelText("Descripción")).toHaveValue("Base ficticia");
-    expect(screen.getByLabelText("Unidad")).toHaveValue("");
+    expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+  });
+
+  test("E2E-3: elegir una partida vial con la descripción y la unidad vacías las llena con las de Sílice", async () => {
+    const u = userEvent.setup();
+    montar(2);
+    const codigo = screen.getByRole("combobox", { name: "Código" });
+    await u.type(codigo, "granular");
+    await u.click(await screen.findByRole("option", { name: /C-000\.000\.002/ }, ESPERA));
+    expect(codigo).toHaveValue("C-000.000.002");
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Base granular compactada");
+    expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
   });
 
   test("un código mal formado se dice al salir del campo, no se ofrece tal cual y no deja guardar; uno bien formado sí", async () => {
