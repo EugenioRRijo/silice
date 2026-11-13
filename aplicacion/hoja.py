@@ -2131,8 +2131,8 @@ def guardar_version(
         raise HojaInvalida(motivo)
     if abierta.solo_lectura:
         raise HojaInvalida(
-            "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion "
-            "vigente en el catalogo, asi que recalcularla cambiaria sus precios."
+            "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición "
+            "vigente en el catálogo, así que recalcularla cambiaría sus precios."
         )
     try:
         origen = _modelo(sesion, abierta.proyecto, abierta.codigo)

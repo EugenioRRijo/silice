@@ -451,21 +451,21 @@ def motivo_para_no_reemplazar(
     codigo = composicion.codigo_partida
     if not (composicion.materiales or composicion.equipos or composicion.mano_obra):
         return (
-            f"la partida {codigo} ya existe y la composicion no tiene ninguna linea de insumo: "
-            "guardarla borraria su desglose. Declare al menos una linea en materiales, equipos "
+            f"la partida {codigo} ya existe y la composición no tiene ninguna línea de insumo: "
+            "guardarla borraría su desglose. Declare al menos una línea en materiales, equipos "
             "o mano de obra."
         )
     if not unidades_equivalentes(composicion.unidad, unidad_registrada):
         return (
             f"la partida {codigo} ya existe con la unidad {unidad_registrada!r} y la cabecera dice "
             f"{composicion.unidad!r}: la cabecera de una partida existente no se edita desde esta "
-            "pantalla. Escriba la unidad registrada o use otro codigo para una partida nueva."
+            "pantalla. Escriba la unidad registrada o use otro código para una partida nueva."
         )
     if composicion.descripcion.strip() != descripcion_registrada.strip():
         return (
-            f"la partida {codigo} ya existe con la descripcion {descripcion_registrada!r} y la "
+            f"la partida {codigo} ya existe con la descripción {descripcion_registrada!r} y la "
             f"cabecera dice {composicion.descripcion!r}: la cabecera de una partida existente no "
-            "se edita desde esta pantalla. Escriba la descripcion registrada o use otro codigo "
+            "se edita desde esta pantalla. Escriba la descripción registrada o use otro código "
             "para una partida nueva."
         )
     return None
