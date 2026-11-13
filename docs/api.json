@@ -5453,7 +5453,7 @@
           "precios-empresa"
         ],
         "summary": "Crear Lista",
-        "description": "UC-17 4: crea la lista de la empresa sobre una lista base con los precios del archivo.\n\nEmpresa, RIF y fuente vacios llegan al nucleo, que los rechaza con su mensaje (como la pagina\nclasica). Todo o nada: ante cualquier error no queda nada escrito. Los insumos del archivo\nque el catalogo no conoce se informan y no se dan de alta (UC-17 4a).",
+        "description": "UC-17 4: crea la lista de la empresa sobre una lista base con los precios del archivo.\n\nEmpresa, RIF y fuente vacios llegan al nucleo, que los rechaza con su mensaje (como la pagina\nclasica). Todo o nada: ante cualquier error no queda nada escrito. Los insumos del archivo\nque el catalogo no conoce se informan y no se dan de alta (UC-17 4a), salvo con `dar_de_alta`\n(la confirmacion tras `POST .../listas/revision`, D-8); los de otra unidad, nunca.",
         "operationId": "crear_lista_v1_precios_empresa_listas_post",
         "requestBody": {
           "content": {
@@ -5472,6 +5472,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListaCreadaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precios-empresa/listas/revision": {
+      "post": {
+        "tags": [
+          "precios-empresa"
+        ],
+        "summary": "Revisar Archivo",
+        "description": "D-8 (2026-11-13): lo que la lista haria con el archivo, sin escribir nada: cuantas filas\nreconoce el catalogo, los insumos nuevos que se pueden dar de alta y el aviso de cada fila que\nel catalogo tiene con otra unidad.",
+        "operationId": "revisar_archivo_v1_precios_empresa_listas_revision_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_revisar_archivo_v1_precios_empresa_listas_revision_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__precios_empresa__RevisionRespuesta"
                 }
               }
             }
@@ -5993,7 +6034,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RevisionRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__revision__RevisionRespuesta"
                 }
               }
             }
@@ -13874,6 +13915,11 @@
               }
             ],
             "title": "Archivo"
+          },
+          "dar_de_alta": {
+            "type": "boolean",
+            "title": "Dar De Alta",
+            "default": false
           }
         },
         "type": "object",
@@ -14306,6 +14352,24 @@
           "fecha_vigencia"
         ],
         "title": "Body_revalorar_presupuesto_presupuestos_revalorar_post"
+      },
+      "Body_revisar_archivo_v1_precios_empresa_listas_revision_post": {
+        "properties": {
+          "archivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivo"
+          }
+        },
+        "type": "object",
+        "title": "Body_revisar_archivo_v1_precios_empresa_listas_revision_post"
       },
       "Body_revisar_paquete_v1_revision_paquete_post": {
         "properties": {
@@ -20927,6 +20991,34 @@
         ],
         "title": "InsumoHojaRespuesta"
       },
+      "InsumoNuevoRespuesta": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "insumo": {
+            "type": "string",
+            "title": "Insumo"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "insumo",
+          "unidad",
+          "precio"
+        ],
+        "title": "InsumoNuevoRespuesta"
+      },
       "InsumoRespuesta": {
         "properties": {
           "codigo": {
@@ -21718,6 +21810,22 @@
               }
             ],
             "title": "Aviso"
+          },
+          "dados_de_alta": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dados De Alta",
+            "default": []
+          },
+          "otra_unidad": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Otra Unidad",
+            "default": []
           }
         },
         "type": "object",
@@ -26685,219 +26793,6 @@
         ],
         "title": "RevaloracionRespuesta"
       },
-      "RevisionRespuesta": {
-        "properties": {
-          "sha256": {
-            "type": "string",
-            "title": "Sha256"
-          },
-          "estado": {
-            "type": "string",
-            "title": "Estado"
-          },
-          "motivo": {
-            "type": "string",
-            "title": "Motivo"
-          },
-          "color": {
-            "type": "string",
-            "title": "Color"
-          },
-          "banner": {
-            "type": "string",
-            "title": "Banner"
-          },
-          "legible": {
-            "type": "boolean",
-            "title": "Legible"
-          },
-          "banner_version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Banner Version"
-          },
-          "ayuda_registro": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ayuda Registro"
-          },
-          "avisos": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Avisos"
-          },
-          "retroactiva": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Retroactiva"
-          },
-          "aviso_armo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Aviso Armo"
-          },
-          "reauditoria": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReauditoriaRevision"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "entrega_anterior": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TablaDeDiferencia"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "sin_entrega_anterior": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sin Entrega Anterior"
-          },
-          "listas": {
-            "items": {
-              "$ref": "#/components/schemas/ListaDelCaso"
-            },
-            "type": "array",
-            "title": "Listas"
-          },
-          "sin_listas": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sin Listas"
-          },
-          "contra_lista": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ContraLista"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "cambios_titulo": {
-            "type": "string",
-            "title": "Cambios Titulo"
-          },
-          "cambios": {
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Cambios"
-          },
-          "dictamenes": {
-            "items": {
-              "$ref": "#/components/schemas/DictamenAnterior"
-            },
-            "type": "array",
-            "title": "Dictamenes"
-          },
-          "resultados": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Resultados"
-          },
-          "admite_dictamen": {
-            "type": "boolean",
-            "title": "Admite Dictamen"
-          },
-          "sin_dictamen": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sin Dictamen"
-          },
-          "nota_excel": {
-            "type": "string",
-            "title": "Nota Excel"
-          }
-        },
-        "type": "object",
-        "required": [
-          "sha256",
-          "estado",
-          "motivo",
-          "color",
-          "banner",
-          "legible",
-          "banner_version",
-          "ayuda_registro",
-          "avisos",
-          "retroactiva",
-          "aviso_armo",
-          "reauditoria",
-          "entrega_anterior",
-          "sin_entrega_anterior",
-          "listas",
-          "sin_listas",
-          "contra_lista",
-          "cambios_titulo",
-          "cambios",
-          "dictamenes",
-          "resultados",
-          "admite_dictamen",
-          "sin_dictamen",
-          "nota_excel"
-        ],
-        "title": "RevisionRespuesta"
-      },
       "Rol": {
         "type": "string",
         "enum": [
@@ -30250,6 +30145,35 @@
         ],
         "title": "ResumenRespuesta"
       },
+      "api__rutas__precios_empresa__RevisionRespuesta": {
+        "properties": {
+          "reconocidos": {
+            "type": "integer",
+            "title": "Reconocidos"
+          },
+          "nuevos": {
+            "items": {
+              "$ref": "#/components/schemas/InsumoNuevoRespuesta"
+            },
+            "type": "array",
+            "title": "Nuevos"
+          },
+          "otra_unidad": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Otra Unidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reconocidos",
+          "nuevos",
+          "otra_unidad"
+        ],
+        "title": "RevisionRespuesta"
+      },
       "api__rutas__produccion__ImportacionRespuesta": {
         "properties": {
           "registrados": {
@@ -30458,6 +30382,219 @@
           "revalorada"
         ],
         "title": "VersionRespuesta"
+      },
+      "api__rutas__revision__RevisionRespuesta": {
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          },
+          "banner": {
+            "type": "string",
+            "title": "Banner"
+          },
+          "legible": {
+            "type": "boolean",
+            "title": "Legible"
+          },
+          "banner_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Version"
+          },
+          "ayuda_registro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ayuda Registro"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "retroactiva": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retroactiva"
+          },
+          "aviso_armo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Armo"
+          },
+          "reauditoria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReauditoriaRevision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entrega_anterior": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TablaDeDiferencia"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sin_entrega_anterior": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Entrega Anterior"
+          },
+          "listas": {
+            "items": {
+              "$ref": "#/components/schemas/ListaDelCaso"
+            },
+            "type": "array",
+            "title": "Listas"
+          },
+          "sin_listas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Listas"
+          },
+          "contra_lista": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContraLista"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cambios_titulo": {
+            "type": "string",
+            "title": "Cambios Titulo"
+          },
+          "cambios": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Cambios"
+          },
+          "dictamenes": {
+            "items": {
+              "$ref": "#/components/schemas/DictamenAnterior"
+            },
+            "type": "array",
+            "title": "Dictamenes"
+          },
+          "resultados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Resultados"
+          },
+          "admite_dictamen": {
+            "type": "boolean",
+            "title": "Admite Dictamen"
+          },
+          "sin_dictamen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Dictamen"
+          },
+          "nota_excel": {
+            "type": "string",
+            "title": "Nota Excel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sha256",
+          "estado",
+          "motivo",
+          "color",
+          "banner",
+          "legible",
+          "banner_version",
+          "ayuda_registro",
+          "avisos",
+          "retroactiva",
+          "aviso_armo",
+          "reauditoria",
+          "entrega_anterior",
+          "sin_entrega_anterior",
+          "listas",
+          "sin_listas",
+          "contra_lista",
+          "cambios_titulo",
+          "cambios",
+          "dictamenes",
+          "resultados",
+          "admite_dictamen",
+          "sin_dictamen",
+          "nota_excel"
+        ],
+        "title": "RevisionRespuesta"
       },
       "api__rutas__riesgo__SerieRespuesta": {
         "properties": {

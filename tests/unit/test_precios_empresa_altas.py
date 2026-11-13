@@ -125,7 +125,7 @@ def test_revisar_el_archivo_separa_conocidos_nuevos_y_otra_unidad_sin_escribir(
     revision = precios_empresa.revisar_archivo(sesion, archivo)
     assert revision.reconocidos == 2  # Cemento (kg = kg) y Albañil (mano de obra, sin unidad)
     assert [(n.tipo.value, n.descripcion, n.unidad) for n in revision.nuevos] == [
-        ("material", "Bloque de prueba", "und"),
+        ("material", "Bloque de prueba", "unidad"),  # «und» normalizada
         ("equipo", "Retro de prueba", "dia"),
     ]
     assert revision.otra_unidad == OTRA_UNIDAD
@@ -171,7 +171,7 @@ def test_con_el_alta_confirmada_los_nuevos_entran_con_su_precio_y_los_de_otra_un
     bloque = sesion.scalars(
         select(models.Insumo).where(models.Insumo.descripcion == "Bloque de prueba")
     ).one()
-    assert (bloque.codigo, bloque.tipo, bloque.unidad) == ("MAT-003", "material", "und")
+    assert (bloque.codigo, bloque.tipo, bloque.unidad) == ("MAT-003", "material", "unidad")
 
 
 def test_dos_filas_nuevas_del_mismo_insumo_con_precios_distintos_no_crean_nada(

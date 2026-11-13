@@ -839,7 +839,7 @@ def test_revisar_el_archivo_dice_los_nuevos_y_los_de_otra_unidad_sin_escribir(_e
             {
                 "tipo": "material",
                 "insumo": "INSUMO INEXISTENTE DEMO",
-                "unidad": "pza",
+                "unidad": "pieza",  # «pza» normalizada (core.contracts.unidades)
                 "precio": "10.00",
             }
         ],
