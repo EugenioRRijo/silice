@@ -24,10 +24,10 @@ from aplicacion.desperdicio import (
     aplicar_desperdicio,
     cantidad_con_desperdicio,
     con_desperdicio,
-    desperdicios_por_fila,
     guardar_trazas,
     leyenda,
     neta_y_porcentaje,
+    trazas_de_las_filas,
     trazas_vigentes,
 )
 from core.catalog import abrir_sesion, crear_motor
@@ -132,6 +132,11 @@ def test_las_trazas_se_guardan_y_manda_el_ultimo_guardado(sesion: Session):
     assert trazas_vigentes(sesion, "VIA-01") == []
 
 
+def _por_fila(filas, trazas) -> list[tuple[int, str]]:
+    """La fila (desde 1) y «neta + porcentaje» de cada material con traza, como la vista de la Hoja."""
+    return [(i, neta_y_porcentaje(traza)) for i, traza in trazas_de_las_filas(filas, trazas)]
+
+
 def test_la_neta_y_el_porcentaje_de_la_traza():
     """Lo que la Hoja muestra junto a la cantidad: la neta y el porcentaje, sin la cantidad que
     ya está en su celda (F5 vial, lo que faltaba del punto 1)."""
@@ -143,11 +148,20 @@ def test_la_neta_y_el_porcentaje_de_la_traza():
 def test_desperdicios_por_fila_solo_en_la_linea_de_la_traza_y_cada_traza_una_vez():
     guardada = {"descripcion": "Ligante ficticio", "unidad": "l", "cantidad": "0,52"}
     # filas numeradas desde 1, como en la tabla de la Hoja
-    assert desperdicios_por_fila([ARENA, guardada], [TRAZA]) == [(2, "0,50 + 4 %")]
+    assert _por_fila([ARENA, guardada], [TRAZA]) == [(2, "0,50 + 4 %")]
     # dos líneas iguales y una sola traza: solo la primera
-    assert desperdicios_por_fila([guardada, guardada], [TRAZA]) == [(1, "0,50 + 4 %")]
+    assert _por_fila([guardada, guardada], [TRAZA]) == [(1, "0,50 + 4 %")]
     # la cantidad cambió por otro camino, o la unidad, o la descripción: nada que mostrar
-    assert desperdicios_por_fila([{**guardada, "cantidad": "0,60"}], [TRAZA]) == []
-    assert desperdicios_por_fila([{**guardada, "unidad": "kg"}], [TRAZA]) == []
-    assert desperdicios_por_fila([{**guardada, "descripcion": "Otro"}], [TRAZA]) == []
-    assert desperdicios_por_fila([guardada], []) == []
+    assert _por_fila([{**guardada, "cantidad": "0,60"}], [TRAZA]) == []
+    assert _por_fila([{**guardada, "unidad": "kg"}], [TRAZA]) == []
+    assert _por_fila([{**guardada, "descripcion": "Otro"}], [TRAZA]) == []
+    assert _por_fila([guardada], []) == []
+
+
+def test_una_descripcion_con_espacios_en_los_bordes_casa_con_su_traza():
+    """Árbitro del 2026-11-13, M3: la Hoja arma la traza con la descripción del APU tal cual
+    («Ligante ficticio », con un espacio al final) y la fila se lee recortada: debe casar igual."""
+    traza = TrazaDesperdicio("Ligante ficticio ", "l ", D("0.50"), D("4"), D("0.5200"))
+    fila = {"descripcion": "Ligante ficticio ", "unidad": "l ", "cantidad": "0,52"}
+    assert _por_fila([fila], [traza]) == [(1, "0,50 + 4 %")]
+    assert con_desperdicio([fila], [traza])[0]["desperdicio"] == "4"

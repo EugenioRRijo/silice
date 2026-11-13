@@ -53,7 +53,7 @@ def test_el_porcentaje_convierte_la_neta_en_la_cantidad_y_deja_la_traza():
     assert trazas == (TrazaDesperdicio("Ligante ficticio", "l", D("2"), D("5"), D("2.10")),)
 
 
-@pytest.mark.parametrize("vacio", ["", "  ", "0", "0,0"])
+@pytest.mark.parametrize("vacio", ["", "  ", "0", "0,0", "﻿", " "])
 def test_un_porcentaje_vacio_o_cero_no_es_desperdicio(vacio: str):
     nueva, trazas = con_desperdicio_en_materiales(APU, [vacio, vacio])
     assert nueva == APU and trazas == ()
