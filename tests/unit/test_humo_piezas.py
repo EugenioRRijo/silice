@@ -646,3 +646,27 @@ def test_workflow_instalador_asegura_webview2_antes_del_humo() -> None:
     guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
     assert guid in flujo
     assert flujo.index(guid) < flujo.index("Prueba de humo")
+
+
+def test_humo_exige_un_juego_de_migracion_nuevo_tras_la_actualizacion() -> None:
+    """El 6b deja un juego manual en la misma carpeta (`GUION_DESCARGA` llama a `POST
+    /v1/admin/instalacion/respaldos`): «hay al menos un juego» pasaría aunque la actualización
+    no respaldara. El paso 7 anota los juegos antes de actualizar y exige uno nuevo cuya ficha
+    diga que es de la migración (`respaldo.MOTIVO_MIGRACION`) y que lleve la base de la 0.5.0."""
+    from operacion import respaldo
+
+    assert respaldo.MOTIVO_MIGRACION == "migracion"
+    assert respaldo.NOMBRE_FICHA == "ficha.json"
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    paso7, paso8 = texto.index("Paso '7."), texto.index("Paso '8.")
+    bloque = texto[paso7:paso8]
+    antes = re.search(r"\$juegosAntes = JuegosDe \$Respaldos", bloque)
+    assert antes, "anota los juegos antes de actualizar"
+    assert antes.start() < bloque.index("InstalarSilencioso $Actualizacion")
+    assert "$juegos.Count -ge 1" not in bloque
+    juegos_de = _funcion_del_humo("JuegosDe")
+    assert "ficha.json" in juegos_de and "ConvertFrom-Json" in juegos_de
+    nuevos = bloque.index("$juegosAntes -notcontains")
+    assert nuevos > bloque.index("InstalarSilencioso $Actualizacion")
+    assert "motivo -eq 'migracion'" in bloque
+    assert "v050_demo.db" in bloque[nuevos:]
