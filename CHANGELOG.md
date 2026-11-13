@@ -7,6 +7,12 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **El desperdicio en la Hoja** (2026-11-13; diseño vial real §13 y `docs/bitacora/2026-11-13-desperdicio-en-la-hoja.md`,
+  decisión provisional): la pestaña APU edita en Materiales la neta y «Desperdicio (%)», el servidor calcula la cantidad
+  y la muestra en «Cantidad con desperdicio»; la traza vive en el borrador y se escribe con la versión, unida a las
+  vigentes de la partida (`aplicacion/hoja_desperdicio.py`). Quien revisa la ve sin escribir en la base.
+- **Perfil de un APU por hoja: `lado_de_los_porcentajes`** («derecha» por omisión, «izquierda» para el libro que escribe
+  el porcentaje del pie a la izquierda de su rótulo; `docs/manual_tecnico.md` §18).
 - **V4, prueba de humo de la ventana en la CI de Windows** (`instalador/humo.ps1` paso 6b, `instalador/navegador.py --cdp`;
   `docs/bitacora/2026-11-06-ventana-v0.md` §3.3 a §3.5): la humo abre la ventana de Sílice (WebView2) y la maneja por CDP
   con Playwright: ninguna petición fuera de 127.0.0.1, primer administrador, respaldo bajado como `.zip` desde la ventana,
@@ -24,7 +30,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **F5 Presupuesto vial** (diseño `docs/especificaciones/2026-11-03-presupuesto-vial-real-design.md`, RF-170 a RF-178;
   decisiones provisionales del 2026-11-06): seis partidas viales nuevas y dos variantes de medición (fresado en m², carpeta
   en t); VR4 por banda de distancia (ADVERTENCIA fuera de banda); desperdicio dentro de la cantidad con su traza en
-  Componer («0,52 (0,50 + 4 %)»; la Hoja aún no lo muestra: `aplicacion/hoja.py` está congelado); perfil de libro con un
+  Componer («0,52 (0,50 + 4 %)»; desde el 2026-11-13 también en la Hoja, ver abajo); perfil de libro con un
   APU por hoja (libro ficticio construido en las pruebas; los perfiles reales viven fuera del repositorio) y su auditoría
   contra el presupuesto (hallazgos AH1 a AH9) en `POST /v1/libros/apu-por-hoja` y en Auditoría. Migraciones aditivas
   `caso_0021_vial_transporte` y `caso_0022_apu_desperdicio`.
@@ -191,6 +197,12 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- **Libro con un APU por hoja, probado en local con el libro vial real** (2026-11-13;
+  `docs/bitacora/2026-11-13-libro-vial-real-local.md`, sin datos del libro): el porcentaje del pie escrito a la izquierda
+  del rótulo se tomaba por el monto (AH1 falso en cada hoja) y el valor en caché de una fórmula llegaba con ruido binario
+  (AH6 falsos): el perfil declara el lado y las cifras se leen con 15 dígitos significativos, la precisión de Excel.
+- **Tildes en los avisos de solo lectura de la Hoja y de reemplazo de Componer** (`aplicacion/hoja.py`,
+  `aplicacion/composicion.py`; experimento re-congelado con acta, `docs/bitacora/2026-11-13-recongelado-experimento.md`).
 - **Topes del lector en todas las subidas de .xlsx** (2026-11-12; `docs/bitacora/2026-11-12-topes-replica-listas.md` y
   `2026-11-12-decisiones-topes-simulacion.md`): la réplica del visor también en hojas sin fórmulas (cuentan las
   combinadas); listas de precios, presupuestos de terceros, Excel externo, valuaciones e índices del BCV pasan por

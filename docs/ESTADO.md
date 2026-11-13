@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-12 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-13 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -31,6 +31,7 @@ instalador con huella SHA-256 firmada.
 | `feature/integracion-fases` | F7 Ayuda, F8 Cierre, F5 vial y F5 ventana, sobre la tanda (§3) | Construidas en paralelo el 2026-11-06, una por árbol; espera el árbitro único y la prueba de Eugenio |
 | `feature/lector-topes` | Topes de la guardia en el lector del libro conocido y en la réplica del visor (§5.3), sobre la integración | Árbitro xhigh: aprobado con condiciones, ya corregidas ([acta](bitacora/arbitrajes/lector-topes-claude-xhigh.md)); sin PR, como la integración |
 | `feature/tanda-2026-11-12` | V4 (humo de la ventana en la CI de Windows), topes del lector en todas las subidas de .xlsx, aviso del puerto de depuración por política, pruebas intermitentes y metas en UTF-8, sobre `feature/lector-topes` | Árbitro xhigh: aprobado con cambios, ya corregidos; humo verde en windows-2025 (corridas 43358266674 y, con las decisiones (e) y (f), 43371689578); Argon y Hydrogen: aprobado (con un cambio de Argon, aplicado); decisiones (d), (e) y (f) simuladas y aplicadas (§4, punto 10); sin PR, como la integración |
+| `feature/hoja-desperdicio` | El desperdicio en la Hoja (mostrar y editar la neta y el %), tildes de dos avisos con el experimento re-congelado con acta, y el lector del libro con un APU por hoja probado en local con el libro vial real (`lado_de_los_porcentajes`, cifras con la precisión de Excel), sobre `feature/tanda-2026-11-12` | Árbitro xhigh: aprobado con cambios (0 MAYOR, 9 MENOR), corregidos en `fix/arbitro-1113`; Argon y Hydrogen medium: sus dos hallazgos verdaderos ya estaban corregidos; decisión del desperdicio simulada (por ratificar); sin PR |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor. Ya tiene `main` unido y el experimento recongelado con acta (`docs/bitacora/2026-11-04-recongelado-experimento.md` en su rama) |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -64,7 +65,7 @@ mensajes: el experimento se re-congeló con acta y autorización de Eugenio
 árbitro al final). F7 Ayuda: «¿Qué es esto?» en cada pantalla, guías, glosario y «Empieza aquí» (RF-185 a RF-189). F8:
 redirecciones viejas retiradas, guion del recorrido rehecho, pasada en navegador ([bitácora](bitacora/2026-11-06-f8-cierre.md)),
 front de 14,45 MB a 10,02 MB y «esta carpeta» en los mensajes. F5 vial: tareas 1 a 6 de su diseño (RF-170 a RF-178),
-salvo mostrar el desperdicio en la Hoja (`aplicacion/hoja.py` está congelado). F5 ventana: V0 a V3 (RF-180 a RF-184;
+y, desde el 2026-11-13, el desperdicio también en la Hoja (§5.4). F5 ventana: V0 a V3 (RF-180 a RF-184;
 [V0](bitacora/2026-11-06-ventana-v0.md)); V4 (humo en la CI) **hecha el 2026-11-12** (§3.3 a §3.5 de esa bitácora) y V5
 (prueba en el equipo de Eugenio y en el de la empresa, con el diálogo «Guardar como») pendiente. **Las decisiones de F5 son provisionales**: recomendaciones del orquestador a las preguntas de sus
 diseños, anotadas en cada especificación, que Eugenio debe ratificar; la de guardar el perfil de la ventana en la
@@ -130,10 +131,17 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
    del núcleo, las listas, los presupuestos de terceros, el Excel externo, las valuaciones y los índices del BCV pasan por
    los topes del lector; un libro hostil se rechaza en décimas de segundo con 422. La báscula lee como mucho 61 columnas (§4, punto 10 d).
 4. **F7, F8 y F5**: construidas y corregidas tras el árbitro único (§3); faltan la prueba de Eugenio, ratificar las
-   decisiones provisionales de F5, mostrar el desperdicio en la Hoja y poner tildes a dos avisos de `aplicacion/hoja.py` y
-   `composicion.py` (los dos exigen re-congelar el experimento con acta), V5 (V4 hecha el 2026-11-12),
-   y que Eugenio confirme el texto de la licencia del SDK de WebView2 copiado de NuGet (`docs/licencias_webview2/`), y que pruebe una vez, en local, el libro vial real con el perfil de un APU por hoja (una celda
-   con solo formato fuera de 20.000 × 100 rechaza el libro).
+   decisiones provisionales de F5 y V5 (V4 hecha el 2026-11-12). **Hecho el 2026-11-13** (`feature/hoja-desperdicio`):
+   el desperdicio en la Hoja, que se muestra y se edita ([decisión](bitacora/2026-11-13-desperdicio-en-la-hoja.md), por
+   ratificar); las tildes de los dos avisos, con el experimento re-congelado
+   ([acta](bitacora/2026-11-13-recongelado-experimento.md)); la licencia del SDK de WebView2, idéntica byte a byte a la
+   del paquete de NuGet 1.0.3856.49, como los DLL que viajan; y la prueba local del libro vial real
+   ([bitácora](bitacora/2026-11-13-libro-vial-real-local.md)), que encontró dos defectos ya corregidos.
+5. **Siguiente** (de la prueba del libro vial real, bitácora §3): un perfil con varias hojas de presupuesto (una por
+   frente), sumar una segunda fila de impuesto, avisar de una hoja que no sigue el prefijo del perfil, y poner un perfil
+   local desde la interfaz. Las pruebas intermitentes del front con la máquina cargada `App.bienvenida` y
+   `CostosDelPeriodo` (pasan solas). Las tildes que quedan en `aplicacion/hoja.py` (líneas del 422 de guardar) van en el
+   próximo re-congelado.
 
 ## 6. Auditorías en paralelo
 

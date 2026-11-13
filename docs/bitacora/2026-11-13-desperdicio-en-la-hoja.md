@@ -42,7 +42,8 @@ quedaron en el directorio temporal de la sesión; esta es la salida:
 - **(a) es la correcta y la más simple, con unión.** Es la misma forma que Componer (la neta y el porcentaje se escriben, el
   servidor calcula la cantidad y la traza se escribe en la transacción de lo que se guarda) y la misma que ya usan las
   importaciones del borrador (`BorradorVivo.importaciones`, escritas con la versión). Descartar no deja nada; guardar
-  escribe la traza a nombre de quien guarda, en la misma transacción que la versión (todo o nada). La **unión** es
+  escribe la traza en la misma transacción que la versión (todo o nada); la traza no lleva responsable: quien guarda
+  queda en la versión. La **unión** es
   necesaria porque la traza vive por partida: sin ella, la edición de una versión dejaría sin desglose al catálogo y a
   las demás versiones.
 - **Quién revisa** no edita (403, como cualquier edición del APU) y sigue viendo el desglose de la base y, en el borrador
@@ -80,5 +81,19 @@ llamada en `hoja_guardado`.
 - La pestaña APU edita, en Materiales, la cantidad (neta, si hay porcentaje) y «Desperdicio (%)», y muestra «Cantidad con
   desperdicio», la que calculó el servidor.
 
-Es una decisión del orquestador con Eugenio ausente (como las de F5): queda **provisional**, por ratificar, y anotada en
+Es una decisión del orquestador, simulada, con la autorización de Eugenio para re-congelar (13/11): queda **provisional**, por ratificar, y anotada en
 §13 del diseño.
+
+## Revisión del árbitro xhigh (2026-11-13, ronda 1: aprobado con cambios)
+
+Corregidos con prueba en rojo primero, en `fix/arbitro-1113`: la traza de la Hoja con una descripción con espacios en
+los bordes nunca casaba (M3); el porcentaje se recorta con los blancos de `aplicacion/cifras` (M4); «Cantidad con
+desperdicio» compara la neta y el porcentaje como cifras, solo con texto, y ya no se esconde con «0,5» frente a «0,50»
+(M5); se quitó `desperdicios_por_fila`, que solo usaban las pruebas (M9); esta bitácora decía que la traza se escribe «a
+nombre de quien guarda», y no lleva responsable (M8). Lo que el árbitro comprobó con guiones (atomicidad, primera
+versión, porcentajes de frontera) quedó en la suite (M6).
+
+**Historia de TDD (M7), declarada y sin reescribir:** el verde del lector (`b3c877bc`) tiene una fecha de autor anterior
+a su rojo (`81159f96`) porque los dos se recrearon con `cherry-pick` para quitar del mensaje un recuento derivado del
+libro real; el rojo falla igual (10 fallos, lo comprobó el árbitro). `d2b9a654` (tildes) dejó tres pruebas de Componer en
+rojo, corregidas en `01a7e3a2`, y `c3ec646c` corrigió dos pruebas del front que traía el parche de Hydrogen.
