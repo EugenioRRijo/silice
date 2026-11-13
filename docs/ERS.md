@@ -1764,6 +1764,18 @@ enmienda RF-172.
 
 La matriz de trazabilidad (§4) tiene su fila «prueba de punta a punta».
 
+## Enmienda (2026-11-13): ola 2, línea 2 (pendientes del front y parámetros en Componer)
+
+**PROVISIONAL, POR RATIFICAR:** decisiones simuladas con datos ficticios, con Eugenio ausente
+([bitácora](bitacora/2026-11-13-ola2-front.md)). Nada de esto toca `core/` ni los archivos congelados del experimento.
+Numeración de la ola 2: la línea 2 usa RF-200 a RF-204. El nombre accesible del aviso AH11 (su título) precisa RF-178 sin
+fila nueva.
+
+| ID | Requisito | Prioridad | Caso de uso | Criterio de aceptación |
+|---|---|---|---|---|
+| RF-200 | Componer muestra los cuatro parámetros del precio unitario (FCAS, bono de alimentación, administración y utilidad) con coma decimal: con una obra abierta, los de su «Ajustes de costo»; sin obra, los de omisión (`GET /v1/composicion/parametros`). Se pueden cambiar para ensayar; el servidor calcula con lo escrito el desglose en vivo y el precio del mensaje de guardado; no se escriben en la obra ni se guardan con la partida, y el contraste con las reglas sigue sobre la base de omisión. Un parámetro mal escrito o negativo deja el desglose «incompleto» (y 422 al prever o guardar, sin escribir) con un mensaje que nombra el parámetro, y su campo queda marcado; si los parámetros no se pueden leer, se dice y se calcula con los de omisión (código: `aplicacion/componer_parametros.py`; `api/rutas/composicion.py`; `paginas/componer/ParametrosDelPrecio.tsx` y `ComponerPartida.tsx`). 2026-11-13, provisional, por ratificar (ola 2, D6) | Esencial | UC-10, UC-11 | `tests/unit/test_api_composicion.py` (oráculo a mano: la tubería de la línea base con FCAS 5,5, bono 2, adm. 0,12 y util. 0,15 da 10,34; el contraste no cambia), `paginas/componer/ParametrosDelPrecio.test.tsx` |
+| RF-201 | En las tablas de insumos de Componer, el precio (o el sueldo) con más de dos decimales que no tecleó la persona se lee con dos en reposo, con el número completo en su descripción emergente; al entrar en la celda se ve y se edita el número completo, que es el que viaja; lo tecleado se ve siempre tal cual, y una nota bajo la tabla lo explica mientras alguna celda se lea así; en el panel de Componer, Esc devuelve la celda al número completo (código: `paginas/componer/TablaInsumos.tsx`; `paginas/hoja/ComponerEnPanel.tsx`). 2026-11-13, provisional, por ratificar (ola 2, D2) | Deseable | UC-10, UC-11 | `paginas/componer/TablaInsumos.test.tsx`, `paginas/hoja/ComponerEnPanel.test.tsx`, `AutocompletadoDeInsumos.test.tsx` (el jornal «12,3400» se lee «12,34») |
+
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).
 - B. Modelo de datos: [docs/modelo_datos.md](modelo_datos.md).
