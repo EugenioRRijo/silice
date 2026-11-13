@@ -83,6 +83,8 @@ describe("Precios de la empresa", () => {
   let crear: () => Response;
   let hallazgos: () => Response;
   let atipicos: () => Response;
+  let revision: () => Response;
+  let paraArmar: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -92,12 +94,26 @@ describe("Precios de la empresa", () => {
     crear = () => json(CREADA, 201);
     hallazgos = () => json(HALLAZGOS);
     atipicos = () => json(CON_ATIPICO);
+    revision = () => json({ reconocidos: 1, nuevos: [], otra_unidad: [] });
+    paraArmar = () =>
+      json(
+        {
+          moneda: "USD",
+          declarada: true,
+          lista: { nombre: "Empresa ficticia 2026-10-05 al 13/11/2026", moneda: "USD", fecha: "2026-11-13", origen: "copia" },
+          aviso: null,
+          empresa: [],
+        },
+        201,
+      );
     fetchFalso.mockImplementation(async (ruta, opciones) => {
       const url = String(ruta);
       const metodo = opciones?.method ?? "GET";
       if (url === "/v1/precios-empresa" && metodo === "GET") return estado();
       if (url === "/v1/precios-empresa/referencia" && metodo === "POST") return referencia();
       if (url === "/v1/precios-empresa/listas" && metodo === "POST") return crear();
+      if (url === "/v1/precios-empresa/listas/revision" && metodo === "POST") return revision();
+      if (url === "/v1/carpeta/lista-para-armar" && metodo === "POST") return paraArmar();
       if (url.includes("/hallazgos?fecha=")) return hallazgos();
       if (/^\/v1\/precios-empresa\/listas\/\d+\/atipicos$/.test(url) && metodo === "GET") return atipicos();
       return json({ detalle: "ruta inesperada " + url }, 404);
@@ -250,6 +266,68 @@ describe("Precios de la empresa", () => {
     expect(await screen.findByText("Estos insumos no están en el catálogo y no entraron a la lista (UC-17 4a):")).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Insumos que no entraron a la lista" });
     expect(within(tabla).getByText("INSUMO INEXISTENTE DEMO")).toBeInTheDocument();
+  });
+
+  // Prueba de punta a punta del 2026-11-13 (D-8): la mayoria de los insumos de la empresa no estaba en el catalogo y la
+  // pantalla no ofrecia darlos de alta; los de otra unidad se perdian sin decir por que. Al elegir el archivo se revisa
+  // (sin escribir) y el alta va solo si la persona la marca.
+  test("al elegir el archivo lo revisa y da de alta los nuevos solo si se marca", async () => {
+    revision = () =>
+      json({
+        reconocidos: 2,
+        nuevos: [{ tipo: "material", insumo: "Bloque de prueba", unidad: "unidad", precio: "0.80" }],
+        otra_unidad: ["«Arena de prueba» viene en saco y el catálogo lo tiene en m3: no entró; escriba en el archivo la unidad del catálogo."],
+      });
+    montar();
+    const usuario = await llenarYEnviar("USD");
+    expect(await screen.findByText("El catálogo reconoce 2 filas del archivo.")).toBeInTheDocument();
+    const tabla = screen.getByRole("table", { name: "Insumos nuevos del archivo" });
+    expect(within(tabla).getByText("Bloque de prueba")).toBeInTheDocument();
+    expect(within(tabla).getByText("0,80")).toBeInTheDocument();
+    expect(screen.getByText(/«Arena de prueba» viene en saco y el catálogo lo tiene en m3/)).toBeInTheDocument();
+    const alta = screen.getByRole("checkbox", { name: "Dar de alta en el catálogo los insumos nuevos al crear la lista" });
+    expect(alta).not.toBeChecked();
+    // sin marcar: la primera creacion no los da de alta
+    await waitFor(() => expect(llamadas("/v1/precios-empresa/listas", "POST")).toHaveLength(1));
+    const [, primera] = llamadas("/v1/precios-empresa/listas", "POST")[0];
+    expect((primera?.body as FormData).get("dar_de_alta")).toBeNull();
+    await usuario.click(alta);
+    await usuario.click(screen.getByRole("button", { name: "Crear la lista de la empresa" }));
+    await waitFor(() => expect(llamadas("/v1/precios-empresa/listas", "POST")).toHaveLength(2));
+    const [, segunda] = llamadas("/v1/precios-empresa/listas", "POST")[1];
+    expect((segunda?.body as FormData).get("dar_de_alta")).toBe("true");
+    expect(llamadas("/v1/precios-empresa/listas/revision", "POST")).toHaveLength(1);
+  });
+
+  test("lo dado de alta y lo de otra unidad se dicen al crear, y la lista se puede usar para armar", async () => {
+    crear = () =>
+      json(
+        {
+          ...CREADA,
+          id: 9,
+          nombre: "Empresa ficticia 2026-10-05",
+          propios: 3,
+          dados_de_alta: ["Bloque de prueba"],
+          otra_unidad: ["«Arena de prueba» viene en saco y el catálogo lo tiene en m3: no entró; escriba en el archivo la unidad del catálogo."],
+          desconocidos: ["Arena de prueba"],
+          mensaje: "Lista «Empresa ficticia 2026-10-05» creada con 3 precios propios; se dio de alta 1 insumo nuevo en el catálogo.",
+          aviso: "Estos insumos no están en el catálogo y no entraron a la lista (UC-17 4a):",
+        },
+        201,
+      );
+    montar();
+    const usuario = await llenarYEnviar("USD");
+    expect(await screen.findByText(/se dio de alta 1 insumo nuevo en el catálogo/)).toBeInTheDocument();
+    const altas = screen.getByRole("table", { name: "Insumos dados de alta en el catálogo" });
+    expect(within(altas).getByText("Bloque de prueba")).toBeInTheDocument();
+    expect(screen.getAllByText(/«Arena de prueba» viene en saco/).length).toBeGreaterThan(0);
+    await usuario.click(screen.getByRole("button", { name: "Usarla como lista para armar" }));
+    await waitFor(() => expect(llamadas("/v1/carpeta/lista-para-armar", "POST")).toHaveLength(1));
+    const [, opciones] = llamadas("/v1/carpeta/lista-para-armar", "POST")[0];
+    expect(JSON.parse(String(opciones?.body))).toEqual({ desde: "empresa", lista_id: 9 });
+    expect(
+      await screen.findByText("Lista para armar creada: Empresa ficticia 2026-10-05 al 13/11/2026. Ya puede componer con ella."),
+    ).toBeInTheDocument();
   });
 
   test("un rechazo del servidor sale como aviso con su detalle", async () => {

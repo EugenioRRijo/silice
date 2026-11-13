@@ -862,6 +862,8 @@ def test_con_el_alta_confirmada_el_insumo_nuevo_entra_a_la_lista(_entorno) -> No
     cuerpo = r.json()
     assert cuerpo["propios"] == 2
     assert cuerpo["dados_de_alta"] == ["INSUMO INEXISTENTE DEMO"]
+    # el numero de la lista, para usarla como lista para armar (POST /v1/carpeta/lista-para-armar)
+    assert {"id": cuerpo["id"], "nombre": cuerpo["nombre"]} in navegador.get(URL).json()["listas"]
     assert cuerpo["desconocidos"] == ["ARENA LAVADA"]
     assert cuerpo["otra_unidad"] == [OTRA_UNIDAD_ARENA]
     assert cuerpo["mensaje"] == (
