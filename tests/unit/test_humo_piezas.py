@@ -704,7 +704,14 @@ def test_humo_muestrea_tambien_el_webview2_de_la_ventana() -> None:
     paso9 = texto[texto.index("Paso '9.") : texto.index("Paso '10.")]
     assert "conexiones-webview2.log.pids" in paso9
     assert "el muestreo vio los msedgewebview2.exe de la ventana" in paso9
-    assert "no vio conexiones TCP ajenas de WebView2" in paso9
+    # Lo que WebView2 abre por su cuenta se informa con sus destinos y no hace fallar la humo
+    # (decisión del 2026-11-13, simulada: el runtime de Microsoft contacta sus servicios a los 24-87 s
+    # aunque se apaguen SmartScreen, el actualizador de componentes o la red de fondo; las banderas no
+    # sirven en producción). Lo de Sílice sigue siendo estricto: su python.exe y lo que pide la página.
+    assert "Afirmar ($ajenasWeb.Count -eq 0)" not in paso9
+    assert "INFORME: WebView2 (runtime de Microsoft)" in paso9
+    assert "webview2 ajena: $_" in paso9
+    assert "Afirmar ($ajenas.Count -eq 0)" in paso9
 
 
 def test_workflow_instalador_asegura_webview2_antes_del_humo() -> None:
