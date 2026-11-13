@@ -1558,6 +1558,48 @@
         }
       }
     },
+    "/v1/libros/hojas": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Hojas Del Libro",
+        "description": "Las hojas de un libro subido, para elegir las del presupuesto (libro por frentes, D4). Pasa\npor la guardia de siempre y no materializa ninguna celda. Nada se guarda.",
+        "operationId": "hojas_del_libro_v1_libros_hojas_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_hojas_del_libro_v1_libros_hojas_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HojasDelLibroRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/libros/apu-por-hoja": {
       "post": {
         "tags": [
@@ -5141,6 +5183,48 @@
         }
       }
     },
+    "/v1/admin/empresa/perfiles-libros": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Poner Perfil De Libro",
+        "description": "Pone un perfil local del libro con un APU por hoja (ver la cabecera del módulo).",
+        "operationId": "poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilApuPorHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/claves-api": {
       "get": {
         "tags": [
@@ -8378,6 +8462,150 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LlevadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/libro": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Llevar Libro",
+        "description": "Audita el libro y lo lleva al borrador de la Hoja de la obra (ver la cabecera).",
+        "operationId": "llevar_libro_v1_hoja_libro_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_llevar_libro_v1_hoja_libro_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibroLlevadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/vistas/frentes": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Frentes",
+        "description": "El presupuesto agrupado por frente, con el cálculo del `rev` de ahora.",
+        "operationId": "vista_frentes_v1_hoja_borradores__id__vistas_frentes_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaFrentesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/frentes": {
+      "put": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Editar Frentes",
+        "description": "Pone el frente de los renglones enviados y devuelve los frentes recalculados.",
+        "operationId": "editar_frentes_v1_hoja_borradores__id__frentes_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionFrentes"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionFrentesRespuesta"
                 }
               }
             }
@@ -13895,6 +14123,21 @@
             ],
             "title": "Perfil",
             "description": "Nombre del perfil (opcional): apu_por_hoja por omisión"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto",
+            "description": "Las hojas del presupuesto que se leen, aparte del perfil (opcional; una o varias veces, una por frente)"
           }
         },
         "type": "object",
@@ -14304,6 +14547,21 @@
         ],
         "title": "Body_excel_v1_revision_excel_post"
       },
+      "Body_hojas_del_libro_v1_libros_hojas_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Un libro .xlsx (p. ej., el del presupuesto)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro"
+        ],
+        "title": "Body_hojas_del_libro_v1_libros_hojas_post"
+      },
       "Body_importar_presupuesto_de_tercero_presupuestos_importar_post": {
         "properties": {
           "archivo": {
@@ -14488,6 +14746,110 @@
           "fecha_descarga"
         ],
         "title": "Body_leer_v1_indices_leer_post"
+      },
+      "Body_llevar_libro_v1_hoja_libro_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro con un APU por hoja (.xlsx)"
+          },
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "moneda": {
+            "type": "string",
+            "enum": [
+              "Bs",
+              "USD"
+            ],
+            "title": "Moneda",
+            "description": "La moneda de los precios del libro"
+          },
+          "presupuesto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presupuesto",
+            "description": "Libro del presupuesto"
+          },
+          "perfil": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perfil"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto"
+          },
+          "frente": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "proyecto",
+          "moneda"
+        ],
+        "title": "Body_llevar_libro_v1_hoja_libro_post"
+      },
+      "Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post": {
+        "properties": {
+          "perfil": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Perfil",
+            "description": "El perfil del libro, un .json"
+          },
+          "reemplazar": {
+            "type": "boolean",
+            "title": "Reemplazar",
+            "description": "Reemplazar uno que ya está",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "perfil"
+        ],
+        "title": "Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post"
       },
       "Body_registrar_v1_admin_empresas_registradas_post": {
         "properties": {
@@ -18330,6 +18692,51 @@
         "title": "EdicionEspacioRespuesta",
         "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del espacio (como R5)."
       },
+      "EdicionFrentes": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaDeFrente"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Filas"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "filas"
+        ],
+        "title": "EdicionFrentes"
+      },
+      "EdicionFrentesRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "frentes": {
+            "$ref": "#/components/schemas/VistaFrentesRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "frentes"
+        ],
+        "title": "EdicionFrentesRespuesta"
+      },
       "EdicionParametros": {
         "properties": {
           "rev": {
@@ -19990,6 +20397,28 @@
         ],
         "title": "FilaDeCantidad"
       },
+      "FilaDeFrente": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Clave"
+          },
+          "frente": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Frente",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "clave"
+        ],
+        "title": "FilaDeFrente"
+      },
       "FilaDePlanCuerpo": {
         "properties": {
           "partida": {
@@ -20460,6 +20889,41 @@
           "precio"
         ],
         "title": "FilaSimuladaRespuesta"
+      },
+      "FrenteRespuesta": {
+        "properties": {
+          "frente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frente"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones"
+          },
+          "pendientes": {
+            "type": "integer",
+            "title": "Pendientes"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frente",
+          "renglones",
+          "pendientes",
+          "total"
+        ],
+        "title": "FrenteRespuesta",
+        "description": "Un frente: su nombre (`null`: los renglones sin frente), sus renglones, los pendientes (sin\nAPU, no suman) y su subtotal."
       },
       "FusionDelPlano": {
         "properties": {
@@ -21008,6 +21472,23 @@
         ],
         "title": "HojaVisualRespuesta",
         "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
+      },
+      "HojasDelLibroRespuesta": {
+        "properties": {
+          "hojas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hojas"
+        ],
+        "title": "HojasDelLibroRespuesta",
+        "description": "Los nombres de las hojas de un libro, en su orden."
       },
       "ImportacionDeObraRespuesta": {
         "properties": {
@@ -21798,6 +22279,13 @@
             ],
             "title": "Hoja Presupuesto"
           },
+          "hojas_presupuesto": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas Presupuesto"
+          },
           "cumple": {
             "type": "boolean",
             "title": "Cumple"
@@ -21838,6 +22326,7 @@
           "origen_perfil",
           "presupuesto",
           "hoja_presupuesto",
+          "hojas_presupuesto",
           "cumple",
           "por_severidad",
           "apus",
@@ -21970,6 +22459,59 @@
         ],
         "title": "LibroAuditadoRespuesta",
         "description": "`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la\npantalla muestra (la auditoría es válida igual, RF-144).\n\n`partidas_con_omision` (V-16, etiqueta del libro menor): los números de las partidas cuyo\nAPU tiene un hallazgo L4 (el costo directo del libro deja fuera componentes o no es la suma de\nellos), ordenados y sin repetir. Es el único rastro de «costos omitidos» que el auditor deja de\nforma estructurada; una lista vacía NO prueba que el libro esté completo (una partida\nentera que falta en el libro no tiene contraparte que comparar). Campo aditivo."
+      },
+      "LibroLlevadoRespuesta": {
+        "properties": {
+          "borrador_id": {
+            "type": "string",
+            "title": "Borrador Id"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaDelLibroRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "sin_apu": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sin Apu"
+          },
+          "sin_cantidad": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sin Cantidad"
+          },
+          "lista": {
+            "type": "string",
+            "title": "Lista"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "borrador_id",
+          "renglones",
+          "partidas",
+          "sin_apu",
+          "sin_cantidad",
+          "lista",
+          "moneda"
+        ],
+        "title": "LibroLlevadoRespuesta",
+        "description": "El borrador con el libro (sin guardar) y lo que se llevó."
       },
       "LibroOrigenRespuesta": {
         "properties": {
@@ -23992,6 +24534,56 @@
         ],
         "title": "PartidaDelContratoRespuesta"
       },
+      "PartidaDelLibroRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "codigo_libro": {
+            "type": "string",
+            "title": "Codigo Libro"
+          },
+          "hoja": {
+            "type": "string",
+            "title": "Hoja"
+          },
+          "nueva": {
+            "type": "boolean",
+            "title": "Nueva"
+          },
+          "precio_impreso": {
+            "type": "string",
+            "title": "Precio Impreso"
+          },
+          "precio_hoja": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Hoja"
+          },
+          "casa": {
+            "type": "boolean",
+            "title": "Casa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "codigo_libro",
+          "hoja",
+          "nueva",
+          "precio_impreso",
+          "precio_hoja",
+          "casa"
+        ],
+        "title": "PartidaDelLibroRespuesta"
+      },
       "PartidaDiferente": {
         "properties": {
           "codigo_partida": {
@@ -24594,6 +25186,13 @@
             ],
             "title": "Hoja Presupuesto"
           },
+          "hojas_presupuesto": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas Presupuesto"
+          },
           "motivo": {
             "anyOf": [
               {
@@ -24611,10 +25210,11 @@
           "nombre",
           "origen",
           "hoja_presupuesto",
+          "hojas_presupuesto",
           "motivo"
         ],
         "title": "PerfilApuPorHojaRespuesta",
-        "description": "Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el\nperfil local está mal escrito (entonces no se puede elegir)."
+        "description": "Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el\nperfil local está mal escrito (entonces no se puede elegir). `hojas_presupuesto` son todas las\nhojas que lee (una por frente); `hoja_presupuesto`, la primera."
       },
       "PeriodoPlanPeticion": {
         "properties": {
@@ -29573,6 +30173,36 @@
           "vacio_mensaje"
         ],
         "title": "VistaEspacioRespuesta"
+      },
+      "VistaFrentesRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "frentes": {
+            "items": {
+              "$ref": "#/components/schemas/FrenteRespuesta"
+            },
+            "type": "array",
+            "title": "Frentes"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "con_frentes": {
+            "type": "boolean",
+            "title": "Con Frentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "frentes",
+          "total",
+          "con_frentes"
+        ],
+        "title": "VistaFrentesRespuesta"
       },
       "VistaParametrosRespuesta": {
         "properties": {

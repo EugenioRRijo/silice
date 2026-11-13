@@ -10,6 +10,13 @@ Paridad con `_pestana_empresa` de `ui/paginas/administracion.py`, sobre `segurid
   propio equipo y cifrada: nunca sale la privada en claro).
 - `POST /v1/admin/empresa/clave/retirar` `{motivo?}` y `.../revocar` `{motivo, contrasena?}`: la
   privada se destruye; con la contraseña, `revocar` devuelve el aviso firmado en base64.
+- `POST /v1/admin/empresa/perfiles-libros` (multipart: `perfil`, el `.json`; `reemplazar`): pone un
+  perfil del libro con un APU por hoja en `<carpeta de datos>/perfiles_libros/` (libro por frentes,
+  2026-11-13; antes se copiaba a mano). Lo valida entero antes de escribirlo
+  (`adapters.hoja_empresa.perfil_apu_por_hoja.instalar_perfil_apu_por_hoja`): mal escrito, 422 con
+  el motivo; ya puesto y sin `reemplazar`, 409; 201 si es nuevo y 200 si reemplazó otro. Es de quien
+  administra porque el perfil decide cómo se audita el libro de la empresa para todas las cuentas
+  (y trae una expresión regular, `patron_banda`, que no conviene aceptar de cualquiera).
 
 Rol: `ADMINISTRAR_EMPRESA`, solo con sesión. Las contraseñas no se guardan, no se registran y no
 vuelven en ningún cuerpo (el 422 no repite lo enviado). Con contraseñas equivocadas se comparte el
@@ -21,15 +28,24 @@ from __future__ import annotations
 import base64
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
+from adapters.hoja_empresa.perfil import PerfilInvalido
+from adapters.hoja_empresa.perfil_apu_por_hoja import (
+    MAX_BYTES_PERFIL,
+    PerfilYaInstalado,
+    instalar_perfil_apu_por_hoja,
+)
 from api.admin_acceso import administrar, administrar_en_el_equipo, sin_cache
 from api.rutas.entregas import FRENO_FIRMA, MENSAJE_FRENO
+from api.rutas.libros import PerfilApuPorHojaRespuesta, perfil_a_respuesta
 from api.sesion_web import ahora
 from api.sin_eco import RutaSinEco as _RutaSinEco
 from api.sin_eco import sin_eco as _sin_eco
 from aplicacion.equipo import operacion_sensible_permitida
+from operacion.config import carpeta_perfiles_libros
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, empresas, eventos, firma
 from seguridad.permisos import Accion, Sensible
@@ -230,3 +246,34 @@ def revocar(
         except ERRORES_ESPERADOS as error:
             raise _rechazo(error) from None
     return AvisoRespuesta(aviso=base64.b64encode(aviso).decode("ascii") if aviso else None)
+
+
+@router.post(
+    "/perfiles-libros",
+    response_model=PerfilApuPorHojaRespuesta,
+    status_code=201,
+    dependencies=[ADMIN],
+)
+async def poner_perfil_de_libro(
+    perfil: Annotated[UploadFile, File(description="El perfil del libro, un .json")],
+    response: Response,
+    reemplazar: Annotated[bool, Form(description="Reemplazar uno que ya está")] = False,
+) -> PerfilApuPorHojaRespuesta:
+    """Pone un perfil local del libro con un APU por hoja (ver la cabecera del módulo)."""
+    datos = await perfil.read(MAX_BYTES_PERFIL + 1)
+    carpeta = carpeta_perfiles_libros()
+    try:
+        try:
+            puesto = await run_in_threadpool(lambda: instalar_perfil_apu_por_hoja(datos, carpeta))
+        except PerfilYaInstalado:
+            if not reemplazar:
+                raise
+            puesto = await run_in_threadpool(
+                lambda: instalar_perfil_apu_por_hoja(datos, carpeta, reemplazar=True)
+            )
+            response.status_code = 200
+    except PerfilYaInstalado as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+    except PerfilInvalido as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    return perfil_a_respuesta(puesto)

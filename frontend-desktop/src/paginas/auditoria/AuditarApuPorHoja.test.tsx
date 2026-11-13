@@ -147,6 +147,141 @@ describe("Auditar un libro con un APU por hoja", () => {
     expect(nota).toHaveTextContent(aviso);
   });
 
+  // Libro por frentes (ola 2, línea 3, 2026-11-13): las hojas del presupuesto se eligen aparte del perfil. Al elegir el
+  // libro del presupuesto, la pantalla pide sus hojas (`POST /v1/libros/hojas`, solo los nombres) y marca las del perfil
+  // que el libro tiene; lo marcado viaja como `hoja_presupuesto`, una vez por hoja. Datos FICTICIOS.
+  const PERFILES_FRENTES = [
+    ...PERFILES.slice(0, 1),
+    { nombre: "por_frentes", origen: "local", hoja_presupuesto: "FRENTE A", hojas_presupuesto: ["FRENTE A", "FRENTE B"], motivo: null },
+  ];
+  const conHojas = (hojas: string[], perfiles: unknown = PERFILES_FRENTES) =>
+    fetchFalso.mockImplementation(async (ruta) => {
+      if (String(ruta) === "/v1/libros/perfiles-apu-por-hoja") return json(perfiles);
+      if (String(ruta) === "/v1/libros/hojas") return json({ hojas });
+      return json({ ...INFORME, presupuesto: "frentes.xlsx", hoja_presupuesto: "FRENTE A", hojas_presupuesto: ["FRENTE A", "FRENTE B"] });
+    });
+  const hojasPedidas = () => fetchFalso.mock.calls.filter(([ruta]) => String(ruta) === "/v1/libros/hojas");
+
+  test("libro por frentes: el perfil de varias hojas las dice todas", async () => {
+    conHojas([]);
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    const selector = await screen.findByRole("combobox", { name: "Perfil del libro" });
+    await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(2));
+    expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "apu_por_hoja · lee la hoja PRESUPUESTO (del paquete)",
+      "por_frentes · lee las hojas FRENTE A y FRENTE B (de esta instalación)",
+    ]);
+  });
+
+  test("libro por frentes: al elegir el presupuesto se ofrecen sus hojas, con las del perfil marcadas, y se mandan", async () => {
+    conHojas(["RESUMEN", "FRENTE A", "FRENTE B"]);
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    const selector = await screen.findByRole("combobox", { name: "Perfil del libro" });
+    await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(2));
+    await usuario.selectOptions(selector, "por_frentes");
+    const [apu, presupuesto] = campos();
+    await usuario.upload(apu, new File(["x"], "obra.xlsx"));
+    await usuario.upload(presupuesto, new File(["y"], "frentes.xlsx"));
+    const grupo = await screen.findByRole("group", { name: "Hojas del presupuesto que se comparan" });
+    expect(hojasPedidas()).toHaveLength(1);
+    expect(((hojasPedidas()[0]![1]?.body as FormData).get("libro") as File).name).toBe("frentes.xlsx");
+    const casillas = within(grupo).getAllByRole("checkbox") as HTMLInputElement[];
+    expect(casillas.map((c) => [c.labels?.[0]?.textContent, c.checked])).toEqual([
+      ["RESUMEN", false],
+      ["FRENTE A", true],
+      ["FRENTE B", true],
+    ]);
+    await usuario.click(within(grupo).getByRole("checkbox", { name: "FRENTE A" }));
+    await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
+    await waitFor(() => expect(auditorias()).toHaveLength(1));
+    expect((auditorias()[0]![1]?.body as FormData).getAll("hoja_presupuesto")).toEqual(["FRENTE B"]);
+    expect(await screen.findByText(/con frentes\.xlsx \(hojas FRENTE A y FRENTE B\)/)).toBeInTheDocument();
+  });
+
+  test("libro por frentes: si el libro no tiene la hoja del perfil, lo dice y no marca ninguna", async () => {
+    conHojas(["FRENTE A", "FRENTE B"]);
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    await screen.findByRole("combobox", { name: "Perfil del libro" });
+    await usuario.upload(campos()[1], new File(["y"], "frentes.xlsx"));
+    const grupo = await screen.findByRole("group", { name: "Hojas del presupuesto que se comparan" });
+    expect((within(grupo).getAllByRole("checkbox") as HTMLInputElement[]).every((c) => !c.checked)).toBe(true);
+    expect(screen.getByText("El perfil lee la hoja PRESUPUESTO, que este libro no tiene: marque las hojas que quiere comparar.")).toBeInTheDocument();
+  });
+
+  // Libro por frentes: llevar a la Hoja el libro auditado (`POST /v1/hoja/libro`). La pantalla vuelve a mandar los dos
+  // libros, el perfil y las hojas, más la obra y la moneda de los precios; el servidor dice cada partida con el P.U. del
+  // libro y el de la Hoja (ya presentados) y si casan. Datos FICTICIOS.
+  const LLEVADO = {
+    borrador_id: "b".repeat(20),
+    renglones: 10,
+    partidas: [
+      { codigo: "VF-001", codigo_libro: "VF-001", hoja: "APU 1", nueva: true, precio_impreso: "2.08", precio_hoja: "2.08", casa: true },
+      { codigo: "VF-002-B", codigo_libro: "VF-002", hoja: "APU 2", nueva: true, precio_impreso: "4.50", precio_hoja: "4.13", casa: false },
+    ],
+    sin_apu: ["FRENTE A, renglón 6"],
+    sin_cantidad: [],
+    lista: "Lista ficticia",
+    moneda: "Bs",
+  };
+  const conLlevar = () =>
+    fetchFalso.mockImplementation(async (ruta) => {
+      if (String(ruta) === "/v1/libros/perfiles-apu-por-hoja") return json(PERFILES_FRENTES);
+      if (String(ruta) === "/v1/libros/hojas") return json({ hojas: ["FRENTE A", "FRENTE B"] });
+      if (String(ruta) === "/v1/hoja/libro") return json(LLEVADO);
+      return json({ ...INFORME, presupuesto: "frentes.xlsx", hoja_presupuesto: "FRENTE A", hojas_presupuesto: ["FRENTE A", "FRENTE B"] });
+    });
+  const llevadas = () => fetchFalso.mock.calls.filter(([ruta]) => String(ruta) === "/v1/hoja/libro");
+
+  async function auditarLosDos() {
+    const selector = await screen.findByRole("combobox", { name: "Perfil del libro" });
+    await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(2));
+    await usuario.selectOptions(selector, "por_frentes");
+    const [apu, presupuesto] = campos();
+    await usuario.upload(apu, new File(["x"], "obra.xlsx"));
+    await usuario.upload(presupuesto, new File(["y"], "frentes.xlsx"));
+    await screen.findByRole("group", { name: "Hojas del presupuesto que se comparan" });
+    await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
+    await screen.findByRole("table", { name: "Precio unitario de cada hoja" });
+  }
+
+  test("libro por frentes: lleva el libro auditado a la Hoja de la obra y dice qué casa", async () => {
+    conLlevar();
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} obra="Vía ficticia" puedeLlevar />);
+    await auditarLosDos();
+    const llevar = screen.getByRole("button", { name: "Llevar el libro a la Hoja de «Vía ficticia»" });
+    expect(llevar).toBeDisabled(); // falta la moneda de los precios
+    await usuario.selectOptions(screen.getByRole("combobox", { name: "Moneda de los precios del libro" }), "Bs");
+    await usuario.click(llevar);
+    await waitFor(() => expect(llevadas()).toHaveLength(1));
+    const cuerpo = llevadas()[0]![1]?.body as FormData;
+    expect((cuerpo.get("libro") as File).name).toBe("obra.xlsx");
+    expect((cuerpo.get("presupuesto") as File).name).toBe("frentes.xlsx");
+    expect([cuerpo.get("proyecto"), cuerpo.get("moneda"), cuerpo.get("perfil")]).toEqual(["Vía ficticia", "Bs", "por_frentes"]);
+    expect(cuerpo.getAll("hoja_presupuesto")).toEqual(["FRENTE A", "FRENTE B"]);
+    expect(
+      await screen.findByText("Se llevaron 10 renglones a la Hoja de «Vía ficticia», sin guardar: ábrala para revisarlos y guardar la versión."),
+    ).toBeInTheDocument();
+    const tabla = screen.getByRole("table", { name: "Partidas llevadas a la Hoja" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    expect(filas.map((f) => within(f).getAllByRole("cell").map((c) => c.textContent))).toEqual([
+      ["VF-001", "APU 1", "2,08", "2,08", "Casa"],
+      ["VF-002-B (del libro: VF-002)", "APU 2", "4,50", "4,13", "No casa"],
+    ]);
+    expect(screen.getByText("No se llevaron, sin hoja de APU: FRENTE A, renglón 6.")).toBeInTheDocument();
+  });
+
+  test("libro por frentes: sin obra elegida no se lleva y lo dice; sin permiso no se ofrece", async () => {
+    conLlevar();
+    const { unmount } = render(<AuditarApuPorHoja alExpirar={vi.fn()} obra={null} puedeLlevar />);
+    await auditarLosDos();
+    expect(screen.getByText("Elija una obra en la barra de arriba para llevar el libro a su Hoja.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Llevar el libro a la Hoja/ })).toBeNull();
+    unmount();
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} obra="Vía ficticia" puedeLlevar={false} />);
+    await auditarLosDos();
+    expect(screen.queryByRole("button", { name: /Llevar el libro a la Hoja/ })).toBeNull();
+  });
+
   test("el mensaje del servidor se muestra si rechaza el libro", async () => {
     fetchFalso.mockImplementation(async () => json({ detalle: "El libro «frente.xlsx» no tiene ninguna hoja de APU." }, 422));
     render(<AuditarApuPorHoja alExpirar={vi.fn()} />);

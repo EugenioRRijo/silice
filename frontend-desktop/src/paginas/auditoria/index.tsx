@@ -86,7 +86,9 @@ export default function PaginaAuditoria() {
       )}
 
       {/* F5 vial, tarea 6: el libro con un APU por hoja y su presupuesto (otro perfil, otra subida). */}
-      {puedeAuditar && <AuditarApuPorHoja alExpirar={alExpirar} />}
+      {puedeAuditar && (
+        <AuditarApuPorHoja alExpirar={alExpirar} obra={nombreProyecto ?? null} puedeLlevar={sesion.acciones.includes("editar_hoja")} />
+      )}
 
       {puedeAuditar && (
         <section className="silice-inicio__bloque" aria-labelledby="auditoria-seguir">

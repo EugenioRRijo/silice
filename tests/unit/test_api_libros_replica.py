@@ -566,6 +566,7 @@ def test_la_lista_de_perfiles_sin_perfiles_locales():
             "nombre": "apu_por_hoja",
             "origen": "paquete",
             "hoja_presupuesto": "PRESUPUESTO",
+            "hojas_presupuesto": ["PRESUPUESTO"],  # libro por frentes: todas las hojas
             "motivo": None,
         }
     ]
