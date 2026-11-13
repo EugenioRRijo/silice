@@ -50,6 +50,8 @@ class CapaEntrada(_Estricto):
     esponjamiento: Cifra | None = None
     limpieza: StrictBool = False
     medicion: Annotated[str, Field(max_length=10)] | None = None
+    #: Prueba de punta a punta del 2026-11-13: el APU del riego ya trae el ligante.
+    suministro: StrictBool = False
 
 
 class DemarcacionEntrada(_Estricto):
@@ -112,6 +114,7 @@ def a_tramos(entrada: Sequence[TramoEntrada]) -> list[Tramo]:
                 esponjamiento=_cifra(t.id, "esponjamiento", c.esponjamiento),
                 limpieza=c.limpieza,
                 medicion=c.medicion,
+                suministro=c.suministro,
             )
             for c in t.capas
         )
@@ -153,6 +156,7 @@ class CapaRespuesta(BaseModel):
     esponjamiento: str | None = Field(default=None, exclude_if=_nulo)
     limpieza: bool = Field(default=False, exclude_if=_nulo)
     medicion: str | None = Field(default=None, exclude_if=_nulo)
+    suministro: bool = Field(default=False, exclude_if=_nulo)
 
 
 class DemarcacionRespuesta(BaseModel):
@@ -243,6 +247,7 @@ def tramo_a_respuesta(t: Tramo) -> TramoRespuesta:
                 esponjamiento=_texto(c.esponjamiento),
                 limpieza=c.limpieza,
                 medicion=c.medicion,
+                suministro=c.suministro,
             )
             for c in t.capas
         ],

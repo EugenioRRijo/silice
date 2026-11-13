@@ -216,6 +216,8 @@ def _capas_a_texto(capas: Sequence[Capa]) -> str:
                 **({} if c.esponjamiento is None else {"esponjamiento": str(c.esponjamiento)}),
                 **({"limpieza": True} if c.limpieza else {}),
                 **({} if c.medicion is None else {"medicion": c.medicion}),
+                # prueba de punta a punta del 2026-11-13: igual, solo si la capa lo declara
+                **({"suministro": True} if c.suministro else {}),
             }
             for c in capas
         ],
@@ -237,6 +239,7 @@ def _capas_de_texto(texto: str) -> tuple[Capa, ...]:
             esponjamiento=cifra(c.get("esponjamiento")),
             limpieza=bool(c.get("limpieza", False)),
             medicion=c.get("medicion"),
+            suministro=bool(c.get("suministro", False)),
         )
         for c in json.loads(texto)
     )

@@ -1159,6 +1159,11 @@ desde un archivo CSV, uno por versión.
 
 Llevar otra vez actualiza los renglones que vinieron de los tramos.
 
+Llevar es todo o nada: si a una partida que sale de los tramos le falta su APU, no se lleva ninguna y
+Sílice dice cuáles faltan. Si la que falta es un ligante cuyo APU de riego ya lo trae, o la línea y la
+pintura de una línea donde solo se ponen ojos de gato, el mensaje dice cómo declararlo en el archivo
+(`suministro` = `sí`, o la demarcación `captafaros`) para que esa partida no salga.
+
 **El archivo de la vía.** Texto UTF-8, columnas separadas por punto y coma. Aquí **sí** se usa coma
 decimal (`1,2`); también se acepta punto sin miles (`1234.5`). Máximo 2 MiB. Si una fila está mal, no se
 importa nada y Sílice dice cuál.
@@ -1169,7 +1174,8 @@ se lee igual): `asfalto_pct` (el porcentaje de asfalto de la mezcla de la carpet
 `esponjamiento` (del fresado, 1 o más: sin él no se calcula el transporte del fresado), `limpieza` (`sí` o
 `no`, en la imprimación y el riego), `medicion` (`m2` en el fresado o `t` en la carpeta: la otra unidad de la
 partida), `area_m2` (el área de cada elemento de una demarcación `superficie`), `captafaros` (los ojos de gato
-de una línea) y `transporte` (vacía, el transporte de la mezcla en t·km; `banda`, en toneladas, con la
+de una línea o de una demarcación `captafaros`), `suministro` (`sí` en la imprimación o el riego si su APU ya trae
+el ligante: entonces no se calcula el ligante aparte y la dosis es opcional) y `transporte` (vacía, el transporte de la mezcla en t·km; `banda`, en toneladas, con la
 distancia como banda en la descripción de la partida). El detalle de cada una está en
 `data/samples/vial/README.md`. Una fila por capa o por línea de demarcación; los datos del tramo, también
 `transporte`, van en su primera fila. Ejemplo ficticio:
@@ -1187,7 +1193,8 @@ T2;1,2;2,0;6,50;18;capa;subbase_granular;0,25;;;
 `elemento` es `capa` o `demarcacion`. Las capas pueden ser `fresado`, `base_granular`, `subbase_granular`,
 `imprimacion`, `riego_adherencia`, `carpeta` o `bacheo`; la demarcación, `continua`, `discontinua` o
 `superficie` (pasos peatonales y líneas de pare: `lineas` es el número de elementos iguales y `area_m2` el
-área de cada uno).
+área de cada uno); o `captafaros`, ojos de gato solos sobre una línea que la obra no pinta: el número va
+en `captafaros`, `lineas` queda vacía y no se calculan la línea ni su pintura).
 
 **Qué calcula Sílice:** volumen de fresado, base y sub-base; área y litros de ligante de imprimación y
 riego; área y toneladas de mezcla de la carpeta; toneladas por kilómetro de transporte hasta la planta

@@ -115,7 +115,8 @@ def test_la_consulta_de_partidas_viales_las_encuentra():
 
 
 def test_superficie_es_un_tipo_de_demarcacion():
-    assert TIPOS_DEMARCACION == ("continua", "discontinua", "superficie")
+    # «captafaros», ojos de gato solos: prueba de punta a punta del 2026-11-13
+    assert TIPOS_DEMARCACION == ("continua", "discontinua", "superficie", "captafaros")
 
 
 @pytest.mark.parametrize(

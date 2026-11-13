@@ -38,7 +38,11 @@ CAPTAFAROS = "captafaros"
 #: en t por banda de distancia; vacía, en t·km. Se llena en la primera fila del tramo, como la
 #: distancia; si se repite en otra fila, debe coincidir.
 TRANSPORTE = "transporte"
-_SOLO_CAPA = (*_COLUMNAS_CAPA, ASFALTO, ESPONJAMIENTO, LIMPIEZA, MEDICION)
+#: Columna opcional de la capa (prueba de punta a punta del 2026-11-13, D2): «sí» en la imprimación
+#: o el riego de adherencia si su APU ya trae el ligante («riego con suministro»); entonces no se
+#: deriva el ligante y la dosis es opcional. Vacía o «no», la capa de siempre.
+SUMINISTRO = "suministro"
+_SOLO_CAPA = (*_COLUMNAS_CAPA, ASFALTO, ESPONJAMIENTO, LIMPIEZA, MEDICION, SUMINISTRO)
 _SOLO_DEMARCACION = ("lineas", AREA, CAPTAFAROS)
 
 _CAPA = "capa"
@@ -178,6 +182,7 @@ def _agregar_elemento(fila: dict[str, str | None], borrador: _Borrador) -> None:
                 esponjamiento=_decimal(fila, ESPONJAMIENTO),
                 limpieza=_si_no(fila, LIMPIEZA),
                 medicion=_celda(fila, MEDICION) or None,
+                suministro=_si_no(fila, SUMINISTRO),
             )
         )
     elif elemento == _DEMARCACION:
@@ -185,6 +190,8 @@ def _agregar_elemento(fila: dict[str, str | None], borrador: _Borrador) -> None:
         if llenas:
             raise ValueError(f"una demarcación no usa {', '.join(llenas)}: déjelas vacías")
         lineas = _celda(fila, "lineas")
+        if tipo == "captafaros" and not lineas:
+            lineas = "1"  # ojos de gato solos: el número va en «captafaros»
         if not (lineas.isascii() and lineas.isdigit()):
             raise ValueError(f"la columna 'lineas' debe ser un entero: {lineas!r}")
         borrador.demarcacion.append(

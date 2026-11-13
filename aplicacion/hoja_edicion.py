@@ -158,24 +158,29 @@ class PartidaSinApu(Exception):  # noqa: N818
 
 class PartidaFueraDelCatalogo(Exception):  # noqa: N818
     """La partida que se quiere agregar no esta en el catalogo de la carpeta. Con varios codigos
-    (llevar los tramos al presupuesto, plan vial Tarea 8b) el mensaje los nombra todos."""
+    (llevar los tramos al presupuesto, plan vial Tarea 8b) el mensaje los nombra todos y, tras
+    ellos, las `pistas` de quien llama (llevar los tramos dice como declarar lo que el APU ya
+    trae; prueba de punta a punta del 2026-11-13)."""
 
-    def __init__(self, codigo: str, *otros: str) -> None:
+    def __init__(self, codigo: str, *otros: str, pistas: tuple[str, ...] = ()) -> None:
         super().__init__(codigo, *otros)
         self.codigo = codigo
         self.codigos = (codigo, *otros)
+        self.pistas = tuple(pistas)
 
     def __str__(self) -> str:
         if len(self.codigos) == 1:
-            return (
+            mensaje = (
                 f"La partida «{self.codigo}» no está en el catálogo: compóngala primero en "
                 "Componer."
             )
-        primeras = ", ".join(f"«{codigo}»" for codigo in self.codigos[:-1])
-        return (
-            f"Las partidas {primeras} y «{self.codigos[-1]}» no están en el catálogo: "
-            "compóngalas primero en Componer."
-        )
+        else:
+            primeras = ", ".join(f"«{codigo}»" for codigo in self.codigos[:-1])
+            mensaje = (
+                f"Las partidas {primeras} y «{self.codigos[-1]}» no están en el catálogo: "
+                "compóngalas primero en Componer."
+            )
+        return " ".join((mensaje, *self.pistas))
 
 
 class SinListaDeLaObra(Exception):  # noqa: N818

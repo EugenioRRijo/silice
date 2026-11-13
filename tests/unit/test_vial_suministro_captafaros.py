@@ -30,7 +30,7 @@ from adapters.vial.modelo import Capa, Demarcacion, Tramo
 from adapters.vial.reglas import auditar_vial
 from adapters.vial.tabular import leer_tramos
 from api.esquemas_vial import TramoEntrada, a_tramos, tramo_a_respuesta
-from aplicacion import hoja_vial, vial
+from aplicacion import hoja_edicion, hoja_vial, vial
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from core.contracts.apu import ComposicionAPU, ResultadoAPU
@@ -254,8 +254,8 @@ def test_la_pista_de_los_captafaros_sale_si_falta_la_linea_de_una_linea_con_capt
 
 
 def test_el_404_de_llevar_lleva_las_pistas_tras_los_codigos():
-    error = hoja_vial.PartidasDeLosTramosFueraDelCatalogo(
-        (COD["riego_adherencia_ligante"],), (PISTA_LIGANTE,)
+    error = hoja_edicion.PartidaFueraDelCatalogo(
+        COD["riego_adherencia_ligante"], pistas=(PISTA_LIGANTE,)
     )
     assert error.codigos == (COD["riego_adherencia_ligante"],)
     assert str(error) == (

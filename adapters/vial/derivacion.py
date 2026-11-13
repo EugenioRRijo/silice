@@ -26,6 +26,10 @@ de superficie da área de cada elemento × número (sin pintura: VR5 mide línea
 fresado se mide en m² (`fresado_area`) y la colocación de la carpeta en t
 (`carpeta_colocacion_masa`, antes de la mezcla), cada variante con su código propio.
 
+**Lo que el APU ya trae** (prueba de punta a punta del 2026-11-13, D2): un riego con
+`suministro` no da la partida de su ligante (el APU del riego lo incluye) y una demarcación de tipo
+`captafaros` da solo sus unidades, sin línea ni pintura.
+
 **Transporte por banda** (F5 vial, tarea 2; diseño §5.3): si el tramo declara `transporte =
 "banda"`, la mezcla de cada capa da `transporte_mezcla_banda` en t (las mismas toneladas de la
 mezcla, con o sin distancia) en vez de la de t·km.
@@ -147,6 +151,8 @@ def _items_de_capa(tramo: Tramo, n: int, capa: Capa) -> list[ItemComputo]:
             continue
         if regla == MASA and "densidad" not in valores:
             continue  # bacheo sin densidad: solo su volumen
+        if regla == LITROS and capa.suministro:
+            continue  # riego con suministro: el ligante va dentro del APU del riego
         espec = de_la_mezcla if regla == MASA else especificaciones
         items.append(_item(clave, regla, valores, tramo, origen_id, espec))
         if regla == MASA and tramo.transporte == TRANSPORTE_BANDA:
@@ -200,6 +206,18 @@ def derivar_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
                         "demarcacion_superficie",
                         SUPERFICIE,
                         valores,
+                        tramo,
+                        origen,
+                        especificaciones,
+                    )
+                )
+                continue
+            if linea.tipo == "captafaros" and linea.captafaros is not None:
+                items.append(
+                    _item(
+                        "captafaros",
+                        CAPTAFAROS,
+                        {CAPTAFAROS: Decimal(linea.captafaros)},
                         tramo,
                         origen,
                         especificaciones,
