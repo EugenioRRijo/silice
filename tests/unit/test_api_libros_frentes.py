@@ -82,6 +82,20 @@ def test_las_hojas_elegidas_viajan_aparte_del_perfil():
     assert celdas == ["FRENTE A!E6", "FRENTE A!F8", "FRENTE A!A9", "FRENTE B!F8", "FRENTE B!A9"]
 
 
+@pytest.mark.parametrize(
+    "hojas", [["X" * 32], [f"H{n}" for n in range(101)]], ids=["larga", "demasiadas"]
+)
+def test_las_hojas_elegidas_tienen_tope(hojas: list[str]):
+    """Nota N6 del árbitro de la ola 2: antes solo las acotaba el límite del cuerpo."""
+    r = _auditar(_con_clave(), hojas)
+    assert r.status_code == 422
+    assert r.json()["detalle"] == (
+        "Elija a lo sumo 100 hojas del presupuesto, cada una de a lo sumo 31 caracteres (el "
+        "largo máximo del nombre de una hoja de Excel)."
+    )
+    assert "X" * 32 not in r.text
+
+
 def test_sin_elegir_hojas_vale_la_del_perfil():
     r = _auditar(_con_clave())
     assert r.status_code == 422

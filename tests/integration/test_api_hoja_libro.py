@@ -338,6 +338,17 @@ def test_si_falla_al_final_el_borrador_que_ya_estaba_queda_como_estaba(
     assert sorted(_partidas_del_libro()) == [f"VF-00{n}" for n in range(1, 6)]
 
 
+def test_las_hojas_del_presupuesto_tienen_tope(ana) -> None:
+    """Nota N6 del árbitro de la ola 2: a lo sumo 100 hojas de a lo sumo 31 caracteres."""
+    r = _llevar(ana, hoja_presupuesto=["FRENTE A", "X" * 32])
+    assert r.status_code == 422
+    assert r.json()["detalle"] == (
+        "Elija a lo sumo 100 hojas del presupuesto, cada una de a lo sumo 31 caracteres (el "
+        "largo máximo del nombre de una hoja de Excel)."
+    )
+    assert _partidas_del_libro() == []
+
+
 def test_una_obra_con_versiones_no_recibe_el_libro(ana) -> None:
     r = _llevar(ana, proyecto=OBRA)
     assert r.status_code == 409
