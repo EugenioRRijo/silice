@@ -617,6 +617,31 @@ def test_el_frente_del_libro_sin_presupuesto_tampoco(ana) -> None:
     assert _borradores(ana[0]) == []
 
 
+def test_una_hoja_del_presupuesto_llamada_sin_frente_tampoco(ana) -> None:
+    """Árbitro, ronda 3 (R3-N2): el tercer camino que promete el bloque. Una hoja del presupuesto
+    que se llama como el grupo de los renglones sin frente se rechaza sin eco y no abre borrador."""
+    navegador, ficha = ana
+    con_reservada = io.BytesIO(libro_presupuesto_por_hojas())
+    import openpyxl
+
+    libro = openpyxl.load_workbook(con_reservada)
+    libro["FRENTE B"].title = "Sin frente"
+    salida = io.BytesIO()
+    libro.save(salida)
+    r = navegador.post(
+        RUTA,
+        files={
+            "libro": ("obra_a.xlsx", libro_apu()),
+            "presupuesto": ("frentes.xlsx", salida.getvalue()),
+        },
+        data={"proyecto": VIA, "moneda": "Bs", "hoja_presupuesto": ["FRENTE A", "Sin frente"]},
+        headers=protegida(ficha),
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == RESERVADO
+    assert _borradores(navegador) == []
+
+
 def test_el_pdf_rotula_el_grupo_de_los_renglones_sin_frente(ana) -> None:
     navegador, ficha = ana
     id_ = _llevar(ana).json()["borrador_id"]

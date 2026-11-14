@@ -163,7 +163,7 @@ def repartir_por_frente[F: _FilaConClave](
     filas: Sequence[F], resultado: hoja.ResultadoHoja
 ) -> list[tuple[str, list[F]]]:
     """Las filas del presupuesto (cada una con la `clave` de su renglón) en grupos (frente, filas):
-    los frentes en el orden en que aparecen y los renglones sin frente al final, en «Sin frente»;
+    los frentes en el orden en que aparecen y los renglones sin frente al final, en «(sin frente)»;
     sin ningún frente, un solo grupo sin título (ver la cabecera del módulo)."""
     del_renglon = {
         clave: frente_de(item)
