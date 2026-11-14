@@ -142,12 +142,9 @@ def test_sin_confirmar_el_alta_los_nuevos_no_entran_y_se_dice_por_que_los_otros(
     resumen = _crear(sesion, archivo)
     assert resumen.propios == 2
     assert resumen.dados_de_alta == ()
-    assert resumen.desconocidos == (
-        "Bloque de prueba",
-        "Retro de prueba",
-        "Chofer de prueba",
-        "Arena de prueba",
-    )
+    # los de otra unidad SÍ están en el catálogo: van en `otra_unidad`, no entre los desconocidos
+    # («no están en el catálogo»), que se contradecían (pasada en navegador de la ola 2, D9a)
+    assert resumen.desconocidos == ("Bloque de prueba", "Retro de prueba")
     assert resumen.otra_unidad == OTRA_UNIDAD
     assert _insumos(sesion) == antes
 
@@ -159,7 +156,7 @@ def test_con_el_alta_confirmada_los_nuevos_entran_con_su_precio_y_los_de_otra_un
     resumen = _crear(sesion, archivo, dar_de_alta=True)
     assert resumen.propios == 4
     assert resumen.dados_de_alta == ("Bloque de prueba", "Retro de prueba")
-    assert resumen.desconocidos == ("Chofer de prueba", "Arena de prueba")
+    assert resumen.desconocidos == ()  # los de otra unidad no son desconocidos (D9a)
     assert resumen.otra_unidad == OTRA_UNIDAD
     assert _insumos(sesion) == antes + 2
     precios = _precios_de_la_empresa(sesion)
@@ -208,3 +205,18 @@ def test_una_fila_sin_fecha_ni_fuente_toma_las_de_la_lista(sesion: Session, tmp_
         .where(models.Insumo.codigo == "MAT-001")
     ).one()
     assert (origen.fecha_precio, origen.fuente) == (FECHA, FUENTE)
+
+
+def test_dos_listas_del_mismo_dia_sin_nombre_no_se_llaman_igual(
+    sesion: Session, archivo: Path
+) -> None:
+    """D9c de la pasada en navegador: las dos se llamaban «Empresa ficticia 2026-10-05». Como la
+    lista para armar (`listas_para_armar._nombre_libre`) y como Excel, la segunda lleva « (2)»."""
+    primera = _crear(sesion, archivo)
+    segunda = _crear(sesion, archivo)
+    tercera = _crear(sesion, archivo)
+    assert (primera.nombre, segunda.nombre, tercera.nombre) == (
+        "Empresa ficticia 2026-10-05",
+        "Empresa ficticia 2026-10-05 (2)",
+        "Empresa ficticia 2026-10-05 (3)",
+    )
