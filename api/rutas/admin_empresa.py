@@ -14,7 +14,8 @@ Paridad con `_pestana_empresa` de `ui/paginas/administracion.py`, sobre `segurid
   perfil del libro con un APU por hoja en `<carpeta de datos>/perfiles_libros/` (libro por frentes,
   2026-11-13; antes se copiaba a mano). Lo valida entero antes de escribirlo
   (`adapters.hoja_empresa.perfil_apu_por_hoja.instalar_perfil_apu_por_hoja`): mal escrito, 422 con
-  el motivo; ya puesto y sin `reemplazar`, 409; 201 si es nuevo y 200 si reemplazó otro. Es de quien
+  el motivo; ya puesto y sin `reemplazar`, o con ese nombre un archivo de otro tipo de perfil (ni
+  con `reemplazar` se pisa), 409; 201 si es nuevo y 200 si reemplazó otro. Es de quien
   administra porque el perfil decide cómo se audita el libro de la empresa para todas las cuentas
   (y trae una expresión regular, `patron_banda`, que no conviene aceptar de cualquiera).
 

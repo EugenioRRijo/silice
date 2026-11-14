@@ -384,6 +384,18 @@ def _carpeta_de_escritura(por_omision: Path) -> Path:
     return Path(valor) if valor else por_omision
 
 
+def _de_otro_tipo(nombre: str, ruta: Path) -> bool:
+    """Si `ruta` es un JSON legible de otro tipo de perfil (sin `"tipo": "apu_por_hoja"`): el que
+    `perfiles_apu_por_hoja` salta sin decirlo, y que ni «Reemplazar» pisa (ronda 1 del árbitro de
+    la ola 2, hallazgo 10). Uno ilegible sí sale en la lista, con su motivo, y se puede
+    reemplazar."""
+    try:
+        crudo = _leer_json(nombre, ruta)
+    except PerfilInvalido:
+        return False
+    return not isinstance(crudo, dict) or crudo.get("tipo") != "apu_por_hoja"
+
+
 def instalar_perfil_apu_por_hoja(
     datos: bytes, por_omision: Path, *, reemplazar: bool = False
 ) -> PerfilDisponible:
@@ -394,7 +406,8 @@ def instalar_perfil_apu_por_hoja(
     `PerfilInvalido` si pasa de `MAX_BYTES_PERFIL`, si no es un JSON en UTF-8, si su nombre no es
     válido (minúsculas, cifras y «_»: el nombre del archivo sale de ahí, nunca de una ruta) o si no
     describe un libro con un APU por hoja. `PerfilYaInstalado` si ya hay uno local con ese nombre y
-    no se pide `reemplazar`. Se escribe el archivo tal como llegó, primero en un temporal y luego
+    no se pide `reemplazar`, o si el archivo con ese nombre es de otro tipo de perfil (aunque se
+    pida). Se escribe el archivo tal como llegó, primero en un temporal y luego
     en su sitio (`os.replace`): no queda un perfil a medias."""
     if len(datos) > MAX_BYTES_PERFIL:
         raise PerfilInvalido(
@@ -412,6 +425,12 @@ def instalar_perfil_apu_por_hoja(
     perfil = _construir(nombre, crudo, "local")
     carpeta = _carpeta_de_escritura(por_omision)
     destino = carpeta / f"{nombre}.json"
+    if destino.exists() and _de_otro_tipo(nombre, destino):
+        raise PerfilYaInstalado(
+            f"En esta instalación ya hay un archivo «{nombre}.json» que no es un perfil de un "
+            "libro con un APU por hoja (otro tipo de perfil): Sílice no lo pisa. Ponga a este "
+            "perfil otro nombre."
+        )
     if destino.exists() and not reemplazar:
         raise PerfilYaInstalado(
             f"Ya hay un perfil «{nombre}» en esta instalación: marque «Reemplazar» para cambiarlo."
