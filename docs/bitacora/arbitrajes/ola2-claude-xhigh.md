@@ -238,3 +238,100 @@ pantalla nunca mostró) o renombrarlo (deja archivos que nadie pidió).
   palabras y cifras de los dos informes locales (leídos solo para comparar, guion en el scratchpad): 0 cifras; las
   palabras que coinciden son genéricas («estación», «subtotales», «ficticia», «commit»…), ningún nombre, código ni
   rótulo del libro.
+
+
+## Ronda 2: veredicto (2026-11-13, árbitro Claude xhigh)
+
+**Juzgado:** `git diff 7c62dd47 eb3dbb9b` (las correcciones, 20 commits) contra el código del árbol `.worktrees/s2m4`
+en `751b7ed4`. La unión con `origin/main` solo trae `frontend-desktop/src/paginas/pendientes/Bandeja.test.tsx`
+(`git diff --stat eb3dbb9b 751b7ed4`).
+
+**VEREDICTO: APROBADO CON CAMBIOS.** 0 BLOQUEANTE, 0 MAYOR, 2 MENOR y 2 NOTA. Los dos MAYOR de la ronda 1 están
+cerrados: se cumplen las dos condiciones de «Aprobado si», comprobadas abajo. También están cerrados los MENOR 3, 5, 6,
+7, 8 y 10 y las notas N6 y N7. Lo que queda no pide otra ronda: R2-1 (la defensa de `patron_banda` se burla con formas
+rebuscadas y rechaza el patrón de miles) y R2-2 (el MENOR 9 de la ronda 1, CHANGELOG y ESTADO), que tiene que estar
+hecho antes del PR.
+
+Ronda: 2 · Base: `7c62dd47` · Cabeza: `eb3dbb9b` (árbol en `751b7ed4`)
+
+### Lo que corrió el árbitro (salida real)
+
+- **vitest entero** (`npx vitest run --maxWorkers=2` en `frontend-desktop`): `Test Files 303 passed (303)`,
+  `Tests 4479 passed (4479)`. `npx vitest run src/comun/arquitectura.test.ts`: `4 passed (4)`. `npx tsc -b --noEmit` y
+  `npx eslint . --ignore-pattern "node_modules.viejo/**"`: sin errores.
+- **pytest** (`.worktrees/tanda/.venv`, `-o addopts="" -q -p no:cacheprovider -W error`, cwd en `s2m4`), 31 archivos:
+  `test_api_hoja_libro`, `test_libro_por_frentes`, `test_api_libros_frentes`, `test_api_libros*`,
+  `test_api_acceso_por_ruta`, `test_api_admin*`, `test_api_hoja_exportar`, `test_api_hoja_pdf`, `test_presupuesto_pdf`,
+  `test_fusion_apu_por_hoja`, `test_hoja_empresa_apu_por_hoja`, `test_hoja_recongelado_2`, `test_vial_banda_*`,
+  `test_openapi`, `test_aplicacion_sin_ciclos`, `test_arquitectura*` y `test_documentos_*`: `1339 passed`. Ninguna
+  omitida.
+- **Rojos**, cada uno en su commit (`git archive` en el scratchpad, sin escribir en el repositorio). `8d3bcc05`: 1 failed
+  (`assert 200 == 409`; VF-001 impreso 2.08 y en la Hoja 0.05, VF-004 820.00 y 20.24, que es mi sonda de la ronda 1).
+  `49282097`: 10 failed y 4 passed (nueve «DID NOT RAISE» más el de la carpeta; pasan los cuatro legítimos).
+  `86ad77f7`: 1 failed («Ya hay un pe…»). `f8c440e4`: 1 failed (falta «Subtotal de FRENTE A»). `e4eec769`: 3 failed.
+  Front, con los `node_modules` enlazados por una junction que quité al terminar (en esta ronda la nota N3 no hace
+  falta): `5b5f8348` 1 failed («Unable to find … Total general: 4.801,13 Bs») y `2df29574` 1 failed (Received
+  «_frente=FRENTE A»). El rojo del MAYOR 2 lo vi en la ronda 1 (`7c62dd47`, 3 failed). Cada rojo trae solo pruebas y
+  está en la historia antes de su verde.
+- **Todo o nada (`c569855b`), que no tiene rojo propio**: los dos mutantes del corrector en el árbol de ese commit. A
+  (`rollback` → `commit`): 2 failed (`['VF-001', …] == []`). B (sin descartar ni restaurar el borrador): 2 failed
+  (queda un borrador; entra «VF-001-B»). Las pruebas muerden.
+- **Sondas** (fuera del repositorio): `patron_banda` (R2-1; `scratchpad/sonda_redos.py`, cada búsqueda en otro proceso
+  con tope de 5 s) y el PDF por frente con frentes intercalados y un renglón sin frente (en una copia de la cabeza).
+- `git diff --stat 7c62dd47 751b7ed4 -- core/`: vacío. `scripts/guardia_nucleo.py --base 7c62dd47`: OK.
+  `congelado.verificar()`: vacío. Ninguno de los 50 `archivos_del_auditor` de `asistente/experimento/protocolo.json`,
+  ni el congelado, está en el diff. `ruff check` de los `.py` del diff: «All checks passed!». `scripts/meta_datos.py`:
+  4/4. `arquitectura.test.ts` no se tocó (la lista `CONOCIDAS` no crece).
+- **Datos**: leí los dos informes locales solo para comparar. Busqué palabras, frases de tres palabras, palabras con
+  mayúscula y cifras de 4 o más dígitos, sin distinguir tildes ni mayúsculas, sobre lo agregado en
+  `git log -p 7c62dd47..751b7ed4` y sobre los mensajes. Coinciden solo palabras y frases del oficio o de rutas del
+  repositorio («lista para armar», «banda de distancia») y las cifras 2026, 1000 y 0001. Ningún nombre, código, rótulo
+  ni cifra de los libros. Los valores nuevos de las pruebas (frentes, descripciones) son genéricos.
+
+### Hallazgos
+
+| # | Sev. | Criterio · `archivo:línea` | Qué falla | Prueba o reproducción | Arreglo propuesto |
+|---|---|---|---|---|---|
+| R2-1 | MENOR | C1 · `adapters/hoja_empresa/perfil_apu_por_hoja.py:257-289` (`_retroceso_catastrofico`; `:269`, `varias = maximo > 1`), con `docs/manual_usuario.md:1556` y RF-209 | La defensa (lo que quedaba del hallazgo 4) rechaza una lista de formas y deja pasar otras que cuelgan igual. Una repetición de a lo sumo una vez (`?`) no cuenta como «repetición dentro de otra», y nada acota una cadena de repeticiones seguidas que se pisan. El manual promete que el patrón «no puede llevar repeticiones una dentro de otra», y `a?` dentro de `+` lo es. Al revés, rechaza patrones legítimos que no retroceden: el de miles con punto (`\d{1,3}(?:\.\d{3})*`, la convención de Sílice, que `cifra_escrita` lee) por «una repetición dentro de otra», y también `\d+(?:[.,]\d+)*` y `(?:\w+ )*`. Sigue en MENOR, como el 4: solo quien administra pone el perfil y las formas que se cuelan son rebuscadas. Los patrones descuidados de verdad, con varios `.*`, fallan rápido (0,017 s con 400 caracteres), y el de miles tiene salida: `[0-9.]+(?:,[0-9]+)?`, que la prueba «con_miles» acepta. | Sonda: `instalar_perfil_apu_por_hoja` ACEPTA y `leer_banda` tarda. `(?:a?a?)+`: más de 5 s con «a»×20 + «!». `(?:a?){28}a{28}`: más de 5 s con 28. Quince `[0-9]*` seguidos: más de 5 s con 15 cifras. Doce `.*` seguidos: 1,44 s con 15 letras y más de 5 s con 25. `(?:a?a)+`: 1,04 s con 30, y crece 1,6 veces por letra. `(?:\d?\d)+`: 1,27 s con 30 cifras. RECHAZA los tres legítimos de arriba. | Contar como peligrosa toda repetición variable (mínimo ≠ máximo, `?` incluido) dentro de otra que se repite, y aceptar la de cuenta fija (`\d{3}`, mínimo = máximo), con lo que el de miles pasa. Poner un tope a las repeticiones sin tope del patrón (el del paquete tiene cuatro). Sumar estos patrones a `test_libro_por_frentes.py`. Si se quiere garantía y no heurística, queda el patrón fijo con las palabras del perfil (la opción «mejor» de la ronda 1). Entretanto, que el manual y el docstring digan que se rechazan esas formas, no que se rechace todo lo que puede colgarse. |
+| R2-2 | MENOR | E2 · `CHANGELOG.md`, `docs/ESTADO.md` (el 9 de la ronda 1) | Sigue abierto: `git diff --stat e2dfe116 751b7ed4 -- CHANGELOG.md docs/ESTADO.md` sale vacío. El corrector lo dejó al orquestador. | — | Escribirlos antes del PR: RF-196 a RF-214, el segundo re-congelado, lo de esta ronda y los pendientes. |
+| R2-N1 | NOTA | D1 · `frontend-desktop/src/paginas/hoja/PresupuestoPorFrentes.tsx:88-100` y `:118-136` | El pedido de `abrir()` y la respuesta de `poner()` no llevan la guarda `vigente` del efecto nuevo (`:102-116`). Si el `rev` cambia mientras el pedido de `abrir()` está en vuelo, una respuesta vieja puede llegar después de la nueva y dejar la vista atrasada. Para que pase hay que editar la Hoja mientras el panel se abre. | Lectura. La otra carrera que cabía no existe: `fallar` es estable porque `alExpirar` (`marco/Marco.tsx:124`) y `alAusente` (`refrescar`, `useBorrador.ts:88`) son `useCallback`, así que la limpieza del efecto no descarta la vista pedida. | Un contador de pedidos en un `useRef` común a los tres caminos; solo se aplica la respuesta del último. |
+| R2-N2 | NOTA | D1 · `aplicacion/frentes.py:136-153` (`SIN_FRENTE`) | Un frente que se llame «Sin frente» y el grupo de los renglones sin frente salen con el mismo título en el PDF, como en la pantalla. | Lectura. | Inocuo. Si importa, rechazar ese nombre en `poner_frentes` o titular el grupo «(sin frente)». |
+
+### Lo que se cerró (verificado sin hallazgo)
+
+- **MAYOR 1, cerrado.** `_exigir_moneda` (`aplicacion/libro_a_la_hoja.py:325-345`) compara el libro con la lista para
+  armar y con `moneda_del_proyecto` de la obra, antes de abrir el borrador y de tocar el catálogo (`:377`). La Hoja
+  decide convertir con esa misma función: `valoracion_de_la_obra` (`aplicacion/listas_para_armar.py:371-372`), que
+  `hoja_edicion.completar` usa (`aplicacion/hoja_edicion.py:219-229`). Con las dos comparaciones, la obra está en la
+  moneda de la lista, `tasa` es `None` y `completar` no convierte. La obra solo declara su moneda al crearse
+  (`aplicacion/proyectos.py:144`; `declarar_moneda` exige que no haya versiones), así que el caso no se reabre después.
+  La prueba nueva reproduce mi sonda (rojo arriba) y comprueba que no quedan partidas `VF-%` ni borradores.
+- **MAYOR 2, cerrado.** `src/comun/arquitectura.test.ts` 4/4 y vitest entero en verde (arriba).
+  `comun/borradorAbierto.ts` solo importa `react`. `ContextoDelBorradorAbierto` lo pone solo `ProveedorDeLaHoja`
+  (`:306`), con el valor que Componer leía antes (`estado.estado === "listo" ? estado.borrador.id : null`), y la prueba
+  del proveedor lo comprueba en `/presupuesto/componer`. `rutaDeVista` se reexporta sin cambios desde `hoja/logica.ts`.
+  «Llevar a la Hoja» usa `MONEDAS` y `rotuloDeMoneda` de `comun/monedas.ts`. `CONOCIDAS` no cambia.
+- **PDF por frente (8), cuadra con `vistas/frentes`.** Las filas de `vista_presupuesto` salen de
+  `hoja.filas_del_presupuesto`, que recorre `claves_de_items(resultado.todos)` (`aplicacion/hoja.py:1182`). Es el mismo
+  recorrido de `por_frentes` y de `repartir_por_frente`: mismas claves, grupos en el mismo orden (el de su primera
+  aparición, sin frente al final) y subtotales con los totales exactos de las mismas partidas. En la sonda puse los
+  renglones 1 y 8 en «Norte» y el 3 sin frente: `vistas/frentes` da Norte 1.392,84 · FRENTE A 1.348,74 · FRENTE B
+  1.730,27 · Sin frente 219,28, y el PDF imprime los mismos cuatro subtotales en el mismo orden y el total 4.691,13. El
+  agrupador corre bajo el cerrojo (`aplicacion/presupuesto_pdf.py:309`) y `hoja_vista.calculo` lo vuelve a tomar, como
+  ya hacía `resumen` (el cerrojo es reentrante), con el cálculo del mismo `rev`. Un `agrupar` inválido da 422 sin eco
+  (`_RutaExportar` hereda de `RutaSinEco`). El PDF por omisión de una obra con frentes cambia, y está declarado en
+  RF-213, en el manual y en `docs/api.json` (`test_openapi` pasa).
+- **`VistaGeneral.test.tsx` (`b3bba087`) no debilita la prueba.** `PanelArenera` pinta el bloque en «cargando» y el
+  pedido sale de un efecto de `useCarga` (`comun/useCarga.ts:18-21`), así que el bloque puede verse antes del pedido.
+  `waitFor(... toBe(1))` sigue fallando si nunca se pide o si ya van dos pedidos cuando mira. Lo que la prueba afirma
+  (quien opera la arenera la ve y se pide) no cambia, y la de quien no la opera sigue contando 0 al instante.
+- **Hallazgo 3**: las dos pruebas fuerzan la falla en `importaciones.anotar`, después de escribir el catálogo y el
+  borrador, y matan los dos mutantes (arriba). **5**: con el panel abierto, el efecto vuelve a pedir una vez por `rev`,
+  y no tras «Poner el frente» (`pedidaPara`); tiene sus tres pruebas. **6**: `especificacionesLegibles` parte en «; »
+  solo antes de otra «clave=», el formato de `_pares_a_texto` (`aplicacion/hoja.py:427-428`); `hoja.py` no cambia.
+  **7**: `_TILDES_DEL_CIERRE` ya no está y las pruebas del PDF siguen viendo «+ Administración». **10**: `_de_otro_tipo`
+  da 409 aunque se pida reemplazar y deja el archivo igual; uno ilegible sí se puede reemplazar. **N6**: `_exigir_hojas`
+  está en las dos rutas, con 422 sin eco. **N7**: el ERS lo dice.
+- **`core/` y los congelados, intactos; sin datos reales** (arriba). `aplicacion/libro_a_la_hoja.py` importa
+  `core.budget.moneda.moneda_del_proyecto`, que ya usaban `elaboracion` y `listas_para_armar`; leer del núcleo no lo
+  cambia.
