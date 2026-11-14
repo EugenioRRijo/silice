@@ -197,4 +197,26 @@ describe("El presupuesto por frente", () => {
     expect(screen.getByText("Total general: 4.801,13 Bs")).toBeInTheDocument();
     expect(alAceptar).not.toHaveBeenCalled();
   });
+
+  // Árbitro, ronda 3 (R3-1): con «Poner el frente» en vuelo, «Ocultar» y «Ver» harían que la respuesta aceptada por el
+  // servidor se tomara por vieja y la Hoja no se enterara del `rev` nuevo. Mientras el PUT viaja, el panel no se cierra.
+  test("con «Poner el frente» en vuelo no se puede ocultar el panel, y su respuesta llega a la Hoja", async () => {
+    const alAceptar = montar();
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    await screen.findByText("Total general: 4.701,13 Bs");
+    const edicion = diferida();
+    fetchFalso.mockImplementation(async (_ruta, opciones) => (opciones?.method === "PUT" ? edicion.promesa : json(VISTA)));
+    await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
+    expect(screen.getByRole("button", { name: "Ocultar el presupuesto por frente" })).toBeDisabled();
+    edicion.soltar(
+      json({
+        rev: 4,
+        resumen: { rev: 4, moneda: "Bs", total: VISTA.total, cambios: 0, pendientes_catalogo: 0 },
+        frentes: { ...VISTA, rev: 4 },
+      }),
+    );
+    await waitFor(() => expect(alAceptar).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "Ocultar el presupuesto por frente" })).not.toBeDisabled();
+  });
 });
