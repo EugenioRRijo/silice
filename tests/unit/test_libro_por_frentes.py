@@ -391,3 +391,68 @@ def test_instalar_respeta_la_variable_de_la_carpeta(
     instalar_perfil_apu_por_hoja(_bytes(_crudo(nombre="obra_local")), tmp_path / "datos")
     assert (otra / "obra_local.json").is_file()
     assert not (tmp_path / "datos").exists()
+
+
+# --- ronda 1 del árbitro de la ola 2: `patron_banda` sin retroceso catastrófico (hallazgo 4) -----
+#
+# El patrón se pone desde la interfaz y lo usan la auditoría del libro (AH9) y cada recálculo de la
+# Hoja (VR4): un patrón descuidado colgaba el hilo («(a+)+» sobre «a»×22 + «!», casi 1 s y se
+# duplica con cada letra). Al validar el perfil (subido o leído de la carpeta) se rechazan un largo
+# de más de 300 caracteres, una repetición dentro de otra, una alternativa dentro de una repetición
+# y una referencia hacia atrás. Simulación en `docs/bitacora/arbitrajes/ola2-claude-xhigh.md`.
+
+_BANDA = "(?P<minimo>[0-9]+) km y hasta (?P<maximo>[0-9]+) km"
+
+
+@pytest.mark.parametrize(
+    ("patron", "dice"),
+    [
+        ("(?P<minimo>(a+)+)(?P<maximo>b)", "una repetición dentro de otra"),
+        ("(?P<minimo>(a*)*)(?P<maximo>b)", "una repetición dentro de otra"),
+        ("(?P<minimo>(a{1,9}){2,})(?P<maximo>b)", "una repetición dentro de otra"),
+        ("(?P<minimo>([0-9]+)*) (?P<maximo>b)", "una repetición dentro de otra"),
+        ("(?P<minimo>(a|a)*)(?P<maximo>b)", "una alternativa dentro de una repetición"),
+        ("(?P<minimo>(?:a|aa)+)(?P<maximo>b)", "una alternativa dentro de una repetición"),
+        ("(?P<minimo>a+)(?P=minimo)(?P<maximo>b)", "una referencia hacia atrás"),
+        (r"(?P<minimo>a+)\1(?P<maximo>b)", "una referencia hacia atrás"),
+        ("(?P<minimo>[0-9]+)" + "x?" * 150 + "(?P<maximo>[0-9]+)", "pasa de 300 caracteres"),
+    ],
+    ids=["mas_mas", "por_por", "llaves", "cifras", "alterna", "a_o_aa", "nombre", "uno", "largo"],
+)
+def test_un_patron_de_banda_que_puede_colgarse_no_se_instala(
+    tmp_path: Path, patron: str, dice: str
+):
+    with pytest.raises(PerfilInvalido) as error:
+        instalar_perfil_apu_por_hoja(_bytes(_crudo(nombre="banda", patron_banda=patron)), tmp_path)
+    assert f"perfil 'banda': patron_banda: {dice}" in str(error.value)
+    assert not any(tmp_path.iterdir())
+
+
+def test_un_patron_de_banda_que_puede_colgarse_no_se_lee_de_la_carpeta(tmp_path: Path):
+    """El mismo control al leerlo de la carpeta (un JSON copiado a mano): no se usa y la lista de
+    perfiles dice por qué."""
+    _escribir(tmp_path, _crudo(nombre="banda", patron_banda="(?P<minimo>(a+)+)(?P<maximo>b)"))
+    with pytest.raises(PerfilInvalido, match="una repetición dentro de otra"):
+        cargar_perfil_apu_por_hoja("banda", (tmp_path,))
+    (listado,) = [p for p in perfiles_apu_por_hoja((tmp_path,)) if p.nombre == "banda"]
+    assert listado.hoja_presupuesto is None
+    assert "una repetición dentro de otra" in (listado.motivo or "")
+
+
+@pytest.mark.parametrize(
+    "patron",
+    [
+        _BANDA,
+        "mayor de (?P<minimo>[0-9.]+(?:,[0-9]+)?) km y hasta (?P<maximo>[0-9.]+(?:,[0-9]+)?) km",
+        "(?:mayor(?:es)?|m[aá]s) de (?P<minimo>[0-9]+(?:,[0-9]+)?) km y hasta "
+        "(?P<maximo>[0-9]+(?:,[0-9]+)?) km",
+        r"(?:de|desde)\s+(?P<minimo>\d+)\s*km\s+(?:a|hasta)\s+(?P<maximo>\d+)\s*km",
+    ],
+    ids=["simple", "con_miles", "paquete", "con_espacios"],
+)
+def test_los_patrones_de_banda_de_siempre_se_aceptan(tmp_path: Path, patron: str):
+    instalado = instalar_perfil_apu_por_hoja(
+        _bytes(_crudo(nombre="banda", patron_banda=patron)), tmp_path
+    )
+    assert instalado.nombre == "banda"
+    assert cargar_perfil_apu_por_hoja("banda", (tmp_path,)).patron_banda == patron
