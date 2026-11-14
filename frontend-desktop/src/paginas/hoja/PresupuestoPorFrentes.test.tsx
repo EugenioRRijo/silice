@@ -42,6 +42,18 @@ function montar(puedeEditar = true, alAceptar = vi.fn()) {
   return alAceptar;
 }
 
+// Monta el panel con `rev` y devuelve cómo cambiarlo, como hace la pestaña al aceptar una edición de la Hoja.
+function montarConRev(rev: number) {
+  const valor = { alExpirar: vi.fn() } as unknown as Aplicacion;
+  const panel = (r: number) => (
+    <ContextoAplicacion.Provider value={valor}>
+      <PresupuestoPorFrentes id={ID} rev={r} filas={FILAS} moneda="Bs" puedeEditar alAceptar={vi.fn()} alAusente={vi.fn()} />
+    </ContextoAplicacion.Provider>
+  );
+  const { rerender } = render(panel(rev));
+  return (r: number) => rerender(panel(r));
+}
+
 describe("El presupuesto por frente", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let usuario: ReturnType<typeof userEvent.setup>;
@@ -91,6 +103,41 @@ describe("El presupuesto por frente", () => {
     expect(JSON.parse(String(edicion[1]?.body))).toEqual({ rev: 3, filas: [{ clave: "VF-009|a-mano:1", frente: "Norte" }] });
     const tabla = screen.getByRole("table", { name: "Presupuesto por frente" });
     expect(within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell")[0]).toHaveTextContent("Norte");
+  });
+
+  // Ronda 1 del árbitro de la ola 2 (hallazgo 5): con el panel abierto, una cantidad editada o un renglón quitado en la
+  // Hoja (otro `rev`) dejaban el «Total general» y los subtotales viejos mientras el «Total del presupuesto» ya cambiaba.
+  const vistasPedidas = () => fetchFalso.mock.calls.filter(([r, o]) => String(r) === RUTA_VISTA && o?.method !== "PUT").length;
+
+  test("con el panel abierto, otro rev de la Hoja vuelve a pedir la vista y muestra el total nuevo", async () => {
+    const cambiarRev = montarConRev(3);
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    await screen.findByText("Total general: 4.701,13 Bs");
+    fetchFalso.mockImplementation(async () =>
+      json({ ...VISTA, rev: 5, total: { texto: "4801.13", exacto: "4801.126" } }),
+    );
+    cambiarRev(5);
+    expect(await screen.findByText("Total general: 4.801,13 Bs")).toBeInTheDocument();
+    expect(vistasPedidas()).toBe(2);
+  });
+
+  test("con el panel cerrado, otro rev no pide nada", async () => {
+    const cambiarRev = montarConRev(3);
+    cambiarRev(4);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  test("tras poner un frente, el rev nuevo no vuelve a pedir la vista (ya vino con la respuesta)", async () => {
+    const cambiarRev = montarConRev(3);
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    await screen.findByRole("table", { name: "Presupuesto por frente" });
+    await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Frente" })).toHaveValue(""));
+    cambiarRev(4);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(vistasPedidas()).toBe(1);
   });
 
   test("quien solo lee ve los subtotales sin poder cambiar frentes", async () => {
