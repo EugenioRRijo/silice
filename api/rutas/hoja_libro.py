@@ -36,7 +36,14 @@ from api.dependencias import SesionDep, url_de_la_peticion
 from api.rutas import hoja as rutas_hoja
 from api.rutas.hoja import MENSAJE_BASE, CuentaDeLaHoja
 from api.rutas.hoja_llevar import MENSAJE_CAMBIO
-from api.rutas.libros import MENSAJE_LIBRO, _exigir_extension, _leer, _nombre, _presente
+from api.rutas.libros import (
+    MENSAJE_LIBRO,
+    _exigir_extension,
+    _exigir_hojas,
+    _leer,
+    _nombre,
+    _presente,
+)
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion import elaboracion, hoja_edicion, libro_a_la_hoja
@@ -131,6 +138,7 @@ async def llevar_libro(
     """Audita el libro y lo lleva al borrador de la Hoja de la obra (ver la cabecera)."""
     nombre = _nombre(libro)
     _exigir_extension(nombre, ".xlsx", "libro")
+    hojas = _exigir_hojas(hoja_presupuesto)
     hay_presupuesto = _presente(presupuesto)
     nombre_presupuesto = _nombre(presupuesto) if hay_presupuesto else ""
     if hay_presupuesto:
@@ -146,7 +154,7 @@ async def llevar_libro(
                 presupuesto_nombre=nombre_presupuesto,
                 perfil=(perfil or "").strip() or "apu_por_hoja",
                 carpeta_perfiles=carpeta_perfiles_libros(),
-                hojas=tuple(hoja_presupuesto or ()),
+                hojas=hojas,
             )
         )
     except (PerfilInvalido, ArchivoRechazado, LibroNoInterpretable) as error:

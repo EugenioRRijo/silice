@@ -359,6 +359,24 @@ def _nombre(archivo: UploadFile) -> str:
     return (archivo.filename or "").replace("\\", "/").rsplit("/", 1)[-1].strip()
 
 
+#: Topes de `hoja_presupuesto` (nota N6 del árbitro de la ola 2): el nombre de una hoja de Excel
+#: tiene a lo sumo 31 caracteres, y un libro por frentes no trae cien.
+MAX_HOJAS_ELEGIDAS = 100
+MAX_NOMBRE_DE_HOJA = 31
+MENSAJE_HOJAS = (
+    f"Elija a lo sumo {MAX_HOJAS_ELEGIDAS} hojas del presupuesto, cada una de a lo sumo "
+    f"{MAX_NOMBRE_DE_HOJA} caracteres (el largo máximo del nombre de una hoja de Excel)."
+)
+
+
+def _exigir_hojas(hojas: list[str] | None) -> tuple[str, ...]:
+    """Las hojas del presupuesto elegidas, si caben en los topes; si no, 422 sin eco."""
+    elegidas = tuple(hojas or ())
+    if len(elegidas) > MAX_HOJAS_ELEGIDAS or any(len(h) > MAX_NOMBRE_DE_HOJA for h in elegidas):
+        raise HTTPException(422, MENSAJE_HOJAS)
+    return elegidas
+
+
 def _exigir_extension(nombre: str, extension: str, campo: str) -> None:
     if not nombre.lower().endswith(extension) or len(nombre) <= len(extension):
         recibido = nombre[:120] or "sin nombre"
@@ -953,6 +971,7 @@ async def auditar_apu_por_hoja_ruta(
     datos = await _leer(libro, "libro")
     del_presupuesto = await _leer(presupuesto, "presupuesto") if hay_presupuesto else None
     elegido = (perfil or "").strip() or "apu_por_hoja"
+    hojas = _exigir_hojas(hoja_presupuesto)
     try:
         r = await run_in_threadpool(
             lambda: auditar_apu_por_hoja(
@@ -962,7 +981,7 @@ async def auditar_apu_por_hoja_ruta(
                 presupuesto_nombre=nombre_presupuesto,
                 perfil=elegido,
                 carpeta_perfiles=carpeta_perfiles_libros(),
-                hojas=tuple(hoja_presupuesto or ()),
+                hojas=hojas,
             )
         )
     except PerfilInvalido as error:
