@@ -203,7 +203,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
           </Button>
         </div>
       )}
-      <Button kind="ghost" size="sm" onClick={() => setAbierto(false)}>
+      <Button kind="ghost" size="sm" disabled={ocupado} onClick={() => setAbierto(false)}>
         Ocultar el presupuesto por frente
       </Button>
     </section>
