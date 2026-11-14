@@ -337,6 +337,17 @@ describe("Precios de la empresa", () => {
     ).toBeInTheDocument();
   });
 
+  // Pasada en navegador de la ola 2 (D9b): una lista en Bs sobre una carpeta en USD ofrecía el botón y solo al pulsarlo
+  // llegaba el 409. El servidor dice por qué no puede ser la lista para armar y la página lo muestra en vez del botón.
+  test("una lista en otra moneda que la carpeta no ofrece usarla como lista para armar y dice por qué", async () => {
+    const aviso = "Esta carpeta trabaja en USD: una lista en Bs no puede ser su lista para armar. Cree la lista de la empresa en USD.";
+    crear = () => json({ ...CREADA, id: 9, nombre: "Empresa ficticia 2026-10-05", moneda: "Bs", aviso_para_armar: aviso }, 201);
+    montar(vi.fn(), SESION_ARMA);
+    await llenarYEnviar("Bs");
+    expect(await screen.findByText(aviso)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Usarla como lista para armar" })).toBeNull();
+  });
+
   test("sin permiso de armar no se ofrece usarla como lista para armar y se dice quién la crea (árbitro 13/11, M4)", async () => {
     crear = () => json({ ...CREADA, id: 9, nombre: "Empresa ficticia 2026-10-05" }, 201);
     montar();
