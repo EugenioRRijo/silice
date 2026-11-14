@@ -542,3 +542,14 @@ Ronda: 3 · Base: `09848bd8` · Cabeza: `eda4c374`
   catálogo). `es_reservado` compara sin mayúsculas, tildes ni blancos (las cuatro variantes de la prueba). El PDF dice
   «Subtotal (sin frente)» y la pantalla «(sin frente)».
 - **`core/` y los congelados, intactos; sin datos reales** (arriba).
+
+## Ronda 3: correcciones (orquestador, 2026-11-14)
+
+- **R3-1 (MENOR):** «Ocultar el presupuesto por frente» queda deshabilitado mientras `ocupado` (el PUT de «Poner el
+  frente» o la carga al abrir están en vuelo): sin cerrar el panel no se puede volver a pedir la vista, y la respuesta
+  aceptada llega siempre a la Hoja (`alAceptar`). Se eligió sobre «decidir por `rev`» porque es una línea, no cambia la
+  numeración de pedidos que aprobó la ronda 3 y el bloqueo dura lo que tarda la petición. Rojo `test(hoja)` (1 failed,
+  8 passed: el botón no estaba deshabilitado) → verde `fix(hoja)`; 9 passed.
+- **R3-N1:** el docstring de `repartir_por_frente` dice «(sin frente)».
+- **R3-N2:** prueba del tercer camino (`test_una_hoja_del_presupuesto_llamada_sin_frente_tampoco`, 422 sin eco y sin
+  borrador). Guardia sin rojo propio; mutante visto (sin la comprobación `es_reservado` de `llevar_libro`: 1 failed).
