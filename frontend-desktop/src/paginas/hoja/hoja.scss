@@ -202,7 +202,9 @@
 // APU: lista · tabla · cierre. Bajo ~1200 px se apilan en vez de comprimirse.
 .silice-hoja__apu {
   display: grid;
-  grid-template-columns: 14rem minmax(0, 1fr) 18rem;
+  // Lista 12rem y cierre 16rem: a 1366 px la tabla central mide 464 px y «Desperdicio (%)» se lee entero (pasada en
+  // navegador de la ola 2, D2; con 14rem y 18rem medía 400 px y la cabecera quedaba cortada).
+  grid-template-columns: 12rem minmax(0, 1fr) 16rem;
   gap: 1.5rem;
   align-items: start;
 
