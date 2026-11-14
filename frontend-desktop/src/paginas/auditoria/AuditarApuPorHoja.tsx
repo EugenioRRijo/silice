@@ -116,6 +116,7 @@ const RUTA_PERFILES = "/v1/libros/perfiles-apu-por-hoja";
 const AVISO_OTRA_OBRA = "AH11";
 const ID_TITULO_OTRA_OBRA = "auditoria-apu-por-hoja-otra-obra";
 const TITULO_OTRA_OBRA = "La hoja del presupuesto parece de otra obra";
+const ID_TITULO_LLEVADO = "auditoria-apu-llevado";
 const origenDe = (origen: "paquete" | "local") => (origen === "local" ? "de esta instalación" : "del paquete");
 
 function textoDelPerfil(p: PerfilDisponible): string {
@@ -480,13 +481,27 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
       <AvisoError error={error} titulo="No se llevó el libro" />
       {llevado && (
         <>
+          {/* Pasada en navegador de la ola 2 (D11): los renglones quedan en el borrador vivo de la Hoja, que vive en el
+              servidor ligado a la sesión, como todo borrador (`aplicacion/hoja_borradores.py`): se retoma en la misma
+              sesión y se pierde al salir o al volver a entrar. El aviso lo dice, lleva a la Hoja de la obra (la dirección
+              corta `#/hoja` abre la de la obra de la sesión, la misma a la que se llevó) y recuerda que llevar otra vez
+              no duplica nada. Nombre accesible: el título, como el aviso AH11. */}
+          <span id={ID_TITULO_LLEVADO} hidden>
+            {`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar.`}
+          </span>
           <InlineNotification
             kind="success"
             role="status"
-            title={`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar: ábrala para revisarlos y guardar la versión.`}
+            aria-labelledby={ID_TITULO_LLEVADO}
+            title={`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar.`}
+            subtitle="Ábrala, retome el borrador, revíselo y guarde la versión. Un borrador sin guardar se pierde al salir de Sílice; si se perdió, vuelva a llevar el libro: no duplica nada."
             lowContrast
             hideCloseButton
           />
+          {/* Carbon no admite controles dentro de un aviso en línea: el enlace va debajo. */}
+          <p className="cds--type-body-compact-01">
+            <a className="cds--link" href="#/hoja">{`Abrir la Hoja de «${obra}»`}</a>
+          </p>
           <TablaDensa etiqueta="Partidas llevadas a la Hoja" columnas={COLUMNAS_LLEVADAS} filas={filas} />
           {llevado.sin_apu.length > 0 && (
             <p className="silice-inicio__nota cds--type-body-compact-01">{`No se llevaron, sin hoja de APU: ${enumeradas(llevado.sin_apu)}.`}</p>

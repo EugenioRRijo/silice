@@ -261,7 +261,8 @@ describe("Auditar un libro con un APU por hoja", () => {
     const aviso = await screen.findByRole("status", { name: /Se llevaron 10 renglones a la Hoja de «Vía ficticia», sin guardar/ });
     // Pasada en navegador de la ola 2 (D11): el aviso lleva a la Hoja de la obra (la dirección corta abre la de la obra de
     // la sesión) y dice que un borrador sin guardar no sobrevive a la salida, y cómo recuperarlo.
-    expect(within(aviso).getByRole("link", { name: "Abrir la Hoja de «Vía ficticia»" })).toHaveAttribute("href", "#/hoja");
+    // (Carbon no admite controles dentro de un aviso en línea: el enlace va justo debajo.)
+    expect(screen.getByRole("link", { name: "Abrir la Hoja de «Vía ficticia»" })).toHaveAttribute("href", "#/hoja");
     expect(aviso).toHaveTextContent(/se pierde al salir de Sílice/);
     expect(aviso).toHaveTextContent(/vuelva a llevar el libro: no duplica nada/);
     const tabla = screen.getByRole("table", { name: "Partidas llevadas a la Hoja" });
