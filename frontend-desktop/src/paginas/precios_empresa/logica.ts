@@ -40,6 +40,10 @@ export interface ListaCreada {
   aviso: string | null;
   dados_de_alta?: string[];
   otra_unidad?: string[];
+  // Pasada en navegador de la ola 2 (D9b): la moneda de la lista y, si la carpeta trabaja en otra, por qué no puede ser
+  // su lista para armar (la página lo dice en vez de ofrecer el botón, que daría el 409).
+  moneda?: string;
+  aviso_para_armar?: string | null;
 }
 
 // `POST /v1/precios-empresa/listas/revision` (D-8): lo que la lista haria con el archivo, sin escribir nada.

@@ -864,7 +864,9 @@ def test_con_el_alta_confirmada_el_insumo_nuevo_entra_a_la_lista(_entorno) -> No
     assert cuerpo["dados_de_alta"] == ["INSUMO INEXISTENTE DEMO"]
     # el numero de la lista, para usarla como lista para armar (POST /v1/carpeta/lista-para-armar)
     assert {"id": cuerpo["id"], "nombre": cuerpo["nombre"]} in navegador.get(URL).json()["listas"]
-    assert cuerpo["desconocidos"] == ["ARENA LAVADA"]
+    # ARENA LAVADA está en el catálogo con otra unidad: va en `otra_unidad`, no entre los
+    # desconocidos («no están en el catálogo»), que se contradecían (pasada en navegador, D9a)
+    assert cuerpo["desconocidos"] == []
     assert cuerpo["otra_unidad"] == [OTRA_UNIDAD_ARENA]
     assert cuerpo["mensaje"] == (
         f"Lista «{cuerpo['nombre']}» creada con 2 precios propios; se dio de alta 1 insumo nuevo "

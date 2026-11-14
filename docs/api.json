@@ -22851,6 +22851,22 @@
             "type": "array",
             "title": "Otra Unidad",
             "default": []
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda",
+            "default": ""
+          },
+          "aviso_para_armar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Para Armar"
           }
         },
         "type": "object",

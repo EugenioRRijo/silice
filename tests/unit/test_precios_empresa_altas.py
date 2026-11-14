@@ -89,13 +89,13 @@ def _base(s: Session) -> int:
     return s.scalars(select(models.ListaPrecios.id)).one()
 
 
-def _crear(s: Session, ruta: Path, **extra) -> precios_empresa.ResumenEmpresa:
+def _crear(s: Session, ruta: Path, *, base_id: int | None = None, **extra):
     return precios_empresa.crear_lista(
         s,
         ruta,
         empresa_nombre="Empresa ficticia",
         empresa_rif="J-00000000-0",
-        base_id=_base(s),
+        base_id=_base(s) if base_id is None else base_id,
         moneda="USD",
         fecha=FECHA,
         fuente=FUENTE,
@@ -212,9 +212,8 @@ def test_dos_listas_del_mismo_dia_sin_nombre_no_se_llaman_igual(
 ) -> None:
     """D9c de la pasada en navegador: las dos se llamaban «Empresa ficticia 2026-10-05». Como la
     lista para armar (`listas_para_armar._nombre_libre`) y como Excel, la segunda lleva « (2)»."""
-    primera = _crear(sesion, archivo)
-    segunda = _crear(sesion, archivo)
-    tercera = _crear(sesion, archivo)
+    base = _base(sesion)
+    primera, segunda, tercera = (_crear(sesion, archivo, base_id=base) for _ in range(3))
     assert (primera.nombre, segunda.nombre, tercera.nombre) == (
         "Empresa ficticia 2026-10-05",
         "Empresa ficticia 2026-10-05 (2)",

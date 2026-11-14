@@ -48,6 +48,7 @@ from api.sesion_web import exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import atipicos as busqueda_atipica
 from aplicacion import precios_empresa as logica
+from aplicacion.listas_para_armar import moneda_de_la_carpeta
 from aplicacion.plural import plural
 from seguridad.permisos import Accion
 
@@ -106,6 +107,10 @@ class ListaCreadaRespuesta(BaseModel):
     aviso: str | None
     dados_de_alta: list[str] = []
     otra_unidad: list[str] = []
+    #: La moneda de la lista y, si la carpeta trabaja en otra, por qué no puede ser su lista para
+    #: armar: la interfaz lo dice en vez de ofrecer el botón (pasada en navegador, D9b).
+    moneda: str = ""
+    aviso_para_armar: str | None = None
 
 
 class InsumoNuevoRespuesta(BaseModel):
@@ -219,6 +224,8 @@ def crear_lista(
         except ValueError as error:
             raise HTTPException(422, f"No se creó la lista: {_motivo(error)}") from None
     assert resumen.lista_id is not None  # `crear_lista` siempre la da
+    with _caso_legible():
+        de_la_carpeta = moneda_de_la_carpeta(sesion)
     return ListaCreadaRespuesta(
         id=resumen.lista_id,
         nombre=resumen.nombre,
@@ -228,6 +235,19 @@ def crear_lista(
         aviso=AVISO_DESCONOCIDOS if resumen.desconocidos else None,
         dados_de_alta=list(resumen.dados_de_alta),
         otra_unidad=list(resumen.otra_unidad),
+        moneda=moneda,
+        aviso_para_armar=_aviso_para_armar(moneda, de_la_carpeta),
+    )
+
+
+def _aviso_para_armar(moneda: str, de_la_carpeta: str | None) -> str | None:
+    """Por qué la lista no puede ser la lista para armar de la carpeta (la misma regla que
+    `listas_para_armar._desde_empresa`, que daría el 409), o `None` si puede."""
+    if de_la_carpeta is None or de_la_carpeta == moneda:
+        return None
+    return (
+        f"Esta carpeta trabaja en {de_la_carpeta}: una lista en {moneda} no puede ser su lista "
+        f"para armar. Cree la lista de la empresa en {de_la_carpeta}."
     )
 
 
