@@ -15,8 +15,8 @@ y lo que no se llevó.
 Como el resto de la Hoja: solo con una cuenta con `editar_hoja` (la clave de API, 403), CSRF y
 `Origin` propios y `Cache-Control: no-store`. Errores: obra que no existe, 404; un libro que no se
 puede leer, un perfil que no existe, ningún renglón que llevar o porcentajes distintos, 422; una
-obra con versiones, otra moneda que la carpeta o sin lista para armar, 409; el borrador cambió
-entretanto, 409; la base, 503.
+obra con versiones, otra moneda que la carpeta o que la obra, o sin lista para armar, 409; el
+borrador cambió entretanto, 409; la base, 503.
 """
 
 from __future__ import annotations

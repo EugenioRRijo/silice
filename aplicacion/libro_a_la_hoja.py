@@ -23,9 +23,9 @@ Aquí el libro ya auditado (`fusion.apu_por_hoja`, que quien llama corre: `aplic
 
 Reglas que protegen los precios (D6): el libro se lleva a una obra **sin versiones** (una versión
 ya valorada con otra lista dejaría los precios del libro fuera; `ObraConVersiones`, 409), y su
-moneda, que declara quien lo lleva, debe ser la de la lista para armar (`MonedaDistinta`, 409):
-ningún precio cambia de moneda en silencio. Todo o nada: si algo falla, el catálogo se deshace y el
-borrador vuelve a como estaba.
+moneda, que declara quien lo lleva, debe ser la de la lista para armar y la de la obra
+(`MonedaDistinta`, 409): ningún precio cambia de moneda en silencio. Todo o nada: si algo falla,
+el catálogo se deshace y el borrador vuelve a como estaba.
 
 La respuesta dice, por partida, el P.U. impreso en el libro y el que da la Hoja con lo llevado, y si
 casan (`TOLERANCIA_PRECIO`, un centavo): un APU con financiamiento o con bono por renglón no casa
@@ -47,6 +47,7 @@ from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, importa
 from aplicacion.frentes import con_frente
 from aplicacion.listas_para_armar import lista_de_hoy, lista_para_armar
 from core import models
+from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, CatalogoIncompleto
 from core.catalog.origen import fijar_referencia
 from core.contracts import Dominio, ItemComputo, OrigenTipo
@@ -83,7 +84,7 @@ class PorcentajesDistintos(ValueError):  # noqa: N818
 
 
 class MonedaDistinta(Exception):  # noqa: N818
-    """El libro está en otra moneda que la lista para armar de la carpeta (409)."""
+    """El libro está en otra moneda que la lista para armar de la carpeta o que la obra (409)."""
 
 
 class ObraConVersiones(Exception):  # noqa: N818
@@ -321,13 +322,25 @@ def _dominio(proyecto: models.Proyecto) -> Dominio:
         return Dominio.CIVIL
 
 
-def _exigir_moneda(sesion: Session, libro: LibroParaLlevar, fecha: date) -> models.ListaPrecios:
+def _exigir_moneda(
+    sesion: Session, libro: LibroParaLlevar, proyecto: models.Proyecto, fecha: date
+) -> models.ListaPrecios:
+    """La lista para armar, si el libro está en su moneda **y** en la de la obra: con la obra en la
+    otra moneda (choque 16), `hoja_edicion.completar` convertiría cada precio del libro con la tasa
+    del BCV de la fecha del borrador, una tasa que el libro no dice (D6)."""
     base = lista_para_armar(sesion, fecha)  # SinListaParaArmar (un ValueError) si no la hay
     if libro.moneda != base.moneda:
         raise MonedaDistinta(
             f"El libro está en {libro.moneda} y esta carpeta arma en {base.moneda} (lista "
             f"«{base.nombre}»): Sílice no cambia la moneda de sus precios. Lleve el libro a una "
             f"carpeta que arme en {libro.moneda}."
+        )
+    de_la_obra = moneda_del_proyecto(sesion, proyecto)
+    if libro.moneda != de_la_obra:
+        raise MonedaDistinta(
+            f"La obra «{proyecto.nombre}» está en {de_la_obra} y el libro en {libro.moneda}: "
+            f"Sílice no convierte los precios del libro. Lleve el libro a una obra en "
+            f"{libro.moneda}."
         )
     return base
 
@@ -361,7 +374,7 @@ def llevar_libro_a_la_hoja(
             "el libro."
         )
     fecha = existente.borrador.fecha if existente is not None else hoy
-    _exigir_moneda(sesion, libro, fecha)
+    _exigir_moneda(sesion, libro, proyecto, fecha)
     vivo, nuevo = elaboracion.borrador_de_la_obra(
         sesion, huella, caso, proyecto, responsable=responsable, hoy=hoy
     )
