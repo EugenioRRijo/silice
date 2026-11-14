@@ -43,11 +43,11 @@ function montar(puedeEditar = true, alAceptar = vi.fn()) {
 }
 
 // Monta el panel con `rev` y devuelve cómo cambiarlo, como hace la pestaña al aceptar una edición de la Hoja.
-function montarConRev(rev: number) {
+function montarConRev(rev: number, alAceptar = vi.fn()) {
   const valor = { alExpirar: vi.fn() } as unknown as Aplicacion;
   const panel = (r: number) => (
     <ContextoAplicacion.Provider value={valor}>
-      <PresupuestoPorFrentes id={ID} rev={r} filas={FILAS} moneda="Bs" puedeEditar alAceptar={vi.fn()} alAusente={vi.fn()} />
+      <PresupuestoPorFrentes id={ID} rev={r} filas={FILAS} moneda="Bs" puedeEditar alAceptar={alAceptar} alAusente={vi.fn()} />
     </ContextoAplicacion.Provider>
   );
   const { rerender } = render(panel(rev));
@@ -145,5 +145,56 @@ describe("El presupuesto por frente", () => {
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
     await screen.findByRole("table", { name: "Presupuesto por frente" });
     expect(screen.queryByRole("button", { name: "Poner el frente" })).toBeNull();
+  });
+
+  // Ronda 2 del árbitro de la ola 2 (R2-N1): una respuesta vieja de «Ver» o de «Poner el frente» que llega después de la
+  // del `rev` nuevo no puede dejar la vista atrasada: solo se aplica la del último pedido.
+  function diferida() {
+    let soltar!: (r: Response) => void;
+    const promesa = new Promise<Response>((r) => (soltar = r));
+    return { promesa, soltar };
+  }
+  const NUEVA = { ...VISTA, rev: 5, total: { texto: "4801.13", exacto: "4801.126" } };
+
+  test("la vista que se pidió al abrir y llega tarde no tapa la del rev nuevo", async () => {
+    const vieja = diferida();
+    fetchFalso.mockImplementationOnce(() => vieja.promesa);
+    const cambiarRev = montarConRev(3);
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    fetchFalso.mockImplementation(async () => json(NUEVA));
+    cambiarRev(5);
+    expect(await screen.findByText("Total general: 4.801,13 Bs")).toBeInTheDocument();
+    vieja.soltar(json(VISTA));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByText("Total general: 4.701,13 Bs")).toBeNull();
+    expect(screen.getByText("Total general: 4.801,13 Bs")).toBeInTheDocument();
+  });
+
+  test("la respuesta de «Poner el frente» que llega después de la del rev nuevo no la tapa", async () => {
+    const alAceptar = vi.fn();
+    const cambiarRev = montarConRev(3, alAceptar);
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    await screen.findByText("Total general: 4.701,13 Bs");
+    const edicion = diferida();
+    fetchFalso.mockImplementation(async (_ruta, opciones) => (opciones?.method === "PUT" ? edicion.promesa : json(NUEVA)));
+    await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
+    cambiarRev(5);
+    expect(await screen.findByText("Total general: 4.801,13 Bs")).toBeInTheDocument();
+    edicion.soltar(
+      json({
+        rev: 4,
+        resumen: { rev: 4, moneda: "Bs", total: VISTA.total, cambios: 0, pendientes_catalogo: 0 },
+        frentes: {
+          ...VISTA,
+          rev: 4,
+          frentes: [{ frente: "Norte", renglones: 1, pendientes: 0, total: { texto: "10.00", exacto: "10" } }],
+          total: { texto: "10.00", exacto: "10" },
+        },
+      }),
+    );
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Frente" })).toHaveValue(""));
+    expect(screen.getByText("Total general: 4.801,13 Bs")).toBeInTheDocument();
+    expect(alAceptar).not.toHaveBeenCalled();
   });
 });
