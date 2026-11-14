@@ -163,6 +163,9 @@
   td:first-child {
     position: sticky;
     inset-inline-start: 0;
+    // Encima de lo que pasa por debajo al desplazar: el contenedor del campo de Carbon es `position: relative` y, sin
+    // esto, la «Cantidad» se pintaba sobre la «Descripción» fija (pasada en navegador de la ola 2, D1).
+    z-index: 1;
     background: var(--cds-layer, #fff);
   }
 }
