@@ -33,7 +33,7 @@ from fastapi.testclient import TestClient
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import hoja as rutas_hoja
-from aplicacion import hoja_borradores
+from aplicacion import hoja_borradores, libro_a_la_hoja
 from core.budget.moneda import declarar_moneda
 from core.budget.persistencia import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
@@ -282,6 +282,58 @@ def test_un_libro_en_otra_moneda_que_la_obra_no_se_lleva(ana) -> None:
     )
     assert _partidas_del_libro() == []
     assert _borradores(navegador) == []
+
+
+# --- todo o nada (hallazgo 3 de la ronda 1 del árbitro de la ola 2) ----------------------------
+#
+# La falla se fuerza en `importaciones.anotar`, el último paso antes de confirmar: el catálogo ya
+# tiene las partidas del libro (con `flush`) y el borrador ya tiene sus renglones.
+
+
+def _que_falle(monkeypatch: pytest.MonkeyPatch) -> None:
+    def falla(*_a, **_k):
+        raise RuntimeError("falla forzada después de escribir el catálogo")
+
+    monkeypatch.setattr(libro_a_la_hoja.importaciones, "anotar", falla)
+
+
+def test_si_falla_al_final_no_queda_nada_y_el_borrador_nuevo_se_descarta(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    navegador, _ = ana
+    with monkeypatch.context() as m:
+        _que_falle(m)
+        r = _llevar(ana)
+    assert r.status_code == 500
+    assert _partidas_del_libro() == []
+    assert _borradores(navegador) == []
+    # Sin la falla entra entero, con los códigos del libro: nada quedó a medias que pida «-B».
+    otra = _llevar(ana)
+    assert otra.status_code == 200, otra.text
+    assert [(p["codigo"], p["nueva"]) for p in otra.json()["partidas"]] == [
+        (f"VF-00{n}", True) for n in range(1, 6)
+    ]
+
+
+def test_si_falla_al_final_el_borrador_que_ya_estaba_queda_como_estaba(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    navegador, _ = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    antes = [(f["clave"], f["cantidad"]) for f in _filas(navegador, id_)]
+    rev = _rev(navegador, id_)
+    primero = replace(
+        APUS[0],
+        materiales=(Material(1, "Emulsión asfáltica ficticia", "lt", "0.50", "4", "2.50"),),
+    )
+    with monkeypatch.context() as m:
+        _que_falle(m)
+        r = _llevar(ana, libro=libro_apu((primero, *APUS[1:])))  # crearía «VF-001-B»
+    assert r.status_code == 500
+    assert [(f["clave"], f["cantidad"]) for f in _filas(navegador, id_)] == antes
+    assert len(antes) == 10
+    assert _rev(navegador, id_) == rev
+    assert sorted(_partidas_del_libro()) == [f"VF-00{n}" for n in range(1, 6)]
 
 
 def test_una_obra_con_versiones_no_recibe_el_libro(ana) -> None:
