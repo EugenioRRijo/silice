@@ -491,7 +491,8 @@ Haga clic en «Presupuesto» en la barra de la obra. Verá, en este orden:
    su lado **«Descargar Excel»**, que baja el presupuesto en un libro de Excel, y **«Descargar PDF»**, que
    lo baja en un PDF para imprimir o enviar: la obra, la versión, la fecha y la moneda; cada partida con su
    unidad, cantidad, precio unitario y total; el subtotal, el IVA y el total con IVA; y después el APU de cada
-   partida en su página (materiales, equipos y mano de obra y el cierre hasta el precio unitario). Sale lo
+   partida en su página (materiales, equipos y mano de obra y el cierre hasta el precio unitario). Si la obra
+   tiene frentes (12.6), las partidas salen por frente, cada uno con su subtotal. Sale lo
    que se ve en la pantalla, también lo que aún no se guardó (el PDF lo dice), con coma decimal y punto de
    miles.
 3. **Las pestañas**: «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y
@@ -1552,7 +1553,7 @@ partes («un impuesto del 18 % (16 % y otros impuestos del 2 %)»).
 **Poner el perfil de un libro de la empresa.** Quien administra lo hace en «Cuenta › Empresa», bloque «Perfiles de
 los libros de la empresa»: suelte el `.json` del perfil y pulse «Poner el perfil». Sílice lo revisa entero antes de
 guardarlo y dice el motivo si está mal escrito; si ya hay uno con ese nombre, pide marcar «Reemplazar el que ya
-está con ese nombre». Al terminar dice qué hojas del presupuesto lee: «Perfil «obra_local» puesto en esta
+está con ese nombre» (un archivo de otro tipo de perfil con ese nombre no se pisa nunca: póngale otro nombre). El patrón de la banda de distancia (`patron_banda`) no puede pasar de 300 caracteres ni llevar repeticiones una dentro de otra («(a+)+»), alternativas repetidas («(a|aa)+») ni referencias hacia atrás: con algunos textos tardarían sin fin. Al terminar dice qué hojas del presupuesto lee: «Perfil «obra_local» puesto en esta
 instalación: lee las hojas FRENTE A y FRENTE B.». El perfil se guarda solo en esta instalación.
 
 ### 12.6 Llevar el libro a la Hoja y el presupuesto por frente
@@ -1571,7 +1572,7 @@ Después de auditar el libro, quien arma lo lleva a la Hoja de la obra elegida e
    auditoría ya lo dijo (AH2, AH3). Debajo, los renglones que no se llevaron (sin hoja de APU o sin cantidad).
 
 El libro se lleva a una **obra sin versiones** (cree una obra nueva para el libro), para que sus precios sean los
-del libro, y su moneda debe ser la de la carpeta. Si el código de un APU ya está en el catálogo con otro APU (otro
+del libro, y su moneda debe ser la de la carpeta y la de la obra (una obra en USD no recibe un libro en Bs: Sílice no convierte sus precios). Si el código de un APU ya está en el catálogo con otro APU (otro
 frente con otro precio), entra como variante «…-B». Llevar el mismo libro otra vez no duplica nada: reemplaza los
 renglones de esas hojas.
 
