@@ -822,6 +822,7 @@ TRES_PARTIDAS = [
         "unidad": "m3",
         "renglon": 1,
         "renglones": 1,
+        "frente": None,
     },
     {
         "codigo": "OB-B",
@@ -829,6 +830,7 @@ TRES_PARTIDAS = [
         "unidad": "m",
         "renglon": 2,
         "renglones": 1,
+        "frente": None,
     },
     {
         "codigo": "OB-C",
@@ -836,6 +838,7 @@ TRES_PARTIDAS = [
         "unidad": "m3",
         "renglon": 3,
         "renglones": 1,
+        "frente": None,
     },
 ]
 
@@ -1046,8 +1049,12 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
                 select(models.Presupuesto).where(models.Presupuesto.codigo == ob.CODIGO)
             ).one()
             a, b, _ = ob.items()
+            # el frente del renglón (pasada en navegador de la ola 2, D5): el selector lo nombra
             otra = replace(
-                a, descripcion="Excavacion de zanja, frente 2 (ficticio)", origen_id="frente-2:OB-A"
+                a,
+                descripcion="Excavacion de zanja, frente 2 (ficticio)",
+                origen_id="frente-2:OB-A",
+                especificaciones={**a.especificaciones, "_frente": "Frente 2 (ficticio)"},
             )
             plan = [("Semana 1", (("OB-A", Decimal(1)), ("OB-B", Decimal(1))))]
             resultado = elaborar(
@@ -1074,6 +1081,7 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
             "unidad": "m3",
             "renglon": 1,
             "renglones": 2,
+            "frente": None,
         },
         {
             "codigo": "OB-B",
@@ -1081,6 +1089,7 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
             "unidad": "m",
             "renglon": 2,
             "renglones": 1,
+            "frente": None,
         },
         {
             "codigo": "OB-A",
@@ -1088,5 +1097,6 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
             "unidad": "m3",
             "renglon": 3,
             "renglones": 2,
+            "frente": "Frente 2 (ficticio)",
         },
     ]

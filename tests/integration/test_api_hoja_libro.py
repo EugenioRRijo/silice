@@ -723,3 +723,14 @@ def test_el_apu_del_pdf_lleva_la_neta_y_el_porcentaje_del_libro(ana) -> None:
     with pdfplumber.open(io.BytesIO(r.content)) as pdf:
         texto = pdf.pages[0].extract_text() or ""
     assert "Emulsión asfáltica ficticia l 0,5 4 0,520 2,00" in texto, texto
+
+
+def test_cada_renglon_del_presupuesto_dice_su_frente(ana) -> None:
+    """D5 de la pasada en navegador: «1. VF-001 · Riego…» y «6. VF-001 · Riego…» no se
+    distinguían en el selector de «Poner el frente»; la fila trae su frente para nombrarlo."""
+    navegador, _ = ana
+    filas = _filas(navegador, _llevar(ana).json()["borrador_id"])
+    assert [(f["partida"], f["frente"]) for f in filas if f["partida"] == "VF-001"] == [
+        ("VF-001", "FRENTE A"),
+        ("VF-001", "FRENTE B"),
+    ]
