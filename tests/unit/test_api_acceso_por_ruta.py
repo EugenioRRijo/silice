@@ -183,12 +183,12 @@ TABLA = {
     ("GET", "/v1/obras/todas"): LEER,  # rediseño del marco, T3; con la clave, solo el proceso
     ("GET", "/v1/obras/pendientes/todas"): LEER,  # rediseño F3, T1; el alcance lo da el rol
     ("GET", "/v1/obras/resumen/todas"): LEER,  # rediseño F6, T7; con la clave, solo el proceso
-    ("GET", "/v1/mercado/{lado}/{codigo}"): EDITAR,  # T14: estudio de mercado
+    ("GET", "/v1/mercado/{lado}/{codigo:path}"): EDITAR,  # T14: estudio de mercado
     ("POST", "/v1/mercado/observaciones"): EDITAR,
     ("POST", "/v1/mercado/observaciones/{observacion_id}/anular"): EDITAR,
-    ("GET", "/v1/mercado/compra/{codigo}/afectados"): EDITAR,
-    ("POST", "/v1/mercado/compra/{codigo}/usar"): EDITAR,
-    ("POST", "/v1/mercado/cobro/{codigo}/usar"): EDITAR,
+    ("GET", "/v1/mercado/compra/{codigo:path}/afectados"): EDITAR,
+    ("POST", "/v1/mercado/compra/{codigo:path}/usar"): EDITAR,
+    ("POST", "/v1/mercado/cobro/{codigo:path}/usar"): EDITAR,
     ("GET", "/v1/mercado/objetivos"): LEER,  # F4 2b: quien revisa ve el objetivo en la Hoja
     # MP-7 T23: procura con fechas
     ("GET", "/v1/procura"): CONTROLAR,
@@ -220,7 +220,7 @@ TABLA = {
     # RF-200 (ola 2, 2026-11-13): los parámetros de omisión de Componer
     ("GET", "/v1/composicion/parametros"): EDITAR,
     ("POST", "/v1/composicion/evaluar"): EDITAR,
-    ("GET", "/v1/composicion/partidas/{codigo}"): EDITAR,
+    ("GET", "/v1/composicion/partidas/{codigo:path}"): EDITAR,
     ("GET", "/v1/composicion/referencia"): EDITAR,
     ("GET", "/v1/composicion/similares"): EDITAR,
     ("POST", "/v1/composicion/guardar"): EDITAR,

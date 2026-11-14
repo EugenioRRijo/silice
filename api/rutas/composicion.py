@@ -444,11 +444,12 @@ def evaluar(sesion: SesionDep, peticion: PeticionEvaluar) -> EvaluacionRespuesta
     return _evaluacion(evaluacion, por_fila)
 
 
-@router.get("/partidas/{codigo}", response_model=PrecargaRespuesta, dependencies=EDITAR)
+@router.get("/partidas/{codigo:path}", response_model=PrecargaRespuesta, dependencies=EDITAR)
 def precargar(sesion: SesionDep, codigo: str) -> PrecargaRespuesta:
     """UC-11, paso 1: las tablas de una partida existente; sin partida o sin lista vigente,
     `existe=false` y tablas vacías (UC-10), nunca 404. Los materiales con la traza de su
-    desperdicio vuelven con la cantidad neta y el porcentaje (F5 vial)."""
+    desperdicio vuelven con la cantidad neta y el porcentaje (F5 vial). `:path`: un código con
+    «/» («1/2 pulg») llega entero, como en la Hoja (pasada en navegador de la ola 2, D6)."""
     precarga = precarga_de_partida(sesion, codigo)
     materiales, equipos, mano_obra = precarga.tablas
     trazas = trazas_vigentes(sesion, codigo.strip()) if precarga.existe else []

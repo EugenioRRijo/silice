@@ -1047,12 +1047,16 @@ def test_un_codigo_con_barra_llega_entero_a_cada_ruta(ana) -> None:
         {"detalle": "No hay ninguna partida «OBRA-1/2» en el catálogo de esta carpeta de trabajo."},
     )
     insumo = navegador.get(f"{RUTA}/compra/MAT-1%2F2")
-    assert insumo.json() == {"detalle": "No hay ningún insumo «MAT-1/2» en esta carpeta de trabajo."}
+    assert insumo.json() == {
+        "detalle": "No hay ningún insumo «MAT-1/2» en esta carpeta de trabajo."
+    }
     afectados = navegador.get(f"{RUTA}/compra/MAT-1%2F2/afectados")
     assert afectados.status_code == 404
     assert "MAT-1/2" in afectados.json()["detalle"]
     usar = navegador.post(
-        f"{RUTA}/cobro/{codigo}/usar", json={"precio": "10,00", "observaciones": []}, headers=cabeceras
+        f"{RUTA}/cobro/{codigo}/usar",
+        json={"precio": "10,00", "observaciones": []},
+        headers=cabeceras,
     )
     assert "detail" not in usar.json(), usar.text
     compra = navegador.post(
