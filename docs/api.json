@@ -3561,7 +3561,7 @@
           "composicion"
         ],
         "summary": "Precargar",
-        "description": "UC-11, paso 1: las tablas de una partida existente; sin partida o sin lista vigente,\n`existe=false` y tablas vacías (UC-10), nunca 404. Los materiales con la traza de su\ndesperdicio vuelven con la cantidad neta y el porcentaje (F5 vial).",
+        "description": "UC-11, paso 1: las tablas de una partida existente; sin partida o sin lista vigente,\n`existe=false` y tablas vacías (UC-10), nunca 404. Los materiales con la traza de su\ndesperdicio vuelven con la cantidad neta y el porcentaje (F5 vial). `:path`: un código con\n«/» («1/2 pulg») llega entero, como en la Hoja (pasada en navegador de la ola 2, D6).",
         "operationId": "precargar_v1_composicion_partidas__codigo__get",
         "parameters": [
           {
@@ -8693,7 +8693,7 @@
           "hoja"
         ],
         "summary": "Exportar Pdf",
-        "description": "RF-213: el presupuesto del borrador vivo en PDF (encabezado, partidas, subtotal, IVA y\ntotal) y el APU de cada partida, uno por página; con `partida`, solo el de esa partida. Si\nalgún renglón tiene frente, las partidas salen por frente con el subtotal de cada uno (los de\n`vistas/frentes`); `agrupar=ninguno`, en una sola lista (ronda 1 del árbitro de la ola 2).",
+        "description": "RF-213: el presupuesto del borrador vivo en PDF (encabezado, partidas, subtotal, IVA y\ntotal) y el APU de cada partida, uno por página; con `partida`, solo el de esa partida. Si\nalgún renglón tiene frente, las partidas salen por frente con el subtotal de cada uno (los de\n`vistas/frentes`); `agrupar=ninguno`, en una sola lista (ronda 1 del árbitro de la ola 2).\nLos materiales con la traza vigente de su desperdicio llevan la neta y el porcentaje, como la\npestaña APU (pasada en navegador de la ola 2, D3): la base del caso solo se lee, después del\nacceso.",
         "operationId": "exportar_pdf_v1_hoja_borradores__id__pdf_get",
         "parameters": [
           {
@@ -11367,6 +11367,51 @@
         }
       }
     },
+    "/v1/mercado/compra/{codigo}/afectados": {
+      "get": {
+        "tags": [
+          "mercado"
+        ],
+        "summary": "Afectados",
+        "description": "Las partidas del catálogo que cambian de precio si cambia el del insumo.",
+        "operationId": "afectados_v1_mercado_compra__codigo__afectados_get",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Codigo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfectadosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/mercado/{lado}/{codigo}": {
       "get": {
         "tags": [
@@ -11524,51 +11569,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Anulada"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/mercado/compra/{codigo}/afectados": {
-      "get": {
-        "tags": [
-          "mercado"
-        ],
-        "summary": "Afectados",
-        "description": "Las partidas del catálogo que cambian de precio si cambia el del insumo.",
-        "operationId": "afectados_v1_mercado_compra__codigo__afectados_get",
-        "parameters": [
-          {
-            "name": "codigo",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 40,
-              "title": "Codigo"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AfectadosRespuesta"
                 }
               }
             }
@@ -20903,6 +20903,17 @@
             "type": "boolean",
             "title": "De Tramo",
             "default": false
+          },
+          "frente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frente"
           }
         },
         "type": "object",
@@ -27549,6 +27560,18 @@
             "type": "integer",
             "title": "Renglones",
             "description": "Cuántos renglones tiene ese código en el presupuesto"
+          },
+          "frente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frente",
+            "description": "El frente del renglón; vacío (null) si no tiene"
           }
         },
         "type": "object",

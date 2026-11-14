@@ -268,6 +268,8 @@ class FilaPresupuestoRespuesta(BaseModel):
     calculo: str | None
     #: D8: el renglón viene de un tramo vial (su cantidad sale de la regla del tramo).
     de_tramo: bool = False
+    #: El frente del renglón; `None` sin frente (pasada en navegador de la ola 2, D5).
+    frente: str | None = None
 
 
 class VistaPresupuestoRespuesta(BaseModel):

@@ -63,6 +63,9 @@ class RenglonDelContratoRespuesta(PartidaDelContratoRespuesta):
 
     renglon: int = Field(description="El número del renglón en el presupuesto, desde 1")
     renglones: int = Field(description="Cuántos renglones tiene ese código en el presupuesto")
+    frente: str | None = Field(
+        default=None, description="El frente del renglón; vacío (null) si no tiene"
+    )
 
 
 class RenglonesDelContratoRespuesta(PartidasDelContratoRespuesta):
@@ -87,6 +90,7 @@ def renglones_a_respuesta(
                 unidad=p.unidad,
                 renglon=p.renglon or 0,
                 renglones=p.renglones or 0,
+                frente=p.frente,
             )
             for p in halladas.partidas
         ],

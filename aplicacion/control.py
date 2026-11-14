@@ -16,6 +16,7 @@ redondea. Sin Streamlit, sin `pandas` y sin `ui.caso`; lo vigila
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -28,6 +29,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from aplicacion.causas import causas_de_las_filas
+from aplicacion.frentes import CLAVE_FRENTE
 from aplicacion.impuestos import ResumenImpuestos, con_iva
 from aplicacion.precios_declarados import precios_declarados
 from aplicacion.tablas_causas import guardar_causas
@@ -284,6 +286,9 @@ class PartidaDelContrato:
     #: renglones tiene su código. `None` en la lista por código.
     renglon: int | None = None
     renglones: int | None = None
+    #: El frente del renglón (`aplicacion.frentes`), `None` sin frente: el selector lo nombra para
+    #: distinguir un código repetido en dos frentes (pasada en navegador de la ola 2, D5).
+    frente: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -322,6 +327,15 @@ def partidas_de_la_version(sesion: Session, version: models.Presupuesto) -> Part
     return PartidasDeUnaVersion(version.codigo, tuple(todas[:tope]), len(todas) > tope)
 
 
+def _frente(especificaciones: str | None) -> str | None:
+    """El frente guardado en las especificaciones (JSON) de un renglón, o `None`."""
+    try:
+        valor = json.loads(especificaciones or "{}").get(CLAVE_FRENTE, "")
+    except (ValueError, AttributeError):
+        return None
+    return valor.strip() or None if isinstance(valor, str) else None
+
+
 def renglones_de_la_version(sesion: Session, version: models.Presupuesto) -> PartidasDeUnaVersion:
     """Los renglones de una versión guardada, uno por renglón y en el orden del presupuesto, con su
     número y cuántos renglones tiene su código (ola 2 del 2026-11-13, RF-197): un contrato que
@@ -334,6 +348,7 @@ def renglones_de_la_version(sesion: Session, version: models.Presupuesto) -> Par
                 models.ItemComputo.codigo_partida,
                 models.ItemComputo.descripcion,
                 models.ItemComputo.unidad,
+                models.ItemComputo.especificaciones,
             )
             .join(
                 models.PartidaPresupuestada,
@@ -344,11 +359,13 @@ def renglones_de_la_version(sesion: Session, version: models.Presupuesto) -> Par
         )
     )
     por_codigo: dict[str, int] = {}
-    for codigo, _, _ in filas:
+    for codigo, *_ in filas:
         por_codigo[codigo] = por_codigo.get(codigo, 0) + 1
     todas = [
-        PartidaDelContrato(codigo, descripcion, unidad, numero, por_codigo[codigo])
-        for numero, (codigo, descripcion, unidad) in enumerate(filas, start=1)
+        PartidaDelContrato(
+            codigo, descripcion, unidad, numero, por_codigo[codigo], _frente(especificaciones)
+        )
+        for numero, (codigo, descripcion, unidad, especificaciones) in enumerate(filas, start=1)
     ]
     tope = MAXIMO_DE_PARTIDAS_DEL_CONTRATO
     return PartidasDeUnaVersion(version.codigo, tuple(todas[:tope]), len(todas) > tope)

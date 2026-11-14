@@ -34,6 +34,7 @@ from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje, trazas_de_las_filas
+from aplicacion.frentes import frente_de
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_desperdicio import trazas_del_borrador, unir
 from aplicacion.hoja_partidas import (
@@ -377,6 +378,9 @@ class FilaDePresupuesto:
     nota: str | None
     calculo: str | None
     de_tramo: bool = False
+    #: El frente del renglón (`aplicacion.frentes`), `None` sin frente (pasada en navegador de la
+    #: ola 2, D5: el selector de «Poner el frente» lo nombra).
+    frente: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -430,6 +434,7 @@ def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
                 nota=vivo.borrador.notas.get(clave),
                 calculo=calculo_tecleable(item.regla) if a_mano and not escrita else None,
                 de_tramo=item.origen_id.startswith(PREFIJO_TRAMO),
+                frente=frente_de(item),
             )
         )
     return VistaPresupuesto(
