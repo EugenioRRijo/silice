@@ -95,7 +95,7 @@ una por árbol, cada decisión simulada ([árbitro](bitacora/arbitrajes/ola2-cla
   por frente**. Probado en local con el libro real (solo en el equipo): todos los renglones entran con su frente.
 - **PDF e índices** ([bitácora](bitacora/2026-11-13-ola2-pdf-e-indices.md); RF-213 y RF-214): «Descargar PDF» del
   presupuesto y sus APU (agrupado por frente cuando hay frentes) y un índice del BCV expresado en USD para el reajuste.
-Incidente de datos (línea 2, [bitácora §8](bitacora/2026-11-13-ola2-front.md)): cuatro parámetros del presupuesto real
+Incidente de datos (línea 2, [bitácora §8](bitacora/2026-11-13-ola2-front.md)): cuatro parámetros del presupuesto de la empresa (que vive solo en el equipo)
 llegaron a commits locales y a una consulta a Gemini, sin nombres ni procedencia; la historia se reescribió antes de
 subir nada.
 
