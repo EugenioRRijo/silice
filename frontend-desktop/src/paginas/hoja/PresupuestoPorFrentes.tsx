@@ -18,6 +18,8 @@ import type { Monto, Resumen } from "./logica";
 // hasta que la persona quiere verla. Con el panel abierto, cada `rev` nuevo de la Hoja (una cantidad editada, un renglón
 // quitado) vuelve a pedir la vista, para que «Total general» no quede viejo junto al «Total del presupuesto» (ronda 1 del
 // árbitro de la ola 2, hallazgo 5); se pide una vez por `rev`, y no tras «Poner el frente», cuya respuesta ya la trae.
+// «Ver», el efecto del `rev` y «Poner el frente» numeran su pedido y solo se aplica la respuesta del último: una vieja que
+// llega tarde no deja la vista atrasada (ronda 2, R2-N1). El error de «Poner el frente» se dice siempre (no se puso).
 
 interface Frente {
   frente: string | null;
@@ -75,6 +77,8 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
 
   // El `rev` para el que se pidió (o llegó) la vista que se muestra; `null` mientras el panel no se abrió.
   const pedidaPara = useRef<number | null>(null);
+  // El número del último pedido de la vista (de cualquiera de los tres caminos).
+  const ultimo = useRef(0);
 
   const fallar = useCallback(
     (razon: unknown) => {
@@ -90,10 +94,12 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
     setError(null);
     setOcupado(true);
     pedidaPara.current = rev;
+    const pedido = ++ultimo.current;
     try {
-      setVista(await pedir<VistaFrentes>(`/v1/hoja/borradores/${id}/vistas/frentes`));
+      const nueva = await pedir<VistaFrentes>(`/v1/hoja/borradores/${id}/vistas/frentes`);
+      if (pedido === ultimo.current) setVista(nueva);
     } catch (razon) {
-      fallar(razon);
+      if (pedido === ultimo.current) fallar(razon);
     } finally {
       setOcupado(false);
     }
@@ -102,13 +108,14 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
   useEffect(() => {
     if (!abierto || pedidaPara.current === null || pedidaPara.current === rev) return;
     pedidaPara.current = rev;
+    const pedido = ++ultimo.current;
     let vigente = true;
     pedir<VistaFrentes>(`/v1/hoja/borradores/${id}/vistas/frentes`)
       .then((nueva) => {
-        if (vigente) setVista(nueva);
+        if (vigente && pedido === ultimo.current) setVista(nueva);
       })
       .catch((razon: unknown) => {
-        if (vigente) fallar(razon);
+        if (vigente && pedido === ultimo.current) fallar(razon);
       });
     return () => {
       vigente = false;
@@ -119,14 +126,17 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
     if (!elegido) return;
     setError(null);
     setOcupado(true);
+    const pedido = ++ultimo.current;
     try {
       const r = await pedir<{ rev: number; resumen: Resumen; frentes: VistaFrentes }>(`/v1/hoja/borradores/${id}/frentes`, {
         metodo: "PUT",
         cuerpo: { rev, filas: [{ clave: elegido, frente }] },
       });
+      setFrente("");
+      // Si mientras tanto se pidió la vista de un `rev` posterior, esta respuesta ya es vieja: la Hoja va por delante.
+      if (pedido !== ultimo.current) return;
       pedidaPara.current = r.rev;
       setVista(r.frentes);
-      setFrente("");
       alAceptar(r.resumen);
     } catch (razon) {
       fallar(razon);
