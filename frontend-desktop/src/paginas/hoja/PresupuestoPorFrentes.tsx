@@ -1,5 +1,5 @@
 import { Button, Select, SelectItem } from "@carbon/react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -15,7 +15,9 @@ import type { Monto, Resumen } from "./logica";
 // como lo trae el libro de la empresa con una hoja de presupuesto por frente. El subtotal de cada frente y el total general
 // los calcula el servidor (`GET /v1/hoja/borradores/{id}/vistas/frentes`); aquí solo se escriben en es-VE. El frente de un
 // renglón propio se pone a mano (`PUT /v1/hoja/borradores/{id}/frentes`). Se abre a pedido: la pestaña no pide esta vista
-// hasta que la persona quiere verla.
+// hasta que la persona quiere verla. Con el panel abierto, cada `rev` nuevo de la Hoja (una cantidad editada, un renglón
+// quitado) vuelve a pedir la vista, para que «Total general» no quede viejo junto al «Total del presupuesto» (ronda 1 del
+// árbitro de la ola 2, hallazgo 5); se pide una vez por `rev`, y no tras «Poner el frente», cuya respuesta ya la trae.
 
 interface Frente {
   frente: string | null;
@@ -71,16 +73,23 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
   const [frente, setFrente] = useState("");
   const elegido = renglon || propias[0]?.clave || "";
 
-  function fallar(razon: unknown) {
-    if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
-    else if (esBorradorAusente(razon)) alAusente();
-    else setError(razon);
-  }
+  // El `rev` para el que se pidió (o llegó) la vista que se muestra; `null` mientras el panel no se abrió.
+  const pedidaPara = useRef<number | null>(null);
+
+  const fallar = useCallback(
+    (razon: unknown) => {
+      if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
+      else if (esBorradorAusente(razon)) alAusente();
+      else setError(razon);
+    },
+    [alExpirar, alAusente],
+  );
 
   async function abrir() {
     setAbierto(true);
     setError(null);
     setOcupado(true);
+    pedidaPara.current = rev;
     try {
       setVista(await pedir<VistaFrentes>(`/v1/hoja/borradores/${id}/vistas/frentes`));
     } catch (razon) {
@@ -89,6 +98,22 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
       setOcupado(false);
     }
   }
+
+  useEffect(() => {
+    if (!abierto || pedidaPara.current === null || pedidaPara.current === rev) return;
+    pedidaPara.current = rev;
+    let vigente = true;
+    pedir<VistaFrentes>(`/v1/hoja/borradores/${id}/vistas/frentes`)
+      .then((nueva) => {
+        if (vigente) setVista(nueva);
+      })
+      .catch((razon: unknown) => {
+        if (vigente) fallar(razon);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [abierto, rev, id, fallar]);
 
   async function poner() {
     if (!elegido) return;
@@ -99,6 +124,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
         metodo: "PUT",
         cuerpo: { rev, filas: [{ clave: elegido, frente }] },
       });
+      pedidaPara.current = r.rev;
       setVista(r.frentes);
       setFrente("");
       alAceptar(r.resumen);
