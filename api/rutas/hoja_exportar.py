@@ -33,6 +33,7 @@ from api.rutas.hoja import CuentaQueVe, IdDeBorrador
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion import hoja_exportar, presupuesto_pdf
+from aplicacion.desperdicio import trazas_vigentes
 
 TIPO_PDF = "application/pdf"
 TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -82,6 +83,7 @@ def exportar_pdf(
     id: IdDeBorrador,
     request: Request,
     activa: CuentaQueVe,
+    sesion: SesionDep,
     partida: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
     agrupar: Annotated[
         Literal["frente", "ninguno"],
@@ -91,17 +93,26 @@ def exportar_pdf(
     """RF-213: el presupuesto del borrador vivo en PDF (encabezado, partidas, subtotal, IVA y
     total) y el APU de cada partida, uno por página; con `partida`, solo el de esa partida. Si
     algún renglón tiene frente, las partidas salen por frente con el subtotal de cada uno (los de
-    `vistas/frentes`); `agrupar=ninguno`, en una sola lista (ronda 1 del árbitro de la ola 2)."""
+    `vistas/frentes`); `agrupar=ninguno`, en una sola lista (ronda 1 del árbitro de la ola 2).
+    Los materiales con la traza vigente de su desperdicio llevan la neta y el porcentaje, como la
+    pestaña APU (pasada en navegador de la ola 2, D3): la base del caso solo se lee, después del
+    acceso."""
     vivo = rutas_hoja._vivo(request, activa, id)
     agrupador = (
         presupuesto_pdf.por_frente(vivo) if agrupar == "frente" else presupuesto_pdf.sin_agrupar
     )
     try:
         documento = presupuesto_pdf.documento_de_la_hoja(
-            vivo, rutas_hoja._hoy(), partida=partida, agrupar=agrupador
+            vivo,
+            rutas_hoja._hoy(),
+            partida=partida,
+            agrupar=agrupador,
+            trazas=lambda codigo: trazas_vigentes(sesion, codigo),
         )
     except presupuesto_pdf.PartidaSinApu as error:
         raise HTTPException(status_code=404, detail=str(error)) from None
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=rutas_hoja.MENSAJE_BASE) from None
     nombre = presupuesto_pdf.nombre_del_pdf(vivo.version, partida=partida)
     return Response(
         content=presupuesto_pdf.pdf_en_bytes(documento),
