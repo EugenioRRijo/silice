@@ -577,3 +577,58 @@ def test_una_obra_sin_frentes_sale_en_el_pdf_sin_subtotales(ana) -> None:
     )
     assert abierto.status_code == 201, abierto.text
     assert "Subtotal de" not in _texto_del_pdf(navegador, abierto.json()["id"])
+
+
+# --- un frente no se llama como el grupo de los renglones sin frente (R2-N2, ronda 2) ----------
+#
+# Los renglones sin frente van al final en «(sin frente)», en la pantalla y en el PDF (como el
+# «(en blanco)» de una tabla dinámica de Excel). Un frente no puede llamarse «Sin frente» ni
+# «(sin frente)» (sin distinguir mayúsculas, tildes ni blancos): ni a mano, ni con el frente del
+# libro sin presupuesto, ni con una hoja del presupuesto. Simulación en
+# `docs/bitacora/arbitrajes/ola2-claude-xhigh.md`, «Ronda 2: correcciones».
+
+RESERVADO = (
+    "Un frente no puede llamarse «Sin frente» ni «(sin frente)»: así se rotulan los renglones sin "
+    "frente. Para quitar el frente de un renglón deje el campo vacío; a una hoja del libro con ese "
+    "nombre, cámbiele el nombre en el libro."
+)
+
+
+@pytest.mark.parametrize("nombre", ["Sin frente", "  sin  FRENTE ", "(Sin frente)", "(sín frente)"])
+def test_un_frente_no_se_llama_como_los_renglones_sin_frente(ana, nombre: str) -> None:
+    navegador, ficha = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    rev = _rev(navegador, id_)
+    r = navegador.put(
+        f"/v1/hoja/borradores/{id_}/frentes",
+        json={"rev": rev, "filas": [{"clave": "VF-001|libro:FRENTE A!E4", "frente": nombre}]},
+        headers=protegida(ficha),
+    )
+    assert r.status_code == 422
+    assert r.json()["detalle"] == RESERVADO
+    assert _rev(navegador, id_) == rev
+    assert _resumen_frentes(_frentes(navegador, id_))[0][0] == "FRENTE A"
+
+
+def test_el_frente_del_libro_sin_presupuesto_tampoco(ana) -> None:
+    r = _llevar(ana, presupuesto=False, frente="Sin frente", hoja_presupuesto=[])
+    assert r.status_code == 422
+    assert r.json()["detalle"] == RESERVADO
+    assert _borradores(ana[0]) == []
+
+
+def test_el_pdf_rotula_el_grupo_de_los_renglones_sin_frente(ana) -> None:
+    navegador, ficha = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    quitado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/frentes",
+        json={
+            "rev": _rev(navegador, id_),
+            "filas": [{"clave": "VF-001|libro:FRENTE A!E4", "frente": ""}],
+        },
+        headers=protegida(ficha),
+    )
+    assert quitado.status_code == 200, quitado.text
+    texto = _texto_del_pdf(navegador, id_)
+    assert "Subtotal (sin frente) 1.246,66" in texto
+    assert "Sin frente" not in texto

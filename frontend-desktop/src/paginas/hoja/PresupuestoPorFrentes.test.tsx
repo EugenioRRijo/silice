@@ -85,7 +85,7 @@ describe("El presupuesto por frente", () => {
     expect(filas.map((f) => within(f).getAllByRole("cell").map((c) => c.textContent))).toEqual([
       ["FRENTE A", "5", "2.814,68"],
       ["FRENTE B", "4 (1 pendiente)", "1.876,45"],
-      ["Sin frente", "1", "10,00"],
+      ["(sin frente)", "1", "10,00"],
     ]);
     expect(screen.getByText("Total general: 4.701,13 Bs")).toBeInTheDocument();
   });
