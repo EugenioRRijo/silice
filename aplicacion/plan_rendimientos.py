@@ -65,6 +65,13 @@ FORMATO_SEMANA = "Semana {n}"
 FORMATO_MES = "Mes {n}"
 _FORMATOS = {"dia": FORMATO_PERIODO, "semana": FORMATO_SEMANA, "mes": FORMATO_MES}
 _NOMBRES = {"semana": "semanas", "mes": "meses de 20 días hábiles"}
+#: Qué hacer si el plan no cabe en la unidad elegida: una unidad más larga o más cuadrillas; en
+#: meses ya no hay unidad más larga (ola 2 del 2026-11-13: la salida se sigue en la pantalla).
+_SALIDAS = {
+    "dia": "elija semanas o meses, o más cuadrillas.",
+    "semana": "elija meses o más cuadrillas.",
+    "mes": "asigne más cuadrillas a las partidas largas.",
+}
 
 CERO = Decimal(0)
 UNO = Decimal(1)
@@ -153,7 +160,7 @@ def plan_por_rendimientos(
     if total > MAXIMO_DE_PERIODOS:
         raise PlanDemasiadoLargo(
             f"El plan desde los rendimientos tendría {_entero_con_miles(total)} períodos y la "
-            f"matriz admite {MAXIMO_DE_PERIODOS}: elija semanas o más cuadrillas."
+            f"matriz admite {MAXIMO_DE_PERIODOS}: {_SALIDAS[unidad]}"
         )
     repartos: list[list[tuple[str, Decimal]]] = [[] for _ in range(total)]
     for codigo, inicio, fin in tramos:
@@ -317,6 +324,6 @@ def plan_que_cabe(
     raise PlanDemasiadoLargo(
         f"El plan desde los rendimientos tendría "
         f"{_entero_con_miles(_periodos(mayor_fin, 'mes'))} meses y la matriz admite "
-        f"{MAXIMO_DE_PERIODOS} períodos: en «Plan y equilibrio» cree el plan y asigne más "
-        "cuadrillas a las partidas largas, y vuelva a guardar."
+        f"{MAXIMO_DE_PERIODOS} períodos: en «Plan y equilibrio» asigne más cuadrillas a las "
+        "partidas largas, haga el plan desde los rendimientos por meses y vuelva a guardar."
     )

@@ -111,8 +111,8 @@ def test_una_altura_invalida_da_el_texto_escrito_y_no_carga_ninguna(importado, m
     textos["ZB"] = malo
     assert _llamar("cargar_alturas_desde_texto", importado, textos) == (
         "error",
-        f"Altura de «ZB»: «{malo}» no es una altura valida. "
-        "Escriba un numero de metros mayor que 0 y hasta 250, por ejemplo 2,50.",
+        f"Altura de «ZB»: «{malo}» no es una altura válida. "
+        "Escriba un número de metros mayor que 0 y hasta 250, por ejemplo 2,50.",
     )
 
 
@@ -130,23 +130,23 @@ def test_los_circuitos_supuestos_y_su_declaracion(importado):
     [
         (
             ("x", "1", "1", "6"),
-            "Circuito «C2»: los conductores de fase debe ser un numero entero "
-            "de 0 o mas (se escribio «x»).",
+            "Circuito «C2»: los conductores de fase debe ser un número entero "
+            "de 0 o más (se escribió «x»).",
         ),
         (
             ("1", "-1", "1", "6"),
-            "Circuito «C2»: los conductores de neutro debe ser un numero entero "
-            "de 0 o mas (se escribio «-1»).",
+            "Circuito «C2»: los conductores de neutro debe ser un número entero "
+            "de 0 o más (se escribió «-1»).",
         ),
         (
             ("1", "1", "1,5", "6"),
-            "Circuito «C2»: los conductores de tierra debe ser un numero entero "
-            "de 0 o mas (se escribio «1,5»).",
+            "Circuito «C2»: los conductores de tierra debe ser un número entero "
+            "de 0 o más (se escribió «1,5»).",
         ),
         (
             ("1", "1", "1", "0"),
-            "Circuito «C2»: los puntos maximos debe ser un numero entero "
-            "de 1 o mas (se escribio «0»).",
+            "Circuito «C2»: los puntos máximos debe ser un número entero "
+            "de 1 o más (se escribió «0»).",
         ),
     ],
 )

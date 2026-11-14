@@ -194,7 +194,8 @@ FORMA_PLAN = (
 FORMA_REV = "La petición debe traer el rev del borrador, un número entero."
 FORMA_RENDIMIENTOS = (
     "El plan desde los rendimientos no tiene la forma esperada: envíe rev (entero), las "
-    "cuadrillas de cada partida como texto, las partidas en paralelo y la unidad (dia o semana)."
+    "cuadrillas de cada partida como texto, las partidas en paralelo y la unidad (dia, semana o "
+    "mes)."
 )
 FORMA_APU = (
     "El APU no tiene la forma esperada: envíe el rendimiento y las cantidades de materiales, "

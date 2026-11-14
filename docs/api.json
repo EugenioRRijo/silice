@@ -1558,6 +1558,48 @@
         }
       }
     },
+    "/v1/libros/hojas": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Hojas Del Libro",
+        "description": "Las hojas de un libro subido, para elegir las del presupuesto (libro por frentes, D4). Pasa\npor la guardia de siempre y no materializa ninguna celda. Nada se guarda.",
+        "operationId": "hojas_del_libro_v1_libros_hojas_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_hojas_del_libro_v1_libros_hojas_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HojasDelLibroRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/libros/apu-por-hoja": {
       "post": {
         "tags": [
@@ -3449,6 +3491,28 @@
         }
       }
     },
+    "/v1/composicion/parametros": {
+      "get": {
+        "tags": [
+          "composicion"
+        ],
+        "summary": "Parametros",
+        "description": "Los parámetros de omisión del precio unitario (NORMAS.md §4) con el rótulo de la Hoja: lo\nque Componer propone sin una obra abierta (RF-200). Con una obra, la pantalla lee los de su\nborrador (`GET /v1/hoja/borradores/{id}/vistas/parametros`).",
+        "operationId": "parametros_v1_composicion_parametros_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParametrosRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/composicion/evaluar": {
       "post": {
         "tags": [
@@ -3905,7 +3969,59 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PartidasDelContratoRespuesta"
+                  "$ref": "#/components/schemas/RenglonesDelContratoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/dias-por-periodo": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Dias Por Periodo",
+        "description": "Los días hábiles por período de la línea base, desde el plan de `version` (RF-196).",
+        "operationId": "dias_por_periodo_v1_control_dias_por_periodo_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiasDelPlanRespuesta"
                 }
               }
             }
@@ -5089,6 +5205,48 @@
         }
       }
     },
+    "/v1/admin/empresa/perfiles-libros": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Poner Perfil De Libro",
+        "description": "Pone un perfil local del libro con un APU por hoja (ver la cabecera del módulo).",
+        "operationId": "poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilApuPorHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/claves-api": {
       "get": {
         "tags": [
@@ -5400,6 +5558,112 @@
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/Body_confirmar_v1_indices_confirmar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/indices/en-usd/origenes": {
+      "get": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Origenes En Usd",
+        "description": "Los índices mensuales en Bs que se pueden expresar en USD (solo su definición).",
+        "operationId": "origenes_en_usd_v1_indices_en_usd_origenes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrigenesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/indices/en-usd/ver": {
+      "post": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Ver En Usd",
+        "description": "Lo que se guardaría, con la cuenta del primer y el último mes. No escribe nada.",
+        "operationId": "ver_en_usd_v1_indices_en_usd_ver_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnUsdPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnUsdRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/indices/en-usd/confirmar": {
+      "post": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Confirmar En Usd",
+        "description": "Guarda la serie en USD si sus valores son los que se revisaron; el responsable es la\npersona de la sesión (RF-82).",
+        "operationId": "confirmar_en_usd_v1_indices_en_usd_confirmar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnUsdConfirmacion"
               }
             }
           },
@@ -8237,6 +8501,150 @@
         }
       }
     },
+    "/v1/hoja/libro": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Llevar Libro",
+        "description": "Audita el libro y lo lleva al borrador de la Hoja de la obra (ver la cabecera).",
+        "operationId": "llevar_libro_v1_hoja_libro_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_llevar_libro_v1_hoja_libro_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibroLlevadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/vistas/frentes": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Frentes",
+        "description": "El presupuesto agrupado por frente, con el cálculo del `rev` de ahora.",
+        "operationId": "vista_frentes_v1_hoja_borradores__id__vistas_frentes_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaFrentesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/frentes": {
+      "put": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Editar Frentes",
+        "description": "Pone el frente de los renglones enviados y devuelve los frentes recalculados.",
+        "operationId": "editar_frentes_v1_hoja_borradores__id__frentes_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionFrentes"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionFrentesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/excel": {
       "get": {
         "tags": [
@@ -8264,6 +8672,82 @@
             "description": "El libro .xlsx del borrador.",
             "content": {
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/pdf": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Exportar Pdf",
+        "description": "RF-213: el presupuesto del borrador vivo en PDF (encabezado, partidas, subtotal, IVA y\ntotal) y el APU de cada partida, uno por página; con `partida`, solo el de esa partida. Si\nalgún renglón tiene frente, las partidas salen por frente con el subtotal de cada uno (los de\n`vistas/frentes`); `agrupar=ninguno`, en una sola lista (ronda 1 del árbitro de la ola 2).",
+        "operationId": "exportar_pdf_v1_hoja_borradores__id__pdf_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "partida",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Partida"
+            }
+          },
+          {
+            "name": "agrupar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "frente",
+                "ninguno"
+              ],
+              "type": "string",
+              "description": "«frente» (por omisión): por frente si hay; «ninguno»: lista corrida",
+              "default": "frente",
+              "title": "Agrupar"
+            },
+            "description": "«frente» (por omisión): por frente si hay; «ninguno»: lista corrida"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El PDF del borrador.",
+            "content": {
+              "application/pdf": {}
             }
           },
           "422": {
@@ -13677,6 +14161,21 @@
             ],
             "title": "Perfil",
             "description": "Nombre del perfil (opcional): apu_por_hoja por omisión"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto",
+            "description": "Las hojas del presupuesto que se leen, aparte del perfil (opcional; una o varias veces, una por frente)"
           }
         },
         "type": "object",
@@ -14086,6 +14585,21 @@
         ],
         "title": "Body_excel_v1_revision_excel_post"
       },
+      "Body_hojas_del_libro_v1_libros_hojas_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Un libro .xlsx (p. ej., el del presupuesto)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro"
+        ],
+        "title": "Body_hojas_del_libro_v1_libros_hojas_post"
+      },
       "Body_importar_presupuesto_de_tercero_presupuestos_importar_post": {
         "properties": {
           "archivo": {
@@ -14270,6 +14784,110 @@
           "fecha_descarga"
         ],
         "title": "Body_leer_v1_indices_leer_post"
+      },
+      "Body_llevar_libro_v1_hoja_libro_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro con un APU por hoja (.xlsx)"
+          },
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "moneda": {
+            "type": "string",
+            "enum": [
+              "Bs",
+              "USD"
+            ],
+            "title": "Moneda",
+            "description": "La moneda de los precios del libro"
+          },
+          "presupuesto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presupuesto",
+            "description": "Libro del presupuesto"
+          },
+          "perfil": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perfil"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto"
+          },
+          "frente": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "proyecto",
+          "moneda"
+        ],
+        "title": "Body_llevar_libro_v1_hoja_libro_post"
+      },
+      "Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post": {
+        "properties": {
+          "perfil": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Perfil",
+            "description": "El perfil del libro, un .json"
+          },
+          "reemplazar": {
+            "type": "boolean",
+            "title": "Reemplazar",
+            "description": "Reemplazar uno que ya está",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "perfil"
+        ],
+        "title": "Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post"
       },
       "Body_registrar_v1_admin_empresas_registradas_post": {
         "properties": {
@@ -15159,6 +15777,29 @@
           "cambios"
         ],
         "title": "CambiosHojaRespuesta"
+      },
+      "CampoDeParametro": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "rotulo",
+          "valor"
+        ],
+        "title": "CampoDeParametro"
       },
       "CampoParametroRespuesta": {
         "properties": {
@@ -17293,7 +17934,7 @@
           "dias_por_periodo": {
             "type": "string",
             "title": "Dias Por Periodo",
-            "default": "5"
+            "default": ""
           },
           "feriados": {
             "type": "string",
@@ -17724,6 +18365,32 @@
         ],
         "title": "DetalleApuRespuesta"
       },
+      "DiasDelPlanRespuesta": {
+        "properties": {
+          "dias": {
+            "type": "string",
+            "title": "Dias",
+            "description": "Días hábiles por período que se proponen, como texto"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad",
+            "description": "dia, semana o mes; vacía si el plan no dice su unidad"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "description": "Por qué se proponen 20 (el plan no dice su unidad); o vacío"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dias",
+          "unidad",
+          "aviso"
+        ],
+        "title": "DiasDelPlanRespuesta"
+      },
       "DictamenAnterior": {
         "properties": {
           "resultado": {
@@ -18086,6 +18753,51 @@
         "title": "EdicionEspacioRespuesta",
         "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del espacio (como R5)."
       },
+      "EdicionFrentes": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaDeFrente"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Filas"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "filas"
+        ],
+        "title": "EdicionFrentes"
+      },
+      "EdicionFrentesRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "frentes": {
+            "$ref": "#/components/schemas/VistaFrentesRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "frentes"
+        ],
+        "title": "EdicionFrentesRespuesta"
+      },
       "EdicionParametros": {
         "properties": {
           "rev": {
@@ -18238,7 +18950,8 @@
             "type": "string",
             "enum": [
               "dia",
-              "semana"
+              "semana",
+              "mes"
             ],
             "title": "Unidad"
           }
@@ -18492,6 +19205,120 @@
           "sensible"
         ],
         "title": "EmpresaRespuesta"
+      },
+      "EnUsdConfirmacion": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Serie"
+          },
+          "lado": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Lado",
+            "default": "venta"
+          },
+          "huella": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Huella"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie",
+          "huella"
+        ],
+        "title": "EnUsdConfirmacion"
+      },
+      "EnUsdPeticion": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Serie"
+          },
+          "lado": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Lado",
+            "default": "venta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie"
+        ],
+        "title": "EnUsdPeticion"
+      },
+      "EnUsdRespuesta": {
+        "properties": {
+          "serie_nueva": {
+            "type": "string",
+            "title": "Serie Nueva"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "meses": {
+            "type": "integer",
+            "title": "Meses"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "title": "Hasta"
+          },
+          "provisionales": {
+            "type": "integer",
+            "title": "Provisionales"
+          },
+          "muestra": {
+            "items": {
+              "$ref": "#/components/schemas/MesMuestra"
+            },
+            "type": "array",
+            "title": "Muestra",
+            "description": "El primer y el último mes, con su cuenta."
+          },
+          "omitidos": {
+            "items": {
+              "$ref": "#/components/schemas/MesSinUsd"
+            },
+            "type": "array",
+            "title": "Omitidos"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          },
+          "ya_guardada": {
+            "type": "boolean",
+            "title": "Ya Guardada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie_nueva",
+          "nombre",
+          "meses",
+          "desde",
+          "hasta",
+          "provisionales",
+          "muestra",
+          "omitidos",
+          "huella",
+          "ya_guardada"
+        ],
+        "title": "EnUsdRespuesta"
       },
       "EntregaPeticion": {
         "properties": {
@@ -19631,6 +20458,28 @@
         ],
         "title": "FilaDeCantidad"
       },
+      "FilaDeFrente": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Clave"
+          },
+          "frente": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Frente",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "clave"
+        ],
+        "title": "FilaDeFrente"
+      },
       "FilaDePlanCuerpo": {
         "properties": {
           "partida": {
@@ -20101,6 +20950,41 @@
           "precio"
         ],
         "title": "FilaSimuladaRespuesta"
+      },
+      "FrenteRespuesta": {
+        "properties": {
+          "frente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frente"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones"
+          },
+          "pendientes": {
+            "type": "integer",
+            "title": "Pendientes"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frente",
+          "renglones",
+          "pendientes",
+          "total"
+        ],
+        "title": "FrenteRespuesta",
+        "description": "Un frente: su nombre (`null`: los renglones sin frente), sus renglones, los pendientes (sin\nAPU, no suman) y su subtotal."
       },
       "FusionDelPlano": {
         "properties": {
@@ -20649,6 +21533,23 @@
         ],
         "title": "HojaVisualRespuesta",
         "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
+      },
+      "HojasDelLibroRespuesta": {
+        "properties": {
+          "hojas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hojas"
+        ],
+        "title": "HojasDelLibroRespuesta",
+        "description": "Los nombres de las hojas de un libro, en su orden."
       },
       "ImportacionDeObraRespuesta": {
         "properties": {
@@ -21439,6 +22340,13 @@
             ],
             "title": "Hoja Presupuesto"
           },
+          "hojas_presupuesto": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas Presupuesto"
+          },
           "cumple": {
             "type": "boolean",
             "title": "Cumple"
@@ -21479,6 +22387,7 @@
           "origen_perfil",
           "presupuesto",
           "hoja_presupuesto",
+          "hojas_presupuesto",
           "cumple",
           "por_severidad",
           "apus",
@@ -21611,6 +22520,59 @@
         ],
         "title": "LibroAuditadoRespuesta",
         "description": "`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la\npantalla muestra (la auditoría es válida igual, RF-144).\n\n`partidas_con_omision` (V-16, etiqueta del libro menor): los números de las partidas cuyo\nAPU tiene un hallazgo L4 (el costo directo del libro deja fuera componentes o no es la suma de\nellos), ordenados y sin repetir. Es el único rastro de «costos omitidos» que el auditor deja de\nforma estructurada; una lista vacía NO prueba que el libro esté completo (una partida\nentera que falta en el libro no tiene contraparte que comparar). Campo aditivo."
+      },
+      "LibroLlevadoRespuesta": {
+        "properties": {
+          "borrador_id": {
+            "type": "string",
+            "title": "Borrador Id"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaDelLibroRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "sin_apu": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sin Apu"
+          },
+          "sin_cantidad": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sin Cantidad"
+          },
+          "lista": {
+            "type": "string",
+            "title": "Lista"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "borrador_id",
+          "renglones",
+          "partidas",
+          "sin_apu",
+          "sin_cantidad",
+          "lista",
+          "moneda"
+        ],
+        "title": "LibroLlevadoRespuesta",
+        "description": "El borrador con el libro (sin guardar) y lo que se llevó."
       },
       "LibroOrigenRespuesta": {
         "properties": {
@@ -22317,6 +23279,52 @@
           "mensaje"
         ],
         "title": "MensajeRespuesta"
+      },
+      "MesMuestra": {
+        "properties": {
+          "mes": {
+            "type": "string",
+            "title": "Mes"
+          },
+          "indice_bs": {
+            "type": "string",
+            "title": "Indice Bs"
+          },
+          "tasa_promedio": {
+            "type": "string",
+            "title": "Tasa Promedio"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mes",
+          "indice_bs",
+          "tasa_promedio",
+          "valor"
+        ],
+        "title": "MesMuestra"
+      },
+      "MesSinUsd": {
+        "properties": {
+          "mes": {
+            "type": "string",
+            "title": "Mes"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mes",
+          "motivo"
+        ],
+        "title": "MesSinUsd"
       },
       "Metodo": {
         "properties": {
@@ -23335,6 +24343,35 @@
         ],
         "title": "OpcionRespuesta"
       },
+      "OrigenesRespuesta": {
+        "properties": {
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SerieOrigen"
+            },
+            "type": "array",
+            "title": "Series"
+          },
+          "lados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lados"
+          },
+          "lado_por_omision": {
+            "type": "string",
+            "title": "Lado Por Omision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series",
+          "lados",
+          "lado_por_omision"
+        ],
+        "title": "OrigenesRespuesta"
+      },
       "ParametroRespuesta": {
         "properties": {
           "parametro": {
@@ -23362,6 +24399,50 @@
           "naturaleza"
         ],
         "title": "ParametroRespuesta"
+      },
+      "ParametrosDeTexto": {
+        "properties": {
+          "fcas": {
+            "type": "string",
+            "title": "Fcas",
+            "default": ""
+          },
+          "bono_alimentacion": {
+            "type": "string",
+            "title": "Bono Alimentacion",
+            "default": ""
+          },
+          "administracion": {
+            "type": "string",
+            "title": "Administracion",
+            "default": ""
+          },
+          "utilidad": {
+            "type": "string",
+            "title": "Utilidad",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ParametrosDeTexto",
+        "description": "Los cuatro parámetros del precio unitario como se teclean (coma decimal), RF-200."
+      },
+      "ParametrosRespuesta": {
+        "properties": {
+          "campos": {
+            "items": {
+              "$ref": "#/components/schemas/CampoDeParametro"
+            },
+            "type": "array",
+            "title": "Campos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "campos"
+        ],
+        "title": "ParametrosRespuesta",
+        "description": "Los parámetros de omisión con su rótulo (la misma forma que `campos` de la vista\n`parametros` de la Hoja), RF-200."
       },
       "ParcialRespuesta": {
         "properties": {
@@ -23557,6 +24638,56 @@
           "unidad"
         ],
         "title": "PartidaDelContratoRespuesta"
+      },
+      "PartidaDelLibroRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "codigo_libro": {
+            "type": "string",
+            "title": "Codigo Libro"
+          },
+          "hoja": {
+            "type": "string",
+            "title": "Hoja"
+          },
+          "nueva": {
+            "type": "boolean",
+            "title": "Nueva"
+          },
+          "precio_impreso": {
+            "type": "string",
+            "title": "Precio Impreso"
+          },
+          "precio_hoja": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Hoja"
+          },
+          "casa": {
+            "type": "boolean",
+            "title": "Casa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "codigo_libro",
+          "hoja",
+          "nueva",
+          "precio_impreso",
+          "precio_hoja",
+          "casa"
+        ],
+        "title": "PartidaDelLibroRespuesta"
       },
       "PartidaDiferente": {
         "properties": {
@@ -24160,6 +25291,13 @@
             ],
             "title": "Hoja Presupuesto"
           },
+          "hojas_presupuesto": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas Presupuesto"
+          },
           "motivo": {
             "anyOf": [
               {
@@ -24177,10 +25315,11 @@
           "nombre",
           "origen",
           "hoja_presupuesto",
+          "hojas_presupuesto",
           "motivo"
         ],
         "title": "PerfilApuPorHojaRespuesta",
-        "description": "Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el\nperfil local está mal escrito (entonces no se puede elegir)."
+        "description": "Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el\nperfil local está mal escrito (entonces no se puede elegir). `hojas_presupuesto` son todas las\nhojas que lee (una por frente); `hoja_presupuesto`, la primera."
       },
       "PeriodoPlanPeticion": {
         "properties": {
@@ -24304,6 +25443,16 @@
             "type": "string",
             "title": "Rendimiento",
             "default": ""
+          },
+          "parametros": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParametrosDeTexto"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -24311,7 +25460,7 @@
           "dominio"
         ],
         "title": "PeticionEvaluar",
-        "description": "Cabecera y tablas tal como se teclean: todo texto, vacíos permitidos."
+        "description": "Cabecera y tablas tal como se teclean: todo texto, vacíos permitidos. `parametros`\n(RF-200), si viene, es con qué se calcula el precio unitario; si no, los de omisión."
       },
       "PeticionGuardar": {
         "properties": {
@@ -24361,6 +25510,16 @@
             "type": "string",
             "title": "Rendimiento",
             "default": ""
+          },
+          "parametros": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParametrosDeTexto"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "fecha": {
             "type": "string",
@@ -26367,6 +27526,42 @@
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
       },
+      "RenglonDelContratoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "renglon": {
+            "type": "integer",
+            "title": "Renglon",
+            "description": "El número del renglón en el presupuesto, desde 1"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones",
+            "description": "Cuántos renglones tiene ese código en el presupuesto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad",
+          "renglon",
+          "renglones"
+        ],
+        "title": "RenglonDelContratoRespuesta",
+        "description": "Un renglón del presupuesto (Control, ola 2 del 2026-11-13): un código repetido en dos\nrenglones se ofrece dos veces; la valuación sigue siendo por código."
+      },
       "RenglonFcas": {
         "properties": {
           "id": {
@@ -26389,6 +27584,41 @@
           "aporte"
         ],
         "title": "RenglonFcas"
+      },
+      "RenglonesDelContratoRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "El código de la versión del contrato; vacío si no hay"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "description": "Texto fijo que explica una lista vacía",
+            "default": ""
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/RenglonDelContratoRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas",
+            "description": "Una por renglón del presupuesto, en su orden"
+          },
+          "truncada": {
+            "type": "boolean",
+            "title": "Truncada",
+            "description": "La lista se recortó al tope: que una partida no esté en ella no dice que no esté en el contrato (la interfaz no la rechaza y deja que decida el servidor)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "partidas"
+        ],
+        "title": "RenglonesDelContratoRespuesta"
       },
       "ResolverEntrada": {
         "properties": {
@@ -26947,6 +28177,29 @@
           "motivo"
         ],
         "title": "SensibleEstado"
+      },
+      "SerieOrigen": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "organismo": {
+            "type": "string",
+            "title": "Organismo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "nombre",
+          "organismo"
+        ],
+        "title": "SerieOrigen"
       },
       "SesionRespuesta": {
         "properties": {
@@ -29046,6 +30299,36 @@
         ],
         "title": "VistaEspacioRespuesta"
       },
+      "VistaFrentesRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "frentes": {
+            "items": {
+              "$ref": "#/components/schemas/FrenteRespuesta"
+            },
+            "type": "array",
+            "title": "Frentes"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "con_frentes": {
+            "type": "boolean",
+            "title": "Con Frentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "frentes",
+          "total",
+          "con_frentes"
+        ],
+        "title": "VistaFrentesRespuesta"
+      },
       "VistaParametrosRespuesta": {
         "properties": {
           "campos": {
@@ -29089,6 +30372,14 @@
             "type": "boolean",
             "title": "Hay Plan"
           },
+          "partidas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Partidas",
+            "description": "Las partidas del presupuesto en su orden, con plan o sin él: las cuadrillas se ponen antes de hacer el plan"
+          },
           "etiquetas": {
             "items": {
               "type": "string"
@@ -29129,6 +30420,7 @@
         "type": "object",
         "required": [
           "hay_plan",
+          "partidas",
           "etiquetas",
           "filas",
           "curva",

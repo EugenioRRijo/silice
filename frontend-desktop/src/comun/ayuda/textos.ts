@@ -254,7 +254,7 @@ export const GUIAS: readonly Guia[] = [
         titulo: "Guardar y descargar",
         pasos: [
           "Lo que cambia queda en el borrador. Cuando esté listo, pulse «Guardar versión…» (la primera vez, «Guardar primera versión…») en la franja de arriba, escriba de dónde salen los datos y confirme: nace una versión.",
-          "«Descargar Excel», al lado de la franja, baja el presupuesto en Excel.",
+          "«Descargar Excel», al lado de la franja, baja el presupuesto en Excel; «Descargar PDF», en un PDF listo para imprimir o enviar, con el APU de cada partida después del presupuesto.",
           "Si las cantidades vienen de un archivo, en «Archivos y planos» pulse «Subir plano o cómputo»: un plano .dxf o .ifc, o un cómputo .csv que se lleva con «Llevar al presupuesto». Después guarde la versión igual.",
         ],
       },

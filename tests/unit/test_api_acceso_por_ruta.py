@@ -141,12 +141,14 @@ TABLA = {
     ("POST", "/v1/libros/replica"): LEER,
     ("POST", "/v1/libros/apu-por-hoja"): LEER,  # F5 vial, tarea 6
     ("GET", "/v1/libros/perfiles-apu-por-hoja"): LEER,  # E2E-2: elegir el perfil
+    ("POST", "/v1/libros/hojas"): LEER,  # libro por frentes: elegir las hojas del presupuesto
     ("GET", "/v1/tablero"): LEER,  # ola 4: Tablero
     ("GET", "/v1/control/linea-base"): CONTROLAR,  # ola 4: Control de obra
     ("POST", "/v1/control/linea-base"): CONTROLAR,
     ("POST", "/v1/control/parametros"): CONTROLAR,
     ("GET", "/v1/control/valuaciones"): CONTROLAR,
     ("GET", "/v1/control/partidas"): CONTROLAR,  # autocompletado AC2
+    ("GET", "/v1/control/dias-por-periodo"): CONTROLAR,  # ola 2: los días salen del plan
     ("POST", "/v1/control/valuaciones"): CONTROLAR,
     ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"): CONTROLAR,
     ("POST", "/v1/control/costos"): CONTROLAR,
@@ -215,6 +217,8 @@ TABLA = {
     ("GET", "/v1/accesos"): CUENTAS_ADM,
     # Ola 3 (S2-B): «Componer una partida» es de quien arma (`ui/paginas/componer.py`)
     ("GET", "/v1/composicion/opciones"): EDITAR,
+    # RF-200 (ola 2, 2026-11-13): los parámetros de omisión de Componer
+    ("GET", "/v1/composicion/parametros"): EDITAR,
     ("POST", "/v1/composicion/evaluar"): EDITAR,
     ("GET", "/v1/composicion/partidas/{codigo}"): EDITAR,
     ("GET", "/v1/composicion/referencia"): EDITAR,
@@ -231,6 +235,7 @@ TABLA = {
     ("GET", "/v1/admin/empresa/respaldo-clave"): EMPRESA,
     ("POST", "/v1/admin/empresa/clave/retirar"): EMPRESA,
     ("POST", "/v1/admin/empresa/clave/revocar"): EMPRESA,
+    ("POST", "/v1/admin/empresa/perfiles-libros"): EMPRESA,  # libro por frentes: perfil local
     ("GET", "/v1/admin/claves-api"): RED_Y_API,
     ("POST", "/v1/admin/claves-api"): RED_Y_API,
     ("POST", "/v1/admin/claves-api/{clave_id}/revocar"): RED_Y_API,
@@ -248,6 +253,9 @@ TABLA = {
     ("GET", "/v1/indices/contexto"): PRECIOS,
     ("POST", "/v1/indices/leer"): PRECIOS,
     ("POST", "/v1/indices/confirmar"): PRECIOS,
+    ("GET", "/v1/indices/en-usd/origenes"): PRECIOS,  # RF-214 (ola 2, linea 4)
+    ("POST", "/v1/indices/en-usd/ver"): PRECIOS,
+    ("POST", "/v1/indices/en-usd/confirmar"): PRECIOS,
     ("GET", "/v1/precios-empresa"): PRECIOS,
     ("POST", "/v1/precios-empresa/referencia"): PRECIOS,
     ("POST", "/v1/precios-empresa/listas"): PRECIOS,
@@ -315,7 +323,11 @@ TABLA = {
     ("POST", "/v1/hoja/borradores/{id}/partidas"): EDITAR,  # MP T9; solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/partidas/quitar"): EDITAR,  # MP T9; solo con sesion
     ("POST", "/v1/hoja/llevar"): EDITAR,  # MP T12; solo con sesion
+    ("POST", "/v1/hoja/libro"): EDITAR,  # libro por frentes: el libro auditado; solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/frentes"): LEER,  # libro por frentes; solo sesion
+    ("PUT", "/v1/hoja/borradores/{id}/frentes"): EDITAR,  # libro por frentes; solo con sesion
     ("GET", "/v1/hoja/borradores/{id}/excel"): LEER,  # T10 3e-1 (X1); ademas, solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/pdf"): LEER,  # RF-213 (ola 2, linea 4): como el Excel
     ("POST", "/v1/hoja/borradores/{id}/plano"): EDITAR,  # T10 3e-2; ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/plano/unidad"): EDITAR,  # T10 3e-2; ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/plano/alturas"): EDITAR,  # T10 3e-2; ademas, solo con sesion

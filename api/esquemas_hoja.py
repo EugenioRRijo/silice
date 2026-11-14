@@ -374,6 +374,12 @@ class PuntoCurvaRespuesta(BaseModel):
 
 class VistaPlanRespuesta(BaseModel):
     hay_plan: bool
+    partidas: list[str] = Field(
+        description=(
+            "Las partidas del presupuesto en su orden, con plan o sin él: las cuadrillas se "
+            "ponen antes de hacer el plan"
+        )
+    )
     etiquetas: list[str]
     filas: list[FilaPlanRespuesta]
     curva: list[PuntoCurvaRespuesta]
@@ -643,7 +649,7 @@ class EdicionRendimientos(BaseModel):
     rev: Annotated[int, Field(strict=True, ge=0)]
     cuadrillas: Annotated[dict[Texto500, Texto500], Field(max_length=5000)]
     paralelas: Annotated[list[Texto500], Field(max_length=5000)]
-    unidad: Literal["dia", "semana"]
+    unidad: Literal["dia", "semana", "mes"]
 
 
 class EdicionRendimientosRespuesta(EdicionPlanRespuesta):

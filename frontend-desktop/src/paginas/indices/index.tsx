@@ -27,6 +27,7 @@ import {
 import type { Confirmacion, Contexto, Definicion, Informe, Lectura } from "./logica";
 import "./indices.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { EnUsd } from "./EnUsd";
 
 type CargaContexto =
   | { tipo: "cargando" }
@@ -239,6 +240,9 @@ export default function PaginaIndices() {
           alConfirmar={() => confirmar(lectura.lectura)}
         />
       )}
+
+      {/* RF-214: un índice mensual en bolívares expresado en USD, para el reajuste de un contrato en dólares. */}
+      {contexto && <EnUsd />}
     </div>
   );
 }

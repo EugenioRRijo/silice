@@ -1,9 +1,9 @@
 import { Select, SelectItem } from "@carbon/react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { AreaTexto } from "../../comun/AreaTexto";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { JSX } from "react";
-import { ErrorDeApi } from "../../api/cliente";
+import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import type { PartidaHallada } from "../../comun/logicaBusqueda";
@@ -22,11 +22,26 @@ import {
   evaluar,
   guardar,
   opciones,
+  parametrosDeOmision,
   partida,
   prever,
   similares as pedirSimilares,
 } from "./cliente";
-import type { Cabecera, DatosDeGuardado, Desglose, Evaluacion, Guardado, Opciones, Prevision, Similar } from "./cliente";
+import type {
+  Cabecera,
+  CampoDeParametro,
+  DatosDeGuardado,
+  Desglose,
+  Evaluacion,
+  Guardado,
+  Opciones,
+  ParametrosDeTexto,
+  Prevision,
+  Similar,
+} from "./cliente";
+import { ContextoDelBorradorAbierto, rutaDeVista } from "../../comun/borradorAbierto";
+import { ParametrosDelPrecio, valoresDe } from "./ParametrosDelPrecio";
+import type { OrigenDeParametros } from "./ParametrosDelPrecio";
 import "./componer.scss";
 import { DialogoVariantes } from "./DialogoVariantes";
 import { Guardar } from "./Guardar";
@@ -258,6 +273,33 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     };
   }, [atender]);
 
+  // RF-200 (ola 2): los parámetros del precio unitario. Con una obra abierta (Componer como vista de su Presupuesto o en el
+  // panel de «Agregar partida»), los de su «Ajustes de costo»; sin obra, los de omisión. Se leen una vez al abrir.
+  const borrador = useContext(ContextoDelBorradorAbierto);
+  const [baseParametros, setBaseParametros] = useState<{ campos: CampoDeParametro[]; origen: OrigenDeParametros } | null>(null);
+  const [parametros, setParametros] = useState<ParametrosDeTexto | null>(null);
+  const [falloParametros, setFalloParametros] = useState(false);
+  useEffect(() => {
+    let vigente = true;
+    const leer: Promise<{ campos: CampoDeParametro[]; origen: OrigenDeParametros }> =
+      borrador !== null
+        ? pedir<{ campos: CampoDeParametro[] }>(rutaDeVista(borrador, "parametros")).then((v) => ({ campos: v.campos, origen: "obra" }))
+        : parametrosDeOmision().then((r) => ({ campos: r.campos, origen: "omision" }));
+    leer
+      .then((base) => {
+        if (!vigente) return;
+        setBaseParametros(base);
+        setParametros(valoresDe(base.campos));
+        setFalloParametros(false);
+      })
+      .catch((e: unknown) => {
+        if (vigente && !atender(e)) setFalloParametros(true);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [borrador, atender]);
+
   // La moneda de trabajo y la lista para armar de la carpeta (D-MP1). Se pregunta al abrir (al cambiar de carpeta el
   // Shell vuelve a montar la pagina) y otra vez si guardar responde 409. Si la API no la da (otra base que SQLite) no se
   // avisa nada ni se inventa la moneda: guardar lo dira si hace falta.
@@ -359,7 +401,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     const mio = ++turnoEvaluar.current;
     const espera = setTimeout(() => {
       setCalculando(true);
-      evaluar(cabecera, tablas)
+      evaluar(cabecera, tablas, parametros)
         .then((r) => {
           if (mio !== turnoEvaluar.current) return;
           setEvaluacion(r);
@@ -375,7 +417,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         });
     }, RETARDO_MS);
     return () => clearTimeout(espera);
-  }, [cabecera, tablas, atender]);
+  }, [cabecera, tablas, parametros, atender]);
 
   // Ayuda 1: partidas parecidas a la descripcion tecleada, del dominio elegido.
   const turnoParecidas = useRef(0);
@@ -408,7 +450,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
   const confirmarGuardado = async (datos: DatosDeGuardado) => {
     setGuardando(true);
     try {
-      setResultado(await guardar(cabecera, tablas, datos));
+      setResultado(await guardar(cabecera, tablas, datos, parametros));
       alGuardar({ codigo: cabecera.codigo.trim(), descripcion: cabecera.descripcion.trim(), unidad: cabecera.unidad.trim() });
     } catch (e) {
       fallarGuardado(e);
@@ -425,7 +467,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     limpiarGuardado();
     let previsto: Prevision;
     try {
-      previsto = await prever(cabecera, tablas, datos);
+      previsto = await prever(cabecera, tablas, datos, parametros);
     } catch (e) {
       fallarGuardado(e);
       setGuardando(false);
@@ -598,6 +640,17 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           </div>
         ))}
       </section>
+
+      <ParametrosDelPrecio
+        campos={baseParametros?.campos ?? null}
+        origen={baseParametros?.origen ?? "omision"}
+        valores={parametros}
+        fallo={falloParametros}
+        aviso={evaluacion?.aviso ?? null}
+        alCambiar={(clave, texto) => setParametros((p) => (p === null ? p : { ...p, [clave]: texto }))}
+        alRestaurar={() => baseParametros !== null && setParametros(valoresDe(baseParametros.campos))}
+        nivel={nivel}
+      />
 
       <PanelDesglose
         evaluacion={evaluacion}

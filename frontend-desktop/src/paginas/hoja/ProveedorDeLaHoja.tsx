@@ -6,6 +6,7 @@ import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { quedaEnLaHoja } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
+import { ContextoDelBorradorAbierto } from "../../comun/borradorAbierto";
 import { useCarga } from "../../comun/useCarga";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
 import { DialogoDeGuardar } from "./DialogoDeGuardar";
@@ -302,7 +303,9 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
   return (
     <ContextoDeLaHoja.Provider value={hoja}>
       <ContextoDeDialogos.Provider value={dialogos}>
-        {children}
+        <ContextoDelBorradorAbierto.Provider value={estado.estado === "listo" ? estado.borrador.id : null}>
+          {children}
+        </ContextoDelBorradorAbierto.Provider>
         {enRuta && <VersionDeLaRuta pedirVersion={pedirVersion} />}
         {guardado.abierto && estado.estado === "listo" && (
           <DialogoDeGuardar

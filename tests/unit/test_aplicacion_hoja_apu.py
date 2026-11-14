@@ -307,7 +307,7 @@ def test_cambiar_el_equipo_conserva_la_depreciacion(_of001, _plantillas) -> None
         (
             "xx",
             0,
-            "tipo de linea 'xx' desconocido; se espera uno de ('material', 'equipo', 'mano_obra')",
+            "tipo de línea 'xx' desconocido; se espera uno de ('material', 'equipo', 'mano_obra')",
         ),
         ("material", 1, "la línea 2 no existe: el grupo material tiene 1 línea"),
         ("mano_obra", 2, "la línea 3 no existe: el grupo mano_obra tiene 2 líneas"),

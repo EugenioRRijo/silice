@@ -488,7 +488,13 @@ Haga clic en «Presupuesto» en la barra de la obra. Verá, en este orden:
    …»), «Aprobación:» con el estado de la versión y el «Total» en la moneda de la obra. Si tiene cambios,
    aparece «Descartar cambios».
 2. **La franja del paso** («Te falta:» o «Siguiente paso:»), con el único botón principal de la pantalla, y a
-   su lado **«Descargar Excel»**, que baja el presupuesto en un libro de Excel.
+   su lado **«Descargar Excel»**, que baja el presupuesto en un libro de Excel, y **«Descargar PDF»**, que
+   lo baja en un PDF para imprimir o enviar: la obra, la versión, la fecha y la moneda; cada partida con su
+   unidad, cantidad, precio unitario y total; el subtotal, el IVA y el total con IVA; y después el APU de cada
+   partida en su página (materiales, equipos y mano de obra y el cierre hasta el precio unitario). Si la obra
+   tiene frentes (12.6), las partidas salen por frente, cada uno con su subtotal. Sale lo
+   que se ve en la pantalla, también lo que aún no se guardó (el PDF lo dice), con coma decimal y punto de
+   miles.
 3. **Las pestañas**: «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y
    «Ajustes de costo». En una obra de edificación con espacio aparece además, delante, «Espacio y
    metrajes».
@@ -634,10 +640,14 @@ buscador «Buscar partida».
 
 - **«Plan y equilibrio».** Reparte cada partida entre los períodos del plan; cada fila debe sumar
   exactamente 1. Con «Plan desde los rendimientos», Sílice arma el plan con la cantidad y el rendimiento
-  de cada partida (elija «Cuadrillas», «En paralelo con la anterior» y los «Períodos del plan»). Debajo,
-  la «Curva de inversión» y el «Punto de equilibrio», que no se editan.
+  de cada partida (elija «Cuadrillas», «En paralelo con la anterior» y los «Períodos del plan»: «Días
+  hábiles», «Semanas (5 días hábiles)» o «Meses (20 días hábiles)»). Las cuadrillas se ponen también
+  cuando todavía no hay plan. Un plan armado por semanas o por meses se abre con esa unidad marcada.
+  Debajo, la «Curva de inversión» y el «Punto de equilibrio», que no se editan.
 - **«Precios».** De dónde sale cada precio: lista, fecha, moneda, referencia y cotización. «Detalle»
-  muestra el resto. «Buscar variaciones atípicas de precio» señala los insumos que cambiaron demasiado.
+  muestra el resto. «Sin referencia ni cotización: el precio no tiene fuente» sale solo si el precio no
+  trae referencia, ni cotización, ni una fuente declarada para él (la de su fila en la lista de la
+  empresa o la de un precio tecleado); el nombre de la lista de la que se copió no cuenta como fuente. «Buscar variaciones atípicas de precio» señala los insumos que cambiaron demasiado.
   Muestra la versión guardada, no los cambios sin guardar. El enlace «Registrar una cotización en
   Mercado» lleva a la sección 8.4.
 - **«Revisión».** El informe de auditoría del borrador, con todas las reglas: «Presupuesto … · Hallazgos:
@@ -713,8 +723,9 @@ rendimientos. El plan admite hasta 500 períodos: si por días no cabe, lo arma 
 tampoco, por meses (de 20 días hábiles), y el mensaje de guardado lo dice, por ejemplo «El plan por días tendría 700
 períodos y la matriz admite 500: se armó por semanas (140 períodos). Puede rehacerlo con cuadrillas en «Plan y
 equilibrio».». La versión se guarda igual; si quiere el plan en otra unidad o con más cuadrillas, rehágalo en «Plan y
-equilibrio». Si ni en meses cabe, no se guarda y Sílice le pide crear el plan en «Plan y equilibrio», asignar más
-cuadrillas a las partidas largas y volver a guardar.
+equilibrio». Si ni en meses cabe, no se guarda y Sílice le pide, en «Plan y equilibrio», asignar más cuadrillas a las
+partidas largas, hacer el plan desde los rendimientos por meses y volver a guardar: la tabla de cuadrillas está ahí
+aunque todavía no haya plan.
 
 Si alguien guardó otra versión mientras usted trabajaba, Sílice avisa «Hay una versión más nueva» y le deja
 elegir entre «Guardar de todos modos» y «Abrir la versión …».
@@ -756,6 +767,27 @@ Si el porcentaje está mal escrito, el desglose muestra un «Aviso», por ejempl
 («Emulsión asfáltica»), el desperdicio «150» debe estar entre 0 y 100 (es un porcentaje: 4 es 4 %).».
 Por ahora la Hoja no muestra la neta ni el porcentaje: para verlos o cambiarlos, abra la partida en
 Componer.
+
+### 4.12 Los parámetros del precio unitario en Componer
+
+El bloque «Parámetros del precio unitario», encima de «Desglose en vivo», trae los cuatro parámetros con
+que Sílice calcula el precio unitario: FCAS, bono de alimentación, administración y utilidad.
+
+- Si Componer está abierto dentro de una obra («Presupuesto › Componer» o el panel de «Agregar
+  partida»), son los de la pestaña «Ajustes de costo» de esa obra: el precio unitario de Componer es el
+  mismo que tendrá la partida en el presupuesto.
+- Sin obra abierta, son los de omisión de Sílice (FCAS 6,00, bono 1,00, administración 0,15 y
+  utilidad 0,10), y el bloque lo dice.
+
+Puede cambiarlos para ensayar, por ejemplo una utilidad de `0,12`: el desglose se recalcula. Ese cambio
+**solo vale para este cálculo**: no cambia la obra ni se guarda con la partida (la partida es del
+catálogo y sirve a todas las obras). Para cambiarlos en el presupuesto, use «Ajustes de costo».
+«Volver a los de la obra» (o «Volver a los de omisión») deshace lo escrito. Si escribe una cifra con
+punto decimal o negativa, el campo queda marcado con el motivo y el desglose espera a que la corrija.
+
+En las tablas de insumos, un precio de la lista con más de dos decimales (por ejemplo uno convertido
+de bolívares) se lee con dos, como en Excel; al entrar en la celda se ve y se edita el número completo,
+que es el que se guarda. Lo que usted escribe se ve siempre tal cual.
 
 ## 5. La franja del paso: «Te falta» y «Siguiente paso»
 
@@ -1138,6 +1170,15 @@ En «Precios y catálogo», pestaña «Índices del BCV». Aquí se cargan la ta
 
 Cargar el mismo archivo dos veces no duplica nada.
 
+**Un índice en USD** (para el reajuste de un contrato en dólares). Debajo está «Un índice en USD». Pulse
+«Expresar un índice en USD», elija el «Índice en bolívares» (por ejemplo, el INPC) y la «Tasa del BCV»
+(venta, salvo que el contrato diga compra) y pulse «Revisar»: Sílice divide el valor de cada mes entre el
+promedio de la tasa del BCV de los días de ese mes (cada día con la última tasa publicada, que no puede tener
+más de 7 días) y muestra la cuenta del primer y del último mes y los meses a los que les faltan tasas. Si está
+bien, pulse «Guardar la serie en USD»: queda como una serie más (por ejemplo, «BCV-INPC-GENERAL-USD») que se
+cita en la cláusula del reajuste (sección 9.5). Si después se importa una revisión del índice o más tasas,
+revise y guarde otra vez.
+
 ### 9.5 Reajuste de precios (quien arma)
 
 Abra la obra y, en «Control de obra», elija la vista «Reajuste» (o busque «Reajuste de precios» con
@@ -1152,6 +1193,10 @@ debe cotejar con la Gaceta.
 3. Pestaña «2. Períodos y lo ejecutado»: los períodos y lo ejecutado, o la casilla para tomarlo de las
    valuaciones registradas.
 4. Pulse «Calcular». Puede «Guardar estudio» y «Descargar Excel».
+
+Si la obra está en USD y un componente cita un índice en bolívares, el resultado lo advierte: ese índice
+cuenta dos veces la devaluación. Exprese el índice en USD en «Índices del BCV» (sección 9.4) y cite la serie
+en USD en la cláusula.
 
 ### 9.6 Convertir la moneda de una versión (quien arma)
 
@@ -1347,10 +1392,15 @@ La vista «Control» compara lo avanzado con lo planificado. Tiene seis pestaña
 1. **«Línea base».** Abra «Declarar una línea base» y llene «Versión del contrato» (propone la última
    aprobada), «Vigente desde», «Perspectiva», «Inicio de obra», «Días hábiles por período», «Feriados»
    (fechas como 25/12/2026, separadas por comas) y «Fuente de la línea base». Pulse «Declarar línea
-   base».
+   base». «Días hábiles por período» se llena solo desde el plan de la versión: 1 si va por días, 5 por
+   semanas y 20 por meses; si el plan no dice su unidad, propone 20 (un mes) y lo avisa. Puede
+   cambiarlo; si lo deja vacío, Sílice lo toma del plan al declarar.
 2. **«Valuaciones».** En «Registrar una valuación» escriba «Número», «Período desde», «Período hasta»,
    «Fecha de la valuación» e «Inspector», y una línea por partida medida («Partida», «Cantidad», «Fecha
-   de medición», «Observación» y, si hubo, «Causa del retraso»). Pulse «Registrar y controlar». También
+   de medición», «Observación» y, si hubo, «Causa del retraso»). Pulse «Registrar y controlar». Si el
+   contrato repite un código en varios renglones (el mismo trabajo en dos frentes), «Partida» ofrece cada
+   renglón con su número («renglón 3 del presupuesto»); al elegirlo se escribe el código y, si la
+   observación está vacía, «Renglón 3». La valuación se revisa por código, con la suma de sus renglones. También
    puede «Importar valuaciones de un XLSX», «Anular una valuación» o «Anotar un costo incurrido». La tabla
    muestra el subtotal, el IVA al 16 % y el total con IVA de cada valuación.
 3. **«Procura».** «Alertas de compra» y «Materiales de la obra»: cuánto se necesita, cuándo y a más
@@ -1427,7 +1477,8 @@ propio bloque, «Libro con un APU por hoja», más abajo en «Inicio de auditor�
 1. En «Perfil del libro», elija cómo se lee el libro. Cada opción dice qué hoja del presupuesto compara y
    de dónde viene: «apu_por_hoja · lee la hoja PRESUPUESTO (del paquete)», o «(de esta instalación)» si
    quien administra puso un perfil propio. Con un presupuesto de varios frentes (una hoja por frente),
-   elija el del frente de este libro. Un perfil mal escrito sale con «no se puede usar:» y el motivo, y
+   las hojas se eligen al soltar el presupuesto (ver «Un presupuesto con una hoja por frente», abajo). Un
+   perfil mal escrito sale con «no se puede usar:» y el motivo, y
    no se puede elegir. Si la lista no se pudo leer, dice «No se pudo leer la lista de perfiles: se audita
    con apu_por_hoja.».
 2. Suelte el `.xlsx` de los APU en «Suelte aquí el .xlsx de los APU (una hoja por partida), o haga clic
@@ -1483,6 +1534,54 @@ más allá de la CV y usted no ve nada escrito, seleccione esas columnas o filas
 su contenido) y guarde el libro de nuevo.
 
 Nada se guarda: ni los libros ni el informe, y esta auditoría no entra en «Historial de auditorías».
+
+**Un presupuesto con una hoja por frente** (una estación, un tramo, un sector). Al soltar el libro del
+presupuesto, Sílice lee los nombres de sus hojas y los ofrece en «Hojas del presupuesto que se comparan», con
+marcadas las que lee el perfil. Marque las del frente de este libro de APU (o varias, si el libro de APU sirve a
+todos los frentes). Si el perfil lee una hoja que el libro no tiene, lo dice: «El perfil lee la hoja PRESUPUESTO,
+que este libro no tiene: marque las hojas que quiere comparar.». Con varias hojas, el precio de cada renglón se
+compara en cada hoja (AH5 dice «hoja FRENTE B») y la cantidad del APU con la **suma** de las hojas («las hojas
+FRENTE A y FRENTE B del presupuesto suman una cantidad de 450 y su APU dice 500»). Dos reglas más:
+
+| Regla | Qué dice | Severidad |
+|---|---|---|
+| AH12 | Hojas del libro de APU que no empiezan por el prefijo del perfil y no se leyeron (las nombra, hasta diez). Si alguna es un APU, revise el prefijo del perfil | Información |
+
+Si el perfil declara «Otros impuestos», esa segunda fila del pie se suma al impuesto de la hoja y AH4 dice las dos
+partes («un impuesto del 18 % (16 % y otros impuestos del 2 %)»).
+
+**Poner el perfil de un libro de la empresa.** Quien administra lo hace en «Cuenta › Empresa», bloque «Perfiles de
+los libros de la empresa»: suelte el `.json` del perfil y pulse «Poner el perfil». Sílice lo revisa entero antes de
+guardarlo y dice el motivo si está mal escrito; si ya hay uno con ese nombre, pide marcar «Reemplazar el que ya
+está con ese nombre» (un archivo de otro tipo de perfil con ese nombre no se pisa nunca: póngale otro nombre). El patrón de la banda de distancia (`patron_banda`) no puede pasar de 300 caracteres, y Sílice rechaza las formas que con algunos textos tardarían sin fin: una repetición dentro de otra sin un separador fijo que marque dónde acaba cada vuelta («(a+)+», «(?:a?a)+», «(?:\d+\.?)+»; en cambio «(?:\.\d{3})*», las cifras con punto de miles, sí se acepta, porque el punto separa), una alternativa repetida («(a|aa)+»), una referencia hacia atrás y más de una parte variable que pueda quedarse con los mismos caracteres («.*de.*km», varios «[0-9]*» seguidos). Es un control de la forma, no una garantía: acepta las bandas bien escritas («de 1.000 a 1.250 km», «mayores de 8 km y hasta 10 km», «entre 8 y 10 kms») y, si rechaza la suya, el mensaje dice qué parte cambiar (un «.*» o un «.*?» al principio sobra: la banda se busca en cualquier parte de la descripción). Al terminar dice qué hojas del presupuesto lee: «Perfil «obra_local» puesto en esta
+instalación: lee las hojas FRENTE A y FRENTE B.». El perfil se guarda solo en esta instalación.
+
+### 12.6 Llevar el libro a la Hoja y el presupuesto por frente
+
+Después de auditar el libro, quien arma lo lleva a la Hoja de la obra elegida en la barra de arriba, sin teclear:
+
+1. En «Llevar el libro a la Hoja», elija la «Moneda de los precios del libro» (Bs o USD): Sílice no la adivina y no
+   cambia la moneda de ningún precio. Sin presupuesto, puede escribir el «Frente de los renglones».
+2. Pulse «Llevar el libro a la Hoja de «…»». Cada APU entra al catálogo con sus materiales, equipos y mano de obra,
+   su rendimiento y sus precios (cada precio con su fuente: el libro y la celda, que se ve en la pestaña Precios), y
+   cada renglón del presupuesto entra a la Hoja con su cantidad y su frente (la hoja del presupuesto de donde
+   salió). Los porcentajes del libro (prestaciones, administración y utilidad) pasan a la Hoja.
+3. Sale «Se llevaron 10 renglones a la Hoja de «…», sin guardar: ábrala para revisarlos y guardar la versión.» y la
+   tabla «Partidas llevadas a la Hoja»: el código en Sílice, la hoja del libro, el P.U. del libro, el de la Hoja y
+   si «Casa» (hasta un centavo) o «No casa». Una hoja con financiamiento o con bono por renglón no casa: la
+   auditoría ya lo dijo (AH2, AH3). Debajo, los renglones que no se llevaron (sin hoja de APU o sin cantidad).
+
+El libro se lleva a una **obra sin versiones** (cree una obra nueva para el libro), para que sus precios sean los
+del libro, y su moneda debe ser la de la carpeta y la de la obra (una obra en USD no recibe un libro en Bs: Sílice no convierte sus precios). Si el código de un APU ya está en el catálogo con otro APU (otro
+frente con otro precio), entra como variante «…-B». Llevar el mismo libro otra vez no duplica nada: reemplaza los
+renglones de esas hojas.
+
+**El presupuesto por frente.** En la pestaña Presupuesto de la Hoja, debajo del total, pulse «Ver el presupuesto
+por frente»: la tabla «Presupuesto por frente» da cada frente, sus renglones (y cuántos están pendientes) y su
+subtotal, y debajo el «Total general». Las cifras las calcula Sílice; los renglones sin frente van al final, en
+«(sin frente)», como en el PDF. Para poner el frente de un renglón a mano, elíjalo en «Renglón», escriba el «Frente» y
+pulse «Poner el frente» (vacío lo quita). Un frente no puede llamarse «Sin frente» ni «(sin frente)», para que no se
+confunda con ese grupo: ni a mano ni desde el libro (a una hoja del presupuesto con ese nombre, cámbiele el nombre). El frente se guarda con la versión.
 
 ## 13. El asistente de IA
 

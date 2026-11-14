@@ -56,7 +56,18 @@ interface PropsEditor extends PropsContenido {
 
 // --- plan desde los rendimientos (Tarea 21) ---
 
-type Unidad = "dia" | "semana";
+type Unidad = "dia" | "semana" | "mes";
+
+// La unidad de un plan por sus etiquetas («Dia n», «Semana n», «Mes n»; las de `aplicacion.plan_rendimientos`). Un plan
+// por meses se muestra como meses, no como días (ola 2 del 2026-11-13).
+function unidadDelPlan(etiquetas: string[]): Unidad {
+  const primera = etiquetas[0] ?? "";
+  return primera.startsWith("Semana") ? "semana" : primera.startsWith("Mes") ? "mes" : "dia";
+}
+
+function unidadElegida(valor: unknown): Unidad {
+  return valor === "semana" || valor === "mes" ? valor : "dia";
+}
 
 // `POST …/plan/rendimientos` con `{rev, cuadrillas: {codigo: texto}, paralelas: [codigo], unidad}`.
 const rutaDeRendimientos = (id: string) => `${rutaDePlan(id)}/rendimientos`;
@@ -173,7 +184,7 @@ function PlanDesdeRendimientos({
       <p className="cds--type-helper-text-01">
         {hayPlan
           ? "Rehace la matriz de abajo: lo que haya repartido a mano se reemplaza."
-          : "Con el plan hecho podrá indicar las cuadrillas de cada partida y las que van en paralelo."}
+          : "Indique las cuadrillas de cada partida y las que van en paralelo, y haga el plan."}
       </p>
       {partidas.length > 0 && (
         <TablaPaginada
@@ -223,10 +234,11 @@ function PlanDesdeRendimientos({
         legendText="Períodos del plan"
         name={`${base}-unidad`}
         valueSelected={unidad}
-        onChange={(valor) => setUnidad(valor === "semana" ? "semana" : "dia")}
+        onChange={(valor) => setUnidad(unidadElegida(valor))}
       >
         <RadioButton id={`${base}-dia`} labelText="Días hábiles" value="dia" />
         <RadioButton id={`${base}-semana`} labelText="Semanas (5 días hábiles)" value="semana" />
+        <RadioButton id={`${base}-mes`} labelText="Meses (20 días hábiles)" value="mes" />
       </RadioButtonGroup>
       <p className="cds--type-helper-text-01" aria-live="polite">
         {estado}
@@ -416,8 +428,8 @@ function ContenidoPlan(props: PropsContenido) {
     <PlanDesdeRendimientos
       id={id}
       rev={rev}
-      partidas={vista.filas.map((f) => f.partida)}
-      unidadInicial={vista.etiquetas[0]?.startsWith("Semana") ? "semana" : "dia"}
+      partidas={vista.partidas ?? vista.filas.map((f) => f.partida)}
+      unidadInicial={unidadDelPlan(vista.etiquetas)}
       hayPlan={vista.hay_plan}
       alAusente={alAusente}
       alRecargarBorrador={alRecargarBorrador}

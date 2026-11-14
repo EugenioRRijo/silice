@@ -19,6 +19,17 @@ describe("presentador común de las filas del registro de cambios", () => {
     expect(presentarValor("instantanea", "instantanea")).toBe("Instantánea");
   });
 
+  // Ronda 1 del árbitro de la ola 2 (hallazgo 6): las especificaciones de un renglón (`_cambios_de_especificaciones`,
+  // aplicacion/hoja.py, congelado) son «clave=valor; clave=valor» ordenadas; la directiva «_frente» es una clave interna.
+  test("las especificaciones de un renglón dicen «Frente: …» y no muestran las directivas internas sin rótulo", () => {
+    expect(presentarValor("especificaciones", "_frente=FRENTE A")).toBe("Frente: FRENTE A");
+    expect(presentarValor("especificaciones", "")).toBe("");
+    expect(presentarValor("especificaciones", "_frente=Tramo 2; espesor=0.05")).toBe("Frente: Tramo 2; espesor=0,05");
+    expect(presentarValor("especificaciones", "Clase=B; _frente=Norte")).toBe("Clase=B; Frente: Norte");
+    expect(presentarValor("especificaciones", "_interna=1; espesor=0.05")).toBe("espesor=0,05");
+    expect(presentarValor("especificaciones", "_frente=Estación; 2")).toBe("Frente: Estación; 2");
+  });
+
   test("N1: el alta de un punto con especificaciones lleva rótulos del servidor y no confunde un dato interno con un campo", () => {
     // Formato exacto de `_resumen_de_fila` (aplicacion/hoja.py): las columnas en orden, sin las vacías; las
     // especificaciones van como «clave=valor; clave=valor» dentro de la columna.

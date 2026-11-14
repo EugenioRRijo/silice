@@ -7,6 +7,31 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **Ola 2, llevar a la Hoja el libro auditado y el presupuesto por frente** (2026-11-13;
+  `docs/bitacora/2026-11-13-ola2-libro-por-frentes.md`, D1 a D8; RF-205 a RF-212; decisiones ratificadas por delegación
+  de Eugenio): el perfil de un libro con un APU por hoja admite **varias hojas de presupuesto** (`presupuesto.hojas`, una
+  por frente; AH5 dice la hoja y AH6/AH11 comparan con la suma de las hojas), una **segunda fila de impuesto**
+  (`porcentajes.otros_impuestos`) y avisa con **AH12** (INFO) de las hojas que no siguen el prefijo; la hoja del
+  presupuesto se elige aparte del perfil (`POST /v1/libros/hojas`, casillas en la pantalla) y quien administra pone un
+  **perfil local desde Cuenta › Empresa** (`POST /v1/admin/empresa/perfiles-libros`: validado entero, 64 KiB, 409 sin
+  «Reemplazar» o si el archivo es de otro tipo de perfil, `patron_banda` con defensa contra expresiones que se cuelgan).
+  **`POST /v1/hoja/libro`** lleva el libro auditado a una obra sin versiones en la moneda del libro (409 si la obra o la
+  carpeta están en otra): cada APU al catálogo (variante «-B» si el código ya existe con otro APU), cada precio citando su
+  celda, cada renglón con su origen y su frente, todo o nada. El frente vive en la directiva `_frente` del renglón;
+  `GET /v1/hoja/borradores/{id}/vistas/frentes` da los subtotales por frente y el total general, y `PUT …/frentes` lo pone
+  o lo quita a mano. Expediente de `core/` propuesto, no aplicado: `Catalogo.cargar_composicion` y la colección de precios
+  de la lista en la misma sesión.
+- **Ola 2, el presupuesto en PDF y los índices del BCV en USD** (2026-11-13; `docs/bitacora/2026-11-13-ola2-pdf-e-indices.md`;
+  RF-213 y RF-214): **«Descargar PDF»** junto a «Descargar Excel» (`GET /v1/hoja/borradores/{id}/pdf`, reportlab, carta,
+  letra Vera incrustada): encabezado, partidas, subtotal, IVA y total, y un APU por página; agrupado por frente cuando la
+  obra tiene frentes (`agrupar=ninguno` lo da corrido); `?partida=` da un solo APU. **Un índice en USD**
+  (`/v1/indices/en-usd/origenes|ver|confirmar`): cada mes, el índice en Bs ÷ el promedio de la tasa aplicable del BCV de
+  cada día del mes (S1-R1, tope de 7 días S1-R2); los meses con días sin tasa no se expresan; la serie `<código>-USD` se
+  guarda como una importación con huella y la cita la cláusula de reajuste sin tocar el núcleo.
+- **Ola 2, parámetros del precio en Componer** (2026-11-13; `docs/bitacora/2026-11-13-ola2-front.md`; RF-200 y RF-201):
+  Componer parte de los parámetros de la obra abierta (FCAS, bono, administración y utilidad; los de omisión sin obra) y
+  deja ensayar otros solo para el cálculo (`parametros` opcional en evaluar, prever y guardar;
+  `GET /v1/composicion/parametros`); el precio con más de dos decimales se lee redondeado en reposo y exacto al editarlo.
 - **Prueba de punta a punta, línea vial** (2026-11-13; `docs/bitacora/2026-11-13-e2e-vial.md`, D1 a D3; RF-190 a RF-192;
   decisiones provisionales, por ratificar): **VR8** (ADVERTENCIA) avisa cuando una partida que derivan los tramos llega
   también de otro renglón (escrita a mano o traída de otro cómputo): dice la cantidad de cada origen y la suma, y no suma
@@ -229,6 +254,21 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- **Ola 2, re-congelado de la Hoja, plan por períodos y Control** (2026-11-13; acta
+  `docs/bitacora/2026-11-13-recongelado-experimento-2.md`, autorizado por Eugenio; `docs/bitacora/2026-11-13-ola2-recongelado-y-plan.md`;
+  RF-196 a RF-199): `_estado_de_precio` mira la fuente declarada de cada precio (D-17); el plan por rendimientos usa
+  `plan_que_cabe` (días, semanas o meses); tildes en los mensajes de `aplicacion/hoja.py` («+ Administración»);
+  `estado_de_items` no reparte un hallazgo que ya cita su renglón; `cambios_entre` ve un cambio de especificaciones (el
+  frente); la pestaña del plan ofrece «Meses (20 días hábiles)» y muestra la unidad del plan; Control propone los días por
+  período desde el plan (`GET /v1/control/dias-por-periodo`); las cuadrillas se ponen antes del plan; las valuaciones
+  eligen el renglón, no solo el código. La medición del experimento da la misma huella antes y después.
+- **Ola 2, pendientes del front** (2026-11-13; `docs/bitacora/2026-11-13-ola2-front.md`): la cantidad 0,001 ya no se
+  recorta en la pestaña APU (`field-sizing: content`); `suministro` en `api/vial.ts`; el aviso AH11 tiene nombre
+  accesible; causa raíz de las pruebas intermitentes `App.bienvenida`, `CostosDelPeriodo`, `Bandeja` (arrancaba en
+  «/obras», que redirige) y `VistaGeneral` (contaba el pedido antes del efecto). Árbitro xhigh de la ola 2
+  (`docs/bitacora/arbitrajes/ola2-claude-xhigh.md`): ronda 1 devuelta por dos MAYOR (llevar el libro a una obra en otra
+  moneda convertía los precios sin decirlo; la prueba de arquitectura del front fallaba), corregidos con rojo primero;
+  ronda 2 aprobada con cambios.
 - **La primera versión de una obra larga se guarda** (2026-11-13; `docs/bitacora/2026-11-13-e2e-precios.md` §1, D-2;
   RF-193; provisional, por ratificar): sin plan elegido, el plan por rendimientos se arma en la primera unidad que cabe en
   la matriz de 500 períodos (días, semanas de 5 días hábiles o meses de 20) y el mensaje de guardado lo dice; si ni en
