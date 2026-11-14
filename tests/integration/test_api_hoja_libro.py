@@ -42,6 +42,7 @@ from operacion import config
 from operacion.base_datos import preparar_base
 from tests.fixtures.carpeta_aprobaciones import OBRA, sembrar_vivienda
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
+from tests.fixtures.hoja_versiones_api import registrar_tasa_en
 from tests.fixtures.libro_apu_por_hoja import (
     APUS,
     Material,
@@ -242,6 +243,45 @@ def test_un_libro_en_otra_moneda_que_la_carpeta_no_se_lleva(ana) -> None:
         "El libro está en USD y esta carpeta arma en Bs (lista «Lista Bs de prueba»): Sílice no "
         "cambia la moneda de sus precios. Lleve el libro a una carpeta que arme en USD."
     )
+
+
+VIA_USD = "Vía ficticia en dólares"
+
+
+def _obra_en_dolares() -> None:
+    """Una obra sin versiones declarada en USD (choque 16: la carpeta arma en Bs) y una tasa
+    ficticia del BCV del día anterior, con la que la Hoja la valoraría convirtiendo."""
+    motor = crear_motor(f"sqlite:///{(config.carpeta_casos() / 'via.db').as_posix()}")
+    try:
+        with abrir_sesion(motor) as s:
+            via = crear_proyecto(s, VIA_USD, dominio=Dominio.CIVIL)
+            declarar_moneda(s, via, "USD", responsable="Ana <ana>")
+            registrar_tasa_en(s, date(2026, 10, 30), "40")
+            s.commit()
+    finally:
+        motor.dispose()
+
+
+def _partidas_del_libro() -> list[str]:
+    with closing(sqlite3.connect(config.carpeta_casos() / "via.db")) as conexion:
+        filas = conexion.execute("SELECT codigo FROM partida WHERE codigo LIKE 'VF-%'")
+        return [codigo for (codigo,) in filas.fetchall()]
+
+
+def test_un_libro_en_otra_moneda_que_la_obra_no_se_lleva(ana) -> None:
+    """La carpeta arma en Bs y el libro está en Bs, pero la obra está en USD: la Hoja convertiría
+    cada precio del libro con la tasa del BCV del día del borrador, una tasa que el libro no dice
+    (D6). No se lleva, y ni el catálogo ni los borradores cambian."""
+    navegador, _ = ana
+    _obra_en_dolares()
+    r = _llevar(ana, proyecto=VIA_USD)
+    assert r.status_code == 409, r.text
+    assert r.json()["detalle"] == (
+        f"La obra «{VIA_USD}» está en USD y el libro en Bs: Sílice no convierte los precios del "
+        "libro. Lleve el libro a una obra en Bs."
+    )
+    assert _partidas_del_libro() == []
+    assert _borradores(navegador) == []
 
 
 def test_una_obra_con_versiones_no_recibe_el_libro(ana) -> None:
