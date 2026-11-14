@@ -657,3 +657,57 @@ def test_el_pdf_rotula_el_grupo_de_los_renglones_sin_frente(ana) -> None:
     texto = _texto_del_pdf(navegador, id_)
     assert "Subtotal (sin frente) 1.246,66" in texto
     assert "Sin frente" not in texto
+
+
+# --- la traza del desperdicio viaja con el libro (pasada en navegador de la ola 2, D10) -------
+
+EMULSION = {"fila": 1, "texto": "0,5 + 4 %", "neta": "0,5", "porcentaje": "4"}
+
+
+def _guardados_de_desperdicio() -> int:
+    with closing(sqlite3.connect(config.carpeta_casos() / "via.db")) as conexion:
+        return conexion.execute("SELECT COUNT(*) FROM apu_desperdicio_guardado").fetchone()[0]
+
+
+def test_la_hoja_y_componer_ven_la_neta_y_el_porcentaje_del_libro(ana) -> None:
+    """La auditoría lee «0,5 + 4 %» en la emulsión del APU 1; antes, llevado el libro, la Hoja y
+    Componer mostraban 0,520 con el porcentaje vacío, y escribir el 4 % lo aplicaba dos veces
+    (0,5408). La traza entra con la composición, en la misma transacción, como en Componer."""
+    navegador, _ = ana
+    r = _llevar(ana)
+    assert r.status_code == 200, r.text
+    vista = navegador.get(
+        f"/v1/hoja/borradores/{r.json()['borrador_id']}/vistas/apu", params={"partida": "VF-001"}
+    )
+    assert vista.status_code == 200, vista.text
+    assert vista.json()["detalle"]["desperdicios"] == [EMULSION]
+    precarga = navegador.get("/v1/composicion/partidas/VF-001")
+    assert precarga.status_code == 200, precarga.text
+    emulsion = precarga.json()["tablas"]["materiales"][0]
+    assert (emulsion["cantidad"], emulsion["desperdicio"]) == ("0,5", "4")
+    # la arena de secado (0 %) no tiene traza: se ve su cantidad, sin porcentaje
+    assert "desperdicio" not in precarga.json()["tablas"]["materiales"][1]
+
+
+def test_llevar_otra_vez_no_escribe_otra_traza(ana) -> None:
+    assert _llevar(ana).status_code == 200
+    antes = _guardados_de_desperdicio()
+    assert antes == 1  # solo VF-001 tiene un material con desperdicio
+    assert _llevar(ana).status_code == 200
+    assert _guardados_de_desperdicio() == antes
+
+
+def test_la_variante_lleva_su_propia_traza(ana) -> None:
+    navegador, _ = ana
+    _llevar(ana)
+    primero = replace(
+        APUS[0],
+        materiales=(Material(1, "Emulsión asfáltica ficticia", "lt", "0.50", "5", "2.00"),),
+    )
+    r = _llevar(ana, libro=libro_apu((primero, *APUS[1:])))
+    assert r.status_code == 200, r.text
+    assert r.json()["partidas"][0]["codigo"] == "VF-001-B"
+    b = navegador.get("/v1/composicion/partidas/VF-001-B").json()["tablas"]["materiales"][0]
+    a = navegador.get("/v1/composicion/partidas/VF-001").json()["tablas"]["materiales"][0]
+    assert (b["cantidad"], b["desperdicio"]) == ("0,5", "5")
+    assert (a["cantidad"], a["desperdicio"]) == ("0,5", "4")
