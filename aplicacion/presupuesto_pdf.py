@@ -45,11 +45,6 @@ POR_UNIDAD = "Por unidad de partida"
 #: Las columnas del APU que son cifras exactas (se escriben sin redondear) y las que son montos.
 _EXACTAS = frozenset({"cantidad", "depreciacion"})
 _MONTOS = frozenset({"precio", "sueldo"})
-#: Los conceptos del cierre como los escribe `aplicacion/hoja.py` (congelado) y con sus tildes.
-_TILDES_DEL_CIERRE = {
-    "+ Administracion": "+ Administración",
-    "= Con administracion": "= Con administración",
-}
 _SEVERIDADES = {
     "CRITICO": ("crítico", "críticos"),
     "ERROR": ("error", "errores"),
@@ -272,10 +267,7 @@ def _apu(detalle: hoja_vista.DetalleDeApu, parametros: str) -> ApuDelPdf:
             )
             for grupo in detalle.grupos
         ),
-        cierre=tuple(
-            LineaDeCierre(_TILDES_DEL_CIERRE.get(f.concepto, f.concepto), _de_monto(f.monto))
-            for f in detalle.cierre
-        ),
+        cierre=tuple(LineaDeCierre(f.concepto, _de_monto(f.monto)) for f in detalle.cierre),
     )
 
 
