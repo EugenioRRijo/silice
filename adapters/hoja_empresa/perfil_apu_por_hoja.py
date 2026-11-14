@@ -38,6 +38,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import re._parser as _sre  # el árbol de la expresión (patron_banda)
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -75,6 +76,9 @@ _PORCENTAJES_OPCIONALES = ("otros_impuestos",)
 #: SUPUESTO_DECLARADO: lo más que pesa un perfil que se pone desde la interfaz. El del paquete pesa
 #: unos 2 KiB; 64 KiB caben treinta veces y atajan un archivo que no es un perfil.
 MAX_BYTES_PERFIL = 64 * 1024
+#: Largo máximo de `patron_banda` (ronda 1 del árbitro de la ola 2, hallazgo 4): el del paquete
+#: tiene 104 caracteres.
+MAX_PATRON_BANDA = 300
 #: De qué lado de su rótulo escribe el libro cada porcentaje del pie: «derecha» (el primer número a
 #: la derecha, como el libro ficticio) o «izquierda» (el más cercano a la izquierda: «p |
 #: Administración (%) | … | monto», prueba local del libro vial real del 2026-11-13).
@@ -202,10 +206,19 @@ def _construir(nombre: str, crudo: Any, origen: str) -> PerfilApuPorHoja:
             raise _error(nombre, f"unidades.{de}: debe traducirse a una unidad no vacía")
     patron = raiz.get("patron_banda")
     if patron is not None:
+        if len(_texto(nombre, patron, "patron_banda")) > MAX_PATRON_BANDA:
+            raise _error(nombre, f"patron_banda: pasa de {MAX_PATRON_BANDA} caracteres")
         try:
-            compilado = re.compile(_texto(nombre, patron, "patron_banda"))
+            compilado = re.compile(patron)
+            peligro = _retroceso_catastrofico(_sre.parse(patron))
         except re.error as exc:
             raise _error(nombre, f"patron_banda no compila: {exc}") from exc
+        if peligro is not None:
+            raise _error(
+                nombre,
+                f"patron_banda: {peligro} puede tardar sin fin con algunos textos; "
+                "escríbalo sin ella",
+            )
         if not {"minimo", "maximo"} <= set(compilado.groupindex):
             raise _error(nombre, "patron_banda debe tener los grupos «minimo» y «maximo»")
     presupuesto = _dic(nombre, raiz.get("presupuesto"), "presupuesto")
@@ -236,6 +249,44 @@ def _construir(nombre: str, crudo: Any, origen: str) -> PerfilApuPorHoja:
         origen=origen,
         hojas_presupuesto=hojas,
     )
+
+
+_REPETICIONES = {_sre.MAX_REPEAT, _sre.MIN_REPEAT, getattr(_sre, "POSSESSIVE_REPEAT", None)}
+
+
+def _retroceso_catastrofico(items: Any, en_repeticion: bool = False) -> str | None:
+    """Qué de la expresión (su árbol, `re._parser`) puede hacer que `re` retroceda sin fin
+    (ronda 1 del árbitro de la ola 2, hallazgo 4; simulación en su sección «Ronda 1:
+    correcciones»), o `None`: una repetición de más de una vez dentro de otra («(a+)+»), una
+    alternativa dentro de una repetición («(a|aa)+»: dos caminos para el mismo texto) o una
+    referencia hacia atrás. `re` no tiene tiempo máximo y el módulo `regex` no es dependencia
+    de Sílice: se rechaza la forma, no se mide."""
+    for op, av in items:
+        if op in (_sre.GROUPREF, _sre.GROUPREF_EXISTS):
+            return "una referencia hacia atrás"
+        if op in _REPETICIONES:
+            _minimo, maximo, sub = av
+            varias = maximo > 1  # MAXREPEAT, sin tope, también
+            if en_repeticion and varias:
+                return "una repetición dentro de otra"
+            hallado = _retroceso_catastrofico(sub, en_repeticion or varias)
+        elif op == _sre.SUBPATTERN:
+            hallado = _retroceso_catastrofico(av[-1], en_repeticion)
+        elif op == _sre.BRANCH:
+            if en_repeticion:
+                return "una alternativa dentro de una repetición"
+            hallado = next(
+                (h for rama in av[1] if (h := _retroceso_catastrofico(rama)) is not None), None
+            )
+        elif op in (_sre.ASSERT, _sre.ASSERT_NOT):
+            hallado = _retroceso_catastrofico(av[1], en_repeticion)
+        elif op == getattr(_sre, "ATOMIC_GROUP", None):
+            hallado = _retroceso_catastrofico(av, en_repeticion)
+        else:
+            hallado = None
+        if hallado is not None:
+            return hallado
+    return None
 
 
 def _hojas_presupuesto(nombre: str, presupuesto: dict[str, Any]) -> tuple[str, ...]:
