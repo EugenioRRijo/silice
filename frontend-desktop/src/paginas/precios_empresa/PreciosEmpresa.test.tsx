@@ -22,6 +22,9 @@ const SESION: SesionRespuesta = {
   modo_entrega: false,
 };
 
+// Quien además arma (árbitro 13/11, M4): solo ella puede crear la lista para armar (`editar_hoja`).
+const SESION_ARMA: SesionRespuesta = { ...SESION, roles: ["administrador", "arma"], acciones: ["administrar_precios", "editar_hoja"] };
+
 const SOLO_BASES: Estado = {
   bases: [
     { id: 2, nombre: "MaPreX julio 2026 en Bs", moneda: "Bs" },
@@ -83,6 +86,8 @@ describe("Precios de la empresa", () => {
   let crear: () => Response;
   let hallazgos: () => Response;
   let atipicos: () => Response;
+  let revision: () => Response;
+  let paraArmar: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -92,12 +97,26 @@ describe("Precios de la empresa", () => {
     crear = () => json(CREADA, 201);
     hallazgos = () => json(HALLAZGOS);
     atipicos = () => json(CON_ATIPICO);
+    revision = () => json({ reconocidos: 1, nuevos: [], otra_unidad: [] });
+    paraArmar = () =>
+      json(
+        {
+          moneda: "USD",
+          declarada: true,
+          lista: { nombre: "Empresa ficticia 2026-10-05 al 13/11/2026", moneda: "USD", fecha: "2026-11-13", origen: "copia" },
+          aviso: null,
+          empresa: [],
+        },
+        201,
+      );
     fetchFalso.mockImplementation(async (ruta, opciones) => {
       const url = String(ruta);
       const metodo = opciones?.method ?? "GET";
       if (url === "/v1/precios-empresa" && metodo === "GET") return estado();
       if (url === "/v1/precios-empresa/referencia" && metodo === "POST") return referencia();
       if (url === "/v1/precios-empresa/listas" && metodo === "POST") return crear();
+      if (url === "/v1/precios-empresa/listas/revision" && metodo === "POST") return revision();
+      if (url === "/v1/carpeta/lista-para-armar" && metodo === "POST") return paraArmar();
       if (url.includes("/hallazgos?fecha=")) return hallazgos();
       if (/^\/v1\/precios-empresa\/listas\/\d+\/atipicos$/.test(url) && metodo === "GET") return atipicos();
       return json({ detalle: "ruta inesperada " + url }, 404);
@@ -105,9 +124,9 @@ describe("Precios de la empresa", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  function montar(alExpirar = vi.fn()) {
+  function montar(alExpirar = vi.fn(), sesion: SesionRespuesta = SESION) {
     const valor: Aplicacion = {
-      sesion: SESION,
+      sesion,
       proyecto: null,
       caso: { nombre: "clinica", ruta_relativa: "data/clinica.db" },
       recargarProyectos: vi.fn(),
@@ -121,9 +140,13 @@ describe("Precios de la empresa", () => {
     return alExpirar;
   }
 
+  // La revision del archivo (D-8) comparte el prefijo de `/listas`: solo cuenta si se la pide por su nombre.
   function llamadas(fragmento: string, metodo = "GET") {
     return fetchFalso.mock.calls.filter(
-      ([ruta, o]) => String(ruta).includes(fragmento) && (o?.method ?? "GET") === metodo,
+      ([ruta, o]) =>
+        String(ruta).includes(fragmento) &&
+        (fragmento.includes("/revision") || !String(ruta).endsWith("/revision")) &&
+        (o?.method ?? "GET") === metodo,
     );
   }
 
@@ -140,7 +163,7 @@ describe("Precios de la empresa", () => {
     await screen.findByLabelText("Empresa (nombre)");
     await usuario.type(screen.getByLabelText("Empresa (nombre)"), "Contratista Demo, C.A.");
     await usuario.type(screen.getByLabelText("RIF"), "J-00000000-0");
-    await usuario.type(screen.getByLabelText("Fuente de la lista (de donde salen estos precios)"), "lista interna 2026-09");
+    await usuario.type(screen.getByLabelText("Fuente de la lista (de dónde salen estos precios)"), "lista interna 2026-09");
     if (moneda) await usuario.selectOptions(screen.getByLabelText("Moneda de la lista"), moneda);
     if (conArchivo) await usuario.upload(campoArchivo(), new File(["tipo,insumo"], "precios.csv"));
     await usuario.click(screen.getByRole("button", { name: "Crear la lista de la empresa" }));
@@ -153,27 +176,28 @@ describe("Precios de la empresa", () => {
     expect(screen.getByRole("option", { name: "Linea base 01/01/2026 (USD)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Precios de la empresa" })).toBeInTheDocument();
     expect(screen.getByText(/La lista de su empresa: una copia de la lista base/)).toBeInTheDocument();
-    expect(screen.getByText(/No cambia la valoración de ningún proyecto que no la use\./)).toBeInTheDocument();
+    expect(screen.getByText(/No cambia la valoración de ninguna obra que no la use\./)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "1. La referencia MaPreX en bolívares" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "2. La lista de la empresa" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "3. Precios vencidos o fuera de rango (R11 y R12)" })).toBeInTheDocument();
     expect(screen.getByLabelText("Fecha de la lista")).toHaveValue(hoyIso());
     expect(screen.getByLabelText("Moneda de la lista")).toHaveValue("");
-    expect(screen.getByText("Todavía no hay listas de empresa en este caso.")).toBeInTheDocument();
+    expect(screen.getByText("Todavía no hay listas de empresa en esta carpeta.")).toBeInTheDocument();
   });
 
   test("sin listas de precios en el caso no ofrece el formulario", async () => {
     estado = () => json({ bases: [], listas: [] });
     montar();
-    expect(await screen.findByText("El caso no tiene listas de precios: cargue una en Actualizar precios.")).toBeInTheDocument();
+    expect(await screen.findByText("La carpeta no tiene listas de precios: cargue una en Actualizar precios.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Crear la lista de la empresa" })).toBeNull();
     expect(screen.getByRole("button", { name: "Cargar la referencia MaPreX en Bs" })).toBeInTheDocument();
   });
 
-  test("un fallo al leer el caso se muestra con su detalle", async () => {
-    estado = () => json({ detalle: "No se pudo leer o escribir el caso abierto." }, 503);
+  test("un fallo al leer la carpeta se muestra con su detalle", async () => {
+    estado = () => json({ detalle: "No se pudo leer o escribir la carpeta abierta." }, 503);
     montar();
-    expect(await screen.findByText("No se pudo leer o escribir el caso abierto.")).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo leer la carpeta")).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo leer o escribir la carpeta abierta.")).toBeInTheDocument();
   });
 
   test("la sesion vencida avisa al shell", async () => {
@@ -251,6 +275,77 @@ describe("Precios de la empresa", () => {
     expect(within(tabla).getByText("INSUMO INEXISTENTE DEMO")).toBeInTheDocument();
   });
 
+  // Prueba de punta a punta del 2026-11-13 (D-8): la mayoria de los insumos de la empresa no estaba en el catalogo y la
+  // pantalla no ofrecia darlos de alta; los de otra unidad se perdian sin decir por que. Al elegir el archivo se revisa
+  // (sin escribir) y el alta va solo si la persona la marca.
+  test("al elegir el archivo lo revisa y da de alta los nuevos solo si se marca", async () => {
+    revision = () =>
+      json({
+        reconocidos: 2,
+        nuevos: [{ tipo: "material", insumo: "Bloque de prueba", unidad: "unidad", precio: "0.80" }],
+        otra_unidad: ["«Arena de prueba» viene en saco y el catálogo lo tiene en m3: no entró; escriba en el archivo la unidad del catálogo."],
+      });
+    montar();
+    const usuario = await llenarYEnviar("USD");
+    expect(await screen.findByText("El catálogo reconoce 2 filas del archivo.")).toBeInTheDocument();
+    const tabla = screen.getByRole("table", { name: "Insumos nuevos del archivo" });
+    expect(within(tabla).getByText("Bloque de prueba")).toBeInTheDocument();
+    expect(within(tabla).getByText("0,80")).toBeInTheDocument();
+    expect(screen.getByText(/«Arena de prueba» viene en saco y el catálogo lo tiene en m3/)).toBeInTheDocument();
+    const alta = screen.getByRole("checkbox", { name: "Dar de alta en el catálogo los insumos nuevos al crear la lista" });
+    expect(alta).not.toBeChecked();
+    // sin marcar: la primera creacion no los da de alta
+    await waitFor(() => expect(llamadas("/v1/precios-empresa/listas", "POST")).toHaveLength(1));
+    const [, primera] = llamadas("/v1/precios-empresa/listas", "POST")[0];
+    expect((primera?.body as FormData).get("dar_de_alta")).toBeNull();
+    await usuario.click(alta);
+    await usuario.click(screen.getByRole("button", { name: "Crear la lista de la empresa" }));
+    await waitFor(() => expect(llamadas("/v1/precios-empresa/listas", "POST")).toHaveLength(2));
+    const [, segunda] = llamadas("/v1/precios-empresa/listas", "POST")[1];
+    expect((segunda?.body as FormData).get("dar_de_alta")).toBe("true");
+    expect(llamadas("/v1/precios-empresa/listas/revision", "POST")).toHaveLength(1);
+  });
+
+  test("lo dado de alta y lo de otra unidad se dicen al crear, y la lista se puede usar para armar", async () => {
+    crear = () =>
+      json(
+        {
+          ...CREADA,
+          id: 9,
+          nombre: "Empresa ficticia 2026-10-05",
+          propios: 3,
+          dados_de_alta: ["Bloque de prueba"],
+          otra_unidad: ["«Arena de prueba» viene en saco y el catálogo lo tiene en m3: no entró; escriba en el archivo la unidad del catálogo."],
+          desconocidos: ["Arena de prueba"],
+          mensaje: "Lista «Empresa ficticia 2026-10-05» creada con 3 precios propios; se dio de alta 1 insumo nuevo en el catálogo.",
+          aviso: "Estos insumos no están en el catálogo y no entraron a la lista (UC-17 4a):",
+        },
+        201,
+      );
+    montar(vi.fn(), SESION_ARMA);
+    const usuario = await llenarYEnviar("USD");
+    expect(await screen.findByText(/se dio de alta 1 insumo nuevo en el catálogo/)).toBeInTheDocument();
+    const altas = screen.getByRole("table", { name: "Insumos dados de alta en el catálogo" });
+    expect(within(altas).getByText("Bloque de prueba")).toBeInTheDocument();
+    expect(screen.getAllByText(/«Arena de prueba» viene en saco/).length).toBeGreaterThan(0);
+    await usuario.click(screen.getByRole("button", { name: "Usarla como lista para armar" }));
+    await waitFor(() => expect(llamadas("/v1/carpeta/lista-para-armar", "POST")).toHaveLength(1));
+    const [, opciones] = llamadas("/v1/carpeta/lista-para-armar", "POST")[0];
+    expect(JSON.parse(String(opciones?.body))).toEqual({ desde: "empresa", lista_id: 9 });
+    expect(
+      await screen.findByText("Lista para armar creada: Empresa ficticia 2026-10-05 al 13/11/2026. Ya puede componer con ella."),
+    ).toBeInTheDocument();
+  });
+
+  test("sin permiso de armar no se ofrece usarla como lista para armar y se dice quién la crea (árbitro 13/11, M4)", async () => {
+    crear = () => json({ ...CREADA, id: 9, nombre: "Empresa ficticia 2026-10-05" }, 201);
+    montar();
+    await llenarYEnviar("USD");
+    expect(await screen.findByText(/creada con/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Usarla como lista para armar" })).toBeNull();
+    expect(screen.getByText("La lista para armar la crea quien arma el presupuesto, desde Componer.")).toBeInTheDocument();
+  });
+
   test("un rechazo del servidor sale como aviso con su detalle", async () => {
     crear = () => json({ detalle: "No se creó la lista: moneda 'EUR': la lista se rechaza (UC-17 4b)" }, 422);
     montar();
@@ -297,7 +392,7 @@ describe("Precios de la empresa", () => {
 
   test("sin listas de empresa no hay boton de atipicos", async () => {
     montar();
-    await screen.findByText("Todavía no hay listas de empresa en este caso.");
+    await screen.findByText("Todavía no hay listas de empresa en esta carpeta.");
     expect(screen.queryByRole("button", { name: BOTON_ATIPICOS })).toBeNull();
   });
 
@@ -350,11 +445,11 @@ describe("Precios de la empresa", () => {
 
   test("un error de la busqueda sale con su detalle y la sesion vencida avisa al shell", async () => {
     estado = () => json(CON_LISTA);
-    atipicos = () => json({ detalle: "No se pudo leer o escribir el caso abierto." }, 503);
+    atipicos = () => json({ detalle: "No se pudo leer o escribir la carpeta abierta." }, 503);
     const alExpirar = montar();
     const usuario = userEvent.setup();
     await usuario.click(await screen.findByRole("button", { name: BOTON_ATIPICOS }));
-    expect(await screen.findByText("No se pudo leer o escribir el caso abierto.")).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo leer o escribir la carpeta abierta.")).toBeInTheDocument();
     atipicos = () => json({ detalle: "Sesion vencida." }, 401);
     await usuario.click(screen.getByRole("button", { name: BOTON_ATIPICOS }));
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());

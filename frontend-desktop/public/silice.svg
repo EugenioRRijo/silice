@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Sílice">
+  <title>Sílice</title>
+  <!-- Ícono de Sílice (F5, 2026-11-06). Carbon g10: esquinas rectas, sin degradados ni sombras.
+       Fondo = marco (background-inverse, gray-80 #393939); «S» en blanco hecha de tramos rectos;
+       raya ámbar (yellow-20 #fddc69, el acento) al pie, como la raya bajo la barra superior.
+       Trazos en una rejilla de 16: a 16 px cada trazo cae en píxeles enteros (2 px).
+       Fuente del .ico de operacion/silice.ico (lo genera instalador/icono.py). -->
+  <rect width="256" height="256" fill="#393939"/>
+  <path d="M176 80V64H80V128H176V192H80V176" fill="none" stroke="#ffffff" stroke-width="32" stroke-linecap="square" stroke-linejoin="miter"/>
+  <rect y="224" width="256" height="32" fill="#fddc69"/>
+</svg>

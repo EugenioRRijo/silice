@@ -6,6 +6,7 @@ import { fijarCsrf } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
 import { CLAVE_TAMANO_LETRA } from "../comun/preferenciaDeLetra";
 import { useAplicacion } from "../shell/contexto";
+import { AyudaDeSilice } from "../comun/ayuda/AyudaDeSilice";
 import { ACCIONES, caso, estadoInicial, ligeras, servidorFalso, sesionDe } from "../shell/obras/datosDePrueba";
 import { RECORRIDO_AUDITAR, recorridoEnCurso, terminarRecorrido } from "../shell/recorrido";
 import type { PaginaDef } from "../shell/rutas";
@@ -210,6 +211,12 @@ describe("la Cuenta: Ayuda y recorridos guiados", () => {
     await u.click(screen.getByRole("button", { name: /Auditar un libro de la empresa/ }));
     await waitFor(() => expect(ruta()).toBe("/auditoria/subir"));
     expect(recorridoEnCurso()).toBe(RECORRIDO_AUDITAR);
+  });
+
+  test("con ?tema=recorridos el foco llega al título de los recorridos guiados", async () => {
+    montar({ sesion: sesionDe("rita"), en: "/cuenta/ayuda?tema=recorridos", paginas: ligeras({ acerca: AyudaDeSilice }) });
+    const titulo = await screen.findByRole("heading", { level: 2, name: "Recorridos guiados" });
+    await waitFor(() => expect(titulo).toHaveFocus());
   });
 });
 

@@ -63,7 +63,7 @@ from tests.fixtures.sesion_web import (
 
 D = Decimal
 RAIZ = Path(__file__).resolve().parents[2]
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
     "Lo que no guardó se perdió: abra la versión otra vez."
@@ -262,6 +262,7 @@ def test_r1_lista_las_versiones_de_of001_con_su_historial() -> None:
             "codigo": "001",
             "fecha": caso_of001.FECHA.isoformat(),
             "motivo": "",
+            "fuente": "",  # E2E-3: sin registro de cambios, sin fuente
             "origen": "",
             "vigente": True,
             "descartada": False,
@@ -486,18 +487,15 @@ def test_r2_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> N
     navegador, ficha = _ana()
     sin_proyecto = _abrir(navegador, ficha, "Z", "001")
     assert sin_proyecto.status_code == 404
-    assert sin_proyecto.json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    assert sin_proyecto.json() == {"detalle": "La obra «Z» no existe en esta carpeta."}
     sin_version = _abrir(navegador, ficha, NOMBRE_OF001, "999")
     assert sin_version.status_code == 404
     assert sin_version.json() == {
-        "detalle": (
-            f"El proyecto {NOMBRE_OF001!r} no tiene una version '999': elija una de la lista."
-        )
+        "detalle": (f"La obra {NOMBRE_OF001!r} no tiene una versión '999': elija una de la lista.")
     }
     assert _versiones(navegador, "Z").status_code == 404
-    assert _versiones(navegador, "Z").json() == {
-        "detalle": "El proyecto «Z» no existe en este caso."
-    }
+    sin_obra = {"detalle": "La obra «Z» no existe en esta carpeta."}
+    assert _versiones(navegador, "Z").json() == sin_obra
 
 
 # --- R3 y R4 -------------------------------------------------------------------------------
@@ -1304,12 +1302,11 @@ def test_r14_de_las_tres_versiones_trae_el_historial_completo(_casos) -> None:
 def test_r14_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> None:
     navegador, _ = _ana()
     assert _traza(navegador, "Z").status_code == 404
-    assert _traza(navegador, "Z").json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    assert _traza(navegador, "Z").json() == {"detalle": "La obra «Z» no existe en esta carpeta."}
     falta = _traza(navegador, version="009")
     assert falta.status_code == 404
     assert falta.json() == {
-        "detalle": f"El proyecto {NOMBRE_OF001!r} no tiene una version '009': "
-        "elija una de la lista."
+        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una versión '009': elija una de la lista."
     }
 
 
@@ -1425,12 +1422,11 @@ def test_r12_sin_referencia_ni_cotizacion_el_estado_lo_dice_y_una_cotizacion_lo_
 
 def test_r12_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> None:
     navegador, _ = _ana()
-    assert _precios(navegador, "Z").json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    assert _precios(navegador, "Z").json() == {"detalle": "La obra «Z» no existe en esta carpeta."}
     falta = _precios(navegador, version="009")
     assert falta.status_code == 404
     assert falta.json() == {
-        "detalle": f"El proyecto {NOMBRE_OF001!r} no tiene una version '009': "
-        "elija una de la lista."
+        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una versión '009': elija una de la lista."
     }
 
 
@@ -1614,7 +1610,7 @@ def test_lecturas_no_store_en_exito_404_y_422_sin_eco(ruta: str) -> None:
     assert all(r.headers["cache-control"] == "no-store" for r in respuestas)
     assert sin_parametro.json() == {"detalle": MENSAJE_FORMA}
     assert CENTINELA not in largo.text
-    assert sin_proyecto.json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    assert sin_proyecto.json() == {"detalle": "La obra «Z» no existe en esta carpeta."}
 
 
 @pytest.mark.parametrize("ruta", _LECTURAS)
@@ -1630,7 +1626,7 @@ def test_lecturas_de_una_version_ajena_a_la_ficha_siguen_siendo_del_caso(ruta: s
     navegador, _ = _ana()
     cuerpo = _leer(navegador, ruta, NOMBRE_TI001, caso_ti001.CODIGO)
     assert cuerpo.status_code == 200
-    assert _leer(navegador, ruta, NOMBRE_OF001).status_code == 404  # OF-001 no está en este caso
+    assert _leer(navegador, ruta, NOMBRE_OF001).status_code == 404  # OF-001 no está en esta carpeta
 
 
 # --- R10 a R14 sobre TI-001 con literales a mano (antes: paridad contra `ui.hoja`) ---------------

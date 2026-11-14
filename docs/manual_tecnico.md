@@ -574,7 +574,7 @@ C3‑3). Para que su informe recargado declare los pendientes, esa base se vuelv
 
 ## 11. Interfaz del sprint final: menú superior, barra de herramientas y subidas (SF4)
 
-> **Retirado el 2026‑10‑21:** este apartado describe la interfaz de Streamlit (`ui/app.py`, `ui/barra.py`, `st.navigation`), que ya no existe. Se conserva como registro; el menú, la barra y las subidas de la interfaz actual están en `frontend-desktop/` y en `api/`. Desde F6 (contrato de rutas del 2026‑11‑04, `docs/especificaciones/2026-11-04-f6a-contrato-de-rutas.md`) dónde vive cada pantalla lo dicen dos tablas: `frontend-desktop/src/marco/secciones.ts` (Inicio en `#/inicio/general` y `#/inicio/pendientes`; las secciones de la obra en `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]`) y `frontend-desktop/src/marco/espacios.ts` (las subvistas, los espacios `#/auditoria/…`, `#/precios/…` y `#/produccion/…`, y la Cuenta en `#/cuenta/<sección>`). `#/pendientes` y `#/empresa/<entrada>` solo redirigen a su sitio nuevo.
+> **Retirado el 2026‑10‑21:** este apartado describe la interfaz de Streamlit (`ui/app.py`, `ui/barra.py`, `st.navigation`), que ya no existe. Se conserva como registro; el menú, la barra y las subidas de la interfaz actual están en `frontend-desktop/` y en `api/`. Desde F6 (contrato de rutas del 2026‑11‑04, `docs/especificaciones/2026-11-04-f6a-contrato-de-rutas.md`) dónde vive cada pantalla lo dicen dos tablas: `frontend-desktop/src/marco/secciones.ts` (Inicio en `#/inicio/general` y `#/inicio/pendientes`; las secciones de la obra en `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]`) y `frontend-desktop/src/marco/espacios.ts` (las subvistas, los espacios `#/auditoria/…`, `#/precios/…` y `#/produccion/…`, y la Cuenta en `#/cuenta/<sección>`). Desde F8 (2026‑11‑06) `#/pendientes`, `#/empresa/<entrada>` y las direcciones cortas de los espacios y de la Cuenta (`#/catalogo`, `#/acerca`…) ya no redirigen: llevan a la Vista general, como toda dirección que no existe. Las direcciones cortas de la obra (`#/hoja`, `#/reajuste`…) se quedan y llevan a la obra de la sesión.
 
 **Menú y marco.** `ui/app.py` llama a `st.navigation(secciones, position="top")` (Streamlit ≥ 1.62,
 fijado en el extra `ui` de `pyproject.toml`; test_ui_app.py (retirado con Streamlit) falla con una versión sin
@@ -745,6 +745,31 @@ prueba de humo (`instalador/humo.ps1`).
 `verificar-instalador` llegan con la Tarea 3 del plan, que la genera Eugenio). Los accesos directos del
 instalador llaman a `arrancar` y `parar` con `-E -s -B -X utf8`.
 
+### La ventana de Sílice (`arrancar`)
+
+`arrancar` presenta la interfaz en la ventana propia (`operacion/ventana.py`, el único módulo que
+importa pywebview, y tarde) o en el navegador. Manda, en este orden: `--sin-navegador` (la humo: no
+presenta nada), `--sin-ventana` (navegador, sin aviso), `[interfaz] abrir_en = "navegador"` en
+`silice.toml` (navegador, con AVISO) y, si no, lo que diga `ventana.motivo_sin_ventana()` (Windows,
+la clave `pv` de WebView2 en el registro y pywebview importable). Si la ventana falla al abrir o no
+carga en 30 s, `VentanaNoDisponible` y se abre el navegador con el motivo en el AVISO. Cerrar la
+ventana termina Uvicorn y borra `estado\servidor.json`; una segunda ejecución llama a
+`ventana.traer_al_frente(pid)` con el primer PID de `servidor.json` y, si ese proceso no tiene
+ventana «Sílice», abre el navegador.
+
+Ajustes de pywebview que no se tocan sin pasar por el diseño (§2 y §10 de
+`docs/especificaciones/2026-11-03-ventana-de-escritorio-design.md`): `gui="edgechromium"`,
+`debug=False`, `http_server=False`, `ALLOW_FILE_URLS=False`, `REMOTE_DEBUGGING_PORT=None`,
+`js_api=PuenteCerrado()` (un objeto sin ningún atributo: pywebview resuelve con `getattr`
+encadenado lo que la página pide y, con `None`, la cadena seguía por los atributos de `None`) y
+`private_mode=False` con `storage_path` en `<datos>/perfil_ventana` (`config.carpeta_perfil_ventana`;
+decisión de Eugenio del 2026-11-07), para que el tamaño de letra y el zoom de la Hoja, en
+`localStorage`, se conserven. Eso es seguro mientras `silice_sesion` siga sin `Max-Age` ni
+`Expires` (`api/sesion_web.py`, `poner_cookie`); `tests/unit/test_ventana.py` lo vigila. En
+desarrollo `data/perfil_ventana/` está en `.gitignore`. pythonnet no carga desde una carpeta de
+OneDrive (bitácora `2026-11-06-ventana-v0.md` §1.6): en un árbol de desarrollo dentro de OneDrive la
+ventana cae al navegador, que es el respaldo previsto.
+
 ## 16. Publicar una versión
 
 1. `CHANGELOG.md`: las líneas de `[Sin publicar]` pasan a `## [x.y.z] - AAAA-MM-DD`.
@@ -878,3 +903,64 @@ desarrollo (nunca una de evaluación), toma la clave del almacén (jamás de un 
 fichas, costo, modelo que respondió y propuestas, y agrega una entrada a la bitácora
 `docs/bitacora/2026-10-silice-090.md`. `--grabar` guarda los turnos para reproducirlos con
 `asistente.proveedores.guionado.guion_desde_archivo`.
+
+## 18. Perfiles de libros locales
+
+El libro con un APU por hoja (F5 vial; `POST /v1/libros/apu-por-hoja` y el bloque «Libro con un APU
+por hoja» de «Inicio de auditoría») se lee con un **perfil**: un JSON que dice por qué rótulos se
+buscan la cabecera, los tres bloques, los porcentajes, el precio unitario y la hoja del presupuesto
+(`adapters/hoja_empresa/perfil_apu_por_hoja.py`; diseño
+`especificaciones/2026-11-03-presupuesto-vial-real-design.md`, §7 y su decisión provisional 5). El del repositorio, `adapters/hoja_empresa/perfiles/apu_por_hoja.json`, está escrito
+contra el libro **ficticio** de `tests/fixtures/libro_apu_por_hoja.py`. El perfil de un libro real
+nunca entra al repositorio (NORMAS §1): vive en la instalación.
+
+**Dónde se buscan.** `fusion.apu_por_hoja.auditar_apu_por_hoja` busca `<nombre>.json` primero en la
+carpeta de perfiles locales y después en el paquete:
+
+| Caso | Carpeta de perfiles locales |
+|---|---|
+| Por omisión | `<carpeta de datos>/perfiles_libros/` (`operacion.config.carpeta_perfiles_libros()`, que la API pasa a `fusion.apu_por_hoja`): `%LOCALAPPDATA%\Silice\datos\perfiles_libros\` en el producto (el lanzador fija `SILICE_DATOS`) y `data/perfiles_libros/` en desarrollo, que está en `.gitignore` |
+| Con `SILICE_PERFILES_LIBROS` | La carpeta que diga la variable, en lugar de la anterior. Es una opción: nadie la fija |
+
+Si la carpeta no existe, solo valen los perfiles del paquete. Ninguna función la crea: la crea quien
+pone el primer perfil.
+
+**Cómo se elige** (E2E-2, 2026-11-13; antes la pantalla no mandaba el campo). La pantalla pide
+`GET /v1/libros/perfiles-apu-por-hoja` (`adapters.hoja_empresa.perfil_apu_por_hoja.perfiles_apu_por_hoja`):
+los perfiles locales y los del paquete con su nombre, su origen y la hoja del presupuesto que leen,
+nunca una ruta del disco. Uno local con el nombre de uno del paquete lo **reemplaza** (la misma
+precedencia que al cargar); un JSON de otro tipo de perfil (sin `"tipo": "apu_por_hoja"`, como el de
+la plantilla conocida) no sale; uno local mal escrito sale con su `motivo` y la pantalla lo muestra
+sin dejar elegirlo. La pantalla propone `apu_por_hoja` (o el primero que se pueda usar) y manda el
+campo de formulario `perfil`; si la lista no se lee, audita sin el campo y lo dice. Para un
+presupuesto de varios frentes basta un perfil por frente que cambie solo `presupuesto.hoja`. El
+nombre es `[a-z0-9_]+` y debe coincidir con el campo `nombre` del JSON. Un perfil que no existe o que está
+mal escrito (`PerfilInvalido`) responde 422 con el motivo; el informe dice cuál se usó y de dónde
+(`perfil`, `origen_perfil`: `local` o `paquete`) y qué hoja del presupuesto leyó (`hoja_presupuesto`),
+y la pantalla lo escribe: «Perfil apu_por_hoja (de esta instalación) · … · con … (hoja …)» o «(del
+paquete)». Si esa hoja parece de otra obra (de los renglones enlazados con cantidad en los dos lados,
+dos o más, menos de la mitad tienen la de su APU), AH11 lo dice como ADVERTENCIA en el encabezado de
+la cantidad, y la pantalla lo repite arriba del informe (umbral simulado en
+`docs/bitacora/2026-11-13-e2e-front.md`).
+
+**Escribir uno.** Copie el del paquete en la carpeta local y cambie solo los rótulos, la tabla
+`unidades` (lo que escribe el libro → la unidad de Sílice; cada traducción usada sale como AH8) y
+`patron_banda` (expresión regular con los grupos `minimo` y `maximo`, cuyas cifras se leen con la
+coma decimal y el punto de miles de `aplicacion.cifras`: «1.000» es mil; una que no sigue la regla
+no se adivina y el AH9 lo dice). Si el libro escribe cada porcentaje del pie a la **izquierda** de
+su rótulo («p | Administración (%) | … | monto»), ponga `"lado_de_los_porcentajes": "izquierda"`:
+por omisión es `"derecha"` (el primer número a la derecha), y con el lado equivocado Sílice toma el
+monto por porcentaje y da un AH1 en cada hoja (prueba local del libro vial real, 2026-11-13). Las
+cifras se leen con 15 dígitos significativos, la precisión de Excel: el valor en caché de una
+fórmula llega sin su ruido binario. Se valida entero al cargar: claves
+que faltan o sobran, listas vacías y un patrón que no compila se rechazan.
+
+**Entrada hostil.** De cada libro se leen solo las hojas cuyo nombre empieza por `prefijo_hoja` y,
+del libro de presupuesto, solo la hoja `presupuesto.hoja`; cada fila llega solo hasta su última
+celda real (`reset_dimensions()`, como `lector.py`): una hoja que declara una dimensión enorme no
+se materializa (arbitraje F5 vial, P1). Un rendimiento que no es mayor que cero, una cantidad, un
+precio, un desperdicio o un porcentaje negativos y un coeficiente de depreciación fuera de (0; 1]
+hacen la hoja no interpretable (`LibroNoInterpretable`, 422) con su `HOJA!CELDA` (P3).
+
+**Pruebas.** `tests/unit/test_fusion_apu_por_hoja.py` (las carpetas, la variable y el libro hostil)
+y `tests/unit/test_api_libros_replica.py` (la ruta sin `perfil` con un perfil local).

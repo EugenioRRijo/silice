@@ -42,6 +42,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.archivos import nombre_seguro
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.proteccion import LIMITE_CUERPO
@@ -76,7 +77,7 @@ MENSAJE_RESULTADO = "Elija el dictamen: conforme, con observaciones o rechazado.
 MENSAJE_SOLO_PERSONA = (
     "El dictamen lo da una persona: entre con una cuenta que revisa; la clave de API no sirve."
 )
-MENSAJE_LISTA = "La lista {id} no existe en este caso."
+MENSAJE_LISTA = "La lista {id} no existe en esta carpeta."
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 SIN_CACHE = {"Cache-Control": "no-store"}  # lo recibido y su análisis no se guardan en el navegador
 ERRORES_DEL_PAQUETE = (PaqueteRechazado, JsonRechazado, ValueError)  # la clásica: `st.error(str())`
@@ -580,6 +581,8 @@ def excel_externo(
     with tempfile.TemporaryDirectory() as carpeta:
         try:
             verificar_archivo(datos, nombre)  # la guardia, antes de que openpyxl lo abra
+            # y los topes del lector antes del núcleo, que recorre sin tope (NOTA 7 de su acta)
+            comprobar_topes_del_libro(datos, nombre)
             ruta = Path(carpeta) / nombre_seguro(nombre)  # el error nombra el archivo recibido
             ruta.write_bytes(datos)
             importado, informe = logica.auditar_excel_externo(ruta)

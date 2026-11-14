@@ -72,3 +72,19 @@ def test_un_xlsx_con_mas_celdas_que_el_tope_total_se_rechaza(tmp_path, monkeypat
         abrir_libro(_xlsx_con(tmp_path, ["01072026", "02072026", "03072026"]))  # 2 celdas c/u = 6
     monkeypatch.setattr(modulo, "MAX_CELDAS_TOTAL", 6)
     assert len(abrir_libro(_xlsx_con(tmp_path, ["01072026", "02072026", "03072026"])).hojas) == 3
+
+
+def test_el_aviso_de_las_cifras_leidas_se_dice_sin_jerga(tmp_path):
+    """E2E-3 (prueba de punta a punta del 2026-11-13): el aviso decía «… celdas numericas leidas
+    como float y llevadas a Decimal con repr», jerga del programa. Ahora dice lo que pasó, con
+    punto de miles y tildes. Libro FICTICIO: 600 filas con dos cifras cada una."""
+    libro = openpyxl.Workbook()
+    hoja = libro.active
+    hoja.title = "01072026"
+    for n in range(600):
+        hoja.append(["x", 1.5 + n, 2.25])
+    ruta = tmp_path / "t.xlsx"
+    libro.save(ruta)
+    avisos = abrir_libro(ruta).avisos
+    assert "1.200 cifras del libro se leyeron con todos los decimales que guarda Excel." in avisos
+    assert not any("float" in a or "repr" in a for a in avisos)

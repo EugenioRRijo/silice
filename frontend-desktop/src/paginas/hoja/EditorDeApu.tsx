@@ -21,6 +21,7 @@ import {
   FRASE_DE_APU,
   RUBROS,
   cambiarCantidadDeLinea,
+  cambiarDesperdicioDeLinea,
   cambiarRendimiento,
   conLineaAgregada,
   conLineaQuitada,
@@ -28,7 +29,7 @@ import {
   rutaDeApu,
   rutaDeQuitarLinea,
   sembrarApu,
-  textoDeEstado,
+  estadosDeLaPartida,
   ubicarErrorDeApu,
 } from "./logicaApu";
 import type { EdicionDeApu, LineaApu, UbicacionDeApu } from "./logicaApu";
@@ -36,6 +37,7 @@ import { useHojaDeLaObra } from "./ProveedorDeLaHoja";
 import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 import { usePuedeEditarLaHoja } from "./puedeEditar";
+import { unidadEscrita } from "../../comun/unidades";
 
 // Por qué existe (Tarea 7 del plan F4): el mismo editor del APU sirve en la pestaña «Análisis de precio (APU)» y en el panel
 // lateral que se abre desde el código de una fila de «Partidas». Es el cuerpo de la pestaña sin su lista de búsqueda: el
@@ -185,7 +187,7 @@ export function EditorDelDetalle({
       <div className="silice-hoja__apu-centro">
         {conTitulo && (
           <h2 className="cds--type-heading-compact-02">
-            {detalle.codigo} · {detalle.descripcion} · {detalle.unidad}
+            {detalle.codigo} · {detalle.descripcion} · {unidadEscrita(detalle.unidad)}
           </h2>
         )}
         <AvisoDeEnvio envio={edicion.envio} />
@@ -204,10 +206,20 @@ export function EditorDelDetalle({
               idDelError={idDelError}
               quitable={conLineas}
               soloLectura={!puedeEditar}
+              conDesperdicio={g.clave === "materiales"}
+              desperdicios={g.clave === "materiales" ? detalle.desperdicios : undefined}
               alCambiar={(indice, texto) => edicion.cambiar((previo) => cambiarCantidadDeLinea(previo, g.clave, indice, texto))}
               alRestaurar={(indice) =>
                 edicion.cambiar((previo) =>
                   cambiarCantidadDeLinea(previo, g.clave, indice, edicion.aceptado().cantidades[g.clave]?.[indice] ?? ""),
+                )
+              }
+              alCambiarDesperdicio={(indice, texto) =>
+                edicion.cambiar((previo) => cambiarDesperdicioDeLinea(previo, indice, texto))
+              }
+              alRestaurarDesperdicio={(indice) =>
+                edicion.cambiar((previo) =>
+                  cambiarDesperdicioDeLinea(previo, indice, edicion.aceptado().desperdicios[indice] ?? ""),
                 )
               }
               alQuitar={(linea) => {
@@ -331,9 +343,9 @@ export function EditorDelDetalle({
         {detalle.estados.length > 0 && (
           <section className="silice-hoja__seccion">
             <h3 className="cds--type-heading-compact-01">Estado de la partida</h3>
-            {detalle.estados.map((e) => (
+            {estadosDeLaPartida(detalle.estados).map((e) => (
               <p key={e} className="cds--type-helper-text-01">
-                {textoDeEstado(e)}
+                {e}
               </p>
             ))}
           </section>

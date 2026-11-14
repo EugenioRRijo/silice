@@ -143,3 +143,92 @@ def test_calidad_declara_rnf_19_y_la_ers_el_camino_del_instalador() -> None:
 
 def test_el_indice_de_docs_enlaza_el_manual_de_instalacion() -> None:
     assert "manual_instalacion.md" in _leer("docs/README.md")
+
+
+# --- La ventana de Sílice (F5 ventana; V2 del árbitro único del 2026-11-07) -------------------
+
+
+def _seccion(manual: str, titulo: str) -> str:
+    return manual.split(f"## {titulo}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_el_aviso_sin_webview2_remite_a_una_seccion_que_existe_en_el_manual() -> None:
+    """El AVISO de la consola nombra entre comillas la sección del manual de instalación que
+    explica cómo instalar WebView2; esa sección tiene que existir con ese título exacto y decir
+    qué instalar y de dónde."""
+    from operacion import ventana
+
+    motivo = ventana.motivo_sin_ventana(
+        plataforma="win32", leer=lambda raiz, clave: None, importar=lambda nombre: object()
+    )
+    assert motivo is not None and "manual de instalación" in motivo
+    (titulo,) = re.findall(r"«([^»]+)»", motivo)
+    manual = _leer("docs/manual_instalacion.md")
+    subtitulos = re.findall(r"^### (.+?)\s*$", manual, re.M)
+    assert titulo in subtitulos
+    seccion = manual.split(f"### {titulo}\n", 1)[1].split("\n#", 1)[0]
+    for dato in (
+        "Microsoft Edge WebView2 Runtime",
+        "developer.microsoft.com/microsoft-edge/webview2",
+        "Evergreen Standalone Installer",
+        "x64",
+        "AVISO",
+    ):
+        assert dato in seccion, dato
+
+
+def test_el_primer_arranque_dice_que_silice_abre_en_su_ventana() -> None:
+    primer = _seccion(_leer("docs/manual_instalacion.md"), "Primer arranque")
+    assert "Se abre una ventana minimizada (es el servidor" not in primer  # el texto de antes
+    assert "y el navegador entra a" not in primer
+    for dato in (
+        "ventana de Sílice",
+        "consola minimizada",
+        "cerrar la ventana",
+        "detiene Sílice",
+        "WebView2",
+        "navegador",
+        "http://127.0.0.1:8501/app/",
+        "trae al frente",
+    ):
+        assert dato in primer, dato
+
+
+def test_el_manual_de_instalacion_explica_elegir_el_navegador() -> None:
+    manual = _leer("docs/manual_instalacion.md")
+    problemas = _seccion(manual, "Problemas frecuentes")
+    for dato in (
+        "[interfaz]",
+        'abrir_en = "navegador"',
+        r"%LOCALAPPDATA%\Silice\config\silice.toml",
+        "AVISO",
+    ):
+        assert dato in problemas, dato
+    assert "perfil_ventana" in manual  # dónde guarda la ventana el tamaño de letra y el zoom
+
+
+def test_el_manual_tecnico_explica_sin_ventana_y_el_perfil() -> None:
+    quince = _leer("docs/manual_tecnico.md").split("## 15.", 1)[1].split("\n## 16.", 1)[0]
+    for dato in (
+        "--sin-ventana",
+        "--sin-navegador",
+        "abrir_en",
+        "operacion/ventana.py",
+        "perfil_ventana",
+        "private_mode",
+        "PuenteCerrado",
+        "traer_al_frente",
+    ):
+        assert dato in quince, dato
+
+
+def test_los_manuales_no_tienen_retornos_de_carro_sueltos_ni_rutas_partidas() -> None:
+    """Un retorno de carro escrito dentro de una ruta de Windows partió la ruta de los registros
+    en dos líneas (árbitro, N4). Un CR que no precede a LF es un defecto; la ruta va entera."""
+    for ruta in sorted((RAIZ / "docs").glob("manual_*.md")):
+        crudo = ruta.read_bytes()
+        assert re.findall(rb"\r(?!\n)", crudo) == [], ruta.name
+        texto = crudo.decode("utf-8").replace("\r\n", "\n")
+        assert not re.search(r"%[A-Z]+%\\[A-Za-z\\]*\n[a-z]", texto), ruta.name
+    instalacion = _leer("docs/manual_instalacion.md")
+    assert "%LOCALAPPDATA%\\Silice\\registros" in instalacion

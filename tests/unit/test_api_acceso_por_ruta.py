@@ -139,11 +139,14 @@ TABLA = {
     ("POST", "/v1/libros/devolucion"): LEER,
     ("POST", "/v1/libros/pdf"): LEER,
     ("POST", "/v1/libros/replica"): LEER,
+    ("POST", "/v1/libros/apu-por-hoja"): LEER,  # F5 vial, tarea 6
+    ("GET", "/v1/libros/perfiles-apu-por-hoja"): LEER,  # E2E-2: elegir el perfil
     ("GET", "/v1/tablero"): LEER,  # ola 4: Tablero
     ("GET", "/v1/control/linea-base"): CONTROLAR,  # ola 4: Control de obra
     ("POST", "/v1/control/linea-base"): CONTROLAR,
     ("POST", "/v1/control/parametros"): CONTROLAR,
     ("GET", "/v1/control/valuaciones"): CONTROLAR,
+    ("GET", "/v1/control/partidas"): CONTROLAR,  # autocompletado AC2
     ("POST", "/v1/control/valuaciones"): CONTROLAR,
     ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"): CONTROLAR,
     ("POST", "/v1/control/costos"): CONTROLAR,
@@ -170,6 +173,8 @@ TABLA = {
     ("POST", "/v1/carpeta/lista-para-armar"): EDITAR,
     ("GET", "/v1/buscar/partidas"): LEER,  # T10: buscador de partidas del catálogo (C-1)
     ("GET", "/v1/consulta/{tabla}"): LEER,  # vial T20: autocompletado con tablas venezolanas
+    ("GET", "/v1/consulta/unidades"): LEER,  # AC4: las unidades ya usadas en el catálogo
+    ("GET", "/v1/consulta/proveedores"): LEER,  # AC4: los proveedores de las cotizaciones
     # MOD-4a: la mesa de control (inicio de Presupuestos y obras)
     ("GET", "/v1/obras/resumen"): LEER,
     ("GET", "/v1/obras/pendientes"): EDITAR,
@@ -235,6 +240,8 @@ TABLA = {
     ("POST", "/v1/admin/instalacion/eventos/{nombre}/revisar"): RED_Y_API,
     ("GET", "/v1/reajuste/contexto"): REAJUSTAR,
     ("GET", "/v1/reajuste/parciales"): REAJUSTAR,
+    ("GET", "/v1/reajuste/partidas"): REAJUSTAR,  # autocompletado AC2
+    ("GET", "/v1/reajuste/series"): REAJUSTAR,
     ("POST", "/v1/reajuste/calcular"): REAJUSTAR,
     ("POST", "/v1/reajuste/guardar"): REAJUSTAR,
     ("POST", "/v1/reajuste/excel"): REAJUSTAR,
@@ -244,6 +251,7 @@ TABLA = {
     ("GET", "/v1/precios-empresa"): PRECIOS,
     ("POST", "/v1/precios-empresa/referencia"): PRECIOS,
     ("POST", "/v1/precios-empresa/listas"): PRECIOS,
+    ("POST", "/v1/precios-empresa/listas/revision"): PRECIOS,  # 2026-11-13: D-8
     ("GET", "/v1/precios-empresa/listas/{lista_id}/hallazgos"): PRECIOS,
     ("GET", "/v1/precios-empresa/listas/{lista_id}/atipicos"): PRECIOS,  # T4: atipicas
     ("GET", "/v1/admin/empresas-registradas"): EMPRESA,  # T5
@@ -279,6 +287,7 @@ TABLA = {
     ("POST", "/v1/produccion/costos/{costo_id}/anular"): COSTOS,
     ("POST", "/v1/produccion/recetas"): OPERAR,  # plan vial T3: receta y consumos
     ("GET", "/v1/produccion/recetas/vigente"): OPERAR,
+    ("GET", "/v1/produccion/recetas/vigentes"): OPERAR,
     ("POST", "/v1/produccion/producciones"): OPERAR,
     ("GET", "/v1/produccion/producido"): OPERAR,
     ("POST", "/v1/produccion/calculos"): COSTOS,  # plan vial T4: costo por tonelada

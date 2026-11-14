@@ -203,7 +203,7 @@ export const SECCIONES_DE_CUENTA: readonly CuentaDef[] = [
   { id: "empresa", titulo: "Empresa y tema", pagina: "administracion", ayuda: "Los datos de la empresa, su clave de firma y los colores del programa." },
   { id: "carpetas", titulo: "Carpetas", pagina: "administracion", ademas: "cambiar_caso", ayuda: "Las carpetas de la instalación: abrir, crear, subir y la demostración." },
   { id: "sistema", titulo: "Especialidades, IA e instalación", pagina: "administracion", ayuda: "Especialidades, asistente de IA, claves de API y respaldos." },
-  { id: "ayuda", titulo: "Ayuda y acerca de Sílice", pagina: "acerca", ayuda: "La versión y la licencia del programa, y los recorridos guiados." },
+  { id: "ayuda", titulo: "Ayuda y acerca de Sílice", pagina: "acerca", ayuda: "Empieza aquí, guías paso a paso, glosario, recorridos guiados y la versión del programa." },
 ];
 
 export function esCuenta(segmento: string): segmento is CuentaId {

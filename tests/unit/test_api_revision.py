@@ -82,8 +82,8 @@ NO_VERIFICADO_SIN_FIRMA = (
 RECHAZADO_ZIP = (
     "Rechazado: El archivo no es un paquete de Silice válido (el ZIP está dañado). Pida uno nuevo."
 )
-PRIMERA = "Versión 005 del 10/11/2026; es la primera que recibe de este proyecto."
-SIN_ANTERIOR = "Esta instalación no recibió una entrega anterior de este proyecto."
+PRIMERA = "Versión 005 del 10/11/2026; es la primera que recibe de esta obra."
+SIN_ANTERIOR = "Esta instalación no recibió una entrega anterior de esta obra."
 PRECIOS_OK = "Los precios y totales que declara el paquete coinciden con los recalculados."
 REGLAS = "Reglas corridas a la fecha de emisión (10/11/2026): R1-R7, R11-R12."
 NOTAS_FALTAN = "Un dictamen con observaciones o de rechazo necesita notas."
@@ -689,3 +689,24 @@ def test_el_banner_de_verificacion_formatea_la_fecha_y_no_al_emisor() -> None:
         "No se alteró desde que se firmó."
     )
     assert replace(v).manifiesto == {"emitido": "2026-11-10T08:00:00"}  # el original no cambia
+
+
+def test_un_excel_externo_con_una_celda_lejana_es_422_con_el_aviso_del_lector() -> None:
+    """Acta del árbitro de los topes, NOTA 7: `leer_tabla` (núcleo) recorría la hoja sin tope;
+    sin `<dimension>`, A1048576 eran un millón de filas. Ahora la ruta la rechaza antes."""
+    from tests.fixtures.libro_apu_por_hoja import con_celdas
+
+    navegador, ficha = _rita()
+    plantilla = navegador.get("/v1/revision/plantilla").content
+    hostil = con_celdas(plantilla, "APU", {"A1048576": "fin ficticio"}, sin_dimension=True)
+    r = navegador.post(
+        "/v1/revision/excel-externo",
+        files={"presupuesto": ("externo.xlsx", hostil, XLSX)},
+        headers=protegida(ficha),
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        "El libro «externo.xlsx», hoja «APU»: tiene filas con datos o con formato más allá de la "
+        "20.000. Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV). Se "
+        "rechaza por seguridad: borre lo que sobra al final de la hoja y guárdelo de nuevo."
+    )

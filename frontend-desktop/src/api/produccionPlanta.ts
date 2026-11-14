@@ -29,6 +29,11 @@ export function recetaVigente(producto: string, fecha: string, senal?: AbortSign
   return pedir<RecetaRespuesta>(`${RUTA}/recetas/vigente?${consulta}`, { senal });
 }
 
+// Las recetas que rigen en `fecha`, una por producto que tenga alguna. Sin ninguna, una lista vacía (no es un error).
+export function recetasVigentes(fecha: string, senal?: AbortSignal): Promise<RecetaRespuesta[]> {
+  return pedir<RecetaRespuesta[]>(`${RUTA}/recetas/vigentes?fecha=${encodeURIComponent(fecha)}`, { senal });
+}
+
 export function registrarReceta(receta: RecetaNueva): Promise<{ id: number }> {
   return pedir<{ id: number }>(`${RUTA}/recetas`, { metodo: "POST", cuerpo: receta });
 }

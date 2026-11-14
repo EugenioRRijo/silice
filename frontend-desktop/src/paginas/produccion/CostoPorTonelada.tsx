@@ -10,7 +10,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { AvisoConFoco } from "./AvisoConFoco";
 import { CalculosAnteriores } from "./CalculosAnteriores";
 import { ErrorDeCalculo } from "./ErrorDeCalculo";
-import { MONEDAS, mesAnterior, nombreDelMes, periodoValido } from "./logica";
+import { OPCIONES_DE_MONEDA, mesAnterior, nombreDelMes, periodoValido } from "./logica";
 import { mensajeDePlanta } from "./logicaPlanta";
 import { PublicarCosto } from "./PublicarCosto";
 import { RepartoPorPesos, SIN_REPARTO } from "./RepartoPorPesos";
@@ -148,7 +148,7 @@ export default function CostoPorTonelada() {
           }
         >
           <SelectItem value="" text="Elija la moneda" />
-          {MONEDAS.map((m) => (
+          {OPCIONES_DE_MONEDA.map((m) => (
             <SelectItem key={m.valor} value={m.valor} text={m.texto} />
           ))}
         </Select>

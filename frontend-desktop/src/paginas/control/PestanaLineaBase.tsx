@@ -9,7 +9,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { leerFeriados } from "./fechas";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {
@@ -276,7 +276,7 @@ export function PestanaLineaBase({ proyecto, clave, alCambiar }: Props) {
           Línea base vigente
         </h2>
         <p className="cds--type-body-compact-01">
-          {datos.descripcion ?? "El proyecto no tiene línea base de control. Declárela abajo."}
+          {datos.descripcion ?? "La obra no tiene línea base de control. Declárela abajo."}
         </p>
         <details open={!datos.tiene_linea_base}>
           <summary className="cds--type-body-compact-01">Declarar una línea base</summary>

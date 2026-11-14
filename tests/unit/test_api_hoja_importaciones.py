@@ -59,7 +59,7 @@ FORMA_LLEVAR = (
     "Lo que se lleva a la Hoja no tiene la forma esperada: envíe la obra y de 1 a 2000 partidas, "
     "cada una con su código y su cantidad tal como salen del cómputo."
 )
-SIN_OBRA = "El proyecto «NO-EXISTE» no existe en este caso."
+SIN_OBRA = "La obra «NO-EXISTE» no existe en esta carpeta."
 
 
 @pytest.fixture(scope="module")

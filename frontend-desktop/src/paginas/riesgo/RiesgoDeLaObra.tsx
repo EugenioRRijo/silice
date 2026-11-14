@@ -17,11 +17,11 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { CAMPOS_INICIALES, ROTULOS, SIN_INICIO, leerCampos, pideLaFechaDeInicio, rutaDelInformeDeRiesgo } from "./logica";
 import type { Campos } from "./logica";
 import { MejoraDeLaEstimacion } from "./MejoraDeLaEstimacion";
-import { ParametrosDelRiesgo } from "./ParametrosDelRiesgo";
+import { CamposDeProyectar, ParametrosDelRiesgo } from "./ParametrosDelRiesgo";
 import { ResultadoDeLaComprobacion, ResultadoDeLaProyeccion } from "./ResultadoDelRiesgo";
 import "./riesgo.scss";
 
@@ -176,27 +176,39 @@ export default function RiesgoDeLaObra() {
                 mapa={mapa}
                 alElegirSerie={elegirSerie}
               />
-              <div className="riesgo-acciones">
-                <Button kind="primary" size="md" disabled={ocupado} onClick={proyectar}>
-                  Proyectar
-                </Button>
-                {proyeccion.estado === "cargando" && <InlineLoading description="Proyectando..." />}
-              </div>
-              <div className="riesgo-acciones">
-                <CampoTexto
-                  id="riesgo-porCorte"
-                  labelText={ROTULOS.porCorte}
-                  inputMode="numeric"
-                  value={campos.porCorte}
-                  invalid={errores.porCorte !== undefined}
-                  invalidText={errores.porCorte}
-                  onChange={(e) => cambiar("porCorte", e.target.value)}
-                />
-                <Button kind="secondary" size="md" disabled={ocupado} onClick={comprobar}>
-                  Comprobar hacia atrás
-                </Button>
-                {comprobacion.estado === "cargando" && <InlineLoading description={ESPERA} />}
-              </div>
+              <fieldset className="riesgo-seccion">
+                <legend className="cds--type-heading-compact-01">Proyectar</legend>
+                <div className="riesgo-acciones">
+                  <CamposDeProyectar
+                    campos={campos}
+                    errores={errores}
+                    alCambiar={cambiar}
+                    insumos={insumos.datos}
+                  />
+                  <Button kind="primary" size="md" disabled={ocupado} onClick={proyectar}>
+                    Proyectar
+                  </Button>
+                  {proyeccion.estado === "cargando" && <InlineLoading description="Proyectando..." />}
+                </div>
+              </fieldset>
+              <fieldset className="riesgo-seccion">
+                <legend className="cds--type-heading-compact-01">Comprobar hacia atrás</legend>
+                <div className="riesgo-acciones">
+                  <CampoTexto
+                    id="riesgo-porCorte"
+                    labelText={ROTULOS.porCorte}
+                    inputMode="numeric"
+                    value={campos.porCorte}
+                    invalid={errores.porCorte !== undefined}
+                    invalidText={errores.porCorte}
+                    onChange={(e) => cambiar("porCorte", e.target.value)}
+                  />
+                  <Button kind="secondary" size="md" disabled={ocupado} onClick={comprobar}>
+                    Comprobar hacia atrás
+                  </Button>
+                  {comprobacion.estado === "cargando" && <InlineLoading description={ESPERA} />}
+                </div>
+              </fieldset>
             </>
           )}
           {errorVisible !== null && (

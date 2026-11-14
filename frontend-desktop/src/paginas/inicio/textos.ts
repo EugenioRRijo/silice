@@ -15,13 +15,16 @@ export const TEXTOS = {
   },
   cartera: {
     titulo: "Cartera por moneda",
+    ayudaTitulo: "Cómo se calcula el total",
+    ayuda:
+      "El total de cada obra es el de su línea base o, sin ella, el de su versión vigente. Cada moneda se suma por separado: Bs y USD nunca se mezclan.",
     cargando: "Cargando la cartera",
     error: "No se pudo leer la cartera",
     noDisponible: "La cartera aún no está disponible en esta instalación",
     moneda: (moneda: string) => `Cartera en ${moneda}`,
     tituloDeMoneda: (moneda: string) => `Obras en ${moneda}`,
     cifras: (moneda: string) => `Cifras de la cartera en ${moneda}`,
-    // Como en el Resumen de la obra: el de la línea base; sin ella, el de la versión vigente (no siempre el de la vigente).
+    // La regla de qué total se suma (línea base o vigente) se explica a la persona en `ayuda` (ver `ayudaTitulo`).
     total: "Total",
     obras: "Obras",
     enEjecucion: "En ejecución",

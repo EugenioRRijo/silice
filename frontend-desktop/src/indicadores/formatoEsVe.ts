@@ -12,6 +12,18 @@ export function formatoEsVe(decimal: string): string {
   return `${signo}${miles}${fraccion !== undefined ? `,${fraccion}` : ""}`;
 }
 
+// Una cantidad de la API, que puede traer los ceros de la columna («12345.600000»), a es-VE sin ceros de más
+// («12.345,6»; «20.000» -> «20»; «-0.000» -> «0»). Para cantidades, no para montos: un monto se lee en centésimas
+// (`centesimasEsVe`). Lo que no es un decimal se devuelve tal cual.
+export function cantidadEsVe(texto: string): string {
+  const m = DECIMAL.exec(texto.trim());
+  if (!m) return texto;
+  const [, signo, entera, fraccion = ""] = m;
+  const resto = fraccion.replace(/0+$/, "");
+  const esCero = /^0*$/.test(entera) && resto === "";
+  return formatoEsVe(`${signo === "-" && !esCero ? "-" : ""}${entera}${resto ? `.${resto}` : ""}`);
+}
+
 // Un monto con su unidad ("95066.60 USD") a es-VE ("95.066,60 USD"): se formatea el decimal inicial y lo que sigue
 // (la unidad) queda igual. Lo que no empieza por un decimal (un porcentaje ya presentado, "no disponible") no se toca.
 const MONTO = /^([-+]?[0-9]+(?:\.[0-9]+)?)(\s.*)?$/;
@@ -34,6 +46,12 @@ export function centesimasEsVe(exacto: string): string {
   const total = (centesimas + sube).toString().padStart(3, "0");
   const texto = `${total.slice(0, -2)}.${total.slice(-2)}`;
   return formatoEsVe(signo === "-" && /[1-9]/.test(total) ? `-${texto}` : texto);
+}
+
+// Un valor que puede ser una cifra («24.5», «-5.81») o no («A1.2», «Eje B2.5»): solo si el texto ENTERO es un decimal se
+// pasa a es-VE; un código o un nombre con un punto se devuelve tal cual (los antes/después de un cambio mezclan ambos).
+export function cifraSiLoEs(valor: string): string {
+  return DECIMAL.test(valor.trim()) ? formatoEsVe(valor) : valor;
 }
 
 // Un texto libre de la API con decimales de punto dentro («FCAS (fracción: 6.00 = …)», «FCAS 6 y bono 5.81», «15.0 % del

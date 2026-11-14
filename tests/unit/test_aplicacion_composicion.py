@@ -533,7 +533,7 @@ def test_una_cabecera_distinta_sobre_una_partida_existente_da_el_motivo(base: Pa
         )
         assert guardado.precio_unitario is None and guardado.mensaje is None
         assert guardado.motivo is not None
-        assert guardado.motivo.startswith(f"la partida {TUBERIA} ya existe con la descripcion")
+        assert guardado.motivo.startswith(f"la partida {TUBERIA} ya existe con la descripción")
         assert _contar(sesion, models.Rendimiento) == antes
 
 

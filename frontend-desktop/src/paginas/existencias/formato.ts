@@ -1,20 +1,11 @@
 // Formato de cantidades y fechas. Nada aqui calcula: solo cambia como se escribe un texto decimal y se lee lo que
 // escribe la persona (coma decimal y punto de miles, regla de Eugenio del 2026-10-25) para mandarlo a la API con punto.
 import { MENSAJE_CIFRA, leerCifra } from "../../indicadores/cifraEscrita";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
-
-const DECIMAL_DE_API = /^([+-]?)(\d+)(?:\.(\d*))?$/;
+import { cantidadEsVe } from "../../indicadores/formatoEsVe";
 
 // «24.5000» -> «24,5»; «20.000» -> «20»; «1234.5» -> «1.234,5»; «-0.000» -> «0». Coma decimal y punto de miles, como
-// se escribe al registrar. Un texto que no es decimal se devuelve como llego.
-export function mostrarCantidad(texto: string): string {
-  const m = DECIMAL_DE_API.exec(texto.trim());
-  if (!m) return texto;
-  const fraccion = (m[3] ?? "").replace(/0+$/, "");
-  const esCero = /^0*$/.test(m[2]) && fraccion === "";
-  const signo = m[1] === "-" && !esCero ? "-" : "";
-  return formatoEsVe(`${signo}${m[2]}${fraccion ? `.${fraccion}` : ""}`);
-}
+// se escribe al registrar. Un texto que no es decimal se devuelve como llego. Es `cantidadEsVe`, la de toda la interfaz.
+export const mostrarCantidad = cantidadEsVe;
 
 export type LecturaDeCantidad = { valor: string } | { error: string };
 

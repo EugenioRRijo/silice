@@ -233,7 +233,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     montar();
     await irA("Ajustes de costo");
     await screen.findByRole("textbox", { name: /^FCAS/ });
-    expect(screen.queryByText(/Moneda del proyecto/)).toBeNull();
+    expect(screen.queryByText(/Moneda de la obra/)).toBeNull();
     expect(screen.queryByText(/Total del presupuesto/)).toBeNull();
     expect(screen.queryByTitle("2.703,860232344044")).toBeNull();
   });

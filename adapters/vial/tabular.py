@@ -25,6 +25,25 @@ COLUMNAS = ("tramo", *_COLUMNAS_TRAMO, "elemento", "tipo", *_COLUMNAS_CAPA, "lin
 #: Columna opcional (Tarea 16b): el porcentaje de asfalto de la mezcla de la carpeta o del bacheo.
 #: Un archivo sin ella se lee igual que antes.
 ASFALTO = "asfalto_pct"
+#: Columnas opcionales de F5 vial, tarea 1 (diseño 2026-11-03 §6.3): de la capa, el esponjamiento
+#: del fresado, la limpieza de un riego («sí» o «no») y la otra medición («m2» del fresado, «t» de
+#: la carpeta); de la demarcación, el área de cada elemento de superficie y los captafaros de una
+#: línea. Un archivo sin ellas se lee igual que antes.
+ESPONJAMIENTO = "esponjamiento"
+LIMPIEZA = "limpieza"
+MEDICION = "medicion"
+AREA = "area_m2"
+CAPTAFAROS = "captafaros"
+#: Columna opcional del tramo (F5 vial, tarea 2): «banda» si la obra mide el transporte de la mezcla
+#: en t por banda de distancia; vacía, en t·km. Se llena en la primera fila del tramo, como la
+#: distancia; si se repite en otra fila, debe coincidir.
+TRANSPORTE = "transporte"
+#: Columna opcional de la capa (prueba de punta a punta del 2026-11-13, D2): «sí» en la imprimación
+#: o el riego de adherencia si su APU ya trae el ligante («riego con suministro»); entonces no se
+#: deriva el ligante y la dosis es opcional. Vacía o «no», la capa de siempre.
+SUMINISTRO = "suministro"
+_SOLO_CAPA = (*_COLUMNAS_CAPA, ASFALTO, ESPONJAMIENTO, LIMPIEZA, MEDICION, SUMINISTRO)
+_SOLO_DEMARCACION = ("lineas", AREA, CAPTAFAROS)
 
 _CAPA = "capa"
 _DEMARCACION = "demarcacion"
@@ -100,6 +119,7 @@ class _Borrador:
     fin: Decimal
     ancho: Decimal
     datos: dict[str, Decimal | None]
+    transporte: str | None = None
     capas: list[Capa] = field(default_factory=list)
     demarcacion: list[Demarcacion] = field(default_factory=list)
 
@@ -108,6 +128,7 @@ def _borrador(fila: dict[str, str | None], numero_fila: int, previo: _Borrador |
     """El borrador del tramo de `fila`: uno nuevo en su primera fila; si no, el previo, con la
     comprobación de que las columnas del tramo que la fila llene coincidan con las de la primera."""
     datos = {columna: _decimal(fila, columna) for columna in _COLUMNAS_TRAMO}
+    transporte = _celda(fila, TRANSPORTE) or None
     if previo is not None:
         for columna, valor in datos.items():
             if valor is not None and valor != previo.datos[columna]:
@@ -115,29 +136,72 @@ def _borrador(fila: dict[str, str | None], numero_fila: int, previo: _Borrador |
                     f"la columna {columna!r} ({valor}) no coincide con la de la fila "
                     f"{previo.fila} del mismo tramo ({previo.datos[columna]})"
                 )
+        if transporte is not None and transporte != previo.transporte:
+            raise ValueError(
+                f"la columna {TRANSPORTE!r} ({transporte}) no coincide con la de la fila "
+                f"{previo.fila} del mismo tramo ({previo.transporte or 'vacía'})"
+            )
         return previo
     ini, fin, ancho = (datos[columna] for columna in _COLUMNAS_TRAMO[:3])
     if ini is None or fin is None or ancho is None:
         faltan = [c for c in _COLUMNAS_TRAMO[:3] if datos[c] is None]
         raise ValueError(f"la primera fila del tramo debe llenar {', '.join(faltan)}")
-    return _Borrador(numero_fila, ini, fin, ancho, datos)
+    return _Borrador(numero_fila, ini, fin, ancho, datos, transporte)
+
+
+def _entero(fila: dict[str, str | None], columna: str) -> int | None:
+    texto = _celda(fila, columna)
+    if not texto:
+        return None
+    if not (texto.isascii() and texto.isdigit()):
+        raise ValueError(f"la columna {columna!r} debe ser un entero: {texto!r}")
+    return int(texto)
+
+
+def _si_no(fila: dict[str, str | None], columna: str) -> bool:
+    texto = _celda(fila, columna).casefold()
+    if texto in ("", "no"):
+        return False
+    if texto in ("si", "sí"):
+        return True
+    raise ValueError(f"la columna {columna!r} debe ser sí o no: {_celda(fila, columna)!r}")
 
 
 def _agregar_elemento(fila: dict[str, str | None], borrador: _Borrador) -> None:
     elemento, tipo = _celda(fila, "elemento"), _celda(fila, "tipo")
     if elemento == _CAPA:
-        if _celda(fila, "lineas"):
-            raise ValueError("una capa no usa la columna 'lineas': déjela vacía")
+        llenas = [columna for columna in _SOLO_DEMARCACION if _celda(fila, columna)]
+        if llenas:
+            columnas = ", ".join(repr(c) for c in llenas)
+            raise ValueError(f"una capa no usa la columna {columnas}: déjela vacía")
         valores = (_decimal(fila, columna) for columna in (*_COLUMNAS_CAPA, ASFALTO))
-        borrador.capas.append(Capa(tipo, *valores))
+        borrador.capas.append(
+            Capa(
+                tipo,
+                *valores,
+                esponjamiento=_decimal(fila, ESPONJAMIENTO),
+                limpieza=_si_no(fila, LIMPIEZA),
+                medicion=_celda(fila, MEDICION) or None,
+                suministro=_si_no(fila, SUMINISTRO),
+            )
+        )
     elif elemento == _DEMARCACION:
-        llenas = [columna for columna in (*_COLUMNAS_CAPA, ASFALTO) if _celda(fila, columna)]
+        llenas = [columna for columna in _SOLO_CAPA if _celda(fila, columna)]
         if llenas:
             raise ValueError(f"una demarcación no usa {', '.join(llenas)}: déjelas vacías")
         lineas = _celda(fila, "lineas")
+        if tipo == "captafaros" and not lineas:
+            lineas = "1"  # ojos de gato solos: el número va en «captafaros»
         if not (lineas.isascii() and lineas.isdigit()):
             raise ValueError(f"la columna 'lineas' debe ser un entero: {lineas!r}")
-        borrador.demarcacion.append(Demarcacion(tipo, int(lineas)))
+        borrador.demarcacion.append(
+            Demarcacion(
+                tipo,
+                int(lineas),
+                area_m2=_decimal(fila, AREA),
+                captafaros=_entero(fila, CAPTAFAROS),
+            )
+        )
     else:
         raise ValueError(
             f"elemento desconocido: {elemento!r} (se esperaba {_CAPA!r} o {_DEMARCACION!r})"
@@ -203,6 +267,7 @@ def leer_tramos(ruta: Path) -> list[Tramo]:
                     tuple(b.capas),
                     tuple(b.demarcacion),
                     b.datos["distancia_planta_km"],
+                    b.transporte,
                 )
             )
         except ValueError as error:

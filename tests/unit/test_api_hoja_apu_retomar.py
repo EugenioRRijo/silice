@@ -67,7 +67,7 @@ from tests.fixtures.sesion_web import (
 
 D = Decimal
 REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
     "Lo que no guardó se perdió: abra la versión otra vez."
@@ -77,8 +77,8 @@ REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo."
 EXCEDE = "El cuerpo de la peticion excede el maximo de 20 MiB."
 FORMA_APU = (
     "El APU no tiene la forma esperada: envíe el rendimiento y las cantidades de materiales, "
-    "equipos y mano de obra, cada una como texto de hasta 500 caracteres, con no más de 500 "
-    "líneas por rubro."
+    "equipos y mano de obra (y, si quiere, el desperdicio de cada material), cada una como texto "
+    "de hasta 500 caracteres, con no más de 500 líneas por rubro."
 )
 FORMA_INSUMO = (
     "El cambio de insumo no tiene la forma esperada: envíe tipo, indice (entero), insumo "
@@ -360,13 +360,13 @@ def test_e6_una_partida_con_barra_en_el_codigo_viaja_en_la_ruta() -> None:
         ({"rendimiento": "0.5"}, f"rendimiento: «0.5» no se entiende como número. {REGLA}"),
         (
             {"materiales": ["1", "1"]},
-            "materiales: la tabla tiene 2 lineas y el APU 1; en la hoja solo se edita la "
-            "cantidad de cada linea (para agregar o quitar una, use Componer)",
+            "materiales: la tabla tiene 2 líneas y el APU 1; en la hoja solo se edita la "
+            "cantidad de cada línea (para agregar o quitar una, use Componer)",
         ),
         (
             {"mano_obra": []},
-            "mano de obra: la tabla tiene 0 lineas y el APU 2; en la hoja solo se edita la "
-            "cantidad de cada linea (para agregar o quitar una, use Componer)",
+            "mano de obra: la tabla tiene 0 líneas y el APU 2; en la hoja solo se edita la "
+            "cantidad de cada línea (para agregar o quitar una, use Componer)",
         ),
     ],
 )
@@ -481,7 +481,7 @@ def test_e6_exactamente_los_topes_de_forma_se_aceptan() -> None:
     id_ = _abrir(navegador, ficha)
     respuesta = _apu(navegador, ficha, id_, 0, materiales=["1" * 500] * 500)
     assert respuesta.status_code == 422
-    assert respuesta.json()["detalle"].startswith("materiales: la tabla tiene 500 lineas")
+    assert respuesta.json()["detalle"].startswith("materiales: la tabla tiene 500 líneas")
 
 
 @pytest.mark.parametrize(
@@ -584,10 +584,10 @@ def test_e7_un_insumo_que_la_lista_no_valora_o_de_otro_tipo_es_422_y_nada_cambia
             {"tipo": "xx"},
             "tipo de linea 'xx' desconocido; se espera uno de ('material', 'equipo', 'mano_obra')",
         ),
-        ({"indice": 1}, "la linea 2 no existe: el grupo material tiene 1 lineas"),
+        ({"indice": 1}, "la línea 2 no existe: el grupo material tiene 1 línea"),
         (
             {"tipo": "mano_obra", "indice": 5, "insumo": "MO-005"},
-            "la linea 6 no existe: el grupo mano_obra tiene 2 lineas",
+            "la línea 6 no existe: el grupo mano_obra tiene 2 líneas",
         ),
     ],
 )

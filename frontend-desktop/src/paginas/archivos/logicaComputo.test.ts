@@ -7,6 +7,7 @@ import {
   lineaPendiente,
   lineaPropuesta,
   mapeoCodigos,
+  filasDeItems,
   partidasParaLlevar,
   textoDispersion,
   textoPropuestaRendimiento,
@@ -31,6 +32,11 @@ const ITEM = (origen: string, codigo: string): ItemComputo => ({
 });
 
 describe("logica de Elaborar", () => {
+  test("la tabla del computo escribe la unidad con exponente («m³», «m²») y lo demas tal cual", () => {
+    const filas = filasDeItems([ITEM("o1", "X"), { ...ITEM("o2", "Y"), unidad: "m2" }, { ...ITEM("o3", "Z"), unidad: "ml" }]);
+    expect(filas.map((f) => f.unidad)).toEqual(["m³", "m²", "ml"]);
+  });
+
   test("el mapeo de codigos civil lleva relleno solo si se pide", () => {
     const base = { concreto: "A", encofrado: "B", excavacion: "C", tuberia: "D" };
     expect(mapeoCodigos({ ...base, relleno: null })).toEqual(base);

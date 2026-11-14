@@ -12,8 +12,9 @@ Principios:
 - **`Decimal` siempre** (NORMAS §2.3): los números del libro se convierten con `Decimal(str(v))`.
 - **El lector no juzga.** Una celda rara (texto donde va un número, `#REF!`, vacía) no hace fallar
   la lectura: el dato se omite o vale lo que Excel usaría con `N()` (0), y las reglas lo informan.
-  Solo se lanza `ArchivoRechazado`: por la guardia (F-D10), si openpyxl no puede abrir el libro o si
-  falta la hoja PRESUPUESTO.
+  Solo se lanza `ArchivoRechazado`: por la guardia (F-D10), si openpyxl no puede abrir el libro, si
+  una hoja tiene algo escrito más allá de los topes de la guardia (`filas_acotadas`: filas y
+  columnas por hoja, y celdas por pasada en el libro entero) o si falta la hoja PRESUPUESTO.
 
 Límites declarados:
 
@@ -34,7 +35,7 @@ import io
 import re
 import warnings
 import zipfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -43,7 +44,14 @@ from typing import Any
 from openpyxl.utils.cell import column_index_from_string as _col
 from openpyxl.utils.cell import get_column_letter as _letra
 
-from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.guardia import (
+    MAX_CELDAS_LIBRO,
+    MAX_COLUMNAS_HOJA,
+    MAX_FILAS_HOJA,
+    ArchivoRechazado,
+    miles,
+    verificar_archivo,
+)
 from adapters.hoja_empresa.modelo import (
     VINCULO_ILEGIBLE,
     ApuLeido,
@@ -63,7 +71,13 @@ from adapters.hoja_empresa.modelo import (
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, coincide, normalizar
 from adapters.hoja_empresa.umbrales import MEDIO_CENTAVO
 
-__all__ = ["leer_libro"]
+__all__ = [
+    "comprobar_topes_de_hoja",
+    "comprobar_topes_del_libro",
+    "filas_acotadas",
+    "leer_libro",
+    "letra",
+]
 
 _CERO = Decimal(0)
 _UNO = Decimal(1)
@@ -204,33 +218,151 @@ def _abrir(datos: bytes, nombre: str, data_only: bool) -> Any:
         ) from exc
 
 
-def _celdas_reales(ws: Any) -> Iterator[Any]:
-    """Las celdas no vacías de una hoja de solo lectura, por filas.
+def letra(columna: int) -> str:
+    """La letra de la columna `columna` (desde 0): 0 → A, 26 → AA. Sin límite, a diferencia de
+    `get_column_letter` (hasta XFD): una fila hostil puede traer más celdas que Excel."""
+    texto = ""
+    n = columna + 1
+    while n:
+        n, resto = divmod(n - 1, 26)
+        texto = chr(65 + resto) + texto
+    return texto
 
-    `reset_dimensions` hace que openpyxl no rellene hasta la dimensión declarada en el XML (que
-    puede mentir y decir XFD1048576): cada fila llega solo hasta su última celda real.
+
+def _fuera_del_tope(nombre: str, hoja: str, donde: str) -> ArchivoRechazado:
+    return ArchivoRechazado(
+        f"El libro «{nombre}», hoja «{hoja}»: {donde}. Sílice lee de cada hoja hasta "
+        f"{miles(MAX_FILAS_HOJA)} filas y {MAX_COLUMNAS_HOJA} columnas (de la A a la "
+        f"{letra(MAX_COLUMNAS_HOJA - 1)}). Se rechaza por seguridad: borre lo que sobra al final "
+        "de la hoja y guárdelo de nuevo."
+    )
+
+
+def _filas_de_mas(nombre: str, hoja: str) -> ArchivoRechazado:
+    return _fuera_del_tope(
+        nombre, hoja, f"tiene filas con datos o con formato más allá de la {miles(MAX_FILAS_HOJA)}"
+    )
+
+
+def _fila_ancha(nombre: str, hoja: str, fila: int, columnas: int) -> ArchivoRechazado:
+    """`columnas`: la última columna de la fila, base 1."""
+    return _fuera_del_tope(
+        nombre,
+        hoja,
+        f"la fila {fila} tiene celdas con datos o con formato hasta la columna "
+        f"{letra(columnas - 1)}, más allá de la {letra(MAX_COLUMNAS_HOJA - 1)}",
+    )
+
+
+def comprobar_topes_de_hoja(nombre: str, hoja: str, celdas: Iterable[tuple[int, int]]) -> None:
+    """Los topes de `filas_acotadas` para una hoja que ya está en memoria (la réplica visual la
+    abre en modo normal, que solo crea las celdas que existen): `celdas` son sus coordenadas
+    (fila, columna), base 1, en cualquier orden.
+
+    Lanza el mismo `ArchivoRechazado` que daría `filas_acotadas` al recorrer la hoja: el de la
+    primera fila de hasta `MAX_FILAS_HOJA` más ancha que `MAX_COLUMNAS_HOJA` (con su última
+    columna) y, si no hay ninguna, el de las filas de más. Un solo recorrido de `celdas`."""
+    ultima = 0
+    anchas: dict[int, int] = {}
+    for fila, columna in celdas:
+        ultima = max(ultima, fila)
+        if fila <= MAX_FILAS_HOJA and columna > max(MAX_COLUMNAS_HOJA, anchas.get(fila, 0)):
+            anchas[fila] = columna
+    if anchas:
+        primera = min(anchas)
+        raise _fila_ancha(nombre, hoja, primera, anchas[primera])
+    if ultima > MAX_FILAS_HOJA:
+        raise _filas_de_mas(nombre, hoja)
+
+
+def filas_acotadas(
+    ws: Any, nombre: str, cuenta: list[int], tope_libro: int, *, values_only: bool
+) -> Iterator[tuple[Any, ...]]:
+    """Las filas de una hoja de solo lectura, sin pasar nunca de los topes de la guardia.
+
+    `reset_dimensions()`: sin él, openpyxl rellena cada fila y cada fila que falta hasta la
+    `<dimension>` que declara el XML, y esa dimensión puede mentir. Sin ella, openpyxl entrega cada
+    fila hasta su última celda escrita y una fila por cada fila hasta la última escrita: tampoco
+    basta (A1048576 son un millón de filas; una celda en XFD, 16.384 valores). Por eso se piden a
+    lo sumo `MAX_FILAS_HOJA` filas y una más, la que delata que la hoja sigue, y una fila más ancha
+    que `MAX_COLUMNAS_HOJA` rechaza el libro en cuanto llega. `cuenta[0]` suma las celdas
+    entregadas en el libro entero (antes de recortar) y pasar de `tope_libro` también lo rechaza:
+    64 hojas en su tope pasan la guardia. Lo usan los dos lectores (este y el de un APU por hoja)
+    y la réplica visual; `comprobar_topes_de_hoja` da los mismos avisos a una hoja ya en memoria.
     """
     ws.reset_dimensions()
-    for fila in ws.iter_rows():
+    leidas = 0
+    for fila in ws.iter_rows(max_row=MAX_FILAS_HOJA + 1, values_only=values_only):
+        if leidas == MAX_FILAS_HOJA:
+            raise _filas_de_mas(nombre, ws.title)
+        if len(fila) > MAX_COLUMNAS_HOJA:
+            raise _fila_ancha(nombre, ws.title, leidas + 1, len(fila))
+        # Una fila de hueco llega como tupla vacía y también cuesta recorrerla: cuenta como una
+        # celda, o mil hojas con una celda en A20000 pasarían el tope tras 20 millones de filas.
+        cuenta[0] += max(len(fila), 1)
+        if cuenta[0] > tope_libro:
+            raise ArchivoRechazado(
+                f"El libro «{nombre}» tiene más de {miles(tope_libro)} celdas con datos o con "
+                "formato entre sus hojas. Se rechaza por seguridad: quite las hojas o las filas "
+                "que sobran y guárdelo de nuevo."
+            )
+        leidas += 1
+        yield fila
+
+
+def comprobar_topes_del_libro(datos: bytes, nombre: str) -> None:
+    """Recorre cada hoja del libro en solo lectura con los topes de `filas_acotadas` (y una sola
+    cuenta de `MAX_CELDAS_LIBRO` para el libro entero), sin guardar nada.
+
+    Es para los libros que no lee este módulo y que se recorren sin tope: las listas de precios,
+    el presupuesto de un tercero y las valuaciones subidas (`core.catalog.precios.leer_tabla`, en
+    el núcleo, que no se toca; acta del árbitro de los topes, NOTA 7). Se llama después de la
+    guardia y antes del lector del núcleo, así que un libro hostil se rechaza en décimas de
+    segundo. Solo lanza `ArchivoRechazado`: si openpyxl no lo abre, si una hoja pasa de los topes
+    (el aviso de `filas_acotadas`) o si una hoja está dañada."""
+    libro = _abrir(datos, nombre, data_only=True)
+    try:
+        cuenta = [0]
+        for ws in libro.worksheets:
+            for _ in filas_acotadas(ws, nombre, cuenta, MAX_CELDAS_LIBRO, values_only=True):
+                pass
+    except ArchivoRechazado:
+        raise
+    except Exception as exc:  # openpyxl lanza tipos muy variados ante una hoja dañada
+        raise ArchivoRechazado(
+            f"No se pudo leer el libro «{nombre}»: alguna hoja está dañada."
+        ) from exc
+    finally:
+        libro.close()
+
+
+def _celdas_reales(ws: Any, nombre: str, cuenta: list[int]) -> Iterator[Any]:
+    """Las celdas no vacías de una hoja de solo lectura, por filas, dentro de los topes
+    (`filas_acotadas`)."""
+    for fila in filas_acotadas(ws, nombre, cuenta, MAX_CELDAS_LIBRO, values_only=False):
         for celda in fila:
             if celda.value is not None:
                 yield celda
 
 
-def _cargar_hojas(wf: Any, wv: Any) -> tuple[dict[str, _Hoja], dict[str, str], dict[str, object]]:
+def _cargar_hojas(
+    wf: Any, wv: Any, nombre: str
+) -> tuple[dict[str, _Hoja], dict[str, str], dict[str, object]]:
     """Lee todas las celdas no vacías de las dos pasadas: fórmulas (`wf`) y valores guardados
-    (`wv`). Una celda con fórmula sin valor guardado (libro nunca calculado) queda con `None`."""
+    (`wv`). Una celda con fórmula sin valor guardado (libro nunca calculado) queda con `None`.
+    Cada pasada lleva su cuenta de celdas del libro entero (`MAX_CELDAS_LIBRO`)."""
     hojas: dict[str, _Hoja] = {}
     formulas: dict[str, str] = {}
     valores: dict[str, object] = {}
     nombres_v = set(wv.sheetnames)
+    cuenta_f, cuenta_v = [0], [0]
     for ws in wf.worksheets:
         guardados_v: dict[tuple[int, int], object] = {}
         if ws.title in nombres_v:
-            for cv in _celdas_reales(wv[ws.title]):
+            for cv in _celdas_reales(wv[ws.title], nombre, cuenta_v):
                 guardados_v[(cv.row, cv.column)] = cv.value
         h = _Hoja(ws.title)
-        for celda in _celdas_reales(ws):
+        for celda in _celdas_reales(ws, nombre, cuenta_f):
             f, c = celda.row, celda.column
             tf = _texto_formula(celda)
             if tf is not None:
@@ -705,8 +837,9 @@ def _gastado(h: _Hoja | None, perfil: Perfil) -> dict[int, Decimal]:
 def leer_libro(datos: bytes, nombre: str, perfil: Perfil | None = None) -> LibroLeido:
     """Lee el libro `.xlsx` de la empresa y lo devuelve como `LibroLeido`.
 
-    Lanza `ArchivoRechazado` si la guardia lo rechaza, si openpyxl no puede abrirlo o si no tiene la
-    hoja PRESUPUESTO. Cualquier otra rareza del libro se tolera (ver la cabecera del módulo).
+    Lanza `ArchivoRechazado` si la guardia lo rechaza, si openpyxl no puede abrirlo, si una hoja
+    pasa de los topes de `filas_acotadas` o si no tiene la hoja PRESUPUESTO. Cualquier otra rareza
+    del libro se tolera (ver la cabecera del módulo).
     """
     verificar_archivo(datos, nombre)
     perfil = perfil or cargar_perfil()
@@ -716,7 +849,9 @@ def leer_libro(datos: bytes, nombre: str, perfil: Perfil | None = None) -> Libro
         try:
             # En solo lectura el XML de cada hoja se analiza al recorrerla: un XML dañado aparece
             # aquí y no al abrir.
-            hojas, formulas, valores = _cargar_hojas(wf, wv)
+            hojas, formulas, valores = _cargar_hojas(wf, wv, nombre)
+        except ArchivoRechazado:
+            raise
         except Exception as exc:
             raise ArchivoRechazado(
                 f"No se pudo leer el libro «{nombre}»: alguna hoja está dañada."

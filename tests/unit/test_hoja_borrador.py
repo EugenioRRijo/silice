@@ -426,7 +426,7 @@ def test_un_cambio_de_filas_distinto_en_numero_se_rechaza():
     apu = _apu_con_tres_grupos()
     materiales, equipos, mano = hoja.filas_de_apu(apu)
 
-    with pytest.raises(hoja.HojaInvalida, match="lineas"):
+    with pytest.raises(hoja.HojaInvalida, match="la tabla tiene 1 línea y el APU 2"):
         hoja.composicion_con_cantidades(apu, materiales[:1], equipos, mano, "1")
 
 
@@ -458,7 +458,7 @@ def test_cambiar_el_insumo_de_una_linea_que_no_existe_o_de_un_tipo_ajeno_se_rech
     apu = _apu_con_tres_grupos()
     candidato = hoja.FilaInsumo("MT-9", "x", "pza", D("1"))
 
-    with pytest.raises(hoja.HojaInvalida, match="linea"):
+    with pytest.raises(hoja.HojaInvalida, match="línea"):
         hoja.cambiar_insumo(apu, "material", 7, candidato)
     with pytest.raises(hoja.HojaInvalida, match="tipo"):
         hoja.cambiar_insumo(apu, "maquinaria", 0, candidato)

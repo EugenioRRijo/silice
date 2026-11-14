@@ -46,6 +46,10 @@ data/paquetes/
 data/casos/
 data/respaldos/
 data/eventos_perdidos_*.json
+# Perfil de WebView2 de la ventana (operacion.config.carpeta_perfil_ventana)
+data/perfil_ventana/
+# Perfiles de libros reales de la instalación (F5 vial, decisión provisional 5): nunca al repositorio
+data/perfiles_libros/
 # Copias de trabajo de una migracion interrumpida (operacion.base_datos)
 *.migrando
 

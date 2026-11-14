@@ -1532,6 +1532,74 @@
         }
       }
     },
+    "/v1/libros/perfiles-apu-por-hoja": {
+      "get": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Perfiles Apu Por Hoja Ruta",
+        "description": "Los perfiles del libro con un APU por hoja: los locales de la instalación y los del paquete\n(E2E-2). Solo nombres y hojas: ninguna ruta del disco.",
+        "operationId": "perfiles_apu_por_hoja_ruta_v1_libros_perfiles_apu_por_hoja_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PerfilApuPorHojaRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Perfiles Apu Por Hoja Ruta V1 Libros Perfiles Apu Por Hoja Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/libros/apu-por-hoja": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Auditar Apu Por Hoja Ruta",
+        "description": "Recalcula cada hoja del libro de APU, la compara con lo impreso y, si viene, la enlaza con\nel presupuesto por número de renglón (F5 vial, tarea 6). Nada se guarda.",
+        "operationId": "auditar_apu_por_hoja_ruta_v1_libros_apu_por_hoja_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_auditar_apu_por_hoja_ruta_v1_libros_apu_por_hoja_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibroApuPorHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/simulador": {
       "post": {
         "tags": [
@@ -2310,7 +2378,7 @@
           "carpeta"
         ],
         "summary": "Crear La Lista Para Armar",
-        "description": "Crea la lista para armar a partir de MaPreX o convirtiendo la vigente (tasa del BCV). Desde\nMaPreX, si la carpeta ya tiene lista para armar, 409 y no crea otra.",
+        "description": "Crea la lista para armar a partir de MaPreX, convirtiendo la vigente (tasa del BCV) o\ncopiando una lista de empresa en su moneda (`lista_id`). Desde MaPreX, si la carpeta ya tiene\nlista para armar, 409 y no crea otra.",
         "operationId": "crear_la_lista_para_armar_v1_carpeta_lista_para_armar_post",
         "requestBody": {
           "content": {
@@ -3387,7 +3455,7 @@
           "composicion"
         ],
         "summary": "Evaluar",
-        "description": "El desglose en vivo con sus advertencias, sin escribir (RB-2, RB-5).",
+        "description": "El desglose en vivo con sus advertencias, sin escribir (RB-2, RB-5). Con desperdicio, la\ncantidad que se evalúa es la que calcula el servidor y cada fila trae su leyenda.",
         "operationId": "evaluar_v1_composicion_evaluar_post",
         "requestBody": {
           "content": {
@@ -3429,7 +3497,7 @@
           "composicion"
         ],
         "summary": "Precargar",
-        "description": "UC-11, paso 1: las tablas de una partida existente; sin partida o sin lista vigente,\n`existe=false` y tablas vacías (UC-10), nunca 404.",
+        "description": "UC-11, paso 1: las tablas de una partida existente; sin partida o sin lista vigente,\n`existe=false` y tablas vacías (UC-10), nunca 404. Los materiales con la traza de su\ndesperdicio vuelven con la cantidad neta y el porcentaje (F5 vial).",
         "operationId": "precargar_v1_composicion_partidas__codigo__get",
         "parameters": [
           {
@@ -3590,7 +3658,7 @@
           "composicion"
         ],
         "summary": "Guardar",
-        "description": "Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación\n(UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe.",
+        "description": "Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación\n(UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del\ndesperdicio (F5 vial) se guarda en la misma transacción.",
         "operationId": "guardar_v1_composicion_guardar_post",
         "requestBody": {
           "content": {
@@ -3680,10 +3748,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "Nombre del proyecto en el caso abierto.",
+              "description": "Nombre de la obra en la carpeta abierta.",
               "title": "Proyecto"
             },
-            "description": "Nombre del proyecto en el caso abierto."
+            "description": "Nombre de la obra en la carpeta abierta."
           }
         ],
         "responses": {
@@ -3776,6 +3844,68 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DescripcionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/partidas": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Partidas",
+        "description": "AC2: las partidas de la versión de la línea base (las únicas que una valuación puede medir),\npara el campo «Partida» con autocompletado. Con `corte`, la de la línea base vigente a esa\nfecha, la misma contra la que R13 juzga la valuación; sin él, la más reciente. Sin línea base\n(o ninguna a esa fecha) responde vacío con su aviso: no es un error, es lo que ve quien aún no\nla declaró. `truncada` dice si la lista se recortó al tope.\n\nUn proyecto que no existe es un 404 fijo que no repite lo pedido (diseño de autocompletado,\nH-17); un fallo de la base, el 503 fijo, sin SQL ni rutas, como `/v1/consulta`.",
+        "operationId": "partidas_v1_control_partidas_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "corte",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "El *hasta* de la valuación (ISO): la línea base vigente a esa fecha",
+              "title": "Corte"
+            },
+            "description": "El *hasta* de la valuación (ISO): la línea base vigente a esa fecha"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidasDelContratoRespuesta"
                 }
               }
             }
@@ -4538,6 +4668,86 @@
         }
       }
     },
+    "/v1/reajuste/partidas": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Partidas",
+        "description": "AC2: las partidas de la versión del contrato elegida, para el campo «Partida» de lo\nejecutado. El cálculo rechaza una partida que no está en ella; aquí solo se ofrecen.\n`truncada` dice si la lista se recortó al tope.\n\nErrores fijos, como `/v1/consulta` (diseño de autocompletado, H-17): el 404 no repite el\nproyecto ni la versión pedidos y un fallo de la base es el 503 sin SQL ni rutas; los dos van\ntambién con `Cache-Control: no-store`.",
+        "operationId": "partidas_v1_reajuste_partidas_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidasDelContratoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/series": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Series",
+        "description": "AC2: las series de índices guardadas (UC-17), para el campo «Serie» de los componentes.\nSolo su definición: ningún valor del índice sale por esta ruta. Un fallo de la base es el 503\nfijo, sin SQL ni rutas.",
+        "operationId": "series_v1_reajuste_series_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/api__rutas__reajuste__SerieRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Series V1 Reajuste Series Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/reajuste/calcular": {
       "post": {
         "tags": [
@@ -5269,7 +5479,7 @@
           "precios-empresa"
         ],
         "summary": "Crear Lista",
-        "description": "UC-17 4: crea la lista de la empresa sobre una lista base con los precios del archivo.\n\nEmpresa, RIF y fuente vacios llegan al nucleo, que los rechaza con su mensaje (como la pagina\nclasica). Todo o nada: ante cualquier error no queda nada escrito. Los insumos del archivo\nque el catalogo no conoce se informan y no se dan de alta (UC-17 4a).",
+        "description": "UC-17 4: crea la lista de la empresa sobre una lista base con los precios del archivo.\n\nEmpresa, RIF y fuente vacios llegan al nucleo, que los rechaza con su mensaje (como la pagina\nclasica). Todo o nada: ante cualquier error no queda nada escrito. Los insumos del archivo\nque el catalogo no conoce se informan y no se dan de alta (UC-17 4a), salvo con `dar_de_alta`\n(la confirmacion tras `POST .../listas/revision`, D-8); los de otra unidad, nunca.",
         "operationId": "crear_lista_v1_precios_empresa_listas_post",
         "requestBody": {
           "content": {
@@ -5288,6 +5498,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListaCreadaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precios-empresa/listas/revision": {
+      "post": {
+        "tags": [
+          "precios-empresa"
+        ],
+        "summary": "Revisar Archivo",
+        "description": "D-8 (2026-11-13): lo que la lista haria con el archivo, sin escribir nada: cuantas filas\nreconoce el catalogo, los insumos nuevos que se pueden dar de alta y el aviso de cada fila que\nel catalogo tiene con otra unidad.",
+        "operationId": "revisar_archivo_v1_precios_empresa_listas_revision_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_revisar_archivo_v1_precios_empresa_listas_revision_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__precios_empresa__RevisionRespuesta"
                 }
               }
             }
@@ -5809,7 +6060,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RevisionRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__revision__RevisionRespuesta"
                 }
               }
             }
@@ -6754,7 +7005,7 @@
           "hoja"
         ],
         "summary": "Editar Apu",
-        "description": "E6: escribe el rendimiento y la cantidad de cada línea del APU de una partida (en la copia\nde la versión, DA-SF-7) y devuelve el APU recalculado (3c-B10). Una partida sin APU en el\nborrador es 404; un APU igual al vigente no sube `rev`.",
+        "description": "E6: escribe el rendimiento y la cantidad de cada línea del APU de una partida (en la copia\nde la versión, DA-SF-7) y devuelve el APU recalculado (3c-B10). Una partida sin APU en el\nborrador es 404; un APU igual al vigente no sube `rev`. Con `desperdicios`, la cantidad de un\nmaterial con porcentaje es su neta y el servidor calcula la cantidad; la traza se escribe en la\nbase al guardar la versión, no aquí (2026-11-13).",
         "operationId": "editar_apu_v1_hoja_borradores__id__apu__partida__put",
         "parameters": [
           {
@@ -7305,7 +7556,7 @@
           "hoja"
         ],
         "summary": "Vista Apu",
-        "description": "R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el\nservidor; sin coincidencias se devuelven todas las partidas.",
+        "description": "R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el\nservidor; sin coincidencias se devuelven todas las partidas. Los materiales con la traza\nvigente de su desperdicio traen la neta y el porcentaje (F5 vial, punto 1); no escribe.",
         "operationId": "vista_apu_v1_hoja_borradores__id__vistas_apu_get",
         "parameters": [
           {
@@ -8987,6 +9238,55 @@
         }
       }
     },
+    "/v1/produccion/recetas/vigentes": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Ver Recetas Vigentes",
+        "description": "La receta que rige en esa fecha para cada producto que tenga alguna. Sin ninguna, una lista\nvacía (no es un error): así la pantalla sabe qué productos son mezclas sin preguntar por cada\nagregado y sin provocar un 404 por cada uno que no tiene receta.",
+        "operationId": "ver_recetas_vigentes_v1_produccion_recetas_vigentes_get",
+        "parameters": [
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Fecha ISO, AAAA-MM-DD",
+              "title": "Fecha"
+            },
+            "description": "Fecha ISO, AAAA-MM-DD"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecetaRespuesta"
+                  },
+                  "title": "Response Ver Recetas Vigentes V1 Produccion Recetas Vigentes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/producciones": {
       "post": {
         "tags": [
@@ -10250,6 +10550,50 @@
         }
       }
     },
+    "/v1/consulta/unidades": {
+      "get": {
+        "tags": [
+          "consulta"
+        ],
+        "summary": "Unidades",
+        "description": "Las unidades que ya usa el catálogo (partidas e insumos), sin repetir: «m3», «m³» y «M3»\nson `m3`. Para sugerir la unidad al componer; se puede escribir otra.",
+        "operationId": "unidades_v1_consulta_unidades_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consulta/proveedores": {
+      "get": {
+        "tags": [
+          "consulta"
+        ],
+        "summary": "Proveedores",
+        "description": "Los proveedores de las cotizaciones activas de la carpeta (las de la versión vigente de cada\nobra; una retirada o de una versión descartada no), sin repetir, con la fecha de su última\ncotización. Para sugerir el proveedor al cotizar; se puede escribir uno nuevo.\n\nPermiso `LEER_PROYECTO` y no el `EDITAR_HOJA` del diseño (§12.2): el nombre del proveedor no es\nun dato nuevo para quien solo revisa, que ya lo lee en la columna «Cotización» de\n`GET /v1/hoja/precios` con ese mismo permiso. Pedir más aquí no protegería nada y obligaría a\notra regla de acceso para una lista de solo lectura (enmienda del diseño, 2026-11-05).",
+        "operationId": "proveedores_v1_consulta_proveedores_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProveedoresRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/consulta/{tabla}": {
       "get": {
         "tags": [
@@ -10292,6 +10636,37 @@
               "default": 10,
               "title": "Limite"
             }
+          },
+          {
+            "name": "detalle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Insumos y salarios: agrega la descripción y la unidad",
+              "default": false,
+              "title": "Detalle"
+            },
+            "description": "Insumos y salarios: agrega la descripción y la unidad"
+          },
+          {
+            "name": "para_armar_al",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Insumos y salarios: agrega el precio de la lista para armar a esa fecha (ISO), con su moneda y su fecha, o el aviso si está en otra moneda",
+              "title": "Para Armar Al"
+            },
+            "description": "Insumos y salarios: agrega el precio de la lista para armar a esa fecha (ISO), con su moneda y su fecha, o el aviso si está en otra moneda"
           }
         ],
         "responses": {
@@ -12660,6 +13035,81 @@
         ],
         "title": "AprobacionRastroRespuesta"
       },
+      "ApuPorHojaRespuesta": {
+        "properties": {
+          "hoja": {
+            "type": "string",
+            "title": "Hoja"
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "precio_impreso": {
+            "type": "string",
+            "title": "Precio Impreso"
+          },
+          "precio_silice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Silice"
+          },
+          "precio_silice_exacto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Silice Exacto"
+          },
+          "celda_precio": {
+            "type": "string",
+            "title": "Celda Precio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hoja",
+          "numero",
+          "codigo",
+          "descripcion",
+          "unidad",
+          "precio_impreso",
+          "precio_silice",
+          "precio_silice_exacto",
+          "celda_precio"
+        ],
+        "title": "ApuPorHojaRespuesta",
+        "description": "Una hoja de APU: el precio impreso y el de Sílice a dos decimales (el exacto aparte);\n`precio_silice` es `null` si la hoja no es evaluable."
+      },
       "AsistenteEstado": {
         "properties": {
           "activo": {
@@ -13195,6 +13645,46 @@
         ],
         "title": "BaseRespuesta"
       },
+      "Body_auditar_apu_por_hoja_ruta_v1_libros_apu_por_hoja_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro con un APU por hoja (.xlsx de solo valores)"
+          },
+          "presupuesto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presupuesto",
+            "description": "Libro del presupuesto (.xlsx, opcional)"
+          },
+          "perfil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perfil",
+            "description": "Nombre del perfil (opcional): apu_por_hoja por omisión"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro"
+        ],
+        "title": "Body_auditar_apu_por_hoja_ruta_v1_libros_apu_por_hoja_post"
+      },
       "Body_auditar_libro_v1_libros_auditoria_post": {
         "properties": {
           "libro": {
@@ -13451,6 +13941,11 @@
               }
             ],
             "title": "Archivo"
+          },
+          "dar_de_alta": {
+            "type": "boolean",
+            "title": "Dar De Alta",
+            "default": false
           }
         },
         "type": "object",
@@ -13883,6 +14378,24 @@
           "fecha_vigencia"
         ],
         "title": "Body_revalorar_presupuesto_presupuestos_revalorar_post"
+      },
+      "Body_revisar_archivo_v1_precios_empresa_listas_revision_post": {
+        "properties": {
+          "archivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivo"
+          }
+        },
+        "type": "object",
+        "title": "Body_revisar_archivo_v1_precios_empresa_listas_revision_post"
       },
       "Body_revisar_paquete_v1_revision_paquete_post": {
         "properties": {
@@ -14799,6 +15312,40 @@
               }
             ],
             "title": "Asfalto Pct"
+          },
+          "esponjamiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Esponjamiento"
+          },
+          "limpieza": {
+            "type": "boolean",
+            "title": "Limpieza",
+            "default": false
+          },
+          "medicion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medicion"
+          },
+          "suministro": {
+            "type": "boolean",
+            "title": "Suministro",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -14857,6 +15404,38 @@
               }
             ],
             "title": "Asfalto Pct"
+          },
+          "esponjamiento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Esponjamiento"
+          },
+          "limpieza": {
+            "type": "boolean",
+            "title": "Limpieza",
+            "default": false
+          },
+          "medicion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medicion"
+          },
+          "suministro": {
+            "type": "boolean",
+            "title": "Suministro",
+            "default": false
           }
         },
         "type": "object",
@@ -14947,6 +15526,14 @@
               }
             ],
             "title": "Aviso"
+          },
+          "empresa": {
+            "items": {
+              "$ref": "#/components/schemas/ListaDeEmpresa"
+            },
+            "type": "array",
+            "title": "Empresa",
+            "default": []
           }
         },
         "type": "object",
@@ -16801,6 +17388,29 @@
           "lineas": {
             "type": "integer",
             "title": "Lineas"
+          },
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "captafaros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captafaros"
           }
         },
         "additionalProperties": false,
@@ -16820,6 +17430,28 @@
           "lineas": {
             "type": "integer",
             "title": "Lineas"
+          },
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "captafaros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captafaros"
           }
         },
         "type": "object",
@@ -16924,6 +17556,92 @@
         ],
         "title": "Desglose"
       },
+      "DesperdicioDeFila": {
+        "properties": {
+          "fila": {
+            "type": "integer",
+            "title": "Fila"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "leyenda": {
+            "type": "string",
+            "title": "Leyenda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fila",
+          "descripcion",
+          "leyenda"
+        ],
+        "title": "DesperdicioDeFila",
+        "description": "La cantidad con desperdicio de una fila de materiales, dicha por el servidor (F5 vial)."
+      },
+      "DesperdicioLeidoRespuesta": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad_neta": {
+            "type": "string",
+            "title": "Cantidad Neta"
+          },
+          "desperdicio_pct": {
+            "type": "string",
+            "title": "Desperdicio Pct"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion",
+          "unidad",
+          "cantidad_neta",
+          "desperdicio_pct",
+          "cantidad"
+        ],
+        "title": "DesperdicioLeidoRespuesta"
+      },
+      "DesperdicioLineaRespuesta": {
+        "properties": {
+          "fila": {
+            "type": "integer",
+            "title": "Fila"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          },
+          "neta": {
+            "type": "string",
+            "title": "Neta"
+          },
+          "porcentaje": {
+            "type": "string",
+            "title": "Porcentaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fila",
+          "texto",
+          "neta",
+          "porcentaje"
+        ],
+        "title": "DesperdicioLineaRespuesta",
+        "description": "La neta y el porcentaje de desperdicio de la fila `fila` (desde 1) de Materiales, «0,50 +\n4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye. `neta` y `porcentaje`, con\ncoma decimal, siembran los campos de la Hoja, que los edita (2026-11-13)."
+      },
       "Detalle": {
         "properties": {
           "detalle": {
@@ -16982,6 +17700,14 @@
           "solo_lectura_insumos": {
             "type": "boolean",
             "title": "Solo Lectura Insumos"
+          },
+          "desperdicios": {
+            "items": {
+              "$ref": "#/components/schemas/DesperdicioLineaRespuesta"
+            },
+            "type": "array",
+            "title": "Desperdicios",
+            "default": []
           }
         },
         "type": "object",
@@ -17220,6 +17946,22 @@
             "type": "array",
             "maxItems": 500,
             "title": "Mano Obra"
+          },
+          "desperdicios": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "type": "array",
+                "maxItems": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desperdicios"
           }
         },
         "additionalProperties": false,
@@ -17967,6 +18709,22 @@
             "type": "integer",
             "title": "Insumos Variados"
           },
+          "precios_sin_insumo": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Precios Sin Insumo",
+            "description": "Precios de ensayo que no cambiaron nada porque su descripción no es la de ningún insumo del presupuesto base (se empareja por igualdad exacta)"
+          },
+          "precios_sin_cambio": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Precios Sin Cambio",
+            "description": "Precios de ensayo iguales al vigente en todos los renglones del base"
+          },
           "partidas": {
             "items": {
               "$ref": "#/components/schemas/FilaComparativoRespuesta"
@@ -18643,6 +19401,14 @@
                 "type": "null"
               }
             ]
+          },
+          "desperdicios": {
+            "items": {
+              "$ref": "#/components/schemas/DesperdicioDeFila"
+            },
+            "type": "array",
+            "title": "Desperdicios",
+            "default": []
           }
         },
         "type": "object",
@@ -18996,10 +19762,16 @@
             "type": "string",
             "title": "Precio",
             "default": ""
+          },
+          "desperdicio": {
+            "type": "string",
+            "title": "Desperdicio",
+            "default": ""
           }
         },
         "type": "object",
-        "title": "FilaMaterial"
+        "title": "FilaMaterial",
+        "description": "`desperdicio` (F5 vial, tarea 3): el porcentaje de desperdicio, con la cantidad neta en\n`cantidad`. Vacío no viaja en la respuesta, así una fila de siempre no cambia."
       },
       "FilaPlan": {
         "properties": {
@@ -19277,6 +20049,11 @@
               }
             ],
             "title": "Calculo"
+          },
+          "de_tramo": {
+            "type": "boolean",
+            "title": "De Tramo",
+            "default": false
           }
         },
         "type": "object",
@@ -20250,6 +21027,34 @@
         ],
         "title": "InsumoHojaRespuesta"
       },
+      "InsumoNuevoRespuesta": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "insumo": {
+            "type": "string",
+            "title": "Insumo"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "insumo",
+          "unidad",
+          "precio"
+        ],
+        "title": "InsumoNuevoRespuesta"
+      },
       "InsumoRespuesta": {
         "properties": {
           "codigo": {
@@ -20595,6 +21400,93 @@
         ],
         "title": "Juego"
       },
+      "LibroApuPorHojaRespuesta": {
+        "properties": {
+          "libro": {
+            "$ref": "#/components/schemas/LibroOrigenRespuesta"
+          },
+          "perfil": {
+            "type": "string",
+            "title": "Perfil"
+          },
+          "origen_perfil": {
+            "type": "string",
+            "enum": [
+              "paquete",
+              "local"
+            ],
+            "title": "Origen Perfil"
+          },
+          "presupuesto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presupuesto"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto"
+          },
+          "cumple": {
+            "type": "boolean",
+            "title": "Cumple"
+          },
+          "por_severidad": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Por Severidad"
+          },
+          "apus": {
+            "items": {
+              "$ref": "#/components/schemas/ApuPorHojaRespuesta"
+            },
+            "type": "array",
+            "title": "Apus"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoLibroRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          },
+          "desperdicios": {
+            "items": {
+              "$ref": "#/components/schemas/DesperdicioLeidoRespuesta"
+            },
+            "type": "array",
+            "title": "Desperdicios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "perfil",
+          "origen_perfil",
+          "presupuesto",
+          "hoja_presupuesto",
+          "cumple",
+          "por_severidad",
+          "apus",
+          "hallazgos",
+          "desperdicios"
+        ],
+        "title": "LibroApuPorHojaRespuesta"
+      },
       "LibroAuditadoRespuesta": {
         "properties": {
           "libro": {
@@ -20937,6 +21829,10 @@
       },
       "ListaCreadaRespuesta": {
         "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
           "nombre": {
             "type": "string",
             "title": "Nombre"
@@ -20966,10 +21862,27 @@
               }
             ],
             "title": "Aviso"
+          },
+          "dados_de_alta": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dados De Alta",
+            "default": []
+          },
+          "otra_unidad": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Otra Unidad",
+            "default": []
           }
         },
         "type": "object",
         "required": [
+          "id",
           "nombre",
           "propios",
           "desconocidos",
@@ -20977,6 +21890,29 @@
           "aviso"
         ],
         "title": "ListaCreadaRespuesta"
+      },
+      "ListaDeEmpresa": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "moneda"
+        ],
+        "title": "ListaDeEmpresa"
       },
       "ListaDeHoy": {
         "properties": {
@@ -21072,9 +22008,21 @@
             "type": "string",
             "enum": [
               "maprex",
-              "convertir"
+              "convertir",
+              "empresa"
             ],
             "title": "Desde"
+          },
+          "lista_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lista Id"
           }
         },
         "type": "object",
@@ -22039,6 +22987,11 @@
             ],
             "title": "Version"
           },
+          "version_de_linea_base": {
+            "type": "boolean",
+            "title": "Version De Linea Base",
+            "description": "True si `version` es la de la línea base de control; False si es la vigente"
+          },
           "total": {
             "anyOf": [
               {
@@ -22108,6 +23061,7 @@
           "etapa",
           "etapa_texto",
           "version",
+          "version_de_linea_base",
           "total",
           "moneda",
           "avance_real",
@@ -22581,6 +23535,29 @@
         "title": "PartidaAntesYDespuesRespuesta",
         "description": "Montos como `{texto, exacto}`; cantidad y duraciones (dias habiles) como decimal con punto;\nel termino en dias. `null`: no se pudo calcular."
       },
+      "PartidaDelContratoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad"
+        ],
+        "title": "PartidaDelContratoRespuesta"
+      },
       "PartidaDiferente": {
         "properties": {
           "codigo_partida": {
@@ -22805,6 +23782,41 @@
         ],
         "title": "PartidaRespuesta",
         "description": "Cabecera de una partida del catalogo."
+      },
+      "PartidasDelContratoRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "El código de la versión del contrato; vacío si no hay"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "description": "Texto fijo que explica una lista vacía",
+            "default": ""
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaDelContratoRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas",
+            "description": "Por código, una sola vez"
+          },
+          "truncada": {
+            "type": "boolean",
+            "title": "Truncada",
+            "description": "La lista se recortó al tope: que una partida no esté en ella no dice que no esté en el contrato (la interfaz no la rechaza y deja que decida el servidor)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "partidas"
+        ],
+        "title": "PartidasDelContratoRespuesta"
       },
       "PartidasHalladasRespuesta": {
         "properties": {
@@ -23122,6 +24134,53 @@
           "carpetas_omitidas"
         ],
         "title": "PendientesTodasRespuesta"
+      },
+      "PerfilApuPorHojaRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "origen": {
+            "type": "string",
+            "enum": [
+              "paquete",
+              "local"
+            ],
+            "title": "Origen"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "origen",
+          "hoja_presupuesto",
+          "motivo"
+        ],
+        "title": "PerfilApuPorHojaRespuesta",
+        "description": "Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el\nperfil local está mal escrito (entonces no se puede elegir)."
       },
       "PeriodoPlanPeticion": {
         "properties": {
@@ -24057,6 +25116,44 @@
           "etiqueta"
         ],
         "title": "Proveedor"
+      },
+      "ProveedorUsadoRespuesta": {
+        "properties": {
+          "proveedor": {
+            "type": "string",
+            "title": "Proveedor",
+            "description": "Como en su cotización más reciente"
+          },
+          "ultimo_uso": {
+            "type": "string",
+            "format": "date",
+            "title": "Ultimo Uso",
+            "description": "La fecha de esa cotización"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedor",
+          "ultimo_uso"
+        ],
+        "title": "ProveedorUsadoRespuesta"
+      },
+      "ProveedoresRespuesta": {
+        "properties": {
+          "proveedores": {
+            "items": {
+              "$ref": "#/components/schemas/ProveedorUsadoRespuesta"
+            },
+            "type": "array",
+            "title": "Proveedores",
+            "description": "El último usado primero"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedores"
+        ],
+        "title": "ProveedoresRespuesta"
       },
       "ProyeccionEntrada": {
         "properties": {
@@ -25796,219 +26893,6 @@
         ],
         "title": "RevaloracionRespuesta"
       },
-      "RevisionRespuesta": {
-        "properties": {
-          "sha256": {
-            "type": "string",
-            "title": "Sha256"
-          },
-          "estado": {
-            "type": "string",
-            "title": "Estado"
-          },
-          "motivo": {
-            "type": "string",
-            "title": "Motivo"
-          },
-          "color": {
-            "type": "string",
-            "title": "Color"
-          },
-          "banner": {
-            "type": "string",
-            "title": "Banner"
-          },
-          "legible": {
-            "type": "boolean",
-            "title": "Legible"
-          },
-          "banner_version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Banner Version"
-          },
-          "ayuda_registro": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ayuda Registro"
-          },
-          "avisos": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Avisos"
-          },
-          "retroactiva": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Retroactiva"
-          },
-          "aviso_armo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Aviso Armo"
-          },
-          "reauditoria": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReauditoriaRevision"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "entrega_anterior": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TablaDeDiferencia"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "sin_entrega_anterior": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sin Entrega Anterior"
-          },
-          "listas": {
-            "items": {
-              "$ref": "#/components/schemas/ListaDelCaso"
-            },
-            "type": "array",
-            "title": "Listas"
-          },
-          "sin_listas": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sin Listas"
-          },
-          "contra_lista": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ContraLista"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "cambios_titulo": {
-            "type": "string",
-            "title": "Cambios Titulo"
-          },
-          "cambios": {
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Cambios"
-          },
-          "dictamenes": {
-            "items": {
-              "$ref": "#/components/schemas/DictamenAnterior"
-            },
-            "type": "array",
-            "title": "Dictamenes"
-          },
-          "resultados": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Resultados"
-          },
-          "admite_dictamen": {
-            "type": "boolean",
-            "title": "Admite Dictamen"
-          },
-          "sin_dictamen": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sin Dictamen"
-          },
-          "nota_excel": {
-            "type": "string",
-            "title": "Nota Excel"
-          }
-        },
-        "type": "object",
-        "required": [
-          "sha256",
-          "estado",
-          "motivo",
-          "color",
-          "banner",
-          "legible",
-          "banner_version",
-          "ayuda_registro",
-          "avisos",
-          "retroactiva",
-          "aviso_armo",
-          "reauditoria",
-          "entrega_anterior",
-          "sin_entrega_anterior",
-          "listas",
-          "sin_listas",
-          "contra_lista",
-          "cambios_titulo",
-          "cambios",
-          "dictamenes",
-          "resultados",
-          "admite_dictamen",
-          "sin_dictamen",
-          "nota_excel"
-        ],
-        "title": "RevisionRespuesta"
-      },
       "Rol": {
         "type": "string",
         "enum": [
@@ -26303,11 +27187,19 @@
                 "maxLength": 20000
               },
               {
+                "items": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "type": "array",
+                "maxItems": 200
+              },
+              {
                 "type": "null"
               }
             ],
             "title": "Insumos",
-            "description": "Separados por coma; vacio o null = todos"
+            "description": "Separados por coma, o una lista de descripciones exactas (admite la coma). null, omitido o texto vacio = todos; texto de solo comas o lista sin nombres ([] incluida) = ninguno. La lista: hasta 200 descripciones y 20000 caracteres en total"
           }
         },
         "type": "object",
@@ -26426,6 +27318,91 @@
             "type": "string",
             "title": "Fuente",
             "description": "De dónde sale el dato"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion",
+            "description": "Con `detalle`: la descripción del insumo"
+          },
+          "unidad": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidad",
+            "description": "Con `detalle`: la unidad del insumo, si la tiene"
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo",
+            "description": "Con `detalle`: el tipo del insumo en palabras («material», «equipo» o «mano de obra»), para no sacarlo del texto de `fuente`"
+          },
+          "precio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio",
+            "description": "Con `para_armar_al`: el precio en la lista para armar a esa fecha, decimal con punto; nunca en otra moneda que la de la carpeta"
+          },
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda",
+            "description": "La moneda de la lista de la que sale el precio"
+          },
+          "fecha_precio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Precio",
+            "description": "Desde cuándo rige esa lista"
+          },
+          "aviso_precio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Precio",
+            "description": "Si esa lista está en otra moneda: por qué no viene el precio"
           }
         },
         "type": "object",
@@ -27029,6 +28006,18 @@
             ],
             "title": "Distancia Planta Km"
           },
+          "transporte": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transporte"
+          },
           "capas": {
             "items": {
               "$ref": "#/components/schemas/CapaEntrada"
@@ -27086,6 +28075,17 @@
               }
             ],
             "title": "Distancia Planta Km"
+          },
+          "transporte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transporte"
           },
           "capas": {
             "items": {
@@ -27321,6 +28321,52 @@
         ],
         "title": "UnidadDelPlano",
         "description": "P2: la unidad del dibujo con que se vuelve a leer el plano detenido."
+      },
+      "UnidadUsadaRespuesta": {
+        "properties": {
+          "unidad": {
+            "type": "string",
+            "title": "Unidad",
+            "description": "La forma canónica (tabla de alias del núcleo): lo que se guarda"
+          },
+          "usos": {
+            "type": "integer",
+            "title": "Usos",
+            "description": "Cuántas partidas e insumos del catálogo la usan"
+          },
+          "grafias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Grafias",
+            "description": "Cómo está escrita en el catálogo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unidad",
+          "usos",
+          "grafias"
+        ],
+        "title": "UnidadUsadaRespuesta"
+      },
+      "UnidadesRespuesta": {
+        "properties": {
+          "unidades": {
+            "items": {
+              "$ref": "#/components/schemas/UnidadUsadaRespuesta"
+            },
+            "type": "array",
+            "title": "Unidades",
+            "description": "Las más usadas primero"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unidades"
+        ],
+        "title": "UnidadesRespuesta"
       },
       "UsarCobro": {
         "properties": {
@@ -27686,6 +28732,11 @@
           "motivo": {
             "type": "string",
             "title": "Motivo"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente",
+            "default": ""
           },
           "origen": {
             "type": "string",
@@ -29199,6 +30250,35 @@
         ],
         "title": "ResumenRespuesta"
       },
+      "api__rutas__precios_empresa__RevisionRespuesta": {
+        "properties": {
+          "reconocidos": {
+            "type": "integer",
+            "title": "Reconocidos"
+          },
+          "nuevos": {
+            "items": {
+              "$ref": "#/components/schemas/InsumoNuevoRespuesta"
+            },
+            "type": "array",
+            "title": "Nuevos"
+          },
+          "otra_unidad": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Otra Unidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reconocidos",
+          "nuevos",
+          "otra_unidad"
+        ],
+        "title": "RevisionRespuesta"
+      },
       "api__rutas__produccion__ImportacionRespuesta": {
         "properties": {
           "registrados": {
@@ -29351,6 +30431,40 @@
         ],
         "title": "GuardadoRespuesta"
       },
+      "api__rutas__reajuste__SerieRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave",
+            "description": "El código de la serie, como se cita en un componente"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "organismo": {
+            "type": "string",
+            "title": "Organismo"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "periodicidad": {
+            "type": "string",
+            "title": "Periodicidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "nombre",
+          "organismo",
+          "unidad",
+          "periodicidad"
+        ],
+        "title": "SerieRespuesta"
+      },
       "api__rutas__reajuste__VersionRespuesta": {
         "properties": {
           "codigo": {
@@ -29373,6 +30487,219 @@
           "revalorada"
         ],
         "title": "VersionRespuesta"
+      },
+      "api__rutas__revision__RevisionRespuesta": {
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          },
+          "banner": {
+            "type": "string",
+            "title": "Banner"
+          },
+          "legible": {
+            "type": "boolean",
+            "title": "Legible"
+          },
+          "banner_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Version"
+          },
+          "ayuda_registro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ayuda Registro"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "retroactiva": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retroactiva"
+          },
+          "aviso_armo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Armo"
+          },
+          "reauditoria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReauditoriaRevision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entrega_anterior": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TablaDeDiferencia"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sin_entrega_anterior": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Entrega Anterior"
+          },
+          "listas": {
+            "items": {
+              "$ref": "#/components/schemas/ListaDelCaso"
+            },
+            "type": "array",
+            "title": "Listas"
+          },
+          "sin_listas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Listas"
+          },
+          "contra_lista": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContraLista"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cambios_titulo": {
+            "type": "string",
+            "title": "Cambios Titulo"
+          },
+          "cambios": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Cambios"
+          },
+          "dictamenes": {
+            "items": {
+              "$ref": "#/components/schemas/DictamenAnterior"
+            },
+            "type": "array",
+            "title": "Dictamenes"
+          },
+          "resultados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Resultados"
+          },
+          "admite_dictamen": {
+            "type": "boolean",
+            "title": "Admite Dictamen"
+          },
+          "sin_dictamen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Dictamen"
+          },
+          "nota_excel": {
+            "type": "string",
+            "title": "Nota Excel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sha256",
+          "estado",
+          "motivo",
+          "color",
+          "banner",
+          "legible",
+          "banner_version",
+          "ayuda_registro",
+          "avisos",
+          "retroactiva",
+          "aviso_armo",
+          "reauditoria",
+          "entrega_anterior",
+          "sin_entrega_anterior",
+          "listas",
+          "sin_listas",
+          "contra_lista",
+          "cambios_titulo",
+          "cambios",
+          "dictamenes",
+          "resultados",
+          "admite_dictamen",
+          "sin_dictamen",
+          "nota_excel"
+        ],
+        "title": "RevisionRespuesta"
       },
       "api__rutas__riesgo__SerieRespuesta": {
         "properties": {

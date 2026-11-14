@@ -11,6 +11,10 @@ una cuenta: la clave recibe 403.
   catalogo no conoce. El archivo viene de fuera: solo `.csv` o `.xlsx`, tope de `TOPE_BYTES`, la
   guardia de `adapters.hoja_empresa` si es un libro, y nada de lo enviado vuelve en un error de
   validacion (`RutaSinEco`).
+- `POST /v1/precios-empresa/listas/revision` (multipart: archivo) -> `{reconocidos, nuevos,
+  otra_unidad}`: lo que la lista haria con el archivo, sin escribir (2026-11-13, D-8). Con
+  `dar_de_alta=true` en `POST .../listas` los `nuevos` se dan de alta y su precio entra; la
+  respuesta dice `dados_de_alta` y, por fila de otra unidad, `otra_unidad` con la del catalogo.
 - `GET /v1/precios-empresa/listas/{id}/hallazgos?fecha=` -> R11 y R12 de la lista sola, en memoria.
 - `GET /v1/precios-empresa/listas/{id}/atipicos` -> `{disponible, avisos, variaciones}`: el boton
   «Buscar variaciones atipicas de precio» (RF-100) sobre los insumos de la lista. Solo lee; cada
@@ -44,10 +48,11 @@ from api.sesion_web import exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import atipicos as busqueda_atipica
 from aplicacion import precios_empresa as logica
+from aplicacion.plural import plural
 from seguridad.permisos import Accion
 
 MENSAJE_INVALIDO = "Los datos enviados no son válidos."
-MENSAJE_CASO = "No se pudo leer o escribir el caso abierto."
+MENSAJE_CASO = "No se pudo leer o escribir la carpeta abierta."
 MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto."
 MENSAJE_FORMATO = "No se creó la lista: el archivo debe ser CSV o XLSX."
 MENSAJE_TAMANO = "No se creó la lista: el archivo pesa más del máximo permitido (20 MiB)."
@@ -93,11 +98,27 @@ class MensajeRespuesta(BaseModel):
 
 
 class ListaCreadaRespuesta(BaseModel):
+    id: int
     nombre: str
     propios: int
     desconocidos: list[str]
     mensaje: str
     aviso: str | None
+    dados_de_alta: list[str] = []
+    otra_unidad: list[str] = []
+
+
+class InsumoNuevoRespuesta(BaseModel):
+    tipo: str
+    insumo: str
+    unidad: str
+    precio: str
+
+
+class RevisionRespuesta(BaseModel):
+    reconocidos: int
+    nuevos: list[InsumoNuevoRespuesta]
+    otra_unidad: list[str]
 
 
 class HallazgosRespuesta(BaseModel):
@@ -122,7 +143,7 @@ def _motivo(error: Exception) -> str:
 def _exigir_lista_de_empresa(sesion, lista_id: int) -> None:
     """La pagina clasica solo ofrece las listas de empresa: otra lista es un 404."""
     if lista_id not in {i for i, _ in logica.listas_de_empresa(sesion)}:
-        raise HTTPException(404, f"la lista {lista_id} no es una lista de empresa de este caso")
+        raise HTTPException(404, f"la lista {lista_id} no es una lista de empresa de esta carpeta")
 
 
 @router.get("", response_model=EstadoRespuesta)
@@ -169,29 +190,20 @@ def crear_lista(
     moneda: Annotated[str, Form(max_length=20)] = "",
     nombre: Annotated[str, Form(max_length=200)] = "",
     archivo: Annotated[UploadFile | None, File()] = None,
+    dar_de_alta: Annotated[bool, Form()] = False,
 ) -> ListaCreadaRespuesta:
     """UC-17 4: crea la lista de la empresa sobre una lista base con los precios del archivo.
 
     Empresa, RIF y fuente vacios llegan al nucleo, que los rechaza con su mensaje (como la pagina
     clasica). Todo o nada: ante cualquier error no queda nada escrito. Los insumos del archivo
-    que el catalogo no conoce se informan y no se dan de alta (UC-17 4a).
+    que el catalogo no conoce se informan y no se dan de alta (UC-17 4a), salvo con `dar_de_alta`
+    (la confirmacion tras `POST .../listas/revision`, D-8); los de otra unidad, nunca.
     """
     if not moneda or archivo is None:
         raise HTTPException(422, MENSAJE_FALTA)
-    try:
-        sufijo = Path(nombre_seguro(archivo.filename)).suffix.lower()
-    except ValueError:
-        sufijo = ""
-    if sufijo not in SUFIJOS:
-        raise HTTPException(422, MENSAJE_FORMATO)
-    if len(archivo.file.read(TOPE_BYTES + 1)) > TOPE_BYTES:
-        raise HTTPException(422, MENSAJE_TAMANO)
-    archivo.file.seek(0)
     with _caso_legible():
         try:
-            with tempfile.TemporaryDirectory() as directorio:
-                ruta = guardar_subida(directorio, archivo)
-                comprobar_libro_legible(ruta)
+            with _archivo_subido(archivo) as ruta:
                 resumen = logica.crear_lista(
                     sesion,
                     ruta,
@@ -202,15 +214,77 @@ def crear_lista(
                     fecha=fecha,
                     fuente=fuente,
                     nombre=nombre,
+                    dar_de_alta=dar_de_alta,
                 )
         except ValueError as error:
             raise HTTPException(422, f"No se creó la lista: {_motivo(error)}") from None
+    assert resumen.lista_id is not None  # `crear_lista` siempre la da
     return ListaCreadaRespuesta(
+        id=resumen.lista_id,
         nombre=resumen.nombre,
         propios=resumen.propios,
         desconocidos=list(resumen.desconocidos),
-        mensaje=f"Lista «{resumen.nombre}» creada con {resumen.propios} precios propios.",
+        mensaje=_mensaje_creada(resumen),
         aviso=AVISO_DESCONOCIDOS if resumen.desconocidos else None,
+        dados_de_alta=list(resumen.dados_de_alta),
+        otra_unidad=list(resumen.otra_unidad),
+    )
+
+
+def _mensaje_creada(resumen: logica.ResumenEmpresa) -> str:
+    propios = plural(resumen.propios, "precio propio", "precios propios")
+    dados = len(resumen.dados_de_alta)
+    if not dados:
+        return f"Lista «{resumen.nombre}» creada con {propios}."
+    verbo = "se dio" if dados == 1 else "se dieron"
+    altas = plural(dados, "insumo nuevo", "insumos nuevos")
+    return f"Lista «{resumen.nombre}» creada con {propios}; {verbo} de alta {altas} en el catálogo."
+
+
+@contextmanager
+def _archivo_subido(archivo: UploadFile) -> Iterator[Path]:
+    """El archivo subido en un directorio temporal, si es CSV o XLSX, cabe en `TOPE_BYTES` y, si
+    es un libro, pasa la guardia; si no, el 422 con el motivo (sin eco de lo enviado)."""
+    try:
+        sufijo = Path(nombre_seguro(archivo.filename)).suffix.lower()
+    except ValueError:
+        sufijo = ""
+    if sufijo not in SUFIJOS:
+        raise HTTPException(422, MENSAJE_FORMATO)
+    if len(archivo.file.read(TOPE_BYTES + 1)) > TOPE_BYTES:
+        raise HTTPException(422, MENSAJE_TAMANO)
+    archivo.file.seek(0)
+    with tempfile.TemporaryDirectory() as directorio:
+        ruta = guardar_subida(directorio, archivo)
+        comprobar_libro_legible(ruta)
+        yield ruta
+
+
+@router.post("/listas/revision", response_model=RevisionRespuesta, dependencies=[SOLO_CUENTA])
+@sin_eco(MENSAJE_INVALIDO)
+def revisar_archivo(
+    sesion: SesionDep, archivo: Annotated[UploadFile | None, File()] = None
+) -> RevisionRespuesta:
+    """D-8 (2026-11-13): lo que la lista haria con el archivo, sin escribir nada: cuantas filas
+    reconoce el catalogo, los insumos nuevos que se pueden dar de alta y el aviso de cada fila que
+    el catalogo tiene con otra unidad."""
+    if archivo is None:
+        raise HTTPException(422, MENSAJE_FALTA)
+    with _caso_legible():
+        try:
+            with _archivo_subido(archivo) as ruta:
+                revision = logica.revisar_archivo(sesion, ruta)
+        except ValueError as error:
+            raise HTTPException(422, f"No se revisó el archivo: {_motivo(error)}") from None
+    return RevisionRespuesta(
+        reconocidos=revision.reconocidos,
+        nuevos=[
+            InsumoNuevoRespuesta(
+                tipo=n.tipo.value, insumo=n.descripcion, unidad=n.unidad or "", precio=str(n.precio)
+            )
+            for n in revision.nuevos
+        ],
+        otra_unidad=list(revision.otra_unidad),
     )
 
 

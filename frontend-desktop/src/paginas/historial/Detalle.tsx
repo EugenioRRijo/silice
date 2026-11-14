@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { fechaEsVe } from "./logica";
 
 // Una auditoria guardada completa (GET /v1/auditorias-libro/{id}). Los montos llegan como texto decimal exacto y

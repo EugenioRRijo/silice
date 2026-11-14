@@ -341,6 +341,17 @@ class EscenarioRespuesta(BaseModel):
     variacion_pct: str
     hallazgos: int
     insumos_variados: int
+    precios_sin_insumo: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Precios de ensayo que no cambiaron nada porque su descripción no es la de ningún "
+            "insumo del presupuesto base (se empareja por igualdad exacta)"
+        ),
+    )
+    precios_sin_cambio: list[str] = Field(
+        default_factory=list,
+        description="Precios de ensayo iguales al vigente en todos los renglones del base",
+    )
     partidas: list[FilaComparativoRespuesta]
 
 

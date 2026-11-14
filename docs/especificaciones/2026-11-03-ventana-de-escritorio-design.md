@@ -1,7 +1,11 @@
 # Ventana de escritorio propia para Sílice: diseño
 
 **Fecha:** 2026-11-03 · **Rama:** `feature/disenos-f5` (árbol `.worktrees/s2m5`) · **Estado:** PROPUESTO (por aprobar por
-Eugenio).
+Eugenio). **2026-11-06:** construido V0 a V3 en `feature/f5-ventana` con las decisiones **provisionales** de §10
+(recomendaciones del orquestador, pendientes de ratificar por Eugenio); §6.1 (punto 6) y §7.3 quedan enmendados por la
+decisión 3. **2026-11-07:** Eugenio ratificó la decisión 7 de §10 (perfil de WebView2 en la carpeta de datos).
+**2026-11-12:** §7.2 (riesgo del puerto de depuración) y §7.5 (cómo abre la humo ese puerto y cómo descarga) quedan
+enmendados por lo aprendido al construir V4 (bitácora `2026-11-06-ventana-v0.md` §3.4 y §3.5).
 **Origen:** Eugenio aprobó el 2026-10-25 que, después de la auditoría, Sílice tuviera una ventana de escritorio propia en vez
 de abrirse en el navegador. Diseños y planes que esto toca: `2026-10-11-silice-s5-producto-instalador-design.md` (instalador,
 arranque, prueba de humo), `docs/planes/RUTA_SESIONES.md` (rulings RT-2, RT-3 y RT-5; sesión 5),
@@ -126,7 +130,8 @@ que Sílice abre en cualquier equipo.
 1. El acceso directo sigue ejecutando `python -m operacion arrancar`. El lanzador prepara las bases, emite el código de
    instalación si hace falta, levanta Uvicorn y espera la salud, **como hoy**.
 2. Después decide cómo presentar la interfaz: si el ajuste `interfaz` de `silice.toml` es `ventana` (por defecto) y el
-   equipo tiene WebView2, abre la ventana; si no, abre el navegador como hoy y deja un AVISO en la consola y en el registro
+   equipo tiene WebView2, abre la ventana (enmienda 2026-11-06: el ajuste vive en la tabla `[interfaz]` que ya existía,
+   con la clave `abrir_en = "ventana" | "navegador"`); si no, abre el navegador como hoy y deja un AVISO en la consola y en el registro
    que dice por qué.
 3. La ventana: título «Sílice», ícono propio, abierta maximizada, tamaño mínimo de 1056 px de ancho (el más chico que la
    interfaz soporta), sin `js_api`, sin herramientas de desarrollo, con las descargas permitidas (las necesita
@@ -134,8 +139,11 @@ que Sílice abre en cualquier equipo.
 4. pywebview exige el hilo principal: la vigilancia de Uvicorn, que hoy es el bucle principal, pasa a un hilo. Si Uvicorn
    muere, la ventana muestra un mensaje fijo («Sílice se detuvo; ciérrela y vuelva a abrir Sílice») y no queda colgada.
 5. Al cerrar la ventana, `webview.start()` regresa y el `finally` de hoy termina los procesos y borra el estado.
-6. Una segunda ejecución con Sílice en marcha abre una ventana más sobre el mismo servidor; esa ventana no es dueña del
-   servidor y cerrarla no lo detiene (o abre el navegador si no hay WebView2).
+6. ~~Una segunda ejecución con Sílice en marcha abre una ventana más sobre el mismo servidor; esa ventana no es dueña del
+   servidor y cerrarla no lo detiene (o abre el navegador si no hay WebView2).~~ **Enmienda 2026-11-06 (decisión 3,
+   provisional):** una segunda ejecución con Sílice en marcha **trae al frente la ventana que ya está** (la del lanzador
+   vivo, primer PID de `servidor.json`, buscada por su título «Sílice») y sale sin lanzar nada; si la instancia viva no
+   tiene ventana (abrió el navegador), abre el navegador como hoy. La «ventana no dueña» no existe.
 7. `--sin-ventana` fuerza el navegador; `--sin-navegador` (el de la humo) sigue sin presentar nada.
 
 **Puerto:** se queda fijo (8501, `operacion/config.py`). El puerto efímero de RT-5 rompería «abra
@@ -197,7 +205,7 @@ el respaldo hace innecesario enmendarlo.
 | Descargas o subidas que no funcionen en la ventana | Pantallas que exportan o suben quedan cojas | V0 y la humo prueban una descarga `blob:` y una subida; las descargas se encienden explícitamente |
 | Antivirus que vigila `python.exe` abriendo componentes de .NET | Bloqueo o aviso | Respaldo al navegador; anotarlo en el manual |
 | Proyecto pequeño, un solo mantenedor | Correcciones lentas | Versión fijada; el respaldo deja a Sílice usable aunque pywebview falle |
-| El puerto de depuración de WebView2 que usa la humo se colara al producto | Cualquier proceso local podría manejar la ventana | Solo lo pone la humo por variable de entorno; una prueba comprueba que `entorno_hijos` y la ventana nunca lo ponen |
+| El puerto de depuración de WebView2 que usa la humo se colara al producto | Cualquier proceso local podría manejar la ventana | ~~Solo lo pone la humo por variable de entorno; una prueba comprueba que `entorno_hijos` y la ventana nunca lo ponen~~ **Enmienda 2026-11-12:** Sílice nunca lo pide (`REMOTE_DEBUGGING_PORT = None`) y `entorno_hijos` no pasa las variables `WEBVIEW2_*` a Uvicorn. Pero el cargador de WebView2 también lo toma de fuera de Sílice: la variable `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` y la política `SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments` (primero HKLM y luego HKCU; valor con el AUMID `EugenioRijo.Silice`, con el nombre del ejecutable o `*`; Microsoft, referencia de `CreateCoreWebView2EnvironmentWithOptions`). El lanzador lee todas esas fuentes (`ventana.fuentes_puerto_depuracion`) y da un AVISO que nombra cada una que lo pide. No lo impide: quien puede escribir en HKLM ya administra el equipo |
 
 ### 7.3 Pruebas unitarias (V2)
 
@@ -207,7 +215,9 @@ el respaldo hace innecesario enmendarlo.
   el AVISO con el motivo.
 - La ventana falla al abrir: navegador y AVISO; Sílice sigue en marcha.
 - Cerrar la ventana termina Uvicorn y borra `servidor.json`; Uvicorn muere con la ventana abierta: mensaje y salida limpia.
-- Segunda ejecución: ventana no dueña; cerrarla no termina el servidor.
+- ~~Segunda ejecución: ventana no dueña; cerrarla no termina el servidor.~~ Enmienda 2026-11-06: segunda ejecución con
+  la instancia viva: trae al frente su ventana y no lanza ni abre nada más; sin ventana viva, el navegador; con
+  `--sin-navegador`, nada.
 - El entorno de los hijos y de la ventana no contiene la variable del puerto de depuración.
 
 ### 7.4 Prueba manual (V5)
@@ -223,6 +233,19 @@ depuración **solo en este paso**; conectar Playwright por CDP (lo documenta Pla
 `instalador/navegador.py`; cargar `/app/`, anotar toda petición (la lista fuera de `127.0.0.1` debe quedar vacía, como
 hoy), hacer una descarga; cerrar la ventana y afirmar que Uvicorn terminó y que `servidor.json` ya no existe. Si la imagen
 del runner no trae WebView2, el trabajo lo instala antes del paso (la CI tiene internet; el producto no lo necesita).
+
+**Enmienda 2026-11-12 (V4 construido; bitácora V0 §3.4 y §3.5).** Dos cosas cambian respecto del párrafo anterior:
+
+- **El puerto de depuración se abre por política de HKLM, no por variable.** La humo corre elevada y, desde el runtime 150,
+  WebView2 ignora en un proceso elevado la variable `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` y la política de HKCU. La humo
+  pone, solo durante el paso 6b, el valor `python.exe` en `HKLM\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments`
+  (crea la clave solo si falta y devuelve el valor previo si lo había), ya no pone la variable, y afirma que el AVISO del
+  lanzador nombra esa política (§7.2).
+- **La descarga se hace con `fetch` dentro de la ventana**, no con el diálogo «Guardar como» de pywebview:
+  `navegador.py --cdp` reclama el primer administrador y baja un respaldo con la misma cookie y la misma CSP de la
+  ventana. El diálogo de descarga queda para la prueba manual (V5). Además, el muestreo de conexiones del paso 9 mira
+  también los `msedgewebview2.exe` de la ventana, y el paso 7 exige un juego de respaldo **de migración** nuevo (el 6b deja
+  uno manual en la misma carpeta).
 
 ## 8. Si V0 sale mal
 
@@ -241,3 +264,26 @@ del runner no trae WebView2, el trabajo lo instala antes del paso (la CI tiene i
 5. ¿Quiere un ícono de Sílice dibujado para esto? Hoy no hay ninguno: los accesos usan el de Python y la interfaz no
    tiene favicon (`frontend-desktop/index.html` lo deja vacío).
 6. ¿Puede probar V0 en un equipo de la empresa con Windows 10, para saber si allí WebView2 está?
+
+## 10. Decisiones provisionales (2026-11-06)
+
+Recomendaciones del orquestador a las preguntas de §9, con las que se construyó V0 a V3 en `feature/f5-ventana`.
+**Pendientes de ratificar por Eugenio**; cada una es reversible sin tocar el núcleo.
+
+| # | Pregunta de §9 | Decisión provisional | Dónde quedó |
+|---|---|---|---|
+| 1 | pywebview y enmendar RT-3 y RT-5 | pywebview con el navegador como respaldo; RT-3 y RT-5 enmendados con fecha | `docs/planes/RUTA_SESIONES.md` §2, `docs/ERS.md` (enmienda 2026-11-06) |
+| 2 | La consola minimizada | Se queda en esta versión: muestra el código de instalación y cerrarla también detiene Sílice | `operacion/lanzador.py` (mensajes de la consola), RF-181 |
+| 3 | Segunda ejecución | Trae al frente la ventana que ya está (estándar de las aplicaciones de escritorio), no abre otra | §6.1 punto 6 y §7.3 enmendados; `operacion/ventana.py` (`traer_al_frente`), RF-183 |
+| 4 | Dónde se cambia `interfaz` | Solo en `silice.toml` (`[interfaz] abrir_en`), no en Administración por ahora | `operacion/config.py`, RF-182 |
+| 5 | Ícono de Sílice | Sí: SVG propio, sobrio, con los colores del marco de Carbon; favicon de la interfaz, ícono de la ventana, de los accesos y del instalador | `frontend-desktop/public/silice.svg`, `operacion/silice.ico` (lo genera `instalador/icono.py`), `instalador/silice.iss` |
+| 6 | V0 en un equipo de la empresa con Windows 10 | Queda para Eugenio (V5): este equipo es Windows 11 | `docs/bitacora/2026-11-06-ventana-v0.md` §1.5 |
+| 7 | Perfil de WebView2 (lo levantó el árbitro único del 2026-11-07, V1: el modo privado borraba `localStorage` y el tamaño de letra y el zoom de la Hoja volvían a «Normal» en cada arranque) | **Ratificada por Eugenio el 2026-11-07, «Guardar perfil en datos»:** `private_mode=False` con `storage_path` en `<datos>\perfil_ventana` (en el producto, `%LOCALAPPDATA%\Silice\datos\perfil_ventana`). La cookie `silice_sesion` sigue sin `Max-Age` ni `Expires`: WebView2 no la escribe en el perfil y la sesión termina al cerrar la ventana (RNF-22). En el perfil quedan `localStorage` (solo esas dos preferencias: el resto de la interfaz no usa almacenamiento, RT-9) y la caché del navegador, en la misma carpeta y con los mismos permisos que las bases. Desinstalar no lo borra, como el resto de los datos | `operacion/config.py` (`carpeta_perfil_ventana`), `operacion/ventana.py`, `operacion/lanzador.py`, RF-180 y RF-184; `tests/unit/test_ventana.py`, `test_lanzador.py`, `test_operacion_config.py` |
+
+Las decisiones 1 a 6 siguen **provisionales**; la 7 está ratificada. Además, el 2026-11-07 (MENOR del árbitro) `js_api`
+pasó de `None` a `ventana.PuenteCerrado`, un objeto sin atributos: pywebview busca lo que pide la página con `getattr`
+encadenado sobre `js_api`, y con `None` la cadena seguía por los atributos de `None` («__class__» llegaba a llamarse).
+El riesgo que queda (los mensajes internos de pywebview) está escrito en RF-184.
+
+Resultado de V0 (bitácora): pywebview 6.2.1 y pythonnet 3.2.1 funcionan con el Python 3.13.13 del instalador; la capa
+suma unos 0,6 MB con LZMA; WebView2 está en este equipo. §8 no hizo falta.

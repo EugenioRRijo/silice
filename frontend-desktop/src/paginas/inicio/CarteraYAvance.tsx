@@ -4,12 +4,13 @@ import type { Etapa, ObraDeLaCartera, ResumenTodasRespuesta } from "../../api/ti
 import { AvisoError } from "../../comun/AvisoError";
 import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { QueEsEsto } from "../../comun/QueEsEsto";
 import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { FranjaDeCifras } from "../../indicadores/FranjaDeCifras";
 import { EtapaDeObra } from "../../marco/EtapaDeObra";
 import { rutaOPendientes } from "../../marco/espacios";
 import { claveDeObra } from "../pendientes/logica";
-import type { Carga } from "./useCarga";
+import type { Carga } from "../../comun/useCarga";
 import { TEXTOS } from "./textos";
 
 // Las palabras de la etapa las da el servidor (`etapa_texto`, la misma tabla del Resumen de la obra); aquí solo se decide
@@ -150,6 +151,11 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
         <h2 id="inicio-cartera" className="cds--type-heading-compact-02">
           {TEXTOS.cartera.titulo}
         </h2>
+        {carga.estado === "listo" && carga.datos.por_moneda.length > 0 && (
+          <QueEsEsto titulo={TEXTOS.cartera.ayudaTitulo}>
+            <p className="cds--type-body-compact-01">{TEXTOS.cartera.ayuda}</p>
+          </QueEsEsto>
+        )}
         {cuerpo()}
       </section>
       {obras.length > 0 && (

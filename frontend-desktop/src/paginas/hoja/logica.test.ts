@@ -151,5 +151,8 @@ describe("lógica de la hoja del proyecto", () => {
     expect(comoSeMidio({ ...base, nota: "Medido en el plano A-2" })).toEqual({ calculo: null, nota: "Medido en el plano A-2", texto: null });
     expect(comoSeMidio(base)).toEqual({ calculo: null, nota: null, texto: "Sin cálculo" });
     expect(comoSeMidio({ ...base, quitable: false })).toEqual({ calculo: null, nota: null, texto: "Sale del espacio" });
+    // un renglón de un tramo vial (quitable, sin cálculo escrito) no es «sin cálculo»: su cantidad sale del tramo (video 2026-11-01, D8)
+    expect(comoSeMidio({ ...base, de_tramo: true })).toEqual({ calculo: null, nota: null, texto: "Sale de los tramos" });
+    expect(comoSeMidio({ ...base, de_tramo: true, nota: "Tramo 1" })).toEqual({ calculo: null, nota: "Tramo 1", texto: null });
   });
 });

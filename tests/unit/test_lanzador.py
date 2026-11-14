@@ -11,13 +11,13 @@ from __future__ import annotations
 import inspect
 import logging
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
 
-from operacion import config, lanzador, registro
+from operacion import config, lanzador, registro, ventana
 from operacion.config import Ajustes
 
 PYTHON = Path("python.exe")
@@ -161,6 +161,17 @@ class Escenario:
         self.sondeadas: list[str] = []
         self.salud = list(salud if salud is not None else [True])
         self.ciclos = vivir_ciclos
+        # La ventana (F5): por omisión el equipo de las pruebas «no tiene WebView2» y Sílice abre el
+        # navegador, como antes; las pruebas de la ventana cambian `motivo` y `en_ventana`.
+        self.motivo: str | None = "no hay WebView2 en las pruebas"
+        self.consultas_motivo = 0
+        self.ventanas: list[str] = []
+        self.perfiles: list[Path] = []
+        self.en_ventana: Callable[[Callable[[], bool]], None] = lambda vivo: None
+        self.al_frente: list[int] = []
+        self.hay_ventana_viva = False
+        # Las políticas de WebView2 del «registro» de mentira: (raíz, nombre del valor) -> texto
+        self.politicas: dict[tuple[str, str], str] = {}
 
     def lanzar(self, orden, entorno, cwd):
         self.lanzados.append(list(orden))
@@ -193,12 +204,38 @@ class Escenario:
             salida=self.salida.append,
             asegurar=extra.pop("asegurar", self.asegurar),
             abrir_archivo=extra.pop("abrir_archivo", self.archivos.append),
+            motivo_sin_ventana=extra.pop("motivo_sin_ventana", self.motivo_sin_ventana),
+            abrir_ventana=extra.pop("abrir_ventana", self.abrir_ventana),
+            traer_al_frente=extra.pop("traer_al_frente", self.traer_al_frente),
+            fuentes_depuracion=extra.pop("fuentes_depuracion", self.fuentes_depuracion),
             **extra,
+        )
+
+    def fuentes_depuracion(self, env) -> list[str]:
+        """La función real con un registro de mentira: nunca el registro del equipo."""
+        return ventana.fuentes_puerto_depuracion(
+            env,
+            leer=lambda raiz, _clave, nombre: self.politicas.get((raiz, nombre)),
+            ejecutable="python.exe",
         )
 
     def asegurar(self, _entorno) -> bool:
         """Por omisión no emite nada (las bases de estas pruebas no se migran)."""
         return False
+
+    def motivo_sin_ventana(self) -> str | None:
+        self.consultas_motivo += 1
+        return self.motivo
+
+    def abrir_ventana(self, url: str, vivo: Callable[[], bool], *, perfil: Path) -> None:
+        """Bloquea como la de verdad: `en_ventana` es lo que pasa mientras está abierta."""
+        self.ventanas.append(url)
+        self.perfiles.append(perfil)
+        self.en_ventana(vivo)
+
+    def traer_al_frente(self, pid: int) -> bool:
+        self.al_frente.append(pid)
+        return self.hay_ventana_viva
 
 
 @pytest.fixture
@@ -593,3 +630,260 @@ def test_el_archivo_del_codigo_se_abre_con_su_carpeta_como_directorio_de_trabajo
     archivo = tmp_path / "datos" / "codigo_instalacion.txt"
     lanzador._abrir_con_el_sistema(archivo)
     assert llamadas == [((str(archivo),), {"cwd": str(archivo.parent)})]
+
+
+# --- La ventana propia (F5, diseño 2026-11-03-ventana-de-escritorio §6.1 y §7.3) ----------------
+
+
+def _aviso_de_ventana(salida: list[str]) -> list[str]:
+    return [linea for linea in salida if linea.startswith("AVISO:") and "ventana" in linea]
+
+
+def test_con_webview2_se_abre_la_ventana_en_app_y_no_el_navegador(entorno) -> None:
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr(entorno) == 0
+    assert escenario.ventanas == ["http://127.0.0.1:8501/app/"]
+    assert escenario.abiertas == [] and _aviso_de_ventana(escenario.salida) == []
+    assert any("cierre la ventana de Sílice" in linea for linea in escenario.salida)
+
+
+def test_la_ventana_guarda_su_perfil_en_la_carpeta_de_datos_de_esta_instalacion(entorno) -> None:
+    """Decisión de Eugenio del 2026-11-07 («guardar perfil en datos», V1 del árbitro): el perfil de
+    WebView2 vive en `<datos>/perfil_ventana`, la carpeta de datos del entorno que arranca."""
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr(entorno) == 0
+    datos = Path(entorno[config.VARIABLE_DATOS]).resolve()
+    assert escenario.perfiles == [datos / "perfil_ventana"]
+
+
+def test_cerrar_la_ventana_termina_uvicorn_y_borra_el_estado(entorno) -> None:
+    vistos: list[lanzador.EstadoServidor | None] = []
+    escenario = Escenario(vivir_ciclos=10_000)  # Uvicorn sigue vivo: solo la ventana se cierra
+    escenario.motivo = None
+
+    def abierta(vivo: Callable[[], bool]) -> None:
+        vistos.append(lanzador.leer_estado(entorno))
+        assert vivo() is True
+
+    escenario.en_ventana = abierta
+    assert escenario.correr(entorno) == 0
+    (estado,) = vistos
+    assert estado is not None and estado.pids[1:] == (5000,)  # mientras estaba abierta
+    assert all(h.terminado for h in escenario.hijos)
+    assert lanzador.leer_estado(entorno) is None
+    assert any("Sílice se detuvo" in linea for linea in escenario.salida)
+
+
+def test_si_uvicorn_muere_con_la_ventana_abierta_se_registra_y_sale_limpio(entorno) -> None:
+    escenario = Escenario(vivir_ciclos=10_000)
+    escenario.motivo = None
+    respuestas: list[bool] = []
+
+    def muere(vivo: Callable[[], bool]) -> None:
+        respuestas.append(vivo())
+        escenario.hijos[0].vivo = False  # Uvicorn termina solo
+        respuestas.append(vivo())
+
+    escenario.en_ventana = muere
+    assert escenario.correr(entorno) == 0
+    assert respuestas == [True, False]
+    assert lanzador.leer_estado(entorno) is None
+    assert any("terminó" in linea for linea in escenario.salida)
+    texto = (config.carpeta_registros(entorno) / "silice.log").read_text(encoding="utf-8")
+    assert "terminó solo" in texto
+
+
+def test_sin_webview2_se_abre_el_navegador_y_el_aviso_dice_por_que(entorno) -> None:
+    escenario = Escenario()
+    escenario.motivo = "WebView2 de Microsoft no está instalado en este equipo"
+    assert escenario.correr(entorno) == 0
+    assert escenario.ventanas == [] and escenario.abiertas == ["http://127.0.0.1:8501/app/"]
+    (aviso,) = _aviso_de_ventana(escenario.salida)
+    assert "WebView2 de Microsoft no está instalado" in aviso and "navegador" in aviso
+    texto = (config.carpeta_registros(entorno) / "silice.log").read_text(encoding="utf-8")
+    assert "WebView2 de Microsoft no está instalado" in texto
+
+
+def test_con_abrir_en_navegador_se_abre_el_navegador_con_aviso_y_sin_mirar_webview2(
+    entorno,
+) -> None:
+    config.guardar_ajustes(config.ruta_ajustes(entorno), Ajustes(abrir_en="navegador"))
+    escenario = Escenario()
+    escenario.motivo = None  # aunque el equipo pueda, el ajuste manda
+    assert escenario.correr(entorno) == 0
+    assert escenario.ventanas == [] and escenario.abiertas == ["http://127.0.0.1:8501/app/"]
+    assert escenario.consultas_motivo == 0
+    (aviso,) = _aviso_de_ventana(escenario.salida)
+    assert "abrir_en" in aviso and "silice.toml" in aviso
+
+
+def test_sin_ventana_fuerza_el_navegador_sin_aviso(entorno) -> None:
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr(entorno, sin_ventana=True) == 0
+    assert escenario.ventanas == [] and escenario.abiertas == ["http://127.0.0.1:8501/app/"]
+    assert escenario.consultas_motivo == 0 and _aviso_de_ventana(escenario.salida) == []
+
+
+def test_sin_navegador_no_presenta_nada_aunque_haya_webview2(entorno) -> None:
+    """La prueba de humo de hoy (`arrancar --sin-navegador`) sigue igual."""
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr(entorno, sin_navegador=True) == 0
+    assert escenario.ventanas == [] and escenario.abiertas == []
+    assert escenario.consultas_motivo == 0
+
+
+def test_si_la_ventana_falla_al_abrir_se_abre_el_navegador_y_silice_sigue(entorno) -> None:
+    escenario = Escenario(vivir_ciclos=3)
+    escenario.motivo = None
+
+    def falla(_vivo: Callable[[], bool]) -> None:
+        raise ventana.VentanaNoDisponible("no se pudo abrir la ventana (RuntimeError: .NET)")
+
+    escenario.en_ventana = falla
+    assert escenario.correr(entorno) == 0
+    assert escenario.ventanas == ["http://127.0.0.1:8501/app/"]
+    assert escenario.abiertas == ["http://127.0.0.1:8501/app/"]
+    (aviso,) = _aviso_de_ventana(escenario.salida)
+    assert "RuntimeError: .NET" in aviso and "navegador" in aviso
+    assert escenario.ciclos <= 0  # siguió en marcha hasta que el servidor terminó
+    assert lanzador.leer_estado(entorno) is None
+
+
+def test_segunda_ejecucion_trae_al_frente_la_ventana_viva_y_no_abre_otra(entorno) -> None:
+    lanzador.escribir_estado(lanzador.EstadoServidor((77, 78), "127.0.0.1", 8501, "ayer"), entorno)
+    escenario = Escenario(salud=[True])
+    escenario.motivo = None
+    escenario.hay_ventana_viva = True
+    assert escenario.correr(entorno) == 0
+    assert escenario.al_frente == [77]  # el lanzador vivo, dueño de la ventana
+    assert escenario.lanzados == [] and escenario.ventanas == [] and escenario.abiertas == []
+    assert lanzador.leer_estado(entorno) is not None  # la instancia viva sigue igual
+    assert any("ya está" in linea for linea in escenario.salida)
+
+
+def test_segunda_ejecucion_sin_ventana_viva_abre_el_navegador(entorno) -> None:
+    """La instancia viva abrió el navegador (sin WebView2): se hace lo de antes."""
+    lanzador.escribir_estado(lanzador.EstadoServidor((77, 78), "127.0.0.1", 8501, "ayer"), entorno)
+    escenario = Escenario(salud=[True])
+    assert escenario.correr(entorno) == 0
+    assert escenario.al_frente == [77] and escenario.ventanas == []
+    assert escenario.abiertas == ["http://127.0.0.1:8501/app/"]
+
+
+def test_segunda_ejecucion_sin_navegador_no_toca_nada(entorno) -> None:
+    lanzador.escribir_estado(lanzador.EstadoServidor((77, 78), "127.0.0.1", 8501, "ayer"), entorno)
+    escenario = Escenario(salud=[True])
+    escenario.hay_ventana_viva = True
+    assert escenario.correr(entorno, sin_navegador=True) == 0
+    assert escenario.al_frente == [] and escenario.abiertas == [] and escenario.ventanas == []
+
+
+def test_el_entorno_de_los_hijos_no_hereda_las_variables_de_webview2(tmp_path: Path) -> None:
+    """El puerto de depuración de WebView2 solo lo pone la humo (diseño §7.2): Uvicorn nunca."""
+    base = {
+        "PATH": "x",
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": "--remote-debugging-port=9222",
+        "webview2_user_data_folder": r"C:\otra",
+    }
+    entorno = {config.VARIABLE_DATOS: str(tmp_path / "d"), config.VARIABLE_USUARIO: str(tmp_path)}
+    env = lanzador.entorno_hijos(Ajustes(), "127.0.0.1", entorno, base=base)
+    assert not any(k.upper().startswith("WEBVIEW2_") for k in env)
+    assert not any("remote-debugging" in v for v in env.values())
+    assert env["PATH"] == "x"
+
+
+def test_ni_el_lanzador_ni_la_ventana_ponen_el_puerto_de_depuracion(entorno) -> None:
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr(entorno) == 0
+    assert all("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" not in e for e in escenario.entornos)
+    assert ventana.VARIABLE_ARGUMENTOS_WEBVIEW2 == "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
+
+
+def test_si_alguien_pide_el_puerto_de_depuracion_se_avisa(entorno) -> None:
+    con_depuracion = {
+        **entorno,
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": "--remote-debugging-port=9222",
+    }
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr(con_depuracion) == 0
+    avisos = [linea for linea in escenario.salida if linea.startswith("AVISO:")]
+    assert any("depuración" in linea and "WEBVIEW2" in linea for linea in avisos)
+    assert all("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" not in e for e in escenario.entornos)
+
+
+_POLITICA_HKLM = (
+    r"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\WebView2"
+    r"\AdditionalBrowserArguments (valor «python.exe»)"
+)
+
+
+def test_si_la_politica_de_maquina_pide_el_puerto_de_depuracion_se_avisa_y_se_nombra(
+    entorno,
+) -> None:
+    """La humo corre elevada y abre el puerto con la política de HKLM, no con la variable (que
+    WebView2 ignora ahí): el aviso tiene que verla y decir cuál es. La humo da además el permiso
+    explícito, así que la ventana se abre."""
+    escenario = Escenario()
+    escenario.motivo = None
+    escenario.politicas[("HKEY_LOCAL_MACHINE", "python.exe")] = "--remote-debugging-port=50123"
+    permiso = {**entorno, ventana.VARIABLE_PERMITIR_DEPURACION: "1"}
+    assert escenario.correr(permiso) == 0
+    avisos = [linea for linea in escenario.salida if linea.startswith("AVISO:")]
+    assert [a for a in avisos if "depuración" in a] == [
+        f"AVISO: La política {_POLITICA_HKLM} pide un puerto de depuración: la ventana de Sílice "
+        "lo abrirá y cualquier programa de este equipo podría manejarla. Solo la prueba de humo "
+        "debe ponerla; si no es esa prueba, quítela."
+    ]
+    assert escenario.ventanas and not escenario.abiertas
+
+
+def test_sin_permiso_el_puerto_de_depuracion_no_abre_la_ventana_y_va_al_navegador(entorno) -> None:
+    """Decisión (e), simulada el 2026-11-12: una política olvidada (una humo cortada a mitad) o
+    una directiva con `*` abriría la ventana con el puerto expuesto, y el aviso queda en una consola
+    minimizada. Sin el permiso explícito de la humo, Sílice se abre en el navegador, que no hereda
+    los argumentos de WebView2."""
+    escenario = Escenario()
+    escenario.motivo = None
+    escenario.politicas[("HKEY_LOCAL_MACHINE", "python.exe")] = "--remote-debugging-port=50123"
+    assert escenario.correr(entorno) == 0
+    assert escenario.ventanas == []
+    assert len(escenario.abiertas) == 1
+    avisos = [linea for linea in escenario.salida if linea.startswith("AVISO:")]
+    assert [a for a in avisos if "depuración" in a] == [
+        f"AVISO: La política {_POLITICA_HKLM} pide un puerto de depuración: por seguridad la "
+        "ventana de Sílice no se abre (cualquier programa de este equipo podría manejarla). Solo "
+        "la prueba de humo debe ponerla; si no es esa prueba, quítela.",
+        "AVISO: La ventana de Sílice no se abre: algo pide a WebView2 un puerto de depuración "
+        "(vea el aviso anterior). Sílice se abre en el navegador.",
+    ]
+
+
+def test_el_permiso_sin_nada_que_pida_el_puerto_no_cambia_nada(entorno) -> None:
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr({**entorno, ventana.VARIABLE_PERMITIR_DEPURACION: "1"}) == 0
+    assert escenario.ventanas and not escenario.abiertas
+    assert not [linea for linea in escenario.salida if "depuración" in linea]
+
+
+def test_sin_variable_ni_politica_no_hay_aviso_de_depuracion(entorno) -> None:
+    escenario = Escenario()
+    escenario.motivo = None
+    escenario.politicas[("HKEY_CURRENT_USER", "*")] = "--lang=es"
+    assert escenario.correr(entorno) == 0
+    assert not [linea for linea in escenario.salida if "depuración" in linea]
+
+
+def test_los_ganchos_de_la_ventana_por_omision_son_los_reales() -> None:
+    parametros = inspect.signature(lanzador.arrancar).parameters
+    assert parametros["abrir_ventana"].default is ventana.abrir
+    assert parametros["motivo_sin_ventana"].default is ventana.motivo_sin_ventana
+    assert parametros["traer_al_frente"].default is ventana.traer_al_frente
+    assert parametros["fuentes_depuracion"].default is ventana.fuentes_puerto_depuracion
+    assert parametros["sin_ventana"].default is False

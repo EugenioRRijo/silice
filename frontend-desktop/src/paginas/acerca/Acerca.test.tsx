@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
@@ -48,9 +49,9 @@ describe("Acerca de Sílice", () => {
     vi.unstubAllGlobals();
   });
 
-  function montar() {
+  function montar({ en = "/cuenta/ayuda", sesion = SESION }: { en?: string; sesion?: SesionRespuesta } = {}) {
     const valor: Aplicacion = {
-      sesion: SESION,
+      sesion,
       proyecto: null,
       caso: null,
       recargarProyectos: vi.fn(),
@@ -58,7 +59,7 @@ describe("Acerca de Sílice", () => {
     };
     return render(
       <ContextoAplicacion.Provider value={valor}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[en]}>
           <PaginaAcerca />
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
@@ -74,6 +75,9 @@ describe("Acerca de Sílice", () => {
     expect(screen.getByText("Versión 8; la última es la 9")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/ins_0003|caso_000|auditoria_libro|s3_paquete/);
     expect(screen.getByText("D:/datos-ficticios")).toBeInTheDocument();
+    // Revisión final del árbitro (MENOR 3): la persona ve «carpeta», no «caso».
+    expect(screen.getByText("Base de la carpeta abierta")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/caso abierto/);
     expect(screen.getByText("Planos DXF")).toBeInTheDocument();
     expect(screen.getByText("instalado")).toBeInTheDocument();
     expect(screen.getByText("no instalado")).toBeInTheDocument();
@@ -115,5 +119,69 @@ describe("Acerca de Sílice", () => {
     expect(screen.getByText("Versión 8")).toBeInTheDocument();
     expect(screen.getByText("Sin información de versión")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/alembic|Caso_0008|s3_paquete/i);
+  });
+
+  // F7 (Ayuda), tareas A2 a A4: la Ayuda de la Cuenta reúne «Empieza aquí», las guías por tarea y el glosario, y se puede
+  // enlazar a cada parte con `?tema=`. Oráculos a mano: los títulos y los ids que fija el plan.
+  describe("la ayuda", () => {
+    test("bajo el h1 van «Empieza aquí», «Guías por tarea» y «Glosario», con las cuatro guías, antes de la versión", async () => {
+      fetchFalso.mockResolvedValue(json(DATOS));
+      montar();
+      await screen.findByText("Sílice 1.2.0-dev0");
+      const h2 = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+      expect(h2.slice(0, 3)).toEqual(["Empieza aquí", "Guías por tarea", "Glosario"]);
+      expect(h2.indexOf("Sílice 1.2.0-dev0")).toBeGreaterThan(2);
+      const guias = within(screen.getByRole("region", { name: "Guías por tarea" }));
+      expect(guias.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+        "Montar un presupuesto",
+        "Enviarlo a aprobación",
+        "Actualizar precios",
+        "Auditar un libro",
+      ]);
+      const glosario = screen.getByRole("region", { name: "Glosario" });
+      expect(within(glosario).getByText("FCAS (factor de costos asociados al salario)")).toBeInTheDocument();
+    });
+
+    test("«Empieza aquí» explica la primera vez: el código de instalación, la cuenta del administrador y cómo recuperarla", async () => {
+      fetchFalso.mockResolvedValue(json(DATOS));
+      montar();
+      const empieza = await screen.findByRole("region", { name: "Empieza aquí" });
+      expect(empieza).toHaveTextContent("código de instalación");
+      expect(empieza).toHaveTextContent("«Crear la cuenta y entrar»");
+      expect(empieza).toHaveTextContent("«Perdí el acceso de administrador»");
+    });
+
+    test("los enlaces a la Cuenta solo se ofrecen a quien administra", async () => {
+      fetchFalso.mockResolvedValue(json(DATOS));
+      montar();
+      const empieza = await screen.findByRole("region", { name: "Empieza aquí" });
+      expect(within(empieza).queryByRole("link", { name: "Ir a Cuentas y permisos" })).toBeNull();
+    });
+
+    test("quien administra ve el enlace a «Cuentas y permisos»", async () => {
+      fetchFalso.mockResolvedValue(json(DATOS));
+      montar({ sesion: { ...SESION, acciones: ["administrar_cuentas", "administrar_empresa"] } });
+      const empieza = await screen.findByRole("region", { name: "Empieza aquí" });
+      expect(within(empieza).getByRole("link", { name: "Ir a Cuentas y permisos" })).toHaveAttribute("href", "/cuenta/cuentas");
+    });
+
+    test("con ?tema= el foco va a esa parte (un término del glosario), y el índice de arriba mueve el foco a otra", async () => {
+      const u = userEvent.setup();
+      fetchFalso.mockResolvedValue(json(DATOS));
+      montar({ en: "/cuenta/ayuda?tema=glosario-fcas" });
+      const termino = await screen.findByText("FCAS (factor de costos asociados al salario)");
+      await waitFor(() => expect(termino).toHaveFocus());
+      const indice = screen.getByRole("navigation", { name: "En esta ayuda" });
+      await u.click(within(indice).getByRole("link", { name: "Guías por tarea" }));
+      await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Guías por tarea" })).toHaveFocus());
+    });
+
+    test("si no se puede leer la versión, la ayuda se ve igual y el error queda en su parte", async () => {
+      fetchFalso.mockResolvedValue(json({ detalle: "La base no responde." }, 500));
+      montar();
+      expect(await screen.findByRole("heading", { level: 1, name: "Ayuda y acerca de Sílice" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Guías por tarea" })).toBeInTheDocument();
+      expect(await screen.findByText("No se pudo cargar la información")).toBeInTheDocument();
+    });
   });
 });

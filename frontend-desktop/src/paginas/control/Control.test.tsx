@@ -308,7 +308,7 @@ describe("Control de obra", () => {
 
   test("sin proyecto invita a elegirlo y no pide nada", () => {
     montar(null);
-    expect(screen.getByText("Elija un proyecto")).toBeInTheDocument();
+    expect(screen.getByText("Elija una obra")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
@@ -545,7 +545,7 @@ describe("Control de obra", () => {
         precios_convertidos: [
           {
             descripcion: "Cemento gris",
-            unidad: "saco",
+            unidad: "m3",
             fecha: "2026-10-20",
             fuente: "Estudio de mercado: precio propio",
             equivalencia: {
@@ -567,7 +567,7 @@ describe("Control de obra", () => {
     const bloque = (await screen.findByRole("heading", { name: "Precios convertidos con la tasa del BCV" })).closest(
       "section",
     )!;
-    expect(within(bloque).getByText("Cemento gris (por saco), desde el 20/10/2026:")).toBeInTheDocument();
+    expect(within(bloque).getByText("Cemento gris (por m³), desde el 20/10/2026:")).toBeInTheDocument();
     expect(
       within(bloque).getByText("31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs"),
     ).toBeInTheDocument();

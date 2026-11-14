@@ -39,11 +39,32 @@ describe("La lista de la carpeta de trabajo", () => {
       lista: { nombre: "Lista ficticia de Bs", moneda: "Bs", fecha: "2026-10-25", origen: "prueba" },
       aviso: null,
     });
-    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
     expect(
       await screen.findByText("Moneda: Bs · Lista para armar: Lista ficticia de Bs, al 25/10/2026"),
     ).toBeInTheDocument();
     expect(fetchFalso).toHaveBeenCalledTimes(1);
+  });
+
+  test("E2E-3: al crear la lista para armar (en Componer u otra pantalla) la cabecera la vuelve a leer sin recargar", async () => {
+    con({ moneda: "USD", declarada: true, lista: null, aviso: SIN_LISTA });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
+    expect(await screen.findByText(`Moneda: USD · ${SIN_LISTA}`)).toBeInTheDocument();
+    con({
+      moneda: "USD",
+      declarada: true,
+      lista: { nombre: "MaPreX ficticio en USD al 13/11/2026", moneda: "USD", fecha: "2026-11-13", origen: "derivada" },
+      aviso: null,
+    });
+    fijarCsrf("tok");
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      if (String(entrada) === "/v1/carpeta/lista-para-armar" && init?.method === "POST") return respuesta();
+      return String(entrada) === "/v1/carpeta" ? respuesta() : json({ detalle: "No encontrado." }, 404);
+    });
+    const { crearListaParaArmar } = await import("../paginas/componer/cliente");
+    await crearListaParaArmar("maprex");
+    expect(await screen.findByText("Moneda: USD · Lista para armar: MaPreX ficticio en USD al 13/11/2026")).toBeInTheDocument();
+    fijarCsrf(null);
   });
 
   test("una lista derivada que ya trae su fecha en el nombre no la repite", async () => {
@@ -53,7 +74,7 @@ describe("La lista de la carpeta de trabajo", () => {
       lista: { nombre: "MaPreX ficticio en Bs al 25/10/2026", moneda: "Bs", fecha: "2026-10-25", origen: "derivada" },
       aviso: null,
     });
-    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
     expect(
       await screen.findByText("Moneda: Bs · Lista para armar: MaPreX ficticio en Bs al 25/10/2026"),
     ).toBeInTheDocument();
@@ -66,7 +87,7 @@ describe("La lista de la carpeta de trabajo", () => {
       lista: { nombre: "MaPreX ficticio en Bs al 25/10/2026 (2)", moneda: "Bs", fecha: "2026-10-25", origen: "derivada" },
       aviso: null,
     });
-    const { unmount } = render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    const { unmount } = render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
     expect(
       await screen.findByText("Moneda: Bs · Lista para armar: MaPreX ficticio en Bs al 25/10/2026 (2)"),
     ).toBeInTheDocument();
@@ -77,7 +98,7 @@ describe("La lista de la carpeta de trabajo", () => {
       lista: { nombre: "Base ficticia al 01/07/2026", moneda: "Bs", fecha: "2026-10-25", origen: "prueba" },
       aviso: null,
     });
-    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
     expect(
       await screen.findByText("Moneda: Bs · Lista para armar: Base ficticia al 01/07/2026, al 25/10/2026"),
     ).toBeInTheDocument();
@@ -92,26 +113,48 @@ describe("La lista de la carpeta de trabajo", () => {
       lista: { nombre: "Base ficticia", moneda: "USD", fecha: "2026-07-01", origen: "prueba" },
       aviso: AVISO,
     });
-    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
     expect(await screen.findByText(`Moneda: Bs · ${AVISO}`)).toBeInTheDocument();
     expect(screen.queryByText(/Lista para armar:/)).not.toBeInTheDocument();
   });
 
   test("sin moneda dice «Carpeta sin moneda declarada»", async () => {
     con({ moneda: null, declarada: false, lista: null, aviso: SIN_LISTA });
-    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={null} />);
     expect(await screen.findByText("Carpeta sin moneda declarada")).toBeInTheDocument();
+  });
+
+  test("con carpeta sin moneda pero la obra en USD dice la moneda de la obra y el aviso", async () => {
+    con({ moneda: null, declarada: false, lista: null, aviso: SIN_LISTA });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra="USD" />);
+    expect(await screen.findByText(`Moneda: USD · ${SIN_LISTA}`)).toBeInTheDocument();
+    expect(screen.queryByText("Carpeta sin moneda declarada")).not.toBeInTheDocument();
+  });
+
+  test("con carpeta sin moneda y moneda de la obra en null sigue «Carpeta sin moneda declarada»", async () => {
+    con({ moneda: null, declarada: false, lista: null, aviso: SIN_LISTA });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={null} />);
+    expect(await screen.findByText("Carpeta sin moneda declarada")).toBeInTheDocument();
+  });
+
+  test("con carpeta sin moneda y moneda de la obra en undefined explícito dice que la está leyendo", async () => {
+    con({ moneda: null, declarada: false, lista: null, aviso: SIN_LISTA });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
+    expect(await screen.findByText("Leyendo la moneda de la carpeta…")).toBeInTheDocument();
+    await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Leyendo la moneda de la carpeta…")).toBeInTheDocument();
+    expect(screen.queryByText("Carpeta sin moneda declarada")).not.toBeInTheDocument();
   });
 
   test("con moneda y sin lista para armar dice el aviso de la carpeta", async () => {
     con({ moneda: "USD", declarada: true, lista: null, aviso: SIN_LISTA });
-    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
     expect(await screen.findByText(`Moneda: USD · ${SIN_LISTA}`)).toBeInTheDocument();
   });
 
   test("ninguna cadena visible dice «caso»", async () => {
     con({ moneda: "Bs", declarada: true, lista: null, aviso: SIN_LISTA });
-    const { container } = render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    const { container } = render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
     await screen.findByText(/Moneda:/);
     expect(container.textContent).not.toMatch(/caso/i);
   });
@@ -119,13 +162,13 @@ describe("La lista de la carpeta de trabajo", () => {
   test("un 401 cierra la sesión", async () => {
     respuesta = () => json({ detalle: "Sesión vencida." }, 401);
     const alExpirar = vi.fn();
-    render(<ListaDeLaCarpeta alExpirar={alExpirar} />);
+    render(<ListaDeLaCarpeta alExpirar={alExpirar} monedaDeLaObra={undefined} />);
     await waitFor(() => expect(alExpirar).toHaveBeenCalledTimes(1));
   });
 
   test("otro error lo dice en llano, sin inventar la moneda", async () => {
     respuesta = () => json({ detalle: "Falla ficticia." }, 500);
-    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
     expect(await screen.findByText("No se pudo leer la moneda de la carpeta.")).toBeInTheDocument();
     expect(screen.queryByText(/Moneda:/)).not.toBeInTheDocument();
   });

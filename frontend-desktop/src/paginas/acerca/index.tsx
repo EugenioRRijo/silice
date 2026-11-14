@@ -1,8 +1,10 @@
 import { StructuredListBody, StructuredListCell, StructuredListRow, StructuredListWrapper, Tag } from "@carbon/react";
 import { AvisoError } from "../../comun/AvisoError";
-import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
+import { useCarga } from "../../comun/useCarga";
+import type { Carga } from "../../comun/useCarga";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
+import { AyudaDeSilice } from "../../comun/ayuda/AyudaDeSilice";
+import "./acerca.scss";
 
 interface Acerca {
   version: string;
@@ -41,41 +43,50 @@ function Fila({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <StructuredListRow>
       <StructuredListCell noWrap>{rotulo}</StructuredListCell>
-      <StructuredListCell>{valor}</StructuredListCell>
+      <StructuredListCell className="silice-acerca__valor">{valor}</StructuredListCell>
     </StructuredListRow>
   );
 }
 
-// «Ayuda y acerca de Sílice» (RF-99; su h1 es el nombre de su pestaña en la Cuenta): versión, revisiones de las dos bases, carpeta de datos (solo quien administra) y
-// módulos instalados. Solo lectura.
+// «Ayuda y acerca de Sílice» (RF-99; su h1 es el nombre de su pestaña en la Cuenta). Primero la ayuda (F7: «Empieza aquí», las
+// guías por tarea y el glosario, `comun/ayuda/AyudaDeSilice.tsx`), que es texto y se lee aunque falle la lectura de la
+// versión; después la versión, las revisiones de las dos bases, la carpeta de datos (solo quien administra) y los módulos
+// instalados. Solo lectura.
 export default function PaginaAcerca() {
   const { alExpirar } = useAplicacion();
   const carga = useCarga<Acerca>("/v1/acerca", alExpirar);
-
-  if (carga.estado === "error" || carga.estado === "sin_permiso" || carga.estado === "no_disponible") {
-    return (
-      <section className="silice-pagina" aria-labelledby="acerca-titulo">
-        <h1 id="acerca-titulo" className="cds--type-heading-04">
-          Ayuda y acerca de Sílice
-        </h1>
-        <AvisoError error={carga.error} titulo="No se pudo cargar la información" />
-      </section>
-    );
-  }
-  if (carga.estado !== "listo") return <EsqueletoPagina titulo="Ayuda y acerca de Sílice" />;
-  const d = carga.datos;
 
   return (
     <section className="silice-pagina" aria-labelledby="acerca-titulo">
       <h1 id="acerca-titulo" className="cds--type-heading-04">
         Ayuda y acerca de Sílice
       </h1>
+      <AyudaDeSilice />
+      <LaVersion carga={carga} />
+    </section>
+  );
+}
+
+function LaVersion({ carga }: { carga: Carga<Acerca> }) {
+  if (carga.estado === "error" || carga.estado === "sin_permiso" || carga.estado === "no_disponible") {
+    return <AvisoError error={carga.error} titulo="No se pudo cargar la información" />;
+  }
+  if (carga.estado !== "listo") {
+    return (
+      <p className="cds--type-body-compact-01" role="status">
+        Cargando la versión de Sílice…
+      </p>
+    );
+  }
+  const d = carga.datos;
+  return (
+    <>
       <h2 className="cds--type-heading-compact-02">Sílice {d.semver}</h2>
       <p className="cds--type-body-compact-01">Versión: {d.version}</p>
       <StructuredListWrapper isCondensed aria-label="Bases y carpeta de datos">
         <StructuredListBody>
           <Fila rotulo="Base de la instalación" valor={estadoDeLaBase(d.revision_instalacion, d.head_instalacion)} />
-          <Fila rotulo="Base del caso abierto" valor={estadoDeLaBase(d.revision_caso, d.head_caso)} />
+          <Fila rotulo="Base de la carpeta abierta" valor={estadoDeLaBase(d.revision_caso, d.head_caso)} />
           {d.carpeta_datos !== null && <Fila rotulo="Carpeta de datos" valor={d.carpeta_datos} />}
         </StructuredListBody>
       </StructuredListWrapper>
@@ -95,6 +106,6 @@ export default function PaginaAcerca() {
         </StructuredListBody>
       </StructuredListWrapper>
       <p className="cds--type-label-01">Sílice es software propietario; las licencias de terceros están en LICENCIAS.</p>
-    </section>
+    </>
   );
 }

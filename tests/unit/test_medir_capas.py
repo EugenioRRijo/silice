@@ -24,7 +24,15 @@ ANOMALIAS = CIVIL + "scikit-learn==1.7.0\nnumpy==2.3.0\n"
 
 def _capas(basica: float) -> dict[str, float]:
     """Capas de la básica con cifras redondas; solo cambia `basica` entre casos."""
-    return {"basica": basica, "bcv": 1.0, "civil": 16.0, "anomalias": 26.0, "ia": 12.0, "pdf": 3.0}
+    return {
+        "basica": basica,
+        "bcv": 1.0,
+        "civil": 16.0,
+        "anomalias": 26.0,
+        "ia": 12.0,
+        "pdf": 3.0,
+        "escritorio": 0.0,
+    }
 
 
 def test_normalizar_une_guiones_guiones_bajos_y_puntos() -> None:
@@ -56,12 +64,12 @@ def test_cada_capa_trae_solo_lo_que_las_anteriores_no_tenian() -> None:
 def test_las_capas_medidas_son_las_del_manifiesto() -> None:
     """Lo que se mide (CAPAS acumuladas) es lo que el instalador básico lleva (manifiesto.toml)."""
     m = cargar()
-    assert mc.FIJAS == ("basica", "bcv", "civil", "anomalias", "ia", "pdf")
+    assert mc.FIJAS == ("basica", "bcv", "civil", "anomalias", "ia", "pdf", "escritorio")
     assert set(mc.CAPAS[mc.FIJAS[-1]]) == set(m.extras_basica)
     assert mc.CAPAS["similitud"] == [*mc.CAPAS[mc.FIJAS[-1]], *m.extras_similitud]
     assert mc.CAPAS["base"] == []
     # cada capa acumula la anterior y agrega exactamente un extra (o los cuatro de la básica)
-    orden = ["basica", "bcv", "civil", "anomalias", "ia", "pdf", "similitud"]
+    orden = ["basica", "bcv", "civil", "anomalias", "ia", "pdf", "escritorio", "similitud"]
     for anterior, siguiente in zip(orden, orden[1:], strict=False):
         assert mc.CAPAS[siguiente][:-1] == mc.CAPAS[anterior], siguiente
     assert mc.ORDEN_DE_RECORTE == ("civil", "anomalias")  # spec S5 §7.2
@@ -133,18 +141,22 @@ def test_el_codigo_y_el_limite_se_pueden_cambiar() -> None:
 
 def test_las_cifras_medidas_de_la_bitacora_no_piden_recorte() -> None:
     """S5-0.3: Python 15,4 + código 7,0 + base 19,9 + básica 45,8 + bcv 0,1 + civil 15,1 +
-    anomalías 26,0 + ia 0,9 = 130,2 MB (la bitácora: «Recorte: ninguno»). El pdf de la 1.5 no se
-    midió: cabe mientras pese menos que el margen de 19,8 MB."""
+    anomalías 26,0 + ia 0,9 = 130,2 MB (la bitácora: «Recorte: ninguno»), más la capa
+    escritorio de F5: V0 midió 622.644 bytes comprimidos (~0,6 MB,
+    `docs/bitacora/2026-11-06-ventana-v0.md`
+    §1.3), así que 130,8 MB. El pdf de la 1.5 no se midió: cabe mientras pese menos que el margen
+    de 19,2 MB."""
     capas = {
         "basica": 19.9 + 45.8,
         "bcv": 0.1,
         "civil": 15.1,
         "anomalias": 26.0,
         "ia": 0.9,
-        "pdf": 19.79,  # 149,99
+        "pdf": 19.19,  # 149,99
+        "escritorio": 0.6,  # V0 §1.3: 622.644 bytes comprimidos (LZMA 9 extremo)
     }
     assert mc.decidir_recorte(15.4, capas) == []
-    assert mc.decidir_recorte(15.4, {**capas, "pdf": 19.81}) == ["civil"]
+    assert mc.decidir_recorte(15.4, {**capas, "pdf": 19.21}) == ["civil"]
 
 
 def test_la_tabla_para_la_bitacora_trae_cada_capa_y_el_total() -> None:

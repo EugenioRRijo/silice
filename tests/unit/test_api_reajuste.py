@@ -29,10 +29,12 @@ from pathlib import Path
 import openpyxl
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import reajuste as ruta_reajuste
+from aplicacion import control as logica_control
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
@@ -55,7 +57,7 @@ CIERRE = datetime(2027, 3, 5, 10, 0)  # después del último día de febrero: el
 A_MITAD = datetime(2027, 2, 10, 10, 0)  # a mitad del periodo: «parcial al corte»
 FALTA_INICIO = "Escriba «Inicio del contrato»: es obligatorio."
 PERIODO_FANTASMA = "Período 7: no hay un período con ese número en la tabla."
-SIN_VERSION = f"El proyecto {NOMBRE!r} no tiene una versión '009'."
+SIN_VERSION = f"La obra {NOMBRE!r} no tiene una versión '009'."
 PRIVADO = "texto-que-no-debe-volver-en-un-422"
 
 
@@ -410,3 +412,136 @@ def test_el_nombre_del_excel_solo_lleva_caracteres_seguros() -> None:
     assert ruta_reajuste.nombre_excel("001") == "reajuste_001.xlsx"
     peligroso = 'a"b\r\n\u0416/..'
     assert ruta_reajuste.nombre_excel(peligroso) == "reajuste_a_b____...xlsx"
+
+
+# --- ayudas de los campos «Partida» y «Serie» (autocompletado AC2) --------------------------
+
+
+def test_las_partidas_de_la_version_son_las_del_contrato() -> None:
+    """Oráculo a mano (`reajuste_s1.py`): la versión 001 trae solo S1-R01 (1000 m3)."""
+    navegador, _ = _ana()
+    r = navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "001"})
+    assert r.status_code == 200
+    assert r.json() == {
+        "version": "001",
+        "aviso": "",
+        "partidas": [{"codigo": "S1-R01", "descripcion": "Partida ficticia", "unidad": "m3"}],
+        "truncada": False,
+    }
+    assert r.headers.get("cache-control") == "no-store"
+
+
+def test_las_partidas_de_una_version_o_un_proyecto_inexistentes_son_404_fijos() -> None:
+    """H-17 del diseño: el 404 de las rutas nuevas es un texto fijo que no repite lo pedido."""
+    navegador, _ = _ana()
+    sin_version = navegador.get(
+        "/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "V<b>009"}
+    )
+    assert sin_version.status_code == 404
+    assert sin_version.json()["detalle"] == "La obra no tiene esa versión."
+    assert "009" not in sin_version.text
+    assert sin_version.headers.get("cache-control") == "no-store"
+    sin_proyecto = navegador.get(
+        "/v1/reajuste/partidas", params={"proyecto": "Obra<b>inventada", "version": "001"}
+    )
+    assert sin_proyecto.status_code == 404
+    assert sin_proyecto.json()["detalle"] == "La obra no existe en esta carpeta."
+    assert "inventada" not in sin_proyecto.text
+    assert sin_proyecto.headers.get("cache-control") == "no-store"
+    assert navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE}).status_code == 422
+
+
+def test_las_series_son_las_importadas_con_clave_nombre_organismo_y_unidad() -> None:
+    """Oráculo a mano (`reajuste_s1.sembrar`): tres índices ficticios y la tasa USD de venta."""
+    navegador, _ = _ana()
+    r = navegador.get("/v1/reajuste/series")
+    assert r.status_code == 200
+    assert r.headers.get("cache-control") == "no-store"
+    assert r.json() == [
+        {
+            "clave": "BCV-USD-VENTA",
+            "nombre": "Tasa de referencia USD (venta)",
+            "organismo": "BCV",
+            "unidad": "Bs/USD",
+            "periodicidad": "diaria",
+        },
+        {
+            "clave": "FIC-EQU",
+            "nombre": "FIC-EQU",
+            "organismo": "ficticio",
+            "unidad": "indice_bs",
+            "periodicidad": "mensual",
+        },
+        {
+            "clave": "FIC-MAT",
+            "nombre": "FIC-MAT",
+            "organismo": "ficticio",
+            "unidad": "indice_bs",
+            "periodicidad": "mensual",
+        },
+        {
+            "clave": "FIC-MO",
+            "nombre": "FIC-MO",
+            "organismo": "ficticio",
+            "unidad": "indice_bs",
+            "periodicidad": "mensual",
+        },
+    ]
+
+
+def test_sin_series_importadas_la_lista_esta_vacia_y_no_es_error(_entorno: Path) -> None:
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            for tabla in (models.ValorIndice, models.ImportacionIndice, models.SerieIndice):
+                sesion.query(tabla).delete()
+            sesion.commit()
+    finally:
+        motor.dispose()
+    caso_web.olvidar_todo()
+    dependencias.cerrar_motores()
+    navegador, _ = _ana()
+    r = navegador.get("/v1/reajuste/series")
+    assert (r.status_code, r.json()) == (200, [])
+
+
+@pytest.mark.parametrize(
+    ("ruta", "params", "funcion", "mensaje"),
+    [
+        (
+            "/v1/reajuste/partidas",
+            {"proyecto": NOMBRE, "version": "001"},
+            "partidas_de_la_version",
+            "No se pudieron leer las partidas del contrato de la carpeta de trabajo.",
+        ),
+        (
+            "/v1/reajuste/series",
+            {},
+            "series_de_indices",
+            "No se pudieron leer las series de índices de la carpeta de trabajo.",
+        ),
+    ],
+)
+def test_un_fallo_de_la_base_en_las_ayudas_es_503_fijo(
+    monkeypatch: pytest.MonkeyPatch, ruta: str, params: dict, funcion: str, mensaje: str
+) -> None:
+    def falla(*_args, **_kwargs):
+        raise OperationalError("SELECT secreto FROM serie_indice", {}, Exception("disco"))
+
+    monkeypatch.setattr(ruta_reajuste.logica, funcion, falla)
+    navegador, _ = _ana()
+    r = navegador.get(ruta, params=params)
+    assert r.status_code == 503
+    assert r.json()["detalle"] == mensaje
+    assert "SELECT" not in r.text and "secreto" not in r.text
+    assert r.headers.get("cache-control") == "no-store"
+
+
+def test_la_lista_de_partidas_recortada_lo_dice(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Con el tope en 0 no cabe ni la única partida de la 001: `truncada` lo dice."""
+    monkeypatch.setattr(logica_control, "MAXIMO_DE_PARTIDAS_DEL_CONTRATO", 0)
+    navegador, _ = _ana()
+    cuerpo = navegador.get(
+        "/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "001"}
+    ).json()
+    assert (cuerpo["partidas"], cuerpo["truncada"]) == ([], True)

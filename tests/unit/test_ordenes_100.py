@@ -18,10 +18,12 @@ def test_arrancar_y_parar_llaman_al_lanzador(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(lanzador, "parar", lambda **k: llamadas.append(("parar", k)) or 4)
     assert cli.main(["arrancar", "--sin-navegador"]) == 3
     assert cli.main(["arrancar"]) == 3
+    assert cli.main(["arrancar", "--sin-ventana"]) == 3  # F5 ventana: fuerza el navegador
     assert cli.main(["parar"]) == 4
     assert llamadas == [
-        ("arrancar", {"sin_navegador": True}),
-        ("arrancar", {"sin_navegador": False}),
+        ("arrancar", {"sin_navegador": True, "sin_ventana": False}),
+        ("arrancar", {"sin_navegador": False, "sin_ventana": False}),
+        ("arrancar", {"sin_navegador": False, "sin_ventana": True}),
         ("parar", {}),
     ]
 

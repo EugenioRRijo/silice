@@ -551,8 +551,8 @@ def test_la_capa_nueva_dice_que_proyecto_o_version_falta_con_los_textos_escritos
         )
     assert str(falta.value) == str(dicho.value)
     assert str(falta.value) == (
-        f"El proyecto {NOMBRE_OF001!r} no tiene una version '009': elija una de la lista."
+        f"La obra {NOMBRE_OF001!r} no tiene una versión '009': elija una de la lista."
     )
     with pytest.raises(hoja_versiones.ProyectoInexistente) as sin_proyecto:
         hoja_versiones.restaurar(caso.sesion, "Z", "001", fuente=FUENTE, responsable=RESPONSABLE)
-    assert str(sin_proyecto.value) == "El proyecto «Z» no existe en este caso."
+    assert str(sin_proyecto.value) == "La obra «Z» no existe en esta carpeta."

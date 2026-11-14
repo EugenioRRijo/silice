@@ -25,6 +25,7 @@ import type { Resumen } from "./logica";
 import { claseDeConflicto } from "./logicaSecciones";
 import { Parecidas } from "./Parecidas";
 import type { PartidaParecida } from "./Parecidas";
+import { unidadEscrita } from "../../comun/unidades";
 
 const ID_PARTIDA = "hoja-agregar-partida";
 const ID_CANTIDAD = "hoja-agregar-cantidad";
@@ -217,7 +218,7 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
     }
   }
 
-  const unidad = elegida?.unidad ? ` (${elegida.unidad})` : "";
+  const unidad = elegida?.unidad ? ` (${unidadEscrita(elegida.unidad)})` : "";
   const ayudaCantidad = calculoVisto && calculo.trim() !== "" && cantidad.trim() === "" ? `${CANTIDAD_DEL_CALCULO} ${AYUDA_CIFRAS}` : AYUDA_CIFRAS;
 
   return createPortal(

@@ -3,10 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorDeApi, pedir, type OpcionesDePeticion } from "../api/cliente";
+import { ContextoAplicacion } from "../shell/contexto";
+import type { Aplicacion } from "../shell/contexto";
+import { CabeceraDeObra } from "./CabeceraDeObra";
 import { EspacioDeObra } from "./EspacioDeObra";
 import { useObraAbierta } from "./obraAbierta";
 import { crearVigilante } from "./otraPestana";
 import { PATRON_DE_OBRA, rutaDeObra } from "./secciones";
+import type { FichaDeLaObra } from "./useFichaDeLaObra";
 import type { ObraDeCarpeta } from "./useObras";
 
 vi.mock("../api/cliente", async (importarOriginal) => ({
@@ -171,6 +175,40 @@ describe("CabeceraDeObra: el estado de la obra", () => {
     await waitFor(() => expect(cabecera()).toHaveTextContent("Estado: En aprobación"));
     await u.click(screen.getByRole("button", { name: "Recargar ficha" }));
     await waitFor(() => expect(api.resumenes()).toBe(2));
+  });
+});
+
+// La carpeta no declara moneda: la línea de la lista dice la de la obra, que la cabecera toma de su ficha y le pasa.
+describe("CabeceraDeObra: la moneda de la obra llega a la lista de la carpeta", () => {
+  afterEach(() => pedirFalso.mockReset());
+  const aplicacion = { alExpirar: vi.fn() } as unknown as Aplicacion;
+  const FILA = { ...RESUMEN.obras[0]!, cliente: "Cliente Demo", version: "002", total: null, moneda: "USD", avance_real: null, avance_plan: null, que_pasa: null, siguiente: null, version_de_linea_base: false };
+
+  function montarCabecera(ficha: FichaDeLaObra) {
+    pedirFalso.mockImplementation(async (ruta: string) => {
+      if (ruta === "/v1/carpeta") return { moneda: null, declarada: false, lista: null, aviso: "Sin lista para armar" };
+      throw new Error(`Ruta inesperada: ${ruta}`);
+    });
+    render(
+      <ContextoAplicacion.Provider value={aplicacion}>
+        <CabeceraDeObra carpeta={null} obraId={3} nombre="Galpón Norte" version="002" ficha={ficha} />
+      </ContextoAplicacion.Provider>,
+    );
+  }
+
+  it("con la ficha lista dice la moneda de la obra y el aviso de la carpeta", async () => {
+    montarCabecera({ estado: "lista", obra: { ...FILA, etapa: "en_aprobacion" } });
+    expect(await within(cabecera()).findByText("Moneda: USD · Sin lista para armar")).toBeInTheDocument();
+  });
+
+  it("sin dato de la ficha la carpeta sigue sin moneda declarada", async () => {
+    montarCabecera({ estado: "sin_dato" });
+    expect(await within(cabecera()).findByText("Carpeta sin moneda declarada")).toBeInTheDocument();
+  });
+
+  it("mientras la ficha carga dice que lee la moneda", async () => {
+    montarCabecera({ estado: "cargando" });
+    expect(await within(cabecera()).findByText("Leyendo la moneda de la carpeta…")).toBeInTheDocument();
   });
 });
 

@@ -14,6 +14,7 @@ from aplicacion.tablas_aprobacion import METADATA_APROBACION
 from aplicacion.tablas_carpeta import METADATA_CARPETA
 from aplicacion.tablas_causas import METADATA_CAUSAS
 from aplicacion.tablas_corte import METADATA_CORTE
+from aplicacion.tablas_desperdicio import METADATA_DESPERDICIO
 from aplicacion.tablas_eleccion import METADATA_ELECCION
 from aplicacion.tablas_importaciones import METADATA_IMPORTACIONES
 from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
@@ -43,6 +44,7 @@ METADATAS_CASO: tuple[MetaData, ...] = (
     METADATA_CAUSAS,
     METADATA_PROCURA,
     METADATA_CORTE,
+    METADATA_DESPERDICIO,
     METADATA_VIAL,
     METADATA_IMPORTACIONES,
 )

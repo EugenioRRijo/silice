@@ -80,18 +80,22 @@ class ResumenHojaRespuesta(BaseModel):
 class VersionHojaRespuesta(BaseModel):
     codigo: str
     fecha: str
+    #: Cómo se creó (`""` elaborada, `edicion`, `restauracion`…); la pantalla lo escribe.
     motivo: str
+    #: Lo que escribió quien la creó (su registro de cambios); `""` sin registro (E2E-3).
+    fuente: str = ""
     origen: str
     vigente: bool
     descartada: bool
     cambios: int
 
 
-def version_a_respuesta(fila: FilaVersion) -> VersionHojaRespuesta:
+def version_a_respuesta(fila: FilaVersion, fuente: str = "") -> VersionHojaRespuesta:
     return VersionHojaRespuesta(
         codigo=fila.codigo,
         fecha=fila.fecha.isoformat(),
         motivo=fila.motivo,
+        fuente=fuente,
         origen=fila.origen,
         vigente=fila.vigente,
         descartada=fila.descartada,
@@ -262,6 +266,8 @@ class FilaPresupuestoRespuesta(BaseModel):
     quitable: bool
     nota: str | None
     calculo: str | None
+    #: D8: el renglón viene de un tramo vial (su cantidad sale de la regla del tramo).
+    de_tramo: bool = False
 
 
 class VistaPresupuestoRespuesta(BaseModel):
@@ -318,6 +324,17 @@ class MetricasApuRespuesta(BaseModel):
     precio_unitario: MontoHojaRespuesta
 
 
+class DesperdicioLineaRespuesta(BaseModel):
+    """La neta y el porcentaje de desperdicio de la fila `fila` (desde 1) de Materiales, «0,50 +
+    4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye. `neta` y `porcentaje`, con
+    coma decimal, siembran los campos de la Hoja, que los edita (2026-11-13)."""
+
+    fila: int
+    texto: str
+    neta: str
+    porcentaje: str
+
+
 class DetalleApuRespuesta(BaseModel):
     codigo: str
     descripcion: str
@@ -328,6 +345,7 @@ class DetalleApuRespuesta(BaseModel):
     metricas: MetricasApuRespuesta
     estados: list[str]
     solo_lectura_insumos: bool
+    desperdicios: list[DesperdicioLineaRespuesta] = []
 
 
 class VistaApuRespuesta(BaseModel):
@@ -652,6 +670,9 @@ class EdicionApu(BaseModel):
     materiales: LineasDeApu
     equipos: LineasDeApu
     mano_obra: LineasDeApu
+    #: Un porcentaje de desperdicio por material («» sin desperdicio; 2026-11-13): con uno, la
+    #: cantidad del material es su neta y el servidor guarda neta × (1 + porcentaje / 100).
+    desperdicios: LineasDeApu | None = None
 
 
 class EdicionApuRespuesta(BaseModel):

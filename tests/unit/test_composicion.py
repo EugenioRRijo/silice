@@ -399,7 +399,11 @@ def test_una_edicion_sin_ninguna_linea_no_reemplaza():
 
     assert motivo is not None
     assert "LB-04-VAC" in motivo
-    assert "ninguna linea" in motivo
+    assert motivo == (
+        "la partida LB-04-VAC ya existe y la composición no tiene ninguna línea de insumo: "
+        "guardarla borraría su desglose. Declare al menos una línea en materiales, equipos "
+        "o mano de obra."
+    )
 
 
 def test_basta_una_linea_en_cualquiera_de_las_tres_tablas():
@@ -415,8 +419,11 @@ def test_otra_unidad_no_reemplaza_y_dice_la_registrada():
         DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, _edicion(unidad="m2")
     )
 
-    assert motivo is not None
-    assert "'m3'" in motivo
+    assert motivo == (
+        "la partida LB-04-VAC ya existe con la unidad 'm3' y la cabecera dice 'm2': la cabecera "
+        "de una partida existente no se edita desde esta pantalla. Escriba la unidad registrada "
+        "o use otro código para una partida nueva."
+    )
 
 
 def test_una_unidad_equivalente_no_es_otra_unidad():
@@ -429,8 +436,12 @@ def test_otra_descripcion_no_reemplaza_y_dice_la_registrada():
         DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, _edicion(descripcion="Vaciado de losa")
     )
 
-    assert motivo is not None
-    assert f"'{DESCRIPCION_REGISTRADA}'" in motivo
+    assert motivo == (
+        f"la partida LB-04-VAC ya existe con la descripción '{DESCRIPCION_REGISTRADA}' y la "
+        "cabecera dice 'Vaciado de losa': la cabecera de una partida existente no se edita desde "
+        "esta pantalla. Escriba la descripción registrada o use otro código para una partida "
+        "nueva."
+    )
 
 
 def test_los_espacios_de_borde_de_la_descripcion_no_son_otra_descripcion():

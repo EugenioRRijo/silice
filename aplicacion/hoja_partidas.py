@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from adapters.vial.modelo import PREFIJO_TRAMO as _PREFIJO_TRAMO
 from aplicacion.cifras import BLANCOS, MENSAJE_CIFRA, CifraInvalida, cifra_escrita, texto_de_cifra
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja import Borrador, claves_de_items, items_sin_escribir
@@ -61,6 +62,11 @@ __all__ = [
 
 #: Prefijo del `origen_id` de un renglón agregado a mano: «a-mano:1», «a-mano:2»…
 PREFIJO_A_MANO = "a-mano:"
+
+#: El prefijo del `origen_id` de un tramo, de `adapters/vial/modelo.py` (su única definición). Se
+#: ofrece aquí, y no desde `hoja_vial`, para que `hoja_vista` no cierre el ciclo `hoja_vial` →
+#: `elaboracion` → `hoja_edicion` → `hoja_vista` → `hoja_vial` (punta a punta, 2026-11-13).
+PREFIJO_TRAMO = _PREFIJO_TRAMO
 
 SOLO_ARITMETICA = "El cálculo solo admite números y los signos + − × / y paréntesis."
 CALCULO_IMPOSIBLE = "El cálculo no se puede hacer: revise los signos y los paréntesis."

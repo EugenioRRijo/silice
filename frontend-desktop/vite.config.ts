@@ -1,10 +1,22 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { esCargadorDePatrones, podarPatrones } from "./scripts/patronesDeSilabeo.mjs";
 
 // Interfaz nueva de Silice, servida por el FastAPI en /app (RS2-9).
 export default defineConfig({
   base: "/app/",
-  plugins: [react()],
+  plugins: [
+    react(),
+    // F8, C4: los patrones de silabeo de Univer (70 idiomas, unos 4,4 MB) no entran en el dist; quedan el español y el
+    // inglés (scripts/patronesDeSilabeo.mjs explica por qué la hoja no los usa).
+    {
+      name: "silice-sin-patrones-de-silabeo",
+      enforce: "pre",
+      transform(codigo, id) {
+        return esCargadorDePatrones(id) ? { code: podarPatrones(codigo), map: null } : null;
+      },
+    },
+  ],
   server: {
     // Solo desde este equipo: con `--host` el proxy anularia la regla de «solo desde el propio equipo» (RM-4).
     host: "127.0.0.1",

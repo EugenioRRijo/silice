@@ -287,3 +287,22 @@ def test_dos_ligantes_marcados_se_rechazan_con_422(http) -> None:
     ]
     r = http.post("/v1/produccion/recetas", json=_receta(componentes=componentes))
     assert r.status_code == 422 and "un solo ligante" in r.text
+
+
+def test_las_recetas_vigentes_de_un_dia_van_en_una_sola_respuesta_sin_404(http) -> None:
+    # Una lista vacia es la respuesta a «ningun producto tiene receta»: no es un error
+    # (recorrido en video del 2026-11-01, D7: la pantalla ya no pregunta por cada agregado).
+    vacia = http.get("/v1/produccion/recetas/vigentes", params={"fecha": "2026-10-15"})
+    assert vacia.status_code == 200 and vacia.json() == []
+    http.post("/v1/produccion/recetas", json=_receta())
+    http.post("/v1/produccion/recetas", json=_receta(producto="MZ-2", vigente_desde="2026-12-01"))
+    http.post("/v1/produccion/recetas", json=_receta(fuente="correccion ficticia"))
+    octubre = http.get("/v1/produccion/recetas/vigentes", params={"fecha": "2026-10-15"})
+    assert octubre.status_code == 200, octubre.text
+    # MZ-1 con su receta mas reciente; MZ-2 aun no rige.
+    assert [(r["producto"], r["fuente"]) for r in octubre.json()] == [
+        ("MZ-1", "correccion ficticia")
+    ]
+    diciembre = http.get("/v1/produccion/recetas/vigentes", params={"fecha": "2026-12-01"})
+    assert [r["producto"] for r in diciembre.json()] == ["MZ-1", "MZ-2"]
+    assert http.get("/v1/produccion/recetas/vigentes", params={"fecha": "ayer"}).status_code == 422

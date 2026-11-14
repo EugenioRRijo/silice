@@ -214,9 +214,53 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     }
     const filas = within(tabla).getAllByRole("row").slice(1);
     expect(filas).toHaveLength(2);
-    expect(within(filas[0]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["cantidad", "AF-LLAVE, Punto P1", "cantidad", "3", "5"]);
-    expect(within(filas[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["parametro", "administracion", "valor", "0.15", "0.20"]);
+    expect(within(filas[0]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Cantidad", "AF-LLAVE, Punto P1", "Cantidad", "3", "5"]);
+    expect(within(filas[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Parámetro", "Administración", "Valor", "0,15", "0,20"]);
     expect(llamadas("GET", `/v1/hoja/borradores/${ID}/cambios`)).toHaveLength(1);
+  });
+
+  test("D1: la cantidad de la lista de cambios sale con coma decimal y punto de miles («24,5», «1.234,5»)", async () => {
+    alCambios = () =>
+      json({
+        rev: 3,
+        cambios: [{ objeto: "cantidad", clave: "AF-LLAVE|esp_puntos:P1", campo: "cantidad", antes: "24.5", despues: "1234.5" }],
+      });
+    montar();
+    const dialogo = await abrirModal();
+    const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
+    const celdas = within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
+    expect(celdas.slice(3)).toEqual(["24,5", "1.234,5"]);
+  });
+
+  test("N1 y N2: control y alta de una fila de metraje salen con rótulos y cifras con coma en la lista de cambios", async () => {
+    alCambios = () =>
+      json({
+        rev: 3,
+        cambios: [
+          { objeto: "parametro", clave: "control|spi_error", campo: "spi_error", antes: "0.90", despues: "0.85" },
+          { objeto: "metraje", clave: "esp_tramos:R1#2", campo: "fila", antes: "", despues: "recorrido_id=R1; orden=2; pendiente=0.02; vertices=1.5,0,2.5; 1.5,0,0.6" },
+        ],
+      });
+    montar();
+    const dialogo = await abrirModal();
+    const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
+    expect(texto(filas[0]!)).toEqual(["Parámetro", "Control de obra: Umbral de SPI para error", "Umbral de SPI para error", "0,90", "0,85"]);
+    expect(texto(filas[1]!)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Recorrido=R1; Orden del vértice=2; Pendiente=0,02; Vértices=(1,5; 0; 2,5), (1,5; 0; 0,6)"]);
+  });
+
+  test("D1: un valor que no es cifra («A1.2», «Eje B2.5») se muestra tal cual en la lista de cambios", async () => {
+    alCambios = () =>
+      json({
+        rev: 3,
+        cambios: [{ objeto: "metraje", clave: "fuentes|F1", campo: "ambiente_id", antes: "A1.2", despues: "Eje B2.5" }],
+      });
+    montar();
+    const dialogo = await abrirModal();
+    const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
+    const celdas = within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
+    expect(celdas.slice(3)).toEqual(["A1.2", "Eje B2.5"]);
   });
 
   test("3d-F1: sin fuente el botón «Guardar versión» queda deshabilitado y dice por qué; con fuente se habilita", async () => {
@@ -421,7 +465,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
       const dialogo = await abrirModal("Guardar primera versión…");
       expect(within(dialogo).getByRole("heading", { name: "Guardar primera versión" })).toBeInTheDocument();
       expect(within(dialogo).getByRole("textbox", { name: "Fuente de la medida (de dónde salen los datos)" })).toBeInTheDocument();
-      expect(within(dialogo).getByText(/Es la primera versión del proyecto NU-001/)).toBeInTheDocument();
+      expect(within(dialogo).getByText(/Es la primera versión de la obra NU-001/)).toBeInTheDocument();
       expect(confirmar(dialogo, "Guardar primera versión")).toBeDisabled();
       expect(
         within(dialogo).getByText("Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."),
@@ -436,7 +480,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
       fireEvent.click(confirmar(dialogo, "Guardar primera versión"));
       expect(
         await screen.findByText(
-          "Se guardó la primera versión 001 del proyecto NU-001 (total 2.703,86). Quedó registrada su creación, con su fuente y su responsable.",
+          "Se guardó la primera versión 001 de la obra NU-001 (total 2.703,86). Quedó registrada su creación, con su fuente y su responsable.",
         ),
       ).toBeInTheDocument();
       expect(guardados()).toEqual([{ rev: 2, fuente: "Plano A-01 rev. B" }]);
@@ -445,7 +489,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     });
 
     test("con la hoja vacía el servidor dice por qué (422) y el diálogo sigue abierto con la fuente", async () => {
-      const vacia = "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version.";
+      const vacia = "La hoja está vacía: describa o importe el espacio antes de guardar la primera versión.";
       alGuardar = () => json({ detalle: vacia }, 422);
       montar();
       const dialogo = await abrirModal("Guardar primera versión…");
@@ -553,7 +597,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     [403, "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."],
     [422, "El guardado no tiene la forma esperada: envíe rev (entero) y la fuente como texto de hasta 300 caracteres."],
     [422, "Escriba la fuente del cambio: por que se cambia y con que respaldo."],
-    [409, "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion vigente en el catalogo, asi que recalcularla cambiaria sus precios."],
+    [409, "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición vigente en el catálogo, así que recalcularla cambiaría sus precios."],
     [409, "No se guardó nada: la lista de precios no tiene el insumo X."],
     [503, "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro programa."],
   ])("un %s se muestra con el texto de la API y el diálogo sigue abierto con lo escrito", async (estado, detalle) => {

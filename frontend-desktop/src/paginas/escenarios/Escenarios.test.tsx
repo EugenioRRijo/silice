@@ -6,6 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaEscenarios from "./index";
 import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
+import { AVISO_ESCRITO_A_MANO } from "./logica";
 import type { EscenarioRespuesta, EscenariosBaseRespuesta, EscenariosRespuesta } from "./tipos";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -20,6 +21,28 @@ const SESION: SesionRespuesta = {
   debe_cambiar_clave: false,
   acciones: ["editar_hoja"],
   modo_entrega: false,
+};
+
+// AC3: lo que responde GET /v1/consulta/{tabla} con `detalle` (la descripcion exacta va aparte de la etiqueta).
+const CATALOGO = {
+  insumos: [
+    {
+      valor: "MAT-1",
+      etiqueta: "Cemento Portland ficticio (MAT-1, saco)",
+      fuente: "Catálogo de la carpeta de trabajo: material",
+      descripcion: "Cemento Portland ficticio",
+      unidad: "saco",
+    },
+  ],
+  salarios_cct: [
+    {
+      valor: "MO-1",
+      etiqueta: "Albañil de primera ficticio (MO-1, jornal)",
+      fuente: "Catálogo de la carpeta de trabajo: mano obra",
+      descripcion: "Albañil de primera ficticio",
+      unidad: "jornal",
+    },
+  ],
 };
 
 const FCAS = "FCAS (fracción; 6,00 = prestaciones del 600 %)";
@@ -94,6 +117,8 @@ describe("Escenarios de sensibilidad", () => {
       const url = String(entrada);
       const metodo = init?.method ?? "GET";
       if (url === "/presupuestos") return json(lista);
+      const tabla = /^\/v1\/consulta\/(\w+)\?/.exec(url)?.[1] as keyof typeof CATALOGO | undefined;
+      if (tabla) return json({ tabla, resultados: CATALOGO[tabla], hay_mas: false });
       const base = /^\/presupuestos\/([^/]+)\/escenarios\/base\?proyecto=/.exec(url);
       if (base) return json(bases[decodeURIComponent(base[1])]);
       if (metodo === "POST" && url.includes("/escenarios/csv?")) {
@@ -340,6 +365,66 @@ describe("Escenarios de sensibilidad", () => {
     ).toBeInTheDocument();
   });
 
+  // El calculo empareja la descripcion por igualdad exacta y descarta en silencio un precio de un insumo que el base no
+  // tiene: la API ahora los nombra y la pantalla lo dice en espanol llano, fuera del acordeon. Textos escritos a mano.
+  test("dice qué precios de ensayo no cambiaron nada y por qué", async () => {
+    alPostear = (cuerpo) =>
+      json({
+        codigo_base: "FIC-1",
+        total_base: "1000.00",
+        pendientes_base: [],
+        escenarios: cuerpo.escenarios.map((e) => ({
+          ...escenario(e.nombre, "1050.00"),
+          precios_sin_insumo: ["Cemento portland", "Grava inventada"],
+          precios_sin_cambio: ["Arena lavada"],
+        })),
+      });
+    montar();
+    await listo();
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+    expect(
+      await screen.findByText(
+        "En «escenario 1», 3 precios de ensayo no cambiaron nada: «Cemento portland» y «Grava inventada» no son " +
+          "insumos del presupuesto base (el nombre tiene que ser exactamente el de la lista); «Arena lavada» ya tenía " +
+          "ese precio.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("con un solo precio sin insumo lo dice en singular", async () => {
+    alPostear = (cuerpo) =>
+      json({
+        codigo_base: "FIC-1",
+        total_base: "1000.00",
+        pendientes_base: [],
+        escenarios: cuerpo.escenarios.map((e) => ({
+          ...escenario(e.nombre, "1050.00"),
+          precios_sin_insumo: ["Grava inventada"],
+          precios_sin_cambio: [],
+        })),
+      });
+    montar();
+    await listo();
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+    expect(
+      await screen.findByText(
+        "En «escenario 1», 1 precio de ensayo no cambió nada: «Grava inventada» no es un insumo del presupuesto base " +
+          "(el nombre tiene que ser exactamente el de la lista).",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("si todos los precios de ensayo cambiaron algo no hay aviso", async () => {
+    montar();
+    await listo();
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+    await screen.findByRole("button", { name: "Detalle por partida: escenario 1" });
+    expect(screen.queryByText(/no cambi(ó|aron) nada/)).not.toBeInTheDocument();
+  });
+
   test("un 401 al listar avisa a la aplicacion", async () => {
     fetchFalso.mockImplementation(async () => json({ detalle: "Sesión vencida" }, 401));
     const alExpirar = montar();
@@ -382,6 +467,104 @@ describe("Escenarios de sensibilidad", () => {
     expect(screen.getByLabelText("Insumo 1")).toHaveFocus(); // la que era la segunda
     await usuario.click(screen.getByRole("button", { name: "Quitar precio 1" }));
     expect(screen.getByRole("button", { name: "Agregar precio" })).toHaveFocus();
+  });
+
+  // AC3: «Insumo N» deja de ser texto libre. El calculo busca la descripcion por igualdad exacta y descarta en silencio la
+  // que no existe (core/budget/escenarios.py: `precios.get(descripcion, precio)`), asi que se elige de la lista y no se
+  // ofrece «usar tal cual».
+  describe("insumo de un precio de ensayo, elegido de la lista", () => {
+    const consultas = () =>
+      fetchFalso.mock.calls.map(([ruta]) => String(ruta)).filter((ruta) => ruta.startsWith("/v1/consulta/"));
+
+    async function conUnaFila() {
+      montar();
+      await listo();
+      const usuario = userEvent.setup();
+      await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
+      return usuario;
+    }
+
+    test("«Insumo 1» es un campo con busqueda en insumos y oficios, con la etiqueta oculta y sin boton «Borrar»", async () => {
+      const usuario = await conUnaFila();
+      const campo = screen.getByRole("combobox", { name: "Insumo 1" });
+      expect(document.querySelector(`label[for="${campo.id}"]`)).toHaveClass("cds--visually-hidden");
+      await usuario.type(campo, "cem");
+      await screen.findByRole("option", { name: /Cemento Portland ficticio/ }, { timeout: 3000 });
+      expect(consultas().sort()).toEqual([
+        "/v1/consulta/insumos?q=cem&limite=8&detalle=true",
+        "/v1/consulta/salarios_cct?q=cem&limite=8&detalle=true",
+      ]);
+      expect(screen.queryByRole("button", { name: "Borrar" })).not.toBeInTheDocument();
+    });
+
+    test("al elegir queda la descripcion exacta del catalogo (no la etiqueta con codigo) y eso es lo que se envia", async () => {
+      const usuario = await conUnaFila();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumo 1" }), "cem");
+      await usuario.click(await screen.findByRole("option", { name: /Cemento Portland ficticio/ }, { timeout: 3000 }));
+      expect(screen.getByRole("combobox", { name: "Insumo 1" })).toHaveValue("Cemento Portland ficticio");
+      await usuario.type(screen.getByLabelText("Precio nuevo 1"), "18,50");
+      await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+      await screen.findByText("Comparación contra el base");
+      expect(cuerpoDe(posts()[0]).escenarios[0].precios).toEqual({ "Cemento Portland ficticio": "18.50" });
+    });
+
+    test("tambien se ofrece la mano de obra: sus lineas se reprecian por la misma descripcion", async () => {
+      const usuario = await conUnaFila();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumo 1" }), "alb");
+      await usuario.click(await screen.findByRole("option", { name: /Albañil de primera ficticio/ }, { timeout: 3000 }));
+      expect(screen.getByRole("combobox", { name: "Insumo 1" })).toHaveValue("Albañil de primera ficticio");
+    });
+
+    test("no ofrece «usar tal cual»", async () => {
+      const usuario = await conUnaFila();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumo 1" }), "cem");
+      await screen.findByRole("option", { name: /Cemento Portland ficticio/ }, { timeout: 3000 });
+      expect(screen.queryByRole("option", { name: /tal cual/ })).not.toBeInTheDocument();
+    });
+
+    test("lo escrito a mano sigue pudiendose enviar, pero queda avisado que si no existe no cambia ningun precio", async () => {
+      const usuario = await conUnaFila();
+      expect(screen.queryByText(AVISO_ESCRITO_A_MANO)).not.toBeInTheDocument();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumo 1" }), "Cemento escrito");
+      expect(screen.getByText(AVISO_ESCRITO_A_MANO)).toBeInTheDocument();
+      await usuario.type(screen.getByLabelText("Precio nuevo 1"), "5");
+      await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+      await screen.findByText("Comparación contra el base");
+      expect(cuerpoDe(posts()[0]).escenarios[0].precios).toEqual({ "Cemento escrito": "5" });
+    });
+
+    test("elegir de la lista quita el aviso y volver a escribir encima lo pone otra vez", async () => {
+      const usuario = await conUnaFila();
+      const campo = screen.getByRole("combobox", { name: "Insumo 1" });
+      await usuario.type(campo, "cem");
+      await usuario.click(await screen.findByRole("option", { name: /Cemento Portland ficticio/ }, { timeout: 3000 }));
+      expect(screen.queryByText(AVISO_ESCRITO_A_MANO)).not.toBeInTheDocument();
+      await usuario.type(campo, "x");
+      expect(screen.getByText(AVISO_ESCRITO_A_MANO)).toBeInTheDocument();
+    });
+
+    test("cada fila lleva su propia eleccion y el aviso de una no toca a la otra", async () => {
+      const usuario = await conUnaFila();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumo 1" }), "cem");
+      await usuario.click(await screen.findByRole("option", { name: /Cemento Portland ficticio/ }, { timeout: 3000 }));
+      await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
+      await usuario.type(screen.getByRole("combobox", { name: "Insumo 2" }), "a mano");
+      expect(screen.getAllByText(AVISO_ESCRITO_A_MANO)).toHaveLength(1);
+      await usuario.click(screen.getByRole("button", { name: "Quitar precio 1" }));
+      // la que era la segunda sigue siendo escrita a mano
+      expect(screen.getByRole("combobox", { name: "Insumo 1" })).toHaveValue("a mano");
+      expect(screen.getAllByText(AVISO_ESCRITO_A_MANO)).toHaveLength(1);
+    });
+
+    test("un 401 de la busqueda cierra la sesion", async () => {
+      const alExpirar = montar();
+      await listo();
+      const usuario = userEvent.setup();
+      await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
+      fetchFalso.mockImplementation(async () => json({ detalle: "Sesión vencida" }, 401));
+      await usuario.type(screen.getByRole("combobox", { name: "Insumo 1" }), "cem");
+      await waitFor(() => expect(alExpirar).toHaveBeenCalled(), { timeout: 3000 });
+    });
   });
 
   test("un 422 que nombra un parametro marca ese campo", async () => {

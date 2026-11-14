@@ -36,11 +36,14 @@ export type { GrupoDeResultados, OpcionDeBusqueda } from "./logicaBusqueda";
 export interface CampoConBusquedaProps<T> {
   id: string;
   etiqueta: string; // visible siempre, en lenguaje llano
+  etiquetaOculta?: boolean; // en una celda de tabla la etiqueta es solo el nombre accesible: la columna ya la rotula
   ayuda?: string; // helperText bajo el campo, con ejemplo
   texto: string; // el texto del campo: lo controla la pagina
   alCambiarTexto: (texto: string) => void;
   buscar: (q: string, senal: AbortSignal, limitePorGrupo: number) => Promise<GrupoDeResultados<T>[]>;
-  alElegir: (opcion: OpcionDeBusqueda<T>) => void;
+  // Si devuelve un texto, se dice en la region viva del campo (WCAG 4.1.3): lo que paso al elegir y no se ve en el campo, como
+  // el aviso de que un precio no se copio (dictamen del autocompletado, MENOR). Sin texto no se anuncia nada.
+  alElegir: (opcion: OpcionDeBusqueda<T>) => void | string;
   valorPropio?: {
     rotulo: (texto: string) => string; // "Crear una partida nueva con el código «LB-06»"
     alUsar: (texto: string) => void;
@@ -54,6 +57,21 @@ export interface CampoConBusquedaProps<T> {
   pausaMs?: number; // 300
   limiteInicial?: number; // 8 por grupo; «Ver más resultados» pide 20
   enCelda?: boolean; // la lista va en un portal con position: fixed (una celda recorta un menu absoluto)
+  // false: Esc con la lista cerrada no borra lo elegido. En una celda de tabla lo elegido llena otras columnas y borrar
+  // solo la descripcion las dejaria huerfanas (AC1). true por omision.
+  escLimpia?: boolean;
+  // true: elegir llena tambien otras celdas de la fila. Se marca en el campo (`data-llena-otras-celdas`) para que un Esc que
+  // restaura campos desde fuera (el panel «Componer una partida») no lo deje a medias: devolver solo este texto dejaria la
+  // unidad y el precio de un insumo que ya no esta (dictamen del autocompletado, MAYOR). false por omision.
+  llenaOtrasCeldas?: boolean;
+  // El ultimo valor confirmado (lo elegido de la lista): se marca en el campo (`data-valor-confirmado`) y a el vuelve un Esc que
+  // restaura campos desde fuera (el panel «Componer una partida»), en vez de al valor que tenia al recibir el foco.
+  valorConfirmado?: string;
+  // Tope de letras del campo: 80 por omision (el de la busqueda del servidor). null: sin tope, para un texto libre que
+  // ademas se busca (la descripcion de un insumo); quien lo pone recorta lo que manda a `buscar`.
+  largoMaximo?: number | null;
+  // false: sin el boton «Borrar» dentro del campo. En una tabla seria una parada de Tab de mas en cada fila (AC1).
+  conBorrar?: boolean;
   alExpirar: () => void; // 401
   invalido?: boolean;
   textoInvalido?: string;
@@ -64,9 +82,15 @@ export interface CampoConBusquedaProps<T> {
 
 const SIN_RESULTADO_AUN = "Las sugerencias aparecen bajo el campo al dejar de escribir.";
 
+// En una celda: lo mínimo que debe caber bajo el campo para abrir la lista abajo (unas cuatro opciones) y el aire que se deja
+// hasta el borde de la ventana.
+const ALTO_MINIMO_DEL_PANEL = 160;
+const MARGEN_DEL_PANEL = 8;
+
 export function CampoConBusqueda<T>({
   id,
   etiqueta,
+  etiquetaOculta = false,
   ayuda,
   texto,
   alCambiarTexto,
@@ -79,6 +103,11 @@ export function CampoConBusqueda<T>({
   pausaMs = PAUSA_MS,
   limiteInicial = LIMITE_INICIAL,
   enCelda = false,
+  escLimpia = true,
+  llenaOtrasCeldas = false,
+  valorConfirmado,
+  largoMaximo = LARGO_MAXIMO,
+  conBorrar = true,
   alExpirar,
   invalido = false,
   textoInvalido,
@@ -142,7 +171,15 @@ export function CampoConBusqueda<T>({
       const destino = panel.current;
       if (!campo || !destino) return;
       const caja = campo.getBoundingClientRect();
-      destino.style.top = `${caja.bottom}px`;
+      // E2E-3: bajo un campo cerca del borde inferior la lista quedaba fuera de la ventana (y, fija, no se alcanza
+      // desplazando). Como el «flip» de Floating UI: se abre arriba si abajo no cabe lo mínimo y arriba hay más sitio; y su
+      // alto no pasa del sitio que tiene en ese lado.
+      const abajo = window.innerHeight - caja.bottom;
+      const arriba = caja.top;
+      const haciaArriba = abajo < ALTO_MINIMO_DEL_PANEL && arriba > abajo;
+      destino.style.top = haciaArriba ? "auto" : `${caja.bottom}px`;
+      destino.style.bottom = haciaArriba ? `${window.innerHeight - caja.top}px` : "auto";
+      destino.style.maxBlockSize = `min(20rem, 60vh, ${Math.max((haciaArriba ? arriba : abajo) - MARGEN_DEL_PANEL, ALTO_MINIMO_DEL_PANEL / 2)}px)`;
       destino.style.left = `${caja.left}px`;
       destino.style.minWidth = `${caja.width}px`;
     };
@@ -282,8 +319,15 @@ export function CampoConBusqueda<T>({
     cancelar();
     elegido.current = entrada.tipo === "opcion" || valorPropio?.esEleccion !== false;
     cerrar();
-    if (entrada.tipo === "opcion") alElegir(entrada.opcion);
-    else valorPropio?.alUsar(recortado);
+    if (entrada.tipo !== "opcion") {
+      valorPropio?.alUsar(recortado);
+      return;
+    }
+    const dicho = alElegir(entrada.opcion);
+    if (typeof dicho === "string" && dicho !== "") {
+      clearTimeout(esperaDelAnuncio.current); // un anuncio de resultados pendiente no debe taparlo
+      setAnuncio(dicho);
+    }
   }
 
   function alTeclear(e: KeyboardEvent<HTMLInputElement>) {
@@ -326,7 +370,7 @@ export function CampoConBusqueda<T>({
           cerrar();
           return;
         }
-        if (elegido.current && texto !== "") {
+        if (escLimpia && elegido.current && texto !== "") {
           e.preventDefault();
           e.stopPropagation();
           limpiar();
@@ -453,16 +497,19 @@ export function CampoConBusqueda<T>({
         <CampoTexto
           id={id}
           labelText={etiqueta}
+          hideLabel={etiquetaOculta}
           helperText={ayuda}
           value={texto}
           size={tamano}
-          maxLength={LARGO_MAXIMO}
+          maxLength={largoMaximo ?? undefined}
           autoComplete="off"
           invalid={invalido}
           invalidText={textoInvalido}
           disabled={deshabilitado}
           readOnly={soloLectura}
           role="combobox"
+          data-llena-otras-celdas={llenaOtrasCeldas ? "true" : undefined}
+          data-valor-confirmado={valorConfirmado}
           aria-autocomplete="list"
           aria-expanded={listaVisible}
           aria-controls={listaVisible ? idLista : undefined}
@@ -481,7 +528,7 @@ export function CampoConBusqueda<T>({
             alSalir?.();
           }}
         />
-        {texto !== "" && !deshabilitado && !soloLectura && (
+        {conBorrar && texto !== "" && !deshabilitado && !soloLectura && (
           <button
             type="button"
             className="silice-busqueda__borrar cds--btn cds--btn--ghost cds--btn--sm cds--btn--icon-only"

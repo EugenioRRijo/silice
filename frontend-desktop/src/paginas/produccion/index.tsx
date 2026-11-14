@@ -4,7 +4,7 @@ import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { PanelArenera } from "../inicio/PanelArenera";
 import type { ExistenciaRespuesta } from "../inicio/PanelArenera";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 
 const RUTA_ARENERA = "/v1/produccion/existencias";
 

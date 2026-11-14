@@ -42,7 +42,7 @@ export const AYUDAS: Record<PestanaId, AyudaDePestana> = {
   },
   precios: {
     general:
-      "Lista, referencia, fecha, moneda y tasa de cada insumo, su origen y cuánto valor perdió hasta hoy (erosión). Una cotización (con su proveedor, número y fecha) vale solo para este proyecto y prevalece sobre la lista global hasta que se retire.",
+      "Lista, referencia, fecha, moneda y tasa de cada insumo, su origen y cuánto valor perdió hasta hoy (erosión). Una cotización (con su proveedor, número y fecha) vale solo para esta obra y prevalece sobre la lista global hasta que se retire.",
     alEditar: "",
     cifras: false,
   },

@@ -15,7 +15,8 @@ Sin estado en el servidor: el informe no se guarda entre «leer» y «confirmar�
 el archivo y la ruta lo vuelve a leer, así que lo que se guarda es siempre lo que el archivo dice.
 El contenido de lo que se sube nunca se confía: el nombre se reduce a su último componente válido
 en Windows, el tamaño tiene tope, un `.xlsx` pasa por la guardia (`adapters.hoja_empresa.guardia`)
-antes del lector del BCV, el archivo vive en una carpeta temporal y un 422 de forma no repite lo
+y por los topes de filas y columnas del lector (`lector.comprobar_topes_del_libro`) antes del
+lector del BCV, el archivo vive en una carpeta temporal y un 422 de forma no repite lo
 enviado (`RutaSinEco`). Los valores de los índices no viajan en la respuesta: solo recuentos y
 rangos de fechas, como la pantalla clásica. Leer (`/contexto`, `/leer`) acepta sesión o clave de
 API; confirmar solo la sesión de una cuenta con el rol (la clave recibe 403) y el responsable
@@ -37,6 +38,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from adapters.bcv.informe import InformeImportacion
 from adapters.bcv.libro import LIMITE_BYTES
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.admin_acceso import administrar
 from api.archivos import nombre_seguro
 from api.dependencias import SesionDep
@@ -168,6 +170,9 @@ def _leer_archivo(
     try:
         if nombre.lower().endswith(".xlsx"):
             verificar_archivo(contenido, nombre)
+            # El lector del BCV recorre cada hoja sin tope de filas (una hoja sin `<dimension>`
+            # con A1048576 le entrega un millón): los topes del lector, antes (como las listas).
+            comprobar_topes_del_libro(contenido, nombre)
         with tempfile.TemporaryDirectory() as carpeta:
             ruta = Path(carpeta) / nombre
             ruta.write_bytes(contenido)

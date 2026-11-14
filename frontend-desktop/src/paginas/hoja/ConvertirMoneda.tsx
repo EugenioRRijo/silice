@@ -1,5 +1,6 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
+import { monedasDestino } from "../../comun/monedas";
 import { useState } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useAplicacion } from "../../shell/contexto";
@@ -9,7 +10,6 @@ import {
   RUTA_DE_CONVERTIR,
   avisoDeCambiosPendientes,
   cuerpoDeConvertir,
-  monedasDestino,
   motivoParaNoConvertir,
   textoDeVersionCreada,
 } from "./logicaVersiones";
@@ -121,7 +121,7 @@ function BotonDeConvertir({
 }: Pick<Props, "proyecto" | "monedaActual" | "alCrearVersion"> & { version: string }) {
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
   return (
-    <section className="silice-hoja__seccion" aria-label="Moneda del proyecto">
+    <section className="silice-hoja__seccion" aria-label="Moneda de la obra">
       <div className="silice-hoja__acciones">
         <Button ref={anclaDelBoton} kind="tertiary" size="md" onClick={abrir}>
           Convertir la moneda…

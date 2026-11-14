@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING, Any
 from aplicacion.hoja import Borrador, VersionAbierta
 
 if TYPE_CHECKING:
+    from aplicacion.desperdicio import TrazaDesperdicio
     from aplicacion.importaciones import ImportacionDeObra
 
 POR_FICHA = 4
@@ -100,6 +101,8 @@ class BorradorVivo:
     proyecto sin versiones, borrador en blanco); `calculo` es la cache `(rev, ResultadoHoja,
     cambios)` de la vista, que `reemplazar` invalida.
     `importaciones` son las que anota `aplicacion.importaciones` (F4, Tarea 10).
+    `desperdicios` son las trazas que deja la Hoja al editar la neta y el porcentaje
+    (`aplicacion.hoja_desperdicio`).
     `guardado_como` se llena al guardar (3d).
     `vigente_al_abrir` es el codigo de la version vigente del proyecto al abrir (D-5): guardar
     pide confirmar solo si la vigente de AHORA es otra que esa, o sea, si alguien guardo despues
@@ -123,6 +126,9 @@ class BorradorVivo:
     #: Lo importado a este borrador (plano fusionado, cómputo llevado) y aún sin guardar: sale en
     #: el registro de la obra como «sin guardar» y se escribe con la versión (F4, Tarea 10).
     importaciones: tuple[ImportacionDeObra, ...] = ()
+    #: Las trazas del desperdicio que la Hoja escribió en este borrador, por código de partida, y
+    #: aún sin guardar: se escriben con la versión (`aplicacion.hoja_desperdicio`, 2026-11-13).
+    desperdicios: dict[str, tuple[TrazaDesperdicio, ...]] = field(default_factory=dict)
     cerrojo: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
 

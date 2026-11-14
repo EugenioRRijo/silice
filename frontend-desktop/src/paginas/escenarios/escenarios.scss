@@ -39,7 +39,8 @@
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
   gap: 0.5rem;
-  align-items: end;
+  // Con el aviso de «escrito a mano» bajo el insumo la fila crece: los campos se alinean arriba, no abajo.
+  align-items: start;
 }
 
 .silice-escenarios__acciones {

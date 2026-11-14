@@ -154,3 +154,34 @@ def test_el_escenario_base_de_una_version_editada_en_la_hoja_cuadra_con_su_presu
         == formatear_decimal(guardada.total, DECIMALES_PRESENTACION)
     )
     assert escenario["variacion"] == "0.00"
+
+
+def test_los_precios_de_ensayo_que_no_cambian_nada_se_dicen_por_su_nombre(cliente, presupuesto_001):
+    """El cálculo empareja la descripción del insumo por igualdad exacta (`core.budget.escenarios`):
+    un precio de un insumo que el base no tiene, o igual al vigente, no cambia nada y antes solo se
+    notaba en `insumos_variados`. Oráculos de la fixture (`apu_linea_base`): el cemento vale 15 y
+    la arena 30; «Cemento portland» (con minúscula) y «Grava inventada» no están en el base."""
+    respuesta = cliente.post(
+        RUTA_ESCENARIOS,
+        json={
+            "escenarios": [
+                {
+                    "nombre": "mezcla",
+                    "precios": {
+                        "Cemento Portland": "18",
+                        "Arena lavada": "30",
+                        "Cemento portland": "20",
+                        "Grava inventada": "5",
+                    },
+                },
+                {"nombre": "solo parametros", "utilidad": "0.20"},
+            ]
+        },
+    )
+    assert respuesta.status_code == 200
+    mezcla, solo_parametros = respuesta.json()["escenarios"]
+    assert mezcla["insumos_variados"] == 1
+    assert mezcla["precios_sin_insumo"] == ["Cemento portland", "Grava inventada"]
+    assert mezcla["precios_sin_cambio"] == ["Arena lavada"]
+    assert solo_parametros["precios_sin_insumo"] == []
+    assert solo_parametros["precios_sin_cambio"] == []

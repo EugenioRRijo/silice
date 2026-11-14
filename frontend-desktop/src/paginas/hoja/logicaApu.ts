@@ -31,12 +31,27 @@ export type RubroDeApu = "materiales" | "equipos" | "mano de obra";
 export interface EdicionDeApu {
   rendimiento: string;
   cantidades: Record<string, string[]>;
+  // Uno por fila de Materiales en orden; "" = sin desperdicio.
+  desperdicios: string[];
 }
 
-export function sembrarApu(detalle: Pick<DetalleApu, "rendimiento" | "grupos">): EdicionDeApu {
+// En Materiales, las filas con desperdicio siembran la neta (no `f.cantidad`, que ya lo incluye) y su porcentaje.
+export function sembrarApu(
+  detalle: Pick<DetalleApu, "rendimiento" | "grupos"> & Partial<Pick<DetalleApu, "desperdicios">>,
+): EdicionDeApu {
+  const porFila = new Map((detalle.desperdicios ?? []).map((d) => [d.fila, d]));
+  const materiales = detalle.grupos.find((g) => g.clave === "materiales");
   return {
     rendimiento: detalle.rendimiento,
-    cantidades: Object.fromEntries(detalle.grupos.map((g) => [g.clave, g.filas.map((f) => f.cantidad ?? "")])),
+    cantidades: Object.fromEntries(
+      detalle.grupos.map((g) => [
+        g.clave,
+        g.filas.map((f, i) =>
+          g.clave === "materiales" ? (porFila.get(i + 1)?.neta ?? f.cantidad ?? "") : (f.cantidad ?? ""),
+        ),
+      ]),
+    ),
+    desperdicios: (materiales?.filas ?? []).map((_, i) => porFila.get(i + 1)?.porcentaje ?? ""),
   };
 }
 
@@ -50,6 +65,13 @@ export function cambiarCantidadDeLinea(edicion: EdicionDeApu, rubro: string, ind
   };
 }
 
+export function cambiarDesperdicioDeLinea(edicion: EdicionDeApu, indice: number, texto: string): EdicionDeApu {
+  return {
+    ...edicion,
+    desperdicios: edicion.desperdicios.map((d, i) => (i === indice ? texto : d)),
+  };
+}
+
 export function cambiarRendimiento(edicion: EdicionDeApu, texto: string): EdicionDeApu {
   return { ...edicion, rendimiento: texto };
 }
@@ -60,6 +82,7 @@ export interface CuerpoDeApu {
   materiales: string[];
   equipos: string[];
   mano_obra: string[];
+  desperdicios: string[];
 }
 
 export function cuerpoDeApu(rev: number, edicion: EdicionDeApu): CuerpoDeApu {
@@ -69,13 +92,20 @@ export function cuerpoDeApu(rev: number, edicion: EdicionDeApu): CuerpoDeApu {
     materiales: edicion.cantidades["materiales"] ?? [],
     equipos: edicion.cantidades["equipos"] ?? [],
     mano_obra: edicion.cantidades["mano de obra"] ?? [],
+    desperdicios: edicion.desperdicios,
   };
 }
 
-export type UbicacionDeApu = { campo: "rendimiento" } | { campo: "linea"; grupo: string; fila: number };
+export type UbicacionDeApu =
+  | { campo: "rendimiento" }
+  | { campo: "linea"; grupo: string; fila: number }
+  | { campo: "desperdicio"; fila: number };
 
-// «{rubro}, fila {n}: …» (ui/hoja.py:937-955) o «rendimiento…» (ui/hoja.py:972). Otro mensaje no se ubica.
+// «{rubro}, fila {n}: …» (ui/hoja.py:937-955) o «rendimiento…» (ui/hoja.py:972). El desperdicio de materiales se revisa
+// antes que la línea para marcar el porcentaje y no la cantidad neta. Otro mensaje no se ubica.
 export function ubicarErrorDeApu(detalle: string): UbicacionDeApu | null {
+  const desperdicio = /^materiales, fila (\d+): el desperdicio/.exec(detalle);
+  if (desperdicio) return { campo: "desperdicio", fila: enteroDeDigitos(desperdicio[1]!) };
   const linea = /^(materiales|equipos|mano de obra), fila (\d+): /.exec(detalle);
   if (linea) return { campo: "linea", grupo: linea[1]!, fila: enteroDeDigitos(linea[2]!) };
   if (/^rendimiento\b/.test(detalle)) return { campo: "rendimiento" };
@@ -123,6 +153,31 @@ export function insumosVisibles(respuesta: InsumosRespuesta): { insumos: InsumoC
 // trae «:» pero no «: », así que el estado empieza donde sigue una palabra en mayúsculas con dos puntos (ERROR:, PENDIENTE:…).
 export function textoDeEstado(estado: string): string {
   return estado.replace(/^Estado de .*?: (?=[A-ZÁÉÍÓÚÑ]+(?::| \|))/, "");
+}
+
+// E2E-3: el Estado de la partida trae uno por renglón, y con la misma partida en varios renglones el servidor da a cada
+// uno los mismos avisos en otro orden (primero el suyo). Se muestra cada conjunto una vez, el primero tal como llega: dos
+// estados son el mismo si tienen los mismos avisos por severidad, sin importar el orden. Solo texto; nada se calcula.
+export function estadosDeLaPartida(estados: readonly string[]): string[] {
+  const forma = (texto: string) =>
+    texto
+      .split(" | ")
+      .map((segmento) => {
+        const m = /^([A-ZÁÉÍÓÚÑ]+): (.*)$/.exec(segmento);
+        return m ? `${m[1]}: ${m[2]!.split("; ").sort().join("; ")}` : segmento;
+      })
+      .sort()
+      .join(" | ");
+  const vistos = new Set<string>();
+  const unicos: string[] = [];
+  for (const estado of estados) {
+    const texto = textoDeEstado(estado);
+    const clave = forma(texto);
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    unicos.push(texto);
+  }
+  return unicos;
 }
 
 // --- agregar y quitar líneas (Tarea 26) ---
@@ -188,12 +243,17 @@ export function campoDelErrorDeLinea(detalle: string): CampoDeLinea | null {
 // Tras agregar o quitar una línea, lo que se edita cambia de forma: se agrega (al final de su rubro) o se quita la cantidad
 // de esa línea, en lo escrito y en lo aceptado, sin tocar lo demás (lo tocado y no aceptado se conserva).
 export function conLineaAgregada(edicion: EdicionDeApu, grupo: string, cantidad: string): EdicionDeApu {
-  return { ...edicion, cantidades: { ...edicion.cantidades, [grupo]: [...(edicion.cantidades[grupo] ?? []), cantidad] } };
+  return {
+    ...edicion,
+    cantidades: { ...edicion.cantidades, [grupo]: [...(edicion.cantidades[grupo] ?? []), cantidad] },
+    desperdicios: grupo === "materiales" ? [...edicion.desperdicios, ""] : edicion.desperdicios,
+  };
 }
 
 export function conLineaQuitada(edicion: EdicionDeApu, grupo: string, indice: number): EdicionDeApu {
   return {
     ...edicion,
     cantidades: { ...edicion.cantidades, [grupo]: (edicion.cantidades[grupo] ?? []).filter((_, i) => i !== indice) },
+    desperdicios: grupo === "materiales" ? edicion.desperdicios.filter((_, i) => i !== indice) : edicion.desperdicios,
   };
 }

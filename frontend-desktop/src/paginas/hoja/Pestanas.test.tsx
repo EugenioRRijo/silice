@@ -186,7 +186,7 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
     expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toBeInTheDocument();
     expect(screen.queryByText(/Total del presupuesto/)).toBeNull();
-    expect(screen.queryByText(/Moneda del proyecto/)).toBeNull();
+    expect(screen.queryByText(/Moneda de la obra/)).toBeNull();
     // El total sigue en un solo lugar: bajo la tabla de «Partidas».
     await userEvent.click(screen.getByRole("tab", { name: "Partidas" }));
     expect(await screen.findByText(/Total del presupuesto/)).toBeInTheDocument();

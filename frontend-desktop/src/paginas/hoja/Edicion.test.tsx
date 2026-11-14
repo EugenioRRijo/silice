@@ -242,7 +242,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     // Cuando el servidor acepte, la vista trae el estado y las cantidades nuevas.
     vista = vistaEspacio({
       derivadas: [
-        { partida: "AF-LLAVE", descripcion: "Llave de paso", unidad: "unidad", cantidad: { texto: "4.00", exacto: "4" }, origen: "esp_puntos:P1" },
+        { partida: "AF-LLAVE", descripcion: "Llave de paso", unidad: "m3", cantidad: { texto: "4.00", exacto: "4" }, origen: "esp_puntos:P1" },
       ],
       estado: { ...vista.estado, "esp_ambientes:BAN-01": { severidad: null, texto: "OK" } },
       total: { texto: "2800.50", exacto: "2800.5" },
@@ -270,6 +270,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     expect(lecturasDelEspacio()).toBe(antes + 1);
     const derivadas = await esperar(() => screen.getByRole("table", { name: "Cantidades derivadas" }));
     expect(await esperar(() => within(derivadas).getByText("4,00"))).toBeInTheDocument();
+    expect(within(derivadas).getByText("m³")).toBeInTheDocument();
     const filas = within(screen.getByRole("table", { name: "Ambientes" })).getAllByRole("row");
     expect(await esperar(() => within(filas[1]!).getByText("OK"))).toBeInTheDocument();
     // Lo escrito se queda como lo escribió la persona; la respuesta no lo reemplaza.
@@ -579,14 +580,15 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "3" } });
     await pausa(400);
     await esperar(() => screen.getByText(/· 1 cambio sin guardar/));
-    expect(saleLaPagina()).toBe(true);
+    // el aviso se registra en un efecto pasivo, después del commit que pinta el texto
+    await esperar(() => expect(saleLaPagina()).toBe(true));
   });
 
   test("3c-F10: al abrir un borrador que ya tiene cambios, beforeunload ya avisa; y al desmontar deja de avisar", async () => {
     abierto = borrador({ cambios: 2 });
     const { unmount } = montar();
     await screen.findByText(/· 2 cambios sin guardar/);
-    expect(saleLaPagina()).toBe(true);
+    await esperar(() => expect(saleLaPagina()).toBe(true));
     unmount();
     expect(saleLaPagina()).toBe(false);
   });

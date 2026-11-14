@@ -27,8 +27,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep
+from api.esquemas_partidas import PartidasDelContratoRespuesta, partidas_a_respuesta
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
 from aplicacion import reajuste as logica
@@ -42,6 +44,10 @@ MENSAJE_CUERPO_INVALIDO = (
     "Los datos del estudio no tienen la forma esperada: escriba cada campo como texto."
 )
 MENSAJE_NUMERO_ENORME = "Un número del estudio es demasiado grande o no es válido."
+PROYECTO_INEXISTENTE = "La obra no existe en esta carpeta."
+VERSION_INEXISTENTE = "La obra no tiene esa versión."
+MENSAJE_BASE_PARTIDAS = "No se pudieron leer las partidas del contrato de la carpeta de trabajo."
+MENSAJE_BASE_SERIES = "No se pudieron leer las series de índices de la carpeta de trabajo."
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 SIN_CACHE = {"Cache-Control": "no-store"}
 PERIODICIDADES = ["mensual", "trimestral"]  # las que ofrece la pantalla clásica
@@ -136,12 +142,16 @@ class GuardadoRespuesta(BaseModel):
 # --- Ayudas -------------------------------------------------------------------------------
 
 
-def _proyecto_existente(sesion, nombre: str) -> None:
-    if (
+def _hay_proyecto(sesion, nombre: str) -> bool:
+    return (
         sesion.scalars(select(models.Proyecto).where(models.Proyecto.nombre == nombre)).first()
-        is None
-    ):
-        raise HTTPException(404, f"El proyecto «{nombre}» no existe en este caso.")
+        is not None
+    )
+
+
+def _proyecto_existente(sesion, nombre: str) -> None:
+    if not _hay_proyecto(sesion, nombre):
+        raise HTTPException(404, f"La obra «{nombre}» no existe en esta carpeta.")
 
 
 def _quien(activa: SesionActiva | None) -> str:
@@ -213,6 +223,63 @@ def parciales(
     response.headers.update(SIN_CACHE)
     _proyecto_existente(sesion, proyecto)
     return _parciales(sesion, proyecto, version)
+
+
+@router.get("/partidas", response_model=PartidasDelContratoRespuesta)
+def partidas(
+    sesion: SesionDep,
+    response: Response,
+    proyecto: Annotated[str, Query(max_length=200)],
+    version: Annotated[str, Query(max_length=40)],
+) -> PartidasDelContratoRespuesta:
+    """AC2: las partidas de la versión del contrato elegida, para el campo «Partida» de lo
+    ejecutado. El cálculo rechaza una partida que no está en ella; aquí solo se ofrecen.
+    `truncada` dice si la lista se recortó al tope.
+
+    Errores fijos, como `/v1/consulta` (diseño de autocompletado, H-17): el 404 no repite el
+    proyecto ni la versión pedidos y un fallo de la base es el 503 sin SQL ni rutas; los dos van
+    también con `Cache-Control: no-store`."""
+    response.headers.update(SIN_CACHE)
+    try:
+        if not _hay_proyecto(sesion, proyecto):
+            raise HTTPException(404, PROYECTO_INEXISTENTE, headers=SIN_CACHE)
+        try:
+            halladas = logica.partidas_de_la_version(sesion, proyecto, version)
+        except HojaInvalida:
+            raise HTTPException(404, VERSION_INEXISTENTE, headers=SIN_CACHE) from None
+    except SQLAlchemyError:
+        raise HTTPException(503, MENSAJE_BASE_PARTIDAS, headers=SIN_CACHE) from None
+    return partidas_a_respuesta(halladas)
+
+
+class SerieRespuesta(BaseModel):
+    clave: str = Field(description="El código de la serie, como se cita en un componente")
+    nombre: str
+    organismo: str
+    unidad: str
+    periodicidad: str
+
+
+@router.get("/series", response_model=list[SerieRespuesta])
+def series(sesion: SesionDep, response: Response) -> list[SerieRespuesta]:
+    """AC2: las series de índices guardadas (UC-17), para el campo «Serie» de los componentes.
+    Solo su definición: ningún valor del índice sale por esta ruta. Un fallo de la base es el 503
+    fijo, sin SQL ni rutas."""
+    response.headers.update(SIN_CACHE)
+    try:
+        guardadas = logica.series_de_indices(sesion)
+    except SQLAlchemyError:
+        raise HTTPException(503, MENSAJE_BASE_SERIES, headers=SIN_CACHE) from None
+    return [
+        SerieRespuesta(
+            clave=s.codigo,
+            nombre=s.nombre,
+            organismo=s.organismo,
+            unidad=s.unidad,
+            periodicidad=s.periodicidad,
+        )
+        for s in guardadas
+    ]
 
 
 @router.post("/calcular", response_model=CalculoRespuesta)

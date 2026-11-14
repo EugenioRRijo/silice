@@ -15,7 +15,8 @@ Archivo y formato
   libro siempre se cierra. Las filas se piden con tope: no se itera sin limite.
 - Numeracion: la fila 1 del archivo es la primera fila; `fila` de cada pesaje es la del archivo. Las
   filas en blanco se saltan pero cuentan en la numeracion.
-- Mas de `MAX_FILAS` filas de datos o de `MAX_COLUMNAS` columnas: `ReporteRechazado`.
+- Mas de `MAX_FILAS` filas de datos o de `MAX_COLUMNAS` columnas: `ReporteRechazado`. Del XLSX se
+  leen `MAX_COLUMNAS + 1` columnas: lo que haya mas alla no se lee.
 
 Unidad del peso (RT-S4-6)
 -------------------------
@@ -303,7 +304,11 @@ def _filas_de_xlsx(datos: bytes, tope: int) -> Iterator[list[object]]:
     try:
         if libro.worksheets:
             hoja = libro.worksheets[0]
-            for fila in islice(hoja.iter_rows(values_only=True), tope):
+            # Una columna más que el tope, para rechazar la fila que la usa; lo de más allá no
+            # se lee (ninguna columna así puede asignarse a un campo) y una celda con solo
+            # formato en XFD ya no cuesta 16.384 valores por fila (decisión (d), 2026-11-12)
+            filas = hoja.iter_rows(max_col=MAX_COLUMNAS + 1, values_only=True)
+            for fila in islice(filas, tope):
                 yield _acotada(fila)
     except ReporteRechazado:
         raise

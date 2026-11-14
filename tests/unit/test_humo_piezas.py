@@ -22,6 +22,7 @@ import pytest
 
 from instalador import navegador, proxy_testigo, verificar_bases
 from operacion.base_datos import preparar_base
+from seguridad import cuentas
 from tests.fixtures import bases_prueba as bp
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -67,27 +68,48 @@ def test_navegador_main_escribe_el_json_y_sale_con_1_si_hay_externos(
     salida = tmp_path / "peticiones.json"
     codigo = navegador.main(["--url", "http://127.0.0.1:8501/", "--salida", str(salida)])
     assert codigo == 1
-    assert pedidas == [("http://127.0.0.1:8501", ["", "#/catalogo", "#/simulador"])]
+    assert pedidas == [("http://127.0.0.1:8501", ["", "#/precios/catalogo", "#/precios/simulador"])]
     datos = json.loads(salida.read_text(encoding="utf-8"))
     assert datos == {"peticiones": 2, "externos": ["cdnjs.cloudflare.com"], "urls": vistas}
     monkeypatch.setattr(navegador, "recorrer", lambda url, paginas: vistas[:1])
     assert navegador.main(["--url", "http://127.0.0.1:8501", "--salida", str(salida)]) == 0
 
 
+def _herramientas_por_espacio() -> dict[str, set[str]]:
+    """Lee `marco/espacios.ts` (el registro de rutas canónicas): espacio -> ids de herramienta."""
+    texto = (RAIZ / "frontend-desktop" / "src" / "marco" / "espacios.ts").read_text(
+        encoding="utf-8"
+    )
+    cuerpo = texto[texto.index("export const ESPACIOS:") : texto.index("export const SUBVISTAS")]
+    espacios: dict[str, set[str]] = {}
+    for bloque in re.finditer(r"^  ([a-z]+): \{\n(.*?)^  \},", cuerpo, flags=re.M | re.S):
+        espacios[bloque[1]] = set(re.findall(r'\{ id: "([a-z-]+)", titulo:', bloque[2]))
+    return espacios
+
+
 def test_las_paginas_del_humo_existen_en_el_registro_de_rutas(tmp_path: Path, monkeypatch) -> None:
     """Una pantalla dada de baja redirige a Pendientes y el humo cargaría una pantalla menos sin
-    decirlo (F4: `similares`, `elaborar` e `historico` salieron del registro)."""
+    decirlo (F4: `similares`, `elaborar` e `historico` salieron del registro). Se comprueba la
+    ruta canónica completa (espacio y herramienta), no solo el último segmento."""
     pedidas: list[list[str]] = []
     monkeypatch.setattr(navegador, "recorrer", lambda url, paginas: pedidas.append(paginas) or [])
     navegador.main(["--url", "http://127.0.0.1:8501", "--salida", str(tmp_path / "p.json")])
-    registro = (RAIZ / "frontend-desktop" / "src" / "shell" / "rutas.ts").read_text(
-        encoding="utf-8"
-    )
-    ids = set(re.findall(r'^\s+id: "([a-z_]+)",$', registro, flags=re.MULTILINE))
-    assert "obras" in ids
+    registro = _herramientas_por_espacio()
+    assert registro["precios"] >= {
+        "catalogo",
+        "simulador",
+        "indices",
+        "listas",
+    }  # el lector funciona
+    assert set(registro) == {"produccion", "auditoria", "precios"}
     paginas = [p.removeprefix("#/") for p in pedidas[0] if p]
-    assert paginas == ["catalogo", "simulador"]
-    assert set(paginas) <= ids
+    assert paginas == ["precios/catalogo", "precios/simulador"]
+    for ruta in paginas:
+        espacio, herramienta = ruta.split("/")
+        assert herramienta in registro[espacio], ruta
+    # Una herramienta que existe en otro espacio no vale: la ruta completa es la que se comprueba.
+    assert "simulador" not in registro["auditoria"]
+    assert "catalogo" not in registro["produccion"]
 
 
 @pytest.fixture
@@ -335,3 +357,423 @@ def test_rangos_sin_cubre_todo_ipv4_salvo_el_bucle_local_y_la_ip_propia(
     assert cubierto == (2**32 - 2**24) - 1  # todo menos 127.0.0.0/8 y la IP propia
     assert not any(inicio <= propia <= fin for inicio, fin in tramos)
     assert not any(inicio <= _a_entero("127.0.0.1") <= fin for inicio, fin in tramos)
+
+
+def _buena_descarga() -> dict:
+    return {
+        "reclamo": 201,
+        "respaldo": 200,
+        "bajada": 200,
+        "tipo": "application/zip",
+        "disposicion": 'attachment; filename="respaldo.zip"',
+        "bytes": 256,
+        "firma": "PK",
+    }
+
+
+def test_descarga_valida_acepta_un_zip_completo() -> None:
+    assert navegador.descarga_valida(_buena_descarga()) is True
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("reclamo", 401),
+        ("respaldo", 403),
+        ("bajada", 404),
+        ("tipo", "text/html; charset=utf-8"),
+        ("disposicion", "inline"),
+        ("bytes", 0),
+        ("firma", "<!"),
+        ("firma", None),
+    ],
+)
+def test_descarga_valida_rechaza_cada_campo_malo(campo: str, valor: object) -> None:
+    malo = _buena_descarga()
+    malo[campo] = valor
+    assert navegador.descarga_valida(malo) is False
+
+
+class _PeticionFalsa:
+    def __init__(self, url: str) -> None:
+        self.url = url
+
+
+class _PaginaFalsa:
+    def __init__(self, url: str, resultado_eval: dict | None = None) -> None:
+        self.url = url
+        self._resultado_eval = resultado_eval
+        self._manejadores: dict[str, list] = {}
+        self.visitadas: list[str] = []
+        self.evaluaciones: list[tuple[str, dict]] = []
+
+    def on(self, evento: str, manejador) -> None:
+        self._manejadores.setdefault(evento, []).append(manejador)
+
+    def goto(self, url: str, **_kwargs) -> None:
+        self.visitadas.append(url)
+        for manejador in self._manejadores.get("request", []):
+            manejador(_PeticionFalsa(url))
+
+    def wait_for_timeout(self, _ms: int) -> None:
+        pass
+
+    def evaluate(self, guion: str, arg: dict) -> dict | None:
+        self.evaluaciones.append((guion, arg))
+        return self._resultado_eval
+
+
+class _ContextoFalso:
+    def __init__(self, pages: list[_PaginaFalsa]) -> None:
+        self.pages = pages
+
+
+class _NavegadorFalso:
+    def __init__(self, contextos: list[_ContextoFalso]) -> None:
+        self.contexts = contextos
+        self.cerrado = False
+
+    def close(self) -> None:
+        self.cerrado = True
+
+
+class _ChromiumFalso:
+    def __init__(self, navegador_falso: _NavegadorFalso) -> None:
+        self.navegador = navegador_falso
+        self.llamadas: list[tuple[str, int | None]] = []
+
+    def connect_over_cdp(self, cdp: str, timeout: int | None = None) -> _NavegadorFalso:
+        self.llamadas.append((cdp, timeout))
+        return self.navegador
+
+
+class _PlaywrightFalso:
+    def __init__(self, navegador_falso: _NavegadorFalso) -> None:
+        self.chromium = _ChromiumFalso(navegador_falso)
+
+    def __enter__(self) -> _PlaywrightFalso:
+        return self
+
+    def __exit__(self, *_args) -> None:
+        pass
+
+
+def test_recorrer_ventana_elige_pagina_app_evalua_y_no_cierra() -> None:
+    blanco = _PaginaFalsa("about:blank")
+    esperado = _buena_descarga()
+    app = _PaginaFalsa("http://127.0.0.1:8501/app/", esperado)
+    nav = _NavegadorFalso([_ContextoFalso([blanco, app])])
+    pw = _PlaywrightFalso(nav)
+
+    vistas, resultado = navegador.recorrer_ventana(
+        "http://127.0.0.1:9333",
+        "http://127.0.0.1:8501/app",
+        ["", "#/precios/catalogo"],
+        "CODIGODEPRUEBA123456",
+        abrir_playwright=lambda: pw,
+    )
+
+    assert pw.chromium.llamadas == [("http://127.0.0.1:9333", 60_000)]
+    assert blanco.visitadas == [] and blanco.evaluaciones == []
+    assert app.visitadas == [
+        "http://127.0.0.1:8501/app/",
+        "http://127.0.0.1:8501/app/#/precios/catalogo",
+    ]
+    assert vistas == app.visitadas
+    assert resultado == esperado
+    assert len(app.evaluaciones) == 1
+    guion, arg = app.evaluaciones[0]
+    assert guion == navegador.GUION_DESCARGA
+    assert arg["codigo"] == "CODIGODEPRUEBA123456"
+    assert cuentas.validar_login(arg["usuario"]) == arg["usuario"]
+    cuentas.validar_contrasena(arg["contrasena"], arg["usuario"])
+    assert not nav.cerrado
+
+
+def test_recorrer_ventana_sin_codigo_no_evalua_y_devuelve_none() -> None:
+    app = _PaginaFalsa("http://127.0.0.1:8501/app/", _buena_descarga())
+    nav = _NavegadorFalso([_ContextoFalso([app])])
+    pw = _PlaywrightFalso(nav)
+
+    vistas, resultado = navegador.recorrer_ventana(
+        "http://127.0.0.1:9333",
+        "http://127.0.0.1:8501/app",
+        [""],
+        None,
+        abrir_playwright=lambda: pw,
+    )
+
+    assert vistas == ["http://127.0.0.1:8501/app/"]
+    assert app.evaluaciones == []
+    assert resultado is None
+    assert not nav.cerrado
+
+
+def test_navegador_main_con_cdp_valida_descarga_y_limpia_codigo(
+    tmp_path: Path, monkeypatch
+) -> None:
+    llamadas: list[tuple[str, str, list[str], str | None]] = []
+    mala = {**_buena_descarga(), "firma": "NO"}
+
+    def falso_recorrer(cdp: str, url: str, paginas: list[str], codigo: str | None):
+        llamadas.append((cdp, url, paginas, codigo))
+        return ["http://127.0.0.1:8501/app/"], mala
+
+    monkeypatch.setattr(navegador, "recorrer_ventana", falso_recorrer)
+    archivo_codigo = tmp_path / "codigo.txt"
+    archivo_codigo.write_text("  ABCD2345EFGH6789IJKL \n", encoding="utf-8")
+    salida = tmp_path / "ventana.json"
+
+    rc_malo = navegador.main(
+        [
+            "--url",
+            "http://127.0.0.1:8501/app/",
+            "--cdp",
+            "http://127.0.0.1:9333",
+            "--codigo",
+            str(archivo_codigo),
+            "--salida",
+            str(salida),
+        ]
+    )
+    assert rc_malo == 1
+    assert llamadas == [
+        (
+            "http://127.0.0.1:9333",
+            "http://127.0.0.1:8501/app",
+            ["", "#/precios/catalogo", "#/precios/simulador"],
+            "ABCD2345EFGH6789IJKL",
+        )
+    ]
+    assert json.loads(salida.read_text(encoding="utf-8"))["descarga"] == mala
+
+    buena = _buena_descarga()
+    monkeypatch.setattr(
+        navegador,
+        "recorrer_ventana",
+        lambda *_args: (["http://127.0.0.1:8501/app/"], buena),
+    )
+    rc_bueno = navegador.main(
+        [
+            "--url",
+            "http://127.0.0.1:8501/app",
+            "--cdp",
+            "http://127.0.0.1:9333",
+            "--codigo",
+            str(archivo_codigo),
+            "--salida",
+            str(salida),
+        ]
+    )
+    assert rc_bueno == 0
+    assert json.loads(salida.read_text(encoding="utf-8"))["descarga"] == buena
+
+
+def test_guion_descarga_apunta_a_rutas_reales_de_la_api() -> None:
+    from api.main import app
+
+    # el esquema y no `app.routes`: los routers incluidos no exponen `path` en esa lista
+    rutas = set(app.openapi()["paths"])
+    for esperada in (
+        "/v1/primer-arranque/reclamo",
+        "/v1/admin/instalacion/respaldos",
+        "/v1/admin/instalacion/respaldos/{nombre}",
+    ):
+        assert esperada in rutas
+        assert esperada.replace("/{nombre}", "") in navegador.GUION_DESCARGA
+    assert "X-Silice-CSRF" in navegador.GUION_DESCARGA
+    assert "same-origin" in navegador.GUION_DESCARGA
+
+
+def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    paso6 = texto.index("Paso '6.")
+    paso6b = texto.index("Paso '6b.")
+    paso7 = texto.index("Paso '7.")
+    assert paso6 < paso6b < paso7
+    bloque = texto[paso6b:paso7]
+    for pieza in (
+        "--cdp",
+        "codigo_instalacion.txt",
+        "CloseMainWindow",
+        "WaitForExit",
+        r"estado\servidor.json",
+        "Se cerró la ventana de Sílice",
+        "puerto de depuración",
+    ):
+        assert pieza in bloque, pieza
+    iniciar_ventana = _funcion_del_humo("IniciarVentana")
+    # La variable de WebView2 no sirve en el proceso elevado de la humo (la ignora desde el runtime
+    # 150): el puerto lo abre solo la política de HKLM, y la variable ya no se pone en ningún sitio
+    assert "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" not in texto
+    assert "--sin-navegador" not in iniciar_ventana
+    assert "Hidden" not in iniciar_ventana
+    # sin consola propia: con una, `MainWindowHandle` y `CloseMainWindow()` podrían ser los de la
+    # consola (Windows la atribuye al proceso) y no los de la ventana «Sílice»
+    assert "-NoNewWindow" in iniciar_ventana
+    # el permiso explícito que el lanzador exige para abrir la ventana con el puerto de
+    # depuración (decisión (e)): se pone solo aquí y se quita al lanzar
+    assert "$env:SILICE_PERMITIR_DEPURACION_VENTANA = '1'" in iniciar_ventana
+    finally_ = iniciar_ventana[iniciar_ventana.index("} finally {") :]
+    assert "Env:SILICE_PERMITIR_DEPURACION_VENTANA" in finally_
+    assert texto.count("SILICE_PERMITIR_DEPURACION_VENTANA = ") == 1
+    # Python con la salida en archivo la guarda en búfer: los textos del lanzador se leen cuando
+    # ya terminó (`WaitForExit`), no mientras la ventana sigue abierta
+    # el puerto CDP lo da Windows (puerto 0): uno fijo puede caer en un rango reservado de
+    # Hyper-V y Chromium no lo abre sin avisar (1.ª corrida en windows-2025, ECONNREFUSED 9333)
+    assert "9333" not in texto
+    assert "PuertoLibre" in bloque
+    assert "TcpListener" in _funcion_del_humo("PuertoLibre")
+    # si CDP no responde, deja el diagnóstico: la orden de WebView2 y los puertos reservados
+    assert "msedgewebview2" in bloque and "excludedportrange" in bloque
+    # 2.ª y 3.ª corrida: el runner corre ELEVADO y, desde el runtime 150, WebView2 ignora ahí la
+    # variable `WEBVIEW2_*` y la política de HKCU («Develop secure WebView2 apps», Microsoft); solo
+    # respeta la de máquina (HKLM). Valor con el nombre del ejecutable, solo mientras dura el paso
+    # y quitado también en el `finally`
+    politica = r"SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments"
+    assert f"$PoliticaCdp = 'HKLM:\\{politica}'" in texto
+    poner, quitar = _funcion_del_humo("PonerPoliticaCdp"), _funcion_del_humo("QuitarPoliticaCdp")
+    assert "$PoliticaCdp" in poner and "'python.exe'" in poner
+    assert "Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe'" in quitar
+    final = texto[texto.rindex("finally {") :]
+    assert "QuitarPoliticaCdp" in final
+    assert bloque.index("PonerPoliticaCdp") < bloque.index("IniciarVentana")
+    assert bloque.index("QuitarPoliticaCdp") > bloque.index("WaitForExit")
+    assert r"Policies\Microsoft\Edge" in bloque  # diagnóstico: las políticas del runner
+    espera = bloque.index("WaitForExit")
+    assert bloque.index("puerto de depuración") > espera
+    # el aviso del lanzador nombra la política que abrió el puerto (no basta «depuración»): el
+    # texto exacto sale de `operacion.ventana` y de `lanzador.arrancar`
+    from operacion import ventana
+
+    aviso = (
+        f"AVISO: La política HKEY_LOCAL_MACHINE\\{ventana.POLITICA_ARGUMENTOS_WEBVIEW2} "
+        "(valor «python.exe») pide un puerto de depuración"
+    )
+    assert f"$avisoPolitica = '{aviso}'" in bloque
+    assert bloque.index("$textoVentana.Contains($avisoPolitica)") > espera
+    assert bloque.index("Se cerró la ventana de Sílice") > espera
+    assert "WEBVIEW2" not in _funcion_del_humo("IniciarSilice")
+
+
+def test_humo_no_pisa_la_politica_de_webview2_que_ya_tuviera_el_equipo() -> None:
+    """`New-Item -Force` sobre una clave que existe la recrea vacía: borra sus otros valores y
+    subclaves. La humo la crea solo si falta, guarda un `python.exe` previo y lo devuelve al
+    quitar la suya, y afirma que la clave quedó como estaba."""
+    poner = _funcion_del_humo("PonerPoliticaCdp")
+    quitar = _funcion_del_humo("QuitarPoliticaCdp")
+    crear = re.search(
+        r"if \(-not \(Test-Path -Path \$PoliticaCdp\)\) \{\s*New-Item -Path \$PoliticaCdp -Force",
+        poner,
+    )
+    assert crear, "New-Item solo si la clave no existe"
+    assert poner.count("New-Item -Path") == 1
+    # el valor previo (y su tipo) se guarda antes de escribir el de la humo
+    assert "GetValue('python.exe'" in poner and "GetValueKind('python.exe')" in poner
+    assert poner.index("$script:PoliticaPrevia =") < poner.index("New-ItemProperty")
+    # el tipo se guarda antes que el valor: un corte entre los dos no deja un valor sin su tipo
+    # (arbitraje de Argon, 2026-11-12)
+    assert poner.index("$script:TipoPrevio =") < poner.index("$script:PoliticaPrevia =")
+    # quitar devuelve el previo si lo había y, si no, borra el valor; dos veces no rompe nada
+    assert "$script:PoliticaPrevia" in quitar
+    assert "-PropertyType $script:TipoPrevio" in quitar
+    assert "Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe'" in quitar
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    assert re.search(r"(?m)^\$script:PoliticaPrevia = \$null$", texto)
+    bloque = texto[texto.index("Paso '6b.") : texto.index("Paso '7.")]
+    quitada = bloque.index("QuitarPoliticaCdp")
+    afirmacion = bloque.index("ValorPoliticaCdp", quitada)
+    assert "la política de HKLM volvió a como estaba" in bloque[afirmacion:]
+    assert "GetValue('python.exe'" in _funcion_del_humo("ValorPoliticaCdp")
+
+
+def test_humo_muestrea_tambien_el_webview2_de_la_ventana() -> None:
+    """La red de la ventana la hace WebView2 (`msedgewebview2.exe`), no el `python.exe` de {app}:
+    el muestreo de conexiones mira también esos procesos (hijos, a cualquier profundidad, del
+    python.exe de {app}, o con el perfil de la ventana en su orden), y el paso 9 exige que los haya
+    visto (si no, «ninguna conexión» no diría nada) y que no tengan conexiones TCP ajenas."""
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    inicio = texto.index("$Muestreo = {")
+    muestreo = texto[inicio : texto.index("\n}\n", inicio)]
+    assert "msedgewebview2.exe" in muestreo
+    assert "perfil_ventana" in muestreo
+    assert "ParentProcessId" in muestreo
+    # los dos archivos (conexiones y pids) los escribe la misma función para python y WebView2
+    assert "Anotar @($web) $archivoWeb" in muestreo and '"$Destino.pids"' in muestreo
+    assert "'conexiones-webview2.log'" in texto[texto.index("Paso '4.") : texto.index("Paso '5.")]
+    paso9 = texto[texto.index("Paso '9.") : texto.index("Paso '10.")]
+    assert "conexiones-webview2.log.pids" in paso9
+    assert "el muestreo vio los msedgewebview2.exe de la ventana" in paso9
+    # Lo que WebView2 abre por su cuenta se informa con sus destinos y no hace fallar la humo
+    # (decisión del 2026-11-13, simulada: el runtime de Microsoft contacta sus servicios a los
+    # 24-87 s aunque se apaguen SmartScreen, el actualizador de componentes o la red de fondo; las
+    # banderas no sirven en producción). Lo de Sílice sigue siendo estricto: su python.exe y lo que
+    # pide la página.
+    assert "Afirmar ($ajenasWeb.Count -eq 0)" not in paso9
+    assert "INFORME: WebView2 (runtime de Microsoft)" in paso9
+    assert "webview2 ajena: $_" in paso9
+    assert "Afirmar ($ajenas.Count -eq 0)" in paso9
+
+
+def test_workflow_instalador_asegura_webview2_antes_del_humo() -> None:
+    flujo = (RAIZ / ".github" / "workflows" / "instalador.yml").read_text(encoding="utf-8")
+    guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+    assert guid in flujo
+    assert flujo.index(guid) < flujo.index("Prueba de humo")
+
+
+def test_humo_exige_un_juego_de_migracion_nuevo_tras_la_actualizacion() -> None:
+    """El 6b deja un juego manual en la misma carpeta (`GUION_DESCARGA` llama a `POST
+    /v1/admin/instalacion/respaldos`): «hay al menos un juego» pasaría aunque la actualización
+    no respaldara. El paso 7 anota los juegos antes de actualizar y exige uno nuevo cuya ficha
+    diga que es de la migración (`respaldo.MOTIVO_MIGRACION`) y que lleve la base de la 0.5.0."""
+    from operacion import respaldo
+
+    assert respaldo.MOTIVO_MIGRACION == "migracion"
+    assert respaldo.NOMBRE_FICHA == "ficha.json"
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    paso7, paso8 = texto.index("Paso '7."), texto.index("Paso '8.")
+    bloque = texto[paso7:paso8]
+    antes = re.search(r"\$juegosAntes = JuegosDe \$Respaldos", bloque)
+    assert antes, "anota los juegos antes de actualizar"
+    assert antes.start() < bloque.index("InstalarSilencioso $Actualizacion")
+    assert "$juegos.Count -ge 1" not in bloque
+    juegos_de = _funcion_del_humo("JuegosDe")
+    assert "ficha.json" in juegos_de and "ConvertFrom-Json" in juegos_de
+    nuevos = bloque.index("$juegosAntes -notcontains")
+    assert nuevos > bloque.index("InstalarSilencioso $Actualizacion")
+    assert "motivo -eq 'migracion'" in bloque
+    assert "v050_demo.db" in bloque[nuevos:]
+
+
+def test_workflow_exige_la_firma_de_microsoft_antes_de_ejecutar_el_instalador_de_webview2() -> None:
+    """Lo que baja de internet no se ejecuta sin firma Authenticode válida de Microsoft."""
+    flujo = (RAIZ / ".github" / "workflows" / "instalador.yml").read_text(encoding="utf-8")
+    descarga = flujo.index("MicrosoftEdgeWebview2Setup.exe")
+    ejecuta = flujo.index("Start-Process -FilePath $instalador")
+    firma = flujo.find("Get-AuthenticodeSignature -FilePath $instalador", descarga)
+    assert descarga < firma < ejecuta
+    tramo = flujo[firma:ejecuta]
+    assert "Status -ne 'Valid'" in tramo
+    assert "exit 1" in tramo
+    # La regla del firmante, aplicada (PowerShell compara sin distinguir mayúsculas). Firmantes
+    # reales leídos con Get-AuthenticodeSignature el 2026-11-12 y tres ficticios que la regla
+    # «-notmatch 'Microsoft'» dejaba pasar (decisión (f), simulada).
+    regla = re.search(r"SignerCertificate\.Subject -notmatch '([^']+)'", tramo)
+    assert regla, "el firmante se compara con una expresión"
+
+    def acepta(sujeto: str) -> bool:
+        return re.search(regla.group(1), sujeto, re.IGNORECASE) is not None
+
+    reales = (
+        "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+        "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+    )
+    ajenos = (
+        "CN=Microsoft Rewards Partner LLC, O=Contoso Ltd, C=US",
+        "CN=Soporte, O=Microsoft Corporation Services Fake Inc, C=PA",
+        "CN=Contoso, O=Contoso, L=Microsoft Way, C=US",
+        "CN=Johannes Schindelin, O=Johannes Schindelin, S=Nordrhein-Westfalen, C=DE",
+    )
+    assert [acepta(s) for s in reales] == [True, True]
+    assert [acepta(s) for s in ajenos] == [False, False, False, False]

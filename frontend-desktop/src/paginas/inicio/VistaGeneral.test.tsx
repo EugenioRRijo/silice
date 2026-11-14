@@ -22,7 +22,11 @@ const RUTA_CARTERA = "/v1/obras/resumen/todas";
 const RUTA_PENDIENTES = "/v1/obras/pendientes/todas";
 const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 const RUTA_ARENERA = "/v1/produccion/existencias";
+const RUTA_CUENTAS = "/v1/cuentas";
 const SUR = "Carpeta Sur.db";
+// La forma de `GET /v1/cuentas` (api/rutas/cuentas.py, CuentaRespuesta); cuentas ficticias.
+const CUENTA_ADMIN = { id: 1, login: "admin", nombre: "Admin Ficticio", roles: ["administrador"], activa: true };
+const CUENTA_ANA = { id: 2, login: "ana", nombre: "Ana Pérez", roles: ["arma"], activa: true };
 
 interface Pendiente {
   carpeta: string | null;
@@ -123,6 +127,7 @@ let servidor: ReturnType<typeof servidorFalso>;
 let cartera: Respondedor;
 let pendientes: Respondedor;
 let auditorias: Respondedor;
+let cuentas: Respondedor;
 let apagados: string[];
 
 const lista = (...p: Pendiente[]): Respondedor => () => json({ pendientes: p, carpetas_omitidas: 0 });
@@ -135,6 +140,7 @@ function instalar() {
     if (ruta === RUTA_CARTERA) return cartera(metodo, ruta, cuerpo);
     if (ruta === RUTA_PENDIENTES) return pendientes(metodo, ruta, cuerpo);
     if (ruta === RUTA_AUDITORIAS) return auditorias(metodo, ruta, cuerpo);
+    if (ruta === RUTA_CUENTAS) return cuentas(metodo, ruta, cuerpo);
     if (ruta === RUTA_ARENERA) return json([]);
     if (ruta === "/v1/modulos") {
       const claves = ["produccion", "vial", "riesgo", "edificacion"];
@@ -150,6 +156,7 @@ beforeEach(() => {
   cartera = () => json(DOS_MONEDAS);
   pendientes = lista(CEMENTO, DEVUELTA, PRECIOS);
   auditorias = () => json([AUDITORIA]);
+  cuentas = () => json({ cuentas: [CUENTA_ADMIN], aviso_arma_y_revisa: "" });
   instalar();
   fijarCsrf("tok");
 });
@@ -310,6 +317,26 @@ describe("Vista general: la cartera por moneda, sin recalcular y sin mezclar", (
     await bloque("Cartera en Bs");
     expect(screen.queryByText(/No se pudo(ieron)? leer/)).toBeNull();
   });
+
+  test("con cartera con datos hay un botón «¿Qué es esto?» que abre la explicación del total", async () => {
+    const u = userEvent.setup();
+    montar();
+    const seccion = await bloque("Cartera por moneda");
+    const boton = await within(seccion).findByRole("button", { name: "¿Qué es esto?" });
+    expect(boton).toBeInTheDocument();
+    await u.click(boton);
+    const region = within(seccion).getByRole("region", { name: "Cómo se calcula el total" });
+    expect(region).toHaveTextContent(
+      "El total de cada obra es el de su línea base o, sin ella, el de su versión vigente. Cada moneda se suma por separado: Bs y USD nunca se mezclan.",
+    );
+  });
+
+  test("sin obras ni monedas (estado vacío) no hay botón «¿Qué es esto?» en la cartera", async () => {
+    cartera = () => json(SIN_OBRAS);
+    montar();
+    const seccion = await bloque("Cartera por moneda");
+    expect(within(seccion).queryByRole("button", { name: "¿Qué es esto?" })).toBeNull();
+  });
 });
 
 describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
@@ -425,6 +452,14 @@ describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
       expect(css).toMatch(/\.silice-inicio__avance\s*\{[^}]*min-inline-size:\s*(?:[1-8](?:\.\d+)?|0\.\d+)rem/);
       const apilada = bloqueDesde(css.search(/@container\s*\(max-inline-size/));
       expect(apilada).toMatch(/\.silice-inicio__avance\s*\{[^}]*min-inline-size:\s*0/);
+    });
+
+    test("las celdas con etiqueta alinean rótulo y dato en una sola línea (display: flex)", () => {
+      const apilada = bloqueDesde(css.search(/@container\s*\(max-inline-size/));
+      expect(apilada).toMatch(/td\[data-etiqueta\]\s*\{[^}]*display:\s*flex/);
+      expect(apilada).not.toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*display:\s*block/);
+      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*color:\s*var\(--silice-texto-secundario\)/);
+      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*content:\s*attr\(data-etiqueta\)\s*":"/);
     });
   });
 
@@ -584,16 +619,18 @@ describe("Inicio: las rutas", () => {
     expect(ruta()).toBe("/inicio/general");
   });
 
-  test("#/pendientes redirige a #/inicio/pendientes y muestra la bandeja", async () => {
+  // F8, C1 (contrato 2.4, enmienda 2026-11-06): `#/pendientes`, el nombre de antes de F6, se retiró. Ya no lleva a la
+  // bandeja: como toda dirección que no existe, acaba en la Vista general.
+  test("#/pendientes ya no redirige a la bandeja: acaba en #/inicio/general", async () => {
     montar({ en: "/pendientes" });
-    expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/pendientes");
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
   });
 
-  test("#/pendientes?proyecto=OF-001 conserva la consulta", async () => {
+  test("#/pendientes?proyecto=OF-001 acaba en la Vista general y conserva la consulta", async () => {
     montar({ en: "/pendientes?proyecto=OF-001" });
-    expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/pendientes?proyecto=OF-001");
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general?proyecto=OF-001");
   });
 
   test("#/inicio/general?x=1 y #/inicio?x=1 conservan la consulta", async () => {
@@ -619,3 +656,86 @@ describe("Inicio: las rutas", () => {
     await waitFor(() => expect(document.title).toBe("Vista general · Sílice"));
   });
 });
+
+// F7, tarea A4: «Empieza aquí» la primera vez, derivado de los datos (sin guardar nada en el navegador). Va primero, antes de lo
+// que requiere atención, y solo mientras la cuenta tenga algo por estrenar: quien administra, con su cuenta como única activa;
+// quien arma o revisa, sin ninguna obra. Oráculos a mano.
+describe("Vista general: «Empieza aquí» la primera vez", () => {
+  test("quien administra, con su cuenta como única activa, ve cómo crear las cuentas y poner la empresa", async () => {
+    pendientes = lista();
+    montar({ sesion: sesionDe("admin") });
+    const b = await bloque("Empieza aquí");
+    const pasos = within(b).getAllByRole("listitem");
+    expect(pasos).toHaveLength(2);
+    expect(pasos[0]).toHaveTextContent("Cree las cuentas de las personas");
+    expect(within(pasos[0]!).getByRole("link", { name: "Ir a Cuentas y permisos" })).toHaveAttribute("href", "/cuenta/cuentas");
+    expect(within(pasos[1]!).getByRole("link", { name: "Ir a Empresa y tema" })).toHaveAttribute("href", "/cuenta/empresa");
+    expect(within(b).getByRole("link", { name: "Ver las guías y el glosario" })).toHaveAttribute("href", "/cuenta/ayuda?tema=empieza-aqui");
+    expect(pedidas(RUTA_CUENTAS)).toBe(1);
+    // Va antes que «Lo que requiere atención».
+    const atencion = await bloque("Lo que requiere atención");
+    expect(b.compareDocumentPosition(atencion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test("con otra cuenta activa ya no aparece", async () => {
+    cuentas = () => json({ cuentas: [CUENTA_ADMIN, CUENTA_ANA], aviso_arma_y_revisa: "" });
+    montar({ sesion: sesionDe("admin") });
+    await bloque("Lo que requiere atención");
+    await waitFor(() => expect(pedidas(RUTA_CUENTAS)).toBe(1));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+  });
+
+  test("una cuenta desactivada no cuenta: con el administrador y una desactivada sigue apareciendo", async () => {
+    cuentas = () => json({ cuentas: [CUENTA_ADMIN, { ...CUENTA_ANA, activa: false }], aviso_arma_y_revisa: "" });
+    montar({ sesion: sesionDe("admin") });
+    expect(await bloque("Empieza aquí")).toBeInTheDocument();
+  });
+
+  test("si la lista de cuentas falla, no se inventa nada: no aparece", async () => {
+    cuentas = () => json({ detalle: "La base no responde." }, 503);
+    montar({ sesion: sesionDe("admin") });
+    await bloque("Lo que requiere atención");
+    await waitFor(() => expect(pedidas(RUTA_CUENTAS)).toBe(1));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+  });
+
+  test("quien arma, sin obras, ve los tres pasos y las guías; la lista de cuentas no se pide", async () => {
+    cartera = () => json(SIN_OBRAS);
+    pendientes = lista();
+    montar();
+    const b = await bloque("Empieza aquí");
+    const pasos = within(b).getAllByRole("listitem");
+    expect(pasos.map((p) => p.querySelector("strong")?.textContent)).toEqual(["Cree la obra", "Arme el presupuesto", "Envíelo a aprobación"]);
+    expect(within(b).getByRole("link", { name: "Guía «Montar un presupuesto»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-presupuesto");
+    expect(within(b).getByRole("link", { name: "Guía «Enviarlo a aprobación»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-aprobacion");
+    // No duplica la acción: «Nueva obra» sigue siendo el único botón, el del estado vacío de la cartera.
+    expect(within(b).queryByRole("button")).toBeNull();
+    expect(pedidas(RUTA_CUENTAS)).toBe(0);
+  });
+
+  test("quien arma, sin obras pero con carpetas que no se pudieron leer, no lo ve: puede haber obras allí", async () => {
+    cartera = () => json({ ...SIN_OBRAS, carpetas_omitidas: 1 });
+    montar();
+    await bloque("Cartera por moneda");
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+  });
+
+  test("quien arma, con obras, no lo ve", async () => {
+    montar();
+    await bloque("Cartera por moneda");
+    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+  });
+
+  test("quien revisa, sin obras, ve cómo auditar un libro y cómo dar el dictamen", async () => {
+    cartera = () => json(SIN_OBRAS);
+    pendientes = lista();
+    montar({ sesion: sesionDe("rita") });
+    const b = await bloque("Empieza aquí");
+    expect(within(b).getByRole("link", { name: "Ir a Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
+    expect(within(b).getByRole("link", { name: "Guía «Enviarlo a aprobación»" })).toBeInTheDocument();
+  });
+});
+

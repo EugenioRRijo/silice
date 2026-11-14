@@ -238,6 +238,24 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
       if (url.startsWith("/v1/composicion/partidas/")) {
         return json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
       }
+      if (url.startsWith("/v1/consulta/insumos")) {
+        return json({
+          tabla: "insumos",
+          hay_mas: false,
+          resultados: [
+            {
+              valor: "MAT-1",
+              etiqueta: "Cemento gris ficticio (MAT-1, saco)",
+              fuente: "Catálogo de la carpeta de trabajo: material",
+              descripcion: "Cemento gris ficticio",
+              unidad: "saco",
+              precio: "18.00",
+              moneda: "Bs",
+              fecha_precio: "2026-07-01",
+            },
+          ],
+        });
+      }
       if (url.startsWith("/v1/composicion/referencia") || url.startsWith("/v1/composicion/similares")) return json([]);
       if (url === "/v1/composicion/prever") {
         return json({ lista: { nombre: "Lista ficticia de Bs", moneda: "Bs", fecha: "2026-10-26" }, lista_nueva: false, variantes: [] });
@@ -642,7 +660,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await userEvent.click(usar);
 
     expect(within(dialogo).getByRole("combobox", { name: "Partida" })).toHaveValue("FIC-01 · Excavación de zanja ficticia a mano");
-    const cantidad = within(dialogo).getByRole("textbox", { name: "Cantidad (m3)" });
+    const cantidad = within(dialogo).getByRole("textbox", { name: "Cantidad (m³)" });
     await waitFor(() => expect(cantidad).toHaveFocus());
     await userEvent.type(cantidad, "12");
     await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
@@ -712,7 +730,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     const partida = within(otra).getByRole("combobox", { name: "Partida" });
     expect(partida).toHaveValue("Z-99 · Zanja ficticia");
     await waitFor(() => expect(partida).toHaveFocus());
-    await userEvent.type(within(otra).getByRole("textbox", { name: "Cantidad (m3)" }), "5");
+    await userEvent.type(within(otra).getByRole("textbox", { name: "Cantidad (m³)" }), "5");
     await userEvent.click(within(otra).getByRole("button", { name: "Agregar al presupuesto" }));
     await waitFor(() => expect(escrituras(RUTA_AGREGAR)).toEqual([{ rev: 0, codigo: "Z-99", cantidad: "5", calculo: "", nota: "" }]));
     expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/hoja$/);
@@ -804,6 +822,46 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
 
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(panelDeComponer()).toBeNull());
+  });
+
+  // Dictamen de Claude (xhigh), MAYOR: la descripcion de un insumo llena tambien la unidad y el precio. El Esc del panel
+  // restauraba solo la descripcion y dejaba la fila a medias (unidad y precio de un insumo que ya no estaba). Esc con la lista
+  // cerrada no borra lo elegido (DESIGN.md, AC1): el panel no restaura ese campo; el primero no hace nada y el siguiente cierra.
+  test("en la descripción de un insumo elegido del catálogo, Esc no deja la fila a medias: conserva descripción, unidad y precio", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    await userEvent.click(within(panel).getByRole("button", { name: "Agregar fila a Materiales" }));
+    const descripcion = within(panel).getByRole("combobox", { name: "Descripción, fila 1" });
+    await userEvent.click(descripcion);
+    await userEvent.type(descripcion, "cemento g");
+    await userEvent.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
+    await waitFor(() => expect(within(panel).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("18,00"));
+    expect(within(panel).getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco");
+
+    await userEvent.keyboard("{Escape}");
+    expect(panelDeComponer()).not.toBeNull();
+    expect(descripcion).toHaveValue("Cemento gris ficticio");
+    expect(within(panel).getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco");
+    expect(within(panel).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("18,00");
+
+    await userEvent.keyboard("{Escape}"); // el segundo Esc cierra el panel, como en cualquier campo sin cambios
+    await waitFor(() => expect(panelDeComponer()).toBeNull());
+  });
+
+  test("en la descripción de un insumo, con la lista abierta, Esc solo la cierra; escribir sin elegir sigue siendo texto del campo", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    await userEvent.click(within(panel).getByRole("button", { name: "Agregar fila a Materiales" }));
+    const descripcion = within(panel).getByRole("combobox", { name: "Descripción, fila 1" });
+    await userEvent.click(descripcion);
+    await userEvent.type(descripcion, "cemento g");
+    await screen.findByRole("listbox");
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(panelDeComponer()).not.toBeNull();
+    expect(descripcion).toHaveValue("cemento g");
   });
 
   test("con el panel abierto el foco circula solo dentro del panel (Tab y Mayús+Tab dan la vuelta)", async () => {
@@ -923,6 +981,16 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     ]);
     const aMano = within(tabla).getAllByRole("row")[2]!;
     expect(within(aMano).getByText("Sin cálculo")).toBeInTheDocument();
+  });
+
+  test("un renglón que sale de un tramo vial dice «Sale de los tramos» y no «Sin cálculo»", async () => {
+    filas = [{ ...PARED, clave: "C-000.000.006|tramo:T1:capa:1", partida: "C-000.000.006", de_tramo: true }];
+    abierto = borradorEnBlanco({ espacio_vacio: true });
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Presupuesto" });
+    const fila = within(tabla).getAllByRole("row")[1]!;
+    expect(within(fila).getByText("Sale de los tramos")).toBeInTheDocument();
+    expect(within(fila).queryByText("Sin cálculo")).toBeNull();
   });
 
   test("el total de una obra en bolívares dice «Bs» en el estado y en el presupuesto", async () => {

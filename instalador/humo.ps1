@@ -102,6 +102,20 @@ function ArbolDe([string]$Carpeta) {
         ForEach-Object { '{0}|{1}' -f $_.FullName.Substring($Carpeta.Length), $_.Length }
 }
 
+function JuegosDe([string]$Carpeta) {
+    # Los juegos de respaldo con su ficha.json (operacion.respaldo): carpeta, motivo y bases
+    Get-ChildItem -LiteralPath $Carpeta -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        $ficha = Join-Path $_.FullName 'ficha.json'
+        if (-not (Test-Path -LiteralPath $ficha)) { return }
+        $contenido = Get-Content -LiteralPath $ficha -Raw -Encoding utf8 | ConvertFrom-Json
+        [pscustomobject]@{
+            nombre = $_.Name
+            motivo = $contenido.motivo
+            archivos = @($contenido.bases | ForEach-Object { $_.archivo })
+        }
+    }
+}
+
 function AEntero([string]$Ip) {
     $b = [System.Net.IPAddress]::Parse($Ip).GetAddressBytes()
     return ([uint32]$b[0] -shl 24) + ([uint32]$b[1] -shl 16) +
@@ -145,6 +159,96 @@ function IniciarSilice {
     }
 }
 
+function IniciarVentana([string]$Registro) {
+    # El puerto de depuración lo abre la política de HKLM (PonerPoliticaCdp), no una variable: el
+    # proceso es elevado y WebView2 ignora ahí sus variables de entorno.
+    $env:HTTP_PROXY = "http://127.0.0.1:$PuertoProxy"
+    $env:HTTPS_PROXY = $env:HTTP_PROXY
+    $env:NO_PROXY = '127.0.0.1,localhost'
+    # El permiso explícito para abrir la ventana con el puerto de depuración: sin él, el lanzador
+    # abre el navegador (decisión (e) del 2026-11-12). Solo aquí, y se quita al lanzar.
+    $env:SILICE_PERMITIR_DEPURACION_VENTANA = '1'
+    try {
+        # -NoNewWindow: sin consola propia, la ventana principal del proceso es la de Sílice
+        return Start-Process -FilePath $Python -PassThru -NoNewWindow `
+            -ArgumentList ($Banderas + @('arrancar')) `
+            -WorkingDirectory $Codigo `
+            -RedirectStandardOutput "$Registro.out" -RedirectStandardError "$Registro.err"
+    } finally {
+        Remove-Item Env:HTTP_PROXY, Env:HTTPS_PROXY, Env:NO_PROXY, Env:SILICE_PERMITIR_DEPURACION_VENTANA `
+            -ErrorAction SilentlyContinue
+    }
+}
+
+# La humo corre elevada y, desde el runtime 150, WebView2 ignora en un proceso elevado la variable
+# WEBVIEW2_* y la política de HKCU («Develop secure WebView2 apps», Microsoft): solo la de HKLM.
+$PoliticaCdp = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+$script:PoliticaPrevia = $null
+$script:TipoPrevio = 'String'
+$script:ClaveCreada = $false
+function ValorPoliticaCdp {
+    if (-not (Test-Path -Path $PoliticaCdp)) { return $null }
+    return (Get-Item -Path $PoliticaCdp).GetValue('python.exe', $null, 'DoNotExpandEnvironmentNames')
+}
+function PonerPoliticaCdp([int]$PuertoCdp) {
+    # La política de máquina que documenta Microsoft para lo mismo que la variable: un valor con el
+    # nombre del ejecutable. Solo durante el paso 6b; QuitarPoliticaCdp deja la clave como estaba.
+    # New-Item -Force sobre una clave que ya existe la recrea vacía (borra sus otros valores y
+    # subclaves): solo se crea si falta.
+    if (-not (Test-Path -Path $PoliticaCdp)) {
+        New-Item -Path $PoliticaCdp -Force | Out-Null
+        $script:ClaveCreada = $true
+    }
+    $clave = Get-Item -Path $PoliticaCdp
+    $previo = $clave.GetValue('python.exe', $null, 'DoNotExpandEnvironmentNames')
+    if ($null -ne $previo) {
+        # El tipo antes que el valor: un corte entre las dos asignaciones no deja un valor previo
+        # sin su tipo (arbitraje de Argon, 2026-11-12)
+        $script:TipoPrevio = [string]$clave.GetValueKind('python.exe')
+        $script:PoliticaPrevia = $previo
+        Write-Host "  la política ya tenía un valor python.exe: se devuelve al terminar"
+    }
+    New-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -PropertyType String -Force `
+        -Value "--remote-debugging-port=$PuertoCdp" | Out-Null
+}
+function QuitarPoliticaCdp {
+    # Idempotente: el paso 6b y el finally la llaman
+    if (-not (Test-Path -Path $PoliticaCdp)) { return }
+    if ($null -ne $script:PoliticaPrevia) {
+        New-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -PropertyType $script:TipoPrevio `
+            -Force -Value $script:PoliticaPrevia | Out-Null
+        return
+    }
+    Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -ErrorAction SilentlyContinue
+    if ($script:ClaveCreada) {
+        # La creó la humo: se va si quedó vacía (las claves padre vacías no estorban)
+        $clave = Get-Item -Path $PoliticaCdp
+        if ($clave.ValueCount -eq 0 -and $clave.SubKeyCount -eq 0) { Remove-Item -Path $PoliticaCdp }
+        $script:ClaveCreada = $false
+    }
+}
+
+function PuertoLibre {
+    # Windows da un puerto libre fuera de los rangos reservados (Hyper-V en windows-2025): con uno
+    # fijo, Chromium no abre el de depuración y no avisa.
+    $escucha = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+    $escucha.Start()
+    try { return $escucha.LocalEndpoint.Port } finally { $escucha.Stop() }
+}
+
+function EsperarCdp([int]$Puerto, [int]$Limite = 60) {
+    $reloj = [Diagnostics.Stopwatch]::StartNew()
+    while ($reloj.Elapsed.TotalSeconds -lt $Limite) {
+        try {
+            $r = Invoke-WebRequest -Uri "http://127.0.0.1:$Puerto/json/version" `
+                -UseBasicParsing -TimeoutSec 2
+            if ($r.StatusCode -eq 200) { return [math]::Round($reloj.Elapsed.TotalSeconds, 2) }
+        } catch { }
+        Start-Sleep -Milliseconds 500
+    }
+    return $null
+}
+
 function InstalarSilencioso([string]$Exe, [string]$Registro) {
     $argumentos = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER',
         "/DIR=`"$Programa`"", "/LOG=`"$Registro`"")
@@ -174,26 +278,44 @@ function DescartesDe([string]$Registro, [string[]]$Pids) {
 }
 
 $Muestreo = {
-    param($programa, $archivo)
+    param($programa, $archivo, $archivoWeb)
+    function Anotar($Pids, [string]$Destino) {
+        $Pids | ForEach-Object { "pid $_" } | Add-Content -Path "$Destino.pids"
+        Get-NetTCPConnection -ErrorAction SilentlyContinue |
+            Where-Object { $Pids -contains $_.OwningProcess -and $_.State -ne 'Listen' } |
+            ForEach-Object {
+                $local = "$($_.LocalAddress):$($_.LocalPort)"
+                $remoto = "$($_.RemoteAddress):$($_.RemotePort)"
+                "$($_.OwningProcess) $($_.State) $local $remoto"
+            } | Add-Content -Path $Destino
+    }
     while ($true) {
-        $pids = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
-            Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($programa) } |
-            ForEach-Object { $_.ProcessId })
-        if ($pids.Count) {
-            $pids | ForEach-Object { "pid $_" } | Add-Content -Path "$archivo.pids"
-            Get-NetTCPConnection -ErrorAction SilentlyContinue |
-                Where-Object { $pids -contains $_.OwningProcess -and $_.State -ne 'Listen' } |
-                ForEach-Object {
-                    $local = "$($_.LocalAddress):$($_.LocalPort)"
-                    $remoto = "$($_.RemoteAddress):$($_.RemotePort)"
-                    "$($_.OwningProcess) $($_.State) $local $remoto"
-                } | Add-Content -Path $archivo
-        }
+        $procesos = @(Get-CimInstance Win32_Process |
+            Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine)
+        $pids = @($procesos | Where-Object {
+                $_.Name -eq 'python.exe' -and $_.ExecutablePath -and
+                $_.ExecutablePath.StartsWith($programa) } |
+            ForEach-Object { [int]$_.ProcessId })
+        # La red de la ventana la hace WebView2: los msedgewebview2.exe que cuelgan (a cualquier
+        # profundidad) del python.exe de {app}, o que llevan el perfil de la ventana en su orden.
+        $web = [System.Collections.Generic.HashSet[int]]::new()
+        $webview = @($procesos | Where-Object { $_.Name -eq 'msedgewebview2.exe' })
+        $webview | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('perfil_ventana') } |
+            ForEach-Object { [void]$web.Add([int]$_.ProcessId) }
+        do {
+            $cuantos = $web.Count
+            foreach ($p in $webview) {
+                $padre = [int]$p.ParentProcessId
+                if ($pids -contains $padre -or $web.Contains($padre)) { [void]$web.Add([int]$p.ProcessId) }
+            }
+        } while ($web.Count -ne $cuantos)
+        if ($pids.Count) { Anotar $pids $archivo }
+        if ($web.Count) { Anotar @($web) $archivoWeb }
         Start-Sleep -Seconds 1
     }
 }
 
-$servidor = $null; $proxy = $null; $trabajo = $null; $ip = $null
+$servidor = $null; $ventana = $null; $proxy = $null; $trabajo = $null; $ip = $null
 try {
     Paso '1. Cortafuegos de salida y proxy testigo'
     New-NetFirewallRule -DisplayName $ReglaSalida -Direction Outbound -Action Block `
@@ -233,7 +355,8 @@ try {
 
     Paso '4. Arranque, salud y puertos'
     $trabajo = Start-Job -ScriptBlock $Muestreo `
-        -ArgumentList $Programa, (Join-Path $Salida 'conexiones.log')
+        -ArgumentList $Programa, (Join-Path $Salida 'conexiones.log'),
+        (Join-Path $Salida 'conexiones-webview2.log')
     $servidor = IniciarSilice
     $segundos = EsperarSalud $Url 60
     Afirmar ($null -ne $segundos) "la salud respondió 200 en <= 60 s (fueron $segundos s)"
@@ -267,6 +390,53 @@ try {
     $peticiones = Get-Content (Join-Path $Salida 'proxy.log') -ErrorAction SilentlyContinue
     Afirmar ((Contar $peticiones) -eq 0) 'el proxy testigo anotó 0 peticiones'
 
+    Paso '6b. Ventana de Sílice: WebView2 por CDP, sin red, primer administrador, descarga y cierre'
+    $puertoCdp = PuertoLibre
+    $regVentana = Nombre 'ventana'
+    PonerPoliticaCdp $puertoCdp
+    $ventana = IniciarVentana $regVentana
+    $segVentana = EsperarSalud $Url 60
+    Afirmar ($null -ne $segVentana) "la salud con ventana respondió 200 en <= 60 s (fueron $segVentana s)"
+    $segCdp = EsperarCdp $puertoCdp 60
+    Afirmar ($null -ne $segCdp) "CDP respondió en el $puertoCdp en <= 60 s (fueron $segCdp s)"
+    if ($null -eq $segCdp) {
+        # Diagnóstico: con qué orden arrancó WebView2 y qué puertos tiene reservados Windows
+        Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" |
+            Where-Object { $_.CommandLine -match 'remote-debugging|perfil_ventana' } |
+            Select-Object -First 3 | ForEach-Object { Write-Host "  webview2: $($_.CommandLine)" }
+        netsh int ipv4 show excludedportrange protocol=tcp | ForEach-Object { Write-Host "  $_" }
+        foreach ($raiz in @('HKLM:\SOFTWARE\Policies\Microsoft\Edge', 'HKCU:\Software\Policies\Microsoft\Edge')) {
+            Get-ChildItem -Path $raiz -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+                Write-Host "  politica: $($_.Name) $(($_.Property | ForEach-Object { $_ }) -join ', ')"
+            }
+        }
+    }
+    & uv run --no-project --with playwright python $navegador --url $UrlApp `
+        --cdp "http://127.0.0.1:$puertoCdp" `
+        --codigo (Join-Path $Datos 'codigo_instalacion.txt') `
+        --salida (Join-Path $Salida 'ventana-peticiones.json')
+    Afirmar ($LASTEXITCODE -eq 0) 'la ventana no pidió nada fuera de 127.0.0.1 y bajó el respaldo'
+    $ventana.Refresh()
+    Afirmar ($ventana.MainWindowTitle -eq 'Sílice') "título de la ventana = 'Sílice' (fue '$($ventana.MainWindowTitle)')"
+    Afirmar ($ventana.CloseMainWindow()) 'CloseMainWindow() aceptó el cierre de la ventana'
+    Afirmar ($ventana.WaitForExit(30000)) 'el lanzador terminó en <= 30 s al cerrar la ventana'
+    QuitarPoliticaCdp
+    $valorRestante = ValorPoliticaCdp
+    Afirmar ($script:PoliticaPrevia -eq $valorRestante) "la política de HKLM volvió a como estaba (python.exe = '$valorRestante')"
+    Afirmar ($null -eq (EsperarSalud $Url 3)) 'el puerto quedó libre tras cerrar la ventana'
+    Afirmar (-not (Test-Path (Join-Path $Usuario 'estado\servidor.json'))) 'estado\servidor.json se borró'
+    # Python guarda en búfer la salida a un archivo: se lee cuando el lanzador ya terminó
+    $textoVentana = [string](Get-Content "$regVentana.out" -Raw -Encoding utf8 -ErrorAction SilentlyContinue)
+    # El aviso tiene que nombrar la política que abrió el puerto (operacion.ventana y el lanzador)
+    $avisoPolitica = 'AVISO: La política HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments (valor «python.exe») pide un puerto de depuración'
+    Afirmar ($textoVentana -match 'puerto de depuración') 'el lanzador avisó que algo pide un puerto de depuración'
+    Afirmar ($textoVentana.Contains($avisoPolitica)) 'el aviso del lanzador nombra la política de HKLM con el valor «python.exe»'
+    Afirmar ($textoVentana -match 'Se cerró la ventana de Sílice') 'el lanzador registró «Se cerró la ventana de Sílice»'
+    $vivosVentana = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+        Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($Programa) })
+    Afirmar ($vivosVentana.Count -eq 0) 'ningún python.exe de {app} sigue vivo tras cerrar la ventana'
+    Afirmar (-not (Compare-Object $antes (ArbolDe $Programa))) 'la ventana no escribió en {app}'
+
     Paso '7. Actualización con Sílice en marcha y bases viejas sin migrar'
     $casos = Join-Path $Datos 'casos'
     New-Item -ItemType Directory -Force -Path $casos | Out-Null
@@ -275,12 +445,16 @@ try {
     Copy-Item (Join-Path $bases 'v1_0_0\demo.db') (Join-Path $casos 'v100_demo.db')
     $servidor = IniciarSilice
     Afirmar ($null -ne (EsperarSalud $Url 60)) 'Sílice arrancó antes de actualizar'
+    # El 6b dejó un juego manual en la misma carpeta (la descarga del respaldo): cuentan solo los
+    # juegos que nacen con la actualización, y entre ellos tiene que estar el de la orden migrar.
+    $juegosAntes = JuegosDe $Respaldos | ForEach-Object { $_.nombre }
     $salidaActualizacion = InstalarSilencioso $Actualizacion (Join-Path $Salida 'actualizacion.log')
     Afirmar ($salidaActualizacion -eq 0) "la actualización terminó con 0 (fue $salidaActualizacion)"
     Afirmar ($null -eq (EsperarSalud $Url 3)) 'el instalador detuvo Sílice antes de copiar'
-    $juegos = @(Get-ChildItem -LiteralPath $Respaldos -Directory -ErrorAction SilentlyContinue |
-        Where-Object { Test-Path (Join-Path $_.FullName 'ficha.json') })
-    Afirmar ($juegos.Count -ge 1) 'existe un juego de respaldo con su ficha'
+    $nuevos = @(JuegosDe $Respaldos | Where-Object { $juegosAntes -notcontains $_.nombre })
+    $migracion = @($nuevos | Where-Object {
+        $_.motivo -eq 'migracion' -and (@($_.archivos) -like '*v050_demo.db').Count -ge 1 })
+    Afirmar ($migracion.Count -eq 1) "la actualización dejó un juego nuevo de migración con la base de la 0.5.0 en su ficha ($($nuevos.Count) juegos nuevos: $(($nuevos | ForEach-Object { $_.nombre }) -join ', '))"
     & uv run python (Join-Path $Raiz 'instalador\verificar_bases.py') --casos $casos `
         --par '0.5.0:demo.db=v050_demo.db' --par '1.0.0:demo.db=v100_demo.db'
     Afirmar ($LASTEXITCODE -eq 0) 'las dos bases están en head y cuadran con su ficha'
@@ -315,7 +489,21 @@ try {
     $propias = if ($ip) { '|' + [regex]::Escape($ip) } else { '' }
     $locales = '^(127\.0\.0\.1|::1|0\.0\.0\.0|::|\[::\]' + $propias + '):'
     $ajenas = @($conexiones | Where-Object { $_ -and ($_ -split ' ')[3] -notmatch $locales })
-    Afirmar ($ajenas.Count -eq 0) "el muestreo no vio conexiones ajenas ($($ajenas.Count))"
+    $ajenas | Select-Object -First 20 | ForEach-Object { Write-Host "  python ajena: $_" }
+    Afirmar ($ajenas.Count -eq 0) "el muestreo no vio conexiones ajenas del python.exe de {app} ($($ajenas.Count))"
+    # La ventana (6b): sus msedgewebview2.exe. Muestreo de 1 s y solo TCP: una conexión más corta
+    # o por UDP (QUIC) se le puede escapar; lo que pide la página lo cubre navegador.py por CDP.
+    $conexionesWeb = Get-Content (Join-Path $Salida 'conexiones-webview2.log') -ErrorAction SilentlyContinue
+    $muestrasWeb = Contar (Get-Content (Join-Path $Salida 'conexiones-webview2.log.pids') -ErrorAction SilentlyContinue)
+    Afirmar ($muestrasWeb -ge 1) "el muestreo vio los msedgewebview2.exe de la ventana ($muestrasWeb muestras de pid)"
+    $ajenasWeb = @($conexionesWeb | Where-Object { $_ -and ($_ -split ' ')[3] -notmatch $locales })
+    $ajenasWeb | Select-Object -First 20 | ForEach-Object { Write-Host "  webview2 ajena: $_" }
+    # Se informa y no se afirma: el runtime de Microsoft contacta sus servicios por su cuenta (a los
+    # 24-87 s, aunque se apaguen SmartScreen, el actualizador de componentes o la red de fondo; las
+    # banderas no sirven en producción). Simulación del 2026-11-13. Lo de Sílice sigue estricto: el
+    # python.exe de {app} (arriba) y lo que pide la página (navegador.py por CDP, paso 6b).
+    Write-Host ("INFORME: WebView2 (runtime de Microsoft) abrió $($ajenasWeb.Count) conexión(es) " +
+        'TCP fuera del equipo por su cuenta; ninguna la pidió la página de Sílice')
     $vistos = Get-Content (Join-Path $Salida 'conexiones.log.pids') -ErrorAction SilentlyContinue |
         ForEach-Object { ($_ -split ' ')[1] } | Sort-Object -Unique
     $descartes = DescartesDe $registroFw $vistos
@@ -352,6 +540,10 @@ try {
 finally {
     if ($trabajo) { Stop-Job $trabajo -ErrorAction SilentlyContinue }
     if ($trabajo) { Remove-Job $trabajo -Force -ErrorAction SilentlyContinue }
+    QuitarPoliticaCdp
+    if ($ventana -and -not $ventana.HasExited) {
+        Stop-Process -Id $ventana.Id -Force -ErrorAction SilentlyContinue
+    }
     if ($proxy) { Stop-Process -Id $proxy.Id -Force -ErrorAction SilentlyContinue }
     Remove-NetFirewallRule -DisplayName $ReglaSalida -ErrorAction SilentlyContinue
     Get-NetFirewallRule -DisplayName 'Silice red local*' -ErrorAction SilentlyContinue |

@@ -7,6 +7,77 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **Prueba de punta a punta, línea vial** (2026-11-13; `docs/bitacora/2026-11-13-e2e-vial.md`, D1 a D3; RF-190 a RF-192;
+  decisiones provisionales, por ratificar): **VR8** (ADVERTENCIA) avisa cuando una partida que derivan los tramos llega
+  también de otro renglón (escrita a mano o traída de otro cómputo): dice la cantidad de cada origen y la suma, y no suma
+  si las unidades no son las mismas (`adapters/vial/reglas.py`, `_vr8`). El tramo declara **`suministro`** en la
+  imprimación o el riego cuyo APU ya trae el ligante (no se deriva el ligante y la dosis es opcional; columna opcional del
+  CSV, y un CSV o un tramo guardado de antes se leen igual) y la demarcación de tipo **`captafaros`** (ojos de gato solos:
+  solo las unidades, sin línea ni pintura); el 404 de llevar dice cómo declararlo (`hoja_vial.pistas_de_lo_que_falta`) y
+  llevar sigue siendo todo o nada. **VR4 lee la banda de distancia de la descripción del APU** cuando el renglón no la
+  declara, con la misma lectura que el AH9 (`leer_banda` pasó a `aplicacion/cifras.py`; el patrón del perfil
+  `apu_por_hoja` lee también «mayores de» y «más de»); la directiva del renglón sigue mandando y el mensaje dice de dónde
+  salió la banda.
+- **Prueba de punta a punta, línea front: elegir el perfil del libro con un APU por hoja y AH11** (2026-11-13;
+  `docs/bitacora/2026-11-13-e2e-front.md` §1, E2E-2, decisiones D1 y D2; RF-177 y RF-178 enmendados):
+  `GET /v1/libros/perfiles-apu-por-hoja` lista los perfiles del paquete y de la instalación con la hoja del presupuesto
+  que lee cada uno (uno local mal escrito sale con su motivo y sin rutas); «Auditar un libro con un APU por hoja» tiene el
+  selector «Perfil del libro» y el informe dice la hoja leída. **AH11** (ADVERTENCIA) avisa que la hoja del presupuesto
+  parece de otra obra cuando, de dos o más renglones enlazados con cantidad en los dos lados, menos de la mitad tienen la
+  de su APU.
+- **Prueba de punta a punta, línea precios: la lista para armar desde la lista de la empresa** (2026-11-13;
+  `docs/bitacora/2026-11-13-e2e-precios.md` §2, D-7; RF-194): `POST /v1/carpeta/lista-para-armar` acepta
+  `{desde: "empresa", lista_id}` y copia la lista de la empresa tal cual, en su moneda y sin tasa del BCV (409 si está en
+  otra moneda que la carpeta o no es de empresa); `GET /v1/carpeta` trae `empresa`. Componer la ofrece en «Sin lista de
+  precios para armar» («Usar la lista de la empresa «…»») y «Precios de la empresa», al crear la lista, «Usarla como lista
+  para armar», solo a quien tiene `editar_hoja` (árbitro xhigh, ronda 2, M4); a quien no, le dice que la crea quien arma,
+  desde Componer.
+- **Revisar el archivo de la lista de la empresa y dar de alta los insumos nuevos** (2026-11-13; misma bitácora §3, D-8
+  y D-11; RF-195): `POST /v1/precios-empresa/listas/revision` revisa el archivo sin escribir: cuántas filas reconoce el
+  catálogo, la tabla «Insumos nuevos del archivo» (tipo y unidad como los dice la pantalla, sin las claves del servidor;
+  ronda 2, M5) y el aviso de cada fila que el catálogo tiene con otra unidad. Los nuevos se dan de alta solo si se marca
+  «Dar de alta en el catálogo los insumos nuevos al crear la lista» (`dar_de_alta`, falso por omisión); los de otra unidad,
+  nunca; dos filas del mismo insumo nuevo con precios distintos dan 422 y no se escribe nada. Una fila sin fecha o sin
+  fuente toma las de la lista.
+- **El desperdicio en la Hoja** (2026-11-13; diseño vial real §13 y `docs/bitacora/2026-11-13-desperdicio-en-la-hoja.md`,
+  decisión provisional): la pestaña APU edita en Materiales la neta y «Desperdicio (%)», el servidor calcula la cantidad
+  y la muestra en «Cantidad con desperdicio»; la traza vive en el borrador y se escribe con la versión, unida a las
+  vigentes de la partida (`aplicacion/hoja_desperdicio.py`). Quien revisa la ve sin escribir en la base.
+- **Perfil de un APU por hoja: `lado_de_los_porcentajes`** («derecha» por omisión, «izquierda» para el libro que escribe
+  el porcentaje del pie a la izquierda de su rótulo; `docs/manual_tecnico.md` §18).
+- **V4, prueba de humo de la ventana en la CI de Windows** (`instalador/humo.ps1` paso 6b, `instalador/navegador.py --cdp`;
+  `docs/bitacora/2026-11-06-ventana-v0.md` §3.3 a §3.5): la humo abre la ventana de Sílice (WebView2) y la maneja por CDP
+  con Playwright: ninguna petición fuera de 127.0.0.1, primer administrador, respaldo bajado como `.zip` desde la ventana,
+  título y cierre limpio sin escribir en {app}. Como corre elevada, el puerto lo abre una política HKLM que se crea solo
+  si falta y se devuelve como estaba; el muestreo de conexiones mira también los `msedgewebview2.exe` de la ventana; el
+  instalador de WebView2 de la CI se ejecuta solo con firma Authenticode válida de Microsoft.
+- **Aviso del puerto de depuración por política** (`operacion/ventana.py` `fuentes_puerto_depuracion`, `lanzador.py`):
+  el lanzador avisa si la variable de WebView2 o una política HKLM/HKCU (`AdditionalBrowserArguments`, valores AUMID,
+  ejecutable y `*`) piden `--remote-debugging`, y nombra cada fuente.
+- **F7 Ayuda** (`docs/planes/PLAN_TANDA_DETALLES.md`, Fase 2; RF-160, RF-185 a RF-189 y RNF-30): «¿Qué es esto?» en cada
+  pantalla de la obra, de las herramientas y de Pendientes (`paginas/ayuda/AyudaDeLaPantalla.tsx`, con `QueEsEsto`);
+  en la Cuenta › Ayuda, cuatro guías por tarea, un glosario de 29 términos y «Empieza aquí», enlazables con `?tema=`; la
+  Vista general muestra «Empieza aquí» la primera vez según el papel, derivado de los datos. Una prueba exige que cada
+  texto citado entre «…» exista en la interfaz o en `aplicacion/`.
+- **F5 Presupuesto vial** (diseño `docs/especificaciones/2026-11-03-presupuesto-vial-real-design.md`, RF-170 a RF-178;
+  decisiones provisionales del 2026-11-06): seis partidas viales nuevas y dos variantes de medición (fresado en m², carpeta
+  en t); VR4 por banda de distancia (ADVERTENCIA fuera de banda); desperdicio dentro de la cantidad con su traza en
+  Componer («0,52 (0,50 + 4 %)»; desde el 2026-11-13 también en la Hoja, ver abajo); perfil de libro con un
+  APU por hoja (libro ficticio construido en las pruebas; los perfiles reales viven fuera del repositorio) y su auditoría
+  contra el presupuesto (hallazgos AH1 a AH9) en `POST /v1/libros/apu-por-hoja` y en Auditoría. Migraciones aditivas
+  `caso_0021_vial_transporte` y `caso_0022_apu_desperdicio`.
+- **F5 Ventana de escritorio** (diseño `docs/especificaciones/2026-11-03-ventana-de-escritorio-design.md`, RF-180 a
+  RF-184; RT-3 y RT-5 enmendados; decisiones provisionales): Sílice abre en su ventana (pywebview 6.2.1 y pythonnet 3.2.1,
+  extra `escritorio`, solo Windows) con el navegador de respaldo y un AVISO del motivo; cerrar la ventana detiene Sílice;
+  una segunda ejecución trae al frente la ventana viva; orden `--sin-ventana` y ajuste `[interfaz] abrir_en`. Ícono de
+  Sílice (`frontend-desktop/public/silice.svg`, `operacion/silice.ico`) en la pestaña, el instalador y los accesos.
+  Verificación en `docs/bitacora/2026-11-06-ventana-v0.md`.
+- **F8 Cierre del rediseño**: se retiraron las direcciones viejas de antes de F6 (`#/pendientes`, `#/empresa/…`,
+  `#/catalogo`, `#/libros`, `#/administracion`, `#/acerca`…): llevan a la Vista general; las de la obra (`#/hoja`…) se
+  quedan. `scripts/recorrido_ux_playwright.py` recorre los espacios de F6 (modos por omisión, `--funcional` y
+  `--umbrales`, y un detector de controles sin nombre que salta lo `aria-hidden`). El front pasa de 14,45 MB a 10,02 MB
+  sin las tablas de silabeo de Univer que la hoja no usa. Los mensajes del servidor dicen «esta carpeta» y no «este
+  caso» (guardia `tests/unit/test_mensajes_sin_caso.py`). Pasada en navegador: `docs/bitacora/2026-11-06-f8-cierre.md`.
 - Quien revisa ve y abre las obras de todas las carpetas (decisión de Eugenio, 2026-11-05): la acción nueva
   `abrir_carpeta` (abrir otra carpeta, volver a la de la empresa y listar las obras de todas) la tienen arma, revisa y
   administración; `cambiar_caso` queda para crear y subir carpetas, sin revisa (`seguridad/permisos.py`). La carpeta
@@ -18,6 +89,16 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   sobre gris 10), la tabla de obras de la Vista general se apila con letra grande y su caja se puede enfocar, las barras
   de avance crecen con la letra y los avisos «Sin permiso» y «Apagada» son el h1 de la página.
 - Rediseño F6, espacios enrutados: la navegación se organiza en espacios, cada uno con su familia de rutas y una sola ruta canónica por pantalla (`marco/espacios.ts`, `rutaCanonica`), y una barra de espacio común (`marco/BarraDeEspacio.tsx`): Inicio, la obra, Producción, Auditoría, Precios y la Cuenta (`#/cuenta/:seccion`). Las pantallas que dependían de una obra pasan a subvistas de su sección (Resumen › Tablero, Presupuesto › Componer, Aprobaciones › Revisar un paquete y Entregar, Mercado › Actualizar precios, Control de obra › Reajuste y Escenarios). La barra lateral es plana: Vista general, Obras y Costos y producción. La app abre en la Vista general (`#/inicio/general`), que pone primero lo que requiere atención y después la cartera por moneda (`GET /v1/obras/resumen/todas`; Bs y USD nunca se suman), el avance contra el plan, las últimas auditorías y la arenera. La barra superior no tiene migas, y el tamaño de letra vive en Cuenta › Pantalla y tamaño de letra (`#/cuenta/preferencias`). Una dirección que no existe lleva a la Vista general. Decisiones en `docs/especificaciones/2026-11-04-f6-enmienda.md`; contrato de rutas en `docs/especificaciones/2026-11-04-f6a-contrato-de-rutas.md`.
+- Autocompletado guiado en los campos de datos (pedido de Eugenio del 2026-10-21; diseño
+  `docs/especificaciones/2026-10-21-autocompletado-de-campos-design.md`, plan `docs/planes/PLAN_AUTOCOMPLETADO.md`):
+  descripción del insumo en Componer con el precio de la lista con que arma la carpeta a la fecha de la composición (no se
+  copia en otra moneda ni pisa lo escrito); partida del contrato en Control y Reajuste; serie de índices; insumo en
+  Escenarios y selección múltiple en el Simulador; unidad, moneda, versión de comprobación y proveedor. Rutas nuevas de
+  solo lectura: `/v1/control/partidas`, `/v1/reajuste/partidas`, `/v1/reajuste/series`, `/v1/consulta/unidades` y
+  `/v1/consulta/proveedores`; `/v1/consulta/{tabla}` gana `detalle` y `para_armar_al` sin cambiar su respuesta de siempre.
+  Escenarios dice qué precios de ensayo no cambiaron nada y el Simulador acepta una lista de insumos (`null` son
+  todos; una lista vacía o un texto de solo comas, ninguno; hasta 200 nombres y 20.000 caracteres; el 422 ya no repite lo
+  enviado).
 - Contexto para agentes externos y puente con Antigravity: `AGENTS.md` y `GEMINI.md` (qué leer, qué es vigente y qué es historia), `docs/ESTADO.md` (fuente única del estado actual), tres skills en `.agents/skills/` (`metodologia-silice`, `arbitro-independiente`, `colaboracion-con-claude`) y las ocho anteriores restauradas a su versión de la sesión 0; servidor MCP `scripts/mcp_antigravity.py` (registrado en `.mcp.json`) y subagente `silice-antigravity`, ambos sobre `agy -p` en solo lectura. `scripts/meta_datos.py` ya no recorre worktrees, `node_modules` ni `graphify-out` (de minutos a segundos) e imprime en UTF-8; `prof.out` deja de versionarse. Hallazgos de la auditoría de Antigravity del 2026-11-04 en `docs/bitacora/auditoria-agy-2026-11-04.md`.
 - La Hoja en solo lectura para quien revisa, interfaz (rediseño F4, Tarea 2b): la pantalla `hoja` pasa a `leer_proyecto`, así que el árbol de la obra ofrece «Presupuesto» a quien revisa y la mesa de obras le da el paso «Abrir la Hoja». `paginas/hoja/puedeEditar.ts` (`puedeEditarLaHoja`, `usePuedeEditarLaHoja`: `editar_hoja` y una base que no sea de solo lectura) decide en cada componente que escribe; sin permiso no se pintan (no se deshabilitan) «Agregar partida», «Quitar», «Volver a la calculada», guardar y descartar, agregar y quitar líneas y filas, cambiar insumo, los dos planes ni importar plano, y a quien revisa tampoco convertir, cotizar, retirar, restaurar ni enviar a aprobación (estas cinco obran sobre la versión guardada: con un borrador de solo lectura quien arma sí las tiene); las celdas editables pasan a texto (`CampoDeCelda` y `TablaEditable` con `soloLectura`), la columna «Objetivo de mercado» se ve también en solo lectura (`GET /v1/mercado/objetivos` pasa a `leer_proyecto`; solo lee) y una nota dice «Está viendo este presupuesto en solo lectura.» (con un borrador de solo lectura añade por qué no se guarda, en lugar del diálogo deshabilitado de antes). «Descargar Excel», «Ver en Auditoría» y la búsqueda del APU siguen.
 - Pulido F5, tanda 2 (cinco puntos que encontró el manual nuevo). «Cargar cómputo» lee un CSV separado por punto y coma, como lo guarda Excel en español, con coma decimal y punto de miles («1.234,56»): `aplicacion/computo_csv.py` pasa las columnas con cifras que declara cada adaptador (`columnas_numericas`) a punto decimal con `cifra_escrita` antes de leer, y uno separado por coma se sigue leyendo igual, con punto decimal; la pantalla lo dice bajo «Tipo de obra del archivo» (`docs/api.json`: la descripción de `POST /computos/{dominio}`). El pendiente «Entregar» ya no termina en un callejón: Aprobaciones de la obra ofrece «Entregar al cliente» con el enlace «Entregar paquete» a quien puede entregar (`paginas/aprobar/EntregaDeLaObra.tsx`). Tramos y los avisos del servidor al llevar los tramos (`aplicacion/hoja_vial.py`) dicen «Presupuesto» en vez de «Hoja de la obra» («Abrir el presupuesto»); Reajuste dice que la obra se elige en «Obras» de la barra lateral o con Ctrl+K, y la guardia de `sinJergaInterna.test.ts` caza «Hoja de la obra» y «barra superior (Proyecto)». El paso 2 del recorrido de la auditoría ya no pide descargar el libro: dice que elegir un hallazgo lleva a su celda. La demostración sigue pidiendo `editar_hoja` (decisión D-3 de Eugenio); queda la pregunta de su entrada para quien arma. Decisiones en `docs/planes/PLAN_F5_PULIDO.md`, «Tanda 2».
@@ -148,6 +229,93 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- **La primera versión de una obra larga se guarda** (2026-11-13; `docs/bitacora/2026-11-13-e2e-precios.md` §1, D-2;
+  RF-193; provisional, por ratificar): sin plan elegido, el plan por rendimientos se arma en la primera unidad que cabe en
+  la matriz de 500 períodos (días, semanas de 5 días hábiles o meses de 20) y el mensaje de guardado lo dice; si ni en
+  meses cabe, 422 con la salida en «Plan y equilibrio» (`aplicacion/plan_rendimientos.plan_que_cabe`,
+  `hoja_guardado._con_plan_que_cabe`; `aplicacion/hoja.py`, congelado, no cambia). Una obra que cabe por días guarda el
+  plan de siempre.
+- **Renglones repetidos en el envío a aprobación** (2026-11-13; `docs/bitacora/2026-11-13-e2e-front.md` §1, E2E-1 y
+  E2E-3a): cada fila se identifica por su posición y no por el código de la partida, así que dos renglones de la misma
+  partida muestran cada uno su cantidad y su total; la cantidad sale sin ceros de más (`cantidadEsVe`, la regla que ya
+  usaba Existencias).
+- **Textos de la prueba de punta a punta** (2026-11-13; misma bitácora §3, E2E-3b a E2E-3f, decisión D3): «solo hay 1 mes
+  completo» en singular (Riesgo); el aviso de Índices sin jerga; la columna «Motivo» de Versiones dice el tipo y la fuente
+  escrita («Edición: …»; `GET /v1/hoja/versiones` trae `fuente`) y «Recuperación» con tilde (ronda 2, M6); la cabecera de
+  la carpeta vuelve a leer la carpeta al crear la lista para armar; el «Estado de la partida» no repite el mismo aviso una
+  vez por renglón.
+- **Componer** (2026-11-13; misma bitácora, E2E-3g y E2E-3h, decisión D4): la lista de sugerencias de una celda se abre
+  sobre el campo si abajo no cabe y su alto no pasa del sitio que queda; elegir una partida vial pone su descripción y su
+  unidad donde estén vacías, sin pisar lo tecleado.
+- **Los precios convertidos con 27 decimales** (2026-11-13; `docs/bitacora/2026-11-13-e2e-precios.md` §3.1): la
+  sugerencia del autocompletado y el diálogo «Precios distintos a los de la lista» los leen con dos decimales y coma; la
+  celda sigue recibiendo el exacto, así que guardar sin tocarla no crea una variante del insumo.
+- **Ciclo de importación en `aplicacion/`** (2026-11-13; encontrado por la línea vial, `2026-11-13-e2e-vial.md`): importar
+  `aplicacion.hoja_vial` como primer módulo fallaba por `hoja_vial` → `elaboracion` → `hoja_edicion` → `hoja_vista` →
+  `hoja_vial`. `PREFIJO_TRAMO` se define una sola vez, en `adapters/vial/modelo.py` (árbitro, ronda 2, M8), y
+  `aplicacion/hoja_partidas.py` lo reexporta para que `hoja_vista` no importe `hoja_vial`;
+  `tests/unit/test_aplicacion_sin_ciclos.py` importa, en un proceso aparte, cada módulo de `aplicacion/` como el primero
+  (con `aplicacion` descargada de `sys.modules` antes de cada uno).
+- **Libro con un APU por hoja, probado en local con el libro vial real** (2026-11-13;
+  `docs/bitacora/2026-11-13-libro-vial-real-local.md`, sin datos del libro): el porcentaje del pie escrito a la izquierda
+  del rótulo se tomaba por el monto (AH1 falso en cada hoja) y el valor en caché de una fórmula llegaba con ruido binario
+  (AH6 falsos): el perfil declara el lado y las cifras se leen con 15 dígitos significativos, la precisión de Excel.
+- **Tildes en los avisos de solo lectura de la Hoja y de reemplazo de Componer** (`aplicacion/hoja.py`,
+  `aplicacion/composicion.py`; experimento re-congelado con acta, `docs/bitacora/2026-11-13-recongelado-experimento.md`).
+- **Topes del lector en todas las subidas de .xlsx** (2026-11-12; `docs/bitacora/2026-11-12-topes-replica-listas.md` y
+  `2026-11-12-decisiones-topes-simulacion.md`): la réplica del visor también en hojas sin fórmulas (cuentan las
+  combinadas); listas de precios, presupuestos de terceros, Excel externo, valuaciones e índices del BCV pasan por
+  `lector.comprobar_topes_del_libro` antes del lector del núcleo (que no cambia). Las valuaciones pasan además por la
+  guardia: antes, una bomba de cadenas compartidas colgaba la importación más de 120 s y un .xlsx con macros entraba. Las
+  filas de hueco cuentan para el tope del libro (mil hojas con A20000: 3 s en vez de 12 s). El rechazo por tope de una
+  lista da el aviso del lector, sin «no se puede leer».
+- **Paso 7 de la humo**: exige el juego de respaldo nuevo de la migración, no cualquiera.
+- **Decisiones (d), (e) y (f)** (2026-11-12, simuladas; `docs/bitacora/2026-11-12-decisiones-topes-simulacion.md` §6):
+  la báscula lee del .xlsx `MAX_COLUMNAS + 1` columnas (una celda en XFD ya no cuesta 16.384 valores por fila);
+  sin el permiso `SILICE_PERMITIR_DEPURACION_VENTANA=1` de la humo, algo que pide el puerto de depuración de
+  WebView2 abre Sílice en el navegador; el instalador de WebView2 de la CI exige el firmante `O=Microsoft
+  Corporation`.
+- **Pruebas intermitentes** de `Retomar`, `AutocompletadoDeInsumos` y `Edicion` (vitest): esperan el efecto en vez de
+  afirmarlo al instante (`docs/bitacora/2026-11-12-pruebas-intermitentes.md`).
+- **Metas en PowerShell**: todas las `scripts/meta_*.py` y `fusion_verificar.py` imprimen en UTF-8 aunque la consola sea
+  cp1252 (`meta_alpha.imprimir_salida`; auditoría de Antigravity, fila 4).
+- **Libros con celdas lejanas** (ESTADO §5.3, preexistente desde 1.5; árbitro xhigh 2026-11-07): la auditoría del
+  libro de la empresa (`adapters/hoja_empresa/lector.py`) y la réplica del visor (`visual.py`, hojas con fórmulas)
+  recorrían un millón de filas si una celda en A1048576 o en XFD no salía en la `<dimension>`: tardaban minutos. Ahora los
+  tres recorridos en solo lectura pasan por `lector.filas_acotadas` (20.000 filas × 100 columnas por hoja y 4.000.000 de
+  celdas por pasada) y rechazan el libro enseguida con el aviso del lector de un APU por hoja (422 en la API).
+- Correcciones del árbitro único de F5, F7 y F8 (`docs/bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh*.md`): el libro con
+  un APU por hoja se lee acotado a 20.000 filas por 100 columnas y solo en las hojas que importan (un xlsx hostil de 33 KB
+  ya no ocupa 750 MiB) y rechaza con su celda los valores inválidos o desmesurados; los perfiles de libros locales viven
+  en `<datos>/perfiles_libros`; AH10 avisa de números de partida repetidos; la ventana guarda su perfil en
+  `<datos>/perfil_ventana` (decisión de Eugenio: se conservan la letra y el zoom; la sesión sigue terminando al cerrar) y
+  su puente de pywebview queda cerrado; los manuales describen la ventana, WebView2, `abrir_en` y `--sin-ventana`; la
+  licencia del SDK de WebView2 viaja en `LICENCIAS\` (copiada de NuGet); las pruebas que necesitan pywebview solo se
+  recolectan en Windows; la ayuda pasó a `comun/ayuda/`; el ciclo `aplicacion ↔ fusion` se cortó y lo vigila
+  `test_arquitectura.py`.
+- Tanda de detalles del front (D1–D16, `docs/planes/PLAN_TANDA_DETALLES.md`): la tabla de cambios de «Guardar versión»
+  y el registro de versiones usan coma decimal, hora sin segundos y nombres en español; «Cadena íntegra: 1 versión» en
+  singular (la frase de `core/` sigue igual y se corrige en `aplicacion/texto_cadena.py`); «m³» también en
+  Aprobaciones; «de la obra» en vez de «del proyecto» en los avisos; la cabecera muestra la moneda de la obra cuando la
+  carpeta no la declara; el rótulo de la versión del Resumen dice que es la de la línea base si existe; la Vista general
+  explica cómo se calcula el total y su tabla apilada pone rótulo y dato en una línea; «Producir mezcla» pide las recetas
+  vigentes en una sola consulta (`GET /v1/produccion/recetas/vigentes`) y ya no deja 404 en la consola; los renglones que
+  salen de los tramos dicen «Sale de los tramos» y no «Sin cálculo» (`de_tramo` en la fila del presupuesto); en Riesgo, «Fecha de inicio» y «Trayectorias» van en
+  «Proyectar» y «Trayectorias por corte» en «Comprobar hacia atrás»; la columna
+  «Estado» del Presupuesto se ajusta a 1366 px; Esc en «Código» tras elegir una partida no la deja mezclada;
+  `MONEDAS`, `useCarga`, `CampoDeUnidad` y `CampoDePartida` pasan a `comun/`, con una prueba de arquitectura que impide
+  importar nuevas dependencias entre páginas. Además: las tres tablas de cambios (Guardar versión, Versiones y Revisar)
+  comparten un presentador (`comun/presentarCambio.ts`): rótulos en español, coma decimal solo en lo que es cifra («A1.2»
+  queda igual) y también dentro de los resúmenes «clave=valor» del alta o baja de una fila, que se parten por las columnas
+  de su tabla y se rotulan como en la Hoja (`comun/rotulosDeColumna.ts`, con prueba de contrato contra `aplicacion/hoja.py`); «m³» en todas las unidades que se muestran; la
+  existencia de la arenera con coma decimal; «1 partida», «1 cambio registrado»; el Resumen dice «Versión de la línea
+  base» o «Versión vigente» según el servidor (`version_de_linea_base`); y en Componer, elegir una partida y luego otra
+  ya no deja la descripción y la unidad de la primera (D17): una partida del catálogo trae siempre las suyas y se avisa si
+  se reemplazó algo escrito («Se cambió la descripción «X» por la del catálogo, «Y».»), y al cambiar el código a mano se
+  vacían las que puso el catálogo; si la partida nueva no tiene composición, las tablas y el rendimiento que seguían siendo
+  los de la anterior se vacían y lo editado se conserva con aviso. `comun/` ya no importa de ninguna página (trinquete en `comun/arquitectura.test.ts`).
+  `aplicacion/hoja.py` cambió solo en mensajes y el experimento de la tesis se re-congeló con acta
+  (`docs/bitacora/2026-11-06-recongelado-experimento.md`).
 - Desinstalar ya no deja `{app}\codigo`: al primer arranque el lanzador abría el archivo del código de instalación (Bloc de notas) heredando esa carpeta como directorio de trabajo, y con la ventana abierta Windows no la borraba (error 32 en el humo del instalador). Ahora se abre con la carpeta del archivo como directorio de trabajo.
 - Hoja en solo lectura (M5 del árbitro del recorrido en video): la celda de una tabla ya no pierde su etiqueta accesible; «Cantidad, Presupuesto fila N» queda como texto oculto a la vista (`CampoDeCelda`), porque la cabecera da la columna pero no la fila.
 - Pruebas de la CI: el tope de la variación del simulador se cronometra sobre `variacion_de_texto` y la ruta comprueba el mensaje del tope (la petición entera pasó de 3 s en un runner cargado); el humo del instalador dice qué queda en `{app}` si la desinstalación no termina.

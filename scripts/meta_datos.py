@@ -42,13 +42,18 @@ import sys
 import unicodedata
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
-from typing import TextIO
 
 RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from scripts.meta_alpha import Estado, Fila, _filas_a_json, render_tabla  # noqa: E402
+from scripts.meta_alpha import (  # noqa: E402
+    Estado,
+    Fila,
+    _filas_a_json,
+    imprimir_salida,
+    render_tabla,
+)
 from scripts.meta_redaccion import evaluar_naturaleza_datos  # noqa: E402
 
 TITULOS: dict[str, str] = {
@@ -293,15 +298,6 @@ def _documentos(raiz: Path) -> dict[str, str]:
     return dict(sorted(documentos.items()))
 
 
-def _imprimir(texto: str, flujo: TextIO | None = None) -> None:
-    """Escribe en UTF-8 aunque la consola sea cp1252 (PowerShell): la tabla lleva «→»."""
-    flujo = sys.stdout if flujo is None else flujo
-    reconfigurar = getattr(flujo, "reconfigure", None)
-    if callable(reconfigurar):
-        reconfigurar(encoding="utf-8")
-    print(texto, file=flujo)
-
-
 def _leer(ruta: Path) -> str | None:
     return ruta.read_text(encoding="utf-8") if ruta.exists() else None
 
@@ -332,7 +328,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="imprime JSON en vez de la tabla")
     args = parser.parse_args(argv)
     filas = _evaluar_metas()
-    _imprimir(_filas_a_json(filas) if args.json else render_tabla(filas))
+    imprimir_salida(_filas_a_json(filas) if args.json else render_tabla(filas))
     return 0 if all(fila.estado is Estado.OK for fila in filas) else 1
 
 

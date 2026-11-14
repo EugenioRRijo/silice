@@ -52,10 +52,15 @@ def _instantanea(ruta: Path) -> dict:
         motor.dispose()
 
 
-def test_la_cabeza_del_caso_es_esta_revision() -> None:
+def test_la_revision_esta_en_la_unica_linea_del_caso() -> None:
+    """Fue la cabeza hasta `caso_0021_vial_transporte` (F5 vial), que cuelga de ella: la cabeza la
+    vigila la prueba de la revisión más reciente; aquí, que esta siga en la única línea."""
     from operacion.base_datos import _guion
 
-    assert _guion(Destino.CASO).get_heads() == [REVISION]
+    guion = _guion(Destino.CASO)
+    assert len(guion.get_heads()) == 1
+    assert guion.get_revision(REVISION).down_revision == ANTERIOR
+    assert REVISION in {r.revision for r in guion.walk_revisions()}
 
 
 def test_subir_crea_la_tabla(tmp_path: Path) -> None:

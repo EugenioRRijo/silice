@@ -9,10 +9,16 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
-import type { Carga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
+import type { Carga } from "../../comun/useCarga";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
+import { CampoDePartida } from "../../comun/CampoDePartida";
+import { listaRecortada, partidasOfrecidas } from "../../comun/partidasDelContrato";
+import type { PartidaDelContrato, PartidasDelContrato } from "../../comun/partidasDelContrato";
+import { CampoDeSerie } from "./CampoDeSerie";
+import { seriesOfrecidas } from "./series";
+import type { SerieDeIndice } from "./series";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {
   ROTULO_R,
@@ -63,23 +69,71 @@ interface Calculo {
   parciales: Parcial[];
 }
 
-const COLUMNAS_COMPONENTE: ColumnaEditable[] = [
-  { clave: "componente", titulo: "Componente", fija: true, presentar: rotuloDeOpcion },
-  { clave: "serie", titulo: "Serie" },
-  { clave: "peso", titulo: "Peso", cifra: true },
-];
-const COLUMNAS_PERIODO: ColumnaEditable[] = [
-  { clave: "desde", titulo: "Desde", tipo: "fecha" },
-  { clave: "hasta", titulo: "Hasta", tipo: "fecha" },
-  { clave: "version_comprobacion", titulo: "Versión de comprobación" },
-  { clave: "excepcion", titulo: "Excepción" },
-];
-const COLUMNAS_EJECUTADO: ColumnaEditable[] = [
-  { clave: "periodo", titulo: "Período" },
-  { clave: "partida", titulo: "Partida" },
-  { clave: "cantidad", titulo: "Cantidad", cifra: true },
-  { clave: "fuente", titulo: "Fuente" },
-];
+// AC2: «Serie» y «Partida» son campos con busqueda cuando la API dio la lista (series importadas; partidas de la version
+// del contrato elegida); sin lista siguen siendo texto libre y el calculo dice lo que falte.
+function columnasDeComponente(series: SerieDeIndice[] | null, alExpirar: () => void): ColumnaEditable[] {
+  return [
+    { clave: "componente", titulo: "Componente", fija: true, presentar: rotuloDeOpcion },
+    {
+      clave: "serie",
+      titulo: "Serie",
+      campo: (c) => (
+        <CampoDeSerie id={c.id} etiqueta={c.etiqueta} series={series} texto={c.valor} alCambiarTexto={c.alCambiar} alExpirar={alExpirar} />
+      ),
+    },
+    { clave: "peso", titulo: "Peso", cifra: true },
+  ];
+}
+// AC4: la versión de comprobación se elige entre las revaloradas del proyecto (`versiones[].revalorada` del contexto);
+// vacía es «Ninguna» (la comprobación de ese período queda no disponible). La lista es corta: un desplegable. Un valor
+// que ya no está entre las revaloradas se conserva como opción para no cambiar lo escrito sin avisar.
+function columnasDePeriodo(revaloradas: string[]): ColumnaEditable[] {
+  return [
+    { clave: "desde", titulo: "Desde", tipo: "fecha" },
+    { clave: "hasta", titulo: "Hasta", tipo: "fecha" },
+    {
+      clave: "version_comprobacion",
+      titulo: "Versión de comprobación",
+      campo: (c) => {
+        const opciones = c.valor === "" || revaloradas.includes(c.valor) ? revaloradas : [...revaloradas, c.valor];
+        return (
+          <Select id={c.id} labelText={c.etiqueta} hideLabel size="sm" value={c.valor} onChange={(e) => c.alCambiar(e.target.value)}>
+            <SelectItem value="" text="Ninguna" />
+            {opciones.map((v) => (
+              <SelectItem key={v} value={v} text={v} />
+            ))}
+          </Select>
+        );
+      },
+    },
+    { clave: "excepcion", titulo: "Excepción" },
+  ];
+}
+// Con la lista recortada (`recortada`) una partida que no se ve se puede usar «tal cual»: el calculo dice si no es del
+// contrato.
+function columnasDeEjecutado(partidas: PartidaDelContrato[] | null, recortada: boolean, alExpirar: () => void): ColumnaEditable[] {
+  return [
+    { clave: "periodo", titulo: "Período" },
+    {
+      clave: "partida",
+      titulo: "Partida",
+      campo: (c) => (
+        <CampoDePartida
+          id={c.id}
+          etiqueta={c.etiqueta}
+          partidas={partidas}
+          soloDelContrato={!recortada}
+          texto={c.valor}
+          alCambiarTexto={c.alCambiar}
+          alExpirar={alExpirar}
+          enCelda
+        />
+      ),
+    },
+    { clave: "cantidad", titulo: "Cantidad", cifra: true },
+    { clave: "fuente", titulo: "Fuente" },
+  ];
+}
 const PASOS = ["1. La cláusula", "2. Períodos y lo ejecutado"];
 const ETIQUETA_RESULTADO = "Escalatoria y comprobación, lado a lado";
 
@@ -102,7 +156,7 @@ export default function PaginaReajuste() {
           descripcion="El estudio de reajuste se hace sobre una versión guardada del contrato."
         />
       )}
-      {codigo !== null && proyectos.estado === "cargando" && <EsqueletoPagina etiqueta="Cargando el proyecto" />}
+      {codigo !== null && proyectos.estado === "cargando" && <EsqueletoPagina etiqueta="Cargando la obra" />}
       {codigo !== null && nombre !== undefined && <Estudio key={nombre} proyecto={nombre} alExpirar={alExpirar} />}
       <MensajeDeCarga carga={proyectos} />
     </div>
@@ -124,7 +178,7 @@ function Estudio({ proyecto, alExpirar }: { proyecto: string; alExpirar: () => v
   if (contexto.estado !== "listo") return <MensajeDeCarga carga={contexto} />;
   if (contexto.datos.versiones.length === 0) {
     return (
-      <EstadoVacio titulo="El proyecto no tiene versiones guardadas: guarde la del contrato primero." />
+      <EstadoVacio titulo="La obra no tiene versiones guardadas: guarde la del contrato primero." />
     );
   }
   return <Formulario proyecto={proyecto} contexto={contexto.datos} alExpirar={alExpirar} />;
@@ -155,6 +209,14 @@ function Formulario({
   // Cuenta las ediciones: una respuesta que llega despues de editar corresponde a datos viejos y se descarta.
   const edicion = useRef(0);
   const [paso, setPaso] = useState(0);
+  // AC2: las series importadas (una vez) y las partidas de la version elegida (de nuevo al cambiar de version).
+  const series = useCarga<SerieDeIndice[]>("/v1/reajuste/series", alExpirar);
+  const delContrato = useCarga<PartidasDelContrato>(
+    `/v1/reajuste/partidas?${new URLSearchParams({ proyecto, version: form.version }).toString()}`,
+    alExpirar,
+  );
+  const columnasComponente = columnasDeComponente(seriesOfrecidas(series), alExpirar);
+  const columnasEjecutado = columnasDeEjecutado(partidasOfrecidas(delContrato), listaRecortada(delContrato), alExpirar);
   // VB-13: tras «Calcular», el foco va al título del resultado o al aviso de error (si no, se queda en el botón y el
   // aviso aparece bajo el pliegue sin que nadie lo anuncie).
   // Cada pedido de foco es un objeto nuevo: siempre provoca el render tras el cual el efecto lo cumple.
@@ -319,7 +381,7 @@ function Formulario({
                 </p>
                 <FilasEditables
                   etiqueta="Componentes"
-                  columnas={COLUMNAS_COMPONENTE}
+                  columnas={columnasComponente}
                   filas={form.componentes}
                   fijas
                   revisar={revisar}
@@ -346,7 +408,7 @@ function Formulario({
                 </p>
                 <FilasEditables
                   etiqueta="Períodos"
-                  columnas={COLUMNAS_PERIODO}
+                  columnas={columnasDePeriodo(revaloradas)}
                   filas={form.periodos}
                   alCambiar={(filas) => editar((f) => ({ ...f, periodos: filas }))}
                 />
@@ -364,7 +426,7 @@ function Formulario({
                   <>
                     <FilasEditables
                       etiqueta="Ejecutado"
-                      columnas={COLUMNAS_EJECUTADO}
+                      columnas={columnasEjecutado}
                       filas={form.ejecutado}
                       revisar={revisar}
                       alCambiar={(filas) => editar((f) => ({ ...f, ejecutado: filas }))}

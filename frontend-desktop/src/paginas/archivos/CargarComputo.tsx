@@ -12,7 +12,7 @@ import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { rutaDeObra } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import { useHojaDeLaObra } from "../hoja/ProveedorDeLaHoja";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { CodigosCiviles, Pendientes, Rendimientos, SIN_CODIGOS, codigosCompletos, seleccionCivil } from "./BloquesDelComputo";
 import type { CodigosElegidos } from "./BloquesDelComputo";
 import {

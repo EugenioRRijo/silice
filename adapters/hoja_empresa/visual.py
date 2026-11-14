@@ -49,7 +49,8 @@ Límites declarados:
   (openpyxl las carga como `MergedCell`); Excel dibuja el rango con el estilo de la celda de
   origen, y el visor solo necesita `combinadas` y esa celda (ruling RS2-10, oráculo de la 2.6).
 - **Tope:** más de `MAX_CELDAS_VISUALES` celdas con valor o estilo en todo el libro →
-  `LibroDemasiadoGrande`.
+  `LibroDemasiadoGrande`. Y los topes de cada hoja del lector (20.000 filas y 100 columnas,
+  `lector.comprobar_topes_de_hoja`), con o sin fórmulas → `ArchivoRechazado` con el mismo aviso.
 
 Deuda: `_abrir_normal` repite lo que hace `lector._abrir` (mismos avisos silenciados, mismo
 `ArchivoRechazado`); falta un parámetro `solo_lectura` en `lector._abrir`, pero `lector.py` no se
@@ -66,6 +67,7 @@ import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
+from itertools import chain
 from typing import Any
 
 from openpyxl.cell.cell import Cell
@@ -73,7 +75,13 @@ from openpyxl.utils.cell import column_index_from_string, get_column_letter
 
 from adapters.hoja_empresa.escritor.estilos import _INDEXADOS, _colores_tema
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
-from adapters.hoja_empresa.lector import _abrir, _celdas_reales, _convertir, _texto_formula
+from adapters.hoja_empresa.lector import (
+    _abrir,
+    _celdas_reales,
+    _convertir,
+    _texto_formula,
+    comprobar_topes_de_hoja,
+)
 
 __all__ = [
     "MAX_CELDAS_VISUALES",
@@ -373,16 +381,30 @@ def _combinadas(ws: Any) -> tuple[str, ...]:
     return tuple(r.coord for r in rangos)
 
 
-def _valores_guardados(wv: Any, titulo: str) -> dict[tuple[int, int], object]:
-    return {(c.row, c.column): c.value for c in _celdas_reales(wv[titulo])}
+def _valores_guardados(
+    wv: Any, titulo: str, nombre: str, cuenta: list[int]
+) -> dict[tuple[int, int], object]:
+    """Los valores guardados de una hoja, con los topes del lector (`lector.filas_acotadas`):
+    esta pasada es de solo lectura y una celda lejana la haría recorrer un millón de filas."""
+    return {(c.row, c.column): c.value for c in _celdas_reales(wv[titulo], nombre, cuenta)}
 
 
-def _hoja(ws: Any, wv: Any, estilos: _Estilos, usadas: int) -> tuple[HojaVisual, int]:
-    """Réplica de una hoja; `usadas` son las celdas ya aceptadas en las hojas anteriores."""
+def _hoja(
+    ws: Any, wv: Any, estilos: _Estilos, usadas: int, nombre: str, cuenta: list[int]
+) -> tuple[HojaVisual, int]:
+    """Réplica de una hoja; `usadas` son las celdas ya aceptadas en las hojas anteriores y
+    `cuenta`, las que entregó la pasada de valores guardados en el libro entero."""
     celdas_ws = ws._cells  # noqa: SLF001 - solo las celdas que existen; iter_rows las inventaría
+    # Los topes del lector también en una hoja sin fórmulas (acta del árbitro de los topes, NOTA
+    # 6): el modo normal no recorre nada de más, pero la hoja le declararía al visor un millón de
+    # filas. Cuentan las celdas cubiertas por una combinada y las filas con alto o formato propio,
+    # que el visor dibuja.
+    comprobar_topes_de_hoja(
+        nombre, ws.title, chain(celdas_ws, ((fila, 1) for fila in ws.row_dimensions))
+    )
     items = sorted(celdas_ws.items())
     con_formula = any(_texto_formula(c) is not None for _, c in items)
-    guardados = _valores_guardados(wv, ws.title) if con_formula else {}
+    guardados = _valores_guardados(wv, ws.title, nombre, cuenta) if con_formula else {}
     celdas: list[CeldaVisual] = []
     for (fila, col), c in items:
         formula = _texto_formula(c)
@@ -434,8 +456,10 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual:
     Excel (base 1).
 
     Pasa primero por la guardia (`ArchivoRechazado`); después hace una apertura en modo normal y,
-    si hay fórmulas, otra de solo lectura con los valores guardados. Lanza `LibroDemasiadoGrande`
-    si el libro supera `MAX_CELDAS_VISUALES` celdas. Nunca modifica `datos`.
+    si hay fórmulas, otra de solo lectura con los valores guardados, con los topes de
+    `lector.filas_acotadas`. Una hoja que pasa de esos topes, con fórmulas o sin ellas
+    (`lector.comprobar_topes_de_hoja` sobre la apertura normal), da `ArchivoRechazado`. Lanza
+    `LibroDemasiadoGrande` si el libro supera `MAX_CELDAS_VISUALES` celdas. Nunca modifica `datos`.
     """
     verificar_archivo(datos, nombre)
     sha = hashlib.sha256(datos).hexdigest()
@@ -452,8 +476,9 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual:
             estilos = _Estilos(tema, defecto)
             hojas: list[HojaVisual] = []
             usadas = 0
+            cuenta = [0]  # celdas de la pasada de valores guardados (`MAX_CELDAS_LIBRO`)
             for ws in hojas_ws:
-                h, usadas = _hoja(ws, wv, estilos, usadas)
+                h, usadas = _hoja(ws, wv, estilos, usadas, nombre, cuenta)
                 hojas.append(h)
         except ArchivoRechazado:
             raise

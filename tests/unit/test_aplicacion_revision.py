@@ -111,9 +111,9 @@ def test_los_textos_fijos_son_los_de_la_pantalla_clasica() -> None:
         "Hay precios o totales declarados que no coinciden con el recálculo."
     )
     assert revision.SIN_ENTREGA_ANTERIOR == (
-        "Esta instalación no recibió una entrega anterior de este proyecto."
+        "Esta instalación no recibió una entrega anterior de esta obra."
     )
-    assert revision.SIN_LISTAS == "Este caso no tiene listas de precios para contrastar."
+    assert revision.SIN_LISTAS == "Esta carpeta no tiene listas de precios para contrastar."
     assert revision.TITULO_CONTRA_MI_LISTA == "El paquete con los precios de mi lista"
     assert revision.DICTAMEN_GUARDADO == "Dictamen guardado, atado al SHA-256 de este archivo."
     assert revision.NOTA_EXCEL == (
@@ -413,10 +413,10 @@ def test_el_banner_de_version_formatea_solo_las_ranuras_de_fecha() -> None:
 
     primera = _recibido()
     assert revision.banner_de_version(primera) == (
-        "Versión 2026-11-10 del 2026-11-10; es la primera que recibe de este proyecto."
+        "Versión 2026-11-10 del 2026-11-10; es la primera que recibe de esta obra."
     )  # por omision, ISO como la clasica
     assert revision.banner_de_version(primera, fecha=revision.fecha_es) == (
-        "Versión 2026-11-10 del 10/11/2026; es la primera que recibe de este proyecto."
+        "Versión 2026-11-10 del 10/11/2026; es la primera que recibe de esta obra."
     )  # el codigo con forma de fecha queda intacto
     otra = _recibido(ya_recibido=True, ya_recibido_el="2026-11-12")
     assert revision.banner_de_version(otra, fecha=revision.fecha_es).endswith(
@@ -424,7 +424,7 @@ def test_el_banner_de_version_formatea_solo_las_ranuras_de_fecha() -> None:
     )
     previa = _recibido(ultima_recibida="versión 2026-01-01 del 2026-11-03")
     assert revision.banner_de_version(previa, fecha=revision.fecha_es).endswith(
-        "la última que usted recibió de este proyecto: versión 2026-01-01 del 03/11/2026."
+        "la última que usted recibió de esta obra: versión 2026-01-01 del 03/11/2026."
     )
 
 
@@ -460,9 +460,9 @@ def test_la_ultima_recibida_solo_se_formatea_si_la_cola_es_un_dia_iso() -> None:
 
     rara = _recibido(ultima_recibida="versión 2026-01-01 de otro modo 12345")
     assert revision.banner_de_version(rara, fecha=revision.fecha_es).endswith(
-        "de este proyecto: versión 2026-01-01 de otro modo 12345."
+        "de esta obra: versión 2026-01-01 de otro modo 12345."
     )
     corta = _recibido(ultima_recibida="versión 004 del 2026-1")
     assert revision.banner_de_version(corta, fecha=revision.fecha_es).endswith(
-        "de este proyecto: versión 004 del 2026-1."
+        "de esta obra: versión 004 del 2026-1."
     )

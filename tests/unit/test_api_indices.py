@@ -21,6 +21,7 @@ import io
 import json
 import sys
 from collections.abc import Iterator
+from datetime import date, timedelta
 from decimal import Decimal
 from importlib.machinery import ModuleSpec
 from pathlib import Path
@@ -28,6 +29,7 @@ from types import ModuleType
 
 import openpyxl
 import pytest
+from openpyxl.worksheet._read_only import ReadOnlyWorksheet
 from sqlalchemy import select
 
 from api import caso_web, dependencias
@@ -39,6 +41,7 @@ from core.catalog import abrir_sesion, crear_motor
 from operacion import config
 from operacion.base_datos import preparar_base
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
+from tests.fixtures.libro_apu_por_hoja import con_celdas
 from tests.fixtures.sesion_web import (
     MENSAJE_PERMISO,
     cliente,
@@ -615,3 +618,106 @@ def test_ninguna_respuesta_de_error_trae_rutas_del_servidor_ni_sql(ruta: str) ->
         r = _enviar(navegador, ficha, ruta, contenido, nombre, definiciones="[]", **campos)
         assert r.status_code in (422, 503), (nombre, r.status_code, r.text)
         _sin_pistas(r)
+
+
+# --- topes del lector en el .xlsx subido (hallazgo MENOR del árbitro, 2026-11-12) ---------------
+#
+# `adapters.bcv.libro._xlsx` recorre cada hoja necesaria en solo lectura sin tope de filas: una
+# hoja que no declara su `<dimension>` y escribe en A1048576 le hace entregar un millón de filas
+# vacías (que no cuentan en su `MAX_CELDAS_TOTAL`, pues no traen celdas), y con 100 hojas así
+# (`MAX_HOJAS_LEIDAS`) son decenas de segundos de CPU. La ruta acota antes, como las listas y el
+# Excel externo: `lector.comprobar_topes_del_libro` (20.000 filas y 100 columnas por hoja y
+# `MAX_CELDAS_LIBRO` en el libro), con el aviso del lector tras «No se importo nada: ».
+
+SIGUE = (
+    "Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV). Se rechaza por "
+    "seguridad: borre lo que sobra al final de la hoja y guárdelo de nuevo."
+)
+FILAS_DE_MAS = "tiene filas con datos o con formato más allá de la 20.000"
+NOMBRE_TASA = "2_1_2c26_smc.xlsx"
+
+
+@pytest.fixture
+def filas_entregadas(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Las filas que openpyxl entrega en solo lectura (las del lector del BCV incluidas)."""
+    cuenta = [0]
+    original = ReadOnlyWorksheet.iter_rows
+
+    def contando(self, *args, **kwargs):
+        for fila in original(self, *args, **kwargs):
+            cuenta[0] += 1
+            yield fila
+
+    monkeypatch.setattr(ReadOnlyWorksheet, "iter_rows", contando)
+    return cuenta
+
+
+def _tasa_con(celdas: dict[str, object]) -> bytes:
+    """La tasa ficticia de `_tasa_xlsx` con `celdas` añadidas en su hoja y sin `<dimension>`."""
+    return con_celdas(_tasa_xlsx(), "30092026", celdas, sin_dimension=True)
+
+
+def _aviso_de_filas(hoja: str = "30092026") -> str:
+    return f"No se importo nada: El libro «{NOMBRE_TASA}», hoja «{hoja}»: {FILAS_DE_MAS}. {SIGUE}"
+
+
+@pytest.mark.parametrize("tipo", ["tasa", "inpc"])
+@pytest.mark.parametrize("ruta", ["leer", "confirmar"])
+def test_una_hoja_sin_dimension_con_una_celda_lejana_es_422_sin_recorrerla(
+    _entorno: Path, filas_entregadas: list[int], ruta: str, tipo: str
+) -> None:
+    contenido = _tasa_con({"A1048576": "fin ficticio"})
+    navegador, ficha = _admin()
+    r = _enviar(navegador, ficha, ruta, contenido, NOMBRE_TASA, tipo=tipo, definiciones="[]")
+    assert (r.status_code, r.json()) == (422, {"detalle": _aviso_de_filas()})
+    assert filas_entregadas[0] <= 20_001, f"openpyxl entregó {filas_entregadas[0]:,} filas"
+    assert _valores(_entorno) == {}
+
+
+def test_una_celda_mas_alla_de_la_columna_cv_es_422_con_el_aviso_del_lector() -> None:
+    r = _leer(_tasa_con({"CW2": "y"}), NOMBRE_TASA, tipo="tasa")
+    assert (r.status_code, r.json()) == (
+        422,
+        {
+            "detalle": f"No se importo nada: El libro «{NOMBRE_TASA}», hoja «30092026»: la fila 2 "
+            "tiene celdas con datos o con formato hasta la columna CW, más allá de la CV. " + SIGUE
+        },
+    )
+
+
+def test_la_fila_20000_pasa_y_la_20001_no() -> None:
+    """Frontera exacta del tope de filas, sin `<dimension>`: la tasa se lee igual con una celda
+    en A20000 y se rechaza con una en A20001."""
+    dentro = _leer(_tasa_con({"A20000": "fin ficticio"}), NOMBRE_TASA, tipo="tasa")
+    assert dentro.status_code == 200, dentro.text
+    assert [s["valores"] for s in dentro.json()["series"]] == [1, 1]
+    fuera = _leer(_tasa_con({"A20001": "fin ficticio"}), NOMBRE_TASA, tipo="tasa")
+    assert (fuera.status_code, fuera.json()) == (422, {"detalle": _aviso_de_filas()})
+
+
+def test_un_trimestre_entero_de_hojas_diarias_pasa_los_topes(_entorno: Path) -> None:
+    """Un libro legítimo de la tasa: una hoja por día del tercer trimestre (92, cerca del
+    `MAX_HOJAS_LEIDAS` del lector del BCV), cada una con el encabezado, la fecha valor y una
+    veintena de monedas, más una hoja ajena. Los topes del lector no lo rechazan."""
+    libro = openpyxl.Workbook()
+    libro.active.title = "Notas"
+    libro.active.append(["Hoja ajena ficticia"])
+    dia = date(2026, 7, 1)
+    while dia <= date(2026, 9, 30):
+        hoja = libro.create_sheet(dia.strftime("%d%m%Y"))
+        hoja.append(["BANCO CENTRAL DE VENEZUELA"])
+        hoja.append([f"Fecha Valor: {(dia + timedelta(1)).strftime('%d/%m/%Y')}"])
+        for n in range(20):
+            hoja.append([f"M{n:02d}", "Pais ficticio", 1.5, 1.5, 1200.5 + n, 1203.5 + n])
+        hoja.append(["USD", None, 1.0, 1.0, 858.02, 860.18])
+        dia += timedelta(1)
+    flujo = io.BytesIO()
+    libro.save(flujo)
+    r = _leer(flujo.getvalue(), NOMBRE_TASA, tipo="tasa")
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["series"] == [
+        {"clave": "usd_compra", "valores": 92, "desde": "2026-07-02", "hasta": "2026-10-01"},
+        {"clave": "usd_venta", "valores": 92, "desde": "2026-07-02", "hasta": "2026-10-01"},
+    ]
+    assert cuerpo["filas_rechazadas"] == 0

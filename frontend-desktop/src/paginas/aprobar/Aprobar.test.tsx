@@ -186,6 +186,9 @@ describe("lo que se aprueba, en solo lectura", () => {
     const filas = within(tabla).getAllByRole("row");
     const concreto = filas.find((f) => f.textContent?.includes("E.411.000.111"))!;
     expect(within(concreto).getByText("12,5")).toBeInTheDocument();
+    // D6: la unidad se lee «m³», como en la Hoja; el servidor sigue mandando «m3».
+    expect(within(concreto).getByText("m³")).toBeInTheDocument();
+    expect(within(concreto).queryByText("m3")).toBeNull();
     expect(within(concreto).getByText("1.234,57")).toBeInTheDocument();
     expect(within(concreto).getByText("15.432,10")).toBeInTheDocument();
     const pendiente = filas.find((f) => f.textContent?.includes("PEND-1"))!;
@@ -193,6 +196,51 @@ describe("lo que se aprueba, en solo lectura", () => {
     for (const conTitulo of document.querySelectorAll("[title]")) {
       expect(conTitulo.getAttribute("title"), "un title con punto decimal").not.toMatch(/\d\.\d/);
     }
+  });
+
+  test("E2E-1: la misma partida en dos renglones se ve con la cantidad y el total de cada renglón", async () => {
+    const renglon = (cantidad: string, total: string) => ({
+      codigo: "X-01",
+      descripcion: "Partida ficticia X",
+      unidad: "m2",
+      cantidad,
+      precio_unitario: "10.00",
+      total,
+      pendiente: false,
+    });
+    detalleDe = () => json(detalle({ total: "70.00", partidas: [renglon("2", "20.00"), renglon("5", "50.00")] }));
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Partidas de GS-001" });
+    const filas = within(tabla).getAllByRole("row").filter((f) => f.textContent?.includes("X-01"));
+    expect(filas).toHaveLength(2);
+    expect(within(filas[0]!).getByText("2")).toBeInTheDocument();
+    expect(within(filas[0]!).getByText("20,00")).toBeInTheDocument();
+    expect(within(filas[1]!).getByText("5")).toBeInTheDocument();
+    expect(within(filas[1]!).getByText("50,00")).toBeInTheDocument();
+  });
+
+  test("E2E-3: la cantidad del envío se lee sin ceros de más («12345.600000» -> «12.345,6»)", async () => {
+    detalleDe = () =>
+      json(
+        detalle({
+          partidas: [
+            {
+              codigo: "Y-02",
+              descripcion: "Partida ficticia Y",
+              unidad: "m2",
+              cantidad: "12345.600000",
+              precio_unitario: "1.00",
+              total: "12345.60",
+              pendiente: false,
+            },
+          ],
+        }),
+      );
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Partidas de GS-001" });
+    const fila = within(tabla).getAllByRole("row").find((f) => f.textContent?.includes("Y-02"))!;
+    expect(within(fila).getByText("12.345,6")).toBeInTheDocument();
+    expect(within(tabla).queryByText(/12\.345,600000/)).toBeNull();
   });
 
   test("los hallazgos con el informe de auditoría", async () => {

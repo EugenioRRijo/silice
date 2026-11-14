@@ -5,7 +5,9 @@ import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { rutaOPendientes } from "../../marco/espacios";
-import type { Carga } from "./useCarga";
+import type { Carga } from "../../comun/useCarga";
+import { unidadEscrita } from "../../comun/unidades";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 // Una fila del tablero de la arenera (GET /v1/produccion/existencias). Las cantidades son texto decimal y se
 // muestran tal cual: la interfaz no calcula (DESIGN.md).
@@ -87,8 +89,8 @@ function Cuerpo({ carga }: { carga: Carga<ExistenciaRespuesta[]> }) {
             {pide.map((f) => (
               <TableRow key={f.codigo}>
                 <TableCell>{f.nombre}</TableCell>
-                <TableCell className="silice-cifra">{`${f.existencia} ${f.unidad_venta}`}</TableCell>
-                <TableCell className="silice-cifra">{`${f.minima} ${f.unidad_venta}`}</TableCell>
+                <TableCell className="silice-cifra">{`${formatoEsVe(f.existencia)} ${unidadEscrita(f.unidad_venta)}`}</TableCell>
+                <TableCell className="silice-cifra">{`${formatoEsVe(f.minima)} ${unidadEscrita(f.unidad_venta)}`}</TableCell>
                 <TableCell>
                   <span className="silice-inicio__estado">
                     {f.negativa ? (

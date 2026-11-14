@@ -240,6 +240,38 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     expect(hecho.closest("[tabindex='-1']")).toHaveFocus();
   });
 
+  // Prueba de punta a punta del 2026-11-13 (D-7): una carpeta en USD con la lista de su empresa en USD armaba solo con
+  // una tasa del BCV reciente. Ahora se ofrece copiar esa lista, en su moneda, sin tasa.
+  test("con una lista de la empresa en la moneda de la carpeta ofrece usarla para armar, sin tasa", async () => {
+    const u = userEvent.setup();
+    carpeta = () =>
+      json({
+        ...SIN_LISTA_BS,
+        moneda: "USD",
+        empresa: [{ id: 7, nombre: "Empresa ficticia 2026-10-05", moneda: "USD" }],
+      });
+    crearLista = () =>
+      json(
+        { ...CREADA, moneda: "USD", lista: { ...CREADA.lista!, nombre: "Empresa ficticia 2026-10-05 al 26/10/2026", moneda: "USD" } },
+        201,
+      );
+    montar();
+    expect(
+      await screen.findByText(
+        "La lista de la empresa «Empresa ficticia 2026-10-05» se copia tal cual, en USD: no necesita tasa del BCV.",
+        {},
+        ESPERA,
+      ),
+    ).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Usar la lista de la empresa «Empresa ficticia 2026-10-05»" }));
+    await waitFor(() =>
+      expect(de("/v1/carpeta/lista-para-armar", "POST").map((l) => l.cuerpo)).toEqual([{ desde: "empresa", lista_id: 7 }]),
+    );
+    expect(
+      await screen.findByText(/Lista para armar creada: Empresa ficticia 2026-10-05 al 26\/10\/2026/, {}, ESPERA),
+    ).toBeInTheDocument();
+  });
+
   test("con la lista vigente en otra moneda ofrece también «Convertir la lista que tiene»", async () => {
     const u = userEvent.setup();
     carpeta = () => json(LISTA_EN_USD);
@@ -307,6 +339,33 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
   });
 
   // --- prever antes de guardar (D-MP2) ---------------------------------------------------------------
+
+  // Prueba de punta a punta del 2026-11-13 (D-8): un precio de la lista convertido de Bs (28 cifras) se leía con 27
+  // decimales. Se lee con dos; si con dos los dos precios se leen igual, van exactos para que se vea en qué difieren.
+  test("el diálogo de variantes lee los precios con dos decimales salvo que así se lean iguales", async () => {
+    const u = userEvent.setup();
+    const largo = "5.041157684630738522954091816";
+    prevision = () =>
+      json({
+        ...CON_VARIANTE,
+        variantes: [
+          { ...CON_VARIANTE.variantes[0], precio_en_lista: largo, precio_tecleado: "2.71" },
+          { ...CON_VARIANTE.variantes[0], descripcion: "Arena lavada", codigo_variante: "MAT-FIC-002-B", precio_en_lista: largo, precio_tecleado: "5.04" },
+        ],
+      });
+    montar();
+    await conCondiciones(u);
+    await u.click(screen.getByRole("button", { name: "Guardar composición" }));
+    const dialogo = await screen.findByRole("dialog", {}, ESPERA);
+    expect(
+      within(dialogo).getByText("“Cemento gris” ya está a 5,04 Bs; con 2,71 Bs se creará una variante solo para este APU."),
+    ).toBeInTheDocument();
+    expect(
+      within(dialogo).getByText(
+        "“Arena lavada” ya está a 5,041157684630738522954091816 Bs; con 5,04 Bs se creará una variante solo para este APU.",
+      ),
+    ).toBeInTheDocument();
+  });
 
   test("Guardar pregunta primero a prever; con una variante abre el diálogo y «Volver» no guarda", async () => {
     const u = userEvent.setup();

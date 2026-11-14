@@ -115,6 +115,16 @@ def test_menos_de_12_meses_completos():
         proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(n=10), mapa, _p())
 
 
+def test_un_solo_mes_completo_se_dice_en_singular():
+    # E2E-3 (prueba de punta a punta del 2026-11-13): decía «solo hay 1 meses completos»; 2 meses
+    # de historia dan 1 variación
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
+    mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
+
+    with pytest.raises(ValueError, match="^solo hay 1 mes completo; se necesitan 12$"):
+        proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(n=2), mapa, _p())
+
+
 def test_una_serie_del_mapa_sin_historia_deja_cero_meses():
     presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})

@@ -1,0 +1,78 @@
+{
+  "nombre": "apu_por_hoja",
+  "tipo": "apu_por_hoja",
+  "descripcion": "Libro con un APU por hoja y solo valores (F5 vial, diseño 2026-11-03 §7). Escrito contra el libro FICTICIO de tests/fixtures/libro_apu_por_hoja.py: los perfiles de libros reales viven en la carpeta de datos de la instalación, fuera del repositorio. La comparación de rótulos ignora mayúsculas, espacios repetidos y NBSP.",
+  "prefijo_hoja": "APU",
+  "cabecera": {
+    "numero": ["Partida N°", "Partida No", "Renglón"],
+    "codigo": ["Código:"],
+    "descripcion": ["Descripción:"],
+    "unidad": ["Unidad:"],
+    "cantidad": ["Cantidad:"],
+    "rendimiento": ["Rendimiento:"]
+  },
+  "bloques": {
+    "materiales": {
+      "titulo": ["MATERIALES"],
+      "columnas": {
+        "numero": ["N°"],
+        "descripcion": ["Descripción"],
+        "unidad": ["Unidad"],
+        "cantidad": ["Cantidad"],
+        "desperdicio": ["Desperdicio"],
+        "precio": ["Precio"]
+      },
+      "fin": ["Total materiales"]
+    },
+    "equipos": {
+      "titulo": ["EQUIPOS"],
+      "columnas": {
+        "numero": ["N°"],
+        "descripcion": ["Descripción"],
+        "cantidad": ["Cantidad"],
+        "precio": ["Precio"],
+        "depreciacion": ["Coef"]
+      },
+      "fin": ["Total equipos"]
+    },
+    "mano_obra": {
+      "titulo": ["MANO DE OBRA"],
+      "columnas": {
+        "numero": ["N°"],
+        "descripcion": ["Descripción"],
+        "cantidad": ["Cantidad"],
+        "precio": ["Jornal"],
+        "bono": ["Bono"]
+      },
+      "fin": ["Total mano de obra"]
+    }
+  },
+  "porcentajes": {
+    "prestaciones": ["Prestaciones sociales"],
+    "administracion": ["Administración"],
+    "utilidad": ["Utilidad"],
+    "financiamiento": ["Financiamiento"],
+    "impuesto": ["Impuesto"]
+  },
+  "lado_de_los_porcentajes": "derecha",
+  "precio_unitario": ["PRECIO UNITARIO"],
+  "unidades": {
+    "lt": "l",
+    "lts": "l",
+    "ton": "t",
+    "kgf": "kg",
+    "t-km": "t"
+  },
+  "patron_banda": "(?:mayor(?:es)?|m[aá]s) de (?P<minimo>[0-9]+(?:,[0-9]+)?) km y hasta (?P<maximo>[0-9]+(?:,[0-9]+)?) km",
+  "presupuesto": {
+    "hoja": "PRESUPUESTO",
+    "encabezado": {
+      "numero": ["N°"],
+      "codigo": ["Código"],
+      "descripcion": ["Descripción"],
+      "unidad": ["Unidad"],
+      "cantidad": ["Cantidad"],
+      "precio_unitario": ["P.U."]
+    }
+  }
+}

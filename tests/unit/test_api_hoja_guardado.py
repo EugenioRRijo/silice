@@ -59,7 +59,7 @@ from tests.fixtures.sesion_web import (
 )
 
 D = Decimal
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
     "Lo que no guardó se perdió: abra la versión otra vez."
@@ -76,14 +76,14 @@ FORMA = (
     "300 caracteres."
 )
 SIN_FUENTE = "Escriba la fuente del cambio: por que se cambia y con que respaldo."
-SIN_FUENTE_MEDIDA = "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+SIN_FUENTE_MEDIDA = "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
 SIN_CAMBIOS = "No hay cambios para guardar: edite alguna celda primero."
 HOJA_VACIA = (
-    "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version."
+    "La hoja está vacía: describa o importe el espacio antes de guardar la primera versión."
 )
 SOLO_LECTURA = (
-    "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion vigente "
-    "en el catalogo, asi que recalcularla cambiaria sus precios."
+    "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición vigente "
+    "en el catálogo, así que recalcularla cambiaría sus precios."
 )
 CENTINELA = "VALOR-CENTINELA"
 ORIGEN = "http://127.0.0.1:8000"
@@ -353,7 +353,7 @@ def test_guardar_con_fuente_crea_la_002_con_su_registro_exacto_y_los_literales_d
         1,
         False,
     )
-    assert cuerpo["mensaje"] == "Se guardó la versión 002 con 1 cambios registrados."
+    assert cuerpo["mensaje"] == "Se guardó la versión 002 con 1 cambio registrado."
     assert _cerca(cuerpo["total"]["exacto"], TOTAL_V002)  # 2 821,42 (P13)
     assert cuerpo["total"]["texto"] == "2821.42"
     # el registro por celda: objeto, clave, campo, antes, despues, fuente y responsable de la sesion
@@ -971,7 +971,7 @@ def test_la_primera_version_de_un_proyecto_nuevo_es_la_001_con_la_memoria(_entor
     assert _cerca(cuerpo["total"]["exacto"], TOTAL_MEMORIA)  # 2 703,86 (memoria de OF-001)
     assert cuerpo["total"]["exacto"] == previo["total"]["exacto"]  # 3d-B17: el de la vista previa
     assert cuerpo["mensaje"] == (
-        f"Se guardó la primera versión 001 del proyecto {NUEVO} "
+        f"Se guardó la primera versión 001 de la obra {NUEVO} "
         f"(total {cuerpo['total']['texto']}). "
         "Quedó registrada su creación, con su fuente y su responsable."
     )
@@ -1031,7 +1031,7 @@ def test_la_primera_version_que_otra_persona_ya_creo_es_422_ya_tiene_versiones(_
     respuesta = _guardar(otro, ficha_otro, b, 2)
     assert respuesta.status_code == 422
     assert respuesta.json() == {
-        "detalle": f"El proyecto {NUEVO!r} ya tiene versiones: abra una y use Guardar version."
+        "detalle": f"La obra {NUEVO!r} ya tiene versiones: abra una y use Guardar versión."
     }
     assert _volcado(_entorno) == despues and _codigos(uno, NUEVO) == ["001"]
 
@@ -1261,3 +1261,48 @@ def test_si_se_rechaza_por_version_mas_nueva_la_transaccion_termina_y_el_bloqueo
                 otra.execute("ROLLBACK")
     finally:
         motor.dispose()
+
+
+def test_la_primera_version_guarda_la_traza_del_desperdicio(_entorno: Path) -> None:
+    """Árbitro xhigh del 2026-11-13, M6: el camino de la PRIMERA versión de un proyecto también
+    escribe la traza del desperdicio editado en la Hoja (10 % sobre el primer material)."""
+    from aplicacion.desperdicio import trazas_vigentes
+
+    _proyecto_nuevo(_entorno)
+    navegador, ficha = _ana()
+    id_ = _en_blanco_con_el_plano(navegador, ficha, _entorno)
+    vista = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/apu").json()
+    elegida = None
+    for partida in vista["partidas"]:
+        detalle = navegador.get(
+            f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": partida["codigo"]}
+        ).json()["detalle"]
+        if detalle["grupos"][0]["filas"]:
+            elegida = detalle
+            break
+    assert elegida is not None, "ninguna partida con materiales"
+    cantidades = {g["clave"]: [f["cantidad"] for f in g["filas"]] for g in elegida["grupos"]}
+    rev = navegador.get(f"/v1/hoja/borradores/{id_}").json()["resumen"]["rev"]
+    editado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/{elegida['codigo']}",
+        json={
+            "rev": rev,
+            "rendimiento": elegida["rendimiento"],
+            "materiales": cantidades["materiales"],
+            "desperdicios": ["10"] + [""] * (len(cantidades["materiales"]) - 1),
+            "equipos": cantidades["equipos"],
+            "mano_obra": cantidades["mano de obra"],
+        },
+        headers=protegida(ficha),
+    )
+    assert editado.status_code == 200, editado.text
+    assert [d["porcentaje"] for d in editado.json()["apu"]["detalle"]["desperdicios"]] == ["10"]
+    guardado = _guardar(navegador, ficha, id_, editado.json()["rev"])
+    assert guardado.status_code == 200, guardado.text
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            trazas = trazas_vigentes(sesion, elegida["codigo"])
+    finally:
+        motor.dispose()
+    assert [t.desperdicio_pct for t in trazas] == [Decimal("10")]

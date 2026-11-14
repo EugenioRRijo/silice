@@ -9,8 +9,9 @@ import { paginaPorId, usable } from "../../shell/rutas";
 import { fijarArchivoPendiente } from "../inicio/archivoPendiente";
 import type { ModoDeAuditoria } from "../inicio/archivoPendiente";
 import { UltimasAuditorias } from "../inicio/UltimasAuditorias";
+import { AuditarApuPorHoja } from "./AuditarApuPorHoja";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 
 const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 
@@ -83,6 +84,9 @@ export default function PaginaAuditoria() {
           </p>
         </section>
       )}
+
+      {/* F5 vial, tarea 6: el libro con un APU por hoja y su presupuesto (otro perfil, otra subida). */}
+      {puedeAuditar && <AuditarApuPorHoja alExpirar={alExpirar} />}
 
       {puedeAuditar && (
         <section className="silice-inicio__bloque" aria-labelledby="auditoria-seguir">

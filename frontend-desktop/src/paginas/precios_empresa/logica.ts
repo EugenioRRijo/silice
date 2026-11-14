@@ -2,19 +2,19 @@
 // No calcula ni redondea: el impacto de cada hallazgo llega como texto con punto y solo se presenta en es-VE (D-8).
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { unidadEscrita } from "../../comun/unidades";
 
 export const TITULO = "Precios de la empresa";
 export const AYUDA =
-  "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con su fecha y su fuente. No cambia la valoración de ningún proyecto que no la use.";
+  "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con su fecha y su fuente. No cambia la valoración de ninguna obra que no la use.";
 export const TITULO_REFERENCIA = "1. La referencia MaPreX en bolívares";
 export const ROTULO_REFERENCIA = "Cargar la referencia MaPreX en Bs";
 export const TITULO_LISTA = "2. La lista de la empresa";
-export const SIN_BASES = "El caso no tiene listas de precios: cargue una en Actualizar precios.";
+export const SIN_BASES = "La carpeta no tiene listas de precios: cargue una en Actualizar precios.";
 export const TITULO_HALLAZGOS = "3. Precios vencidos o fuera de rango (R11 y R12)";
-export const SIN_LISTAS = "Todavía no hay listas de empresa en este caso.";
+export const SIN_LISTAS = "Todavía no hay listas de empresa en esta carpeta.";
 export const MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto.";
 export const EXTENSIONES = [".csv", ".xlsx"];
-export const MONEDAS = ["Bs", "USD"];
 
 export interface Base {
   id: number;
@@ -30,11 +30,65 @@ export interface Estado {
   listas: ListaEmpresa[];
 }
 export interface ListaCreada {
+  // El numero de la lista (para usarla como lista para armar) y, desde el 2026-11-13 (D-8), lo dado de alta y el aviso
+  // de cada fila que el catalogo tiene con otra unidad.
+  id?: number;
   nombre: string;
   propios: number;
   desconocidos: string[];
   mensaje: string;
   aviso: string | null;
+  dados_de_alta?: string[];
+  otra_unidad?: string[];
+}
+
+// `POST /v1/precios-empresa/listas/revision` (D-8): lo que la lista haria con el archivo, sin escribir nada.
+export interface InsumoNuevo {
+  tipo: string;
+  insumo: string;
+  unidad: string;
+  precio: string;
+}
+export interface Revision {
+  reconocidos: number;
+  nuevos: InsumoNuevo[];
+  otra_unidad: string[];
+}
+
+export const ROTULO_ALTA = "Dar de alta en el catálogo los insumos nuevos al crear la lista";
+export const ETIQUETA_NUEVOS = "Insumos nuevos del archivo";
+export const ETIQUETA_DADOS = "Insumos dados de alta en el catálogo";
+export const ROTULO_PARA_ARMAR = "Usarla como lista para armar";
+export const SIN_PERMISO_PARA_ARMAR = "La lista para armar la crea quien arma el presupuesto, desde Componer.";
+
+export function textoReconocidos(n: number): string {
+  return `El catálogo reconoce ${n} ${n === 1 ? "fila" : "filas"} del archivo.`;
+}
+
+export const COLUMNAS_NUEVOS: ColumnaDensa[] = [
+  { clave: "insumo", titulo: "Insumo" },
+  { clave: "tipo", titulo: "Tipo" },
+  { clave: "unidad", titulo: "Unidad" },
+  { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
+];
+
+// El tipo como lo dice la pantalla y la unidad como se escribe («m³»), no las claves del servidor (árbitro 13/11, M5).
+const TIPOS_DE_INSUMO: Record<string, string> = { material: "Material", equipo: "Equipo", mano_obra: "Mano de obra" };
+
+export function filasNuevos(nuevos: InsumoNuevo[]): FilaDensa[] {
+  return nuevos.map((n, i) => ({
+    id: String(i),
+    insumo: n.insumo,
+    tipo: TIPOS_DE_INSUMO[n.tipo] ?? n.tipo,
+    unidad: unidadEscrita(n.unidad),
+    precio: n.precio,
+  }));
+}
+
+export function formularioRevision(archivo: File): FormData {
+  const cuerpo = new FormData();
+  cuerpo.append("archivo", archivo);
+  return cuerpo;
 }
 export interface Hallazgos {
   columnas: string[];
@@ -51,6 +105,8 @@ export interface DatosLista {
   fuente: string;
   nombre: string;
   archivo: File | null;
+  // D-8: la confirmacion de dar de alta los insumos nuevos que la revision mostro.
+  darDeAlta?: boolean;
 }
 
 export const COLUMNAS_DESCONOCIDOS: ColumnaDensa[] = [{ clave: "insumo", titulo: "Insumo" }];
@@ -98,6 +154,7 @@ export function formularioLista(d: DatosLista): FormData {
   cuerpo.append("fuente", d.fuente);
   cuerpo.append("nombre", d.nombre);
   if (d.archivo) cuerpo.append("archivo", d.archivo);
+  if (d.darDeAlta) cuerpo.append("dar_de_alta", "true");
   return cuerpo;
 }
 

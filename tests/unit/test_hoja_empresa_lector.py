@@ -413,3 +413,155 @@ def test_xml_danado_se_rechaza():
             zout.writestr(item, contenido)
     with pytest.raises(ArchivoRechazado):
         leer_libro(salida.getvalue(), NOMBRE)
+
+
+# --- entrada hostil: celdas lejanas que la <dimension> no declara (ESTADO §5.3, desde 1.5) --------
+#
+# El lector del libro conocido recorría cada hoja entera con `reset_dimensions`: una celda en
+# A1048576 hacía que openpyxl entregara un millón de filas, y una celda en XFD en 2.000 filas,
+# 32 millones de celdas, en las dos pasadas (fórmulas y valores). Tardaba minutos. Ahora tiene los
+# topes de la guardia, los mismos del lector de un APU por hoja (`MAX_FILAS_HOJA` ×
+# `MAX_COLUMNAS_HOJA` por hoja y `MAX_CELDAS_LIBRO` por pasada), y rechaza el libro en voz alta.
+
+from adapters.hoja_empresa import guardia  # noqa: E402
+from tests.fixtures.libro_apu_por_hoja import con_celdas  # noqa: E402
+
+#: A mano, de la guardia: 20.000 filas y la que delata que la hoja sigue; 20.000 × 100 celdas y la
+#: fila ancha que se rechaza (16.384 columnas, de la A a la XFD).
+TOPE_FILAS_ENTREGADAS = 20_001
+TOPE_CELDAS_ENTREGADAS = 2_000_000 + 16_384
+SIGUE_LEYENDO = (
+    "Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV). Se rechaza por "
+    "seguridad: borre lo que sobra al final de la hoja y guárdelo de nuevo."
+)
+
+
+def _contar_filas(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """[filas, celdas, peso] que openpyxl entrega al recorrer las hojas en solo lectura. El peso es
+    lo que cuenta el tope del libro: las celdas de cada fila y una por lo menos, porque una fila de
+    hueco llega vacía y también cuesta recorrerla (decisión del 2026-11-12)."""
+    from openpyxl.worksheet._read_only import ReadOnlyWorksheet
+
+    medida = [0, 0, 0]
+    original = ReadOnlyWorksheet.iter_rows
+
+    def contando(self, *args, **kwargs):
+        for fila in original(self, *args, **kwargs):
+            medida[0] += 1
+            medida[1] += len(fila)
+            medida[2] += max(len(fila), 1)
+            yield fila
+
+    monkeypatch.setattr(ReadOnlyWorksheet, "iter_rows", contando)
+    return medida
+
+
+@pytest.mark.parametrize("hoja", ["APU-01", "PRESUPUESTO"])
+@pytest.mark.parametrize("variante", ["C", "E"])
+def test_una_celda_lejana_rechaza_el_libro_sin_recorrerla(
+    hoja: str, variante: str, monkeypatch: pytest.MonkeyPatch
+):
+    limpio_ = construir_libro().datos
+    medida = _contar_filas(monkeypatch)
+    leer_libro(limpio_, NOMBRE)
+    base_filas, base_celdas, _ = medida
+    medida[:] = [0, 0, 0]
+    celdas = (
+        {"A1048576": "fin ficticio"}
+        if variante == "C"
+        else {f"XFD{fila}": "y" for fila in range(2, 2002)}
+    )
+    datos = con_celdas(limpio_, hoja, celdas)
+    with pytest.raises(ArchivoRechazado) as error:
+        leer_libro(datos, "hostil.xlsx")
+    filas, celdas_, _ = medida
+    assert (
+        filas <= base_filas + TOPE_FILAS_ENTREGADAS,
+        celdas_ <= base_celdas + TOPE_CELDAS_ENTREGADAS,
+    ) == (True, True), f"openpyxl entregó {filas:,} filas y {celdas_:,} celdas"
+    donde = (
+        "tiene filas con datos o con formato más allá de la 20.000"
+        if variante == "C"
+        else (
+            "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, más allá de la CV"
+        )
+    )
+    assert str(error.value) == f"El libro «hostil.xlsx», hoja «{hoja}»: {donde}. {SIGUE_LEYENDO}"
+
+
+@pytest.mark.parametrize(
+    ("ref", "se_lee"),
+    [("A20000", True), ("A20001", False), ("CV30", True), ("CW30", False)],
+)
+def test_la_frontera_del_libro_conocido_es_la_de_la_guardia(ref: str, se_lee: bool):
+    """La última fila y la última columna del tope se leen; la siguiente rechaza el libro. Las
+    cifras salen de la guardia, no se escriben dos veces."""
+    assert (guardia.MAX_FILAS_HOJA, guardia.MAX_COLUMNAS_HOJA) == (20_000, 100)
+    datos = con_celdas(construir_libro().datos, "AUX", {ref: "fin ficticio"})
+    if not se_lee:
+        with pytest.raises(ArchivoRechazado, match="Se rechaza por seguridad"):
+            leer_libro(datos, NOMBRE)
+        return
+    assert leer_libro(datos, NOMBRE).valores[f"AUX!{ref}"] == "fin ficticio"
+
+
+def test_el_libro_conocido_tiene_un_tope_de_celdas(monkeypatch: pytest.MonkeyPatch):
+    """Cada pasada cuenta las celdas que materializa en el libro entero, antes de recortar: el tope
+    por hoja no basta (64 hojas en su tope pasan la guardia)."""
+    from adapters.hoja_empresa import lector
+
+    datos = construir_libro().datos
+    assert len(leer_libro(datos, NOMBRE).valores) > 10
+    monkeypatch.setattr(lector, "MAX_CELDAS_LIBRO", 10)
+    with pytest.raises(ArchivoRechazado) as error:
+        leer_libro(datos, "grande.xlsx")
+    assert str(error.value).startswith(
+        "El libro «grande.xlsx» tiene más de 10 celdas con datos o con formato entre sus hojas."
+    )
+
+
+def test_el_tope_del_libro_conocido_es_por_pasada_y_su_frontera_se_lee(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Árbitro, MENOR 2: el tope del libro vale por pasada (fórmulas y valores ven las mismas
+    celdas). N sale de contar lo que openpyxl entrega, no del código bajo prueba: con tope N el
+    libro se lee y con N - 1 se rechaza. Un solo contador para las dos pasadas pediría 2N."""
+    from adapters.hoja_empresa import lector
+
+    datos = construir_libro().datos
+    medida = _contar_filas(monkeypatch)
+    leer_libro(datos, NOMBRE)
+    total = medida[2]
+    assert total % 2 == 0
+    por_pasada = total // 2
+    monkeypatch.setattr(lector, "MAX_CELDAS_LIBRO", por_pasada)
+    assert leer_libro(datos, NOMBRE).hojas == construir_libro_hojas(datos)
+    monkeypatch.setattr(lector, "MAX_CELDAS_LIBRO", por_pasada - 1)
+    with pytest.raises(ArchivoRechazado, match=f"más de {por_pasada - 1:,}".replace(",", ".")):
+        leer_libro(datos, NOMBRE)
+
+
+def construir_libro_hojas(datos: bytes) -> tuple[str, ...]:
+    """Oráculo: los títulos de las hojas con openpyxl en modo normal."""
+    import openpyxl
+
+    return tuple(openpyxl.load_workbook(io.BytesIO(datos)).sheetnames)
+
+
+def test_una_fila_mas_ancha_que_la_columna_xfd_dice_su_columna():
+    """Árbitro, NOTA 4: una fila sin el atributo `r` puede traer más celdas que XFD (16.384);
+    el mensaje dice su columna (18.279 → AAAA, a mano) en vez de «alguna hoja está dañada»."""
+    from adapters.hoja_empresa.lector import filas_acotadas
+
+    class HojaFicticia:
+        title = "APU-01"
+
+        def reset_dimensions(self) -> None:
+            pass
+
+        def iter_rows(self, **_):
+            yield (None,) * 18_279
+
+    with pytest.raises(ArchivoRechazado) as error:
+        list(filas_acotadas(HojaFicticia(), "ancho.xlsx", [0], 10**9, values_only=True))
+    assert "hasta la columna AAAA, más allá de la CV" in str(error.value)

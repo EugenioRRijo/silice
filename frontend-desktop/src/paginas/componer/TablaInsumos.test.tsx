@@ -7,10 +7,17 @@ const MODALIDADES = ["JORNAL", "DESTAJO"];
 
 describe("TablaInsumos", () => {
   test("sin filas muestra el título y el botón de agregar", () => {
-    render(<TablaInsumos tipo="materiales" filas={[]} modalidades={MODALIDADES} alCambiar={vi.fn()} alAgregar={vi.fn()} alBorrar={vi.fn()} />);
+    render(<TablaInsumos tipo="materiales" filas={[]} modalidades={MODALIDADES} alCambiar={vi.fn()} alAgregar={vi.fn()} alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Materiales" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Consumo por unidad" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Agregar fila a Materiales" })).toBeInTheDocument();
+  });
+
+  test("la columna de borrar tiene un encabezado con texto (axe: empty-table-header), oculto a la vista", () => {
+    render(<TablaInsumos tipo="materiales" filas={[]} modalidades={MODALIDADES} alCambiar={vi.fn()} alAgregar={vi.fn()} alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()} />);
+    const acciones = screen.getByRole("columnheader", { name: "Acciones" });
+    expect(acciones).toHaveTextContent("Acciones");
+    expect(within(acciones).getByText("Acciones")).toHaveClass("cds--visually-hidden");
   });
 
   test("teclear en una celda avisa con la fila, la columna y el texto", async () => {
@@ -23,7 +30,7 @@ describe("TablaInsumos", () => {
         modalidades={MODALIDADES}
         alCambiar={alCambiar}
         alAgregar={vi.fn()}
-        alBorrar={vi.fn()}
+        alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()}
       />,
     );
     await usuario.type(screen.getByLabelText("Cantidad, fila 1"), "7");
@@ -38,7 +45,7 @@ describe("TablaInsumos", () => {
         modalidades={MODALIDADES}
         alCambiar={vi.fn()}
         alAgregar={vi.fn()}
-        alBorrar={vi.fn()}
+        alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()}
       />,
     );
     const celda = screen.getByLabelText("Precio, fila 1").closest("td")!;
@@ -56,7 +63,7 @@ describe("TablaInsumos", () => {
         modalidades={MODALIDADES}
         alCambiar={alCambiar}
         alAgregar={vi.fn()}
-        alBorrar={vi.fn()}
+        alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()}
       />,
     );
     const selector = screen.getByLabelText("Modalidad, fila 1");
@@ -80,7 +87,7 @@ describe("TablaInsumos", () => {
         modalidades={MODALIDADES}
         alCambiar={vi.fn()}
         alAgregar={alAgregar}
-        alBorrar={alBorrar}
+        alBorrar={alBorrar} alExpirar={vi.fn()} alCompletar={vi.fn()}
       />,
     );
     await usuario.click(screen.getByRole("button", { name: "Agregar fila a Materiales" }));

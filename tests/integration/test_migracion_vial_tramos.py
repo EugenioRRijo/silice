@@ -21,6 +21,10 @@ from operacion.base_datos import Destino, aplicar_revisiones, deshacer_revisione
 REVISION = "caso_0019_vial_tramos"
 ANTERIOR = "caso_0018_mp_corte_tasa"
 TABLAS = ("vial_tramos_guardado", "vial_tramo")
+#: La última revisión que cambia estas tablas (F5 vial, tarea 2: la columna `transporte`): el
+#: modelo de `aplicacion/tablas_vial.py` es el de esa revisión, no el de `caso_0019`.
+REVISION_DEL_MODELO = "caso_0021_vial_transporte"
+TRANSPORTE = ("transporte", "VARCHAR(10)", True)
 GUARDADO = [
     ("id", "INTEGER", False),
     ("version_id", "INTEGER", False),
@@ -83,7 +87,7 @@ def test_las_tablas_migradas_son_las_del_modelo(tmp_path: Path) -> None:
     from aplicacion.tablas_vial import crear_esquema_vial
 
     migrada = tmp_path / "migrada.db"
-    aplicar_revisiones(migrada, Destino.CASO, REVISION)
+    aplicar_revisiones(migrada, Destino.CASO, REVISION_DEL_MODELO)
     creada = tmp_path / "creada.db"
     motor = create_engine(f"sqlite:///{creada.as_posix()}")
     try:
@@ -119,4 +123,5 @@ def test_una_base_que_ya_trae_las_tablas_se_adopta(tmp_path: Path) -> None:
         motor.dispose()
     aplicar_revisiones(ruta, Destino.CASO, REVISION)
     assert leer_estado(ruta).revision == REVISION
-    assert _columnas(ruta, "vial_tramo") == TRAMO
+    # el modelo de hoy ya trae la columna de `caso_0021`: la adopción la conserva
+    assert _columnas(ruta, "vial_tramo") == [*TRAMO, TRANSPORTE]

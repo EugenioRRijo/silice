@@ -3,6 +3,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import type { Similar } from "./cliente";
 import { COLUMNAS, TIPOS, TITULOS } from "./tablas";
+import { unidadEscrita } from "../../comun/unidades";
 
 interface Props {
   similares: Similar[];
@@ -35,7 +36,7 @@ export function Similares({ similares, nivel = 2 }: Props) {
             {s.aviso && <p className="cds--type-body-compact-01">{s.aviso}</p>}
             {s.tablas && s.rendimiento !== null && (
               <p className="cds--type-body-compact-01">
-                Rendimiento: {formatoEsVe(s.rendimiento)} {s.unidad}/día
+                Rendimiento: {formatoEsVe(s.rendimiento)} {unidadEscrita(s.unidad ?? "")}/día
               </p>
             )}
             {s.tablas &&

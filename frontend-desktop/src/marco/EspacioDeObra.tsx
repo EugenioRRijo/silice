@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router";
 import type { CasosRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
+import { AyudaDeLaPantalla } from "../comun/ayuda/AyudaDeLaPantalla";
 import { ProveedorDeLaHoja } from "../paginas/hoja/ProveedorDeLaHoja";
 import { ContextoAplicacion } from "../shell/contexto";
 import { LimiteDeError } from "../shell/LimiteDeError";
+import { paginaPorId, usable } from "../shell/rutas";
 import { BarraDeEspacio, pestanasUsables } from "./BarraDeEspacio";
 import { CabeceraDeObra } from "./CabeceraDeObra";
 import { SUBVISTAS, vistaDeLaSeccion } from "./espacios";
@@ -185,6 +187,9 @@ function ObraDeLaRuta({ carpeta, obraId, obra, casos, seccion: def, subvista, pa
   const secciones = seccionesDeLaObra(oferta).map((s) => ({ id: s.id, titulo: s.titulo, ruta: rutaDeObra(carpeta, obraId, s.id) }));
   const subvistas = pestanasUsables(SUBVISTAS[seccion] ?? [], (h) => rutaDeObra(carpeta, obraId, seccion, h.id), acciones, modoEntrega, apagados);
   const subvistaActiva = (SUBVISTAS[seccion] ?? []).find((v) => v.pagina === vista.pagina)?.id ?? "";
+  // F7, A1: el «¿Qué es esto?» de la pantalla, solo si la cuenta puede usarla (si no, la pantalla dice «Sin permiso»).
+  const paginaDeLaVista = vista.pagina === null ? undefined : paginaPorId(vista.pagina);
+  const conAyuda = paginaDeLaVista !== undefined && usable(paginaDeLaVista, acciones, modoEntrega, apagados);
   const cabecera = (
     <>
       <CabeceraDeObra carpeta={carpeta} obraId={obraId} nombre={obra?.obra} version={obra?.version_codigo} ficha={abierta.ficha} />
@@ -195,6 +200,7 @@ function ObraDeLaRuta({ carpeta, obraId, obra, casos, seccion: def, subvista, pa
   const pantalla = (
     <>
       <BarraDeEspacio etiqueta={`Vistas de ${def.titulo}`} pestanas={subvistas} activa={subvistaActiva} nivel="subvista" />
+      {conAyuda && <AyudaDeLaPantalla pagina={paginaDeLaVista.id} />}
       <LimiteDeError key={`${seccion}|${vista.pagina}`}>
         <Suspense fallback={<EsqueletoPagina />}>{vista.pagina !== null && montar(vista.pagina)}</Suspense>
       </LimiteDeError>

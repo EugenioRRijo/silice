@@ -84,7 +84,7 @@ describe("textos", () => {
   test("éxito de la primera versión (P:539-544), con el total en es-VE", () => {
     const r = { codigo: "001", proyecto: "OF-001", cambios: 1, total: { texto: "2703.86", exacto: "2703.860232" }, primera: true, mensaje: "x" };
     expect(textoDeExito(r, "OF-001")).toBe(
-      "Se guardó la primera versión 001 del proyecto OF-001 (total 2.703,86). Quedó registrada su creación, con su fuente y su responsable.",
+      "Se guardó la primera versión 001 de la obra OF-001 (total 2.703,86). Quedó registrada su creación, con su fuente y su responsable.",
     );
   });
   test("el responsable es «Nombre <login>» (RF-82)", () => {
@@ -115,7 +115,7 @@ describe("qué le pasó al guardar", () => {
     expect(clasificarErrorDeGuardado(e(409, d)).clase).toBe("ausente");
   });
   test("409 de solo lectura u otro: el detalle tal cual", () => {
-    const d = "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion vigente en el catalogo.";
+    const d = "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición vigente en el catálogo.";
     expect(clasificarErrorDeGuardado(e(409, d))).toEqual({ clase: "otro", mensaje: d, version: null });
   });
   test("404 de borrador ausente (§3.1)", () => {

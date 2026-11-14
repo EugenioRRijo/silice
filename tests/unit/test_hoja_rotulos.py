@@ -49,6 +49,17 @@ def test_cada_columna_editable_tiene_su_rotulo_en_espanol_sin_nombres_internos()
         assert len(set(rotulos.values())) == len(rotulos), f"rotulos repetidos en {tabla}"
 
 
+def test_el_orden_de_las_filas_es_el_de_los_rotulos_y_el_de_las_columnas():
+    """El resumen «clave=valor; …» de un cambio sale en el orden de `filas_desde_espacio`, y la
+    interfaz lo parte con ese orden (`comun/rotulosDeColumna.ts`); ronda 4 de la tanda, N3."""
+    from tests.fixtures.espacio_bano import espacio_bano_con_drenaje
+
+    filas = hoja.filas_desde_espacio(espacio_bano_con_drenaje())
+    for tabla, columnas in hoja.COLUMNAS.items():
+        assert filas[tabla], f"la fixture no trae filas de {tabla}"
+        assert tuple(filas[tabla][0]) == tuple(hoja.ROTULOS_DE_COLUMNA[tabla]) == columnas, tabla
+
+
 # --- rotulos de valor ---------------------------------------------------------------------------
 
 

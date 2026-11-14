@@ -151,6 +151,15 @@ describe("Actualizar precios", () => {
     expect(screen.getByRole("button", { name: "Revalorar presupuesto" })).toBeDisabled();
   });
 
+  test("AC4: la moneda se elige de una lista (Bs o USD), no se escribe a mano", async () => {
+    montar();
+    await screen.findByRole("option", { name: "Obra ficticia A / 001" });
+    const moneda = screen.getByRole("combobox", { name: "Moneda" });
+    expect(within(moneda).getAllByRole("option").map((o) => o.textContent)).toEqual(["Bs", "USD"]);
+    await userEvent.setup().selectOptions(moneda, "Bs");
+    expect(moneda).toHaveValue("Bs");
+  });
+
   test("el nombre de la lista sigue a la vigencia mientras no se edite", async () => {
     montar();
     await screen.findByRole("option", { name: "Obra ficticia A / 001" });

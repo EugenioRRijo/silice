@@ -40,8 +40,8 @@ export function Bienvenida({ info, onReclamar }: Props) {
         </p>
         <ul className="silice-bienvenida__lista cds--type-body-compact-01">
           <li>
-            en el Bloc de notas que Sílice abrió solo la primera vez, y en la ventana del servidor, que el acceso directo
-            deja minimizada (búsquela en la barra de tareas y busque «Código de instalación»), y
+            en el Bloc de notas que Sílice abrió solo la primera vez, y en la consola de Sílice, que el acceso directo deja
+            minimizada junto a la ventana de Sílice (búsquela en la barra de tareas y busque «Código de instalación»), y
           </li>
           <li>
             en el archivo de texto de la carpeta de datos de Sílice:{" "}

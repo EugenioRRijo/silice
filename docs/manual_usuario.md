@@ -46,10 +46,15 @@ los repite.
 Para abrir Sílice:
 
 1. En el menú Inicio de Windows, haga clic en «Sílice».
-2. Se abre una ventana minimizada: es el servidor de Sílice. No la cierre mientras trabaja.
-3. El navegador se abre solo con la pantalla de Sílice.
+2. Se abre la ventana de Sílice, con su ícono en la barra de tareas. Junto a ella queda una consola minimizada: es el
+   servidor de Sílice y muestra el código de instalación la primera vez. No la cierre mientras trabaja.
+3. Si Sílice ya estaba abierto, el acceso no abre otro: trae al frente la ventana que ya está.
 
-Para cerrar Sílice, cierre esa ventana minimizada o use «Detener Sílice» del menú Inicio.
+Para cerrar Sílice, cierre la ventana de Sílice (o la consola minimizada, o use «Detener Sílice» del menú Inicio).
+
+Si en vez de la ventana se abre el navegador, este equipo no puede mostrar la ventana (por ejemplo, porque le falta
+WebView2 de Microsoft); la consola dice el motivo en una línea que empieza con «AVISO». Sílice funciona igual en el
+navegador.
 
 ### 1.2 Los tres papeles: arma, revisa y administra
 
@@ -137,10 +142,10 @@ instalación».». Cómo se encienden: sección 2.7.
 La primera vez que se abre Sílice no hay ninguna cuenta. Sílice muestra la pantalla «Bienvenida a
 Sílice» y pide un código de un solo uso.
 
-**Paso 1: busque el código de instalación.** Está en dos sitios:
+**Paso 1: busque su código de instalación.** Está en dos sitios:
 
-- En el Bloc de notas que Sílice abrió solo la primera vez, y en la ventana del servidor (la ventana
-  minimizada; búsquela en la barra de tareas y busque la línea «Código de instalación»).
+- En el Bloc de notas que Sílice abrió solo la primera vez, y en la consola de Sílice (la ventana minimizada que
+  acompaña a la ventana de Sílice; búsquela en la barra de tareas y busque la línea «Código de instalación»).
 - En el archivo `%LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt`.
 
 El código tiene 20 caracteres en grupos de cuatro, como `XXXX-XXXX-XXXX-XXXX-XXXX`: letras de la A a la
@@ -394,7 +399,7 @@ No confunda el conmutador «Presupuesto | Componer» con las pestañas de dentro
 La sección «Resumen» muestra la obra de un vistazo:
 
 - arriba, la franja del paso (sección 5);
-- las cifras «Total», «Avance real contra plan», «Versión vigente» y «Etapa»;
+- las cifras «Total», «Avance real contra plan», «Versión de la línea base» (o «Versión vigente» si la obra aún no tiene línea base) y «Etapa»;
 - «Pendientes de esta obra», cada uno con su botón.
 
 ### 3.8 Salir sin perder trabajo
@@ -422,13 +427,37 @@ puede usar:
 - **«Cuentas y permisos»**, **«Empresa y tema»**, **«Carpetas»** y **«Especialidades, IA e
   instalación»**, solo para quien administra (sección 2.7). «Carpetas» pide además poder crear y subir
   carpetas.
-- **«Ayuda y acerca de Sílice»**, para todas las cuentas. Su título es el mismo, «Ayuda y acerca de Sílice»: muestra la versión del
-  programa, el estado de las bases de datos y qué módulos están instalados. Debajo, «Recorridos
-  guiados» ofrece «Empezar el recorrido «Auditar un libro de la empresa»» (sección 12.4). Las guías de
-  cada tarea están en este manual.
+- **«Ayuda y acerca de Sílice»**, para todas las cuentas. Su título es el mismo, «Ayuda y acerca de Sílice».
+  Primero va la ayuda: «Empieza aquí», «Guías por tarea» y «Glosario» (sección 3.10). Después, la versión del
+  programa, el estado de las bases de datos y qué módulos están instalados. Al final, «Recorridos guiados»
+  ofrece «Empezar el recorrido «Auditar un libro de la empresa»» (sección 12.4).
 
 La Cuenta abre siempre en «Pantalla y tamaño de letra». Lo que antes era la pantalla «Administración»
 está repartido en las cuatro secciones de quien administra.
+
+### 3.10 La ayuda dentro de Sílice
+
+Sílice trae su propia ayuda, en tres sitios:
+
+- **«¿Qué es esto?» encima de cada pantalla.** En cada sección de la obra y en cada herramienta de
+  «Auditar un presupuesto», «Precios y catálogo» y «Costos de producción», y en «Pendientes», un botón
+  «¿Qué es esto?» va justo encima del título. Al pulsarlo se abre, debajo, para qué sirve la pantalla y
+  cuándo usarla, con un enlace a su guía y a las palabras del glosario que usa; al pulsarlo otra vez, o con
+  Esc, se pliega. En el «Presupuesto» no hay uno para toda la pantalla: cada pestaña tiene el suyo
+  (sección 4.2). Si su cuenta no puede usar la pantalla, no aparece.
+- **«Empieza aquí» en la Vista general**, solo la primera vez. Quien administra lo ve mientras su cuenta
+  sea la única activa: le dice cómo crear las cuentas de las personas y poner los datos de la empresa.
+  Quien arma lo ve mientras no tenga ninguna obra: crear la obra, armar el presupuesto y enviarlo a
+  aprobación. Quien solo revisa, también sin obras: auditar un libro y dar su dictamen. Cuando ya no hace
+  falta, desaparece solo; Sílice no guarda nada en el navegador para saberlo.
+- **La Cuenta › «Ayuda y acerca de Sílice»**: arriba, «En esta ayuda» lleva a cada parte. «Empieza aquí»
+  cuenta la primera vez (el código de instalación y la cuenta del administrador, sección 2.1) y lo primero
+  de cada papel. «Guías por tarea» trae cuatro guías paso a paso: «Montar un presupuesto», «Enviarlo a
+  aprobación», «Actualizar precios» y «Auditar un libro». «Glosario» explica las palabras del oficio que
+  Sílice usa (APU, FCAS, línea base, lista para armar, valor ganado, reajuste, entre otras).
+
+Los enlaces de «¿Qué es esto?» y de «Empieza aquí» abren la Ayuda justo en la guía o la palabra
+elegida. Si tiene cambios sin guardar, Sílice pregunta antes de salir, como con cualquier enlace.
 
 ## 4. Crear una obra y armar su presupuesto
 
@@ -448,7 +477,8 @@ cantidades, revisar el APU, guardar la versión y ver el IVA.
      del BCV del día.
 3. Pulse «Crear obra».
 
-Sílice abre el «Resumen» de la obra nueva. La franja dice «Te falta: Agregue la primera partida».
+Sílice abre el «Resumen» de la obra nueva. La franja dice «Siguiente paso: Agregue la primera partida»,
+con el botón «Agregue la primera partida», que lleva al Presupuesto.
 
 ### 4.2 La pantalla «Presupuesto», de arriba abajo
 
@@ -521,7 +551,8 @@ obras.».
    condiciones se obtuvo).
 4. **«Insumos»**: tres tablas, materiales, equipos y mano de obra. Para cada una puede buscar en la
    referencia MaPreX y pulsar «Usar esta fila», o pulsar «Agregar fila» y escribir a mano.
-   - Materiales: «Descripción», «Unidad», «Consumo por unidad», «Precio».
+   - Materiales: «Descripción», «Unidad», «Consumo por unidad», «Desperdicio (%)» (opcional, sección
+     4.11), «Precio».
    - Equipos: «Descripción», «Cantidad», «Precio», «Depreciación».
    - Mano de obra: «Descripción», «Cantidad», «Sueldo», «Modalidad».
 5. **«Desglose en vivo»**: Sílice calcula mientras escribe «Materiales», «Equipos», «Mano de obra»,
@@ -533,7 +564,11 @@ obras.».
 Al guardar, el panel se cierra y el diálogo «Agregar partida» vuelve con la partida nueva elegida.
 
 Para guardar hace falta que la carpeta tenga su lista de precios para armar. Si no la tiene, el panel lo
-avisa en «Sin lista de precios para armar» y ofrece «Crear la lista a partir de MaPreX».
+avisa en «Sin lista de precios para armar» y ofrece «Crear la lista a partir de MaPreX». Si la empresa ya tiene
+una lista de precios en la moneda de la carpeta (sección 9.2), ofrece primero «Usar la lista de la empresa «…»», con
+el nombre de esa lista: la copia tal cual, en su moneda, y no necesita tasa del BCV. Es la salida cuando la carpeta
+está en USD y no hay una tasa del BCV de los últimos 7 días para convertir MaPreX. Creada la lista, el panel dice
+«Lista para armar creada: …» y la cabecera de la obra la muestra.
 
 Cuidado: si cierra el panel sin guardar, lo compuesto se pierde sin preguntar.
 
@@ -662,7 +697,7 @@ Cuando el borrador tiene cambios, la franja dice «Siguiente paso: Hay 3 cambios
 «Guardar versión…» (o «Guardar primera versión…» si la obra no tiene ninguna).
 
 1. Pulse el botón. Se abre «Guardar versión».
-2. Lea el resumen: cuántos cambios, de qué versión sale y el total. Abajo está la lista «Cambios» con lo
+2. Lea el resumen: cuántos cambios, de qué versión sale y el total. Abajo está la lista «Cambios (n)» con lo
    que había antes y lo que queda después.
 3. Escriba el motivo, hasta 300 caracteres:
    - en la primera versión, «Fuente de la medida (de dónde salen los datos)», por ejemplo «Planos de
@@ -672,6 +707,14 @@ Cuando el borrador tiene cambios, la franja dice «Siguiente paso: Hay 3 cambios
 5. Pulse «Guardar versión».
 
 Verá «Versión guardada» y, por ejemplo, «Se guardó la versión V-005 con 3 cambios registrados.».
+
+**La primera versión de una obra larga.** Al guardar la primera versión, Sílice arma el plan de trabajo desde los
+rendimientos. El plan admite hasta 500 períodos: si por días no cabe, lo arma por semanas (de 5 días hábiles) y, si
+tampoco, por meses (de 20 días hábiles), y el mensaje de guardado lo dice, por ejemplo «El plan por días tendría 700
+períodos y la matriz admite 500: se armó por semanas (140 períodos). Puede rehacerlo con cuadrillas en «Plan y
+equilibrio».». La versión se guarda igual; si quiere el plan en otra unidad o con más cuadrillas, rehágalo en «Plan y
+equilibrio». Si ni en meses cabe, no se guarda y Sílice le pide crear el plan en «Plan y equilibrio», asignar más
+cuadrillas a las partidas largas y volver a guardar.
 
 Si alguien guardó otra versión mientras usted trabajaba, Sílice avisa «Hay una versión más nueva» y le deja
 elegir entre «Guardar de todos modos» y «Abrir la versión …».
@@ -693,6 +736,26 @@ presupuesto van sin IVA.
 - **«Descartar cambios»** (en «Estado del borrador»): borra lo que no guardó. Sílice pregunta antes; los
   cambios descartados no se recuperan.
 - **Abrir otra versión**: desde «Versiones» (sección 6.1).
+
+### 4.11 El desperdicio de un material en Componer
+
+Algunos APU cobran el material que se pierde en obra (el asfalto que queda en el camión, el cemento que
+se riega). En Componer se declara así, sin hacer la cuenta a mano:
+
+1. En la tabla «Materiales», escriba en «Consumo por unidad» la cantidad **neta**, la que queda en la
+   obra. Por ejemplo `0,50`.
+2. En «Desperdicio (%)» escriba el porcentaje: `4` es 4 %. Debe estar entre 0 y 100. Vacío o `0`, el
+   material no lleva desperdicio.
+3. En «Desglose en vivo» aparece la lista «Materiales con desperdicio», una línea por material, por
+   ejemplo «Emulsión asfáltica (fila 1): consume 0,52 (0,50 + 4 %)». La cantidad con desperdicio la
+   calcula Sílice (neta × (1 + porcentaje ÷ 100)) y es la que entra en el precio unitario.
+4. Pulse «Guardar composición». Sílice guarda la neta y el porcentaje: al abrir de nuevo la partida en
+   Componer vuelven tal como los escribió.
+
+Si el porcentaje está mal escrito, el desglose muestra un «Aviso», por ejemplo «En Materiales, fila 1
+(«Emulsión asfáltica»), el desperdicio «150» debe estar entre 0 y 100 (es un porcentaje: 4 es 4 %).».
+Por ahora la Hoja no muestra la neta ni el porcentaje: para verlos o cambiarlos, abra la partida en
+Componer.
 
 ## 5. La franja del paso: «Te falta» y «Siguiente paso»
 
@@ -1014,14 +1077,35 @@ lista base con sus precios encima, cada uno con su fecha y su fuente.
 
 1. **«1. La referencia MaPreX en bolívares»**: pulse «Cargar la referencia MaPreX en Bs».
 2. **«2. La lista de la empresa»**: llene «Empresa (nombre)», «RIF», «Lista base», «Moneda de la lista»,
-   «Fecha de la lista» y «Fuente de la lista». Suelte el archivo de precios (CSV o XLSX) y pulse «Crear la
-   lista de la empresa».
-3. **«3. Precios vencidos o fuera de rango (R11 y R12)»**: pulse «Buscar variaciones atípicas de precio».
+   «Fecha de la lista» y «Fuente de la lista (de dónde salen estos precios)»; si quiere, «Nombre de la lista
+   (opcional)». Suelte el archivo de precios (CSV o XLSX) y pulse «Crear la lista de la empresa».
+3. **«3. Precios vencidos o fuera de rango (R11 y R12)»**: elija la «Lista» y la «Fecha de evaluación». Con
+   una lista elegida aparece «Buscar variaciones atípicas de precio».
 4. **«FCAS por componentes»**: «Abrir la calculadora del FCAS».
 
 El archivo de precios lleva las columnas `tipo`, `insumo`, `unidad` y `precio` (y, si quiere, `fecha`,
 `fuente`, `referencia`, `moneda`, `tasa`, `fecha_tasa` y `fuente_tasa`). En este archivo el decimal va con
-**punto**.
+**punto**. Una fila sin `fecha` o sin `fuente` toma la «Fecha de la lista» y la «Fuente de la lista» del formulario.
+
+**Al soltar el archivo, Sílice lo revisa sin guardar nada** («Revisando el archivo...») y dice:
+
+- cuántas filas reconoce el catálogo, por ejemplo «El catálogo reconoce 2 filas del archivo.»;
+- si trae insumos que el catálogo no tiene, la tabla «Insumos nuevos del archivo» (insumo, tipo, unidad y precio)
+  y la casilla «Dar de alta en el catálogo los insumos nuevos al crear la lista». Sin marcarla, esos insumos no
+  entran a la lista; marcada, se dan de alta al pulsar «Crear la lista de la empresa» y entran con su precio. Si el
+  archivo trae dos veces el mismo insumo nuevo con precios distintos, no se crea nada y Sílice le pide dejar una
+  sola fila;
+- en «Otra unidad», cada fila cuya descripción el catálogo ya conoce pero con otra unidad, por ejemplo «“Arena de
+  prueba” viene en saco y el catálogo lo tiene en m3: no entró; escriba en el archivo la unidad del catálogo.».
+  Esas filas nunca se dan de alta (serían otro insumo con el mismo nombre): corrija la unidad en el archivo y
+  vuelva a soltarlo.
+
+Con la lista creada, «Lista creada» dice cuántos precios entraron y, si los hubo, la tabla «Insumos dados de alta en
+el catálogo». Debajo, a quien también arma presupuestos (el papel de quien arma) le aparece «Usarla como lista para
+armar»: la copia tal cual, en su moneda y sin tasa del BCV, como lista para armar de la carpeta, si la carpeta está
+en esa moneda. Si la carpeta ya tenía una, la nueva pasa a ser la vigente (la de fecha más reciente): así se renuevan
+los precios con la lista de la empresa del mes. A quien solo administra, Sílice le dice «La lista para armar la crea quien
+arma el presupuesto, desde Componer.» (sección 4.3, camino 3).
 
 ### 9.3 Actualizar precios de un presupuesto (quien arma)
 
@@ -1107,13 +1191,26 @@ desde un archivo CSV, uno por versión.
 
 Llevar otra vez actualiza los renglones que vinieron de los tramos.
 
+Llevar es todo o nada: si a una partida que sale de los tramos le falta su APU, no se lleva ninguna y
+Sílice dice cuáles faltan. Si la que falta es un ligante cuyo APU de riego ya lo trae, o la línea y la
+pintura de una línea donde solo se ponen ojos de gato, el mensaje dice cómo declararlo en el archivo
+(`suministro` = `sí`, o la demarcación `captafaros`) para que esa partida no salga.
+
 **El archivo de la vía.** Texto UTF-8, columnas separadas por punto y coma. Aquí **sí** se usa coma
 decimal (`1,2`); también se acepta punto sin miles (`1234.5`). Máximo 2 MiB. Si una fila está mal, no se
 importa nada y Sílice dice cuál.
 
 Columnas obligatorias: `tramo`, `progresiva_ini_km`, `progresiva_fin_km`, `ancho_m`, `distancia_planta_km`,
-`elemento`, `tipo`, `espesor_m`, `densidad_t_m3`, `dosis_l_m2` y `lineas`. Opcional: `asfalto_pct`. Una fila
-por capa o por línea de demarcación; los datos del tramo van en su primera fila. Ejemplo ficticio:
+`elemento`, `tipo`, `espesor_m`, `densidad_t_m3`, `dosis_l_m2` y `lineas`. Opcionales (un archivo sin ellas
+se lee igual): `asfalto_pct` (el porcentaje de asfalto de la mezcla de la carpeta o del bacheo),
+`esponjamiento` (del fresado, 1 o más: sin él no se calcula el transporte del fresado), `limpieza` (`sí` o
+`no`, en la imprimación y el riego), `medicion` (`m2` en el fresado o `t` en la carpeta: la otra unidad de la
+partida), `area_m2` (el área de cada elemento de una demarcación `superficie`), `captafaros` (los ojos de gato
+de una línea o de una demarcación `captafaros`), `suministro` (`sí` en la imprimación o el riego si su APU ya trae
+el ligante: entonces no se calcula el ligante aparte y la dosis es opcional) y `transporte` (vacía, el transporte de la mezcla en t·km; `banda`, en toneladas, con la
+distancia como banda en la descripción de la partida). El detalle de cada una está en
+`data/samples/vial/README.md`. Una fila por capa o por línea de demarcación; los datos del tramo, también
+`transporte`, van en su primera fila. Ejemplo ficticio:
 
 ```
 tramo;progresiva_ini_km;progresiva_fin_km;ancho_m;distancia_planta_km;elemento;tipo;espesor_m;densidad_t_m3;dosis_l_m2;lineas
@@ -1126,11 +1223,17 @@ T2;1,2;2,0;6,50;18;capa;subbase_granular;0,25;;;
 ```
 
 `elemento` es `capa` o `demarcacion`. Las capas pueden ser `fresado`, `base_granular`, `subbase_granular`,
-`imprimacion`, `riego_adherencia`, `carpeta` o `bacheo`; la demarcación, `continua` o `discontinua`.
+`imprimacion`, `riego_adherencia`, `carpeta` o `bacheo`; la demarcación, `continua`, `discontinua` o
+`superficie` (pasos peatonales y líneas de pare: `lineas` es el número de elementos iguales y `area_m2` el
+área de cada uno); o `captafaros`, ojos de gato solos sobre una línea que la obra no pinta: el número va
+en `captafaros`, `lineas` queda vacía y no se calculan la línea ni su pintura).
 
 **Qué calcula Sílice:** volumen de fresado, base y sub-base; área y litros de ligante de imprimación y
-riego; área y toneladas de mezcla de la carpeta; toneladas por kilómetro de transporte hasta la planta;
-metros de demarcación y litros de pintura.
+riego; área y toneladas de mezcla de la carpeta; toneladas por kilómetro de transporte hasta la planta
+(o toneladas, si el tramo dice `banda`); metros de demarcación y litros de pintura. Si el archivo trae
+las columnas opcionales, también la limpieza de la superficie, el transporte del fresado, el fresado en
+m² y la colocación de la carpeta en toneladas, el área de la demarcación de superficie y los ojos de
+gato.
 
 ### 10.2 Las reglas viales VR
 
@@ -1142,10 +1245,11 @@ hallazgo dice su severidad: «Crítico», «Error», «Advertencia» o «Informa
 | VR1 | Las toneladas de carpeta del presupuesto contra área × espesor × densidad (tolerancia 0,5 %) | Error |
 | VR2 | El porcentaje de asfalto del tramo contra la fórmula de trabajo de la receta de la planta (±0,5 puntos) | Advertencia; Información si no hay con qué comparar |
 | VR3 | El ligante residual de imprimación o riego dentro de su rango | Advertencia |
-| VR4 | Las toneladas por kilómetro del transporte contra toneladas × distancia (tolerancia 0,5 %) | Error |
+| VR4 | Las toneladas por kilómetro del transporte contra toneladas × distancia (tolerancia 0,5 %). Si el tramo mide el transporte por `banda`: las toneladas (error si no cuadran) y si la distancia del tramo cae dentro de la banda de la partida, que Sílice lee de la descripción de su APU (por ejemplo «mayor de 8 km y hasta 10 km»; también «mayores de» o «más de») y dice de dónde la leyó | Error; Advertencia si la distancia cae fuera de la banda; Información si falta la banda o la distancia |
 | VR5 | Los litros de pintura por kilómetro de línea, entre 29 y 44 | Advertencia |
 | VR6 | Solapes entre tramos (error) y huecos entre progresivas (advertencia) | Error o Advertencia |
 | VR7 | Que cada partida sea la que produce esa capa o línea, y en su unidad | Error |
+| VR8 | Que una partida que sale de los tramos no esté también escrita a mano (o traída de otro cómputo): se sumarían las dos. Si es la misma obra, quite el renglón que sobra; si es obra distinta, el aviso no aplica | Advertencia |
 
 Para VR2, Sílice busca la receta vigente de la mezcla y su ligante (sección 10.4). Si dice «no se sabe
 cuál es el ligante», marque «Es el ligante» en la receta.
@@ -1275,6 +1379,9 @@ hallazgos.
 2. Pulse «Auditar por mi cuenta», o «Auditar con recorrido guiado» si es la primera vez (sección 12.4).
 3. Se abre «Libro de la empresa». Mientras trabaja dice «Leyendo el libro y auditándolo…».
 
+Los topes de seguridad de la sección 12.5 (filas, columnas y celdas del libro entero) valen para todo libro
+que se audita o se abre en el visor: si el libro los pasa, Sílice lo rechaza con el mismo aviso y le dice la hoja.
+
 ### 12.2 Leer el resultado
 
 - **Arriba, tres indicadores:** «Subtotal sin IVA», «IVA» y «Total general». Cada uno trae la cifra del
@@ -1311,6 +1418,72 @@ recorrido «Auditar un libro de la empresa»».
 Quien solo administra entra a esta pantalla pero no puede auditar: Sílice le pide que lo haga alguien que
 arma o revisa.
 
+### 12.5 Auditar un libro con un APU por hoja
+
+Algunos programas de APU exportan un libro con **una hoja por partida** (solo valores, sin fórmulas) y,
+aparte, el libro del presupuesto. Ese libro no es el de la plantilla de la sección 12.1: se audita en su
+propio bloque, «Libro con un APU por hoja», más abajo en «Inicio de auditoría».
+
+1. En «Perfil del libro», elija cómo se lee el libro. Cada opción dice qué hoja del presupuesto compara y
+   de dónde viene: «apu_por_hoja · lee la hoja PRESUPUESTO (del paquete)», o «(de esta instalación)» si
+   quien administra puso un perfil propio. Con un presupuesto de varios frentes (una hoja por frente),
+   elija el del frente de este libro. Un perfil mal escrito sale con «no se puede usar:» y el motivo, y
+   no se puede elegir. Si la lista no se pudo leer, dice «No se pudo leer la lista de perfiles: se audita
+   con apu_por_hoja.».
+2. Suelte el `.xlsx` de los APU en «Suelte aquí el .xlsx de los APU (una hoja por partida), o haga clic
+   para elegirlo».
+3. Si tiene el del presupuesto, suéltelo en «Opcional: suelte aquí el .xlsx del presupuesto, o haga clic
+   para elegirlo». Debajo se lee lo elegido: «Libro de APU: … · Presupuesto: …».
+4. Pulse «Auditar el libro de APU». Mientras trabaja dice «Recalculando cada hoja...».
+
+**El resultado.**
+
+- Arriba, el perfil con que se leyó y los archivos: «Perfil apu_por_hoja (del paquete) · …», o «(de esta
+  instalación)» si quien administra puso un perfil propio; al final, «· con …» y la hoja que se leyó
+  («(hoja PRESUPUESTO)»), o «· sin libro de presupuesto».
+- Si la hoja del presupuesto parece de otra obra (casi ningún renglón tiene la cantidad de su hoja de
+  APU), un aviso «La hoja del presupuesto parece de otra obra» lo dice arriba de las tablas: revise el
+  perfil elegido.
+- La tabla «Precio unitario de cada hoja»: «Hoja», «Código», «Partida», «P.U. impreso» y «P.U. de
+  Sílice». Sílice no cree el precio impreso: recalcula cada hoja con sus renglones. «No evaluable» quiere
+  decir que esa hoja trae algo que Sílice no reproduce (lo explica un hallazgo).
+- La tabla «Hallazgos del libro»: «Severidad», «Regla», «Celda» y «Qué dice». La celda es la del libro,
+  por ejemplo `APU 2!G29`. Si no hay nada, dice «Sin hallazgos: cada hoja cuadra con lo impreso.».
+- Si algún material trae desperdicio, la lista «Materiales con desperdicio» dice, por cada uno, la
+  cantidad que resulta, la neta y el porcentaje, por ejemplo «Emulsión asfáltica: 0,52 l (0,5 + 4 %)».
+
+| Regla | Qué dice | Severidad |
+|---|---|---|
+| AH1 | El precio unitario impreso no es el que recalcula Sílice. Si la diferencia sale solo de redondear cada renglón a dos decimales, lo explica | Error; Información si es solo redondeo |
+| AH2 | La mano de obra trae un bono por renglón: la hoja no se evalúa | Información |
+| AH3 | La hoja tiene financiamiento: no se evalúa | Información |
+| AH4 | La hoja suma un impuesto dentro del APU (el IVA va sobre el total): su precio no se compara | Advertencia |
+| AH5 | El precio unitario del presupuesto no es el que imprime su hoja | Error |
+| AH6 | La cantidad del presupuesto no es la de la cabecera de su hoja | Advertencia |
+| AH7 | Un renglón del presupuesto sin hoja, o una hoja sin renglón | Advertencia |
+| AH8 | Una unidad del libro leída como otra («lt» como «l»): la traducción queda dicha | Información |
+| AH9 | La banda de distancia del transporte, leída de la descripción («mayor de 8 km y hasta 10 km») | Información |
+| AH10 | Dos hojas con el mismo número de renglón: el presupuesto se enlaza con la primera | Advertencia |
+| AH11 | La hoja del presupuesto parece de otra obra: de los renglones enlazados (dos o más), menos de la mitad tienen la cantidad de su hoja. Suele ser un perfil que lee la hoja de otro frente | Advertencia |
+
+Cada renglón del presupuesto se enlaza con la hoja que tiene su número («Partida N°» en la cabecera de la
+hoja). Con el perfil del paquete, Sílice lee solo las hojas cuyo nombre empieza por «APU» y, del
+presupuesto, la hoja «PRESUPUESTO»; las demás no las lee.
+
+Si una hoja no trae lo que hace falta para recalcularla, sale «No se auditó el libro» con la hoja y lo
+que falta. Si trae un valor imposible (un precio negativo, un rendimiento cero), dice también la celda, por
+ejemplo «APU 9!F9: el precio
+de «Cemento» es -1 y no puede ser negativo: Sílice no recalcula la hoja «APU 9».». Corrija esa celda en
+el libro y vuelva a auditar.
+
+Por seguridad, Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV), y del libro
+entero hasta 4.000.000 de celdas. Cuentan también las celdas que solo tienen formato (un color, un borde, un
+alto de fila), aunque estén vacías: si el aviso dice que una fila tiene «celdas con datos o con formato»
+más allá de la CV y usted no ve nada escrito, seleccione esas columnas o filas sobrantes, bórrelas (no solo
+su contenido) y guarde el libro de nuevo.
+
+Nada se guarda: ni los libros ni el informe, y esta auditoría no entra en «Historial de auditorías».
+
 ## 13. El asistente de IA
 
 Hoy la interfaz de Sílice **no tiene** una ventana para conversar con el asistente de IA. No hay botón ni
@@ -1346,7 +1519,8 @@ manual lo explicará.
 | «Esa contraseña es demasiado común; elija otra.» | La contraseña es muy conocida | Use una frase larga |
 | «Su contraseña es temporal: elija una propia antes de seguir.» | Entró con la contraseña temporal | Cámbiela (sección 2.4) |
 | «Su sesión venció. Entre de nuevo para seguir.» | Pasó mucho tiempo sin actividad | Entre otra vez |
-| «No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.» | La ventana del servidor está cerrada | Abra «Sílice» desde el menú Inicio |
+| «No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.» | La consola de Sílice está cerrada | Cierre la ventana de Sílice y abra «Sílice» desde el menú Inicio |
+| «Sílice se detuvo» (en la ventana) | El servidor de Sílice terminó con la ventana abierta | Cierre la ventana y abra «Sílice» otra vez; si se repite, envíe el archivo de la carpeta `%LOCALAPPDATA%\Silice\registros` |
 
 ### 14.2 Mientras trabaja
 
@@ -1419,4 +1593,5 @@ existen; su función está ahora en otro lugar:
 | El panel de chat del asistente de IA | No existe en la interfaz actual; solo su configuración (sección 13) |
 | El Visor 3D del modelo | Retirado |
 | La creación del primer administrador, pendiente | La pantalla «Bienvenida a Sílice» con el código de instalación |
+| Las guías de cada tarea solo en este manual | También dentro de Sílice: «¿Qué es esto?» en cada pantalla, «Empieza aquí» en la Vista general la primera vez, y guías y glosario en la Cuenta › «Ayuda y acerca de Sílice» (sección 3.10) |
 | Un presupuesto se podía valorar y auditar fuera de una obra | Todo presupuesto vive en una obra; para revisar un Excel suelto use «Auditar un presupuesto» |

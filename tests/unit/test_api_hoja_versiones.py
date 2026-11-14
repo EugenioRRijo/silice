@@ -75,7 +75,7 @@ from tests.fixtures.sesion_web import (
 
 D = Decimal
 REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
     "programa."
@@ -362,6 +362,21 @@ def test_restaurar_la_001_crea_la_003_copia_de_la_001_y_la_deja_vigente(_casos) 
     assert _cerca(_resumen_de(navegador, ficha, "002")["total"]["exacto"], D("2821.4208"))
 
 
+def test_cada_version_dice_la_fuente_escrita_al_crearla(_casos) -> None:
+    """E2E-3 (prueba de punta a punta del 2026-11-13): la columna «Motivo» de Versiones decía
+    «edicion» o «elaborada» y no lo que escribió quien guardó. Ahora cada versión trae `fuente`:
+    la de su registro de cambios (la misma de `registros`), o vacía si no tiene registro."""
+    ruta = _poner(_casos["dos"])
+    navegador, ficha = _ana()
+    assert _restaurar(navegador, ficha).status_code == 200
+    esperadas = {
+        codigo: next((r[5] for r in registros(ruta, NOMBRE_OF001, codigo)), "")
+        for codigo in ("001", "002", "003")
+    }
+    assert esperadas["003"] == FUENTE
+    assert {v["codigo"]: v["fuente"] for v in _versiones(navegador)["versiones"]} == esperadas
+
+
 @pytest.mark.parametrize("fuente", ["", "   ", "\t\n"])
 def test_restaurar_sin_fuente_es_422_con_el_texto_del_nucleo_y_no_escribe_nada(
     fuente, _casos
@@ -380,12 +395,11 @@ def test_proyecto_o_version_inexistente_es_404_y_se_juzga_antes_que_el_dato(_ent
     antes = volcado(_entorno)
     sin_proyecto = _restaurar(navegador, ficha, proyecto="Z")
     assert sin_proyecto.status_code == 404
-    assert sin_proyecto.json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    assert sin_proyecto.json() == {"detalle": "La obra «Z» no existe en esta carpeta."}
     sin_version = _restaurar(navegador, ficha, version="009")
     assert sin_version.status_code == 404
     assert sin_version.json() == {
-        "detalle": f"El proyecto {NOMBRE_OF001!r} no tiene una version '009': "
-        "elija una de la lista."
+        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una versión '009': elija una de la lista."
     }
     # el 404 va antes que el 422 del dato (la fuente en blanco)
     assert _restaurar(navegador, ficha, proyecto="Z", fuente="").status_code == 404
@@ -596,11 +610,11 @@ def test_cotizar_proyecto_o_version_inexistente_es_404_antes_que_el_precio(_ento
     antes = volcado(_entorno)
     sin_proyecto = _cotizar(navegador, ficha, proyecto="Z", precio="abc")
     assert sin_proyecto.status_code == 404
-    assert sin_proyecto.json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    assert sin_proyecto.json() == {"detalle": "La obra «Z» no existe en esta carpeta."}
     sin_version = _cotizar(navegador, ficha, version="009", precio="abc")
     assert (
         sin_version.status_code == 404
-        and "no tiene una version '009'" in sin_version.json()["detalle"]
+        and "no tiene una versión '009'" in sin_version.json()["detalle"]
     )
     assert volcado(_entorno) == antes
 
@@ -887,7 +901,7 @@ def test_si_el_proyecto_no_esta_en_el_caso_nuevo_es_404_y_ninguna_base_cambia(_c
     antes_viejo, antes_nuevo = volcado(viejo), volcado(nuevo)
     respuesta = _restaurar(navegador, ficha)  # el proyecto es el de OF-001
     assert respuesta.status_code == 404
-    assert respuesta.json() == {"detalle": f"El proyecto «{NOMBRE_OF001}» no existe en este caso."}
+    assert respuesta.json() == {"detalle": f"La obra «{NOMBRE_OF001}» no existe en esta carpeta."}
     assert volcado(viejo) == antes_viejo and volcado(nuevo) == antes_nuevo
 
 

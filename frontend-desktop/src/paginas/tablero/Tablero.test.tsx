@@ -70,7 +70,7 @@ const TABLERO: TableroRespuesta = {
   ],
 };
 
-describe("Tablero del proyecto", () => {
+describe("Tablero de la obra", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -95,7 +95,7 @@ describe("Tablero del proyecto", () => {
 
   test("sin proyecto invita a elegirlo y no pide nada a la API", () => {
     montar(null);
-    expect(screen.getByText("Elija un proyecto")).toBeInTheDocument();
+    expect(screen.getByText("Elija una obra")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
@@ -133,6 +133,17 @@ describe("Tablero del proyecto", () => {
       const opciones = JSON.parse(g.getAttribute("data-opciones")!) as { color?: { scale: Record<string, string> } };
       expect(opciones.color?.scale).toBeDefined();
       expect(Object.values(opciones.color!.scale).join(" ")).not.toMatch(/8a3ffc|6929c4|a56eff|be95ff/i);
+    }
+  });
+
+  test("los gráficos van sin la barra de herramientas de Carbon Charts: su botón dentro de role=button rompe axe (nested-interactive) y trae rótulos en inglés", async () => {
+    fetchFalso.mockImplementation(async () => json(TABLERO));
+    montar("OB-S2");
+    const graficos = await screen.findAllByTestId(/grafico-(anillo|barras)/);
+    expect(graficos.length).toBeGreaterThan(0);
+    for (const g of graficos) {
+      const opciones = JSON.parse(g.getAttribute("data-opciones")!) as { toolbar?: { enabled?: boolean } };
+      expect(opciones.toolbar?.enabled).toBe(false);
     }
   });
 
@@ -198,7 +209,7 @@ describe("Tablero del proyecto", () => {
       json({ ...TABLERO, version: null, fecha: null, moneda: null, tarjetas: [], control: null, curvas: null, desglose: [], pareto: [], versiones: [] }),
     );
     montar("OB-S2");
-    expect(await screen.findByText("Este proyecto aún no tiene presupuesto guardado")).toBeInTheDocument();
+    expect(await screen.findByText("Esta obra aún no tiene presupuesto guardado")).toBeInTheDocument();
   });
 
   test("403 y 404 se dicen con palabras, no como error", async () => {
@@ -210,7 +221,8 @@ describe("Tablero del proyecto", () => {
   test("404 dice que el proyecto no existe en el caso", async () => {
     fetchFalso.mockImplementation(async () => json({ detalle: "no existe" }, 404));
     montar("X");
-    expect(await screen.findByText("Ese proyecto no existe en este caso")).toBeInTheDocument();
+    expect(await screen.findByText("Esa obra no está en esta carpeta")).toBeInTheDocument();
+    expect(screen.getByText("Elija otra obra en la lista «Obras» de la barra lateral.")).toBeInTheDocument();
   });
 });
 

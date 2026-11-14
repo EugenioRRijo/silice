@@ -91,7 +91,7 @@ const REVISION: Revision = {
   color: "verde",
   banner: VERIFICADO,
   legible: true,
-  banner_version: "Versión 005 del 2026-11-10; es la primera que recibe de este proyecto.",
+  banner_version: "Versión 005 del 2026-11-10; es la primera que recibe de esta obra.",
   ayuda_registro: null,
   avisos: ["Este paquete se emitió para Obra Norte."],
   retroactiva: null,
@@ -115,7 +115,7 @@ const REVISION: Revision = {
     ],
   },
   entrega_anterior: null,
-  sin_entrega_anterior: "Esta instalación no recibió una entrega anterior de este proyecto.",
+  sin_entrega_anterior: "Esta instalación no recibió una entrega anterior de esta obra.",
   listas: [
     { id: 2, nombre: "Lista del revisor" },
     { id: 1, nombre: "Lista de prueba" },
@@ -131,6 +131,18 @@ const REVISION: Revision = {
       campo: "cantidad",
       antes: "1.00",
       despues: "1.50",
+      fuente: "memoria",
+      responsable: "Ana <ana>",
+      fecha: "2026-11-02T08:00:00",
+      marca: "",
+    },
+    {
+      version: "005",
+      objeto: "parametro",
+      clave: "control|spi_error",
+      campo: "instantanea",
+      antes: "catalogo",
+      despues: "instantanea",
       fuente: "memoria",
       responsable: "Ana <ana>",
       fecha: "2026-11-02T08:00:00",
@@ -252,7 +264,7 @@ describe("Revisar un paquete", () => {
     const [, opciones] = llamadas("/v1/revision/paquete")[0];
     expect(opciones?.method).toBe("POST");
     expect(((opciones?.body as FormData).get("paquete") as File).name).toBe("recibido.silice");
-    expect(screen.getByText("Versión 005 del 2026-11-10; es la primera que recibe de este proyecto.")).toBeInTheDocument();
+    expect(screen.getByText("Versión 005 del 2026-11-10; es la primera que recibe de esta obra.")).toBeInTheDocument();
     expect(screen.getByText("Este paquete se emitió para Obra Norte.")).toBeInTheDocument();
     const recalculado = screen.getByText("Total recalculado").parentElement as HTMLElement;
     expect(within(recalculado).getByText("836,80")).toHaveAttribute("title", "Valor exacto: 836,79750000");
@@ -264,9 +276,14 @@ describe("Revisar un paquete", () => {
     expect(screen.getByRole("heading", { name: "En común (0)" })).toBeInTheDocument();
     const nuevos = screen.getByRole("table", { name: "El emisor no los declaró" });
     expect(within(nuevos).getByText("Información")).toBeInTheDocument(); // la severidad con su nombre, no solo color
-    expect(screen.getByText("Esta instalación no recibió una entrega anterior de este proyecto.")).toBeInTheDocument();
+    expect(screen.getByText("Esta instalación no recibió una entrega anterior de esta obra.")).toBeInTheDocument();
     const cambios = screen.getByRole("table", { name: "Quién cambió qué" });
-    expect(within(cambios).getByText("MIN-001|Arena")).toBeInTheDocument();
+    // La clave «partida|insumo» se lee «código, insumo»; el valor crudo queda en el title.
+    expect(within(cambios).getByText("MIN-001, Arena")).toHaveAttribute("title", "MIN-001|Arena");
+    const celdasDelCambio = within(within(cambios).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
+    expect(celdasDelCambio.slice(0, 9)).toEqual(["005", "APU", "MIN-001, Arena", "Cantidad", "1,00", "1,50", "memoria", "Ana <ana>", "02/11/2026 08:00"]);
+    const filaDeControl = within(within(cambios).getAllByRole("row")[2]!).getAllByRole("cell").map((c) => c.textContent);
+    expect(filaDeControl.slice(0, 6)).toEqual(["005", "Parámetro", "Control de obra: Umbral de SPI para error", "Instantánea", "Catálogo", "Instantánea"]);
     expect(screen.getByText(REVISION.nota_excel)).toBeInTheDocument();
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);

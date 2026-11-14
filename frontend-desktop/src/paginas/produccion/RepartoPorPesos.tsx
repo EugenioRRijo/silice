@@ -2,7 +2,7 @@ import { Checkbox } from "@carbon/react";
 import { useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi } from "../../api/cliente";
-import { recetaVigente } from "../../api/produccionPlanta";
+import { recetasVigentes } from "../../api/produccionPlanta";
 import type { Producido } from "../../api/produccionPlanta";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -31,8 +31,9 @@ type Agregados = { estado: "cargando" } | { estado: "listo"; codigos: string[] }
 const NINGUNO: string[] = [];
 const CARGANDO: Agregados = { estado: "cargando" }; // una sola referencia: el efecto de abajo depende de ella
 
-// Producir un agregado es producir lo que no tiene receta: se pregunta, para cada código producido en el mes, si tiene
-// receta vigente al cierre (404 = es agregado). Solo se pregunta cuando la persona enciende el reparto.
+// Producir un agregado es producir lo que no tiene receta: se piden las recetas vigentes al cierre del mes; un código
+// producido es agregado si no figura entre ellas (sin 404 en la consola). Solo se pregunta cuando la persona enciende el
+// reparto.
 function useAgregados(activo: boolean, periodo: string, producido: readonly Producido[], alExpirar: () => void): Agregados {
   const [resultado, setResultado] = useState<{ clave: string; agregados: Agregados } | null>(null);
   const clave = `${periodo}|${producido.map((p) => p.codigo).join(",")}`;
@@ -40,18 +41,12 @@ function useAgregados(activo: boolean, periodo: string, producido: readonly Prod
     if (!activo) return;
     const control = new AbortController();
     const dia = ultimoDiaDelMes(periodo);
-    Promise.all(
-      producido.map(async (p): Promise<string | null> => {
-        try {
-          await recetaVigente(p.codigo, dia, control.signal);
-          return null;
-        } catch (razon) {
-          if (razon instanceof ErrorDeApi && razon.estado === 404) return p.codigo;
-          throw razon;
-        }
-      }),
-    ).then(
-      (hallados) => setResultado({ clave, agregados: { estado: "listo", codigos: hallados.filter((c): c is string => c !== null) } }),
+    recetasVigentes(dia, control.signal).then(
+      (recetas) => {
+        const conReceta = new Set(recetas.map((r) => r.producto));
+        const codigos = producido.map((p) => p.codigo).filter((c) => !conReceta.has(c));
+        setResultado({ clave, agregados: { estado: "listo", codigos } });
+      },
       (error: unknown) => {
         if (control.signal.aborted) return;
         if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();

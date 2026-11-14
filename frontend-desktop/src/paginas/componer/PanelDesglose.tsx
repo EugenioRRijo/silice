@@ -109,6 +109,14 @@ export function PanelDesglose({ evaluacion, cargando, error, anterior = null, mo
             />
           )}
           {evaluacion.desglose && <TablaDeMontos desglose={evaluacion.desglose} moneda={moneda} />}
+          {(evaluacion.desperdicios ?? []).length > 0 && (
+            // F5 vial: la cantidad con desperdicio la calcula el servidor; aquí solo se dice.
+            <ul className="silice-componer__nota cds--type-body-compact-01" aria-label="Materiales con desperdicio">
+              {(evaluacion.desperdicios ?? []).map((d) => (
+                <li key={d.fila}>{`${d.descripcion} (fila ${d.fila}): consume ${d.leyenda}`}</li>
+              ))}
+            </ul>
+          )}
           {conservado && (
             <>
               <p className="silice-componer__nota cds--type-body-compact-01">

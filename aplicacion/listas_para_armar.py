@@ -15,6 +15,11 @@ MaPreX, que `cargar_referencia_maprex` confirma por su cuenta cuando la carpeta 
 por eso `crear_lista_para_armar` comprueba la tasa antes de cargarla.
 
 Los mensajes de `SinListaParaArmar` y `CarpetaConOtraMoneda` son los que ve la persona.
+
+2026-11-13 (prueba de punta a punta, D-7): una tercera vía, `desde="empresa"`, copia una lista de
+empresa (alcance `empresa`, que `lista_vigente` no resuelve) como lista para armar global, en su
+moneda y sin conversión: una carpeta en USD con la lista de su empresa en USD arma sin tasa del BCV
+reciente y sin pasar por MaPreX en Bs. `core/` no cambia.
 """
 
 from __future__ import annotations
@@ -52,6 +57,7 @@ __all__ = [
     "lista_de_hoy",
     "lista_para_armar",
     "lista_para_el_proyecto",
+    "listas_de_empresa_para_armar",
     "moneda_de_la_carpeta",
     "valoracion_de_la_obra",
 ]
@@ -465,21 +471,72 @@ def _convirtiendo(sesion: Session, fecha: date, responsable: str) -> models.List
     )
 
 
+def _de_empresa(sesion: Session, lista_id: int | None) -> models.ListaPrecios:
+    if lista_id is None:
+        raise ValueError("desde empresa necesita el número de la lista de la empresa (lista_id)")
+    lista = sesion.get(models.ListaPrecios, lista_id)
+    if lista is None or sesion.get(models.ListaEmpresa, lista_id) is None:
+        raise SinListaParaArmar(
+            f"La lista n.º {lista_id} no es una lista de empresa de esta carpeta."
+        )
+    return lista
+
+
+def _desde_empresa(
+    sesion: Session, lista_id: int | None, fecha: date, responsable: str
+) -> models.ListaPrecios:
+    """La lista de la empresa `lista_id` copiada como lista para armar, en su moneda (D-7)."""
+    empresa = _de_empresa(sesion, lista_id)
+    moneda = _moneda(sesion, fecha) or empresa.moneda
+    if empresa.moneda != moneda:
+        raise SinListaParaArmar(
+            f"La lista de la empresa «{empresa.nombre}» está en {empresa.moneda} y la carpeta "
+            f"trabaja en {moneda}: cree la lista de la empresa en {moneda}."
+        )
+    return _lista_global(
+        sesion,
+        empresa,
+        nombre=_nombre_libre(sesion, _raiz(empresa.nombre), fecha),
+        moneda=moneda,
+        fecha=fecha,
+        origen=f"copia de la lista de la empresa «{empresa.nombre}», por {responsable}",
+        tasa=None,
+    )
+
+
+def listas_de_empresa_para_armar(sesion: Session, fecha: date) -> list[tuple[int, str, str]]:
+    """Las listas de empresa (id, nombre, moneda) que `desde="empresa"` copiaría a `fecha`: las de
+    la moneda de la carpeta (todas si no tiene), de la más reciente a la más antigua."""
+    moneda = _moneda(sesion, fecha)
+    consulta = (
+        select(models.ListaPrecios)
+        .join(models.ListaEmpresa, models.ListaEmpresa.lista_id == models.ListaPrecios.id)
+        .order_by(models.ListaPrecios.fecha_vigencia.desc(), models.ListaPrecios.id.desc())
+    )
+    if moneda is not None:
+        consulta = consulta.where(models.ListaPrecios.moneda == moneda)
+    return [(lista.id, lista.nombre, lista.moneda) for lista in sesion.scalars(consulta)]
+
+
 def crear_lista_para_armar(
     sesion: Session,
     *,
-    desde: Literal["maprex", "convertir"],
+    desde: Literal["maprex", "convertir", "empresa"],
     fecha: date,
     responsable: str,
+    lista_id: int | None = None,
 ) -> models.ListaPrecios:
     """Crea la lista para armar de la carpeta, global y fechada `fecha`.
 
     `"maprex"`: copia la referencia MaPreX (la carga si falta) en la moneda de la carpeta,
     convirtiendo con la tasa del BCV si la carpeta trabaja en USD; sin moneda declarada ni lista,
     queda en la de la referencia (Bs). `"convertir"`: copia la lista vigente, que está en otra
-    moneda, a la de la carpeta con la tasa del BCV. `SinListaParaArmar` sin tasa de los últimos 7
-    días, sin lista que convertir o si la vigente ya está en la moneda de la carpeta. No confirma
-    (salvo la carga de la referencia: ver el módulo).
+    moneda, a la de la carpeta con la tasa del BCV. `"empresa"`: copia la lista de empresa
+    `lista_id` tal cual, en su moneda, que debe ser la de la carpeta (sin moneda, la da ella): no
+    convierte ni pide tasa. `SinListaParaArmar` sin tasa de los últimos 7 días, sin lista que
+    convertir, si la vigente ya está en la moneda de la carpeta, si `lista_id` no es de empresa o
+    está en otra moneda; `ValueError` sin `lista_id` desde empresa. No confirma (salvo la carga de
+    la referencia: ver el módulo).
 
     `"maprex"` no mira si la carpeta ya tiene lista para armar: si la tiene, crea otra del mismo
     día («… (2)»). La API lo niega con 409 (`api/rutas/carpeta.py`, `crear_la_lista_para_armar`);
@@ -489,4 +546,6 @@ def crear_lista_para_armar(
         return _desde_maprex(sesion, fecha, responsable)
     if desde == "convertir":
         return _convirtiendo(sesion, fecha, responsable)
-    raise ValueError(f"desde {desde!r}; se espera maprex o convertir")
+    if desde == "empresa":
+        return _desde_empresa(sesion, lista_id, fecha, responsable)
+    raise ValueError(f"desde {desde!r}; se espera maprex, convertir o empresa")

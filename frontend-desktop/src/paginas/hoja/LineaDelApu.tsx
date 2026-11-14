@@ -13,6 +13,7 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
+import { CampoDeUnidad } from "../../comun/CampoDeUnidad";
 import { esBorradorAusente } from "./logica";
 import type { Resumen } from "./logica";
 import {
@@ -28,6 +29,7 @@ import {
 } from "./logicaApu";
 import type { CampoDeLinea, InsumoCandidato, InsumosRespuesta, LineaApu, LineaNueva, TipoDeLinea } from "./logicaApu";
 import { claseDeConflicto } from "./logicaSecciones";
+import { unidadEscrita } from "../../comun/unidades";
 
 const ID = "hoja-apu-linea";
 const ID_INSUMO = `${ID}-insumo`;
@@ -71,7 +73,7 @@ function buscadorDeInsumos(id: string, tipo: TipoDeLinea, moneda: string) {
         opciones: r.insumos.map((i) => ({
           clave: `insumo:${i.codigo}`,
           principal: i.descripcion,
-          secundaria: [i.codigo, i.unidad, `${formatoEsVe(i.precio.texto)} ${moneda}`].filter((s) => s !== ""),
+          secundaria: [i.codigo, unidadEscrita(i.unidad), `${formatoEsVe(i.precio.texto)} ${moneda}`].filter((s) => s !== ""),
           valor: i,
         })),
       },
@@ -260,7 +262,7 @@ export function LineaDelApu({ modo, id, partida, moneda, anfitrion, revActual, a
     />
   );
 
-  const unidadDeLaCantidad = elegido !== null && elegido.unidad !== "" ? ` (${elegido.unidad})` : "";
+  const unidadDeLaCantidad = elegido !== null && elegido.unidad !== "" ? ` (${unidadEscrita(elegido.unidad)})` : "";
 
   return createPortal(
     <div className="silice-hoja__dialogo-fondo">
@@ -350,10 +352,26 @@ export function LineaDelApu({ modo, id, partida, moneda, anfitrion, revActual, a
           {elegido !== null && (
             <p className="cds--type-helper-text-01">
               Precio de la lista de la versión: {formatoEsVe(elegido.precio.texto)} {moneda}
-              {elegido.unidad !== "" ? ` por ${elegido.unidad}` : ""}
+              {elegido.unidad !== "" ? ` por ${unidadEscrita(elegido.unidad)}` : ""}
             </p>
           )}
-          {nuevo !== null && tipo === "material" && campoTexto("unidad", "Unidad", unidad, setUnidad, "Por ejemplo m3, kg o saco.")}
+          {nuevo !== null && tipo === "material" && (
+            <CampoDeUnidad
+              id={ID_DE_CAMPO.unidad}
+              etiqueta="Unidad"
+              ayuda="Elija una del catálogo o escriba la suya, por ejemplo m3, kg o saco."
+              texto={unidad}
+              alCambiar={(t) => {
+                setUnidad(t);
+                limpiar("unidad");
+              }}
+              alExpirar={alExpirar}
+              invalido={errores.unidad !== null}
+              textoInvalido={errores.unidad ?? undefined}
+              deshabilitado={enviando}
+              tamano="md"
+            />
+          )}
           {nuevo !== null && campoTexto("precio", rotuloDelPrecio(tipo, modalidad, moneda), precio, setPrecio, AYUDA_CIFRAS)}
           {!cambiando && tipo === "mano_obra" && (
             <Select

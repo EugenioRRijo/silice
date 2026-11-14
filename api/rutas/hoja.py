@@ -142,6 +142,7 @@ from aplicacion import (
     hoja_vista,
     importaciones,
 )
+from aplicacion.desperdicio import trazas_vigentes
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo, RevDesactualizado
@@ -154,7 +155,7 @@ from seguridad.sesiones import SesionActiva
 
 MENSAJE_FORMA = "Los datos de la hoja no tienen la forma esperada: escriba cada celda como texto."
 MENSAJE_SOLO_CUENTA = (
-    "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+    "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 )
 MENSAJE_FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
@@ -171,7 +172,7 @@ MENSAJE_SIN_PREPARAR = (
     "Esta versión todavía no se puede ver en solo lectura: quien arma el presupuesto tiene que "
     "abrirla una vez para prepararla."
 )
-MENSAJE_CON_VERSIONES = "Este proyecto ya tiene versiones: elija una de la lista."
+MENSAJE_CON_VERSIONES = "Esta obra ya tiene versiones: elija una de la lista."
 MENSAJE_REV = "El borrador cambió en otra ventana: vuelva a cargarlo."
 MENSAJE_FORMA_ESPACIO = (
     "Los datos del espacio no tienen la forma esperada: escriba cada celda como texto de hasta "
@@ -197,8 +198,8 @@ FORMA_RENDIMIENTOS = (
 )
 FORMA_APU = (
     "El APU no tiene la forma esperada: envíe el rendimiento y las cantidades de materiales, "
-    "equipos y mano de obra, cada una como texto de hasta 500 caracteres, con no más de 500 "
-    "líneas por rubro."
+    "equipos y mano de obra (y, si quiere, el desperdicio de cada material), cada una como texto "
+    "de hasta 500 caracteres, con no más de 500 líneas por rubro."
 )
 FORMA_INSUMO = (
     "El cambio de insumo no tiene la forma esperada: envíe tipo, indice (entero), insumo "
@@ -228,7 +229,7 @@ FORMA_CONVERTIR = (
     "La conversión no tiene la forma esperada: envíe proyecto, version, moneda, lado (venta o "
     "compra) y la fuente como texto de hasta 300 caracteres."
 )
-FORMA_CADENA = "Indique el proyecto (código o nombre) de hasta 500 caracteres."
+FORMA_CADENA = "Indique la obra (código o nombre) de hasta 500 caracteres."
 MENSAJE_PARTIDA = "Esa partida no tiene APU en este borrador: vuelva a cargar la lista de partidas."
 MENSAJE_SIN_VERSION = "Abra una version guardada: los insumos se eligen de su lista de precios."
 MENSAJE_SIN_PLAN = "Esta versión no tiene plan de trabajo: cree primero el plan secuencial."
@@ -249,8 +250,7 @@ FORMA_QUITAR_LINEA = (
     "mano_obra) e indice (entero)."
 )
 FORMA_ANTES = (
-    "Indique el proyecto (código o nombre) y, si quiere, la versión; cada uno de hasta 500 "
-    "caracteres."
+    "Indique la obra (código o nombre) y, si quiere, la versión; cada uno de hasta 500 caracteres."
 )
 SIN_LINEA_BASE = (
     "Esta obra no tiene línea base: declárela en Control de obra para comparar el antes y el "
@@ -288,7 +288,7 @@ def _proyecto(sesion, referencia: str):
     encontrado = resolver_proyecto(sesion, referencia)
     if encontrado is None:
         raise HTTPException(
-            status_code=404, detail=f"El proyecto «{referencia}» no existe en este caso."
+            status_code=404, detail=f"La obra «{referencia}» no existe en esta carpeta."
         )
     return encontrado
 
@@ -335,6 +335,17 @@ def _mas_nueva(vivo: BorradorVivo, vigente: str | None) -> str | None:
     return hoja_vista.version_mas_nueva(vivo, vigente)
 
 
+def _vista_apu(
+    sesion, vivo: BorradorVivo, partida: str | None, buscar: str | None = None
+) -> hoja_vista.VistaApu:
+    """La vista del APU (R7) con el desperdicio de sus materiales (F5 vial, punto 1), la misma en
+    la lectura y en la respuesta de cada edición (E6 y las líneas): la traza vigente se lee de la
+    base del caso y vale solo para la línea cuya cantidad sigue siendo la que resultó."""
+    return hoja_vista.vista_apu(
+        vivo, partida, buscar, trazas=lambda codigo: trazas_vigentes(sesion, codigo)
+    )
+
+
 def _respuesta(sesion, vivo: BorradorVivo) -> dict:
     vigente = hoja.codigo_vigente(sesion, vivo.proyecto)
     mas_nueva = _mas_nueva(vivo, vigente)
@@ -353,6 +364,7 @@ def listar_versiones(
     try:
         encontrado = _proyecto(sesion, proyecto)
         filas = hoja.historial_de_versiones(sesion, encontrado.nombre)
+        fuentes = hoja_versiones.fuentes_de_versiones(sesion, encontrado.nombre)
         moneda = moneda_del_proyecto(sesion, encontrado)
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
@@ -360,7 +372,7 @@ def listar_versiones(
         proyecto=encontrado.nombre,
         moneda=moneda,
         por_omision=hoja_vista.version_por_omision(filas),
-        versiones=[version_a_respuesta(f) for f in filas],
+        versiones=[version_a_respuesta(f, fuentes.get(f.codigo, "")) for f in filas],
     )
 
 
@@ -884,7 +896,9 @@ def editar_apu(
 ) -> EdicionApuRespuesta:
     """E6: escribe el rendimiento y la cantidad de cada línea del APU de una partida (en la copia
     de la versión, DA-SF-7) y devuelve el APU recalculado (3c-B10). Una partida sin APU en el
-    borrador es 404; un APU igual al vigente no sube `rev`."""
+    borrador es 404; un APU igual al vigente no sube `rev`. Con `desperdicios`, la cantidad de un
+    material con porcentaje es su neta y el servidor calcula la cantidad; la traza se escribe en la
+    base al guardar la versión, no aquí (2026-11-13)."""
     vivo = _vivo(request, activa, id)
     resumen, vista = _editar(
         sesion,
@@ -899,8 +913,9 @@ def editar_apu(
             datos.materiales,
             datos.equipos,
             datos.mano_obra,
+            datos.desperdicios,
         ),
-        lambda editado: hoja_vista.vista_apu(editado, partida),
+        lambda editado: _vista_apu(sesion, editado, partida),
     )
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
@@ -934,7 +949,7 @@ def cambiar_insumo(
             datos.indice,
             datos.insumo,
         ),
-        lambda editado: hoja_vista.vista_apu(editado, partida),
+        lambda editado: _vista_apu(sesion, editado, partida),
     )
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
@@ -974,7 +989,7 @@ def agregar_linea_apu(
             depreciacion=datos.depreciacion,
             modalidad=datos.modalidad,
         ),
-        lambda editado: hoja_vista.vista_apu(editado, partida),
+        lambda editado: _vista_apu(sesion, editado, partida),
     )
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
@@ -1002,7 +1017,7 @@ def quitar_linea_apu(
         lambda: hoja_edicion.quitar_linea_apu(
             sesion, activa.huella_ficha, id, datos.rev, partida, datos.tipo, datos.indice
         ),
-        lambda editado: hoja_vista.vista_apu(editado, partida),
+        lambda editado: _vista_apu(sesion, editado, partida),
     )
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
@@ -1103,12 +1118,19 @@ def vista_apu(
     id: IdDeBorrador,
     request: Request,
     activa: CuentaQueVe,
+    sesion: SesionDep,
     partida: Annotated[str | None, Query(max_length=500)] = None,
     buscar: Annotated[str | None, Query(max_length=500)] = None,
 ) -> VistaApuRespuesta:
     """R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el
-    servidor; sin coincidencias se devuelven todas las partidas."""
-    return vista_apu_a_respuesta(hoja_vista.vista_apu(_vivo(request, activa, id), partida, buscar))
+    servidor; sin coincidencias se devuelven todas las partidas. Los materiales con la traza
+    vigente de su desperdicio traen la neta y el porcentaje (F5 vial, punto 1); no escribe."""
+    vivo = _vivo(request, activa, id)
+    try:
+        vista = _vista_apu(sesion, vivo, partida, buscar)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return vista_apu_a_respuesta(vista)
 
 
 @router.get("/borradores/{id}/vistas/plan", response_model=VistaPlanRespuesta)

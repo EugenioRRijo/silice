@@ -8,7 +8,7 @@ import { CampoTexto } from "../../comun/CampoTexto";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
 import { hoyISO } from "../existencias/formato";
-import { CENTROS, CONCEPTOS, MONEDAS, fechaInicial, leerMonto, mensajeDeCostos, nombreDelMes } from "./logica";
+import { CENTROS, CONCEPTOS, OPCIONES_DE_MONEDA, fechaInicial, leerMonto, mensajeDeCostos, nombreDelMes } from "./logica";
 
 interface Props {
   // El mes que se está viendo: el costo se registra en él, y su fecha debe caer dentro.
@@ -126,7 +126,7 @@ export function FormularioDeCosto({ periodo, alCerrar, alRegistrar, alExpirar }:
           invalidText={errores.moneda ?? ""}
         >
           <SelectItem value="" text="Elija la moneda" />
-          {MONEDAS.map((m) => (
+          {OPCIONES_DE_MONEDA.map((m) => (
             <SelectItem key={m.valor} value={m.valor} text={m.texto} />
           ))}
         </Select>

@@ -227,6 +227,7 @@ export function vistaApu(extra: Partial<VistaApu> = {}): VistaApu {
       },
       estados: [],
       solo_lectura_insumos: false,
+      desperdicios: [],
     },
     vacio_mensaje: null,
     ...extra,

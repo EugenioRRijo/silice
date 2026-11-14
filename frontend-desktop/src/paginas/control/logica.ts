@@ -6,8 +6,9 @@ import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
-import { useCarga } from "../inicio/useCarga";
-import type { Carga } from "../inicio/useCarga";
+import { PARAMETROS_DE_CONTROL } from "../../comun/rotulos";
+import { useCarga } from "../../comun/useCarga";
+import type { Carga } from "../../comun/useCarga";
 
 export type Fila = Record<string, string>;
 
@@ -55,19 +56,7 @@ export function errorDeCarga(carga: Carga<unknown>): unknown {
 // tal cual. Desde VD-5 el codigo original ya no va en el `title` de la celda (el `title` es solo para el exacto de las
 // cifras): se pinta con `celda` (ver `sinTitulo`) y el valor de la fila no cambia.
 const ETIQUETAS_DE_CODIGO: Record<string, string> = {
-  spi_error: "Umbral de SPI para error",
-  cpi_error: "Umbral de CPI para error",
-  retraso_error: "Retraso del término para error",
-  precio_info: "Desvío de precio que avisa",
-  equilibrio_puntos: "Subida del punto de equilibrio que advierte",
-  eta_cuadrilla: "Eficiencia de la cuadrilla adicional",
-  cuadrillas_max: "Cuadrillas máximas por frente",
-  eta_horas_extra: "Eficiencia de la hora extra",
-  horas_extra_dia: "Horas extra por día",
-  recargo_horas_extra: "Recargo de las horas extra",
-  fcas_en_horas_extra: "FCAS sobre las horas extra",
-  penalizacion_diaria: "Penalización diaria por retraso",
-  fuente_penalizacion: "Fuente de la penalización",
+  ...PARAMETROS_DE_CONTROL,
   SUPUESTO_DECLARADO: "Supuesto declarado",
   DATO_DEL_CONTRATO: "Dato del contrato",
   FUENTE_VERIFICADA: "Fuente verificada",

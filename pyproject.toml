@@ -9,7 +9,7 @@ requires-python = ">=3.12"
 dependencies = [
     "sqlalchemy>=2.0",
     "pandas>=2.2",
-    "pydantic>=2.0",
+    "pydantic>=2.12",     # exclude_if por campo (api/esquemas_vial.py), desde la 2.12.0 (su changelog)
     "openpyxl>=3.1",
     "alembic>=1.20",      # S5-1 (0.6.0): migraciones del caso y de la instalacion (RV-3)
     "argon2-cffi>=25.1",  # S3 (0.8.0): contrasenas y secretos de seguridad/ (maestro 4.4)
@@ -25,6 +25,8 @@ dependencies = [
 #   bcv  (S1: .xls del BCV; entra al instalador basico, RV-24)
 #   ifc  (S3: IDS con ifctester; fuera del instalador mientras S3-0 no resuelva la GPLv3 de bcf-client)
 #   ia   (S4: Claude, Ollama y el almacen de claves del sistema operativo)
+#   escritorio (F5, 2026-11-06: la ventana propia de Silice con WebView2; solo Windows. Versiones
+#     fijas: las que V0 comprobo con el Python 3.13.13 del instalador, docs/bitacora/2026-11-06-ventana-v0.md)
 [project.optional-dependencies]
 api = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
 civil = ["ifcopenshell>=0.8"]
@@ -37,6 +39,10 @@ informes = ["reportlab>=4.0", "matplotlib>=3.8"]
 bcv = ["xlrd>=2.0"]
 ia = ["anthropic>=1.0", "ollama>=0.6", "keyring>=25"]
 pdf = ["pdfplumber>=0.11"]  # 1.5: PDF simples y PDF impresos de la empresa (spec 1.5 L10, L11)
+escritorio = [
+    "pywebview==6.2.1; sys_platform == 'win32'",
+    "pythonnet==3.2.1; sys_platform == 'win32'",
+]
 
 [dependency-groups]
 dev = [

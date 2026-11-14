@@ -16,7 +16,7 @@ Parametros, Auditoria, Precios y Trazabilidad.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal, localcontext
@@ -33,8 +33,16 @@ from adapters.espacio.modelo import (
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.cifras import texto_de_cifra
+from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje, trazas_de_las_filas
 from aplicacion.hoja_borradores import BorradorVivo
-from aplicacion.hoja_partidas import PREFIJO_A_MANO, calculo_tecleable, texto_llano
+from aplicacion.hoja_desperdicio import trazas_del_borrador, unir
+from aplicacion.hoja_partidas import (
+    PREFIJO_A_MANO,
+    PREFIJO_TRAMO,
+    calculo_tecleable,
+    texto_llano,
+)
+from aplicacion.plural import plural
 from core.budget.equilibrio import PuntoEquilibrio
 from core.contracts import Severidad
 from core.verification import TrazabilidadGeometrica
@@ -110,7 +118,7 @@ def mensaje_instantanea(creadas: int) -> str | None:
         return None
     return (
         "Se creó y registró la instantánea de las composiciones de esta versión "
-        f"({creadas} partidas): sus APU ya no cambian si cambia el catálogo."
+        f"({plural(creadas, 'partida', 'partidas')}): sus APU ya no cambian si cambia el catálogo."
     )
 
 
@@ -351,7 +359,9 @@ class FilaDePresupuesto:
 
     `quitable`: el renglon es de la version y no del espacio (se quita con «Quitar»); `nota`, su
     nota de medicion; `calculo`, el calculo con que se agrego a mano, con coma decimal (`None` si no
-    lo tiene o si su cantidad se escribio despues a mano)."""
+    lo tiene o si su cantidad se escribio despues a mano); `de_tramo`, el renglon viene de un tramo
+    vial (su `origen_id` empieza por «tramo:»): su cantidad sale de la regla del tramo, no de un
+    calculo escrito, y la columna «Como se midio» lo dice en vez de «Sin calculo»."""
 
     clave: str
     partida: str
@@ -366,6 +376,7 @@ class FilaDePresupuesto:
     quitable: bool
     nota: str | None
     calculo: str | None
+    de_tramo: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -418,6 +429,7 @@ def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
                 quitable=clave in propias,
                 nota=vivo.borrador.notas.get(clave),
                 calculo=calculo_tecleable(item.regla) if a_mano and not escrita else None,
+                de_tramo=item.origen_id.startswith(PREFIJO_TRAMO),
             )
         )
     return VistaPresupuesto(
@@ -507,6 +519,23 @@ class MetricasDeApu:
 
 
 @dataclass(frozen=True, slots=True)
+class DesperdicioDeLinea:
+    """La neta y el porcentaje de desperdicio de una fila de Materiales (desde 1), «0,50 + 4 %»
+    (F5 vial, punto 1). La cantidad de la fila ya los incluye: esto solo la explica. `neta` y
+    `porcentaje`, con coma decimal, son lo que siembra los campos de la Hoja (2026-11-13)."""
+
+    fila: int
+    texto: str
+    neta: str
+    porcentaje: str
+
+
+#: Las trazas vigentes del desperdicio de una partida, por su código (la ruta las lee de la base
+#: del caso con `aplicacion.desperdicio.trazas_vigentes`).
+TrazasDePartida = Callable[[str], Sequence[TrazaDesperdicio]]
+
+
+@dataclass(frozen=True, slots=True)
 class DetalleDeApu:
     codigo: str
     descripcion: str
@@ -517,6 +546,7 @@ class DetalleDeApu:
     metricas: MetricasDeApu
     estados: tuple[str, ...]
     solo_lectura_insumos: bool
+    desperdicios: tuple[DesperdicioDeLinea, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -528,7 +558,12 @@ class VistaApu:
     vacio_mensaje: str | None
 
 
-def _detalle_de_apu(vivo: BorradorVivo, resultado: hoja.ResultadoHoja, codigo: str) -> DetalleDeApu:
+def _detalle_de_apu(
+    vivo: BorradorVivo,
+    resultado: hoja.ResultadoHoja,
+    codigo: str,
+    trazas: TrazasDePartida | None = None,
+) -> DetalleDeApu:
     borrador = vivo.borrador
     composicion = borrador.composiciones[codigo]
     presupuesto = resultado.elaboracion.presupuesto
@@ -575,18 +610,40 @@ def _detalle_de_apu(vivo: BorradorVivo, resultado: hoja.ResultadoHoja, codigo: s
             if fila["partida"] == codigo and fila["estado"] != hoja.TEXTO_OK
         ),
         solo_lectura_insumos=vivo.abierta is None,
+        desperdicios=tuple(
+            DesperdicioDeLinea(
+                fila,
+                neta_y_porcentaje(traza),
+                texto_de_cifra(traza.cantidad_neta),
+                texto_de_cifra(traza.desperdicio_pct),
+            )
+            for fila, traza in trazas_de_las_filas(
+                tablas[0],
+                unir(
+                    trazas_del_borrador(vivo, codigo),
+                    trazas(codigo) if trazas is not None else (),
+                ),
+            )
+        ),
     )
 
 
 def vista_apu(
-    vivo: BorradorVivo, partida: str | None = None, buscar: str | None = None
+    vivo: BorradorVivo,
+    partida: str | None = None,
+    buscar: str | None = None,
+    trazas: TrazasDePartida | None = None,
 ) -> VistaApu:
     """La pestana APU en lectura (P:1488-1738): la lista de partidas valoradas (con su buscador),
     la seleccionada y su detalle: tres rubros con subtotal, cierre paso a paso y metricas.
 
     Sin coincidencias en el buscador se muestran todas (P:1599); una `partida` que no esta entre
     las visibles se ignora y se toma la primera (el radio de la clasica nunca queda fuera de la
-    lista, P:1604)."""
+    lista, P:1604).
+
+    Con `trazas`, el detalle trae la neta y el porcentaje de desperdicio de cada material cuya
+    descripción, unidad y cantidad son las de una traza vigente de la partida (F5 vial, punto 1).
+    Las que la Hoja dejó en el borrador (aún sin guardar) van antes (`hoja_desperdicio.unir`)."""
     resultado, _ = calculo(vivo)
     valoradas = resultado.elaboracion.presupuesto.partidas
     codigos = list(dict.fromkeys(p.item.codigo_partida for p in valoradas))
@@ -601,7 +658,7 @@ def vista_apu(
         partidas=tuple(PartidaDeLista(c, descripciones.get(c, "")) for c in visibles),
         sin_coincidencias=sin_coincidencias,
         seleccionada=seleccionada,
-        detalle=_detalle_de_apu(vivo, resultado, seleccionada),
+        detalle=_detalle_de_apu(vivo, resultado, seleccionada, trazas),
         vacio_mensaje=None,
     )
 

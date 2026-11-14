@@ -201,7 +201,14 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
     expect(escrituras(/\/apu\//)).toEqual([
       {
         ruta: `/v1/hoja/borradores/${ID}/apu/E-01`,
-        cuerpo: { rev: 0, rendimiento: "20", materiales: ["2,5"], equipos: ["1"], mano_obra: ["1", "1"] },
+        cuerpo: {
+          rev: 0,
+          rendimiento: "20",
+          materiales: ["2,5"],
+          equipos: ["1"],
+          mano_obra: ["1", "1"],
+          desperdicios: [""],
+        },
       },
     ]);
     await waitFor(() =>
@@ -221,7 +228,7 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
   test("con el panel abierto, la pestaña «Análisis de precio (APU)» muestra E-01 elegida", async () => {
     await abrirPanel();
     await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
-    expect(await screen.findByRole("heading", { level: 2, name: "E-01 · Excavación en tierra a mano · m3" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "E-01 · Excavación en tierra a mano · m³" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "E-01 · Excavación en tierra a mano" })).toBeChecked();
     expect(lecturasDeApu().at(-1)?.searchParams.get("partida")).toBe("E-01");
   });
@@ -231,13 +238,13 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
     await botonDeE01();
     await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
     await userEvent.click(await screen.findByRole("radio", { name: "E-01 · Excavación en tierra a mano" }));
-    await screen.findByRole("heading", { level: 2, name: "E-01 · Excavación en tierra a mano · m3" });
+    await screen.findByRole("heading", { level: 2, name: "E-01 · Excavación en tierra a mano · m³" });
     await userEvent.click(screen.getByRole("tab", { name: "Partidas" }));
     // Vuelve a «Partidas» sin panel abierto (se abre desde la fila); la pestaña APU sigue en E-01 al volver.
     await botonDeE01();
     expect(screen.queryByRole("complementary", { name: /^APU de/ })).toBeNull();
     await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
-    expect(await screen.findByRole("heading", { level: 2, name: "E-01 · Excavación en tierra a mano · m3" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "E-01 · Excavación en tierra a mano · m³" })).toBeInTheDocument();
   });
 
   test("una partida sin precio (sin APU en el catálogo) no ofrece abrir su APU", async () => {

@@ -34,10 +34,12 @@ from decimal import Decimal
 __all__ = [
     "AYUDA_CIFRAS",
     "BLANCOS",
+    "BandaIlegible",
     "MENSAJE_CIFRA",
     "MENSAJE_CIFRA_VACIA",
     "CifraInvalida",
     "cifra_escrita",
+    "leer_banda",
     "texto_de_cifra",
 ]
 
@@ -96,3 +98,41 @@ def texto_de_cifra(valor: Decimal) -> str:
     entera, _, decimales = fijo.lstrip("-").partition(".")
     grupos = f"{int(entera):,}".replace(",", ".")
     return f"{signo}{grupos}" + (f",{decimales}" if decimales else "")
+
+
+# --- la banda de distancia escrita en una descripción -------------------------------------------
+
+
+class BandaIlegible(ValueError):  # noqa: N818
+    """El texto sigue el patrón de la banda de distancia, pero una de sus cifras no sigue la regla;
+    `pieza` es esa cifra tal como está escrita y el mensaje es el que ve la persona."""
+
+    def __init__(self, pieza: str) -> None:
+        super().__init__(
+            f"«{pieza}» no es una cifra con coma decimal y punto de miles: Sílice no adivina la "
+            "banda"
+        )
+        self.pieza = pieza
+
+
+def leer_banda(patron: str, texto: str) -> tuple[Decimal, Decimal] | None:
+    """La banda de distancia («mayor de 8 km y hasta 10 km») que `texto` escribe con `patron`, el
+    `patron_banda` de un perfil con los grupos «minimo» y «maximo», buscado sin distinguir
+    mayúsculas: (mínimo, máximo) en km, `None` si no la escribe, `BandaIlegible` si la escribe con
+    una cifra que no sigue la regla («1.000» es mil; «1.5» no se adivina). No compara el mínimo
+    con el máximo: lo decide quien la usa.
+
+    Una sola lectura para el AH9 del libro con un APU por hoja (`fusion/apu_por_hoja.py`) y para
+    VR4 de la Hoja (`aplicacion/vial.py` se la pasa a `adapters/vial/reglas.py`, que no puede
+    importarla; prueba de punta a punta del 2026-11-13, D3)."""
+    hallado = re.search(patron, texto, flags=re.IGNORECASE)
+    if hallado is None:
+        return None
+    cifras = []
+    for grupo in ("minimo", "maximo"):
+        try:
+            cifras.append(cifra_escrita(hallado[grupo]))
+        except CifraInvalida:
+            raise BandaIlegible(hallado[grupo]) from None
+    minimo, maximo = cifras
+    return minimo, maximo

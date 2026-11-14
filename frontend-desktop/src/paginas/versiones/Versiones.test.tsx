@@ -207,8 +207,8 @@ describe("Versiones: la tabla de las versiones de la obra", () => {
     ]);
     await waitFor(async () =>
       expect(await celdas()).toEqual([
-        ["VIV-002 (abierta)", "21/10/2026", "edicion", "VIV-001", "4", "Guardada", "Sí"],
-        ["VIV-001", "20/10/2026", "elaborada", "", "0", "Devuelta", ""],
+        ["VIV-002 (abierta)", "21/10/2026", "Edición", "VIV-001", "4", "Guardada", "Sí"],
+        ["VIV-001", "20/10/2026", "Elaborada", "", "0", "Devuelta", ""],
       ]),
     );
   });
@@ -273,12 +273,67 @@ describe("Versiones: el registro de cambios en el panel", () => {
     );
     expect(within(r).queryByText(/esp_/)).toBeNull();
     expect(within(r).getByText("Plano revisado en obra")).toBeInTheDocument();
-    expect(within(r).getByText("06/10/2026 09:30:00")).toBeInTheDocument();
+    expect(within(r).getByText("06/10/2026 09:30")).toBeInTheDocument();
     expect(fetchFalso.mock.calls.map(([e]) => String(e))).toContain("/v1/hoja/trazabilidad?proyecto=3&version=VIV-002");
     // El panel se cierra con Esc y el foco vuelve al botón que lo abrió.
     await u.keyboard("{Escape}");
     expect(screen.queryByRole("complementary", { name: /Registro de cambios/ })).toBeNull();
     expect(within(await renglon("VIV-002")).getByRole("button", { name: "Ver cambios de VIV-002" })).toHaveFocus();
+  });
+
+  test("D4: el registro muestra la hora sin microsegundos y los nombres en español llano, con tilde", async () => {
+    const registro = {
+      objeto: "parametro",
+      clave: "bono_alimentacion",
+      campo: "valor",
+      antes: "5.81",
+      despues: "6.00",
+      fuente: "Convención colectiva",
+      responsable: "Ana Pérez <ana>",
+      fecha_hora: "2026-11-04T16:20:31.482913",
+    };
+    const otro = { ...registro, objeto: "precio", clave: "INS-1", campo: "cotizacion", fecha_hora: "2026-11-04T16:21:00.000001" };
+    trazabilidad = () => json(trazabilidadRespuesta({ registros: [registro, otro] }));
+    const u = montar();
+    await listo();
+    await u.click(within(await renglon("VIV-002")).getByRole("button", { name: "Ver cambios de VIV-002" }));
+    const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
+    expect(texto(filas[0]!)).toEqual(["04/11/2026 16:20", "Ana Pérez <ana>", "Parámetro", "Bono de alimentación", "Valor", "5,81", "6,00", "Convención colectiva"]);
+    expect(texto(filas[1]!).slice(0, 5)).toEqual(["04/11/2026 16:21", "Ana Pérez <ana>", "Precio", "INS-1", "Cotización"]);
+  });
+
+  test("D4 (ronda 1): control y metraje salen con rótulos en español y un valor que no es cifra queda intacto", async () => {
+    const base = { fuente: "Reunión", responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-04T16:20:31.482913" };
+    const control = { ...base, objeto: "parametro", clave: "control|spi_error", campo: "spi_error", antes: "0.90", despues: "0.85" };
+    const metraje = { ...base, objeto: "metraje", clave: "fuentes|F1", campo: "ambiente_id", antes: "A1.2", despues: "Eje B2.5" };
+    const catalogo = { ...base, objeto: "apu", clave: "MIN-001", campo: "instantanea", antes: "catalogo", despues: "instantanea" };
+    trazabilidad = () => json(trazabilidadRespuesta({ registros: [control, metraje, catalogo] }));
+    const u = montar();
+    await listo();
+    await u.click(within(await renglon("VIV-002")).getByRole("button", { name: "Ver cambios de VIV-002" }));
+    const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
+    expect(texto(filas[0]!).slice(2)).toEqual(["Parámetro", "Control de obra: Umbral de SPI para error", "Umbral de SPI para error", "0,90", "0,85", "Reunión"]);
+    expect(texto(filas[1]!).slice(4)).toEqual(["Ambiente", "A1.2", "Eje B2.5", "Reunión"]);
+    expect(texto(filas[2]!).slice(4)).toEqual(["Instantánea", "Catálogo", "Instantánea", "Reunión"]);
+  });
+
+  test("N1: el alta y la baja de una fila de metraje salen con rótulos y cifras con coma", async () => {
+    const base = { fuente: "Reunión", responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-04T16:20:31.482913", objeto: "metraje", clave: "esp_tramos:R1#2", campo: "fila" };
+    const alta = { ...base, antes: "", despues: "recorrido_id=R1; orden=2; pendiente=0.02; vertices=1.5,0,2.5; 1.5,0,0.6" };
+    const baja = { ...base, antes: "recorrido_id=R1; orden=2; pendiente=1234.5", despues: "" };
+    trazabilidad = () => json(trazabilidadRespuesta({ registros: [alta, baja] }));
+    const u = montar();
+    await listo();
+    await u.click(within(await renglon("VIV-002")).getByRole("button", { name: "Ver cambios de VIV-002" }));
+    const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
+    expect(texto(filas[0]!).slice(2)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Recorrido=R1; Orden del vértice=2; Pendiente=0,02; Vértices=(1,5; 0; 2,5), (1,5; 0; 0,6)", "Reunión"]);
+    expect(texto(filas[1]!).slice(2)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "Recorrido=R1; Orden del vértice=2; Pendiente=1.234,5", "", "Reunión"]);
   });
 
   test("una versión que no nació de una edición dice por qué no hay registros, sin tabla vacía", async () => {

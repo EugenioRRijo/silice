@@ -294,3 +294,20 @@ def test_el_estado_de_filas_marca_ok_en_una_fila_que_ningun_hallazgo_toca(_of001
 def test_elaborar_ti001_da_el_punto_de_equilibrio_de_la_memoria(_ti001):
     pe = hoja.elaborar_borrador(_ti001[0].borrador).equilibrio
     assert abs(pe.porcentaje - D("56.60")) <= D("0.01")  # 0,15 / 0,265 de las ventas
+
+
+def test_si_la_version_no_se_puede_cargar_el_aviso_dice_cual_y_por_que(
+    _plantillas, tmp_path, monkeypatch
+):
+    """Regresión del MENOR 6 (tanda de detalles): el aviso lleva «versión» y nombra la obra."""
+
+    def _rota(*_args, **_kwargs):
+        raise ValueError("el catálogo no tiene el insumo X")
+
+    monkeypatch.setattr(hoja, "cargar_elaboracion", _rota)
+    with pytest.raises(hoja.HojaInvalida) as error:
+        _abrir(_plantillas[0], tmp_path, NOMBRE_OF001)
+    assert str(error.value) == (
+        f"No se pudo abrir la versión '001' de la obra {NOMBRE_OF001!r}: "
+        "el catálogo no tiene el insumo X"
+    )

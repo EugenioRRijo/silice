@@ -37,6 +37,7 @@ import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion, PrecioCon
 import { fechaDeRanura } from "./fechas";
 import { AntesYDespues } from "./AntesYDespues";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { unidadEscrita } from "../../comun/unidades";
 
 // --- el corte y los precios del corte, comunes a las tres pestañas ---------------------------
 
@@ -87,7 +88,7 @@ export function BarraDeCorte({
       </Select>
       {precios.metodo === "comprobacion" && (
         <Select id="corte-version" labelText="Versión revalorada" value={precios.version} onChange={(e) => cambiarPrecios({ version: e.target.value })}>
-          <SelectItem value="" text={versiones.length ? "Elija una" : "El proyecto no tiene versiones revaloradas"} />
+          <SelectItem value="" text={versiones.length ? "Elija una" : "La obra no tiene versiones revaloradas"} />
           {versiones.map((v) => (
             <SelectItem key={v} value={v} text={v} />
           ))}
@@ -182,7 +183,7 @@ function PreciosConvertidos({ precios }: { precios: PrecioConvertido[] }) {
       <ul className="cds--type-body-compact-01">
         {precios.map((p) => (
           <li key={`${p.descripcion}|${p.unidad}`}>
-            <div>{`${p.descripcion}${p.unidad ? ` (por ${p.unidad})` : ""}, desde el ${fechaDeRanura(p.fecha)}:`}</div>
+            <div>{`${p.descripcion}${p.unidad ? ` (por ${unidadEscrita(p.unidad)})` : ""}, desde el ${fechaDeRanura(p.fecha)}:`}</div>
             <div>
               <LineaDeEquivalencia equivalencia={p.equivalencia} />
             </div>

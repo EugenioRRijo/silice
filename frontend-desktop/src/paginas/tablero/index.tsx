@@ -7,7 +7,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { PALETA_GRAFICOS, colorPorGrupo, formatoNumeroEsVe } from "../../comun/paletaGraficos";
 import { fechaEsVe, formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import {
   centroDelAnillo,
   datosDeDesglose,
@@ -69,6 +69,9 @@ function Grafico({
           title: titulo,
           height: "300px",
           resizable: true,
+          // Sin barra de herramientas: su button va dentro de un div role="button" (axe: nested-interactive), sus rotulos estan
+          // en ingles y cada grafico ya tiene su tabla con los montos exactos. Como en CurvaPlanAvance.
+          toolbar: { enabled: false },
           ...(etiqueta ? { pie: { labels: { formatter: etiqueta } } } : {}),
           donut: {
             center: { label: "Total", numberFormatter: centro ? () => centro : formatoNumeroEsVe },
@@ -80,6 +83,9 @@ function Grafico({
           title: titulo,
           height: "300px",
           resizable: true,
+          // Sin barra de herramientas: su button va dentro de un div role="button" (axe: nested-interactive), sus rotulos estan
+          // en ingles y cada grafico ya tiene su tabla con los montos exactos. Como en CurvaPlanAvance.
+          toolbar: { enabled: false },
           axes: {
             left: { mapsTo: "group", scaleType: "labels", title: eje?.izquierda },
             bottom: { mapsTo: "value", title: eje?.abajo, ticks: { formatter: formatoNumeroEsVe } },
@@ -100,7 +106,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
   if (datos.version === null) {
     return (
       <EstadoVacio
-        titulo="Este proyecto aún no tiene presupuesto guardado"
+        titulo="Esta obra aún no tiene presupuesto guardado"
         descripcion="Guarde una versión del presupuesto de la obra para ver aquí su resumen, su curva y su Pareto."
       />
     );
@@ -128,7 +134,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
       {datos.curvas && datos.curvas.series.length > 0 && (
         <section className="silice-tablero__bloque" aria-labelledby="tablero-curva">
           <h2 id="tablero-curva" className="cds--type-heading-compact-02">
-            Curva del proyecto
+            Curva de la obra
           </h2>
           <CurvaPlanAvance titulo={datos.curvas.titulo} series={seriesDeCurva(datos.curvas)} unidad={moneda} />
         </section>
@@ -235,7 +241,7 @@ function Cargado({ proyecto }: { proyecto: string }) {
   if (carga.estado === "listo") return <Contenido datos={carga.datos} />;
   if (carga.estado === "sin_permiso") return <EstadoVacio titulo="Su cuenta no puede ver el tablero" />;
   if (carga.estado === "no_disponible") {
-    return <EstadoVacio titulo="Ese proyecto no existe en este caso" descripcion="Elija otro en la cabecera." />;
+    return <EstadoVacio titulo="Esa obra no está en esta carpeta" descripcion="Elija otra obra en la lista «Obras» de la barra lateral." />;
   }
   return <AvisoError error={carga.error} titulo="No se pudo cargar el tablero" />;
 }
@@ -245,9 +251,9 @@ export default function PaginaTablero() {
   const { proyecto } = useAplicacion();
   return (
     <div className="silice-tablero silice-pagina">
-      <h1 className="cds--type-heading-04">Tablero del proyecto</h1>
+      <h1 className="cds--type-heading-04">Tablero de la obra</h1>
       {proyecto === null ? (
-        <EstadoVacio titulo="Elija un proyecto" descripcion="El tablero muestra el proyecto elegido en la cabecera." />
+        <EstadoVacio titulo="Elija una obra" descripcion="El tablero muestra la obra elegida en la cabecera." />
       ) : (
         <Cargado proyecto={proyecto} />
       )}

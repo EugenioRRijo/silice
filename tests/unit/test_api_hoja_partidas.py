@@ -81,7 +81,7 @@ FALTA = (
 )
 REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo."
 SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar."
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 TEXTO_LLANO = (
     "La cantidad de OBRA-04 (210 m2) se escribió a mano sin cálculo: escriba cómo se obtuvo si "
     "quiere que Sílice la pueda verificar."

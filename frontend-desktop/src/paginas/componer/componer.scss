@@ -78,6 +78,17 @@
   text-align: end;
 }
 
+// La descripcion con sugerencias (AC1): sin el boton «Borrar» no hace falta el hueco que `CampoConBusqueda` deja a la
+// derecha del texto, y el aviso de descripcion propia (texto de ayuda, sin relleno en Carbon) entra a 1 rem como el campo.
+.silice-componer__tabla .silice-busqueda__campo .cds--text-input {
+  padding-inline-end: 1rem;
+}
+
+.silice-componer__tabla .cds--form__helper-text {
+  padding-inline: 1rem;
+  padding-block-end: 0.25rem;
+}
+
 .silice-componer__tabla th:first-child {
   inline-size: 34%;
 }

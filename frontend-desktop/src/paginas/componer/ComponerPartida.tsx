@@ -6,10 +6,13 @@ import type { JSX } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
+import type { PartidaHallada } from "../../comun/logicaBusqueda";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
+import { mismoDatoDeCabecera } from "./cabecera";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { CampoDelCodigo } from "./CampoDelCodigo";
+import { CampoDeUnidad } from "../../comun/CampoDeUnidad";
 import { esCodigoValido } from "./codigo";
 import { AvisoSinLista } from "./AvisoSinLista";
 import type { Desde } from "./AvisoSinLista";
@@ -30,9 +33,21 @@ import { Guardar } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
 import { Similares } from "./Similares";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { agregarFila, borrarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
+import { agregarFila, borrarFila, completarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 import { TablaInsumos } from "./TablaInsumos";
+
+// Lo que se anuncia junto a «Fecha»: cuantos precios del catalogo son de otra lista y cuantos no se pudieron comprobar. Nada
+// si no hay ninguno.
+function avisoDeListas(listas: Record<TipoTabla, { otras: number; quiza: number }>): string {
+  const otras = TIPOS.reduce((n, t) => n + listas[t].otras, 0);
+  const quiza = TIPOS.reduce((n, t) => n + listas[t].quiza, 0);
+  const partes = [
+    otras === 0 ? "" : otras === 1 ? "1 precio es de otra lista; revíselo." : `${otras} precios son de otra lista; revíselos.`,
+    quiza === 0 ? "" : quiza === 1 ? "1 precio puede ser de otra lista; revíselo." : `${quiza} precios pueden ser de otra lista; revíselos.`,
+  ];
+  return partes.filter(Boolean).join(" ");
+}
 
 // Retardo entre la ultima edicion y la peticion a la API (plan de la ola 3 B, RB-2).
 const RETARDO_MS = 300;
@@ -108,6 +123,16 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     descripcion: descripcionInicial.trim(),
   }));
   const [fecha, setFecha] = useState(hoy);
+  // Cuantos precios llenados desde el catalogo tienen otra lista que la de la «Fecha» (o no se pudo comprobar), por tabla: se
+  // anuncia una vez, junto al campo «Fecha», en una region viva (dictamen de la ronda 2, MENOR 2; WCAG 4.1.3).
+  const [listas, setListas] = useState<Record<TipoTabla, { otras: number; quiza: number }>>({
+    materiales: { otras: 0, quiza: 0 },
+    equipos: { otras: 0, quiza: 0 },
+    mano_obra: { otras: 0, quiza: 0 },
+  });
+  const medirListas = useCallback((tipo: TipoTabla, otras: number, quiza: number) => {
+    setListas((l) => (l[tipo].otras === otras && l[tipo].quiza === quiza ? l : { ...l, [tipo]: { otras, quiza } }));
+  }, []);
   const [condiciones, setCondiciones] = useState("");
   const [tablas, setTablas] = useState<Tablas>(tablasVacias);
   const [ops, setOps] = useState<Opciones | null>(null);
@@ -143,6 +168,68 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     setResultado(null);
     setErrorGuardado(null);
   };
+  // D17 y ronda 3 (B, C): lo que puso la ultima partida elegida del catalogo en la descripcion y la unidad, y su codigo. Al elegir
+  // una partida del catalogo siempre se ponen su descripcion y su unidad (el servidor no deja guardar una partida existente con
+  // otra, `motivo_para_no_reemplazar`); si se reemplaza algo que no era del catalogo (lo tecleado, o la descripcion con que llega
+  // la pantalla) se dice. Al cambiar el codigo por otro, lo que puso el catalogo se vacia (se guarda en `retirado` para devolverlo
+  // si el codigo vuelve al elegido, p. ej. con Esc en el panel); lo tecleado se queda.
+  const delCatalogo = useRef<{ codigo?: string; descripcion?: string; unidad?: string }>({});
+  const retirado = useRef<{ descripcion?: string; unidad?: string }>({});
+  const [avisoDeCabecera, setAvisoDeCabecera] = useState("");
+  const elegirDelCatalogo = (p: PartidaHallada) => {
+    const parcial: Partial<Cabecera> = { codigo: p.codigo };
+    const avisos: string[] = [];
+    for (const [campo, nuevo, rotulo] of [
+      ["descripcion", p.descripcion, "la descripción"],
+      ["unidad", p.unidad, "la unidad"],
+    ] as const) {
+      const actual = cabecera[campo];
+      // N4: sin los bordes y por la grafía escrita, como compara el servidor (`cabecera.ts`).
+      if (actual.trim() !== "" && !mismoDatoDeCabecera(campo, actual, nuevo) && actual !== delCatalogo.current[campo]) {
+        avisos.push(`Se cambió ${rotulo} «${actual}» por la del catálogo, «${nuevo}».`);
+      }
+      parcial[campo] = nuevo;
+      delCatalogo.current[campo] = nuevo;
+    }
+    delCatalogo.current.codigo = p.codigo;
+    retirado.current = {};
+    cambiarCabecera(parcial);
+    setAvisoDeCabecera(avisos.join(" "));
+  };
+  // E2E-3: una partida vial de Sílice pone su código y su descripción y su unidad donde estén vacías (o donde siga lo que puso
+  // otra partida elegida); lo tecleado no se pisa: la partida es nueva en el catálogo y su nombre lo decide quien compone.
+  const elegirVial = (codigo: string, vial: { descripcion: string; unidad: string }) => {
+    const parcial: Partial<Cabecera> = { codigo };
+    for (const campo of ["descripcion", "unidad"] as const) {
+      const actual = cabecera[campo];
+      if (actual.trim() === "" || actual === delCatalogo.current[campo]) {
+        parcial[campo] = vial[campo];
+        delCatalogo.current[campo] = vial[campo];
+      }
+    }
+    delCatalogo.current.codigo = codigo;
+    retirado.current = {};
+    cambiarCabecera(parcial);
+    setAvisoDeCabecera("");
+  };
+  // Cualquier cambio del codigo que no sea elegir una partida del catalogo o una vial (teclear, «Usar … como codigo»).
+  const cambiarCodigo = (codigo: string) => {
+    const parcial: Partial<Cabecera> = { codigo };
+    for (const campo of ["descripcion", "unidad"] as const) {
+      if (codigo === delCatalogo.current.codigo) {
+        const devuelto = retirado.current[campo];
+        if (devuelto !== undefined && cabecera[campo] === "") parcial[campo] = devuelto;
+        delete retirado.current[campo];
+      } else if (delCatalogo.current[campo] !== undefined && cabecera[campo] === delCatalogo.current[campo]) {
+        retirado.current[campo] = cabecera[campo];
+        parcial[campo] = "";
+      }
+    }
+    if (parcial.descripcion === "") setParecidas([]);
+    cambiarCabecera(parcial);
+    setAvisoDeCabecera("");
+  };
+
   const cambiarCabecera = (parcial: Partial<Cabecera>) => {
     setCabecera((c) => ({ ...c, ...parcial }));
     setTocado(true);
@@ -189,11 +276,11 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     };
   }, [atender, lecturaCarpeta]);
 
-  const crearLista = async (desde: Desde) => {
+  const crearLista = async (desde: Desde, listaId?: number) => {
     setCreandoLista(true);
     setErrorLista(null);
     try {
-      const nueva = await crearListaParaArmar(desde);
+      const nueva = await crearListaParaArmar(desde, listaId);
       setCarpeta(nueva);
       setListaCreada(nueva.aviso === null ? nueva.lista : null);
     } catch (e) {
@@ -209,7 +296,19 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
   // UC-11, paso 1: al teclear un codigo que existe se precargan las tres tablas y el rendimiento propuesto, una sola
   // vez por codigo (lo editado despues no se pisa); teclear otro codigo vuelve a precargar.
   const precargado = useRef("");
+  // Cuantas veces una precarga reemplazo las tres tablas. Las tablas de insumos recuerdan por indice de fila lo que se tecleo y
+  // lo que puso el catalogo; una precarga trae filas nuevas y nada de eso es suyo, asi que reciben la vuelta como prop para
+  // reiniciar ese estado sin volver a montarse (dictamen de la ronda 3, MENOR 2 y WCAG 2.4.3).
+  const [vueltaDePrecarga, setVueltaDePrecarga] = useState(0);
   const turnoPartida = useRef(0);
+  // N6 (ronda 4): lo que puso la ultima precarga (las tablas y el rendimiento) y lo que hay ahora en pantalla. Al pasar a otra
+  // partida que existe pero no trae composicion, lo que todavia es la precarga anterior se vacia; lo que la persona edito se
+  // conserva y se avisa. Es el mismo criterio de origen de las tablas de insumos: lo que no es de la persona se reemplaza.
+  const dePrecarga = useRef<{ tablas: Tablas | null; rendimiento: string | null }>({ tablas: null, rendimiento: null });
+  const vivo = useRef({ tablas, rendimiento: cabecera.rendimiento });
+  useEffect(() => {
+    vivo.current = { tablas, rendimiento: cabecera.rendimiento };
+  });
   useEffect(() => {
     const codigo = cabecera.codigo.trim();
     if (!codigo || codigo === precargado.current) return;
@@ -222,9 +321,29 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           setErrorPrecarga(null);
           setSinHistorial(!r.hay_historial);
           const precarga = normalizarTablas(r.tablas);
-          if (r.existe && hayFilas(precarga)) setTablas(precarga);
-          if (r.existe && r.rendimiento_propuesto !== null) {
-            setCabecera((c) => ({ ...c, rendimiento: r.rendimiento_propuesto as string }));
+          if (r.existe) {
+            const previa = dePrecarga.current;
+            if (hayFilas(precarga)) {
+              setTablas(precarga);
+              setVueltaDePrecarga((n) => n + 1);
+              dePrecarga.current.tablas = precarga;
+            } else if (previa.tablas !== null) {
+              if (JSON.stringify(vivo.current.tablas) === JSON.stringify(previa.tablas)) {
+                setTablas(tablasVacias());
+                setVueltaDePrecarga((n) => n + 1);
+              } else {
+                const dicho = `La partida «${codigo}» no tiene composición en el catálogo; se conservan las líneas que escribió.`;
+                setAvisoDeCabecera((a) => (a === "" ? dicho : `${a} ${dicho}`));
+              }
+              dePrecarga.current.tablas = null;
+            }
+            if (r.rendimiento_propuesto !== null) {
+              setCabecera((c) => ({ ...c, rendimiento: r.rendimiento_propuesto as string }));
+              dePrecarga.current.rendimiento = r.rendimiento_propuesto;
+            } else if (previa.rendimiento !== null) {
+              if (vivo.current.rendimiento === previa.rendimiento) setCabecera((c) => ({ ...c, rendimiento: "" }));
+              dePrecarga.current.rendimiento = null;
+            }
           }
         })
         .catch((e: unknown) => {
@@ -341,7 +460,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         creada={listaCreada}
         creando={creandoLista}
         error={errorLista}
-        alCrear={(desde) => void crearLista(desde)}
+        alCrear={(desde, listaId) => void crearLista(desde, listaId)}
       />
       <AvisoError error={errorOpciones} titulo="No se pudieron cargar las opciones" />
 
@@ -352,13 +471,9 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         <div className="silice-componer__rejilla">
           <CampoDelCodigo
             texto={cabecera.codigo}
-            alCambiar={(codigo) => cambiarCabecera({ codigo })}
-            alElegirDelCatalogo={(p) =>
-              cambiarCabecera({
-                descripcion: cabecera.descripcion.trim() === "" ? p.descripcion : cabecera.descripcion,
-                unidad: cabecera.unidad.trim() === "" ? p.unidad : cabecera.unidad,
-              })
-            }
+            alCambiar={cambiarCodigo}
+            alElegirDelCatalogo={elegirDelCatalogo}
+            alElegirVial={elegirVial}
             alExpirar={expirar}
           />
           <CampoTexto
@@ -368,15 +483,19 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             value={cabecera.descripcion}
             onChange={(e) => {
               cambiarCabecera({ descripcion: e.target.value });
+              setAvisoDeCabecera("");
               if (!e.target.value.trim()) setParecidas([]);
             }}
           />
-          <CampoTexto
+          <CampoDeUnidad
             id="componer-unidad"
-            size="sm"
-            labelText="Unidad"
-            value={cabecera.unidad}
-            onChange={(e) => cambiarCabecera({ unidad: e.target.value })}
+            etiqueta="Unidad"
+            texto={cabecera.unidad}
+            alCambiar={(unidad) => {
+              cambiarCabecera({ unidad });
+              setAvisoDeCabecera("");
+            }}
+            alExpirar={expirar}
           />
           <Select
             id="componer-dominio"
@@ -389,18 +508,26 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               <SelectItem key={d} value={d} text={d} />
             ))}
           </Select>
-          <CampoTexto
-            id="componer-fecha"
-            size="sm"
-            type="date"
-            labelText="Fecha"
-            value={fecha}
-            onChange={(e) => {
-              setFecha(e.target.value);
-              limpiarGuardado();
-            }}
-          />
+          <div>
+            <CampoTexto
+              id="componer-fecha"
+              size="sm"
+              type="date"
+              labelText="Fecha"
+              value={fecha}
+              onChange={(e) => {
+                setFecha(e.target.value);
+                limpiarGuardado();
+              }}
+            />
+            <p id="componer-fecha-estado" role="status" aria-live="polite" className="cds--form__helper-text">
+              {avisoDeListas(listas)}
+            </p>
+          </div>
         </div>
+        <p id="componer-cabecera-aviso" role="status" aria-live="polite" className="cds--form__helper-text">
+          {avisoDeCabecera}
+        </p>
       </section>
 
       <AvisoError error={errorParecidas} titulo="No se pudieron pedir las partidas similares" />
@@ -457,9 +584,15 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               tipo={tipo}
               filas={tablas[tipo]}
               modalidades={ops?.modalidades ?? []}
+              vuelta={vueltaDePrecarga}
+              paraArmarAl={fecha}
+              moneda={carpeta?.moneda ?? null}
               alCambiar={(i, clave, valor) => cambiarTablas((t) => editarCelda(t, tipo, i, clave, valor))}
               alAgregar={() => cambiarTablas((t) => agregarFila(t, tipo))}
               alBorrar={(i) => cambiarTablas((t) => borrarFila(t, tipo, i))}
+              alCompletar={(i, valores) => cambiarTablas((t) => completarFila(t, tipo, i, valores))}
+              alExpirar={expirar}
+              alMedirListas={medirListas}
               nivel={nivel === 2 ? 3 : 4}
             />
           </div>

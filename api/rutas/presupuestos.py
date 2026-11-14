@@ -461,7 +461,7 @@ def revalorar_presupuesto(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
                     "No se pudo guardar la version nueva: ya existe una version con ese codigo en "
-                    "el proyecto o una lista de precios con ese nombre."
+                    "la obra o una lista de precios con ese nombre."
                     if isinstance(error, IntegrityError)
                     else "No se pudo guardar la version nueva por un conflicto en la base de datos."
                 ),
@@ -630,12 +630,14 @@ def escenarios_de_presupuesto(
     misma forma que los pendientes de `POST /presupuestos` pero sin propuestas. Los hallazgos de
     cada escenario no los cuentan.
     """
-    _modelo, elaboracion, escenarios = _generar_escenarios(sesion, codigo, proyecto, peticion)
+    _modelo, elaboracion, escenarios, sin_efecto = _generar_escenarios(
+        sesion, codigo, proyecto, peticion
+    )
     base = elaboracion.presupuesto
     comparativos = [comparar_por_partida(base, escenario) for escenario in escenarios]
 
     respuestas: list[EscenarioRespuesta] = []
-    for escenario, comparativo in zip(escenarios, comparativos, strict=True):
+    for escenario, comparativo, sin in zip(escenarios, comparativos, sin_efecto, strict=True):
         respuestas.append(
             EscenarioRespuesta(
                 nombre=escenario.nombre,
@@ -644,6 +646,8 @@ def escenarios_de_presupuesto(
                 variacion_pct=formatear_decimal(comparativo.variacion_pct, DECIMALES_PRESENTACION),
                 hallazgos=len(escenario.informe.hallazgos),
                 insumos_variados=escenario.insumos_variados,
+                precios_sin_insumo=list(sin.sin_insumo),
+                precios_sin_cambio=list(sin.sin_cambio),
                 partidas=_filas_comparativo(comparativo),
             )
         )
@@ -693,7 +697,9 @@ def escenarios_en_csv(
     """La tabla de RF-31 (el base y una fila por escenario) como CSV con los `Decimal` exactos, no
     los dos decimales de la pantalla: el redondeo es solo de presentación (NORMAS.md §2.3). Mismo
     cuerpo y mismos errores que `POST /presupuestos/{codigo}/escenarios`; no guarda nada."""
-    _modelo, elaboracion, escenarios = _generar_escenarios(sesion, codigo, proyecto, peticion)
+    _modelo, elaboracion, escenarios, _sin_efecto = _generar_escenarios(
+        sesion, codigo, proyecto, peticion
+    )
     tabla = comparar_escenarios(elaboracion.presupuesto, escenarios)
     # El nombre de un escenario y el codigo del base son texto de la persona: Excel evaluaria como
     # formula uno que empiece por = + - @ (mismo criterio que el libro, core/budget/excel.py).
@@ -843,8 +849,14 @@ def _neutralizar_formula(texto: str) -> str:
 
 def _generar_escenarios(
     sesion: Session, codigo: str, proyecto: str | None, peticion: EscenariosPeticion
-) -> tuple[models.Presupuesto, ResultadoElaboracion, list[Escenario]]:
-    """El base y un `Escenario` por cada supuesto de la petición (UC-08), sin guardar nada."""
+) -> tuple[
+    models.Presupuesto,
+    ResultadoElaboracion,
+    list[Escenario],
+    list[aplicacion_elaboracion.PreciosSinEfecto],
+]:
+    """El base y un `Escenario` por cada supuesto de la petición (UC-08), sin guardar nada, con
+    los precios de ensayo de cada uno que no cambiaron nada (`precios_sin_efecto`)."""
     # INV-083: el base se lee con `cargar_elaboracion`, no con `cargar_presupuesto`, porque el
     # contrato `Presupuesto` no lleva los pendientes y `generar_escenario` solo recalcula los
     # renglones valorados (lo mismo hace la página de escenarios). El informe propio de cada
@@ -865,21 +877,28 @@ def _generar_escenarios(
     # hallazgos de reglas externas (R8 a R10) se vuelven a declarar en cada escenario (SF-E1).
     composiciones = composiciones_de_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
     externos = hallazgos_externos(elaboracion.informe)
+    precios = [
+        {
+            descripcion: decimal_desde_texto(texto, f"precio de {descripcion}")
+            for descripcion, texto in datos.precios.items()
+        }
+        for datos in peticion.escenarios
+    ]
     escenarios = [
         generar_escenario(
             datos.nombre,
             base,
             composiciones,
             _parametros_escenario(modelo, datos),
-            precios={
-                descripcion: decimal_desde_texto(texto, f"precio de {descripcion}")
-                for descripcion, texto in datos.precios.items()
-            },
+            precios=de_este,
             externos=externos,
         )
-        for datos in peticion.escenarios
+        for datos, de_este in zip(peticion.escenarios, precios, strict=True)
     ]
-    return modelo, elaboracion, escenarios
+    sin_efecto = [
+        aplicacion_elaboracion.precios_sin_efecto(composiciones, de_este) for de_este in precios
+    ]
+    return modelo, elaboracion, escenarios, sin_efecto
 
 
 def _detector_de_atipicos() -> DetectorAtipicos | None:
@@ -894,7 +913,7 @@ def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:
         select(models.Proyecto).where(models.Proyecto.nombre == nombre)
     ).one_or_none()
     if proyecto is None:
-        raise LookupError(f"no hay ningún proyecto {nombre!r} en el catálogo")
+        raise LookupError(f"no hay ninguna obra {nombre!r} en el catálogo")
     return proyecto
 
 
@@ -1070,7 +1089,7 @@ def _buscar_modelo(sesion: Session, codigo: str, proyecto: str | None = None) ->
     if not encontrados:
         detalle = f"no hay ningún presupuesto con código {codigo!r}"
         if proyecto is not None:
-            detalle += f" en el proyecto {proyecto!r}"
+            detalle += f" en la obra {proyecto!r}"
         raise LookupError(detalle)
 
     if len(encontrados) > 1:
@@ -1078,7 +1097,7 @@ def _buscar_modelo(sesion: Session, codigo: str, proyecto: str | None = None) ->
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                f"el código {codigo!r} existe en más de un proyecto ({nombres}): "
+                f"el código {codigo!r} existe en más de una obra ({nombres}): "
                 "indique 'proyecto' en la consulta para desambiguar"
             ),
         )

@@ -8,12 +8,12 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated
 
-import openpyxl
 from fastapi import APIRouter, File, Form, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.acceso import EDITAR, LEER
 from api.archivos import guardar_subida
 from api.dependencias import SesionDep
@@ -134,32 +134,36 @@ def vista_previa_de_lista(
 
 
 def comprobar_libro_legible(ruta: Path) -> None:
-    """`ValueError` (422) con el nombre del archivo si `ruta` es un libro de Excel que openpyxl no
-    puede abrir: bytes que no son un zip (`zipfile.BadZipFile`), un zip sin las partes de un libro
-    (`KeyError`, que el manejador de `LookupError` responderia como 404) o un archivo truncado.
+    """`ValueError` (422) con el nombre del archivo si `ruta` es un libro de Excel que la guardia
+    rechaza, que openpyxl no puede abrir (bytes que no son un zip, un zip sin las partes de un
+    libro, un archivo truncado) o que tiene algo escrito más allá de los topes del lector.
 
     Ronda 1 de la pista A (H1): sin esta comprobacion, `POST /listas-precios` y
     `POST /presupuestos/importar` respondian 500 ante un .xlsx corrupto. Se abre el libro antes de
     llamar al nucleo, asi que cualquier fallo de esta apertura es del archivo y no se confunde con
     un error del catalogo; la traduccion de fondo, en el lector del nucleo, queda para GC6. Un
     archivo de otro sufijo no se toca: su rechazo es del nucleo.
+
+    Los topes (acta del árbitro de los topes, NOTA 7): el lector del núcleo
+    (`core.catalog.precios.leer_tabla`) recorre cada hoja sin tope, y una hoja sin `<dimension>`
+    con una celda en A1048576 le hacía recorrer un millón de filas. El núcleo no se toca: aquí se
+    recorre antes cada hoja con los topes de `lector.filas_acotadas` (20.000 filas y 100 columnas
+    por hoja), sobre los bytes ya leídos, sin dejar el archivo abierto.
     """
     if ruta.suffix.lower() not in SUFIJOS_EXCEL:
         return
+    datos = ruta.read_bytes()
     try:
-        verificar_archivo(ruta.read_bytes(), ruta.name)
+        verificar_archivo(datos, ruta.name)
     except ArchivoRechazado as error:
         raise ValueError(f"{ruta.name}: no se puede leer como libro de Excel ({error})") from error
-    # El flujo lo abre y lo cierra esta funcion: si openpyxl falla a mitad, en Windows dejaria el
-    # archivo abierto y el directorio temporal de la ruta no se podria borrar.
-    with ruta.open("rb") as flujo:
-        try:
-            openpyxl.load_workbook(flujo, read_only=True).close()
-        except Exception as error:
-            raise ValueError(
-                f"{ruta.name}: no se puede leer como libro de Excel "
-                f"({type(error).__name__}: {error})"
-            ) from error
+    try:
+        comprobar_topes_del_libro(datos, ruta.name)
+    except ArchivoRechazado as error:
+        # Su aviso ya se explica solo: nombra el libro y, si es un tope, la hoja y el tope (el libro
+        # se lee: no se le antepone «no se puede leer»); si una hoja está dañada, lo dice él mismo
+        # (simulación de las decisiones de los topes, 2026-11-12; auditoría de Hydrogen, MENOR).
+        raise ValueError(str(error)) from error
 
 
 def _elegidos(

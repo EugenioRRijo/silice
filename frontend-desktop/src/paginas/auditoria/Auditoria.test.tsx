@@ -283,7 +283,8 @@ describe("Inicio de auditoría", () => {
       montar({ sesion: { ...SESION, login: "rita", roles: ["revisa"], acciones: ["leer_proyecto", "revisar_paquete", "aprobar_version"] } });
       expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
       expect(await screen.findByRole("region", { name: "Últimas auditorías guardadas" })).toBeInTheDocument();
-      expect(rutasPedidas()).toEqual(["/v1/auditorias-libro?limite=5"]);
+      // E2E-2: el bloque del libro con un APU por hoja pide además la lista de perfiles.
+      expect([...rutasPedidas()].sort()).toEqual(["/v1/auditorias-libro?limite=5", "/v1/libros/perfiles-apu-por-hoja"]);
     });
 
     test("una cuenta sin la acción de auditar no ve la zona de soltar ni pide el historial", async () => {

@@ -159,8 +159,8 @@ AYUDA_EMPRESA_NO_REGISTRADA = (
 )
 PRECIOS_COINCIDEN = "Los precios y totales que declara el paquete coinciden con los recalculados."
 PRECIOS_NO_COINCIDEN = "Hay precios o totales declarados que no coinciden con el recálculo."
-SIN_ENTREGA_ANTERIOR = "Esta instalación no recibió una entrega anterior de este proyecto."
-SIN_LISTAS = "Este caso no tiene listas de precios para contrastar."
+SIN_ENTREGA_ANTERIOR = "Esta instalación no recibió una entrega anterior de esta obra."
+SIN_LISTAS = "Esta carpeta no tiene listas de precios para contrastar."
 TITULO_CONTRA_MI_LISTA = "El paquete con los precios de mi lista"
 DICTAMEN_GUARDADO = "Dictamen guardado, atado al SHA-256 de este archivo."
 NOTA_EXCEL = "Este Excel se regeneró aquí desde presupuesto.json; el del emisor no se ofrece."
@@ -372,8 +372,8 @@ def banner_de_version(r: Recibido, fecha: Callable[[str], str] = _iso) -> str:
         ultima = (
             cabeza + separador + fecha(cola) if separador and len(cola) == 10 else r.ultima_recibida
         )
-        return f"{inicio}; la última que usted recibió de este proyecto: {ultima}."
-    return f"{inicio}; es la primera que recibe de este proyecto."
+        return f"{inicio}; la última que usted recibió de esta obra: {ultima}."
+    return f"{inicio}; es la primera que recibe de esta obra."
 
 
 def _buscar_empresa(instalacion: Session):

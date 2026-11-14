@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
+import { buscadorDeInsumosYOficios, descripcionDeInsumo } from "../../comun/buscadorDeInsumos";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { SeleccionMultipleConBusqueda } from "../../comun/SeleccionMultipleConBusqueda";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
@@ -19,9 +21,11 @@ import {
   errorDeSemilla,
   errorDeVariacion,
   filasDeTabla,
+  rechazoDeInsumo,
   resumenDeEnvio,
 } from "./logica";
 import type { CuerpoSimulacion, FilaSimulada } from "./logica";
+import type { SugerenciaDeConsulta } from "../../comun/consulta";
 import "./simulador.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
 
@@ -32,6 +36,9 @@ const COLUMNAS: ColumnaDensa[] = [
   // El precio llega con punto y se lee en es-VE; la fila conserva el texto de la API para ordenar.
   { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
 ];
+
+// El buscador no guarda estado: uno solo para toda la pagina.
+const buscarInsumos = buscadorDeInsumosYOficios();
 
 type Estado =
   | { fase: "inicial" }
@@ -45,7 +52,7 @@ export default function PaginaSimulador() {
   const { alExpirar } = useAplicacion();
   const [semilla, setSemilla] = useState(SEMILLA_INICIAL);
   const [variacion, setVariacion] = useState(VARIACION_INICIAL);
-  const [insumos, setInsumos] = useState("");
+  const [elegidos, setElegidos] = useState<string[]>([]);
   const [estado, setEstado] = useState<Estado>({ fase: "inicial" });
   const peticion = useRef(0);
   const tituloRef = useRef<HTMLHeadingElement>(null);
@@ -64,7 +71,7 @@ export default function PaginaSimulador() {
   async function generar(evento: FormEvent) {
     evento.preventDefault();
     if (hayError) return;
-    const cuerpo = cuerpoDe({ semilla, variacion, insumos });
+    const cuerpo = cuerpoDe({ semilla, variacion, insumos: elegidos });
     const numero = ++peticion.current;
     setEstado({ fase: "cargando" });
     try {
@@ -79,7 +86,7 @@ export default function PaginaSimulador() {
   // El resultado en pantalla es el del ultimo envio: si el formulario cambio despues, se avisa.
   const cambiado =
     estado.fase === "listo" &&
-    (errorSemilla !== null || JSON.stringify(cuerpoDe({ semilla, variacion, insumos })) !== JSON.stringify(estado.cuerpo));
+    (errorSemilla !== null || JSON.stringify(cuerpoDe({ semilla, variacion, insumos: elegidos })) !== JSON.stringify(estado.cuerpo));
 
   let resumen = "";
   if (cargando) resumen = "Simulando…";
@@ -115,14 +122,24 @@ export default function PaginaSimulador() {
           invalidText={errorVariacion ?? ""}
           onChange={(e) => setVariacion(e.target.value)}
         />
-        <CampoTexto
-          id="simulador-insumos"
-          labelText="Insumos"
-          helperText="Separados por coma; vacío = todos."
-          size="md"
-          value={insumos}
-          onChange={(e) => setInsumos(e.target.value)}
-        />
+        <div className="silice-simulador__insumos">
+          <SeleccionMultipleConBusqueda<SugerenciaDeConsulta>
+            id="simulador-insumos"
+            etiqueta="Insumos"
+            ayuda="Escriba una palabra y elija de la lista; si no elige ninguno, se simulan todos."
+            elegidos={elegidos}
+            alCambiar={setElegidos}
+            rechazar={(insumo) => rechazoDeInsumo(elegidos, insumo)}
+            buscar={buscarInsumos}
+            textoDe={descripcionDeInsumo}
+            vacio={{
+              titulo: "¿No lo encuentra?",
+              pasos: "Pruebe con otra palabra o con el código. Solo se simulan los insumos de la lista de precios vigente.",
+            }}
+            alExpirar={alExpirar}
+            tamano="md"
+          />
+        </div>
         <div className="silice-simulador__accion">
           <Button type="submit" kind="primary" size="md" disabled={hayError || cargando}>
             {cargando ? "Simulando…" : "Generar lista simulada"}

@@ -1,5 +1,6 @@
 // Llamadas de la pagina «Componer una partida» a la API (plan de la ola 3 B, §2). Todo monto viaja como texto.
 import { pedir } from "../../api/cliente";
+import { avisarCambioDeLaCarpeta } from "../../shell/ListaDeLaCarpeta";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 
@@ -37,6 +38,13 @@ export interface Contraste {
   dentro_de_rango: boolean;
 }
 
+// La cantidad con desperdicio de una fila de materiales, dicha por el servidor: «0,52 (0,50 + 4 %)» (F5 vial).
+export interface DesperdicioDeFila {
+  fila: number;
+  descripcion: string;
+  leyenda: string;
+}
+
 export interface Evaluacion {
   estado: "vacio" | "incompleto" | "valido";
   aviso: string | null;
@@ -44,6 +52,7 @@ export interface Evaluacion {
   advertencias: Advertencia[];
   requiere_justificacion: boolean;
   contraste: Contraste | null;
+  desperdicios?: DesperdicioDeFila[];
 }
 
 export interface PartidaExistente {
@@ -88,9 +97,17 @@ export function carpeta(): Promise<CarpetaRespuesta> {
   return pedir<CarpetaRespuesta>("/v1/carpeta");
 }
 
-// Crea la lista para armar de la carpeta a partir de MaPreX o convirtiendo la que tiene (con la tasa del BCV).
-export function crearListaParaArmar(desde: "maprex" | "convertir"): Promise<CarpetaRespuesta> {
-  return pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo: { desde } });
+// Crea la lista para armar de la carpeta a partir de MaPreX, convirtiendo la que tiene (con la tasa del BCV) o copiando
+// la lista de la empresa `listaId` en su moneda (sin tasa). Después avisa del cambio: la cabecera de la obra la vuelve a
+// leer (E2E-3).
+export async function crearListaParaArmar(
+  desde: "maprex" | "convertir" | "empresa",
+  listaId?: number,
+): Promise<CarpetaRespuesta> {
+  const cuerpo = desde === "empresa" ? { desde, lista_id: listaId } : { desde };
+  const carpeta = await pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo });
+  avisarCambioDeLaCarpeta();
+  return carpeta;
 }
 
 // Lo que haria `guardar` con el mismo cuerpo, sin escribir nada (`POST /v1/composicion/prever`, T3; D-MP2): la lista

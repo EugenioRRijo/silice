@@ -47,19 +47,22 @@ from contextlib import AbstractContextManager, ExitStack
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from functools import partial
 from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from adapters.hoja_empresa.perfil import PerfilInvalido
+from adapters.hoja_empresa.perfil_apu_por_hoja import cargar_perfil_apu_por_hoja, carpetas_locales
 from adapters.vial.constantes import PARTIDAS_VIALES
 from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Capa, Demarcacion, Tramo
-from adapters.vial.reglas import ReglasViales
+from adapters.vial.reglas import LectorDeBanda, ReglasViales
 from adapters.vial.tabular import leer_tramos
 from aplicacion import aprobaciones
-from aplicacion.cifras import texto_de_cifra
+from aplicacion.cifras import leer_banda, texto_de_cifra
 from aplicacion.costo_propio import PREFIJO_DE_MEZCLA, descripcion_de_costo_propio
 from aplicacion.proyectos import resolver_proyecto
 from aplicacion.tablas_vial import (
@@ -70,6 +73,7 @@ from aplicacion.tablas_vial import (
 )
 from core import models
 from core.catalog import Catalogo
+from operacion.config import carpeta_perfiles_libros
 from produccion.receta import Receta, receta_vigente
 
 __all__ = [
@@ -83,6 +87,7 @@ __all__ = [
     "bloqueo_de_version",
     "cantidades_de_tramos",
     "formula_asfalto_de_receta",
+    "lector_de_banda",
     "formulas_de_trabajo",
     "guardado_de_version",
     "heredados_de",
@@ -113,7 +118,7 @@ _NOMBRE_INVALIDO = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
 class VersionInexistente(LookupError):  # noqa: N818
-    """La obra o la versión no existen en este caso (la API responde 404)."""
+    """La obra o la versión no existen en esta carpeta (la API responde 404)."""
 
 
 class VersionBloqueada(ValueError):  # noqa: N818
@@ -156,7 +161,7 @@ def version_de(sesion: Session, proyecto: str, codigo: str) -> int:
     nombre). `VersionInexistente` con el texto que se le dice a la persona si no existe."""
     obra = resolver_proyecto(sesion, proyecto)
     if obra is None:
-        raise VersionInexistente(f"El proyecto «{proyecto}» no existe en este caso.")
+        raise VersionInexistente(f"La obra «{proyecto}» no existe en esta carpeta.")
     id_ = sesion.scalars(
         select(models.Presupuesto.id).where(
             models.Presupuesto.proyecto_id == obra.id, models.Presupuesto.codigo == codigo
@@ -170,7 +175,7 @@ def version_de(sesion: Session, proyecto: str, codigo: str) -> int:
 def _presupuesto(sesion: Session, version_id: int) -> models.Presupuesto:
     presupuesto = sesion.get(models.Presupuesto, version_id)
     if presupuesto is None:
-        raise VersionInexistente(f"La versión n.º {version_id} no existe en este caso.")
+        raise VersionInexistente(f"La versión n.º {version_id} no existe en esta carpeta.")
     return presupuesto
 
 
@@ -181,7 +186,7 @@ def bloqueo_de_version(sesion: Session, version_id: int) -> str | None:
     presupuesto = _presupuesto(sesion, version_id)
     obra = sesion.get(models.Proyecto, presupuesto.proyecto_id)
     if obra is None:  # una versión sin obra no existe a efectos de la API
-        raise VersionInexistente(f"La versión n.º {version_id} no existe en este caso.")
+        raise VersionInexistente(f"La versión n.º {version_id} no existe en esta carpeta.")
     reciente = sesion.scalars(
         select(models.Presupuesto)
         .where(models.Presupuesto.proyecto_id == obra.id)
@@ -212,6 +217,12 @@ def _capas_a_texto(capas: Sequence[Capa]) -> str:
                 "dosis_l_m2": None if c.dosis_l_m2 is None else str(c.dosis_l_m2),
                 # Tarea 16b: solo si la capa lo declara, así lo guardado antes no cambia
                 **({} if c.asfalto_pct is None else {"asfalto_pct": str(c.asfalto_pct)}),
+                # F5 vial, tarea 1: igual, solo lo declarado
+                **({} if c.esponjamiento is None else {"esponjamiento": str(c.esponjamiento)}),
+                **({"limpieza": True} if c.limpieza else {}),
+                **({} if c.medicion is None else {"medicion": c.medicion}),
+                # prueba de punta a punta del 2026-11-13: igual, solo si la capa lo declara
+                **({"suministro": True} if c.suministro else {}),
             }
             for c in capas
         ],
@@ -230,17 +241,40 @@ def _capas_de_texto(texto: str) -> tuple[Capa, ...]:
             cifra(c["densidad_t_m3"]),
             cifra(c["dosis_l_m2"]),
             cifra(c.get("asfalto_pct")),
+            esponjamiento=cifra(c.get("esponjamiento")),
+            limpieza=bool(c.get("limpieza", False)),
+            medicion=c.get("medicion"),
+            suministro=bool(c.get("suministro", False)),
         )
         for c in json.loads(texto)
     )
 
 
 def _demarcacion_a_texto(demarcacion: Sequence[Demarcacion]) -> str:
-    return json.dumps([{"tipo": d.tipo, "lineas": d.lineas} for d in demarcacion])
+    return json.dumps(
+        [
+            {
+                "tipo": d.tipo,
+                "lineas": d.lineas,
+                # F5 vial, tarea 1: solo si la línea lo declara, así lo guardado antes no cambia
+                **({} if d.area_m2 is None else {"area_m2": str(d.area_m2)}),
+                **({} if d.captafaros is None else {"captafaros": d.captafaros}),
+            }
+            for d in demarcacion
+        ]
+    )
 
 
 def _demarcacion_de_texto(texto: str) -> tuple[Demarcacion, ...]:
-    return tuple(Demarcacion(d["tipo"], d["lineas"]) for d in json.loads(texto))
+    return tuple(
+        Demarcacion(
+            d["tipo"],
+            d["lineas"],
+            area_m2=None if d.get("area_m2") is None else Decimal(d["area_m2"]),
+            captafaros=d.get("captafaros"),
+        )
+        for d in json.loads(texto)
+    )
 
 
 def guardar_tramos(
@@ -280,6 +314,7 @@ def guardar_tramos(
                     distancia_planta_km=tramo.distancia_planta_km,
                     capas=_capas_a_texto(tramo.capas),
                     demarcacion=_demarcacion_a_texto(tramo.demarcacion),
+                    transporte=tramo.transporte,
                 )
             )
         sesion.commit()
@@ -373,6 +408,7 @@ def tramos_de_version(sesion: Session, version_id: int) -> list[Tramo]:
             _capas_de_texto(f.capas),
             _demarcacion_de_texto(f.demarcacion),
             f.distancia_planta_km,
+            f.transporte,
         )
         for f in filas
     ]
@@ -589,7 +625,7 @@ def reglas_viales(
     hoy: date | None = None,
     instalacion: Session | None = None,
 ) -> tuple[ReglasViales, ...]:
-    """Las reglas VR1 a VR7 de la versión, para `elaborar(reglas=(*REGLAS, *reglas_viales(…)))` o
+    """Las reglas VR1 a VR8 de la versión, para `elaborar(reglas=(*REGLAS, *reglas_viales(…)))` o
     `reglas_extra` de la Hoja: sus hallazgos entran en la auditoría como los de `Espacio` (regla
     ajena a `REGLAS`, que `hallazgos_externos` vuelve a declarar). Vacío si la versión no tiene
     tramos (propios o heredados).
@@ -602,8 +638,27 @@ def reglas_viales(
     tramos = tramos_de_version(sesion, version_id)
     if not tramos:
         return ()
+    lector = lector_de_banda()
     if receta is not None or codigo_ligante is not None:
-        return (ReglasViales(tramos, formula_asfalto_de_receta(receta, codigo_ligante)),)
+        formula = formula_asfalto_de_receta(receta, codigo_ligante)
+        return (ReglasViales(tramos, formula, lector_de_banda=lector),)
     dia = hoy if hoy is not None else date.today()
     formulas, sin_formula = formulas_de_trabajo(sesion, tramos, dia, instalacion)
-    return (ReglasViales(tramos, formulas=formulas, sin_formula=sin_formula),)
+    return (
+        ReglasViales(tramos, formulas=formulas, sin_formula=sin_formula, lector_de_banda=lector),
+    )
+
+
+def lector_de_banda(carpetas: Sequence[Path] | None = None) -> LectorDeBanda | None:
+    """La lectura de la banda de distancia de una descripción que VR4 usa cuando la partida no la
+    declara en su directiva: la del AH9 del libro con un APU por hoja
+    (`aplicacion.cifras.leer_banda`) con el `patron_banda` del perfil `apu_por_hoja` (el local de
+    la instalación si lo hay, o el del paquete; prueba de punta a punta del 2026-11-13, D3).
+    `carpetas` son las de los perfiles locales (por omisión, las de la instalación). `None` si el
+    perfil no se puede leer o no trae patrón: VR4 lo dice (INFO)."""
+    buscadas = carpetas_locales(carpeta_perfiles_libros()) if carpetas is None else carpetas
+    try:
+        patron = cargar_perfil_apu_por_hoja(carpetas=buscadas).patron_banda
+    except PerfilInvalido:
+        return None
+    return None if patron is None else partial(leer_banda, patron)

@@ -102,6 +102,7 @@ from aplicacion.errores import HojaInvalida
 from aplicacion.estilo import porcentaje
 from aplicacion.parametros_de_costo import parametros_de_version
 from aplicacion.plan_rendimientos import plan_del_borrador
+from aplicacion.plural import plural
 from aplicacion.subidas import Subida, guardar_subida
 from aplicacion.tablas_medicion import guardar_notas, notas_de_version
 from aplicacion.vial import reglas_viales
@@ -1042,8 +1043,9 @@ def _cantidades_de_tabla(
 ) -> list[Decimal]:
     if len(filas) != esperadas:
         raise HojaInvalida(
-            f"{grupo}: la tabla tiene {len(filas)} lineas y el APU {esperadas}; en la hoja solo "
-            "se edita la cantidad de cada linea (para agregar o quitar una, use Componer)"
+            f"{grupo}: la tabla tiene {plural(len(filas), 'línea', 'líneas')} y el APU "
+            f"{esperadas}; en la hoja solo se edita la cantidad de cada línea (para agregar o "
+            "quitar una, use Componer)"
         )
     cantidades = []
     for numero, fila in enumerate(filas, start=1):
@@ -1144,7 +1146,8 @@ def cambiar_insumo(
     }[tipo]
     if not 0 <= indice < len(grupo):
         raise HojaInvalida(
-            f"la linea {indice + 1} no existe: el grupo {tipo} tiene {len(grupo)} lineas"
+            f"la línea {indice + 1} no existe: el grupo {tipo} tiene "
+            f"{plural(len(grupo), 'línea', 'líneas')}"
         )
     linea = grupo[indice]
     if tipo == "material":
@@ -1771,7 +1774,7 @@ def _modelo(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
     ).one_or_none()
     if modelo is None:
         raise HojaInvalida(
-            f"El proyecto {proyecto!r} no tiene una version {codigo!r}: elija una de la lista."
+            f"La obra {proyecto!r} no tiene una versión {codigo!r}: elija una de la lista."
         )
     return modelo
 
@@ -1925,7 +1928,7 @@ def abrir_version(
     except (ValueError, CatalogoIncompleto, KeyError) as error:
         sesion.rollback()
         raise HojaInvalida(
-            f"No se pudo abrir la version {codigo!r} del proyecto {proyecto!r}: {error}"
+            f"No se pudo abrir la versión {codigo!r} de la obra {proyecto!r}: {error}"
         ) from error
     plan = plan_de_version(sesion, modelo)
     borrador = Borrador(
@@ -2128,8 +2131,8 @@ def guardar_version(
         raise HojaInvalida(motivo)
     if abierta.solo_lectura:
         raise HojaInvalida(
-            "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion "
-            "vigente en el catalogo, asi que recalcularla cambiaria sus precios."
+            "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición "
+            "vigente en el catálogo, así que recalcularla cambiaría sus precios."
         )
     try:
         origen = _modelo(sesion, abierta.proyecto, abierta.codigo)
@@ -2176,12 +2179,12 @@ def motivo_para_no_crear_primera(borrador: Borrador, fuente: str, responsable: s
     items ni cantidades escritas no hay nada que guardar."""
     if borrador.espacio == Espacio() and not borrador.items_base and not borrador.cantidades:
         return (
-            "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version."
+            "La hoja está vacía: describa o importe el espacio antes de guardar la primera versión."
         )
     if not fuente.strip():
-        return "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+        return "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
     if not responsable.strip():
-        return "Escriba el responsable: quien crea esta primera version."
+        return "Escriba el responsable: quién crea esta primera versión."
     return None
 
 
@@ -2224,16 +2227,16 @@ def crear_primera_version(
     fuente, responsable = fuente.strip(), responsable.strip()
     if not fuente:
         raise HojaInvalida(
-            "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+            "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
         )
     if not responsable:
-        raise HojaInvalida("Escriba el responsable: quien crea esta primera version.")
+        raise HojaInvalida("Escriba el responsable: quién crea esta primera versión.")
     modelo_proyecto = sesion.scalars(
         select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
     ).one_or_none()
     if modelo_proyecto is None:
         raise HojaInvalida(
-            f"El proyecto {proyecto!r} no existe: creelo desde la barra superior (Proyectos)."
+            f"La obra {proyecto!r} no existe: créela desde la barra lateral (Nueva obra)."
         )
     if sesion.scalar(
         select(func.count())
@@ -2241,7 +2244,7 @@ def crear_primera_version(
         .where(models.Presupuesto.proyecto_id == modelo_proyecto.id)
     ):
         raise HojaInvalida(
-            f"El proyecto {proyecto!r} ya tiene versiones: abra una y use Guardar version."
+            f"La obra {proyecto!r} ya tiene versiones: abra una y use Guardar versión."
         )
     fecha = fecha or borrador.fecha
     moneda = moneda_del_proyecto(sesion, modelo_proyecto)
@@ -2255,9 +2258,9 @@ def crear_primera_version(
             ) from error
     if lista.moneda != moneda:
         raise HojaInvalida(
-            f"El proyecto {proyecto!r} esta en {moneda} y la lista {lista.nombre!r} en "
-            f"{lista.moneda}: una version solo se valora con una lista de su moneda (RF-65). "
-            "Elija una lista en la moneda del proyecto (Precios de la empresa) y vuelva a "
+            f"La obra {proyecto!r} está en {moneda} y la lista {lista.nombre!r} en "
+            f"{lista.moneda}: una versión solo se valora con una lista de su moneda (RF-65). "
+            "Elija una lista en la moneda de la obra (Precios de la empresa) y vuelva a "
             "guardar."
         )
     borrador = completar_composiciones(
@@ -2271,8 +2274,8 @@ def crear_primera_version(
         elaboracion = resultado.elaboracion
         if not elaboracion.presupuesto.partidas and not elaboracion.pendientes:
             raise HojaInvalida(
-                "La hoja esta vacia: dibuje o importe el espacio (o escriba cantidades) antes de "
-                "guardar la primera version."
+                "La hoja está vacía: dibuje o importe el espacio (o escriba cantidades) antes de "
+                "guardar la primera versión."
             )
         if borrador.espacio != Espacio():
             crear_esquema_espacio(sesion.connection())

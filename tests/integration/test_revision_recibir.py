@@ -100,7 +100,7 @@ def test_recibir_un_paquete_firmado_lo_verifica_lo_guarda_y_lo_registra_una_vez(
     assert r.ruta.read_bytes() == datos and r.ruta.parent == carpeta
     assert r.ruta.name.startswith(r.verificacion.sha256)
     assert revision.banner_de_version(r) == (
-        "Versión 005 del 2026-11-10; es la primera que recibe de este proyecto."
+        "Versión 005 del 2026-11-10; es la primera que recibe de esta obra."
     )
     otra = _recibir(mundo, datos)  # el mismo archivo: no se duplica (23h)
     assert otra.ya_recibido and otra.paquete_id == r.paquete_id
@@ -234,7 +234,7 @@ def test_la_entrega_anterior_es_la_ultima_del_mismo_proyecto_y_emisor_emitida_an
     )
     assert revision.entrega_anterior(caso, bd, primera.verificacion) is None  # nada antes
     assert revision.banner_de_version(actual).startswith(
-        "Versión 005 del 2026-11-10; la última que usted recibió de este proyecto:"
+        "Versión 005 del 2026-11-10; la última que usted recibió de esta obra:"
     )
 
 

@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from adapters.espacio import cargar_espacio
 from adapters.espacio.serie import espacio_a_objeto
+from aplicacion.texto_cadena import mensaje_legible
 from asistente import registro as registro_ia
 from core import models
 from core.budget import cadena, canonico
@@ -205,7 +206,7 @@ def estado_de_la_cadena(session: Session, proyecto_nombre: str) -> EstadoDeLaCad
     resultado = cadena.verificar_cadena(session, proyecto, anexos_de=anexos_de_cadena)
     return EstadoDeLaCadena(
         resultado.integra,
-        cadena.mensaje_de_cadena(resultado),
+        mensaje_legible(resultado),
         cadena.texto_retroactivo(session, proyecto),
         None if resultado.fallo is None else resultado.fallo.codigo_version,
     )
@@ -230,7 +231,7 @@ def resumen_de_entrega(
     session: Session, instalacion: Session, version: models.Presupuesto
 ) -> Resumen:
     resultado = cadena.verificar_cadena(session, version.proyecto, anexos_de=anexos_de_cadena)
-    mensaje = cadena.mensaje_de_cadena(resultado)
+    mensaje = mensaje_legible(resultado)
     entregable = True
     if resultado.integra and cadena.formato_de_sellado(session, version) == "legado":
         entregable, mensaje = False, f"{mensaje}. {_aviso_de_sellado_legado(version)}"
@@ -292,7 +293,7 @@ def entregar(
     está sellada; `ContrasenaDeClaveIncorrecta` (22b) y `PaqueteRechazado` (22f) propagan."""
     resultado = cadena.verificar_cadena(session, version.proyecto, anexos_de=anexos_de_cadena)
     if not resultado.integra:
-        raise EntregaRechazada(cadena.mensaje_de_cadena(resultado))
+        raise EntregaRechazada(mensaje_legible(resultado))
     eslabon = session.get(EslabonVersion, version.id)
     if eslabon is None:
         raise EntregaRechazada(f"La versión {version.codigo} no está sellada.")

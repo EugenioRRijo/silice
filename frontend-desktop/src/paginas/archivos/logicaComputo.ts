@@ -6,6 +6,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import { unidadEscrita } from "../../comun/unidades";
 import type {
   CalculoRespuesta,
   CuerpoCalculo,
@@ -119,7 +120,7 @@ export function filasDeItems(items: ItemComputo[]): FilaDensa[] {
     id: String(n),
     codigo_partida: i.codigo_partida,
     descripcion: i.descripcion,
-    unidad: i.unidad,
+    unidad: unidadEscrita(i.unidad),
     cantidad: i.cantidad,
     origen_id: i.origen_id,
     origen_tipo: i.origen_tipo,

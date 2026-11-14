@@ -21,6 +21,8 @@ Oráculos, ninguno sale del código bajo prueba:
 from __future__ import annotations
 
 import hashlib
+import io
+import json
 import shutil
 from collections.abc import Iterator
 from decimal import Decimal
@@ -41,6 +43,13 @@ from seguridad.base import abrir_sesion, crear_motor
 from seguridad.modelo import Usuario
 from tests.fixtures.claves_api import ANFITRION, CABECERA, IP_LOCAL, crear_clave_de_prueba
 from tests.fixtures.instalacion import AHORA, CONTRASENA, administrador, persona
+from tests.fixtures.libro_apu_por_hoja import (
+    ApuFicticio,
+    Material,
+    con_celdas,
+    libro_apu,
+    libro_presupuesto,
+)
 from tests.fixtures.libros_empresa import MEMORIA, libro_limpio
 
 RUTA = "/v1/libros/replica"
@@ -52,6 +61,9 @@ MENSAJE_SIN_SESION = "Sesión ausente o vencida: entre de nuevo con su cuenta."
 MENSAJE_CSRF = "Falta la comprobación anti-CSRF de la sesión o no coincide."
 MENSAJE_PERMISO = "Su cuenta no tiene permiso para esta acción."
 SECRETO = "detalle-interno-que-no-debe-salir C:\\ruta\\secreta"
+PERFIL_DEL_PAQUETE = (
+    Path(__file__).resolve().parents[2] / "adapters/hoja_empresa/perfiles/apu_por_hoja.json"
+)
 
 
 # --- Ayudas ---------------------------------------------------------------------------------
@@ -226,6 +238,28 @@ def test_replica_de_un_libro_demasiado_grande_da_422_con_su_mensaje(limpio, monk
     assert r.json() == {
         "detalle": "El libro tiene más de 10 celdas con valor o formato; es demasiado grande "
         "para mostrarlo en el visor."
+    }
+
+
+def test_replica_de_una_hoja_sin_formulas_con_una_celda_lejana_da_422() -> None:
+    """Acta del árbitro de los topes, NOTA 6: la hoja no tiene fórmulas (no pasa por la lectura de
+    valores guardados) y declara solo A1; la celda lejana la rechaza igual, con el aviso del
+    lector."""
+    from openpyxl import Workbook
+
+    libro = Workbook()
+    libro.active.title = "Notas"
+    libro.active["A1"] = "nota ficticia"
+    salida = io.BytesIO()
+    libro.save(salida)
+    datos = con_celdas(salida.getvalue(), "Notas", {"A1048576": "fin ficticio"})
+    r = _replica(_con_clave(), datos, nombre="notas.xlsx")
+    assert r.status_code == 422, r.text
+    assert r.json() == {
+        "detalle": "El libro «notas.xlsx», hoja «Notas»: tiene filas con datos o con formato más "
+        "allá de la 20.000. Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a "
+        "la CV). Se rechaza por seguridad: borre lo que sobra al final de la hoja y guárdelo de "
+        "nuevo."
     }
 
 
@@ -431,3 +465,268 @@ def test_las_cuatro_rutas_de_libros_niegan_el_rol_administrador_solo(ruta: str) 
     )
     assert r.status_code == 403, r.text
     assert r.json() == {"detalle": MENSAJE_PERMISO}
+
+
+# --- F5 vial, tarea 6: POST /v1/libros/apu-por-hoja --------------------------------------------
+#
+# El libro con un APU por hoja (`libro`, obligatorio), el de presupuesto (`presupuesto`, opcional)
+# y el perfil (`perfil`, opcional: `apu_por_hoja` por omisión, local o del paquete). En el mismo
+# router de `/v1/libros` (clave o sesión que arma o revisa); nada se guarda; los montos viajan como
+# texto. Libros FICTICIOS de `tests/fixtures/libro_apu_por_hoja.py`; oráculos de su memoria.
+
+RUTA_APU = "/v1/libros/apu-por-hoja"
+
+
+def _auditar(cliente, *, presupuesto: bool = False, **extra):
+    archivos = {"libro": ("frente_ficticio.xlsx", libro_apu())}
+    if presupuesto:
+        archivos["presupuesto"] = ("presupuesto_ficticio.xlsx", libro_presupuesto())
+    return cliente.post(RUTA_APU, files=archivos, **extra)
+
+
+def test_con_clave_responde_el_informe_del_libro_y_del_presupuesto():
+    r = _auditar(_con_clave(), presupuesto=True)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert _sin_float(cuerpo)
+    assert (cuerpo["perfil"], cuerpo["origen_perfil"]) == ("apu_por_hoja", "paquete")
+    assert cuerpo["libro"]["nombre"] == "frente_ficticio.xlsx"
+    assert cuerpo["presupuesto"] == "presupuesto_ficticio.xlsx"
+    assert cuerpo["cumple"] is False
+    assert cuerpo["por_severidad"] == {"INFO": 6, "ERROR": 2, "ADVERTENCIA": 3}
+    assert cuerpo["apus"][0] == {
+        "hoja": "APU 1",
+        "numero": 1,
+        "codigo": "VF-001",
+        "descripcion": "Riego de adherencia ficticio",
+        "unidad": "m2",
+        "precio_impreso": "2.08",
+        "precio_silice": "2.08",  # presentado a dos decimales por el servidor
+        "precio_silice_exacto": "2.0777625",
+        "celda_precio": "APU 1!G33",
+    }
+    assert cuerpo["apus"][3]["precio_silice"] is None
+    assert cuerpo["apus"][3]["precio_impreso"] == "820.00"
+    assert [h["celda"] for h in cuerpo["hallazgos"]][-3:] == [
+        "PRESUPUESTO!E6",
+        "PRESUPUESTO!F8",
+        "PRESUPUESTO!A9",
+    ]
+    assert cuerpo["desperdicios"] == [
+        {
+            "descripcion": "Emulsión asfáltica ficticia",
+            "unidad": "l",
+            "cantidad_neta": "0.5",
+            "desperdicio_pct": "4",
+            "cantidad": "0.52",
+        }
+    ]
+
+
+def test_sin_presupuesto_solo_las_hojas():
+    cuerpo = _auditar(_con_clave()).json()
+    assert cuerpo["presupuesto"] is None
+    assert not any(h["celda"].startswith("PRESUPUESTO!") for h in cuerpo["hallazgos"])
+
+
+def test_quien_revisa_audita_con_su_sesion():
+    cliente, ficha = _con_cuenta("rita")
+    assert _auditar(cliente, headers=_protegida(ficha)).status_code == 200
+
+
+def test_un_perfil_que_no_existe_es_422():
+    r = _auditar(_con_clave(), data={"perfil": "no_existe"})
+    assert r.status_code == 422
+    assert r.json()["detalle"] == "no existe el perfil 'no_existe'"
+
+
+def test_sin_mandar_perfil_usa_el_local_de_la_carpeta_de_datos():
+    """Arbitraje F5 vial, P2: la pantalla no manda `perfil`; el `apu_por_hoja.json` de
+    `<carpeta de datos>/perfiles_libros/` (la que fija el lanzador) gana al del paquete."""
+    crudo = json.loads(PERFIL_DEL_PAQUETE.read_text(encoding="utf-8"))
+    carpeta = config.carpeta_datos() / "perfiles_libros"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / "apu_por_hoja.json").write_text(json.dumps(crudo), encoding="utf-8")
+    r = _auditar(_con_clave())
+    assert r.status_code == 200, r.text
+    assert (r.json()["perfil"], r.json()["origen_perfil"]) == ("apu_por_hoja", "local")
+
+
+# E2E-2 (prueba de punta a punta del 2026-11-13): la pantalla elige el perfil de una lista
+# (`GET /v1/libros/perfiles-apu-por-hoja`, los del paquete y los de la carpeta de datos, sin
+# rutas del disco) y el informe dice qué hoja del presupuesto leyó. Datos FICTICIOS.
+RUTA_PERFILES = "/v1/libros/perfiles-apu-por-hoja"
+
+
+def test_la_lista_de_perfiles_sin_perfiles_locales():
+    r = _con_clave().get(RUTA_PERFILES)
+    assert r.status_code == 200, r.text
+    assert r.json() == [
+        {
+            "nombre": "apu_por_hoja",
+            "origen": "paquete",
+            "hoja_presupuesto": "PRESUPUESTO",
+            "motivo": None,
+        }
+    ]
+
+
+def test_la_lista_de_perfiles_con_uno_local_y_la_auditoria_con_el_elegido():
+    crudo = json.loads(PERFIL_DEL_PAQUETE.read_text(encoding="utf-8"))
+    carpeta = config.carpeta_datos() / "perfiles_libros"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    local = {**crudo, "nombre": "frente_local", "presupuesto": {**crudo["presupuesto"]}}
+    (carpeta / "frente_local.json").write_text(json.dumps(local), encoding="utf-8")
+    cliente, ficha = _con_cuenta("ana")
+    r = cliente.get(RUTA_PERFILES)
+    assert r.status_code == 200, r.text
+    assert [(p["nombre"], p["origen"]) for p in r.json()] == [
+        ("apu_por_hoja", "paquete"),
+        ("frente_local", "local"),
+    ]
+    assert str(carpeta) not in r.text
+    auditado = _auditar(
+        cliente, presupuesto=True, data={"perfil": "frente_local"}, headers=_protegida(ficha)
+    )
+    assert auditado.status_code == 200, auditado.text
+    assert (auditado.json()["perfil"], auditado.json()["origen_perfil"]) == (
+        "frente_local",
+        "local",
+    )
+    assert auditado.json()["hoja_presupuesto"] == "PRESUPUESTO"
+
+
+def test_sin_presupuesto_el_informe_no_tiene_hoja():
+    assert _auditar(_con_clave()).json()["hoja_presupuesto"] is None
+
+
+def test_un_libro_sin_hojas_de_apu_es_422_con_el_mensaje():
+    r = _con_clave().post(RUTA_APU, files={"libro": ("p.xlsx", libro_presupuesto())})
+    assert r.status_code == 422
+    assert "no tiene ninguna hoja de APU" in r.json()["detalle"]
+
+
+def test_un_precio_negativo_es_422_con_la_celda():
+    """Arbitraje F5 vial, P3: un valor que el núcleo no admite era un 500; ahora es 422 y dice
+    la celda (la hoja ficticia de `tests/unit/test_hoja_empresa_apu_por_hoja.py`)."""
+    invalida = ApuFicticio(
+        9,
+        "VF-009",
+        "Partida ficticia inválida",
+        "m2",
+        "1",
+        "1",
+        materiales=(Material(1, "Cemento ficticio", "kg", "1", "0", "-1"),),
+    )
+    r = _con_clave().post(RUTA_APU, files={"libro": ("f.xlsx", libro_apu((invalida,)))})
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        "APU 9!F9: el precio de «Cemento ficticio» es -1 y no puede ser negativo: Sílice no "
+        "recalcula la hoja «APU 9»."
+    )
+
+
+# Arbitraje F5/F7/F8 r2, P1: un libro que declara una <dimension> pequeña y escribe lejos
+# (A1048576 en el de APU, variante C; XFD en 2.000 filas del de presupuesto, variante E) se rechaza
+# por la ruta con 422 y el mensaje de la guardia, sin materializar el millón de filas.
+SIGUE_APU = (
+    "Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV). Se rechaza por "
+    "seguridad: borre lo que sobra al final de la hoja y guárdelo de nuevo."
+)
+
+
+@pytest.mark.parametrize("hostil", ["libro", "presupuesto"])
+def test_una_celda_lejana_que_la_dimension_no_declara_es_422(hostil: str):
+    libro, presupuesto = libro_apu(), libro_presupuesto()
+    if hostil == "libro":
+        libro = con_celdas(libro, "APU 1", {"A1048576": "fin ficticio"})
+        esperado = (
+            "El libro «frente_ficticio.xlsx», hoja «APU 1»: tiene filas con datos o con formato "
+            f"más allá de la 20.000. {SIGUE_APU}"
+        )
+    else:
+        presupuesto = con_celdas(
+            presupuesto, "PRESUPUESTO", {f"XFD{fila}": "y" for fila in range(2, 2002)}
+        )
+        esperado = (
+            "El libro «presupuesto_ficticio.xlsx», hoja «PRESUPUESTO»: la fila 2 tiene celdas "
+            f"con datos o con formato hasta la columna XFD, más allá de la CV. {SIGUE_APU}"
+        )
+    r = _con_clave().post(
+        RUTA_APU,
+        files={
+            "libro": ("frente_ficticio.xlsx", libro),
+            "presupuesto": ("presupuesto_ficticio.xlsx", presupuesto),
+        },
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == esperado
+
+
+# Arbitraje F5/F7/F8 r2, N3 (el resto de P3): 1e20, 1e300 o 9,99e307 en la cantidad o el precio
+# daban un 500 (`decimal.InvalidOperation` al presentar el precio). Ahora son 422 con su celda; y si
+# cada cifra cabe en el tope pero el recálculo no cabe en la precisión (un billón por un billón con
+# una administración de un billón por ciento), 422 con la hoja, también cuando la hoja no se compara
+# (impuesto dentro del APU). En el presupuesto, el P.U. enorme dice su celda.
+_ENORME = ApuFicticio(
+    9,
+    "VF-009",
+    "Partida ficticia enorme",
+    "m2",
+    "1",
+    "1",
+    materiales=(Material(1, "Cemento ficticio", "kg", "1", "0", "1"),),
+)
+_TOPE = "1.000.000.000.000"
+_NO_RECALCULA = ": Sílice no recalcula la hoja «APU 9»."
+_DEMASIADO = (
+    "La hoja «APU 9» da un precio unitario demasiado grande para recalcularlo con exactitud: "
+    "revise sus cantidades, sus precios y sus porcentajes."
+)
+
+
+@pytest.mark.parametrize(
+    ("celdas", "esperado"),
+    [
+        (
+            {"D9": 1e20, "F9": 1e20},
+            f"APU 9!D9: la cantidad de «Cemento ficticio» pasa del tope de {_TOPE}{_NO_RECALCULA}",
+        ),
+        (
+            {"F9": 1e300},
+            f"APU 9!F9: el precio de «Cemento ficticio» pasa del tope de {_TOPE}{_NO_RECALCULA}",
+        ),
+        (
+            {"F9": 9.99e307, "D9": 9.99e307},
+            f"APU 9!D9: la cantidad de «Cemento ficticio» pasa del tope de {_TOPE}{_NO_RECALCULA}",
+        ),
+        ({"D9": 1e12, "F9": 1e12, "F24": 1e12}, _DEMASIADO),
+        ({"D9": 1e12, "F9": 1e12, "F24": 1e12, "F27": 16}, _DEMASIADO),
+    ],
+    ids=["1e20", "1e300", "9_99e307", "recalculo_enorme", "recalculo_enorme_con_impuesto"],
+)
+def test_una_magnitud_enorme_es_422_y_no_500(celdas: dict[str, float], esperado: str):
+    datos = con_celdas(libro_apu((_ENORME,)), "APU 9", celdas, dimension_de_antes=False)
+    r = _con_clave().post(RUTA_APU, files={"libro": ("f.xlsx", datos)})
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == esperado
+
+
+def test_un_precio_enorme_en_el_presupuesto_es_422_con_su_celda():
+    presupuesto = con_celdas(
+        libro_presupuesto(), "PRESUPUESTO", {"F4": 1e300}, dimension_de_antes=False
+    )
+    r = _con_clave().post(
+        RUTA_APU,
+        files={"libro": ("f.xlsx", libro_apu()), "presupuesto": ("p.xlsx", presupuesto)},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        f"PRESUPUESTO!F4: el precio unitario del renglón 1 pasa del tope de {_TOPE}: Sílice no "
+        "enlaza el presupuesto con sus APU."
+    )
+
+
+def test_otra_extension_es_415():
+    r = _con_clave().post(RUTA_APU, files={"libro": ("frente.csv", b"a;b")})
+    assert r.status_code == 415

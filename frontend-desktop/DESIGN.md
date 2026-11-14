@@ -29,7 +29,7 @@ ajustan aquí cuando la construcción los fije.
   cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
   `--silice-escala-letra`. Con Grande y Muy grande el buscador de la barra superior queda en su ícono por debajo de 1536
   y 1920 px (véase «Marco»), y la cuenta queda en su círculo de iniciales. El texto de los gráficos de Carbon Charts
-  también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
+  también sigue la escala (los gráficos van sin su barra de herramientas: su `button` queda dentro de un `div role="button"`, defecto de la librería que axe anota como `nested-interactive`, con rótulos en inglés; cada gráfico ya trae su tabla de montos exactos); el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
   no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio. Única excepción a las esquinas rectas:
@@ -244,6 +244,11 @@ un clic en la barra del espacio, al lado de «Vista general». Toda cuenta ve la
 
 La cabecera del espacio dice «Vista general»; el único `h1` es el de la pantalla. Los bloques, en este orden:
 
+0. **Empieza aquí** (F7, A4; `comun/ayuda/BloqueEmpiezaAqui.tsx`), solo la primera vez y derivado de los datos, sin guardar
+   nada en el navegador (`pasosDeEmpiezaAqui`): a quien administra mientras su cuenta sea la única activa (`GET /v1/cuentas`),
+   a quien arma o solo revisa mientras no vea ninguna obra (una cartera con carpetas omitidas no cuenta como «sin obras»). Una
+   lista numerada de pasos, cada uno con su enlace; **sin botones**: el único principal sigue siendo «Nueva obra» del estado
+   vacío de la cartera. Al pie, «Ver las guías y el glosario».
 1. **Lo que requiere atención.** Los primeros cinco pendientes de la bandeja, del más urgente al menos urgente. Lo que
    bloquea lleva el ícono de error y su palabra; el aviso, el ícono de advertencia y su palabra. Un enlace lleva a la bandeja
    con el total. Sin pendientes, una sola línea: «No tiene pendientes por hacer.» (`LoQueBloquea.tsx`).
@@ -282,7 +287,7 @@ Las que tienen subvistas las muestran en su conmutador. Cada cuenta ve solo las 
 Versiones comparten el borrador de la obra (`ProveedorDeLaHoja`): pasar de una a otra no lo cierra ni pregunta. Quien
 solo revisa ve cada sección en solo lectura: lo que escribe no se pinta (no se deshabilita).
 
-- **Resumen** (`paginas/obras/`): las cifras de la obra, su versión vigente y lo pendiente, con la franja del paso.
+- **Resumen** (`paginas/obras/`): las cifras de la obra, su versión («Versión de la línea base» o, sin ella, «Versión vigente») y lo pendiente, con la franja del paso.
 - **Presupuesto** (`paginas/hoja/`, h1 «Presupuesto»; antes «Hoja de la obra»): una línea de estado bajo el h1 (versión,
   cambios, aprobación y total; `EstadoDelBorrador.tsx`), la franja del paso con «Descargar Excel» al lado y las pestañas «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y «Ajustes de
   costo»; «Espacio y metrajes» va delante en una obra con espacio. Son seis en una obra civil y siete con espacio (antes,
@@ -311,6 +316,23 @@ solo revisa ve cada sección en solo lectura: lo que escribe no se pinta (no se 
   conversión; «Registrar una cotización…» y «Retirar una cotización…» crean una versión desde la vigente y se avisa con el
   enlace para abrirla en el Presupuesto). Las dos últimas se montan al elegirlas. Quien revisa ve solo esas dos, sin
   controles que escriban.
+
+### Ayuda de cada pantalla
+
+F7, A1 (`comun/ayuda/AyudaDeLaPantalla.tsx`, textos en `comun/ayuda/textos.ts`). Cada pantalla de la obra (secciones y
+subvistas), de Producción, Auditoría y Precios y la bandeja de Pendientes lleva **un** «¿Qué es esto?»: el mismo `QueEsEsto`
+plegado de las pestañas del Presupuesto, no otro patrón. Lo pone el marco (`EspacioDeObra`, `EspacioDeHerramientas`,
+`EspacioDeInicio`) en una fila propia entre la barra de vistas y la pantalla, así que va justo encima del h1; la pantalla baja
+su margen superior a 0,5 rem, como tras el conmutador de subvistas. La región se llama como el h1 de la pantalla, dice para qué
+sirve y cuándo usarla y, al pie, enlaza su guía («Guía «…»») y los términos del glosario que la pantalla usa sin explicar.
+Excepciones: el Presupuesto no lo lleva (cada pestaña trae el suyo) ni una pantalla que la cuenta no puede usar.
+
+**La Ayuda de la Cuenta** (`comun/ayuda/AyudaDeSilice.tsx`, dentro de «Ayuda y acerca de Sílice»): bajo el h1, el índice
+«En esta ayuda» y tres partes con su h2, separadas por un divisor de 1 px: «Empieza aquí» (la primera vez y lo primero de cada
+papel), «Guías por tarea» (un h3 por guía, pasos numerados) y «Glosario» (una lista de definición). Después, la versión del
+programa y los recorridos guiados. Cada parte se enlaza con `#/cuenta/ayuda?tema=<parte>` y el enlace lleva el foco a ella (con
+el enrutador de hash un ancla cambiaría la ruta). Los enlaces de la ayuda viven en el lienzo y preguntan antes de salir con
+cambios sin guardar, como los de la barra de espacio.
 
 En cada sección: un solo h1, un solo botón principal a la vista (con un diálogo abierto, el del diálogo; el de detrás pasa
 a secundario) y nada de desplazamiento horizontal a 1056, 1366 y 1910 px con las tres letras.
@@ -353,8 +375,13 @@ de una partida, el registro de cambios de una versión, Componer y el informe de
   velo) y es la excepción del foco: atrapa Tab dentro del panel, porque el diálogo del que sale queda oculto debajo.
   **Esc en Componer** (pulido F5, H6): fuera de un campo, un Esc cierra el panel y el foco vuelve a «Partida»; en un campo
   de texto que cambió desde que recibió el foco, el primer Esc lo devuelve a ese valor (como las celdas de la Hoja) y el
-  segundo cierra; con una lista de sugerencias abierta, Esc la cierra primero. De vuelta en «Partida», lo que se usó para
+  segundo cierra (en «Código», lo elegido de la lista cuenta como confirmado: lo tecleado después vuelve al código elegido y, con el código igual al elegido, Esc cierra); con una lista de sugerencias abierta, Esc la cierra primero. De vuelta en «Partida», lo que se usó para
   componer no cuenta como elegido: el Esc siguiente cierra el diálogo.
+- **Descripción de los insumos en Componer** (AC1): cada celda «Descripción, fila N» es un `CampoConBusqueda` en celda (sin etiqueta a la vista ni botón «Borrar»; Esc con la lista cerrada no borra lo elegido) con las sugerencias de «insumos» (materiales y equipos) o «salarios_cct» (mano de obra); al elegir llena unidad y precio (con coma) y lo escrito aparte queda avisado con «Descripción propia: no viene del catálogo.». El precio es el de la lista para armar a la «Fecha» de la composición y llega en la misma respuesta (`detalle`, `para_armar_al`; AC1b); en otra moneda que la de la carpeta no se copia y la celda del precio o del sueldo lo dice como texto de ayuda («El catálogo lo tiene en USD; escriba el precio en Bs.»), también en la región viva del campo. Cada sugerencia dice «código · unidad · 18,00 Bs · lista del 01/07/2026 · material» o «sin precio en la lista para armar». La fila recuerda qué celdas llenó el catálogo: al elegir otro insumo, esas se reemplazan o se vacían y lo que escribió la persona no se pisa («El catálogo tiene 18,00 Bs; se conserva el precio que escribió.»). Si cambia la «Fecha» y con ella rige otra lista, un precio que llenó el catálogo se queda con el aviso «Precio de la lista del 01/07/2026; con la fecha 20/10/2026 rige la del 01/10/2026; revise.» (o «puede regir otra lista» si no se pudo comprobar), junto a «Fecha» se anuncia una vez cuántos precios hay que revisar y los resultados viejos no se pueden elegir. Solo cuenta como de la persona lo que tecleó (por valor: si la celda vuelve al valor que puso el catálogo, sigue siendo del catálogo). Al elegir otro insumo, lo que vino de la precarga o de MaPreX se reemplaza o se quita y se dice («Se cambió el precio 5,00 por el del catálogo, 18,00 Bs.»; «Se quitó el precio 5,00: este insumo no tiene precio en la lista.»); lo que puso el catálogo se reemplaza o se vacía sin aviso, porque la sugerencia elegida ya mostraba su precio o «sin precio en la lista para armar». En el panel de Componer, Esc no deja la fila a medias (`llenaOtrasCeldas`).
+- **Origen de cada dato de la fila de insumos** (AC1, ronda 2): en Componer solo es «de la persona» lo que se tecleó en esa celda; lo que trajo la precarga de una partida guardada o «Usar esta fila» de MaPreX se reemplaza (o se quita) al elegir otro insumo del catálogo y la celda y la región viva lo dicen («Se cambió el precio 5,00 por el del catálogo, 18,00 Bs.»); el aviso de lista de otra fecha solo sale si la lista de la «Fecha» es otra y junto a «Fecha» se anuncia cuántos precios son de otra lista.
+- **Origen de la descripción y la unidad de la cabecera** (D17, ronda 3): al elegir una partida del catálogo en «Código» siempre se ponen su descripción y su unidad (el servidor no deja guardar una partida existente con otra); si se reemplaza algo que la persona tecleó, o con lo que llegó la pantalla, una región viva bajo la cabecera lo dice: «Se cambió la descripción «X» por la del catálogo, «Y».» (igual para la unidad; si son ambas, unidas por un espacio). Lo vacío, lo que ya coincide y lo que puso el catálogo antes se reemplazan sin aviso. Cualquier otro cambio del código (teclear, «Usar … como código») vacía la descripción y la unidad que puso el catálogo y deja lo tecleado; si el código vuelve al elegido, se devuelven. Teclear en «Código» limpia el aviso. Vale en la pantalla y en el panel de la Hoja.
+- **Descripción exacta de un insumo en Escenarios y Simulador** (AC3): «Insumo N» (precios de ensayo) es un `CampoConBusqueda` en celda y «Insumos» del Simulador una `SeleccionMultipleConBusqueda` (campo con búsqueda más etiquetas quitables, «Quitar X», Retroceso con el campo vacío quita la última, anuncio en región viva), ambos sobre `buscadorDeInsumosYOficios` (`insumos` y `salarios_cct` con `detalle`: se guarda la descripción, no la etiqueta con código). No hay «usar tal cual»: el cálculo y la simulación ignoran en silencio la descripción que no existe. En Escenarios lo escrito a mano se puede enviar y queda avisado, y la respuesta dice qué precios de ensayo no cambiaron nada (`precios_sin_insumo`, `precios_sin_cambio`); en el Simulador solo entra lo elegido y a la API va una lista (`list[str]`), así que una descripción con coma ya entra.
+- **Partida, serie, unidad, moneda, versión y proveedor guiados** (AC2, AC4): «Partida» en Control (valuación y costo real) y en Reajuste sugiere solo las partidas de la versión del contrato (`GET /v1/control/partidas?corte=`, `GET /v1/reajuste/partidas`); en una valuación no se admite una fuera del contrato, salvo que la lista venga recortada (`truncada`), y en costo real sí. «Serie» sale de `GET /v1/reajuste/series`. «Unidad» (cabecera y materiales de Componer, insumo nuevo del APU) sugiere las unidades del catálogo agrupadas con el normalizador del núcleo (`GET /v1/consulta/unidades`) y admite una propia. «Moneda» de Actualizar precios y «Versión de comprobación» de Reajuste son `Select`. «Proveedor» al cotizar sugiere los de cotizaciones activas con su último uso (`GET /v1/consulta/proveedores`) y admite uno nuevo. En una celda, el campo va sin etiqueta a la vista ni botón «Borrar».
 
 ### Filas afectadas
 

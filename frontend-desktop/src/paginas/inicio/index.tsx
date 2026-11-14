@@ -4,6 +4,8 @@ import type { ResumenTodasRespuesta } from "../../api/tipos";
 import { rutaOPendientes } from "../../marco/espacios";
 import { obrasConMismoNombre } from "../../marco/homonimas";
 import { useAplicacion } from "../../shell/contexto";
+import { EmpiezaAqui } from "../../comun/ayuda/BloqueEmpiezaAqui";
+import { pasosDeEmpiezaAqui } from "../../comun/ayuda/empiezaAqui";
 import { claveDeObra } from "../pendientes/logica";
 import { CarteraYAvance } from "./CarteraYAvance";
 import { LoQueBloquea } from "./LoQueBloquea";
@@ -12,14 +14,15 @@ import type { ExistenciaRespuesta } from "./PanelArenera";
 import { TEXTOS } from "./textos";
 import { UltimasAuditorias } from "./UltimasAuditorias";
 import type { AuditoriaGuardadaRespuesta } from "./UltimasAuditorias";
-import { useCarga } from "./useCarga";
+import { useCarga } from "../../comun/useCarga";
 
 const RUTA_CARTERA = "/v1/obras/resumen/todas";
 const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 const RUTA_ARENERA = "/v1/produccion/existencias";
+const RUTA_CUENTAS = "/v1/cuentas";
 
-// La Vista general (`#/inicio/general`; plan F6, T8; contrato de rutas 4; diseño visual B): lo primero es lo que bloquea (los
-// pendientes del marco), después la cartera por moneda y el avance de cada obra contra el plan (una lectura de
+// La Vista general (`#/inicio/general`; plan F6, T8; contrato de rutas 4; diseño visual B): la primera vez, «Empieza aquí»
+// (F7, A4); después, lo que bloquea (los pendientes del marco), la cartera por moneda y el avance de cada obra contra el plan (una lectura de
 // `GET /v1/obras/resumen/todas`), las últimas auditorías y, solo con `operar_arenera` y su especialidad encendida, la arenera.
 // Cada bloque lee y falla por su cuenta: uno que falla dice su error y no tumba a los demás. La pantalla no calcula nada: las
 // cifras son las del servidor, solo formateadas.
@@ -31,6 +34,14 @@ export default function Panorama() {
   const cartera = useCarga<ResumenTodasRespuesta>(puedeLeer ? RUTA_CARTERA : null, alExpirar);
   const auditorias = useCarga<AuditoriaGuardadaRespuesta[]>(puedeLeer ? RUTA_AUDITORIAS : null, alExpirar);
   const arenera = useCarga<ExistenciaRespuesta[]>(puedeVerArenera ? RUTA_ARENERA : null, alExpirar);
+  // F7, A4: «Empieza aquí» se deriva de lo que ya se sabe (la cartera) y, para quien administra, de cuántas cuentas activas
+  // hay. Una cartera con carpetas que no se pudieron leer no dice que no haya obras.
+  const cuentas = useCarga<{ cuentas: { activa: boolean }[] }>(sesion.acciones.includes("administrar_cuentas") ? RUTA_CUENTAS : null, alExpirar);
+  const pasos = pasosDeEmpiezaAqui({
+    acciones: sesion.acciones,
+    obras: cartera.estado === "listo" && cartera.datos.carpetas_omitidas === 0 ? cartera.datos.obras.length : null,
+    cuentasActivas: cuentas.estado === "listo" ? cuentas.datos.cuentas.filter((c) => c.activa).length : null,
+  });
 
   // La carpeta de las obras que se llaman igual en carpetas distintas: sale de la misma cartera (que lista todas las obras
   // que la cuenta puede abrir), así la Vista general no pide otra vez la lista de obras.
@@ -44,6 +55,7 @@ export default function Panorama() {
       <h1 className="cds--type-heading-04" tabIndex={-1}>
         {TEXTOS.titulo}
       </h1>
+      <EmpiezaAqui pasos={pasos} acciones={sesion.acciones} />
       <LoQueBloquea carpetaDe={(p) => carpetas.get(claveDeObra(p.carpeta, p.obra_id))} />
       <CarteraYAvance carga={cartera} carpetas={carpetas} puedeCrear={sesion.acciones.includes("editar_hoja")} alCrear={abrirNuevaObra} />
       {puedeLeer && (

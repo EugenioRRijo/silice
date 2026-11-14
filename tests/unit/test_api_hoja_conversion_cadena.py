@@ -70,8 +70,8 @@ BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
     "programa."
 )
-FALTA_PROYECTO = "El proyecto «Z» no existe en este caso."
-FORMA_CADENA = "Indique el proyecto (código o nombre) de hasta 500 caracteres."
+FALTA_PROYECTO = "La obra «Z» no existe en esta carpeta."
+FORMA_CADENA = "Indique la obra (código o nombre) de hasta 500 caracteres."
 ROTA_REGISTRO = (
     "Cadena rota en la versión 002: su registro de cambios no coincide con su huella; alguien "
     "cambió la base fuera del sistema. Revíselo con el administrador antes de entregar un paquete."
@@ -327,7 +327,7 @@ def test_la_cadena_sana_esta_integra_y_lo_dice(_entorno) -> None:
     assert respuesta.headers["cache-control"] == "no-store"
     assert respuesta.json() == {
         "integra": True,
-        "mensaje": "Cadena íntegra: 1 versiones",
+        "mensaje": "Cadena íntegra: 1 versión",
         "declaracion": None,
         "rota_en": None,
     }

@@ -260,7 +260,7 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     expect(escriturasDeApu()).toHaveLength(0);
     await pausa(1);
     expect(escriturasDeApu()).toEqual([
-      { rev: 0, rendimiento: "20", materiales: ["2.5"], equipos: ["1"], mano_obra: ["1", "1"] },
+      { rev: 0, rendimiento: "20", materiales: ["2.5"], equipos: ["1"], mano_obra: ["1", "1"], desperdicios: [""] },
     ]);
     expect(llamadasA("PUT", /\/apu\/AF-LLAVE$/)).toHaveLength(1);
     await esperar(() => within(regionDeEstado()).getByText(/· 1 cambio sin guardar/));
@@ -277,7 +277,7 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     fireEvent.change(campo("Cantidad, Mano de obra fila 2"), { target: { value: "0,5" } });
     await pausa(400);
     expect(escriturasDeApu()).toEqual([
-      { rev: 0, rendimiento: "25,5", materiales: ["1"], equipos: ["1"], mano_obra: ["1", "0,5"] },
+      { rev: 0, rendimiento: "25,5", materiales: ["1"], equipos: ["1"], mano_obra: ["1", "0,5"], desperdicios: [""] },
     ]);
   });
 
@@ -333,6 +333,39 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     expect(await esperar(() => aviso())).toHaveTextContent(`${DETALLE}. La hoja sigue con el último APU válido.`);
     expect(campo("Rendimiento (unidades por día)")).toHaveAttribute("aria-invalid", "true");
     expect(campo("Cantidad, Materiales fila 1")).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  test("teclear un desperdicio manda el porcentaje y la cantidad neta en el PUT", async () => {
+    await irAApu();
+    relojFalso();
+    fireEvent.change(campo("Desperdicio en porcentaje, Materiales fila 1"), { target: { value: "5" } });
+    await pausa(400);
+    await esperar(() => expect(escriturasDeApu()).toHaveLength(1));
+    expect(escriturasDeApu()[0]).toEqual({
+      rev: 0,
+      rendimiento: "20",
+      materiales: ["1"],
+      equipos: ["1"],
+      mano_obra: ["1", "1"],
+      desperdicios: ["5"],
+    });
+  });
+
+  test("422 del desperdicio: marca el campo del porcentaje con aria-invalid y lo liga al error", async () => {
+    await irAApu();
+    relojFalso();
+    const DETALLE =
+      "materiales, fila 1: el desperdicio «x» no se entiende como número. Use la coma para los decimales.";
+    alPonerApu = () => json({ detalle: DETALLE }, 422);
+    fireEvent.change(campo("Desperdicio en porcentaje, Materiales fila 1"), { target: { value: "x" } });
+    await pausa(400);
+    // El detalle ya termina en punto: la frase de la clásica va detrás, sin otro.
+    expect(await esperar(() => aviso())).toHaveTextContent(`${DETALLE} La hoja sigue con el último APU válido.`);
+    const invalido = campo("Desperdicio en porcentaje, Materiales fila 1");
+    await esperar(() => expect(invalido).toHaveAttribute("aria-invalid", "true"));
+    expect(invalido).toHaveValue("x");
+    expect(document.getElementById(invalido.getAttribute("aria-describedby")!)).toHaveTextContent(DETALLE);
+    expect(campo("Cantidad neta, Materiales fila 1")).not.toHaveAttribute("aria-invalid", "true");
   });
 
   test("un 422 que no nombra rubro ni rendimiento se muestra completo y no marca ninguna celda", async () => {
@@ -417,7 +450,14 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     await pausa(400);
     await esperar(() => expect(escriturasDeApu()).toHaveLength(2));
     expect(fetchFalso.mock.calls.some(([r, i]) => i?.method === "PUT" && String(r) === `/v1/hoja/borradores/${ID}/apu/AF-CODO-1%2F2`)).toBe(true);
-    expect(escriturasDeApu()[1]).toEqual({ rev: 1, rendimiento: "40", materiales: ["3"], equipos: [], mano_obra: ["0.5"] });
+    expect(escriturasDeApu()[1]).toEqual({
+      rev: 1,
+      rendimiento: "40",
+      materiales: ["3"],
+      equipos: [],
+      mano_obra: ["0.5"],
+      desperdicios: [""],
+    });
   });
 
   test("la búsqueda de partida sigue siendo del servidor y no pierde lo escrito en el editor", async () => {

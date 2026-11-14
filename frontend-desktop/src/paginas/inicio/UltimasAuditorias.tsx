@@ -3,7 +3,7 @@ import { TableHeader } from "../../comun/carbonEs";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
-import type { Carga } from "./useCarga";
+import type { Carga } from "../../comun/useCarga";
 import { TEXTOS } from "./textos";
 
 // Una auditoria guardada (GET /v1/auditorias-libro). Solo resumen: el libro y el PDF nunca se guardan.

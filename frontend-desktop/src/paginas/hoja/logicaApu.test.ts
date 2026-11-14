@@ -6,7 +6,10 @@ import {
   LIMITE_DE_INSUMOS,
   TIPOS_DE_LINEA,
   cambiarCantidadDeLinea,
+  cambiarDesperdicioDeLinea,
   cambiarRendimiento,
+  conLineaAgregada,
+  conLineaQuitada,
   cuerpoDeApu,
   cuerpoDeInsumo,
   insumosVisibles,
@@ -14,6 +17,7 @@ import {
   rutaDeInsumo,
   rutaDeInsumos,
   sembrarApu,
+  estadosDeLaPartida,
   textoDeEstado,
   ubicarErrorDeApu,
 } from "./logicaApu";
@@ -45,6 +49,31 @@ describe("lo que se edita del APU", () => {
     expect(sembrarApu(detalle)).toEqual({
       rendimiento: "20",
       cantidades: { materiales: ["1"], equipos: ["1"], "mano de obra": ["1", "1"] },
+      desperdicios: [""],
+    });
+  });
+
+  test("en Materiales, la fila con desperdicio siembra su neta como cantidad y su porcentaje en desperdicios", () => {
+    const base = vistaApu().detalle!;
+    const detalle = {
+      ...base,
+      grupos: base.grupos.map((g, i) =>
+        i === 0
+          ? {
+              ...g,
+              filas: [
+                { descripcion: "Arena ficticia", unidad: "m3", cantidad: "1,2", precio: "10" },
+                { descripcion: "Ligante ficticio", unidad: "l", cantidad: "0,52", precio: "2,00" },
+              ],
+            }
+          : g,
+      ),
+      desperdicios: [{ fila: 2, texto: "0,50 + 4 %", neta: "0,50", porcentaje: "4" }],
+    };
+    expect(sembrarApu(detalle)).toEqual({
+      rendimiento: "20",
+      cantidades: { materiales: ["1,2", "0,50"], equipos: ["1"], "mano de obra": ["1", "1"] },
+      desperdicios: ["", "4"],
     });
   });
 
@@ -58,15 +87,34 @@ describe("lo que se edita del APU", () => {
     expect(cambiarRendimiento(base, "25").cantidades).toEqual(base.cantidades);
   });
 
-  test("el cuerpo de E6 lleva rev, rendimiento y las cantidades por línea, tal como se escribieron", () => {
-    const base = cambiarRendimiento(cambiarCantidadDeLinea(sembrarApu(vistaApu().detalle!), "materiales", 0, "007e3"), "1e1");
+  test("el cuerpo de E6 lleva rev, rendimiento, cantidades y desperdicios por línea, tal como se escribieron", () => {
+    const sembrado = sembrarApu(vistaApu().detalle!);
+    const conNeta = cambiarCantidadDeLinea(sembrado, "materiales", 0, "007e3");
+    const conDesp = cambiarDesperdicioDeLinea(conNeta, 0, "4,5");
+    const base = cambiarRendimiento(conDesp, "1e1");
+    expect(sembrado.desperdicios).toEqual([""]);
     expect(cuerpoDeApu(4, base)).toEqual({
       rev: 4,
       rendimiento: "1e1",
       materiales: ["007e3"],
       equipos: ["1"],
       mano_obra: ["1", "1"],
+      desperdicios: ["4,5"],
     });
+  });
+
+  test("agregar o quitar una línea de materiales agrega o quita su desperdicio en la misma posición", () => {
+    const base = cambiarDesperdicioDeLinea(sembrarApu(vistaApu().detalle!), 0, "4");
+    const agregada = conLineaAgregada(base, "materiales", "2");
+    expect(agregada.cantidades.materiales).toEqual(["1", "2"]);
+    expect(agregada.desperdicios).toEqual(["4", ""]);
+    const conSegundo = cambiarDesperdicioDeLinea(agregada, 1, "6");
+    const quitada = conLineaQuitada(conSegundo, "materiales", 0);
+    expect(quitada.cantidades.materiales).toEqual(["2"]);
+    expect(quitada.desperdicios).toEqual(["6"]);
+    // En otro rubro los desperdicios de materiales no cambian.
+    expect(conLineaAgregada(conSegundo, "equipos", "3").desperdicios).toEqual(["4", "6"]);
+    expect(conLineaQuitada(conSegundo, "equipos", 0).desperdicios).toEqual(["4", "6"]);
   });
 
   test("el cuerpo de E7 lleva rev, tipo, índice desde 0 y el código del insumo", () => {
@@ -84,6 +132,14 @@ describe("lo que se edita del APU", () => {
 
 describe("dónde está el error de un 422", () => {
   test.each([
+    [
+      "materiales, fila 2: el desperdicio «x» no se entiende como número. Use la coma para los decimales.",
+      { campo: "desperdicio", fila: 2 },
+    ],
+    [
+      "materiales, fila 1: el desperdicio «150» debe estar entre 0 y 100 (es un porcentaje: 4 es 4 %).",
+      { campo: "desperdicio", fila: 1 },
+    ],
     ["materiales, fila 2: la cantidad no puede ser negativa", { campo: "linea", grupo: "materiales", fila: 2 }],
     ["equipos, fila 1: cantidad: 'x' no es un numero decimal valido", { campo: "linea", grupo: "equipos", fila: 1 }],
     ["mano de obra, fila 12: cantidad: 'NaN' no es un monto finito", { campo: "linea", grupo: "mano de obra", fila: 12 }],
@@ -123,6 +179,22 @@ describe("el Estado de la partida", () => {
 
   test("un texto que no trae el prefijo queda igual", () => {
     expect(textoDeEstado("ERROR: algo")).toBe("ERROR: algo");
+  });
+
+  test("E2E-3: la misma partida en tres renglones no repite el mismo aviso tres veces (el servidor lo permuta)", () => {
+    // Cada renglón trae primero su propio hallazgo y después los de la partida: el mismo conjunto en otro orden.
+    const r1 = (n: number) => `R1 la cantidad del renglón ${n} es manual`;
+    expect(
+      estadosDeLaPartida([
+        `Estado de X-01|1: ADVERTENCIA: ${r1(1)}; ${r1(2)}; ${r1(3)}`,
+        `Estado de X-01|2: ADVERTENCIA: ${r1(2)}; ${r1(1)}; ${r1(3)}`,
+        `Estado de X-01|3: ADVERTENCIA: ${r1(3)}; ${r1(1)}; ${r1(2)} | ERROR: otro`,
+      ]),
+    ).toEqual([`ADVERTENCIA: ${r1(1)}; ${r1(2)}; ${r1(3)}`, `ADVERTENCIA: ${r1(3)}; ${r1(1)}; ${r1(2)} | ERROR: otro`]);
+  });
+
+  test("E2E-3: estados distintos se conservan, en su orden", () => {
+    expect(estadosDeLaPartida(["Estado de A|1: ERROR: a", "Estado de A|2: ADVERTENCIA: b"])).toEqual(["ERROR: a", "ADVERTENCIA: b"]);
   });
 });
 

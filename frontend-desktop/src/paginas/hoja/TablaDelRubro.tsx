@@ -1,19 +1,33 @@
 import { Button } from "@carbon/react";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
+import { leerCifra } from "../../indicadores/cifraEscrita";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { TablaPaginada } from "./TablaPaginada";
 import { enteroDeDigitos } from "./logica";
-import type { GrupoApu } from "./logica";
+import type { DesperdicioDeApu, GrupoApu } from "./logica";
 import type { EdicionDeApu, LineaApu, UbicacionDeApu } from "./logicaApu";
 
 // Una tabla del APU por rubro (materiales, equipos, mano de obra) con su subtotal. Sale de `PestanaApu.tsx` en la Tarea 7
 // del plan F4 junto con `EditorDeApu`, que la usa en la pestaña y en el panel lateral; aparte porque es una pieza con sus
 // propias columnas y el editor ya es largo.
 
+// Dos textos que escriben la misma cifra («0,5» y «0,50», «1234,5» y «1.234,5», « 4» y «4»), con la regla de
+// `leerCifra` y sin ceros decimales de más: solo texto, sin aritmética (árbitro del 2026-11-13, M5). Lo que no se lee
+// como cifra solo es igual a sí mismo.
+function mismaCifra(a: string, b: string): boolean {
+  const canonica = (texto: string) => {
+    const lectura = leerCifra(texto);
+    return "valor" in lectura ? lectura.valor.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "") : null;
+  };
+  const [x, y] = [canonica(a), canonica(b)];
+  return x !== null && y !== null ? x === y : a === b;
+}
+
 const NUMERICAS = new Set(["precio", "depreciacion", "sueldo"]);
 
 const idDeCantidad = (rubro: string, n: number) => `hoja-apu-${rubro.replace(/\s+/g, "-")}-${n}`;
+const idDeDesperdicio = (rubro: string, n: number) => `hoja-apu-desperdicio-${rubro.replace(/\s+/g, "-")}-${n}`;
 const idDeCambiar = (rubro: string, n: number) => `hoja-apu-cambiar-${rubro.replace(/\s+/g, "-")}-${n}`;
 const idDeQuitar = (rubro: string, n: number) => `hoja-apu-quitar-${rubro.replace(/\s+/g, "-")}-${n}`;
 
@@ -29,6 +43,10 @@ export function TablaDelRubro({
   alRestaurar,
   alQuitar,
   alCambiarInsumo,
+  conDesperdicio = false,
+  desperdicios = [],
+  alCambiarDesperdicio,
+  alRestaurarDesperdicio,
 }: {
   grupo: GrupoApu;
   moneda: string;
@@ -44,8 +62,16 @@ export function TablaDelRubro({
   alQuitar: (linea: LineaApu) => void;
   // Abre el diálogo único de las líneas en modo «cambiar» (Tarea 8); se pinta donde se pinta «Quitar».
   alCambiarInsumo: (linea: LineaApu) => void;
+  // Solo Materiales edita el porcentaje de desperdicio junto a su cantidad neta.
+  conDesperdicio?: boolean;
+  // F5 vial: la neta, el porcentaje y la traza de cada fila (desde 1) que el servidor reconoce como de su desperdicio.
+  desperdicios?: DesperdicioDeApu[];
+  alCambiarDesperdicio?: (indice: number, texto: string) => void;
+  alRestaurarDesperdicio?: (indice: number) => void;
 }) {
-  const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(grupo.clave, desde + paso))?.focus();
+  const mover = (idDe: (rubro: string, n: number) => string, desde: number, paso: 1 | -1) =>
+    document.getElementById(idDe(grupo.clave, desde + paso))?.focus();
+  const porFila = new Map(desperdicios.map((d) => [d.fila, d]));
   const columnas: ColumnaDensa[] = grupo.columnas.map((c) => {
     if (c.clave === "cantidad") {
       return {
@@ -55,17 +81,19 @@ export function TablaDelRubro({
         numerica: true,
         celda: (f) => {
           const n = enteroDeDigitos(f.n!);
+          const tieneDesperdicio = conDesperdicio && (edicion.desperdicios[n - 1] ?? "").trim() !== "";
+          const rotulo = tieneDesperdicio ? "Cantidad neta" : "Cantidad";
           return (
             <CampoDeCelda
               soloLectura={soloLectura}
               id={idDeCantidad(grupo.clave, n)}
-              etiqueta={`Cantidad, ${grupo.rotulo} fila ${n}`}
+              etiqueta={`${rotulo}, ${grupo.rotulo} fila ${n}`}
               valor={edicion.cantidades[grupo.clave]?.[n - 1] ?? f.cantidad!}
               invalido={ubicacion?.campo === "linea" && ubicacion.grupo === grupo.clave && ubicacion.fila === n}
               descripcionId={idDelError}
               alCambiar={(texto) => alCambiar(n - 1, texto)}
               alRestaurar={() => alRestaurar(n - 1)}
-              alMover={(paso) => mover(n, paso)}
+              alMover={(paso) => mover(idDeCantidad, n, paso)}
             />
           );
         },
@@ -80,6 +108,49 @@ export function TablaDelRubro({
       ...(NUMERICAS.has(c.clave) ? { numerica: true } : {}),
     };
   });
+  if (conDesperdicio) {
+    const despues = columnas.findIndex((c) => c.clave === "cantidad") + 1;
+    columnas.splice(despues, 0, {
+      clave: "desperdicio",
+      titulo: "Desperdicio (%)",
+      ordenable: false,
+      numerica: true,
+      celda: (f) => {
+        const n = enteroDeDigitos(f.n!);
+        return (
+          <CampoDeCelda
+            soloLectura={soloLectura}
+            id={idDeDesperdicio(grupo.clave, n)}
+            etiqueta={`Desperdicio en porcentaje, ${grupo.rotulo} fila ${n}`}
+            valor={edicion.desperdicios[n - 1] ?? ""}
+            invalido={ubicacion?.campo === "desperdicio" && ubicacion.fila === n}
+            descripcionId={idDelError}
+            alCambiar={(texto) => alCambiarDesperdicio?.(n - 1, texto)}
+            alRestaurar={() => alRestaurarDesperdicio?.(n - 1)}
+            alMover={(paso) => mover(idDeDesperdicio, n, paso)}
+          />
+        );
+      },
+    });
+  }
+  if (desperdicios.length > 0) {
+    const tras = columnas.findIndex((c) => c.clave === (conDesperdicio ? "desperdicio" : "cantidad")) + 1;
+    columnas.splice(tras, 0, {
+      clave: "cantidad_con_desperdicio",
+      titulo: "Cantidad con desperdicio",
+      ordenable: false,
+      numerica: true,
+      // Si se cambia la neta o el porcentaje, el producto calculado por el servidor ya no corresponde a lo escrito.
+      celda: (f) => {
+        const n = enteroDeDigitos(f.n!);
+        const traza = porFila.get(n);
+        if (!traza) return "";
+        const neta = edicion.cantidades[grupo.clave]?.[n - 1] ?? f.cantidad;
+        const porcentaje = edicion.desperdicios[n - 1] ?? "";
+        return mismaCifra(neta, traza.neta) && mismaCifra(porcentaje, traza.porcentaje) ? (f.cantidad ?? "") : "";
+      },
+    });
+  }
   if (quitable) {
     columnas.push({
       clave: "cambiar",

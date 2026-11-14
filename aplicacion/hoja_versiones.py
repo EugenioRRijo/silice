@@ -27,12 +27,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aplicacion import entrega, hoja
 from aplicacion.entrega import EstadoDeLaCadena, con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.proyectos import resolver_proyecto
+from core import models
 from core.catalog import Catalogo
 
 __all__ = [
@@ -42,16 +44,40 @@ __all__ = [
     "convertir",
     "cotizar",
     "estado_de_la_cadena",
+    "fuentes_de_versiones",
     "restaurar",
     "retirar_cotizacion",
 ]
 
 
+def fuentes_de_versiones(sesion: Session, proyecto: str) -> dict[str, str]:
+    """La fuente que escribió quien creó cada versión de `proyecto` (su nombre), por código: la de
+    su registro de cambios; si los registros traen fuentes distintas, todas, en el orden en que se
+    guardaron y separadas por « · ». Una versión sin registro no sale (E2E-3: la columna «Motivo» de
+    Versiones decía la clave del servidor, «edicion», y no lo escrito). Solo lee."""
+    filas = sesion.execute(
+        select(models.Presupuesto.codigo, models.RegistroCambio.fuente)
+        .join(models.Proyecto, models.Proyecto.id == models.Presupuesto.proyecto_id)
+        .join(
+            models.RegistroCambio,
+            models.RegistroCambio.version_resultante_id == models.Presupuesto.id,
+        )
+        .where(models.Proyecto.nombre == proyecto)
+        .order_by(models.RegistroCambio.id)
+    ).all()
+    fuentes: dict[str, list[str]] = {}
+    for codigo, fuente in filas:
+        texto = fuente.strip()
+        if texto and texto not in fuentes.setdefault(codigo, []):
+            fuentes[codigo].append(texto)
+    return {codigo: " · ".join(lista) for codigo, lista in fuentes.items() if lista}
+
+
 class ProyectoInexistente(Exception):  # noqa: N818
-    """El proyecto (codigo o nombre) no existe en este caso."""
+    """El proyecto (codigo o nombre) no existe en esta carpeta."""
 
     def __init__(self, referencia: str) -> None:
-        super().__init__(f"El proyecto «{referencia}» no existe en este caso.")
+        super().__init__(f"La obra «{referencia}» no existe en esta carpeta.")
 
 
 class VersionInexistente(Exception):  # noqa: N818

@@ -93,6 +93,9 @@ const MORTERO = insumo("MAT-020", "Mortero premezclado", "m2", "4.00");
 
 type Cuerpo = Record<string, unknown> & { rev: number };
 
+// AC4: las unidades que ya usa el catalogo de la carpeta (`GET /v1/consulta/unidades`).
+const UNIDADES = { unidades: [{ unidad: "m3", usos: 4, grafias: ["m3"] }, { unidad: "saco", usos: 2, grafias: ["saco"] }] };
+
 describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tarea 26)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
@@ -138,6 +141,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
         const r = candidatos(url);
         return r instanceof Response ? r : json(r);
       }
+      if (camino === "/v1/consulta/unidades") return json(UNIDADES);
       if (camino.endsWith("/vistas/apu")) return json(apu);
       if (camino.endsWith("/vistas/espacio")) return json(vistaEspacio());
       if (camino.endsWith("/vistas/parametros")) return json(parametros);
@@ -178,8 +182,30 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" });
     await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
-    await screen.findByRole("textbox", { name: "Cantidad, Materiales fila 1" });
+    await screen.findByRole("textbox", { name: /^Cantidad(?: neta)?, Materiales fila 1$/ });
   }
+
+  // F5 vial: el desperdicio editable y su resultado salen en Materiales y en ningún otro rubro.
+  test("el desperdicio de la línea de materiales sale junto a su cantidad, solo en Materiales", async () => {
+    const base = vistaApu().detalle!;
+    apu = vistaApu({
+      detalle: {
+        ...base,
+        desperdicios: [{ fila: 1, texto: "0,8 + 25 %", neta: "0,8", porcentaje: "25" }],
+      },
+    });
+    await irAApu();
+    const materiales = screen.getByRole("table", { name: /^Materiales/ });
+    expect(within(materiales).getByRole("columnheader", { name: "Desperdicio (%)" })).toBeTruthy();
+    expect(within(materiales).getByRole("columnheader", { name: "Cantidad con desperdicio" })).toBeTruthy();
+    expect(within(materiales).getByRole("textbox", { name: "Cantidad neta, Materiales fila 1" })).toHaveValue("0,8");
+    expect(
+      within(materiales).getByRole("textbox", { name: "Desperdicio en porcentaje, Materiales fila 1" }),
+    ).toHaveValue("25");
+    expect(within(materiales).getByText("1")).toBeTruthy();
+    expect(screen.getAllByRole("columnheader", { name: "Desperdicio (%)" })).toHaveLength(1);
+    expect(screen.getAllByRole("columnheader", { name: "Cantidad con desperdicio" })).toHaveLength(1);
+  });
 
   const regionDeEstado = () => screen.getByRole("region", { name: "Estado del borrador" });
   const campo = (nombre: string | RegExp) => screen.getByRole("textbox", { name: nombre });
@@ -216,8 +242,9 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await abrirDialogo();
     await elegirEnElBuscador("mort", /Mortero premezclado/);
     expect(urlsDeInsumos().some((u) => /tipo=material/.test(u) && /texto=mort/.test(u))).toBe(true);
-    expect(within(dialogo()).getByText("Precio de la lista de la versión: 4,00 USD por m2")).toBeInTheDocument();
+    expect(within(dialogo()).getByText("Precio de la lista de la versión: 4,00 USD por m²")).toBeInTheDocument();
     expect(within(dialogo()).queryByRole("textbox", { name: /Precio/ })).toBeNull(); // el precio no se teclea
+    expect(within(dialogo()).getByRole("textbox", { name: "Cantidad (m²)" })).toBeInTheDocument();
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "2");
     await userEvent.click(within(dialogo()).getByRole("button", { name: "Agregar al APU" }));
     await vi.waitFor(() => expect(altas()).toHaveLength(1));
@@ -243,7 +270,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await abrirDialogo();
     await elegirEnElBuscador("Concreto premezclado", "Insumo nuevo «Concreto premezclado»");
     const caja = dialogo();
-    await userEvent.type(within(caja).getByRole("textbox", { name: "Unidad" }), "m3");
+    await userEvent.type(within(caja).getByRole("combobox", { name: "Unidad" }), "m3");
     await userEvent.type(within(caja).getByRole("textbox", { name: "Precio (USD)" }), "95,00");
     await userEvent.type(within(caja).getByRole("textbox", { name: /^Cantidad/ }), "1,05");
     await userEvent.click(within(caja).getByRole("button", { name: "Agregar al APU" }));
@@ -261,13 +288,30 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     });
   });
 
+  test("AC4: la unidad de un material nuevo sugiere las del catálogo; la elegida es la que viaja", async () => {
+    candidatos = () => ({ insumos: [], hay_mas: false });
+    await irAApu();
+    await abrirDialogo();
+    await elegirEnElBuscador("Arena", "Insumo nuevo «Arena»");
+    const u = userEvent.setup();
+    const unidad = within(dialogo()).getByRole("combobox", { name: "Unidad" });
+    await u.type(unidad, "s");
+    await u.click(await screen.findByRole("option", { name: /^saco/ }));
+    expect(unidad).toHaveValue("saco");
+    await u.type(within(dialogo()).getByRole("textbox", { name: "Precio (USD)" }), "3");
+    await u.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "1");
+    await u.click(within(dialogo()).getByRole("button", { name: "Agregar al APU" }));
+    await vi.waitFor(() => expect(altas()).toHaveLength(1));
+    expect(altas()[0]).toMatchObject({ descripcion: "Arena", unidad: "saco" });
+  });
+
   test("un equipo nuevo pide la depreciación; la mano de obra, la modalidad y el jornal", async () => {
     candidatos = () => ({ insumos: [], hay_mas: false });
     await irAApu();
     await abrirDialogo();
     await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Tipo de línea" }), "equipo");
     await elegirEnElBuscador("Vibrador", "Insumo nuevo «Vibrador»");
-    expect(within(dialogo()).queryByRole("textbox", { name: "Unidad" })).toBeNull();
+    expect(within(dialogo()).queryByRole("combobox", { name: "Unidad" })).toBeNull();
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: "Precio (USD)" }), "30");
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Depreciación/ }), "0,5");
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "1");
@@ -337,10 +381,10 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
   });
 
   test.each([
-    [`La cantidad no se entiende como número. ${REGLA}`, /^Cantidad/],
-    [`El precio no se entiende como número. ${REGLA}`, "Precio (USD)"],
-    ["Escriba la unidad del material, por ejemplo m3.", "Unidad"],
-  ])("un 422 «%s» va a su campo, el diálogo sigue abierto y el foco va al campo", async (detalle, nombre) => {
+    [`La cantidad no se entiende como número. ${REGLA}`, /^Cantidad/, "textbox"],
+    [`El precio no se entiende como número. ${REGLA}`, "Precio (USD)", "textbox"],
+    ["Escriba la unidad del material, por ejemplo m3.", "Unidad", "combobox"],
+  ] as const)("un 422 «%s» va a su campo, el diálogo sigue abierto y el foco va al campo", async (detalle, nombre, rol) => {
     candidatos = () => ({ insumos: [], hay_mas: false });
     alAgregarLinea = () => json({ detalle }, 422);
     await irAApu();
@@ -348,7 +392,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await elegirEnElBuscador("Concreto", "Insumo nuevo «Concreto»");
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "1.05");
     await userEvent.click(within(dialogo()).getByRole("button", { name: "Agregar al APU" }));
-    const destino = within(dialogo()).getByRole("textbox", { name: nombre });
+    const destino = within(dialogo()).getByRole(rol, { name: nombre });
     await vi.waitFor(() => expect(destino).toHaveAttribute("aria-invalid", "true"));
     expect(within(dialogo()).getByText(detalle)).toBeInTheDocument();
     await vi.waitFor(() => expect(destino).toHaveFocus());
@@ -381,7 +425,9 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "2");
     await userEvent.click(within(dialogo()).getByRole("button", { name: "Agregar al APU" }));
     await vi.waitFor(() => expect(altas()).toHaveLength(1));
-    expect(escriturasDeApu()).toEqual([{ rev: 0, rendimiento: "20", materiales: ["1"], equipos: ["3"], mano_obra: ["1", "1"] }]);
+    expect(escriturasDeApu()).toEqual([
+      { rev: 0, rendimiento: "20", materiales: ["1"], equipos: ["3"], mano_obra: ["1", "1"], desperdicios: [""] },
+    ]);
     expect(altas()[0]!.rev).toBe(1);
   });
 
@@ -404,6 +450,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
       materiales: ["1", "2,5"],
       equipos: ["1"],
       mano_obra: ["1", "1"],
+      desperdicios: ["", ""],
     });
   });
 
@@ -438,12 +485,21 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await userEvent.click(screen.getByRole("button", { name: "Quitar Llave de bola PVC 1/2, Materiales fila 1" }));
     await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Quitar" }));
     await vi.waitFor(() => expect(bajas()).toHaveLength(1));
-    expect(escriturasDeApu()).toEqual([{ rev: 0, rendimiento: "20", materiales: ["1"], equipos: ["1"], mano_obra: ["1", "3"] }]);
+    expect(escriturasDeApu()).toEqual([
+      { rev: 0, rendimiento: "20", materiales: ["1"], equipos: ["1"], mano_obra: ["1", "3"], desperdicios: [""] },
+    ]);
     expect(bajas()[0]).toEqual({ rev: 1, tipo: "material", indice: 0 });
     await screen.findByText("Se quitó «Llave de bola PVC 1/2» de los materiales de AF-LLAVE.");
     fireEvent.change(campo("Cantidad, Mano de obra fila 1"), { target: { value: "2" } });
     await vi.waitFor(() => expect(escriturasDeApu()).toHaveLength(2));
-    expect(escriturasDeApu()[1]).toEqual({ rev: 2, rendimiento: "20", materiales: [], equipos: ["1"], mano_obra: ["2", "3"] });
+    expect(escriturasDeApu()[1]).toEqual({
+      rev: 2,
+      rendimiento: "20",
+      materiales: [],
+      equipos: ["1"],
+      mano_obra: ["2", "3"],
+      desperdicios: [],
+    });
   });
 
   test("quitar la última línea: el 422 se dice tal cual en el aviso del APU y la tabla no cambia", async () => {

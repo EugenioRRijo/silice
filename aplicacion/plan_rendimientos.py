@@ -4,8 +4,10 @@ La duración de cada partida es su cantidad entre el rendimiento de su APU (unid
 cuadrilla) y las cuadrillas que se le asignan, redondeada hacia arriba al medio día. Las partidas se
 encadenan en el orden del presupuesto: cada una empieza en el mayor fin alcanzado, salvo las
 marcadas en paralelo, que empiezan donde empezó la anterior. El plan sale en días hábiles («Dia n»,
-`FORMATO_PERIODO` del núcleo) o en semanas de 5 días hábiles («Semana n»), y entra al núcleo como
-dato (`PeriodoPlan`), igual que un plan editado a mano (choque 1 del plan): el núcleo no se toca.
+`FORMATO_PERIODO` del núcleo), en semanas de 5 días hábiles («Semana n») o, solo para la primera
+versión de una obra muy larga, en meses de 20 días hábiles («Mes n», `plan_que_cabe`), y entra al
+núcleo como dato (`PeriodoPlan`), igual que un plan editado a mano (choque 1 del plan): el núcleo
+no se toca.
 
 Así la curva, el punto de equilibrio y la detección de retrasos parten del tiempo que de verdad
 toma cada partida, no de «una partida por día» (`core.budget.plan_secuencial`), que hacía decir
@@ -39,12 +41,19 @@ __all__ = [
     "paralelas_del_plan",
     "plan_del_borrador",
     "plan_por_rendimientos",
+    "plan_que_cabe",
 ]
 
-Unidad = Literal["dia", "semana"]
+Unidad = Literal["dia", "semana", "mes"]
 
 #: Días hábiles de un período «Semana n».
 DIAS_POR_SEMANA = 5
+#: Días hábiles de un período «Mes n»: cuatro semanas de 5 (prueba de punta a punta 2026-11-13).
+DIAS_POR_MES = 20
+#: Días hábiles de un período de cada unidad.
+DIAS_POR_PERIODO: dict[str, int] = {"dia": 1, "semana": DIAS_POR_SEMANA, "mes": DIAS_POR_MES}
+#: El orden en que la primera versión prueba las unidades (`plan_que_cabe`).
+UNIDADES_DE_LA_PRIMERA: tuple[Unidad, ...] = ("dia", "semana", "mes")
 #: Los períodos que admite la matriz del plan (`api.esquemas_hoja.EdicionPlan`): un plan más largo
 #: no se podría ajustar a mano.
 MAXIMO_DE_PERIODOS = 500
@@ -53,6 +62,9 @@ MAXIMO_DE_PERIODOS = 500
 PASO_DE_FRACCION = Decimal("0.000001")
 MAXIMO_DE_CUADRILLAS = 99
 FORMATO_SEMANA = "Semana {n}"
+FORMATO_MES = "Mes {n}"
+_FORMATOS = {"dia": FORMATO_PERIODO, "semana": FORMATO_SEMANA, "mes": FORMATO_MES}
+_NOMBRES = {"semana": "semanas", "mes": "meses de 20 días hábiles"}
 
 CERO = Decimal(0)
 UNO = Decimal(1)
@@ -114,8 +126,7 @@ def duraciones(
 
 
 def _etiqueta(numero: int, unidad: Unidad) -> str:
-    formato = FORMATO_SEMANA if unidad == "semana" else FORMATO_PERIODO
-    return formato.format(n=numero)
+    return _FORMATOS[unidad].format(n=numero)
 
 
 def _entero_con_miles(numero: int) -> str:
@@ -136,7 +147,33 @@ def plan_por_rendimientos(
     de la partida absorbe el residuo para que sume exactamente 1. `PlanDemasiadoLargo` si pasa de
     `MAXIMO_DE_PERIODOS`.
     """
-    por_periodo = Decimal(DIAS_POR_SEMANA if unidad == "semana" else 1)
+    por_periodo = Decimal(DIAS_POR_PERIODO[unidad])
+    tramos, mayor_fin = _tramos(duraciones, paralelas)
+    total = _periodos(mayor_fin, unidad)
+    if total > MAXIMO_DE_PERIODOS:
+        raise PlanDemasiadoLargo(
+            f"El plan desde los rendimientos tendría {_entero_con_miles(total)} períodos y la "
+            f"matriz admite {MAXIMO_DE_PERIODOS}: elija semanas o más cuadrillas."
+        )
+    repartos: list[list[tuple[str, Decimal]]] = [[] for _ in range(total)]
+    for codigo, inicio, fin in tramos:
+        primero = int((inicio / por_periodo).to_integral_value(rounding=ROUND_FLOOR))
+        for indice, fraccion in enumerate(_fracciones(inicio, fin, por_periodo), start=primero):
+            if fraccion > CERO:
+                repartos[indice].append((codigo, fraccion))
+    return [(_etiqueta(n, unidad), tuple(reparto)) for n, reparto in enumerate(repartos, start=1)]
+
+
+def _periodos(mayor_fin: Decimal, unidad: Unidad) -> int:
+    """Los períodos de `unidad` que ocupa un plan que termina en el día `mayor_fin`."""
+    dias = Decimal(DIAS_POR_PERIODO[unidad])
+    return int((mayor_fin / dias).to_integral_value(rounding=ROUND_CEILING))
+
+
+def _tramos(
+    duraciones: Sequence[Duracion], paralelas: Collection[str]
+) -> tuple[list[tuple[str, Decimal, Decimal]], Decimal]:
+    """El inicio y el fin, en días hábiles, de cada partida con duración, y el mayor fin."""
     tramos: list[tuple[str, Decimal, Decimal]] = []
     mayor_fin = CERO
     inicio_anterior: Decimal | None = None
@@ -151,19 +188,7 @@ def plan_por_rendimientos(
         tramos.append((duracion.codigo, inicio, fin))
         mayor_fin = max(mayor_fin, fin)
         inicio_anterior = inicio
-    total = int((mayor_fin / por_periodo).to_integral_value(rounding=ROUND_CEILING))
-    if total > MAXIMO_DE_PERIODOS:
-        raise PlanDemasiadoLargo(
-            f"El plan desde los rendimientos tendría {_entero_con_miles(total)} períodos y la "
-            f"matriz admite {MAXIMO_DE_PERIODOS}: elija semanas o más cuadrillas."
-        )
-    repartos: list[list[tuple[str, Decimal]]] = [[] for _ in range(total)]
-    for codigo, inicio, fin in tramos:
-        primero = int((inicio / por_periodo).to_integral_value(rounding=ROUND_FLOOR))
-        for indice, fraccion in enumerate(_fracciones(inicio, fin, por_periodo), start=primero):
-            if fraccion > CERO:
-                repartos[indice].append((codigo, fraccion))
-    return [(_etiqueta(n, unidad), tuple(reparto)) for n, reparto in enumerate(repartos, start=1)]
+    return tramos, mayor_fin
 
 
 def _cuantizada(valor: Decimal) -> Decimal:
@@ -261,3 +286,37 @@ def plan_del_borrador(
         else:
             plan.append((_etiqueta(1, unidad), fuera))
     return plan, [d.aviso for d in lista if d.aviso]
+
+
+def plan_que_cabe(
+    items: Sequence[ItemComputo], composiciones: Mapping[str, ComposicionAPU]
+) -> tuple[list[PeriodoPlan], Unidad, str]:
+    """El plan por rendimientos de la PRIMERA versión (una cuadrilla, en serie) en la primera
+    unidad de `UNIDADES_DE_LA_PRIMERA` que cabe en la matriz, con el aviso que la persona ve si no
+    es por días (vacío si lo es).
+
+    Prueba de punta a punta del 2026-11-13 (D-2): con «dia» fijo, una obra de más de 500 días no se
+    podía guardar, y las cuadrillas solo se ponen con un plan hecho. Por días es exactamente el
+    plan de siempre (`plan_del_borrador`). `PlanDemasiadoLargo` si ni en meses cabe, con la salida.
+    """
+    _, mayor_fin = _tramos(duraciones(items, composiciones, {}), ())
+    por_dias = _periodos(mayor_fin, "dia")
+    for unidad in UNIDADES_DE_LA_PRIMERA:
+        if _periodos(mayor_fin, unidad) <= MAXIMO_DE_PERIODOS:
+            plan, _ = plan_del_borrador(items, composiciones, unidad=unidad)
+            if unidad == "dia":
+                return plan, unidad, ""
+            return (
+                plan,
+                unidad,
+                f"El plan por días tendría {_entero_con_miles(por_dias)} períodos y la matriz "
+                f"admite {MAXIMO_DE_PERIODOS}: se armó por {_NOMBRES[unidad]} "
+                f"({_entero_con_miles(len(plan))} períodos). Puede rehacerlo con cuadrillas en "
+                "«Plan y equilibrio».",
+            )
+    raise PlanDemasiadoLargo(
+        f"El plan desde los rendimientos tendría "
+        f"{_entero_con_miles(_periodos(mayor_fin, 'mes'))} meses y la matriz admite "
+        f"{MAXIMO_DE_PERIODOS} períodos: en «Plan y equilibrio» cree el plan y asigne más "
+        "cuadrillas a las partidas largas, y vuelva a guardar."
+    )

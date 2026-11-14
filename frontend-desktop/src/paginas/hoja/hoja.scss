@@ -177,6 +177,7 @@
 
 .silice-hoja__estado-fila {
   display: inline-flex;
+  flex-wrap: wrap; // el botón «Ver en Revisión» baja bajo el texto en vez de ensanchar la columna
   align-items: center;
   gap: 0.5rem;
   min-inline-size: 0;
@@ -184,14 +185,14 @@
 
 .silice-hoja__estado-texto {
   // Un aviso largo (cientos de caracteres) no puede estirar la fila: ancho minimo para que no quede una letra por
-  // linea, y a lo mas 3 lineas; el texto completo va en el title de la fila.
-  min-inline-size: 14rem;
-  max-inline-size: 28rem;
+  // linea, y a lo mas 4 lineas; el texto completo va en el title de la fila.
+  min-inline-size: 10rem;
+  max-inline-size: 24rem;
   overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
   overflow: hidden;
 }
 

@@ -7,10 +7,12 @@ import { buscadorDePartidas, esAborto } from "../../comun/logicaBusqueda";
 import type { GrupoDeResultados, PartidaHallada } from "../../comun/logicaBusqueda";
 import { AYUDA_DEL_CODIGO, CODIGO_MAL_FORMADO, esCodigoValido } from "./codigo";
 
-// Lo que se elige: el código y, si sale del catálogo, su partida (para llenar la descripción y la unidad vacías).
+// Lo que se elige: el código y, si sale del catálogo, su partida (para llenar la descripción y la unidad vacías); si es una
+// partida vial de Sílice, su descripción y su unidad (E2E-3).
 interface CodigoHallado {
   codigo: string;
   partida: PartidaHallada | null;
+  vial?: { descripcion: string; unidad: string } | null;
 }
 
 type Grupos = GrupoDeResultados<CodigoHallado>[];
@@ -37,7 +39,17 @@ function buscadorDeCodigos() {
     }
     if (vial.status === "fulfilled") {
       for (const g of vial.value) {
-        grupos.push({ ...g, opciones: g.opciones.map((o) => ({ ...o, valor: { codigo: o.valor.valor, partida: null } })) });
+        grupos.push({
+          ...g,
+          opciones: g.opciones.map((o) => ({
+            ...o,
+            valor: {
+              codigo: o.valor.valor,
+              partida: null,
+              vial: o.valor.descripcion && o.valor.unidad ? { descripcion: o.valor.descripcion, unidad: o.valor.unidad } : null,
+            },
+          })),
+        });
       }
     }
     return grupos;
@@ -47,8 +59,10 @@ function buscadorDeCodigos() {
 interface Props {
   texto: string;
   alCambiar: (codigo: string) => void;
-  // Se eligió una partida del catálogo: quien compone llena con ella la descripción y la unidad que estén vacías.
+  // Se eligió una partida del catálogo: quien compone pone su código, su descripción y su unidad (avisando de lo que reemplaza).
   alElegirDelCatalogo: (partida: PartidaHallada) => void;
+  // Se eligió una partida vial de Sílice: quien compone pone su código y su descripción y su unidad donde estén vacías.
+  alElegirVial?: (codigo: string, vial: { descripcion: string; unidad: string }) => void;
   alExpirar: () => void;
 }
 
@@ -56,9 +70,13 @@ interface Props {
 // (Eugenio pidió el 2026-10-21 un autocompletado guiado, como el de MaPreX). Es el campo con búsqueda de siempre
 // (`CampoConBusqueda`): se busca por la descripción o el código y se elige; uno propio se puede usar tal cual solo si
 // tiene forma de código. Mientras se escribe es una búsqueda, así que el formato se reclama al dejar el campo.
-export function CampoDelCodigo({ texto, alCambiar, alElegirDelCatalogo, alExpirar }: Props): JSX.Element {
+export function CampoDelCodigo({ texto, alCambiar, alElegirDelCatalogo, alElegirVial, alExpirar }: Props): JSX.Element {
   const [buscar] = useState(buscadorDeCodigos);
   const [revisado, setRevisado] = useState(false);
+  // El último código confirmado (D16): elegir una opción de la lista llena la descripción, la unidad y las tablas de esa partida,
+  // así que es la base del Esc del panel (`data-valor-confirmado`): lo tecleado después vuelve al código elegido y la partida
+  // no queda mezclada. Al dejar el campo se olvida: la próxima vez la base es el valor con que recibe el foco.
+  const [confirmado, setConfirmado] = useState<string | undefined>(undefined);
   const bienFormado = esCodigoValido(texto);
   const malFormado = revisado && texto.trim() !== "" && !bienFormado;
   return (
@@ -72,16 +90,23 @@ export function CampoDelCodigo({ texto, alCambiar, alElegirDelCatalogo, alExpira
         alCambiar(t);
       }}
       buscar={buscar}
+      valorConfirmado={confirmado}
       alElegir={(opcion) => {
-        alCambiar(opcion.valor.codigo);
+        setConfirmado(opcion.valor.codigo);
+        // Del catálogo: quien compone pone el código junto con la descripción y la unidad; si no, es un cambio de código más.
         if (opcion.valor.partida !== null) alElegirDelCatalogo(opcion.valor.partida);
+        else if (opcion.valor.vial && alElegirVial) alElegirVial(opcion.valor.codigo, opcion.valor.vial);
+        else alCambiar(opcion.valor.codigo);
       }}
-      valorPropio={bienFormado ? { rotulo: (t) => `Usar «${t}» como código`, alUsar: (t) => alCambiar(t) } : undefined}
+      valorPropio={bienFormado ? { rotulo: (t) => `Usar «${t}» como código`, alUsar: (t) => { setConfirmado(t); alCambiar(t); } } : undefined}
       vacio={{
         titulo: "¿No lo encuentra?",
         pasos: "Pruebe con otra palabra de la descripción o escriba un código propio, por ejemplo «E-411».",
       }}
-      alSalir={() => setRevisado(true)}
+      alSalir={() => {
+        setRevisado(true);
+        setConfirmado(undefined);
+      }}
       alExpirar={alExpirar}
       invalido={malFormado}
       textoInvalido={CODIGO_MAL_FORMADO}

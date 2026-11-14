@@ -17,13 +17,21 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
 from api.main import app
+from aplicacion import control as logica_control
+from core import models
+from core.budget import elaborar, guardar_presupuesto
+from core.budget.valuaciones import registrar_linea_base
 from core.catalog import abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
 from tests.fixtures import control_ob_s2 as ob
@@ -470,9 +478,40 @@ def test_un_archivo_que_no_es_un_libro_se_rechaza_entero_con_422() -> None:
         headers=cabeceras,
     )
     assert respuesta.status_code == 422
+    # La importación pasa ahora por la guardia, como toda subida de un .xlsx (F-D10): su aviso.
     assert respuesta.json()["detalle"] == (
-        "El archivo no es un libro .xlsx legible; no se importó nada."
+        "El archivo «malo.xlsx» no es un libro .xlsx válido (está dañado o no es de Excel). No se "
+        "importó nada."
     )
+
+
+@pytest.mark.parametrize("ruta", ["/v1/control/importar/informe", "/v1/control/importar"])
+def test_un_libro_de_valuaciones_con_una_celda_lejana_es_422_sin_importar_nada(
+    ruta: str, tmp_path: Path
+) -> None:
+    """Acta del árbitro de los topes, NOTA 7: `leer_tabla` (núcleo) recorría la hoja sin tope y
+    la importación ni siquiera pasaba por la guardia. Sin `<dimension>`, A1048576 eran un millón
+    de filas; ahora se rechaza con el aviso del lector."""
+    from tests.fixtures.libro_apu_por_hoja import con_celdas
+
+    limpio = ob.escribir_xlsx(tmp_path / "ob_s2.xlsx").read_bytes()
+    hostil = con_celdas(limpio, "Lineas", {"A1048576": "fin ficticio"}, sin_dimension=True)
+    navegador, cabeceras = _arma()
+    antes = navegador.get("/v1/control/valuaciones", params=P).json()["filas"]
+    respuesta = navegador.post(
+        ruta,
+        data={**P, "fuente": ob.FUENTE},
+        files={"archivo": ("valuaciones.xlsx", hostil, "application/octet-stream")},
+        headers=cabeceras,
+    )
+    assert respuesta.status_code == 422, respuesta.text
+    assert respuesta.json()["detalle"] == (
+        "El libro «valuaciones.xlsx», hoja «Lineas»: tiene filas con datos o con formato más allá "
+        "de la 20.000. Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la "
+        "CV). Se rechaza por seguridad: borre lo que sobra al final de la hoja y guárdelo de "
+        "nuevo. No se importó nada."
+    )
+    assert navegador.get("/v1/control/valuaciones", params=P).json()["filas"] == antes
 
 
 # --- cálculo: valor ganado, alertas y reproyección -------------------------------------------
@@ -647,7 +686,7 @@ def test_control_acepta_el_codigo_de_v1_proyectos_en_consulta() -> None:
 def test_control_con_un_codigo_inexistente_da_404_con_el_mensaje_de_siempre() -> None:
     respuesta = _con_clave().get("/v1/control/linea-base", params={"proyecto": "987654"})
     assert respuesta.status_code == 404
-    assert respuesta.json()["detalle"] == "El proyecto «987654» no existe en este caso."
+    assert respuesta.json()["detalle"] == "La obra «987654» no existe en esta carpeta."
 
 
 def test_las_opciones_de_la_api_salen_con_tildes_en_titulo_motivo_y_requisitos() -> None:
@@ -770,3 +809,162 @@ def test_las_columnas_de_iva_del_front_existen_en_la_respuesta() -> None:
 def test_las_valuaciones_dicen_la_perspectiva_de_la_linea_base() -> None:
     # OB-S2 declara su línea base en costo: el IVA de lo medido no es facturable (T18-3).
     assert _con_clave().get("/v1/control/valuaciones", params=P).json()["perspectiva"] == "costo"
+
+
+# --- las partidas del contrato (autocompletado AC2) ------------------------------------------
+
+TRES_PARTIDAS = [
+    {"codigo": "OB-A", "descripcion": "Excavacion de zanja", "unidad": "m3"},
+    {"codigo": "OB-B", "descripcion": "Tuberia de drenaje", "unidad": "m"},
+    {"codigo": "OB-C", "descripcion": "Relleno compactado", "unidad": "m3"},
+]
+
+
+def test_las_partidas_del_contrato_son_las_de_la_version_de_la_linea_base() -> None:
+    """Oráculo a mano (`control_ob_s2.py`): la línea base presupuesta A, B y C. OB-D está valuada
+    en la memoria pero no presupuestada, así que NO se ofrece: en una valuación solo se mide lo
+    contratado."""
+    r = _con_clave().get("/v1/control/partidas", params=P)
+    assert r.status_code == 200
+    assert r.json() == {
+        "version": "OB-001",
+        "aviso": "",
+        "partidas": TRES_PARTIDAS,
+        "truncada": False,
+    }
+
+
+def test_las_partidas_del_contrato_se_ofrecen_antes_de_la_primera_valuacion(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    r = _con_clave().get("/v1/control/partidas", params=P)
+    assert [p["codigo"] for p in r.json()["partidas"]] == ["OB-A", "OB-B", "OB-C"]
+
+
+def test_sin_linea_base_las_partidas_vienen_vacias_con_su_aviso_y_no_es_error(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "vacia", tmp_path, monkeypatch)
+    r = _con_clave().get("/v1/control/partidas", params=P)
+    assert r.status_code == 200
+    assert r.json() == {
+        "version": "",
+        "aviso": "Esta obra todavía no tiene línea base.",
+        "partidas": [],
+        "truncada": False,
+    }
+
+
+def test_las_partidas_del_contrato_exigen_proyecto_existente_y_van_sin_cache() -> None:
+    navegador = _con_clave()
+    assert navegador.get("/v1/control/partidas", params={"proyecto": "NO"}).status_code == 404
+    assert navegador.get("/v1/control/partidas").status_code == 422
+    respuesta = navegador.get("/v1/control/partidas", params=P)
+    assert respuesta.headers.get("cache-control") == "no-store"
+
+
+def _segunda_linea_base(tmp_path: Path) -> None:
+    """Sobre la copia de la prueba: la versión OB-002 (solo OB-A y OB-B, con su plan) y una
+    segunda línea base sobre ella desde el 2026-11-20. Hasta el 19 rige la de OB-001 (desde el
+    2026-11-02, A, B y C); desde el 20, la de OB-002."""
+    plan = [("Semana 1", (("OB-A", Decimal(1)),)), ("Semana 2", (("OB-B", Decimal(1)),))]
+    dependencias.cerrar_motores()
+    motor = crear_motor(f"sqlite:///{(tmp_path / 'caso.db').as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            primera = sesion.scalars(
+                select(models.Presupuesto).where(models.Presupuesto.codigo == ob.CODIGO)
+            ).one()
+            resultado = elaborar(
+                ob.items()[:2],
+                ob.composiciones(),
+                ob.PARAMETROS,
+                codigo="OB-002",
+                fecha=ob.FECHA,
+                moneda=ob.MONEDA,
+                plan=plan,
+            )
+            guardar_presupuesto(
+                sesion,
+                resultado.presupuesto,
+                resultado.informe,
+                proyecto=primera.proyecto,
+                lista=primera.lista_precios,
+                parametros=ob.PARAMETROS,
+                plan=plan,
+            )
+            registrar_linea_base(
+                sesion,
+                ob.NOMBRE,
+                "OB-002",
+                desde=date(2026, 11, 20),
+                perspectiva="costo",
+                calendario=ob.CALENDARIO,
+                fuente=ob.FUENTE,
+                responsable=ob.RESPONSABLE,
+            )
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+
+def test_las_partidas_son_las_de_la_linea_base_vigente_al_corte(tmp_path: Path) -> None:
+    """R13 juzga una valuación contra la línea base vigente a su corte (su *hasta*): la lista
+    que guía el campo se pide para esa fecha. Sin corte, la más reciente (lo de antes)."""
+    _segunda_linea_base(tmp_path)
+    navegador = _con_clave()
+    al_13 = navegador.get("/v1/control/partidas", params={**P, "corte": "2026-11-13"}).json()
+    assert (al_13["version"], al_13["partidas"]) == ("OB-001", TRES_PARTIDAS)
+    al_20 = navegador.get("/v1/control/partidas", params={**P, "corte": "2026-11-20"}).json()
+    assert (al_20["version"], al_20["partidas"]) == ("OB-002", TRES_PARTIDAS[:2])
+    sin_corte = navegador.get("/v1/control/partidas", params=P).json()
+    assert sin_corte["version"] == "OB-002"
+
+
+def test_antes_de_la_primera_linea_base_no_hay_lista_y_se_dice() -> None:
+    r = _con_clave().get("/v1/control/partidas", params={**P, "corte": "2026-10-30"})
+    assert r.status_code == 200
+    assert r.json() == {
+        "version": "",
+        "aviso": "No hay una línea base vigente a esa fecha de corte.",
+        "partidas": [],
+        "truncada": False,
+    }
+
+
+def test_un_corte_que_no_es_fecha_es_422_sin_eco() -> None:
+    r = _con_clave().get("/v1/control/partidas", params={**P, "corte": "ayer<b>"})
+    assert r.status_code == 422
+    assert "ayer" not in r.text
+
+
+def test_la_lista_recortada_lo_dice(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Con el tope en 2, de las tres partidas se ofrecen dos y `truncada` lo dice: la interfaz
+    no puede juzgar con una lista incompleta y deja que decida el servidor."""
+    monkeypatch.setattr(logica_control, "MAXIMO_DE_PARTIDAS_DEL_CONTRATO", 2)
+    cuerpo = _con_clave().get("/v1/control/partidas", params=P).json()
+    assert cuerpo["partidas"] == TRES_PARTIDAS[:2]
+    assert cuerpo["truncada"] is True
+
+
+def test_el_404_de_las_partidas_es_fijo_y_no_repite_lo_pedido() -> None:
+    r = _con_clave().get("/v1/control/partidas", params={"proyecto": "Obra<b>inventada"})
+    assert r.status_code == 404
+    assert r.json()["detalle"] == "La obra no existe en esta carpeta."
+    assert "inventada" not in r.text
+    assert r.headers.get("cache-control") == "no-store"
+
+
+def test_un_fallo_de_la_base_en_las_partidas_es_503_fijo(monkeypatch: pytest.MonkeyPatch) -> None:
+    def falla(*_args, **_kwargs):
+        raise OperationalError("SELECT secreto FROM item_computo", {}, Exception("disco"))
+
+    monkeypatch.setattr(logica_control, "partidas_de_la_linea_base", falla)
+    r = _con_clave().get("/v1/control/partidas", params=P)
+    assert r.status_code == 503
+    assert r.json()["detalle"] == (
+        "No se pudieron leer las partidas del contrato de la carpeta de trabajo."
+    )
+    assert "SELECT" not in r.text and "secreto" not in r.text
+    assert r.headers.get("cache-control") == "no-store"

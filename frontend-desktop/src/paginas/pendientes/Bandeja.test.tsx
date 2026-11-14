@@ -491,7 +491,9 @@ describe("Pendientes: la lectura de la carga inicial no deja datos viejos", () =
       if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
       return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
     };
-    montar({ inicial: "/obras", ir: "/inicio/pendientes" });
+    // Arranca en una pantalla de obra (no en una dirección que redirige a Inicio: «/obras» dejó de existir en F6 y su
+    // redirección a Pendientes era una segunda entrada que, con la máquina rápida, pedía una tercera lectura).
+    montar({ inicial: "/obra/empresa/7/presupuesto", ir: "/inicio/pendientes" });
     await waitFor(() => expect(pedidas()).toBe(1));
     await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     // La lectura de antes de entrar se descarta: entrar en Pendientes pide siempre una nueva.
@@ -525,10 +527,13 @@ describe("Pendientes: cuándo no se repite la lectura", () => {
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
   });
 
-  test("al arrancar desde «/pendientes» (que redirige a /inicio/pendientes) se piden una sola vez", async () => {
+  // F8, C1: «/pendientes» se retiró y ahora lleva a la Vista general; sigue siendo una entrada a Inicio y no repite la lectura.
+  test("al arrancar desde «/pendientes» (retirada: lleva a /inicio/general) se piden una sola vez", async () => {
     montar({ inicial: "/pendientes" });
-    expect(await opciones()).toHaveLength(4);
-    await waitFor(() => expect(ruta()).toBe("/inicio/pendientes"));
+    expect(await screen.findByRole("heading", { level: 1, name: "Vista general" })).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
+    await waitFor(() => expect(pedidas()).toBe(1));
+    await new Promise((r) => setTimeout(r, 100));
     expect(pedidas()).toBe(1);
   });
 });

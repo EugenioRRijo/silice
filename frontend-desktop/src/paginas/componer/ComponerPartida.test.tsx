@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -66,14 +66,40 @@ const DEL_CATALOGO = {
       dominio: "civil",
       tiene_composicion: true,
     },
+    {
+      clave: "partida:FIC-03",
+      codigo: "FIC-03",
+      descripcion: "Piedra picada ficticia",
+      unidad: "kg",
+      dominio: "civil",
+      tiene_composicion: true,
+    },
+    {
+      clave: "partida:FIC-04",
+      codigo: "FIC-04",
+      descripcion: "Tubería ficticia sin composición",
+      unidad: "m",
+      dominio: "civil",
+      tiene_composicion: false,
+    },
   ],
   hay_mas: false,
 };
 const VIALES = {
   tabla: "partidas_viales",
-  resultados: [{ valor: "C-000.000.002", etiqueta: "Base granular compactada (C-000.000.002, m3)", fuente: "Partidas viales de Sílice" }],
+  resultados: [
+    {
+      valor: "C-000.000.002",
+      etiqueta: "Base granular compactada (C-000.000.002, m3)",
+      fuente: "Partidas viales de Sílice",
+      descripcion: "Base granular compactada",
+      unidad: "m3",
+    },
+  ],
   hay_mas: false,
 };
+// AC4: las unidades que ya usa el catalogo, con la forma de `GET /v1/consulta/unidades`.
+const UNIDADES = { unidades: [{ unidad: "m3", usos: 5, grafias: ["m3", "m³"] }, { unidad: "kg", usos: 2, grafias: ["kg"] }] };
 const CODIGO_MAL_FORMADO =
   "Un código lleva letras sin tilde, cifras, punto, guion o guion bajo, sin espacios y hasta 64 caracteres, por ejemplo «E-411». Si escribió una descripción, póngala en «Descripción» y busque aquí el código por sus palabras.";
 const AYUDA_DEL_CODIGO =
@@ -102,6 +128,7 @@ describe("ComponerPartida (Tarea 9)", () => {
       if (ruta === "/v1/carpeta") return json(CON_LISTA);
       if (ruta.startsWith("/v1/buscar/partidas?")) return json(DEL_CATALOGO);
       if (ruta.startsWith("/v1/consulta/partidas_viales?")) return json(VIALES);
+      if (ruta === "/v1/consulta/unidades") return json(UNIDADES);
       return json({ detalle: "No encontrado." }, 404);
     });
   });
@@ -175,7 +202,248 @@ describe("ComponerPartida (Tarea 9)", () => {
     expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
   });
 
-  test("elegir una partida vial deja su código y no pisa la descripción escrita", async () => {
+  // D17 (hallazgo fuera de alcance del arbitraje de la tanda, ronda 2): elegir otra partida del catálogo reemplaza lo que puso la
+  // elección anterior y respeta lo que la persona tecleó, con el mismo modelo de origen que las tablas de insumos.
+  describe("elegir otra partida del catálogo en el Código", () => {
+    async function elegirPartida(u: ReturnType<typeof userEvent.setup>, buscado: string, nombre: RegExp) {
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.clear(codigo);
+      await u.type(codigo, buscado);
+      const lista = await screen.findByRole("listbox", { name: "Código" }, ESPERA);
+      await u.click(within(lista).getByRole("option", { name: nombre }));
+    }
+
+    test("FIC-02 y luego FIC-03: la descripción y la unidad son las de FIC-03", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+
+      await elegirPartida(u, "piedra", /FIC-03/);
+      expect(screen.getByRole("combobox", { name: "Código" })).toHaveValue("FIC-03");
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Piedra picada ficticia");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("kg");
+    });
+
+    const aviso = () => document.getElementById("componer-cabecera-aviso") as HTMLElement;
+
+    test("FIC-02, la descripción tecleada a mano y luego FIC-03: se cambia por la del catálogo y se avisa", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(aviso().textContent).toBe("");
+      const descripcion = screen.getByLabelText("Descripción");
+      await u.clear(descripcion);
+      await u.type(descripcion, "Relleno de la esquina norte");
+
+      await elegirPartida(u, "piedra", /FIC-03/);
+      expect(descripcion).toHaveValue("Piedra picada ficticia");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("kg");
+      expect(aviso().textContent).toBe("Se cambió la descripción «Relleno de la esquina norte» por la del catálogo, «Piedra picada ficticia».");
+      expect(aviso()).toHaveAttribute("role", "status");
+    });
+
+    test("FIC-02, la unidad tecleada a mano y luego FIC-03: se cambia por la del catálogo y se avisa", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const unidad = screen.getByLabelText("Unidad");
+      await u.clear(unidad);
+      await u.type(unidad, "ml");
+
+      await elegirPartida(u, "piedra", /FIC-03/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Piedra picada ficticia");
+      expect(unidad).toHaveValue("kg");
+      expect(aviso().textContent).toBe("Se cambió la unidad «ml» por la del catálogo, «kg».");
+    });
+
+    test("descripción y unidad tecleadas a mano: se cambian las dos y el aviso dice ambas, unidas por un espacio", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await u.type(screen.getByLabelText("Descripción"), "Mi relleno");
+      await u.type(screen.getByLabelText("Unidad"), "ml");
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+      expect(aviso().textContent).toBe(
+        "Se cambió la descripción «Mi relleno» por la del catálogo, «Relleno compactado ficticio». Se cambió la unidad «ml» por la del catálogo, «m3».",
+      );
+    });
+
+    test("lo tecleado que ya coincide con el catálogo no se avisa", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await u.type(screen.getByLabelText("Descripción"), "Relleno compactado ficticio");
+      await u.type(screen.getByLabelText("Unidad"), "m3");
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      expect(aviso().textContent).toBe("");
+    });
+
+    // C: cambiar el código por otro que no se eligió de la lista deja la cabecera de la partida anterior con las tablas de la nueva.
+    test("FIC-02 y luego otro código tecleado: se vacían la descripción y la unidad que puso el catálogo", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      await u.type(screen.getByRole("combobox", { name: "Código" }), "9");
+      expect(screen.getByRole("combobox", { name: "Código" })).toHaveValue("FIC-029");
+      expect(screen.getByLabelText("Descripción")).toHaveValue("");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("");
+    });
+
+    test("FIC-02 y luego «Usar FIC-03 como código»: la cabecera no se queda con la de FIC-02", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.clear(codigo);
+      await u.type(codigo, "FIC-03");
+      const lista = await screen.findByRole("listbox", { name: "Código" }, ESPERA);
+      await u.click(within(lista).getByRole("option", { name: "Usar «FIC-03» como código" }));
+      expect(codigo).toHaveValue("FIC-03");
+      expect(screen.getByLabelText("Descripción")).toHaveValue("");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("");
+    });
+
+    test("lo que la persona tecleó en la descripción se queda al cambiar el código", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const descripcion = screen.getByLabelText("Descripción");
+      await u.clear(descripcion);
+      await u.type(descripcion, "Relleno de la esquina norte");
+      await u.type(screen.getByRole("combobox", { name: "Código" }), "9");
+      expect(descripcion).toHaveValue("Relleno de la esquina norte");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("");
+    });
+
+    test("teclear y volver al código elegido devuelve la descripción y la unidad del catálogo", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.type(codigo, "9");
+      await u.type(codigo, "{Backspace}");
+      expect(codigo).toHaveValue("FIC-02");
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+    });
+
+    // N5 (ronda 4): lo que puso el catálogo antes se reemplaza sin aviso también por el camino del teclado (Flecha abajo y Enter
+    // en la lista, sin teclear en «Código»): el aviso queda vacío y la cabecera es la de la segunda partida.
+    test("N5: FIC-02 y luego FIC-03 con Flecha abajo y Enter, sin teclear: se reemplaza sin aviso", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.click(codigo);
+      await u.keyboard("{ArrowDown}"); // abre la lista
+      const segunda = await screen.findByRole("option", { name: /FIC-03/ }, ESPERA);
+      // Con las flechas hasta dejar activa FIC-03 (cuántas hacen falta depende de si la lista ya traía resultados al abrirse).
+      for (let i = 0; i < 4 && segunda.getAttribute("aria-selected") !== "true"; i++) await u.keyboard("{ArrowDown}");
+      expect(segunda).toHaveAttribute("aria-selected", "true");
+      await u.keyboard("{Enter}");
+      await waitFor(() => expect(codigo).toHaveValue("FIC-03"), ESPERA);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Piedra picada ficticia");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("kg");
+      expect(aviso().textContent).toBe("");
+    });
+
+    // D: el aviso hablaba de una elección anterior y se quedaba al teclear en «Código».
+    test("teclear en «Código» limpia el aviso; elegir otra partida de la lista deja el suyo", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const descripcion = screen.getByLabelText("Descripción");
+      await u.clear(descripcion);
+      await u.type(descripcion, "Relleno de la esquina norte");
+      await elegirPartida(u, "piedra", /FIC-03/);
+      expect(aviso().textContent).toBe("Se cambió la descripción «Relleno de la esquina norte» por la del catálogo, «Piedra picada ficticia».");
+
+      await u.type(screen.getByRole("combobox", { name: "Código" }), "9");
+      expect(aviso().textContent).toBe("");
+
+      await u.clear(descripcion);
+      await u.type(descripcion, "Otra vez a mano");
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(aviso().textContent).toBe("Se cambió la descripción «Otra vez a mano» por la del catálogo, «Relleno compactado ficticio».");
+    });
+  });
+
+  // N6 (ronda 4, anterior a la tanda): al pasar a otra partida del catálogo sin composición, las tablas y el rendimiento que todavía
+  // son los de la precarga anterior se vacían; si la persona los había editado, se conservan y se avisa.
+  describe("pasar de una partida con composición a otra sin composición", () => {
+    const AVISO_SIN_COMPOSICION = "La partida «FIC-04» no tiene composición en el catálogo; se conservan las líneas que escribió.";
+
+    beforeEach(() => {
+      const delServidor = fetchFalso.getMockImplementation()!;
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/composicion/partidas/FIC-02") {
+          rutas.push(ruta);
+          return json({
+            existe: true,
+            tablas: {
+              materiales: [{ descripcion: "Arena ficticia", unidad: "m3", cantidad: "2", precio: "10" }],
+              equipos: [],
+              mano_obra: [],
+            },
+            rendimiento_propuesto: "5",
+            hay_historial: true,
+          });
+        }
+        if (ruta === "/v1/composicion/partidas/FIC-04") {
+          rutas.push(ruta);
+          return json({ existe: true, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
+        }
+        return delServidor(entrada, init);
+      });
+    });
+
+    async function elegir(u: ReturnType<typeof userEvent.setup>, buscado: string, nombre: RegExp) {
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.clear(codigo);
+      await u.type(codigo, buscado);
+      const lista = await screen.findByRole("listbox", { name: "Código" }, ESPERA);
+      await u.click(within(lista).getByRole("option", { name: nombre }));
+    }
+    const aviso = () => document.getElementById("componer-cabecera-aviso") as HTMLElement;
+
+    test("sin editar nada: las tablas y el rendimiento de FIC-02 se vacían", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegir(u, "compact", /FIC-02/);
+      const materiales = screen.getByRole("region", { name: "Materiales" });
+      expect(await within(materiales).findByRole("combobox", { name: "Descripción, fila 1" }, ESPERA)).toHaveValue("Arena ficticia");
+      expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("5");
+
+      await elegir(u, "tuber", /FIC-04/);
+      await waitFor(() => expect(rutas).toContain("/v1/composicion/partidas/FIC-04"), ESPERA);
+      await waitFor(() => expect(within(materiales).queryByRole("combobox", { name: "Descripción, fila 1" })).toBeNull(), ESPERA);
+      expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("");
+      expect(aviso().textContent).toBe("");
+    });
+
+    test("con una línea editada: se conserva y se avisa en la región viva de la cabecera", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegir(u, "compact", /FIC-02/);
+      const materiales = screen.getByRole("region", { name: "Materiales" });
+      await within(materiales).findByRole("combobox", { name: "Descripción, fila 1" }, ESPERA);
+      const precio = within(materiales).getByRole("textbox", { name: "Precio, fila 1" });
+      await u.clear(precio);
+      await u.type(precio, "12");
+
+      await elegir(u, "tuber", /FIC-04/);
+      await waitFor(() => expect(aviso().textContent).toBe(AVISO_SIN_COMPOSICION), ESPERA);
+      expect(within(materiales).getByRole("combobox", { name: "Descripción, fila 1" })).toHaveValue("Arena ficticia");
+      expect(within(materiales).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("12");
+    });
+  });
+
+  test("elegir una partida vial deja su código y no pisa la descripción escrita; la unidad vacía se llena (E2E-3)", async () => {
     const u = userEvent.setup();
     montar(2);
     await u.type(screen.getByLabelText("Descripción"), "Base ficticia");
@@ -184,7 +452,18 @@ describe("ComponerPartida (Tarea 9)", () => {
     await u.click(await screen.findByRole("option", { name: /C-000\.000\.002/ }, ESPERA));
     expect(codigo).toHaveValue("C-000.000.002");
     expect(screen.getByLabelText("Descripción")).toHaveValue("Base ficticia");
-    expect(screen.getByLabelText("Unidad")).toHaveValue("");
+    expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+  });
+
+  test("E2E-3: elegir una partida vial con la descripción y la unidad vacías las llena con las de Sílice", async () => {
+    const u = userEvent.setup();
+    montar(2);
+    const codigo = screen.getByRole("combobox", { name: "Código" });
+    await u.type(codigo, "granular");
+    await u.click(await screen.findByRole("option", { name: /C-000\.000\.002/ }, ESPERA));
+    expect(codigo).toHaveValue("C-000.000.002");
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Base granular compactada");
+    expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
   });
 
   test("un código mal formado se dice al salir del campo, no se ofrece tal cual y no deja guardar; uno bien formado sí", async () => {
@@ -234,5 +513,58 @@ describe("ComponerPartida (Tarea 9)", () => {
     await waitFor(() => expect(alGuardar).toHaveBeenCalledTimes(1), ESPERA);
     expect(alGuardar).toHaveBeenCalledWith({ codigo: "Z-99", descripcion: "Zanja ficticia", unidad: "m3" });
     expect(screen.queryByRole("button", { name: "Volver a la Hoja" })).toBeNull();
+  });
+
+  test("AC4: la «Unidad» de la cabecera sugiere las del catálogo y admite una propia", async () => {
+    const u = userEvent.setup();
+    montar(2);
+    const unidad = screen.getByRole("combobox", { name: "Unidad" });
+    await u.type(unidad, "m");
+    await u.click(await screen.findByRole("option", { name: /^m3/ }, ESPERA));
+    expect(unidad).toHaveValue("m3");
+    await u.clear(unidad);
+    await u.type(unidad, "pza");
+    await u.click(await screen.findByRole("option", { name: "Usar «pza» tal cual" }, ESPERA));
+    expect(unidad).toHaveValue("pza");
+    expect(rutas.filter((r) => r === "/v1/consulta/unidades")).toHaveLength(1);
+  });
+
+  // AC1b: el autocompletado de los insumos pide el precio de la lista para armar a la «Fecha» de la composición y solo lo
+  // copia si llega en la moneda de la carpeta (`GET /v1/carpeta`, aquí Bs).
+  test("los insumos se buscan con la fecha de la composición; un precio que llega en otra moneda no se copia", async () => {
+    const delServidor = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const ruta = String(entrada);
+      if (ruta.startsWith("/v1/consulta/insumos?")) {
+        rutas.push(ruta);
+        const enDolares = {
+          valor: "MAT-1",
+          etiqueta: "Cemento gris ficticio (MAT-1, saco)",
+          fuente: "Catálogo de la carpeta de trabajo: material",
+          descripcion: "Cemento gris ficticio",
+          unidad: "saco",
+          precio: "0.45",
+          moneda: "USD",
+          fecha_precio: "2026-07-01",
+        };
+        return json({ tabla: "insumos", hay_mas: false, resultados: [enDolares] });
+      }
+      return delServidor(entrada, init);
+    });
+    const u = userEvent.setup();
+    montar(2);
+    await waitFor(() => expect(rutas).toContain("/v1/carpeta"), ESPERA);
+    fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: "2026-08-15" } });
+    const materiales = screen.getByRole("region", { name: "Materiales" });
+    await u.click(within(materiales).getByRole("button", { name: "Agregar fila a Materiales" }));
+    await u.type(within(materiales).getByRole("combobox", { name: "Descripción, fila 1" }), "cemento");
+    await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }, ESPERA));
+    await waitFor(() => expect(within(materiales).getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco"));
+    const pedida = rutas.filter((r) => r.startsWith("/v1/consulta/insumos?")).at(-1)!;
+    expect(new URLSearchParams(pedida.split("?")[1]).get("para_armar_al")).toBe("2026-08-15");
+    expect(within(materiales).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("");
+    expect(within(materiales).getByRole("textbox", { name: "Precio, fila 1" })).toHaveAccessibleDescription(
+      "El catálogo lo tiene en USD; escriba el precio en Bs.",
+    );
   });
 });

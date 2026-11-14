@@ -30,6 +30,12 @@ import {
 import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura, periodoCompacto } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { MONEDAS } from "../../comun/monedas";
+import { useCarga } from "../../comun/useCarga";
+import type { Carga } from "../../comun/useCarga";
+import { CampoDePartida } from "../../comun/CampoDePartida";
+import { AVISO_LISTA_RECORTADA, listaRecortada, partidaDelContrato, partidasOfrecidas } from "../../comun/partidasDelContrato";
+import type { PartidaDelContrato, PartidasDelContrato } from "../../comun/partidasDelContrato";
 import { AYUDA_CAUSA_SUGERIDA, causaDeLinea, sugeridasPorPartida } from "./procura";
 import type { Procura } from "./procura";
 
@@ -48,7 +54,38 @@ function Resultado({ exito, error }: { exito: string; error: unknown }) {
   );
 }
 
-function Registrar({ proyecto, causas, alCambiar }: { proyecto: string; causas: CausaDeRetraso[]; alCambiar: () => void }) {
+interface PartidasDeLaObra {
+  // Las partidas de la versión de la línea base, o null si no hay con qué guiar (el campo sigue siendo de texto libre).
+  lista: PartidaDelContrato[] | null;
+  version: string;
+  fallo: boolean;
+  // La lista está recortada: guía, pero no se rechaza una partida que no está en ella (decide el servidor).
+  truncada: boolean;
+  // Lo que dice la API cuando no hay lista («No hay una línea base vigente a esa fecha de corte.»): se muestra tal cual.
+  aviso: string;
+}
+
+function partidasDeLaObra(carga: Carga<PartidasDelContrato>): PartidasDeLaObra {
+  return {
+    lista: partidasOfrecidas(carga),
+    version: carga.estado === "listo" ? carga.datos.version : "",
+    fallo: carga.estado !== "cargando" && carga.estado !== "listo",
+    truncada: listaRecortada(carga),
+    aviso: carga.estado === "listo" && partidasOfrecidas(carga) === null ? (carga.datos.aviso ?? "") : "",
+  };
+}
+
+function Registrar({
+  proyecto,
+  causas,
+  partidas,
+  alCambiar,
+}: {
+  proyecto: string;
+  causas: CausaDeRetraso[];
+  partidas: PartidasDeLaObra;
+  alCambiar: () => void;
+}) {
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
   const [v, setV] = useState({ numero: "", desde: "", hasta: "", fecha: "", inspector: "", fuente: "" });
@@ -64,24 +101,43 @@ function Registrar({ proyecto, causas, alCambiar }: { proyecto: string; causas: 
   const causaDe = (l: LineaEditable, i: number) => causaDeLinea(l, i in elegidas, sugeridas);
   // El error de la cantidad de cada linea (por posicion), si no sigue la regla de la coma decimal.
   const [errores, setErrores] = useState<Record<number, string>>({});
+  // AC2: una valuación solo mide lo contratado. Una partida que no es de la versión de la línea base vigente a su corte
+  // (el «hasta»: contra esa la juzga R13) no se envía; sin «hasta» guía la más reciente, que llega de la pestaña. Si la
+  // lista no se pudo leer, aún carga o vino recortada, no hay con qué juzgar y el servidor decide.
+  const alCorte = useCarga<PartidasDelContrato>(v.hasta ? rutaDe("/v1/control/partidas", proyecto, { corte: v.hasta }) : null, alExpirar);
+  const guia = v.hasta ? partidasDeLaObra(alCorte) : partidas;
+  const [erroresDePartida, setErroresDePartida] = useState<Record<number, string>>({});
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
-  const cambiarLinea = (i: number, k: keyof LineaEditable, valor: string) =>
+  const cambiarLinea = (i: number, k: keyof LineaEditable, valor: string) => {
+    if (k === "partida" && i in erroresDePartida) setErroresDePartida((previos) => Object.fromEntries(Object.entries(previos).filter(([k]) => Number(k) !== i)));
     setLineas(lineas.map((l, j) => (j === i ? { ...l, [k]: valor } : l)));
+  };
   const registrar = () => {
     const nuevos: Record<number, string> = {};
+    const fuera: Record<number, string> = {};
     lineas.forEach((l, i) => {
       const error = errorDeCifra(l.cantidad);
       if (error) nuevos[i] = error;
+      if (guia.lista && !guia.truncada && l.partida.trim() !== "" && !partidaDelContrato(guia.lista, l.partida)) {
+        fuera[i] = `La partida «${l.partida.trim()}» no está en el contrato (versión ${guia.version}): elíjala de la lista.`;
+      }
     });
     setErrores(nuevos);
-    if (Object.keys(nuevos).length > 0) return;
+    setErroresDePartida(fuera);
+    if (Object.keys(nuevos).length > 0 || Object.keys(fuera).length > 0) return;
     void ejecutar(async () => {
       const r = await pedir<{ corte: string; hallazgos: number; errores: number }>("/v1/control/valuaciones", {
         metodo: "POST",
         cuerpo: {
           proyecto,
           ...v,
-          lineas: sinLineasVacias(lineas.map((l, i) => ({ ...l, causa: causaDe(l, i) }))).map(lineaParaApi),
+          lineas: sinLineasVacias(
+            lineas.map((l, i) => ({
+              ...l,
+              partida: guia.lista ? (partidaDelContrato(guia.lista, l.partida)?.codigo ?? l.partida) : l.partida,
+              causa: causaDe(l, i),
+            })),
+          ).map(lineaParaApi),
         },
       });
       return `Valuación registrada: corte ${fechaDeRanura(r.corte)}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
@@ -99,9 +155,29 @@ function Registrar({ proyecto, causas, alCambiar }: { proyecto: string; causas: 
         <fieldset className="silice-control__lineas">
           <legend className="cds--type-label-01">Líneas medidas</legend>
           <p className="silice-control__nota cds--type-helper-text-01">{AYUDA_CIFRAS}</p>
+          <div role="status" aria-live="polite">
+            {guia.fallo && (
+              <p className="silice-control__nota cds--type-helper-text-01">
+                No se pudieron cargar las partidas del contrato: escriba el código de cada partida.
+              </p>
+            )}
+            {guia.truncada && <p className="silice-control__nota cds--type-helper-text-01">{AVISO_LISTA_RECORTADA}</p>}
+            {guia.aviso !== "" && <p className="silice-control__nota cds--type-helper-text-01">{guia.aviso}</p>}
+          </div>
           {lineas.map((l, i) => (
             <div key={i} className="silice-control__linea">
-              <CampoTexto id={`val-p-${i}`} labelText={`Partida ${i + 1}`} value={l.partida} onChange={(e) => cambiarLinea(i, "partida", e.target.value)} />
+              <CampoDePartida
+                id={`val-p-${i}`}
+                etiqueta={`Partida ${i + 1}`}
+                ayuda="Las del contrato (línea base): escriba el código o parte de su descripción."
+                partidas={guia.lista}
+                soloDelContrato={!guia.truncada}
+                texto={l.partida}
+                alCambiarTexto={(t) => cambiarLinea(i, "partida", t)}
+                alExpirar={alExpirar}
+                invalido={i in erroresDePartida}
+                textoInvalido={erroresDePartida[i]}
+              />
               <CampoTexto
                 id={`val-c-${i}`}
                 labelText={`Cantidad ${i + 1}`}
@@ -245,7 +321,7 @@ function Anular({ proyecto, datos, alCambiar }: { proyecto: string; datos: Valua
   );
 }
 
-function Costo({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => void }) {
+function Costo({ proyecto, partidas, alCambiar }: { proyecto: string; partidas: PartidasDeLaObra; alCambiar: () => void }) {
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
   const [v, setV] = useState({ monto: "", moneda: "USD", fecha: "", partida: "", fuente: "" });
@@ -256,7 +332,9 @@ function Costo({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => voi
     setErrorMonto(error);
     if (error) return;
     void ejecutar(async () => {
-      await pedir("/v1/control/costos", { metodo: "POST", cuerpo: { proyecto, ...v, monto: cifraParaApi(v.monto) } });
+      // Un código escrito completo se deja con la forma del contrato; lo demás (un gasto general, una partida ajena) va tal cual.
+      const partida = partidas.lista ? (partidaDelContrato(partidas.lista, v.partida)?.codigo ?? v.partida.trim()) : v.partida.trim();
+      await pedir("/v1/control/costos", { metodo: "POST", cuerpo: { proyecto, ...v, partida, monto: cifraParaApi(v.monto) } });
       return "Costo anotado: se convierte con la tasa de su fecha al calcular.";
     });
   };
@@ -274,11 +352,24 @@ function Costo({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => voi
           onChange={campo("monto")}
         />
         <Select id="cos-moneda" labelText="Moneda" value={v.moneda} onChange={campo("moneda")}>
-          <SelectItem value="USD" text="USD" />
-          <SelectItem value="Bs" text="Bs" />
+          {[...MONEDAS].reverse().map((m) => (
+            <SelectItem key={m} value={m} text={m} />
+          ))}
         </Select>
         <CampoTexto id="cos-fecha" type="date" labelText="Fecha" value={v.fecha} onChange={campo("fecha")} />
-        <CampoTexto id="cos-partida" labelText="Partida (opcional)" value={v.partida} onChange={campo("partida")} />
+        <CampoDePartida
+          id="cos-partida"
+          etiqueta="Partida (opcional)"
+          ayuda="Déjela vacía para un gasto general. Puede ser una partida que no está en el contrato."
+          partidas={partidas.lista}
+          soloDelContrato={false}
+          texto={v.partida}
+          alCambiarTexto={(t) => setV({ ...v, partida: t })}
+          alExpirar={alExpirar}
+        />
+        <div role="status" aria-live="polite">
+          {partidas.aviso !== "" && <p className="silice-control__nota cds--type-helper-text-01">{partidas.aviso}</p>}
+        </div>
         <CampoTexto id="cos-fuente" labelText="Fuente del costo" value={v.fuente} onChange={campo("fuente")} />
         <div>
           <Button kind="primary" size="md" disabled={estado.enviando} onClick={anotar}>
@@ -308,6 +399,9 @@ const COLUMNAS_DE_VALUACIONES = columnasDe(COLUMNAS_VALUACIONES, NUMERICAS_VALUA
 export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
   const { alExpirar } = useAplicacion();
   const carga = useCargaSuave<Valuaciones>(rutaDe("/v1/control/valuaciones", proyecto, { n: String(clave) }), alExpirar);
+  // AC2: las partidas de la versión de la línea base, una vez por obra, para los campos «Partida» de Registrar y Costo.
+  const delContrato = useCarga<PartidasDelContrato>(rutaDe("/v1/control/partidas", proyecto), alExpirar);
+  const partidas = partidasDeLaObra(delContrato);
   if (carga.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las valuaciones" />;
   if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudieron cargar las valuaciones" />;
   const datos = carga.datos;
@@ -342,10 +436,10 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         <h2 id="control-escribir" className="cds--type-heading-compact-02">
           Registrar, importar, anular y anotar costos
         </h2>
-        <Registrar proyecto={proyecto} causas={datos.causas} alCambiar={alCambiar} />
+        <Registrar proyecto={proyecto} causas={datos.causas} partidas={partidas} alCambiar={alCambiar} />
         <Importar proyecto={proyecto} alCambiar={alCambiar} />
         <Anular proyecto={proyecto} datos={datos} alCambiar={alCambiar} />
-        <Costo proyecto={proyecto} alCambiar={alCambiar} />
+        <Costo proyecto={proyecto} partidas={partidas} alCambiar={alCambiar} />
       </section>
     </>
   );

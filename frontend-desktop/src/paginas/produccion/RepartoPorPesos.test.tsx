@@ -73,6 +73,9 @@ describe("Reparto de la cantera por pesos", () => {
           { codigo: "MZP-01", toneladas: "100" },
         ]);
       }
+      if (url.pathname === "/v1/produccion/recetas/vigentes") {
+        return json([{ id: 1, producto: "MZP-01", componentes: [], fuente: "f", vigente_desde: "2026-01-01" }]);
+      }
       if (url.pathname === "/v1/produccion/recetas/vigente") {
         return url.searchParams.get("producto") === "MZP-01"
           ? json({ id: 1, producto: "MZP-01", componentes: [], fuente: "f", vigente_desde: "2026-01-01" })
@@ -185,5 +188,25 @@ describe("Reparto de la cantera por pesos", () => {
     await usuario.clear(screen.getByLabelText("Porcentaje de AGR-19"));
     expect(screen.getByText(/Falta el porcentaje de AGR-19./)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
+  });
+
+  test("pide las recetas vigentes en una sola petición y nunca consulta la receta por producto", async () => {
+    await montarYElegirMoneda();
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    expect(await screen.findByLabelText("Porcentaje de AGR-12")).toBeInTheDocument();
+    expect(screen.getByLabelText("Porcentaje de AGR-19")).toBeInTheDocument();
+
+    const campos = screen.getAllByLabelText(/^Porcentaje de/).map((c) => c.getAttribute("id"));
+    expect(campos).toEqual(["reparto-AGR-12", "reparto-AGR-19"]);
+
+    const llamadasVigentes = fetchFalso.mock.calls
+      .map((c) => String(c[0]))
+      .filter((r) => r.startsWith("/v1/produccion/recetas/vigentes"));
+    const llamadasVigente = fetchFalso.mock.calls
+      .map((c) => String(c[0]))
+      .filter((r) => r.startsWith("/v1/produccion/recetas/vigente?") || r === "/v1/produccion/recetas/vigente");
+
+    expect(llamadasVigentes).toEqual(["/v1/produccion/recetas/vigentes?fecha=2026-11-30"]);
+    expect(llamadasVigente).toEqual([]);
   });
 });

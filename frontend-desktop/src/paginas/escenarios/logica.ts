@@ -18,7 +18,7 @@ export const AYUDA =
 export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavía: elabore uno primero.";
 export const NOTA_PARAMETROS = "Parámetros de costo del escenario (por defecto, los del presupuesto base).";
 export const NOTA_PRECIOS =
-  "Precios de ensayo (opcional): descripción exacta del insumo y precio nuevo. Lo no mencionado conserva su precio vigente.";
+  "Precios de ensayo (opcional): busque el insumo, elíjalo de la lista y escriba el precio nuevo. Lo no mencionado conserva su precio vigente.";
 export const EJEMPLO_PRECIOS = "p. ej. Cemento Portland → 18,50";
 export const SIN_ESCENARIOS = "Defina un escenario para compararlo contra el presupuesto base.";
 export const TITULO_COMPARACION = "Comparación contra el base";
@@ -46,6 +46,18 @@ export interface FilaPrecio {
   id: number;
   insumo: string;
   precio: string;
+  // La descripcion que se eligio de la lista del catalogo (AC3); lo que difiera de ella es texto escrito a mano.
+  elegido?: string;
+}
+
+// El calculo empareja la descripcion por igualdad exacta y descarta en silencio la que no existe (core/budget/escenarios.py:
+// `precios.get(descripcion, precio)`; la API la nombra en `precios_sin_insumo` y `avisoPreciosSinEfecto` lo dice). Por eso no se ofrece «usar tal cual»: se
+// permite escribirla, pero queda avisado.
+export const AVISO_ESCRITO_A_MANO =
+  "Escrito a mano: si no es exactamente un insumo de la lista, no cambia ningún precio.";
+
+export function esEscritoAMano(fila: FilaPrecio): boolean {
+  return fila.insumo.trim() !== "" && fila.elegido !== fila.insumo;
 }
 
 export function etiquetaDePresupuesto(p: PresupuestoResumen): string {
@@ -187,6 +199,30 @@ export function notaHallazgos(e: EscenarioRespuesta): string {
     `Hallazgos de la auditoría del escenario: ${e.hallazgos} (el informe se genera siempre). ` +
     `Insumos variados: ${e.insumos_variados}.`
   );
+}
+
+// «A», «B» y «C»
+function enumerar(nombres: string[]): string {
+  const citados = nombres.map((n) => `«${n}»`);
+  return citados.length <= 1 ? (citados[0] ?? "") : `${citados.slice(0, -1).join(", ")} y ${citados[citados.length - 1]}`;
+}
+
+// En espanol llano, los precios de ensayo de un escenario que no cambiaron nada y por que; null si todos cambiaron algo.
+export function avisoPreciosSinEfecto(e: EscenarioRespuesta): string | null {
+  const sinInsumo = e.precios_sin_insumo ?? [];
+  const sinCambio = e.precios_sin_cambio ?? [];
+  const total = sinInsumo.length + sinCambio.length;
+  if (total === 0) return null;
+  const partes: string[] = [];
+  if (sinInsumo.length > 0) {
+    partes.push(
+      `${enumerar(sinInsumo)} no ${sinInsumo.length === 1 ? "es un insumo" : "son insumos"} del presupuesto base ` +
+        "(el nombre tiene que ser exactamente el de la lista)",
+    );
+  }
+  if (sinCambio.length > 0) partes.push(`${enumerar(sinCambio)} ya ${sinCambio.length === 1 ? "tenía" : "tenían"} ese precio`);
+  const cuantos = total === 1 ? "1 precio de ensayo no cambió nada" : `${total} precios de ensayo no cambiaron nada`;
+  return `En «${e.nombre}», ${cuantos}: ${partes.join("; ")}.`;
 }
 
 export function rutaEscenarios(codigo: string, proyecto: string, sufijo = ""): string {

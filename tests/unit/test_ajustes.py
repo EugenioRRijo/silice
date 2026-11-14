@@ -28,6 +28,7 @@ def test_los_valores_por_defecto_apagan_la_red(tmp_path: Path) -> None:
     assert (ajustes.red_local, ajustes.mostrar_investigacion) == (False, False)
     assert (ajustes.puerto, ajustes.nivel_registro) == (8501, "INFO")
     assert ajustes.direccion == "" and ajustes.avisos == ()
+    assert ajustes.abrir_en == "ventana"  # F5 ventana (2026-11-06): la ventana propia por defecto
     assert not (tmp_path / "no_existe.toml").exists()  # leer no crea el archivo
 
 
@@ -43,6 +44,7 @@ def test_guardar_y_volver_a_leer_da_lo_mismo(tmp_path: Path) -> None:
         direccion="192.168.1.20",
         mostrar_investigacion=True,
         nivel_registro="WARNING",
+        abrir_en="navegador",
     )
     guardar_ajustes(ruta, esperados)
     assert cargar_ajustes(ruta) == esperados
@@ -229,3 +231,29 @@ def test_guardar_no_deja_un_archivo_a_medias(tmp_path: Path) -> None:
     guardar_ajustes(ruta, replace(Ajustes(), puerto=8701))  # pisar uno existente
     assert [p.name for p in tmp_path.iterdir()] == ["silice.toml"]
     assert cargar_ajustes(ruta).puerto == 8701
+
+
+def test_abrir_en_el_navegador_se_lee_de_la_tabla_interfaz(tmp_path: Path) -> None:
+    ruta = _escribir(tmp_path / "silice.toml", '[interfaz]\nabrir_en = "navegador"\n')
+    ajustes = cargar_ajustes(ruta)
+    assert ajustes.abrir_en == "navegador" and ajustes.avisos == ()
+    # escrito a mano con mayúscula o espacios: se entiende igual
+    ruta = _escribir(tmp_path / "silice.toml", '[interfaz]\nabrir_en = " Navegador"\n')
+    assert cargar_ajustes(ruta).abrir_en == "navegador" and cargar_ajustes(ruta).avisos == ()
+
+
+@pytest.mark.parametrize("valor", ['"pantalla"', '""', "true", "3"])
+def test_un_abrir_en_que_no_existe_da_la_ventana_y_un_aviso(tmp_path: Path, valor: str) -> None:
+    ruta = _escribir(tmp_path / "silice.toml", f"[interfaz]\nabrir_en = {valor}\n")
+    ajustes = cargar_ajustes(ruta)
+    assert ajustes.abrir_en == "ventana"
+    (aviso,) = ajustes.avisos
+    assert "abrir_en" in aviso and "ventana" in aviso and "navegador" in aviso
+
+
+def test_lo_guardado_explica_abrir_en(tmp_path: Path) -> None:
+    ruta = tmp_path / "silice.toml"
+    guardar_ajustes(ruta, Ajustes())
+    texto = ruta.read_text(encoding="utf-8")
+    assert 'abrir_en = "ventana"' in texto and "navegador" in texto
+    assert texto.index("[interfaz]") < texto.index("abrir_en") < texto.index("[registro]")

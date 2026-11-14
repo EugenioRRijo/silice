@@ -13,6 +13,8 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { Variacion } from "../../comun/Variacion";
 import { cifrasEnTextoEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
+// AC4: las monedas de la Hoja (Bs y USD); se elige una, no se escribe (pedido de Eugenio del 2026-10-21).
+import { MONEDAS } from "../../comun/monedas";
 import {
   AYUDA,
   CODIGO_NUEVO_POR_DEFECTO,
@@ -218,13 +220,17 @@ export default function PaginaActualizacion() {
               value={vigencia}
               onChange={(e) => setVigencia(e.target.value)}
             />
-            <CampoTexto
+            <Select
               id="actualizacion-moneda"
               labelText="Moneda"
               size="sm"
               value={moneda}
               onChange={(e) => setMoneda(e.target.value)}
-            />
+            >
+              {MONEDAS.map((m) => (
+                <SelectItem key={m} value={m} text={m} />
+              ))}
+            </Select>
             <CampoTexto
               id="actualizacion-nombre"
               labelText="Nombre de la lista"

@@ -1,0 +1,156 @@
+// Autocompletado de la descripcion de los insumos al componer un APU (AC1, pedido de Eugenio del 2026-10-21; AC1b): de
+// que tabla de consulta sale cada tabla de insumos y que columnas se llenan al elegir una sugerencia. Aqui no se calcula
+// nada: los montos llegan de la API como decimal con punto y solo se reescriben con la coma de la pagina.
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import type { SugerenciaDeConsulta, TablaDeConsulta } from "../../comun/consulta";
+import type { Fila, TipoTabla } from "./tablas";
+
+// `GET /v1/consulta/insumos` junta materiales y equipos del catalogo (aplicacion/consulta.py, TIPOS_DE_INSUMO): no hay una
+// tabla solo de equipos, asi que las dos tablas piden «insumos» y la fuente de cada sugerencia dice si es material o
+// equipo. La mano de obra sale de «salarios_cct»: los oficios del catalogo con su jornal.
+export const TABLA_DE_CONSULTA: Record<TipoTabla, TablaDeConsulta> = {
+  materiales: "insumos",
+  equipos: "insumos",
+  mano_obra: "salarios_cct",
+};
+
+// La columna de la tabla que recibe el precio: el precio de un material o un equipo, el jornal (sueldo) de la mano de
+// obra. Un material ademas recibe la unidad; las otras dos tablas no tienen esa columna.
+export const COLUMNA_DEL_PRECIO: Record<TipoTabla, "precio" | "sueldo"> = {
+  materiales: "precio",
+  equipos: "precio",
+  mano_obra: "sueldo",
+};
+
+export interface AlElegir {
+  // Las celdas que se llenan.
+  valores: Record<string, string>;
+  // Por que el precio no se lleno aunque la lista lo tiene (otra moneda), en texto llano; null si no hay nada que decir.
+  aviso: string | null;
+}
+
+// Las celdas que se llenan al elegir una sugerencia: siempre la descripcion (y la unidad, si es un material y la trae) y el
+// precio solo si viene de la lista para armar en la moneda de la carpeta. El servidor ya no lo manda en otra moneda
+// (aplicacion/consulta.py); si aun asi llegara en otra, o sin moneda, no se copia. Sin la moneda de la carpeta (la API
+// no la dio) manda la comparacion del servidor. Lo que no viene no se llena (no se inventa ni se borra lo que hay).
+export function valoresAlElegir(
+  tipo: TipoTabla,
+  sugerencia: SugerenciaDeConsulta,
+  monedaDeTrabajo: string | null,
+): AlElegir {
+  const columna = COLUMNA_DEL_PRECIO[tipo];
+  const valores: Record<string, string> = { descripcion: sugerencia.descripcion || sugerencia.etiqueta };
+  if (tipo === "materiales" && sugerencia.unidad) valores.unidad = sugerencia.unidad;
+  const { precio, moneda } = sugerencia;
+  if (!precio) return { valores, aviso: sugerencia.aviso_precio || null };
+  if (!moneda) return { valores, aviso: null };
+  if (monedaDeTrabajo !== null && moneda !== monedaDeTrabajo) {
+    return { valores, aviso: `El catálogo lo tiene en ${moneda}; escriba el ${columna} en ${monedaDeTrabajo}.` };
+  }
+  valores[columna] = formatoEsVe(precio);
+  return { valores, aviso: null };
+}
+
+// Lo que el catalogo llena en una fila ademas de la descripcion, y que el catalogo de OTRO insumo no debe mezclar (diseno del
+// 2026-10-21, §1.6: «nunca se mezclan en una misma fila»): la unidad (solo materiales) y el precio o el jornal.
+export function columnasDelCatalogo(tipo: TipoTabla): string[] {
+  return tipo === "materiales" ? ["unidad", COLUMNA_DEL_PRECIO[tipo]] : [COLUMNA_DEL_PRECIO[tipo]];
+}
+
+// Los valores que puso el catalogo en una fila y siguen siendo suyos, por columna. Una celda en la que la persona escribio
+// sale de aqui y deja de ser del catalogo para siempre.
+export type Llenado = Record<string, string>;
+
+export interface Conflicto {
+  // El valor del catalogo tal como se lee (formateado) y la frase que lo dice.
+  valor: string;
+  aviso: string;
+}
+
+// Que se sabe del origen de las celdas de una fila (dictamen de la ronda 2, MAYOR 1: seguir la procedencia de cada dato).
+//   - `llenado`: lo que puso el catalogo y sigue en la celda.
+//   - `tecleado`: lo que la persona tecleo en esa celda y sigue en la celda.
+// Todo lo demas vino de fuera sin que nadie lo tecleara (la precarga de una partida guardada, «Usar esta fila» de MaPreX) y
+// no es de la persona: al elegir otro insumo se reemplaza o se quita, y se dice.
+export interface Origen {
+  llenado: Llenado;
+  tecleado: Llenado;
+}
+
+export interface Eleccion {
+  // Las celdas a escribir; un texto vacio vacia la celda (el insumo nuevo no trae ese dato).
+  valores: Record<string, string>;
+  // Lo que el catalogo es dueno ahora en la fila (para la proxima eleccion).
+  llenado: Llenado;
+  // Por columna: lo que el catalogo tiene y NO se escribio porque la persona ya habia tecleado otra cosa en esa celda.
+  conflictos: Record<string, Conflicto>;
+  // Por columna: lo que vino de fuera y se reemplazo o se quito; `valor` es lo que quedo en la celda (vacio si se quito).
+  cambios: Record<string, Conflicto>;
+  // Por que el precio quedo vacio (otra moneda), solo si la celda del precio quedo vacia.
+  aviso: string | null;
+}
+
+function articulo(columna: string): { el: string; nombre: string } {
+  if (columna === "unidad") return { el: "la", nombre: "unidad" };
+  return { el: "el", nombre: columna === "sueldo" ? "sueldo" : "precio" };
+}
+
+// Elegir un insumo en una fila que ya tiene cosas. Por cada celda que el catalogo llena: si la persona la tecleo, no se pisa y
+// se dice lo que el catalogo tiene; si no (esta vacia, la lleno el catalogo o vino de fuera) se reemplaza con lo del insumo
+// nuevo, o se vacia si el nuevo no trae ese dato: la fila nunca queda mezclada (diseno del 2026-10-21, §1.6, punto 6). Lo que
+// vino de fuera y se cambia o se quita se dice; lo que puso el catalogo anterior se reemplaza sin ruido, como siempre. La
+// interfaz no calcula: solo compara textos y reescribe el decimal que mando la API.
+export function aplicarEleccion(
+  tipo: TipoTabla,
+  sugerencia: SugerenciaDeConsulta,
+  monedaDeTrabajo: string | null,
+  fila: Fila,
+  origen: Origen,
+): Eleccion {
+  const trae = valoresAlElegir(tipo, sugerencia, monedaDeTrabajo);
+  const valores: Record<string, string> = { descripcion: trae.valores.descripcion };
+  const llenado: Llenado = {};
+  const conflictos: Record<string, Conflicto> = {};
+  const cambios: Record<string, Conflicto> = {};
+  const columnaDelPrecio = COLUMNA_DEL_PRECIO[tipo];
+  for (const columna of columnasDelCatalogo(tipo)) {
+    const actual = fila[columna] ?? "";
+    const hay = actual.trim() !== "";
+    const delCatalogo = origen.llenado[columna] !== undefined && actual === origen.llenado[columna];
+    const dePersona = !delCatalogo && hay && origen.tecleado[columna] !== undefined && actual === origen.tecleado[columna];
+    const nuevo = trae.valores[columna];
+    const { el, nombre } = articulo(columna);
+    if (dePersona) {
+      if (nuevo !== undefined && actual !== nuevo) {
+        // El valor del precio solo llega con su moneda (`valoresAlElegir`).
+        const frase =
+          columna === "unidad"
+            ? `El catálogo tiene la unidad «${nuevo}»; se conserva la que escribió.`
+            : `El catálogo tiene ${nuevo} ${sugerencia.moneda}; se conserva ${el} ${nombre} que escribió.`;
+        conflictos[columna] = { valor: nuevo, aviso: frase };
+      }
+    } else if (nuevo !== undefined) {
+      valores[columna] = nuevo;
+      llenado[columna] = nuevo;
+      if (!delCatalogo && hay && actual !== nuevo) {
+        const del = columna === "unidad" ? "la del" : "el del";
+        const con = columna === "unidad" ? "" : ` ${sugerencia.moneda}`;
+        cambios[columna] = { valor: nuevo, aviso: `Se cambió ${el} ${nombre} ${actual} por ${del} catálogo, ${nuevo}${con}.` };
+      }
+    } else if (hay) {
+      valores[columna] = ""; // el insumo nuevo no trae ese dato y lo de antes no es de la persona
+      if (!delCatalogo) {
+        // Si el precio no vino por otra moneda, el aviso de moneda ya dice por que; si no, se dice que la lista no lo tiene.
+        const porque =
+          columna === "unidad"
+            ? ": este insumo no tiene unidad en el catálogo"
+            : columna === columnaDelPrecio && trae.aviso !== null
+              ? ""
+              : `: este insumo no tiene ${nombre} en la lista`;
+        cambios[columna] = { valor: "", aviso: `Se quitó ${el} ${nombre} ${actual}${porque}.` };
+      }
+    }
+  }
+  const precioFinal = valores[columnaDelPrecio] ?? fila[columnaDelPrecio] ?? "";
+  return { valores, llenado, conflictos, cambios, aviso: precioFinal.trim() === "" ? trae.aviso : null };
+}

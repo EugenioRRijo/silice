@@ -3,7 +3,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
 import { esCadena, rutaDeCadena } from "../hoja/logicaVersiones";
 import type { CadenaRespuesta } from "../hoja/logicaVersiones";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { TEXTOS_DE_VERSIONES as T } from "./textos";
 
 // El estado de la cadena de sellos de la obra (S6, RF-83): recalcula cada huella. Es una mejora declarada sobre la clásica

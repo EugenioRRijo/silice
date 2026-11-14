@@ -59,7 +59,7 @@ describe("entregar desde Aprobaciones (tanda 2 del pulido F5, Tarea 6)", () => {
   // Contrato de rutas 2.4 (F6, T5): el pendiente «Entregar» abre la subvista «Entregar» de Aprobaciones, ya sin pasar por
   // «Aprobar una versión». (Antes llegaba a la sección y de ahí a «Entregar paquete» por el enlace.)
   test("quien arma va del pendiente «Entregar» directo a «Entregar paquete» de Aprobaciones", async () => {
-    const u = montar("ana", "/pendientes");
+    const u = montar("ana", "/inicio/pendientes");
     const detalle = await screen.findByRole("region", { name: "Detalle del pendiente" });
     await u.click(within(detalle).getByRole("button", { name: "Entregar" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Entregar paquete" })).toBeInTheDocument();

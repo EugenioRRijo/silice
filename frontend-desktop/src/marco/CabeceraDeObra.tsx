@@ -32,6 +32,8 @@ function lineaDeVersion(version: string | null | undefined, hoja: HojaDeLaObra |
 export function CabeceraDeObra({ carpeta, obraId, nombre, version, ficha }: Props) {
   const base = useContext(ContextoAplicacion);
   const hoja = useContext(ContextoDeLaHoja);
+  // La moneda de la obra la da el servidor en su ficha: undefined mientras carga, null si no hay dato.
+  const monedaDeLaObra = ficha.estado === "lista" ? ficha.obra.moneda : ficha.estado === "sin_dato" ? null : undefined;
   return (
     <section aria-label="Obra abierta" className="silice-obra-abierta">
       <p className="silice-obra-abierta__nombre">{nombre ?? `Obra ${obraId}`}</p>
@@ -43,7 +45,7 @@ export function CabeceraDeObra({ carpeta, obraId, nombre, version, ficha }: Prop
         )}
         <li>{lineaDeVersion(version, hoja)}</li>
       </ul>
-      {base && <ListaDeLaCarpeta key={carpeta ?? ""} alExpirar={base.alExpirar} />}
+      {base && <ListaDeLaCarpeta key={carpeta ?? ""} alExpirar={base.alExpirar} monedaDeLaObra={monedaDeLaObra} />}
     </section>
   );
 }

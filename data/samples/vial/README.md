@@ -36,6 +36,33 @@ Columnas, todas obligatorias en la cabecera:
   la carpeta o del bacheo (mayor que 0 y menor que 100; «6,5» es 6,5 %). Va en la partida de la mezcla y la
   regla VR2 lo compara con la fórmula de trabajo de la receta vigente de la planta. Un archivo sin esa columna
   se lee igual; en otra capa o en una demarcación se rechaza.
+- Columnas **opcionales** de F5 vial (diseño `docs/especificaciones/2026-11-03-presupuesto-vial-real-design.md` §6;
+  un archivo sin ellas se lee igual y deriva lo mismo que antes):
+  - `esponjamiento` (solo fresado): volumen suelto ÷ volumen en sitio, mayor o igual a 1 («1,25»). Sin valor por
+    defecto: sin él no se deriva el transporte del fresado (m³ = volumen fresado × esponjamiento).
+  - `limpieza` (solo imprimación y riego de adherencia): `sí` o `no`. Con `sí` se deriva la limpieza de la superficie
+    (m², el área regada).
+  - `medicion`: la otra unidad de la partida principal: `m2` en el fresado (fresado medido en área) y `t` en la
+    carpeta (colocación medida en masa). Vacía, la de siempre (m³ y m²).
+  - `area_m2` (solo demarcación `superficie`, obligatoria allí): el área de cada elemento (paso peatonal, línea de
+    pare); `lineas` es el número de elementos iguales y la cantidad, área × número, en m².
+  - `captafaros` (líneas continua o discontinua, o demarcación `captafaros`): el número de ojos de gato (entero
+    ≥ 1). En una línea, la línea sigue dando sus metros y su pintura.
+  - Demarcación de tipo `captafaros` (prueba de punta a punta del 2026-11-13): ojos de gato solos, sobre una línea
+    que esta obra no pinta. `captafaros` obligatoria; `lineas` vacía (o 1). Da solo las unidades, sin línea ni
+    pintura.
+  - `suministro` (solo imprimación y riego de adherencia): `sí` o `no`. Con `sí`, el APU del riego ya trae el
+    ligante («riego con suministro»): no se deriva la partida del ligante y la dosis pasa a ser opcional (si se
+    escribe, VR3 sigue midiendo el residual). Vacía o `no`, la capa de siempre: dosis obligatoria y ligante
+    derivado.
+  - `transporte` (del tramo: se llena en su primera fila, como `distancia_planta_km`; si se repite en otra fila,
+    debe coincidir): cómo mide la obra el transporte de la mezcla. Vacía (o `t·km`), en t·km, la de siempre;
+    `banda`, en toneladas, con la distancia como banda en la descripción de la partida («más de 8 km y hasta
+    10 km»). Con `banda` la partida en t se deriva aunque el tramo no declare la distancia, y VR4 compara las
+    toneladas y, si hay distancia, si cae dentro de la banda (fuera de ella, ADVERTENCIA). Otro valor se
+    rechaza con la fila.
+  Las partidas sin geometría (movilización de equipos, en viajes, y señalización y control de tránsito, en días)
+  están en el catálogo vial pero se ponen a mano en el presupuesto.
 - Los errores nombran el archivo y la **fila** tal como la ve una hoja de cálculo (la cabecera es la fila 1).
 
 ## Memoria de cálculo (a mano, escrita antes del código)

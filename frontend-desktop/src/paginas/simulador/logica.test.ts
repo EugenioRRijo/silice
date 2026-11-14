@@ -7,7 +7,10 @@ import {
   errorDeVariacion,
   filasDeTabla,
   MENSAJE_SEMILLA,
+  MENSAJE_TOPE_CARACTERES,
+  MENSAJE_TOPE_INSUMOS,
   MENSAJE_VARIACION,
+  rechazoDeInsumo,
   resumenDeEnvio,
 } from "./logica";
 
@@ -23,21 +26,21 @@ describe("logica del simulador", () => {
   });
 
   test("el cuerpo manda la variacion leida con coma decimal, con punto, y los insumos vacios como null", () => {
-    expect(cuerpoDe({ semilla: " 42 ", variacion: "5", insumos: "  " })).toEqual({
+    expect(cuerpoDe({ semilla: " 42 ", variacion: "5", insumos: [] })).toEqual({
       semilla: 42,
       variacion_max: "5",
       insumos: null,
     });
-    expect(cuerpoDe({ semilla: "0", variacion: "2,50", insumos: " Arena , Cemento " })).toEqual({
+    expect(cuerpoDe({ semilla: "0", variacion: "2,50", insumos: ["Arena", "Cemento"] })).toEqual({
       semilla: 0,
       variacion_max: "2.50",
-      insumos: "Arena , Cemento",
+      insumos: ["Arena", "Cemento"],
     });
   });
 
-  test("la tabla conserva el precio como texto, sin tocarlo (la columna lo presenta en es-VE)", () => {
+  test("la tabla conserva el precio como texto, sin tocarlo (la columna lo presenta en es-VE), y la unidad se escribe «m³»", () => {
     const filas = filasDeTabla([{ tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
-    expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
+    expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m³", precio: "30.00" }]);
   });
 
   test("la variacion acepta la coma decimal y el punto de miles entre 0 y 1000", () => {
@@ -65,8 +68,37 @@ describe("logica del simulador", () => {
     expect(resumenDeEnvio({ semilla: 42, variacion_max: "5", insumos: null })).toBe(
       "semilla 42, variación 5 %, insumos: todos",
     );
-    expect(resumenDeEnvio({ semilla: 7, variacion_max: "2.5", insumos: "Arena" })).toBe(
-      "semilla 7, variación 2,5 %, insumos: Arena",
+    expect(resumenDeEnvio({ semilla: 7, variacion_max: "2.5", insumos: ["Arena", "Tubo, 4 pulgadas"] })).toBe(
+      "semilla 7, variación 2,5 %, insumos: «Arena», «Tubo, 4 pulgadas»",
     );
+  });
+});
+
+// AC3: los insumos se eligen de la lista uno a uno y viajan como LISTA de descripciones exactas: una con coma entra
+// entera (la API ya no la parte) y ninguna se rechaza por llevarla.
+describe("insumos elegidos del simulador", () => {
+  test("viajan como lista en el orden elegido; sin ninguno, null (= todos)", () => {
+    expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: ["Tubo PVC, 4 pulgadas", "Arena lavada"] }).insumos).toEqual([
+      "Tubo PVC, 4 pulgadas",
+      "Arena lavada",
+    ]);
+    expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: [] }).insumos).toBeNull();
+  });
+
+  test("rechaza al superar el tope de 200 insumos", () => {
+    const alLimite = Array.from({ length: 200 }, (_, i) => `Insumo ${i}`);
+    expect(rechazoDeInsumo(alLimite, "Insumo 201")).toBe(MENSAJE_TOPE_INSUMOS);
+    expect(rechazoDeInsumo(alLimite.slice(0, 199), "Insumo 200")).toBeNull();
+  });
+
+  test("rechaza al superar el tope de 20.000 caracteres en total", () => {
+    const largo = "a".repeat(19990);
+    expect(rechazoDeInsumo([largo], "b".repeat(11))).toBe(MENSAJE_TOPE_CARACTERES);
+    expect(rechazoDeInsumo([largo], "b".repeat(10))).toBeNull();
+  });
+
+  test("si el insumo ya está en la lista no lo rechaza por tope (lo atiende la selección)", () => {
+    const alLimite = Array.from({ length: 200 }, (_, i) => `Insumo ${i}`);
+    expect(rechazoDeInsumo(alLimite, "Insumo 0")).toBeNull();
   });
 });

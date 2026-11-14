@@ -523,6 +523,43 @@ def test_columnas_de_mas_se_rechazan_y_el_maximo_se_acepta():
         leer(_xlsx([ancho]), "r.xlsx", fecha_referencia=HOY)
 
 
+def test_el_xlsx_se_lee_hasta_una_columna_mas_del_tope(monkeypatch: pytest.MonkeyPatch):
+    """Decisión (d), simulada el 2026-11-12: una celda con solo formato en XFD hacía que openpyxl
+    entregara 16.384 valores por fila (20.000 filas así: 95 s). Se piden `MAX_COLUMNAS + 1`
+    columnas, la de más para seguir rechazando la fila que la usa (9 s). Lo que haya más allá no
+    se lee, como cualquier columna que no se usa: ninguna puede asignarse a un campo."""
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet._read_only import ReadOnlyWorksheet
+
+    def libro(columna_lejana: int, valor: object) -> bytes:
+        wb = openpyxl.Workbook()
+        hoja = wb.active
+        hoja.append(CABECERA.split(";"))
+        hoja.append(_linea("T-1").split(";"))
+        celda = hoja[f"{get_column_letter(columna_lejana)}2"]
+        celda.value = valor
+        celda.font = Font(bold=True)
+        salida = io.BytesIO()
+        wb.save(salida)
+        return salida.getvalue()
+
+    entregadas: list[int] = []
+    original = ReadOnlyWorksheet.iter_rows
+
+    def contando(self, *args, **kwargs):
+        for fila in original(self, *args, **kwargs):
+            entregadas.append(len(fila))
+            yield fila
+
+    monkeypatch.setattr(ReadOnlyWorksheet, "iter_rows", contando)
+    assert len(leer(libro(16_384, None), "r.xlsx", fecha_referencia=HOY).pesajes) == 1
+    assert max(entregadas) <= MAX_COLUMNAS + 1
+    assert len(leer(libro(MAX_COLUMNAS + 10, "nota"), "r.xlsx", fecha_referencia=HOY).pesajes) == 1
+    with pytest.raises(ReporteRechazado, match="columnas"):
+        leer(libro(MAX_COLUMNAS + 1, "nota"), "r.xlsx", fecha_referencia=HOY)
+
+
 def test_mapeo_explicito_manda():
     # Encabezados que el detector no reconoce: sin mapeo se pide el mapeo.
     cabecera = "Col A;Col B;Col C;Col D;Col E;Col F;Col G;Col H"

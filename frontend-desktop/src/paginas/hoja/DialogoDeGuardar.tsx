@@ -3,7 +3,8 @@ import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { useCallback, useId, useRef } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
-import { rotuloDeOrigen } from "./logica";
+import { presentarClave, presentarValor } from "../../comun/presentarCambio";
+import { rotuloDeCampo, rotuloDeObjeto } from "../../comun/rotulos";
 import type { Monto } from "./logica";
 import { FUENTE_DEL_CAMBIO, FUENTE_DE_LA_MEDIDA, motivoParaNoGuardar, textoDeCambiosAGuardar } from "./logicaGuardar";
 import type { ErrorDeGuardado } from "./logicaGuardar";
@@ -76,11 +77,11 @@ function ListaDeCambios({ cambios, primera }: { cambios: CambiosDelModal; primer
           <TableBody>
             {visibles.map((c, i) => (
               <TableRow key={i}>
-                <TableCell>{c.objeto}</TableCell>
-                <TableCell title={c.clave}>{rotuloDeOrigen(c.clave)}</TableCell>
-                <TableCell>{c.campo}</TableCell>
-                <TableCell>{c.antes}</TableCell>
-                <TableCell>{c.despues}</TableCell>
+                <TableCell>{rotuloDeObjeto(c.objeto)}</TableCell>
+                <TableCell title={c.clave}>{presentarClave(c.objeto, c.clave)}</TableCell>
+                <TableCell>{rotuloDeCampo(c.campo)}</TableCell>
+                <TableCell>{presentarValor(c.campo, c.antes, c.clave)}</TableCell>
+                <TableCell>{presentarValor(c.campo, c.despues, c.clave)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -133,7 +134,7 @@ export function DialogoDeGuardar(p: Props) {
         </h2>
         <p id={idResumen} className="cds--type-body-compact-01">
           {primera
-            ? `Es la primera versión del proyecto ${p.proyecto}: registra su creación con la fuente y el responsable.`
+            ? `Es la primera versión de la obra ${p.proyecto}: registra su creación con la fuente y el responsable.`
             : `Se registrarán ${textoDeCambiosAGuardar(p.cambiosSinGuardar)} en una versión nueva (sale de la ${p.version}).`}
         </p>
         <p className="cds--type-body-compact-01">

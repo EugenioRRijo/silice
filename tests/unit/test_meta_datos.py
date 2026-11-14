@@ -199,12 +199,3 @@ def test_documentos_no_entra_en_worktrees_ni_node_modules(tmp_path):
         (tmp_path / carpeta).mkdir(parents=True)
         (tmp_path / carpeta / "README.md").write_text("los datos son reales", encoding="utf-8")
     assert list(meta._documentos(tmp_path)) == ["docs/guia.md"]
-
-
-def test_imprimir_no_se_cae_en_una_consola_cp1252():
-    import io
-
-    flujo = io.TextIOWrapper(io.BytesIO(), encoding="cp1252", newline="\n")
-    meta._imprimir("D1 → OK", flujo)
-    flujo.flush()
-    assert flujo.buffer.getvalue().decode("utf-8") == "D1 → OK\n"

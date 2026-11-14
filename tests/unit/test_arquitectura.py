@@ -667,3 +667,61 @@ def test_solo_cadena_usa_formato_legado():
                     usan.add(_ruta(archivo))
     assert usan <= permitidos, f"usan formato_legado sin permiso: {sorted(usan - permitidos)}"
     assert "core/budget/cadena.py" in usan  # la guardia no queda vacia
+
+
+# --- N5 (arbitraje F5/F7/F8, revision de correcciones): fusion y aplicacion sin ciclo -----------
+#
+# `fusion/apu_por_hoja.py` importaba `aplicacion.cifras` y `operacion.config`, y
+# `aplicacion/desperdicio.py` importaba `fusion.desperdicio`: un ciclo entre paquetes que ninguna
+# guardia vigilaba. `aplicacion.cifras` no se puede mudar (la importan `aplicacion/hoja.py` y
+# `aplicacion/composicion.py`, archivos congelados del experimento), asi que el ciclo se corta del
+# otro lado: `aplicacion` no importa `fusion`, la formula del desperdicio vive en una regla pura de
+# `aplicacion`, y de `aplicacion` fusion solo toma reglas puras (que solo usan la biblioteca
+# estandar: no arrastran la capa). La carpeta de perfiles se la pasa a fusion quien llama.
+
+#: Lo unico de `aplicacion/` que `fusion/` puede importar.
+REGLAS_PURAS_DE_APLICACION = frozenset({"aplicacion.cifras", "aplicacion.regla_desperdicio"})
+
+
+def test_aplicacion_no_importa_fusion():
+    culpables = sorted(
+        f"{_ruta(archivo)}: {modulo}"
+        for archivo in _archivos("aplicacion")
+        for modulo in _imports_de_ejecucion(archivo)
+        if modulo.split(".")[0] == "fusion"
+    )
+    assert culpables == []
+
+
+def test_de_aplicacion_fusion_solo_importa_reglas_puras():
+    """Con el modulo completo (`from aplicacion.cifras import X`): `from aplicacion import cifras`
+    tambien se rechaza, para que la regla se lea en una sola forma."""
+    usadas = {
+        (_ruta(archivo), modulo)
+        for archivo in _archivos("fusion")
+        for modulo in _imports(archivo)
+        if modulo.split(".")[0] == "aplicacion"
+    }
+    ajenas = sorted(f"{r}: {m}" for r, m in usadas if m not in REGLAS_PURAS_DE_APLICACION)
+    assert ajenas == []
+    assert {m for _, m in usadas} == REGLAS_PURAS_DE_APLICACION  # la guardia no queda vacia
+
+
+@pytest.mark.parametrize("modulo", sorted(REGLAS_PURAS_DE_APLICACION))
+def test_una_regla_pura_de_aplicacion_solo_usa_la_biblioteca_estandar(modulo):
+    archivo = RAIZ / f"{modulo.replace('.', '/')}.py"
+    assert archivo.is_file(), f"{modulo} no existe"
+    ajenos = [m for m in _imports(archivo) if m.split(".")[0] not in _BIBLIOTECA_ESTANDAR]
+    assert ajenos == [], f"{modulo} importa {ajenos}: una regla pura no arrastra otra capa"
+
+
+def test_fusion_no_importa_la_configuracion_de_la_instalacion():
+    """Donde viven los datos (`operacion.config`) lo decide la instalacion y lo pasa quien llama:
+    fusion no lo lee por su cuenta."""
+    culpables = sorted(
+        f"{_ruta(archivo)}: {modulo}"
+        for archivo in _archivos("fusion")
+        for modulo in _imports_de_ejecucion(archivo)
+        if modulo == "operacion.config" or modulo.startswith("operacion.config.")
+    )
+    assert culpables == []

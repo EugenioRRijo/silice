@@ -38,13 +38,14 @@ recomendó el orquestador y Eugenio lo aceptó. **Estado del proyecto:** [ESTADO
 | D7 | 404 en consola al abrir «Producir mezcla» | `paginas/produccion/useMezclas.ts` | video 2026-11-01 |
 | D8 | «Sin cálculo» en las filas de tramos | `aplicacion/hoja_vista.py` | video 2026-11-01 |
 | D9 | «Trayectorias por corte» bajo «Proyectar» | `paginas/riesgo/RiesgoDeLaObra.tsx` | video 2026-11-01 |
-| D10 | Botones sin nombre accesible: 3 en el Visor y 2 en Administración | `visor/`, `paginas/administracion/` | video 2026-11-01 |
+| D10 | Botones sin nombre accesible: 3 en el Visor y 2 en Administración | `visor/`, `paginas/administracion/` | video 2026-11-01 · **falso positivo** (2026-11-06): eran los botones ocultos (`aria-hidden`) que Carbon pone en cada pestaña; el arreglo se revirtió (rompía la flecha izquierda) |
 | D11 | «Versión vigente» del Resumen también es la de la línea base cuando existe | `paginas/obras/textos.ts:9`, `aplicacion/mesa.py:357-370` | árbitro final de F6 |
 | D12 | La ayuda del «Total» de la cartera solo vive en la API: mostrarla | `paginas/inicio/CarteraYAvance.tsx` | árbitro final de F6 |
 | D13 | La columna «Estado» del Presupuesto queda cortada a 1366 px | `paginas/hoja/hoja.scss:144-170` | árbitro final de F6 |
 | D14 | La tabla apilada de la Vista general: rótulo y dato en una línea, rótulo en gris | `paginas/inicio/inicio.scss` | revisión del orquestador |
 | D15 | Restos del autocompletado: dos normalizaciones duplicadas (`logicaBusqueda.ts:115`, `componer/unidades.ts`), importaciones entre páginas que deberían pasar por `comun/`, `MONEDAS` en tres sitios | `comun/`, `paginas/*` | árbitro del autocompletado |
 | D16 | En el panel de Componer, Esc en «Código» restaura solo el código tras una precarga | `paginas/componer/CampoDelCodigo.tsx`, `paginas/hoja/ComponerEnPanel.tsx` | árbitro del autocompletado |
+| D17 | En Componer, elegir una partida y luego otra dejaba la descripción y la unidad de la primera con el código y las tablas de la segunda | `paginas/componer/ComponerPartida.tsx:386-390` | árbitro de la tanda, ronda 2 (anterior a la tanda) |
 
 Cada fila se confirma en el código antes del encargo: si ya no pasa, se anota y no se toca.
 
@@ -65,9 +66,10 @@ afirmación contra `archivo:línea`) antes de aplicarlos.
 | ID | Qué |
 |---|---|
 | C1 | Retirar las redirecciones viejas del contrato §2.4, con aviso en el CHANGELOG |
-| C2 | Rehacer `scripts/recorrido_ux_playwright.py`, que aún navega por el menú de módulos retirado (modos de pantallas, `--funcional` y `--umbrales`) |
+| C2 | Rehacer `scripts/recorrido_ux_playwright.py`, que aún navega por el menú de módulos retirado (modos de pantallas, `--funcional` y `--umbrales`); si se le añade un detector de botones sin nombre, que salte lo `aria-hidden`, como axe (D10) |
 | C3 | Pasada única en navegador a 1056, 1366 y 1920 px, con las tres letras |
 | C4 | Comparación de líneas contra la línea base del rediseño y tamaño del front (14,4 MB de 15): partir el paquete si hace falta |
+| C5 | Restos del árbitro de la tanda (rondas 3 y 4): el presentador de cambios elige la primera coincidencia de columna (N1: un nombre «Toma; x=3» engaña); el aviso de Componer compara sin `trim()` ni grafías equivalentes de unidad (N4); 14 mensajes del servidor dicen «no existe en este caso»; «Esta version esta en solo lectura…» (`aplicacion/hoja.py:2134`, `hoja_guardado.py:77`) y `motivo_para_no_reemplazar` (`aplicacion/composicion.py:460-469`) sin tildes. `hoja.py` y `composicion.py` están congelados por el experimento: tocarlos exige re-congelar con acta y aval de Eugenio |
 
 ## Después · Diseños de F5
 

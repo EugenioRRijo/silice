@@ -231,7 +231,7 @@ def test_prever_con_otra_cabecera_sobre_una_existente_da_el_motivo(sesion: Sessi
     with pytest.raises(ComposicionInvalida) as error:
         _prever(sesion, [_fila("Cemento gris", "saco", "0,25", "20,00")], descripcion="Otra")
 
-    assert str(error.value).startswith(f"la partida {MURO} ya existe con la descripcion")
+    assert str(error.value).startswith(f"la partida {MURO} ya existe con la descripción")
     assert _cuentas(sesion) == antes
 
 
