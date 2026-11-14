@@ -491,7 +491,9 @@ describe("Pendientes: la lectura de la carga inicial no deja datos viejos", () =
       if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
       return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
     };
-    montar({ inicial: "/obras", ir: "/inicio/pendientes" });
+    // Arranca en una pantalla de obra (no en una dirección que redirige a Inicio: «/obras» dejó de existir en F6 y su
+    // redirección a Pendientes era una segunda entrada que, con la máquina rápida, pedía una tercera lectura).
+    montar({ inicial: "/obra/empresa/7/presupuesto", ir: "/inicio/pendientes" });
     await waitFor(() => expect(pedidas()).toBe(1));
     await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     // La lectura de antes de entrar se descarta: entrar en Pendientes pide siempre una nueva.
