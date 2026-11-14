@@ -120,7 +120,7 @@ function Registrar({
       lineas.map((l, j) =>
         j !== i
           ? l
-          : { ...l, partida: p.codigo, observacion: codigoRepetido(p) && p.renglon !== undefined && !l.observacion.trim() ? `Renglón ${p.renglon}` : l.observacion },
+          : { ...l, partida: p.codigo, observacion: codigoRepetido(p) && p.renglon !== undefined && !l.observacion.trim() ? `Renglón ${p.renglon}${p.frente ? ` (frente «${p.frente}»)` : ""}` : l.observacion },
       ),
     );
   };
