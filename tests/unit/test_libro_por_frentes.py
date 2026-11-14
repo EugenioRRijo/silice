@@ -456,3 +456,24 @@ def test_los_patrones_de_banda_de_siempre_se_aceptan(tmp_path: Path, patron: str
     )
     assert instalado.nombre == "banda"
     assert cargar_perfil_apu_por_hoja("banda", (tmp_path,)).patron_banda == patron
+
+
+# --- ronda 1 del árbitro de la ola 2: «Reemplazar» no pisa otro tipo de perfil (hallazgo 10) -----
+
+
+def test_reemplazar_no_pisa_un_perfil_de_otro_tipo(tmp_path: Path):
+    """En la carpeta hay un JSON de la plantilla conocida con el mismo nombre (la lista de esta
+    pantalla no lo muestra): ni con «Reemplazar» se pisa, y el mensaje dice por qué."""
+    otro = {"nombre": "obra_local", "tipo": "plantilla", "hojas": ["MATERIALES"]}
+    (tmp_path / "obra_local.json").write_text(json.dumps(otro), encoding="utf-8")
+    for reemplazar in (False, True):
+        with pytest.raises(_ya_instalado()) as error:
+            instalar_perfil_apu_por_hoja(
+                _bytes(_crudo(nombre="obra_local")), tmp_path, reemplazar=reemplazar
+            )
+        assert str(error.value) == (
+            "En esta instalación ya hay un archivo «obra_local.json» que no es un perfil de un "
+            "libro con un APU por hoja (otro tipo de perfil): Sílice no lo pisa. Ponga a este "
+            "perfil otro nombre."
+        )
+    assert json.loads((tmp_path / "obra_local.json").read_text(encoding="utf-8")) == otro
