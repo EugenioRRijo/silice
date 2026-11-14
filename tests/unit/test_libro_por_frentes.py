@@ -458,6 +458,153 @@ def test_los_patrones_de_banda_de_siempre_se_aceptan(tmp_path: Path, patron: str
     assert cargar_perfil_apu_por_hoja("banda", (tmp_path,)).patron_banda == patron
 
 
+# --- ronda 2 del árbitro de la ola 2 (R2-1): la defensa no se burla y acepta el de miles ---------
+#
+# El banco de la simulación (`docs/bitacora/arbitrajes/ola2-claude-xhigh.md`, «Ronda 2:
+# correcciones»; tiempos reales en otro proceso). Cada peligroso tardó de 2,9 s a más de 5 s con
+# un texto ficticio de menos de 600 caracteres; los legítimos son bandas «de X a Y km», «mayor(es)
+# de», «más de», «entre» y cifras con punto de miles, cada una con una descripción ficticia que
+# tiene que leer.
+
+
+def _g(cuerpo: str) -> str:
+    return f"(?P<minimo>{cuerpo})(?P<maximo>b)"
+
+
+@pytest.mark.parametrize(
+    ("patron", "dice"),
+    [
+        (_g("(?:a?a)+"), "una repetición dentro de otra"),
+        (_g("(?:a?a?)+"), "una repetición dentro de otra"),
+        (_g(r"(?:\d?\d)+"), "una repetición dentro de otra"),
+        (_g("(?:a?){28}a{28}"), "una repetición dentro de otra"),
+        ("(?P<minimo>" + "[0-9]*" * 15 + ")(?P<maximo>x)", "partes variables"),
+        ("(?P<minimo>" + ".*" * 12 + ")(?P<maximo>x) km", "partes variables"),
+        (_g("(?:[0-9]+[.,]?)+"), "una repetición dentro de otra"),
+        (_g(r"(?:\d{1,3}\.?)+"), "una repetición dentro de otra"),
+        (_g(r"(\w+\s?)*"), "una repetición dentro de otra"),
+        (_g(r"(?:\s*\w+)*"), "una repetición dentro de otra"),
+        (_g("(.*a){12}"), "una repetición dentro de otra"),
+        (_g(r"(?:,\d+\d+)*"), "una repetición dentro de otra"),
+        (_g("(?:a|b|ab)*"), "una alternativa dentro de una repetición"),
+        (_g("a?" * 28 + "a" * 28), "partes variables"),
+        (_g("a*a*a*a*"), "partes variables"),
+        (_g(r"\d*\d*\d*"), "partes variables"),
+        (r".*de (?P<minimo>\d+).*km.*hasta.*(?P<maximo>\d+) km", "partes variables"),
+    ],
+    ids=[
+        "a_opcional_a",
+        "dos_opcionales",
+        "cifra_opcional",
+        "veintiocho",
+        "quince_cifras",
+        "doce_puntos",
+        "miles_mal",
+        "miles_mal_llaves",
+        "palabras",
+        "espacios_palabras",
+        "punto_a_doce",
+        "dos_cifras",
+        "a_b_ab",
+        "sin_anidar",
+        "cuatro_a",
+        "tres_cifras",
+        "descuidado",
+    ],
+)
+def test_un_patron_de_banda_rebuscado_que_puede_colgarse_no_se_instala(
+    tmp_path: Path, patron: str, dice: str
+):
+    with pytest.raises(PerfilInvalido) as error:
+        instalar_perfil_apu_por_hoja(_bytes(_crudo(nombre="banda", patron_banda=patron)), tmp_path)
+    assert "perfil 'banda': patron_banda: " in str(error.value)
+    assert dice in str(error.value)
+    assert not any(tmp_path.iterdir())
+
+
+_MILES = r"\d{1,3}(?:\.\d{3})*(?:,\d+)?"
+
+
+@pytest.mark.parametrize(
+    ("patron", "texto", "banda"),
+    [
+        (
+            f"de (?P<minimo>{_MILES}) km y hasta (?P<maximo>{_MILES}) km",
+            "Acarreo ficticio de 1.000 km y hasta 1.200,5 km",
+            ("1000", "1200.5"),
+        ),
+        (
+            r"(?P<minimo>\d+(?:[.,]\d+)*) km (?:a|hasta) (?P<maximo>\d+(?:[.,]\d+)*) km",
+            "Acarreo ficticio 1.000 km hasta 1.200,5 km",
+            ("1000", "1200.5"),
+        ),
+        (
+            r"(?P<minimo>[0-9]+)\s*(?:km|kms)?\s*(?:a|hasta)\s*(?P<maximo>[0-9]+)",
+            "Acarreo ficticio 8 kms a 10",
+            ("8", "10"),
+        ),
+        (
+            r"(?:\w+ )*de (?P<minimo>[0-9]+) km y hasta (?P<maximo>[0-9]+) km",
+            "Acarreo de material de 8 km y hasta 10 km",
+            ("8", "10"),
+        ),
+        (
+            f"de (?P<minimo>{_MILES}) a (?P<maximo>{_MILES}) km",
+            "Acarreo ficticio de 1.000 a 1.250 km",
+            ("1000", "1250"),
+        ),
+        (
+            rf"(?:mayor(?:es)?|m[aá]s)\s+de\s+(?P<minimo>{_MILES})\s*km\s+y\s+hasta\s+"
+            rf"(?P<maximo>{_MILES})\s*km",
+            "Acarreo ficticio mayores de 1.000 km y hasta 1.200,5 km",
+            ("1000", "1200.5"),
+        ),
+        (
+            rf"m[aá]s de (?P<minimo>{_MILES})(?:\s*km)? hasta (?P<maximo>{_MILES})\s*km",
+            "Acarreo ficticio más de 30 hasta 45,5 km",
+            ("30", "45.5"),
+        ),
+        (
+            r"de (?P<minimo>\d+(?:,\d+)?) km.*?hasta (?P<maximo>\d+(?:,\d+)?) km",
+            "Acarreo de 8 km por vía ficticia y hasta 10 km",
+            ("8", "10"),
+        ),
+        (
+            f"entre (?P<minimo>{_MILES}) y (?P<maximo>{_MILES}) kms?",
+            "Acarreo ficticio entre 1.000 y 2.000 kms",
+            ("1000", "2000"),
+        ),
+        (
+            r"\b(?:desde|de)\s+(?P<minimo>[0-9.]+(?:,[0-9]+)?)\s*(?:km|kil[oó]metros)\s+"
+            r"(?:a|hasta)\s+(?P<maximo>[0-9.]+(?:,[0-9]+)?)\s*(?:km|kil[oó]metros)\b",
+            "Acarreo ficticio desde 8 kilómetros hasta 10 km",
+            ("8", "10"),
+        ),
+    ],
+    ids=[
+        "miles",
+        "cifra_con_separadores",
+        "unidad_opcional",
+        "palabras_antes",
+        "de_x_a_y",
+        "mayores_con_espacios",
+        "mas_de_hasta",
+        "perezoso",
+        "entre",
+        "kilometros",
+    ],
+)
+def test_las_bandas_de_siempre_con_miles_se_aceptan_y_se_leen(
+    tmp_path: Path, patron: str, texto: str, banda: tuple[str, str]
+):
+    from aplicacion.cifras import leer_banda
+
+    instalar_perfil_apu_por_hoja(_bytes(_crudo(nombre="banda", patron_banda=patron)), tmp_path)
+    leido = cargar_perfil_apu_por_hoja("banda", (tmp_path,)).patron_banda
+    assert leido == patron
+    assert leer_banda(leido, texto) == (D(banda[0]), D(banda[1]))
+
+
 # --- ronda 1 del árbitro de la ola 2: «Reemplazar» no pisa otro tipo de perfil (hallazgo 10) -----
 
 
