@@ -8693,7 +8693,7 @@
           "hoja"
         ],
         "summary": "Exportar Pdf",
-        "description": "RF-213: el presupuesto del borrador vivo en PDF (encabezado, partidas, subtotal, IVA y\ntotal) y el APU de cada partida, uno por página; con `partida`, solo el de esa partida.",
+        "description": "RF-213: el presupuesto del borrador vivo en PDF (encabezado, partidas, subtotal, IVA y\ntotal) y el APU de cada partida, uno por página; con `partida`, solo el de esa partida. Si\nalgún renglón tiene frente, las partidas salen por frente con el subtotal de cada uno (los de\n`vistas/frentes`); `agrupar=ninguno`, en una sola lista (ronda 1 del árbitro de la ola 2).",
         "operationId": "exportar_pdf_v1_hoja_borradores__id__pdf_get",
         "parameters": [
           {
@@ -8725,6 +8725,22 @@
               ],
               "title": "Partida"
             }
+          },
+          {
+            "name": "agrupar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "frente",
+                "ninguno"
+              ],
+              "type": "string",
+              "description": "«frente» (por omisión): por frente si hay; «ninguno»: lista corrida",
+              "default": "frente",
+              "title": "Agrupar"
+            },
+            "description": "«frente» (por omisión): por frente si hay; «ninguno»: lista corrida"
           }
         ],
         "responses": {

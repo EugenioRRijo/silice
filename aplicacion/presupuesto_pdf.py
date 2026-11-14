@@ -10,10 +10,12 @@ Dos pasos, cada uno con su prueba (`tests/unit/test_presupuesto_pdf.py`):
    tamaño carta, la letra Vera que trae reportlab incrustada (tildes, «m³», «≤»), el encabezado de
    la tabla repetido en cada página, «Página n de N» y la obra en el pie, y un APU por página.
 
-**Punto de extensión del agrupado** (por frente, de otra línea): `documento_de_la_hoja` recibe un
-`Agrupador` que reparte las filas de la vista en grupos con título; el servidor suma el subtotal
-de cada grupo con los totales exactos de sus filas. Por omisión, `sin_agrupar`: un solo grupo sin
-título ni subtotal. El dibujo ya sabe pintar varios grupos (título y subtotal de cada uno).
+**El agrupado**: `documento_de_la_hoja` recibe un `Agrupador` que reparte las filas de la vista en
+grupos con título; el servidor suma el subtotal de cada grupo con los totales exactos de sus filas.
+`sin_agrupar`: un solo grupo sin título ni subtotal. `por_frente(vivo)` (ronda 1 del árbitro de la
+ola 2, hallazgo 8): un grupo por frente, como `vistas/frentes` (`aplicacion.frentes`), o el grupo
+único si ningún renglón tiene frente; es el de la ruta por omisión. El agrupador se llama bajo el
+cerrojo del borrador, con las cifras del mismo `rev`.
 
 No escribe nada: ni la base, ni el borrador (`rev` no cambia). Sin FastAPI (RM-1).
 """
@@ -28,7 +30,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from io import BytesIO
 from xml.sax.saxutils import escape
 
-from aplicacion import hoja_vista
+from aplicacion import frentes, hoja_vista
 from aplicacion.cifras import CifraInvalida, cifra_escrita, texto_de_cifra
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_vista import FilaDePresupuesto, Monto
@@ -139,6 +141,15 @@ Agrupador = Callable[
 def sin_agrupar(filas: Sequence[FilaDePresupuesto]) -> list[tuple[str, list[FilaDePresupuesto]]]:
     """Un solo grupo, sin título: el presupuesto como lo muestra la Hoja hoy."""
     return [("", list(filas))]
+
+
+def por_frente(vivo: BorradorVivo) -> Agrupador:
+    """Un grupo por frente, con los del cálculo del borrador (ver la cabecera del módulo)."""
+
+    def agrupar(filas: Sequence[FilaDePresupuesto]) -> list[tuple[str, list[FilaDePresupuesto]]]:
+        return frentes.repartir_por_frente(filas, hoja_vista.calculo(vivo)[0])
+
+    return agrupar
 
 
 # --- las cifras -----------------------------------------------------------------------------------
@@ -295,6 +306,7 @@ def documento_de_la_hoja(
             for codigo in ([partida] if partida is not None else codigos)
         )
         fecha = vivo.borrador.fecha
+        grupos = _grupos(vista.filas, agrupar) if partida is None else ()
     pendientes = sum(1 for f in vista.filas if f.pu is None)
     encabezado = Encabezado(
         titulo=TITULO_APU if partida is not None else TITULO_PRESUPUESTO,
@@ -309,7 +321,7 @@ def documento_de_la_hoja(
         return DocumentoPdf(encabezado, (), (), (), apus)
     return DocumentoPdf(
         encabezado,
-        _grupos(vista.filas, agrupar),
+        grupos,
         _totales(vista.total.exacto),
         (
             "El IVA va sobre el total del presupuesto, nunca dentro del APU. Alícuota: "

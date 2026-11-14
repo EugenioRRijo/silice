@@ -15,13 +15,19 @@ general (el del presupuesto), en el orden en que aparece cada frente; los renglo
 al final, en un grupo sin nombre. Un renglón pendiente (sin APU) se cuenta aparte y no suma. La
 interfaz no calcula: solo muestra lo que manda el servidor. `poner_frentes` pone (o quita) el frente
 de renglones propios del borrador; uno que sale del espacio no se cambia aquí.
+
+**El PDF por frente** (ronda 1 del árbitro de la ola 2, hallazgo 8): `repartir_por_frente` reparte
+las filas de la vista del presupuesto (las del PDF, `aplicacion.presupuesto_pdf`) en los mismos
+grupos y en el mismo orden que `por_frentes`, así el subtotal de cada frente del PDF es el de la
+pantalla; sin ningún frente, un solo grupo sin título (el PDF de siempre).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
+from typing import Protocol
 
 from aplicacion import hoja
 from aplicacion.errores import HojaInvalida
@@ -31,18 +37,22 @@ __all__ = [
     "CLAVE_FRENTE",
     "MAX_FRENTE",
     "MENSAJE_RENGLON",
+    "SIN_FRENTE",
     "FrenteDelPresupuesto",
     "PresupuestoPorFrentes",
     "con_frente",
     "frente_de",
     "poner_frentes",
     "por_frentes",
+    "repartir_por_frente",
 ]
 
 MENSAJE_RENGLON = "Ese renglón no está en el presupuesto o sale del espacio: vuelva a cargarlo."
 
 #: La directiva del frente en `ItemComputo.especificaciones` (empieza por «_»: R4 no la lee).
 CLAVE_FRENTE = "_frente"
+#: El título del grupo de los renglones sin frente, como lo dice la pantalla.
+SIN_FRENTE = "Sin frente"
 #: Lo más largo que puede ser el nombre de un frente (una hoja de Excel se llama con 31).
 MAX_FRENTE = 80
 
@@ -116,6 +126,31 @@ def por_frentes(resultado: hoja.ResultadoHoja) -> PresupuestoPorFrentes:
         total=presupuesto.total,
         con_frentes=any(f is not None for f in orden),
     )
+
+
+class _FilaConClave(Protocol):
+    @property
+    def clave(self) -> str: ...
+
+
+def repartir_por_frente[F: _FilaConClave](
+    filas: Sequence[F], resultado: hoja.ResultadoHoja
+) -> list[tuple[str, list[F]]]:
+    """Las filas del presupuesto (cada una con la `clave` de su renglón) en grupos (frente, filas):
+    los frentes en el orden en que aparecen y los renglones sin frente al final, en «Sin frente»;
+    sin ningún frente, un solo grupo sin título (ver la cabecera del módulo)."""
+    del_renglon = {
+        clave: frente_de(item)
+        for clave, item in zip(hoja.claves_de_items(resultado.todos), resultado.todos, strict=True)
+    }
+    grupos: dict[str | None, list[F]] = {}
+    for fila in filas:
+        grupos.setdefault(del_renglon.get(fila.clave), []).append(fila)
+    if all(frente is None for frente in grupos):
+        return [("", list(filas))]
+    sin_frente = grupos.pop(None, None)
+    repartidas = [(frente or "", del_frente) for frente, del_frente in grupos.items()]
+    return [*repartidas, (SIN_FRENTE, sin_frente)] if sin_frente else repartidas
 
 
 def poner_frentes(borrador: hoja.Borrador, frentes: Mapping[str, str | None]) -> hoja.Borrador:
