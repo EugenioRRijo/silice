@@ -20,6 +20,7 @@ bono: 4 × 30 × 3,5 ÷ 4.000 × 1,265 = 0,132825 → 0,13 (impreso 0,20).
 
 from __future__ import annotations
 
+import io
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
@@ -27,6 +28,7 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
+import pdfplumber
 import pytest
 from fastapi.testclient import TestClient
 
@@ -527,3 +529,40 @@ def test_quien_revisa_ve_los_frentes_pero_no_los_cambia(ana) -> None:
         headers=protegida(ficha_rita),
     )
     assert r.status_code == 403
+
+
+# --- el PDF por frente (hallazgo 8 de la ronda 1 del árbitro de la ola 2) ------------------------
+#
+# `GET /v1/hoja/borradores/{id}/pdf`: con frentes, el presupuesto sale agrupado por frente, con el
+# subtotal de cada uno (los de `vistas/frentes`, oráculo a mano arriba: 2.814,68 y 1.876,45) y el
+# total general; `agrupar=ninguno` da la lista corrida; una obra sin frentes sale como antes.
+
+
+def _texto_del_pdf(navegador: TestClient, id_: str, **consulta: str) -> str:
+    r = navegador.get(f"/v1/hoja/borradores/{id_}/pdf", params=consulta)
+    assert r.status_code == 200, r.text
+    with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+        return pdf.pages[0].extract_text() or ""
+
+
+def test_con_frentes_el_pdf_sale_agrupado_por_frente_con_sus_subtotales(ana) -> None:
+    navegador, _ = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    texto = _texto_del_pdf(navegador, id_)
+    assert "Subtotal de FRENTE A 2.814,68" in texto
+    assert "Subtotal de FRENTE B 1.876,45" in texto
+    assert texto.index("FRENTE A") < texto.index("Subtotal de FRENTE A") < texto.index("FRENTE B")
+    assert "4.691,13" in texto
+    corrido = _texto_del_pdf(navegador, id_, agrupar="ninguno")
+    assert "Subtotal de" not in corrido
+
+
+def test_una_obra_sin_frentes_sale_en_el_pdf_sin_subtotales(ana) -> None:
+    navegador, ficha = ana
+    abierto = navegador.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": OBRA, "version": "VIV-001"},
+        headers=protegida(ficha),
+    )
+    assert abierto.status_code == 201, abierto.text
+    assert "Subtotal de" not in _texto_del_pdf(navegador, abierto.json()["id"])
