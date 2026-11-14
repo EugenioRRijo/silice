@@ -478,3 +478,67 @@ silencio). Revertir: `git revert c089d3aa 11fcecfd`.
   `docs/api.json`).
 - **Datos**: todo lo nuevo es ficticio (patrones construidos, «FRENTE A/B», «Norte», «Acarreo ficticio…»); en esta
   ronda no se leyó ningún informe local.
+
+
+## Ronda 3: veredicto (2026-11-14, árbitro Claude xhigh)
+
+**Juzgado:** `git diff 09848bd8 eda4c374` (las correcciones de la ronda 2, 7 commits) en el árbol `.worktrees/s2m4`.
+
+**VEREDICTO: APROBADO CON CAMBIOS.** 0 BLOQUEANTE, 0 MAYOR, 1 MENOR y 2 NOTA. R2-1, R2-N1 y R2-N2 están cerrados,
+con una salvedad en R2-N1 (R3-1): la numeración de pedidos abre otra carrera más estrecha que la que cierra. No pide
+otra ronda: R3-1 se arregla con su prueba antes del PR.
+
+Ronda: 3 · Base: `09848bd8` · Cabeza: `eda4c374`
+
+### Lo que corrió el árbitro (salida real)
+
+- **Rojos**, cada uno en su commit (`git archive` en el scratchpad, sin escribir en el repositorio) y antes de su verde
+  en la historia (`git rev-list --ancestry-path`). Cada commit rojo trae solo pruebas. `eb7bfb6e`: `17 failed, 10
+  passed` (10 patrones rebuscados que se aceptaban y 7 bandas legítimas que se rechazaban, «una repetición dentro de
+  otra»). `793ef8f0`: `2 failed | 6 passed` (las dos pruebas de R2-N1). `11fcecfd`: Python `6 failed` (cinco `assert 200
+  == 422` y el PDF sin «Subtotal (sin frente) 1.246,66»); front `1 failed` (Received «Sin frente», Expected «(sin
+  frente)»).
+- **pytest de la cabeza** (`.worktrees/tanda/.venv`, `-o addopts="" -q -p no:cacheprovider -W error`, cwd `s2m4`):
+  `test_libro_por_frentes`, `test_api_hoja_libro`, `test_presupuesto_pdf` y `test_vial_banda_descripcion`: `132 passed`.
+- **vitest de la cabeza** (`npx vitest run src/paginas/hoja --maxWorkers=2`): `Test Files 47 passed (47)`, `Tests 790
+  passed (790)`.
+- **`retroceso.py`**: `retroceso_peligroso` devuelve `None` (acepta) para el patrón del paquete
+  (`adapters/hoja_empresa/perfiles/apu_por_hoja.json:66`), para `\d{1,3}(?:\.\d{3})*` y para la banda completa con
+  miles. El banco del diff (17 rebuscados rechazados, 10 bandas aceptadas y leídas con `leer_banda`) está en los 132
+  verdes. En esta ronda no medí patrones nuevos en otro proceso: el juicio se apoya en ese banco y en la simulación del
+  corrector.
+- **Sonda del nombre reservado por la hoja del presupuesto** (el tercer camino, que no tiene prueba en el repositorio;
+  en una copia de la cabeza): una hoja «Sin Frente» o «(sin frente)» con `hoja_presupuesto` → `422` con
+  `MENSAJE_RESERVADO`, sin repetir el nombre y sin borrador: `2 passed`.
+- **Sonda de R3-1** (front, en una copia; abajo): `2 failed` con el componente de la cabeza y `2 passed` con el
+  anterior a la corrección (el de `793ef8f0`).
+- `git diff --stat 09848bd8 eda4c374 -- core/ asistente/experimento/protocolo.json`: vacío. Ninguno de los 50
+  `archivos_del_auditor` está en el diff.
+- **Datos**: las palabras nuevas de las pruebas y del front son del oficio o ficticias («Acarreo», «Norte», «Frente»).
+  No hay ningún nombre, código ni cifra de los libros.
+- Las dos junctions de `node_modules` de las copias se quitaron con `rmdir` al terminar; la compartida sigue en pie.
+
+### Hallazgos
+
+| # | Sev. | Criterio · `archivo:línea` | Qué falla | Prueba o reproducción | Arreglo propuesto |
+|---|---|---|---|---|---|
+| R3-1 | MENOR | D1 · `frontend-desktop/src/paginas/hoja/PresupuestoPorFrentes.tsx:139` (`if (pedido !== ultimo.current) return;`), con `:99` y `:206` | La guarda de «Poner el frente» trata como vieja cualquier respuesta con un pedido posterior, también el de «Ver» en el mismo `rev`. Mientras el PUT está en vuelo, «Ocultar el presupuesto por frente» no se deshabilita (`ocupado` solo apaga el selector, el campo y «Poner»). Si se pulsa «Ocultar» y luego «Ver», `abrir()` toma un número nuevo y la respuesta aceptada del PUT se descarta: no se llama a `alAceptar`, así que la Hoja sigue en el `rev` viejo con la barra de estado atrasada hasta que la próxima edición choca con un 409 y recarga. Si además el GET de «Ver» se respondió antes que el PUT, la tabla queda sin el frente puesto: la vista atrasada que R2-N1 quería evitar. Es una regresión de esta corrección: el componente anterior pasaba la sonda. Es MENOR y no MAYOR porque la carrera es estrecha (ocultar y volver a abrir el panel durante un PUT) y la Hoja se recupera sola con el 409. | Sonda `SondaR3.test.tsx` (copia en el scratchpad): «Poner», «Ocultar» y «Ver» con el PUT diferido; luego el PUT responde `rev 4`. Cabeza: `alAceptar=0` en los dos casos; con el GET servido antes del PUT, las celdas no traen «Norte». `793ef8f0` (componente sin la corrección): `2 passed`. | Lo más simple: deshabilitar «Ocultar» mientras `ocupado`. Así el único pedido posterior a un PUT en vuelo es el del efecto de un `rev` nuevo, donde descartar es lo correcto. Si no, decidir por `rev` y no por número: aplicar una vista solo si su `rev` no es menor que el de la que se muestra, y llamar a `alAceptar` siempre que el PUT se aceptó y `r.rev` pase al `rev` más reciente de las props. Sumar la sonda como prueba (rojo antes del verde). |
+| R3-N1 | NOTA | E1 · `aplicacion/frentes.py:166` (docstring de `repartir_por_frente`) | Dice «en «Sin frente»», pero el rótulo es ahora `SIN_FRENTE` = «(sin frente)» (`:66`). | Lectura. | Cambiar el texto a «(sin frente)» o nombrar `SIN_FRENTE`. |
+| R3-N2 | NOTA | C2 · `tests/integration/test_api_hoja_libro.py` (bloque R2-N2) | El comentario del bloque promete los tres caminos («ni con una hoja del presupuesto»), pero solo hay pruebas para el frente a mano y para el frente del libro sin presupuesto. El código del tercero (`aplicacion/libro_a_la_hoja.py:370`, el mismo `any(es_reservado(r.frente) …)` sobre `r.hoja`) funciona: lo comprobé con la sonda de arriba. | Sonda: `2 passed`. | Sumar la prueba con `libro_presupuesto_por_hojas({"Sin Frente": …})` y `hoja_presupuesto=["Sin Frente"]`. |
+
+### Lo que se cerró (verificado sin hallazgo)
+
+- **R2-1, cerrado.** `retroceso.py` reemplaza `_retroceso_catastrofico` y lo usa `_construir`
+  (`perfil_apu_por_hoja.py:213`), también al leer el perfil de la carpeta. Acepta el patrón del paquete y la banda de
+  miles, y rechaza el banco de la ronda 2. El docstring y el manual (§12) ya no prometen una garantía: dicen que es un
+  control de la forma. Sigue siendo una heurística sobre `re._parser`, como declara el módulo; la garantía seguiría
+  siendo el patrón fijo con las palabras del perfil.
+- **R2-N1, cerrado salvo R3-1.** Los dos caminos de la ronda 2 (la vista pedida al abrir que llega tarde y el PUT que
+  llega después del `rev` nuevo) ya no dejan la vista atrasada (sus dos pruebas). No se pierden errores: el pedido que
+  manda siempre informa el suyo, y el error de «Poner el frente» se muestra siempre (`:143-144`).
+- **R2-N2, cerrado.** El nombre reservado se rechaza en los tres caminos con 422 y el mensaje fijo
+  `MENSAJE_RESERVADO`, sin repetir lo escrito: a mano (`poner_frentes`, `frentes.py:193`), con el frente del libro sin
+  presupuesto y con una hoja del presupuesto (`libro_a_la_hoja.py:370`, antes de abrir el borrador y de tocar el
+  catálogo). `es_reservado` compara sin mayúsculas, tildes ni blancos (las cuatro variantes de la prueba). El PDF dice
+  «Subtotal (sin frente)» y la pantalla «(sin frente)».
+- **`core/` y los congelados, intactos; sin datos reales** (arriba).
