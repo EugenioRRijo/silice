@@ -10,6 +10,9 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { useCarga } from "../../comun/useCarga";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { unidadEscrita } from "../../comun/unidades";
+import { MONEDAS, rotuloDeMoneda } from "../../comun/monedas";
+import { enumeradas } from "../../comun/perfilesDeLibros";
+import type { PerfilDisponible } from "../../comun/perfilesDeLibros";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 // F5 vial, tarea 6 (diseño 2026-11-03 §7): auditar un libro con un APU por hoja y, si viene, su libro de presupuesto
@@ -76,14 +79,6 @@ export interface InformeApuPorHoja {
   desperdicios: DesperdicioLeido[];
 }
 
-export interface PerfilDisponible {
-  nombre: string;
-  origen: "paquete" | "local";
-  hoja_presupuesto: string | null;
-  hojas_presupuesto?: string[];
-  motivo: string | null;
-}
-
 export function auditarApuPorHoja(
   libro: File,
   presupuesto: File | null,
@@ -104,11 +99,6 @@ export async function hojasDelLibro(libro: File): Promise<string[] | null> {
   const respuesta = await pedir<{ hojas?: unknown }>("/v1/libros/hojas", { metodo: "POST", cuerpo });
   const hojas = respuesta.hojas;
   return Array.isArray(hojas) && hojas.every((h) => typeof h === "string") ? hojas : null;
-}
-
-// «A», «A y B», «A, B y C».
-export function enumeradas(nombres: string[]): string {
-  return nombres.length <= 1 ? (nombres[0] ?? "") : `${nombres.slice(0, -1).join(", ")} y ${nombres[nombres.length - 1]}`;
 }
 
 const hojasDe = (p: { hoja_presupuesto: string | null; hojas_presupuesto?: string[] }): string[] =>
@@ -400,8 +390,6 @@ interface LibroLlevado {
   moneda: string;
 }
 
-const MONEDAS = ["Bs", "USD"] as const;
-
 const COLUMNAS_LLEVADAS: ColumnaDensa[] = [
   { clave: "codigo", titulo: "Código en Sílice", ordenable: false },
   { clave: "hoja", titulo: "Hoja del libro", ordenable: false },
@@ -471,7 +459,7 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
       >
         <SelectItem value="" text="Elija la moneda" />
         {MONEDAS.map((m) => (
-          <SelectItem key={m} value={m} text={m} />
+          <SelectItem key={m} value={m} text={rotuloDeMoneda(m)} />
         ))}
       </Select>
       {!auditado.presupuesto && (

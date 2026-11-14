@@ -39,9 +39,7 @@ import type {
   Prevision,
   Similar,
 } from "./cliente";
-import { ContextoDeLaHoja } from "../hoja/ProveedorDeLaHoja";
-import { rutaDeVista } from "../hoja/logica";
-import type { VistaParametros } from "../hoja/logica";
+import { ContextoDelBorradorAbierto, rutaDeVista } from "../../comun/borradorAbierto";
 import { ParametrosDelPrecio, valoresDe } from "./ParametrosDelPrecio";
 import type { OrigenDeParametros } from "./ParametrosDelPrecio";
 import "./componer.scss";
@@ -277,8 +275,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
 
   // RF-200 (ola 2): los parámetros del precio unitario. Con una obra abierta (Componer como vista de su Presupuesto o en el
   // panel de «Agregar partida»), los de su «Ajustes de costo»; sin obra, los de omisión. Se leen una vez al abrir.
-  const hoja = useContext(ContextoDeLaHoja);
-  const borrador = hoja?.estado.estado === "listo" ? hoja.estado.borrador.id : null;
+  const borrador = useContext(ContextoDelBorradorAbierto);
   const [baseParametros, setBaseParametros] = useState<{ campos: CampoDeParametro[]; origen: OrigenDeParametros } | null>(null);
   const [parametros, setParametros] = useState<ParametrosDeTexto | null>(null);
   const [falloParametros, setFalloParametros] = useState(false);
@@ -286,7 +283,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     let vigente = true;
     const leer: Promise<{ campos: CampoDeParametro[]; origen: OrigenDeParametros }> =
       borrador !== null
-        ? pedir<VistaParametros>(rutaDeVista(borrador, "parametros")).then((v) => ({ campos: v.campos, origen: "obra" }))
+        ? pedir<{ campos: CampoDeParametro[] }>(rutaDeVista(borrador, "parametros")).then((v) => ({ campos: v.campos, origen: "obra" }))
         : parametrosDeOmision().then((r) => ({ campos: r.campos, origen: "omision" }));
     leer
       .then((base) => {

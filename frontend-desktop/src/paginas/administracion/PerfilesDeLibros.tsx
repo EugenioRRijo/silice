@@ -5,8 +5,8 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { useAplicacion } from "../../shell/contexto";
-import { enumeradas } from "../auditoria/AuditarApuPorHoja";
-import type { PerfilDisponible } from "../auditoria/AuditarApuPorHoja";
+import { enumeradas } from "../../comun/perfilesDeLibros";
+import type { PerfilDisponible } from "../../comun/perfilesDeLibros";
 
 const RUTA = "/v1/admin/empresa/perfiles-libros";
 

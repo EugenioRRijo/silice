@@ -4,8 +4,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
-import { ContextoDeLaHoja } from "../hoja/ProveedorDeLaHoja";
-import type { HojaDeLaObra } from "../hoja/ProveedorDeLaHoja";
+import { ContextoDelBorradorAbierto } from "../../comun/borradorAbierto";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { olvidarFormularios } from "../../shell/sucio";
@@ -67,7 +66,8 @@ const VALIDA = {
 };
 const ESPERA = { timeout: 3000 };
 // Solo lo que Componer lee de la Hoja de la obra: el borrador abierto.
-const OBRA_ABIERTA = { estado: { estado: "listo", borrador: { id: "b-1" } } } as unknown as HojaDeLaObra;
+// El borrador de la obra abierta, como lo pone `ProveedorDeLaHoja` (`comun/borradorAbierto.ts`).
+const OBRA_ABIERTA = "b-1";
 
 describe("Componer: parámetros del precio unitario (RF-200)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -111,7 +111,7 @@ describe("Componer: parámetros del precio unitario (RF-200)", () => {
       <ContextoAplicacion.Provider value={valor}>
         <MemoryRouter>
           {conObra ? (
-            <ContextoDeLaHoja.Provider value={OBRA_ABIERTA}>{componer}</ContextoDeLaHoja.Provider>
+            <ContextoDelBorradorAbierto.Provider value={OBRA_ABIERTA}>{componer}</ContextoDelBorradorAbierto.Provider>
           ) : (
             componer
           )}

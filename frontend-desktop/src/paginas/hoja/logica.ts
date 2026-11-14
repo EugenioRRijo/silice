@@ -129,25 +129,9 @@ export function esBorradorAusente(error: unknown): boolean {
 
 // --- vistas de las pestañas (rebanada 3b-2): lo que contesta `GET /v1/hoja/borradores/{id}/vistas/{nombre}` ---
 
-export type NombreDeVista =
-  | "espacio"
-  | "presupuesto"
-  | "apu"
-  | "plan"
-  | "equilibrio"
-  | "parametros"
-  | "auditoria";
-
-export function rutaDeVista(
-  id: string,
-  nombre: NombreDeVista,
-  parametros: Record<string, string | undefined> = {},
-): string {
-  const consulta = new URLSearchParams();
-  for (const [clave, valor] of Object.entries(parametros)) if (valor) consulta.set(clave, valor);
-  const texto = consulta.toString();
-  return `/v1/hoja/borradores/${id}/vistas/${nombre}${texto ? `?${texto}` : ""}`;
-}
+// La ruta de una vista vive en `comun/` desde la ronda 1 de la ola 2: Componer la usa sin importar de la Hoja.
+export { rutaDeVista } from "../../comun/borradorAbierto";
+export type { NombreDeVista } from "../../comun/borradorAbierto";
 
 export interface EstadoFila {
   // Peor severidad de la fila (CRITICO, ERROR, ADVERTENCIA, INFO) o null si ningún hallazgo la toca.
