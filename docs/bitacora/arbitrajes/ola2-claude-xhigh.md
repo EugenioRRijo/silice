@@ -335,3 +335,146 @@ Ronda: 2 · Base: `7c62dd47` · Cabeza: `eb3dbb9b` (árbol en `751b7ed4`)
 - **`core/` y los congelados, intactos; sin datos reales** (arriba). `aplicacion/libro_a_la_hoja.py` importa
   `core.budget.moneda.moneda_del_proyecto`, que ya usaban `elaboracion` y `listas_para_armar`; leer del núcleo no lo
   cambia.
+
+
+## Ronda 2: correcciones (2026-11-14, corrector)
+
+Árbol `.worktrees/s2m4`, rama `feature/ola2`, desde `09848bd8`. Sin tocar `core/` ni los 50 archivos congelados del
+experimento. Cada arreglo con su prueba en rojo vista antes y en su commit; datos FICTICIOS. R2-2 (CHANGELOG y ESTADO)
+sigue siendo del orquestador.
+
+| # | Estado | Rojo → verde | Qué se hizo |
+|---|---|---|---|
+| R2-1 MENOR | Hecho | `eb7bfb6e` → `74e2dbf9` | `adapters/hoja_empresa/retroceso.py` (nuevo) juzga el árbol de `patron_banda` con tres reglas: sin referencias hacia atrás; una repetición que se repite solo lleva átomos de un carácter, cuentas fijas y a lo sumo una parte variable seguida (en ronda) de un átomo obligatorio que no comparte caracteres con ella; y a lo sumo una parte variable «abierta». Reemplaza `_retroceso_catastrofico`. El banco entra en `test_libro_por_frentes.py` (17 rebuscados y 10 bandas legítimas que además se leen con `leer_banda`). Manual (§12, el párrafo de `patron_banda`) y RF-209 al día. Rojo: 17 failed, 10 passed. |
+| R2-N1 NOTA | Hecho | `793ef8f0` → `0b047b0e` | `PresupuestoPorFrentes.tsx`: «Ver», el efecto del `rev` y «Poner el frente» numeran su pedido en un `useRef` común (`ultimo`) y solo se aplica la respuesta del último; el error de «Poner el frente» se dice siempre (el frente no se puso). Rojo: 2 failed, 6 passed. |
+| R2-N2 NOTA | Hecho | `11fcecfd` → `c089d3aa` | El grupo de los renglones sin frente se rotula «(sin frente)» en la pantalla y en el PDF («Subtotal (sin frente)»), y un frente no puede llamarse «Sin frente» ni «(sin frente)» (sin distinguir mayúsculas, tildes ni blancos): 422 con `MENSAJE_RESERVADO` al ponerlo a mano y al llevar el libro (`FrenteReservado`, antes de abrir el borrador). `api/rutas/hoja_libro.py` lo suma a sus 422; la API no cambia de forma (`docs/api.json` igual). Rojo: Python 6 failed, 2 passed (`200 == 422`; el PDF imprimía «Subtotal de Sin frente»); front 1 failed. |
+| R2-2 MENOR | No es del corrector | — | CHANGELOG y ESTADO los escribe el orquestador (encargo común). |
+
+### R2-1: la defensa de `patron_banda`, simulada
+
+Guion `scratchpad/ola2/corrector2/sim_r2.py` (con `defensas.py`, las opciones A y B, y C desde el módulo del
+repositorio), Python 3.13.13 del `.venv`. «t real»: `re.search` con `re.IGNORECASE` (como `leer_banda`) en otro
+proceso, con tope de 5 s, sobre un texto ficticio de ataque («a»×n + «!», «1»×n + «!»…; a lo sumo 600 caracteres);
+incluye unos 0,22 s de arrancar el proceso. Las tres opciones conservan el tope de 300 caracteres.
+
+- **A** (la del árbitro): toda repetición de cuenta variable (también `?`) dentro de otra que se repite es peligrosa;
+  la de cuenta fija `{n}` se acepta; alternativa dentro de una repetición y referencia hacia atrás, rechazadas; a lo
+  sumo 8 repeticiones sin tope por patrón.
+- **B**: la estructura de A sin el tope de repeticiones, más medir el patrón en otro proceso, con 1 s de límite,
+  contra textos construidos desde el propio patrón (cada carácter del patrón repetido 40 veces y la muestra que casa,
+  repetida).
+- **C** (elegida): `adapters/hoja_empresa/retroceso.py`. Una repetición que se repite solo lleva átomos de un
+  carácter, cuentas fijas y a lo sumo una parte variable, seguida (en ronda) de un átomo obligatorio que no comparte
+  caracteres con ella (el «.» de `(?:\.\d{3})*`, el espacio de `(?:\w+ )*`: marca dónde acaba cada vuelta); y a lo sumo
+  una parte variable **abierta** en el patrón (abierta: lo que puede venir justo detrás comparte caracteres con ella,
+  así que más de uno de sus finales sigue adelante; `\d+ km` no tiene ninguna, `.*de.*km` tiene dos).
+
+**Peligrosos** (26: los 6 del árbitro, los 9 de la ronda 1 y 11 nuevos; «o» es la barra de la alternativa, que no se
+puede escribir dentro de una tabla):
+
+| Patrón (dentro de `(?P<minimo>…)(?P<maximo>b)`) | A | B | C | t real |
+|---|---|---|---|---|
+| `(?:a?a)+` (árbitro) | rechaza | rechaza | rechaza (sin separador) | 2,92 s (n=32) |
+| `(?:a?a?)+` (árbitro) | rechaza | rechaza | rechaza (dos partes variables) | > 5 s |
+| `(?:\d?\d)+` (árbitro) | rechaza | rechaza | rechaza (sin separador) | 3,72 s (n=32) |
+| `(?:a?){28}a{28}` (árbitro) | rechaza | rechaza | rechaza (sin separador) | > 5 s |
+| quince `[0-9]*` seguidos (árbitro) | rechaza | rechaza | rechaza (14 abiertas) | > 5 s |
+| doce `.*` seguidos (árbitro) | rechaza | rechaza | rechaza (12 abiertas) | > 5 s |
+| `(a+)+`, `(a*)*`, `([0-9]+)*`, `(a{1,9}){2,}` (ronda 1) | rechaza | rechaza | rechaza (sin separador) | > 5 s |
+| `(a o a)*`, `(?:a o aa)+` (ronda 1) | rechaza | rechaza | rechaza (alternativa) | > 5 s |
+| `(?P=minimo)`, `\1` (ronda 1) | rechaza | rechaza | rechaza (referencia) | > 5 s (n=2.000) |
+| `x?` ×150 (ronda 1) | rechaza | rechaza | rechaza (largo) | 0,23 s |
+| `(?:[0-9]+[.,]?)+` (miles mal escritos) | rechaza | rechaza | rechaza (dos partes variables) | > 5 s |
+| `(?:\d{1,3}\.?)+` (miles mal escritos) | rechaza | rechaza | rechaza (dos partes variables) | > 5 s |
+| `(\w+\s?)*`, `(?:\s*\w+)*` | rechaza | rechaza | rechaza (dos partes variables) | > 5 s |
+| `(.*a){12}` | rechaza | rechaza | rechaza (sin separador) | > 5 s |
+| `(?:,\d+\d+)*` | rechaza | rechaza | rechaza (dos partes variables) | 4,01 s (n=22) |
+| `(?:a o b o ab)*` | rechaza | rechaza | rechaza (alternativa) | 0,22 s (con ese texto) |
+| `a?` ×28 y `a` ×28, sin anidar | **acepta** | rechaza | rechaza (28 abiertas) | > 5 s |
+| `a*a*a*a*` | **acepta** | **acepta** | rechaza (3 abiertas) | > 5 s (n=300) |
+| `\d*\d*\d*` | **acepta** | **acepta** | rechaza (2 abiertas) | > 5 s (n=600) |
+| `.*de (\d+).*km.*hasta.*(\d+) km` (descuidado) | **acepta** | **acepta** | rechaza (5 abiertas) | 6,47 s con 560 caracteres de «de 1 hasta km » (`descuidados.py`) |
+| **Peligrosos aceptados** | **4** | **3** | **0** | |
+
+**Legítimos** (cada uno lee su descripción ficticia con `leer_banda`, p. ej. «de 1.000 km y hasta 1.200,5 km» →
+(1000, 1200,5)):
+
+| Banda | A | B | C |
+|---|---|---|---|
+| la del paquete, la simple, la de `[0-9.]+` y la de espacios (las 4 de las pruebas) | acepta | acepta (0,25 a 0,28 s cada vez) | acepta |
+| miles `\d{1,3}(?:\.\d{3})*(?:,\d+)?` («de X km y hasta Y km») | acepta | acepta | acepta |
+| `\d+(?:[.,]\d+)*` | **rechaza** | **rechaza** | acepta |
+| `(?:km o kms)?` | acepta | acepta | acepta |
+| `(?:\w+ )*de … km y hasta … km` | **rechaza** | **rechaza** | acepta |
+| «de X a Y km» con miles | acepta | acepta | acepta |
+| «mayor(es) de» con `\s+` y miles (10 repeticiones sin tope) | **rechaza** | acepta | acepta |
+| «más de X hasta Y km» con miles | acepta | acepta | acepta |
+| un `.*?` entre los dos números | acepta | acepta | acepta |
+| «entre X y Y kms?» con miles | acepta | acepta | acepta |
+| «desde … kilómetros hasta …» (10 sin tope) | **rechaza** | acepta | acepta |
+| miles con espacio o punto `\d{1,3}(?:[. ]\d{3})*` | acepta | acepta | acepta |
+| **Legítimos aceptados** | **11 de 15** | **13 de 15** | **15 de 15** |
+| aparte: `.*?de (…).*?hasta (…) km` (descuidado, no cuelga: 0,80 s con 1.040 caracteres) | acepta | acepta | **rechaza** (5 abiertas) |
+
+Lo que decide: **A** deja pasar las cadenas polinómicas y no hay tope que sirva (el paquete tiene 4 repeticiones sin
+tope y `\d*\d*\d*`, con 3, pasa de 5 s con 600 cifras), y rechaza cuatro bandas buenas. **B** mide con textos que no
+siempre son el peor caso (no ve las tres polinómicas), cuesta 0,22 a 0,29 s de otro proceso cada vez que se lee el
+perfil (cada auditoría y cada recálculo con VR4) y hereda los dos rechazos de forma de A. **C** rechaza los 26 y acepta
+las 15 bandas; validar el patrón del paquete le cuesta 0,6 ms (y se recuerda: caché de 64 patrones). Su único rechazo
+de más es el patrón con un `.*?` al principio, que no hace falta (la banda se busca en toda la descripción): el manual
+lo dice.
+
+Lo que C no ataja, dicho en su docstring: con una parte abierta lo peor que se acepta es cúbico en el largo del texto
+(`\d*\d*b`, 0,1 s con 300 cifras iguales y 5,2 s con 1.000; `grado1.py`); una descripción de APU no trae mil
+caracteres iguales. Es una heurística sobre el árbol, como la de la ronda 1, no una garantía: la garantía seguiría
+siendo el patrón fijo con las palabras del perfil (la opción «mejor» de la ronda 1), que cambia el formato del perfil.
+`re._parser` sigue siendo interno de la biblioteca estándar; si cambiara, las pruebas del banco lo dirían. Los mensajes
+cambian de forma («patron_banda: <qué>: con algunos textos tardaría sin fin; escríbalo de otro modo»); los de la
+ronda 1 siguen conteniendo su frase. Revertir: `git revert 74e2dbf9 eb7bfb6e`.
+
+### R2-N1: respuestas viejas del presupuesto por frente
+
+| Opción | Resultado (vitest, las dos pruebas nuevas) |
+|---|---|
+| Dejarlo (lo que había) | 2 failed: la vista pedida al abrir y llegada tarde deja «Total general: 4.701,13 Bs» sobre el del `rev` nuevo; la respuesta de «Poner el frente» que llega después de la del `rev` nuevo la tapa |
+| Una guarda `vigente` por camino (como el efecto) | No alcanza: `abrir()` y `poner()` no tienen limpieza que la apague, y la de uno no sabe del pedido del otro |
+| **Un contador común en un `useRef`; solo se aplica la respuesta del último pedido** (elegida, la del árbitro) | 8/8; el error de «Poner el frente» se muestra siempre (el frente no se puso) y una respuesta vieja suya no llama a `alAceptar` (la Hoja ya va por un `rev` posterior) |
+
+Revertir: `git revert 0b047b0e 793ef8f0`.
+
+### R2-N2: un frente que se llama como el grupo sin frente
+
+Guion `scratchpad/ola2/corrector2/sim_n2.py`: tres renglones ficticios (uno con el nombre en cuestión, otro en
+«FRENTE B», otro sin frente), con el `repartir_por_frente` real (los grupos del PDF) y el título de la pantalla.
+
+| Opción | «Sin frente» a mano | «(sin frente)» a mano | hoja del libro «Sin frente» | hoja del libro «(Sin Frente)» |
+|---|---|---|---|---|
+| 1. Rechazar «Sin frente» a mano, rótulo «Sin frente» | 422 | aceptado, distinto | **se confunden** | aceptado, distinto |
+| 2. Rótulo «(sin frente)», nada rechazado | distinto | **se confunden** | distinto | **se confunden** |
+| 3. Rótulo «(sin frente)» y rechazar a mano «sin frente» y «(sin frente)» | 422 | 422 | distinto | **se confunden** |
+| **4. La 3 y rechazar también los frentes del libro con esos nombres** (elegida) | 422 | 422 | 422 al llevar el libro, antes de tocar nada | 422 al llevar el libro |
+
+El rótulo entre paréntesis es el de Excel para lo que no tiene valor («(en blanco)» en una tabla dinámica); se
+compara sin mayúsculas, tildes ni blancos. Rechazar también «Sin frente» no es por choque sino porque quien lo teclea
+casi siempre quiere quitar el frente: el mensaje le dice que deje el campo vacío (y a una hoja del libro con ese
+nombre, que la renombre). El mensaje es fijo (no repite lo escrito). El PDF dice «Subtotal (sin frente)». Descartado:
+un grupo sin título (la persona no sabe qué son esos renglones) y renombrar el frente que choca (cambia un nombre en
+silencio). Revertir: `git revert c089d3aa 11fcecfd`.
+
+### Lo que corrió el corrector
+
+- **Rojos**, cada uno en su commit antes del verde: `eb7bfb6e` 17 failed, 10 passed; `793ef8f0` 2 failed, 6 passed;
+  `11fcecfd` Python 6 failed, 2 passed (`assert 200 == 422`; el PDF imprimía «Subtotal de Sin frente 1.246,66») y
+  front 1 failed.
+- **pytest** (`.worktrees/tanda/.venv`, `-o addopts="" -q -p no:cacheprovider -W error`, cwd en `s2m4`):
+  `test_api_hoja_libro`, `test_presupuesto_pdf`, `test_api_hoja_pdf`, `test_libro_por_frentes`,
+  `test_api_libros_frentes`, `test_fusion_apu_por_hoja`, `test_hoja_empresa_apu_por_hoja`,
+  `test_vial_banda_descripcion`, `test_aplicacion_sin_ciclos`, `test_openapi`, `test_api_hoja_exportar`,
+  `test_arquitectura*`, `test_documentos_*` y `test_manuales_s5`: `854 passed`.
+- **Front**: `npx vitest run src/paginas/hoja --maxWorkers=2`: `Test Files 47 passed (47)`, `Tests 790 passed (790)`;
+  `npx eslint . --ignore-pattern "node_modules.viejo/**"` y `npx tsc -b --noEmit`: sin errores.
+- `ruff check .`: «All checks passed!»; `git diff e2dfe116 --stat -- core/`: vacío. Ninguno de los 50
+  `archivos_del_auditor` está en el diff. La API no cambia de forma (`test_openapi` pasa sin regenerar
+  `docs/api.json`).
+- **Datos**: todo lo nuevo es ficticio (patrones construidos, «FRENTE A/B», «Norte», «Acarreo ficticio…»); en esta
+  ronda no se leyó ningún informe local.
