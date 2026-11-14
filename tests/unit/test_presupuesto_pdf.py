@@ -141,7 +141,8 @@ def test_el_pdf_trae_el_encabezado_las_partidas_y_los_totales_con_coma_decimal_y
         "La alícuota del IVA: a cotejar con la Gaceta vigente.",
     ):
         assert esperado in todo, esperado
-    assert "Precio unitario (USD)" in paginas[0] and "Total (USD)" in paginas[0]
+    # el encabezado se parte en líneas en su columna (D3): «Precio unitario» y «(USD)»
+    assert "Precio unitario" in paginas[0] and "Total (USD)" in paginas[0]
 
 
 def test_el_apu_va_en_su_pagina_con_sus_grupos_y_el_texto_del_usuario_no_es_marcado():
@@ -167,7 +168,7 @@ def test_con_150_partidas_el_encabezado_de_la_tabla_se_repite_y_cada_pagina_se_n
         assert f"Página {n} de {len(paginas)}" in pagina
         assert "Obra ficticia «El Ñandú»" in pagina  # el pie dice de qué obra es la hoja suelta
     for pagina in paginas[:-1]:
-        assert "Descripción" in pagina and "Precio unitario (USD)" in pagina
+        assert "Descripción" in pagina and "Precio unitario" in pagina and "Total (USD)" in pagina
     todo = "\n".join(paginas)
     assert all(f"FIC-{n:03d}" in todo for n in range(1, 151))
 
@@ -430,7 +431,9 @@ def test_el_apu_con_traza_lleva_la_neta_el_porcentaje_y_la_cantidad_con_desperdi
     )
     assert materiales.filas[0][:5] == (LLAVE, "pieza", "0,8", "25", "1")
     todo = "\n".join(_texto(pdf_en_bytes(documento)))
-    assert "Desperdicio (%)" in todo and "0,8" in todo and "25" in todo
+    # los encabezados se parten en su columna: «Desperdicio» / «(%)», «Cantidad» / «con» / ...
+    assert "Desperdicio" in todo and "(%)" in todo
+    assert "pieza 0,8 25 1 7,75" in todo
     # sin traza, las columnas de siempre
     sin = documento_de_la_hoja(_vivo(_of001), HOY, partida="AF-LLAVE")
     assert sin.apus[0].tablas[0].columnas == ("Descripción", "Unidad", "Cantidad", "Precio")
