@@ -258,9 +258,12 @@ describe("Auditar un libro con un APU por hoja", () => {
     expect((cuerpo.get("presupuesto") as File).name).toBe("frentes.xlsx");
     expect([cuerpo.get("proyecto"), cuerpo.get("moneda"), cuerpo.get("perfil")]).toEqual(["Vía ficticia", "Bs", "por_frentes"]);
     expect(cuerpo.getAll("hoja_presupuesto")).toEqual(["FRENTE A", "FRENTE B"]);
-    expect(
-      await screen.findByText("Se llevaron 10 renglones a la Hoja de «Vía ficticia», sin guardar: ábrala para revisarlos y guardar la versión."),
-    ).toBeInTheDocument();
+    const aviso = await screen.findByRole("status", { name: /Se llevaron 10 renglones a la Hoja de «Vía ficticia», sin guardar/ });
+    // Pasada en navegador de la ola 2 (D11): el aviso lleva a la Hoja de la obra (la dirección corta abre la de la obra de
+    // la sesión) y dice que un borrador sin guardar no sobrevive a la salida, y cómo recuperarlo.
+    expect(within(aviso).getByRole("link", { name: "Abrir la Hoja de «Vía ficticia»" })).toHaveAttribute("href", "#/hoja");
+    expect(aviso).toHaveTextContent(/se pierde al salir de Sílice/);
+    expect(aviso).toHaveTextContent(/vuelva a llevar el libro: no duplica nada/);
     const tabla = screen.getByRole("table", { name: "Partidas llevadas a la Hoja" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     expect(filas.map((f) => within(f).getAllByRole("cell").map((c) => c.textContent))).toEqual([
