@@ -360,4 +360,31 @@ describe("Control: un código repetido en dos renglones se ofrece una vez por re
     await u.click(await screen.findByRole("option", { name: /Tuberia de drenaje/ }));
     expect(screen.getByLabelText("Observación 1")).toHaveValue("");
   });
+  // Pasada en navegador de la ola 2 (D5): «… renglón 1 del presupuesto» y «… renglón 3 …» de un libro por frentes tienen la
+  // misma descripción; sin el frente no se sabe cuál es cuál.
+  test("cada renglón con frente lo nombra, y la observación también", async () => {
+    const mismo = "Riego de adherencia ficticio";
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://x");
+      const metodo = init?.method ?? "GET";
+      if (url.pathname === "/v1/control/linea-base" && metodo === "GET") return json(LINEA_BASE);
+      if (url.pathname === "/v1/control/valuaciones" && metodo === "GET") return json(VALUACIONES);
+      if (url.pathname === "/v1/control/partidas" && metodo === "GET")
+        return json({
+          ...POR_RENGLON,
+          partidas: [
+            { codigo: "VF-001", descripcion: mismo, unidad: "m2", renglon: 1, renglones: 2, frente: "FRENTE A" },
+            { codigo: "VF-001", descripcion: mismo, unidad: "m2", renglon: 2, renglones: 2, frente: "FRENTE B" },
+          ],
+        });
+      return json({ detalle: `ruta inesperada ${metodo} ${url.pathname}` }, 500);
+    });
+    const u = await montar();
+    await u.type(screen.getByLabelText("Partida 1"), "riego");
+    const opciones = await screen.findAllByRole("option", { name: /Riego de adherencia/ });
+    expect(opciones[0]).toHaveTextContent("renglón 1 del presupuesto, frente «FRENTE A»");
+    expect(opciones[1]).toHaveTextContent("renglón 2 del presupuesto, frente «FRENTE B»");
+    await u.click(opciones[1]!);
+    expect(screen.getByLabelText("Observación 1")).toHaveValue("Renglón 2 (frente «FRENTE B»)");
+  });
 });
