@@ -11,7 +11,12 @@ Aquí el libro ya auditado (`fusion.apu_por_hoja`, que quien llama corre: `aplic
    código ya está con la **misma** composición y los mismos precios, se reutiliza (llevar otra vez
    no duplica nada); si está con otra, entra como variante «-B», «-C»… (otro frente con otro precio;
    D6). Cada precio que escribe el libro lleva su referencia: «<libro>, <HOJA!CELDA>»
-   (`core.catalog.origen.fijar_referencia`), así la pestaña Precios dice de dónde salió.
+   (`core.catalog.origen.fijar_referencia`), así la pestaña Precios dice de dónde salió. La
+   **traza del desperdicio** (la neta y el porcentaje que imprime la hoja) entra con la composición,
+   en la misma transacción, como la guarda Componer (`aplicacion.desperdicio.guardar_trazas`): la
+   Hoja y Componer muestran «0,5 + 4 %» y no la cantidad sola, que invitaría a escribir el 4 % otra
+   vez (pasada en navegador de la ola 2, D10). Si el código ya estaba con la misma composición, su
+   traza se une a la vigente (`hoja_desperdicio.unir`) y llevar otra vez no escribe nada.
 2. **Los renglones.** Con presupuesto, uno por renglón enlazado con su APU, con la cantidad del
    presupuesto, su origen (`libro:<HOJA!CELDA>` de la cantidad, TABULAR) y su frente (la hoja del
    presupuesto, `aplicacion.frentes`). Sin presupuesto, uno por APU con la cantidad de su cabecera y
@@ -36,7 +41,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -44,7 +49,9 @@ from sqlalchemy.orm import Session
 
 from adapters.vial.constantes import TOLERANCIA_PRECIO
 from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, importaciones
+from aplicacion.desperdicio import TrazaDesperdicio, guardar_trazas, trazas_vigentes
 from aplicacion.frentes import MENSAJE_RESERVADO, con_frente, es_reservado
+from aplicacion.hoja_desperdicio import unir
 from aplicacion.listas_para_armar import lista_de_hoy, lista_para_armar
 from core import models
 from core.budget.moneda import moneda_del_proyecto
@@ -99,8 +106,9 @@ class ObraConVersiones(Exception):  # noqa: N818
 @dataclass(frozen=True, slots=True)
 class ApuDelLibro:
     """Una hoja de APU auditada: su composición (con el código del libro) y sus parámetros, el P.U.
-    impreso y el que recalculó la auditoría, la cantidad de la cabecera con su celda y la celda del
-    precio de cada línea, en el orden canónico (materiales, equipos y mano de obra)."""
+    impreso y el que recalculó la auditoría, la cantidad de la cabecera con su celda, la celda del
+    precio de cada línea, en el orden canónico (materiales, equipos y mano de obra), y la traza
+    del desperdicio de sus materiales."""
 
     hoja: str
     numero: int | None
@@ -110,6 +118,7 @@ class ApuDelLibro:
     cantidad: Decimal | None = None
     celda_cantidad: str | None = None
     celdas_precio: tuple[str, ...] = ()
+    trazas: tuple[TrazaDesperdicio, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,10 +290,25 @@ def _al_catalogo(
             # comparar otra partida), no los vería. Expediente de `core/` propuesto en la bitácora.
             sesion.expire(lista, ["precios"])
             _referenciar(sesion, codigo, lista, apu, archivo)
+            _trazar(sesion, codigo, apu)
             return codigo, True
         if _misma(catalogo, composicion, fecha, lista):
+            _trazar(sesion, codigo, apu)
             return codigo, False
     raise LibroSinRenglones(f"La partida «{base}» ya tiene demasiadas variantes en el catálogo.")
+
+
+def _trazar(sesion: Session, codigo: str, apu: ApuDelLibro) -> None:
+    """La traza del desperdicio del APU, unida a la vigente de `codigo` (la de otra línea se
+    conserva; la de la misma línea, manda la del libro). Sin `commit`: va con el catálogo. Si la
+    unión es ya la vigente (llevar otra vez), no escribe nada."""
+    if not apu.trazas:
+        return
+    antes = trazas_vigentes(sesion, codigo)
+    unidas = unir(apu.trazas, antes)
+    if unidas != antes:
+        # la hora solo fecha el rastro de la traza; no entra en ninguna cifra (como Componer)
+        guardar_trazas(sesion, codigo, unidas, ahora=datetime.now().replace(microsecond=0))
 
 
 def _referenciar(
