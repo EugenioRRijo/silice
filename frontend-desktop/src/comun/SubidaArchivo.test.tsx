@@ -42,4 +42,20 @@ describe("SubidaArchivo", () => {
     render(<SubidaArchivo etiqueta="Suelte" extensiones={[".xlsx"]} alElegir={vi.fn()} deshabilitada />);
     expect(campo()).toBeDisabled();
   });
+
+  // Pasada en navegador de la ola 2 (D12): Carbon pinta la etiqueta en el botón y otra vez en un <label> oculto del <input
+  // type="file">, así que un lector de pantalla la oía dos veces y el campo de archivo era otro «botón» con el mismo nombre.
+  test("la etiqueta se oye una sola vez: solo el botón la dice y el campo de archivo queda fuera del árbol accesible", async () => {
+    const usuario = userEvent.setup();
+    const alElegir = vi.fn();
+    const etiqueta = "Suelte aquí el perfil .json, o haga clic para elegirlo";
+    render(<SubidaArchivo etiqueta={etiqueta} extensiones={[".json"]} alElegir={alElegir} />);
+    expect(screen.getAllByText(etiqueta, { ignore: '[aria-hidden="true"]' })).toHaveLength(1);
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(campo()).toHaveAttribute("aria-hidden", "true");
+    // y el archivo sigue llegando
+    const archivo = new File(["{}"], "perfil.json");
+    await usuario.upload(campo(), archivo);
+    expect(alElegir).toHaveBeenCalledWith(archivo);
+  });
 });
