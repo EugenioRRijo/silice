@@ -116,3 +116,125 @@ Ronda: 1 · Base: `e2dfe116` · Cabeza: `67bbb7f8`
   `test_indices_usd.py`, `test_presupuesto_pdf.py` (OF-001: 2.703,86 y 2.821,42), `test_control_dias_del_plan.py`
   (tabla de la simulación); los arreglos de pruebas intermitentes (`App.bienvenida`, `CostosDelPeriodo`) cambian cómo se
   escribe, no lo que se afirma.
+
+
+## Ronda 1: correcciones (2026-11-13, corrector)
+
+Árbol `.worktrees/s2m4`, rama `feature/ola2`, desde `7c62dd47`. Sin tocar `core/` ni los 50 archivos congelados del
+experimento (comprobado contra `asistente/experimento/protocolo.json`). Cada arreglo con su prueba en rojo vista antes
+y commits separados; datos FICTICIOS (las fixtures de `tests/fixtures/libro_apu_por_hoja.py` y `carpeta_aprobaciones`).
+
+| # | Estado | Rojo → verde | Qué se hizo |
+|---|---|---|---|
+| 1 MAYOR | Hecho | `8d3bcc05` → `9ef1739f` | `_exigir_moneda` compara también con `moneda_del_proyecto` de la obra: 409 `MonedaDistinta` («La obra «…» está en USD y el libro en Bs: Sílice no convierte los precios del libro. Lleve el libro a una obra en Bs.») antes de abrir el borrador ni tocar el catálogo. Rojo: `200 == 409` (VF-001 impreso 2.08, en la Hoja 0.05: la sonda del árbitro). |
+| 2 MAYOR | Hecho | (rojo ya en la rama) → `372b3998` | `comun/borradorAbierto.ts` (el id del borrador abierto, que pone `ProveedorDeLaHoja`, y `rutaDeVista`, que `hoja/logica` reexporta) y `comun/perfilesDeLibros.ts` (`PerfilDisponible`, `enumeradas`); «Llevar a la Hoja» usa `MONEDAS` y `rotuloDeMoneda`. `CONOCIDAS` no crece. Rojo visto en `7c62dd47`: `4 tests, 3 failed`. |
+| 3 MENOR | Hecho | mutantes → `c569855b` | Dos pruebas de todo o nada (borrador nuevo; borrador que ya estaba, con el libro que crearía «VF-001-B»). Sin código nuevo: el rojo se vio con dos mutantes locales (A: `rollback` → `commit`, 2 failed; B: sin restaurar ni descartar el borrador, 2 failed). |
+| 4 MENOR | Hecho | `49282097` → `495e940e` | `patron_banda`: tope de 300 caracteres y rechazo, por su árbol (`re._parser`), de una repetición dentro de otra, una alternativa dentro de una repetición y una referencia hacia atrás, en `_construir` (paquete, carpeta y subida). Rojo: 10 failed (DID NOT RAISE). Simulación abajo. |
+| 5 MENOR | Hecho | `5b5f8348` → `aa38ebec` | Un efecto sobre `rev` vuelve a pedir `vistas/frentes` con el panel abierto, una vez por `rev` y no tras «Poner el frente». Rojo: 1 failed («Total general: 4.801,13 Bs» no aparece). |
+| 6 MENOR | Hecho | `2df29574` → `758dc690` | `presentarValor("especificaciones", …)` par por par: «_frente=X» → «Frente: X»; otra directiva «_…» sin rótulo no se muestra; cifras con coma. `hoja.py` sin tocar. Rojo: Received «_frente=FRENTE A». |
+| 7 MENOR | Hecho | refactor `6a17557e` | Fuera `_TILDES_DEL_CIERRE` y su uso (solo ella tenía «+ Administracion»); `test_presupuesto_pdf` y `test_api_hoja_pdf` siguen viendo «+ Administración». |
+| 8 MENOR | Hecho | `f8c440e4` → `1e31aee9` | `frentes.repartir_por_frente` (los grupos y el orden de `por_frentes`) y `presupuesto_pdf.por_frente(vivo)`, el agrupador de la ruta por omisión (`agrupar=frente`); `agrupar=ninguno`, la lista corrida; el agrupador corre bajo el cerrojo. `docs/api.json` regenerado. Rojo: 1 failed (sin «Subtotal de FRENTE A»). |
+| 9 MENOR | No es del corrector | — | CHANGELOG y ESTADO los escribe el orquestador (encargo común). |
+| 10 MENOR | Hecho | `86ad77f7` → `8eda94b1` | `_de_otro_tipo`: si el `<nombre>.json` que está es un JSON legible sin `"tipo": "apu_por_hoja"`, 409 con ese motivo aunque se pida reemplazar; uno ilegible (que la lista sí muestra con su motivo) se reemplaza. Rojo: «Ya hay un perfil…» y lo pisaba. |
+| N6 | Hecho | `e4eec769` → `d1fb1f0f` | `_exigir_hojas`: `hoja_presupuesto` a lo sumo 100 hojas de a lo sumo 31 caracteres, 422 sin eco, en la auditoría y al llevar el libro. Rojo: 3 failed. |
+| N7 | Hecho | `7d23cfea` | El ERS dice que RF-202 a RF-204 quedaron reservados sin usar; RF-209, RF-210 y RF-213 y el manual (§4, §12.5, §12.6) al día. |
+| N1 a N3 | Sin acción | — | Notas sin pedido. |
+| N4 | Anotada | — | Decisión de Eugenio (`dias_por_periodo` por omisión), ya simulada en la bitácora de la línea 1, §6. |
+| N5 | Anotada | — | Un APU que la auditoría no pudo evaluar sale en `sin_apu`: decirlo aparte pide un campo nuevo en `LibroLlevado`, en la respuesta, en `docs/api.json` y en la pantalla; no es de minutos. |
+
+Visto al pasar: el 422 de la auditoría con una hoja que no está repite el nombre escrito («no tiene la hoja X: sus
+hojas son…»); es lo que tecleó la persona y le sirve, no un dato ajeno. Sin cambio.
+
+### Decisiones y su simulación
+
+**Hallazgo 1, qué hacer con una obra en otra moneda que el libro** (la prueba con la fixture: carpeta en Bs, obra en
+USD, tasa ficticia 40 al 30/10/2026).
+
+| Opción | Resultado |
+|---|---|
+| Convertir con la tasa del BCV del día del borrador (lo que pasaba) | 200; VF-001 2,08 → 0,05 USD, VF-004 820,00 → 20,24; las 5 «no casa» sin decir por qué; la respuesta dice «Bs» y la Hoja está en USD |
+| Cambiar la moneda declarada de la obra (no tiene versiones) | Cambia una decisión de la obra en silencio, al llevar un libro: descartada |
+| **Rechazar (409) antes de tocar nada** (elegida, la del árbitro y D6) | 409 con el motivo; ninguna partida VF-% y ningún borrador (la prueba lo comprueba) |
+
+**Hallazgo 2, dónde va lo que Componer lee de la Hoja.**
+
+| Opción | Resultado |
+|---|---|
+| Pasar el borrador por props desde `ComponerEnPanel` | La pantalla `/presupuesto/componer` (`paginas/componer/index.tsx`) también necesita el borrador y tendría que leer el proveedor de la Hoja: sigue «componer -> hoja/ProveedorDeLaHoja» |
+| Mover `ContextoDeLaHoja` entero a `comun/` | `HojaDeLaObra` usa tipos de `hoja/logica`, `logicaRetomar` y `logicaVersiones`: `comun/` importaría de `paginas/` y falla la segunda prueba de arquitectura |
+| **Un contexto mínimo en `comun/` con el id del borrador, y `rutaDeVista` con él** (elegida) | `arquitectura.test.ts` 4/4; componer, administración, auditoría y `ProveedorDeLaHoja`: 35 archivos, 422 pruebas |
+
+**Hallazgo 4, la defensa de `patron_banda`** (guion `scratchpad/ola2/corrector/sim_redos.py`, Python 3.13.13 del
+`.venv`; tiempos reales).
+
+| Patrón | Tope + árbol (elegida) | Tope + heurística de texto | Probar en otro proceso, 0,5 s | `re.search` sobre «a»×22 + «!» |
+|---|---|---|---|---|
+| El del paquete | acepta | acepta | acepta (0,21 s por validación) | 0,001 s |
+| El de miles de las pruebas | acepta | acepta | acepta (0,24 s) | 0,000 s |
+| «(a+)+» (el del árbitro) | rechaza | rechaza | rechaza (0,54 s) | 0,894 s |
+| «(a o a)*» | rechaza | **acepta** | rechaza | — |
+| «(a*)*» | rechaza | rechaza | rechaza | — |
+| «(?:a o aa)+» | rechaza | **acepta** | **acepta** | — |
+| «([0-9]+)*» | rechaza | rechaza | **acepta** | — |
+| «(a{1,9}){2,}» | rechaza | rechaza | rechaza | — |
+| referencia «\1» | rechaza | rechaza | **acepta** | — |
+| «a*a*a*a*» (polinómico) | acepta | acepta | acepta | 0,004 s |
+| 1.000 caracteres | rechaza | rechaza | **acepta** | — |
+
+(«o» es la barra de la alternativa, que no se puede escribir dentro de una tabla.) El módulo `regex` con tiempo máximo
+está en el `.venv`, pero solo como dependencia de `formulas` (grupo `dev` de `pyproject.toml`): no llega al programa
+instalado, así que no es una opción. Probar en un hilo no sirve: `re` no suelta el GIL mientras busca. Elegida: tope +
+árbol, que rechaza los ocho peligrosos, acepta los legítimos y no cuesta nada al leer el perfil (cada auditoría y cada
+recálculo con VR4 lo leen). `re._parser` es interno de la biblioteca estándar (existe desde 3.11; Sílice pide 3.12 o
+más): si cambiara, las pruebas de `test_libro_por_frentes.py` lo dirían. Revertir: `git revert 495e940e`. Lo que el
+árbitro propuso como «mejor» (un patrón fijo con las palabras del perfil) cambia el formato del perfil y rompe los
+locales con patrón propio: queda para otra ronda.
+
+**Hallazgo 5, cómo refrescar la vista por frente.**
+
+| Opción | Resultado (vitest) |
+|---|---|
+| `key={rev}` en la pestaña | Refresca, pero el panel se cierra en cada edición: tras otro `rev`, «Total general» no se ve y vuelve el botón «Ver el presupuesto por frente» (prueba de simulación, no versionada) |
+| **Efecto sobre `rev` con el panel abierto, una vez por `rev`** (elegida) | 6/6: abierto pide la vista nueva; cerrado no pide; tras «Poner el frente» no pide otra vez |
+
+**Hallazgo 6, cómo decir el frente en el registro.** «Frente: X» (elegida, la del árbitro) frente a dejar
+«_frente=X» (la clave interna a la vista) o cambiar `hoja.py` (congelado; la clave es parte de la huella). Las demás
+directivas «_…» sin rótulo se callan; un frente con «; » queda entero (prueba).
+
+**Hallazgo 8, cuándo agrupa el PDF** (prueba de integración con el libro por frentes).
+
+| Opción | Resultado |
+|---|---|
+| Solo con `agrupar=frente` | El botón tendría que saber si hay frentes: las filas de la vista no traen el frente, así que sería otra petición a `vistas/frentes` antes de cada descarga o un campo nuevo en el resumen |
+| Agrupar siempre | Una obra sin frentes saldría con un grupo «Sin frente» y su subtotal, igual al total |
+| **Por frente si algún renglón lo tiene; `agrupar=ninguno` para la lista corrida** (elegida; S10 y Presto imprimen por títulos cuando el presupuesto los tiene) | Con frentes: «Subtotal de FRENTE A 2.814,68», «Subtotal de FRENTE B 1.876,45», total 4.691,13 (los de `vistas/frentes`); sin frentes, como antes; el botón «Descargar PDF» no cambia |
+
+**Hallazgo 10.** 409 aunque se pida reemplazar (la del árbitro), frente a pisarlo con aviso (se pierde un perfil que la
+pantalla nunca mostró) o renombrarlo (deja archivos que nadie pidió).
+
+### Lo que corrió el corrector
+
+- **pytest** (`.worktrees/tanda/.venv`, `-o addopts="" -q -p no:cacheprovider -W error`, cwd en `s2m4`):
+  `test_api_hoja_libro`, `test_api_acceso_por_ruta`, `test_api_admin*`, `test_api_hoja`, `test_api_libros*`
+  (unitarias e integración), `test_fusion_apu_por_hoja`, `test_hoja_empresa_apu_por_hoja`, `test_hoja_recongelado_2`,
+  `test_libro_por_frentes`, `test_presupuesto_pdf`, `test_api_hoja_pdf`, `test_api_hoja_exportar`,
+  `test_vial_banda_descripcion`, `test_openapi`, `test_aplicacion_sin_ciclos`, `test_arquitectura*`,
+  `test_documentos_*` y `test_manuales_s5`: `1518 passed`.
+- `ruff check .`: «All checks passed!»; `git diff e2dfe116 --stat -- core/`: vacío; `scripts/guardia_nucleo.py --base
+  e2dfe116`: OK; `scripts/meta_datos.py`: 4/4; `scripts/exportar_openapi.py` con el cambio de la ruta del PDF
+  (`docs/api.json` en `1e31aee9`).
+- **Front:** `npx eslint .` y `npx tsc -b --noEmit`: sin errores. `npm run lint` tal cual falla en este equipo porque
+  eslint entra en `frontend-desktop/node_modules.viejo` (la copia vieja local, fuera del repositorio): se corrió con
+  `--ignore-pattern "node_modules.viejo/**"`, que es lo que ve la CI.
+- **vitest entero** (`npx vitest run --maxWorkers=3`): en la base de la ronda (`7c62dd47`, el front de entonces puesto
+  en el árbol y devuelto después) `3 failed | 4472 passed`, los tres de `arquitectura.test.ts` (hallazgo 2) y nada más.
+  En la cabeza, dos corridas con `1 failed | 4478 passed`: «quien opera la arenera con su especialidad encendida ve la
+  arenera» (`paginas/inicio/VistaGeneral.test.tsx:551`, «expected +0 to be 1»), que pasa sola y con `src/paginas/inicio`
+  (61 passed). El bloque se pinta «cargando» en el mismo commit en que se programa el efecto que lo pide y la prueba
+  contaba el pedido al ver el bloque: carrera de la prueba, que el cambio del grafo de módulos de esta ronda dejó a la
+  vista. Arreglo en `b3bba087` (se espera el pedido con `waitFor`; lo que afirma no cambia). Tercera corrida:
+  `Test Files 303 passed (303)`, `Tests 4479 passed (4479)`.
+- **Datos:** búsqueda tolerante a tildes y separadores sobre `git log -p 7c62dd47..HEAD` y los mensajes, con las
+  palabras y cifras de los dos informes locales (leídos solo para comparar, guion en el scratchpad): 0 cifras; las
+  palabras que coinciden son genéricas («estación», «subtotales», «ficticia», «commit»…), ningún nombre, código ni
+  rótulo del libro.
