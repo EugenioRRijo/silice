@@ -177,7 +177,11 @@ async def llevar_libro(
             responsable=activa.usuario,
             hoy=rutas_hoja._hoy(),
         )
-    except (libro_a_la_hoja.LibroSinRenglones, libro_a_la_hoja.PorcentajesDistintos) as error:
+    except (
+        libro_a_la_hoja.LibroSinRenglones,
+        libro_a_la_hoja.PorcentajesDistintos,
+        libro_a_la_hoja.FrenteReservado,
+    ) as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
     except (
         libro_a_la_hoja.ObraConVersiones,

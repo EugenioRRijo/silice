@@ -44,7 +44,7 @@ from sqlalchemy.orm import Session
 
 from adapters.vial.constantes import TOLERANCIA_PRECIO
 from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, importaciones
-from aplicacion.frentes import con_frente
+from aplicacion.frentes import MENSAJE_RESERVADO, con_frente, es_reservado
 from aplicacion.listas_para_armar import lista_de_hoy, lista_para_armar
 from core import models
 from core.budget.moneda import moneda_del_proyecto
@@ -77,6 +77,11 @@ _CIEN = Decimal(100)
 
 class LibroSinRenglones(ValueError):  # noqa: N818 (identificadores en español, NORMAS.md §3)
     """No queda ningún renglón que llevar (la API responde 422); el mensaje dice por qué."""
+
+
+class FrenteReservado(ValueError):  # noqa: N818
+    """Un frente del libro (una hoja del presupuesto o el frente dicho sin presupuesto) se llama
+    como el grupo de los renglones sin frente (`aplicacion.frentes.es_reservado`; R2-N2)."""
 
 
 class PorcentajesDistintos(ValueError):  # noqa: N818
@@ -362,6 +367,8 @@ def llevar_libro_a_la_hoja(
         raise LibroSinRenglones(
             "Ningún renglón del libro se puede llevar: ninguno tiene su hoja de APU y su cantidad."
         )
+    if any(es_reservado(r.frente) for r in llevar):
+        raise FrenteReservado(MENSAJE_RESERVADO)
     usados = list({id(r.apu): r.apu for r in llevar}.values())
     parametros = _porcentajes(usados)
     existente, vigente = elaboracion.version_del_borrador_de_la_obra(

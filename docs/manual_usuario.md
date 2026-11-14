@@ -1579,8 +1579,9 @@ renglones de esas hojas.
 **El presupuesto por frente.** En la pestaña Presupuesto de la Hoja, debajo del total, pulse «Ver el presupuesto
 por frente»: la tabla «Presupuesto por frente» da cada frente, sus renglones (y cuántos están pendientes) y su
 subtotal, y debajo el «Total general». Las cifras las calcula Sílice; los renglones sin frente van al final, en
-«Sin frente». Para poner el frente de un renglón a mano, elíjalo en «Renglón», escriba el «Frente» y pulse
-«Poner el frente» (vacío lo quita). El frente se guarda con la versión.
+«(sin frente)», como en el PDF. Para poner el frente de un renglón a mano, elíjalo en «Renglón», escriba el «Frente» y
+pulse «Poner el frente» (vacío lo quita). Un frente no puede llamarse «Sin frente» ni «(sin frente)», para que no se
+confunda con ese grupo: ni a mano ni desde el libro (a una hoja del presupuesto con ese nombre, cámbiele el nombre). El frente se guarda con la versión.
 
 ## 13. El asistente de IA
 

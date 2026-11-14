@@ -53,7 +53,9 @@ interface Props {
   alAusente: () => void;
 }
 
-const SIN_FRENTE = "Sin frente";
+// El grupo de los renglones sin frente (`frente: null`), como lo rotula el PDF (`aplicacion/frentes.py`, `SIN_FRENTE`): entre
+// paréntesis, para que no se confunda con un frente (el servidor no acepta un frente que se llame así; ronda 2, R2-N2).
+const SIN_FRENTE = "(sin frente)";
 
 const COLUMNAS: ColumnaDensa[] = [
   { clave: "frente", titulo: "Frente", ordenable: false },

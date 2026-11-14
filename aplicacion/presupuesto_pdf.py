@@ -155,6 +155,11 @@ def por_frente(vivo: BorradorVivo) -> Agrupador:
 # --- las cifras -----------------------------------------------------------------------------------
 
 
+def _rotulo_del_subtotal(titulo: str) -> str:
+    """«Subtotal de FRENTE A»; el del grupo de los renglones sin frente, «Subtotal (sin frente)»."""
+    return f"Subtotal {titulo}" if titulo == frentes.SIN_FRENTE else f"Subtotal de {titulo}"
+
+
 def _dinero(valor: Decimal) -> str:
     return texto_de_cifra(valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
@@ -457,7 +462,15 @@ def pdf_en_bytes(documento: DocumentoPdf) -> bytes:
                 )
             if grupo.subtotal is not None:
                 filas.append(
-                    [p(f"Subtotal de {grupo.titulo}", negrita), "", "", "", "", "", grupo.subtotal]
+                    [
+                        p(_rotulo_del_subtotal(grupo.titulo), negrita),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        grupo.subtotal,
+                    ]
                 )
                 n = len(filas) - 1
                 estilo += [("SPAN", (0, n), (-2, n)), ("FONT", (-1, n), (-1, n), _NEGRITA, 7.5)]

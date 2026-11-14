@@ -12,18 +12,27 @@ Decisión simulada en `docs/bitacora/2026-11-13-ola2-libro-por-frentes.md` (D7).
 **Agrupar el presupuesto por frente** (D8): `por_frentes` arma, con el cálculo de la Hoja, el
 subtotal de cada frente (la suma de los totales de sus renglones, cantidad × P.U.) y el total
 general (el del presupuesto), en el orden en que aparece cada frente; los renglones sin frente van
-al final, en un grupo sin nombre. Un renglón pendiente (sin APU) se cuenta aparte y no suma. La
-interfaz no calcula: solo muestra lo que manda el servidor. `poner_frentes` pone (o quita) el frente
-de renglones propios del borrador; uno que sale del espacio no se cambia aquí.
+al final, en un grupo sin nombre (`frente: None`; la pantalla y el PDF lo rotulan `SIN_FRENTE`).
+Un renglón pendiente (sin APU) se cuenta aparte y no suma. La interfaz no calcula: solo muestra lo
+que manda el servidor. `poner_frentes` pone (o quita) el frente de renglones propios del
+borrador; uno que sale del espacio no se cambia aquí.
 
 **El PDF por frente** (ronda 1 del árbitro de la ola 2, hallazgo 8): `repartir_por_frente` reparte
 las filas de la vista del presupuesto (las del PDF, `aplicacion.presupuesto_pdf`) en los mismos
 grupos y en el mismo orden que `por_frentes`, así el subtotal de cada frente del PDF es el de la
 pantalla; sin ningún frente, un solo grupo sin título (el PDF de siempre).
+
+**El grupo de los renglones sin frente** (ronda 2 del árbitro de la ola 2, R2-N2) se rotula
+«(sin frente)» en la pantalla y en el PDF, entre paréntesis como el «(en blanco)» de una tabla
+dinámica de Excel; un frente no puede llamarse «Sin frente» ni «(sin frente)» (`es_reservado`, sin
+distinguir mayúsculas, tildes ni blancos), ni a mano ni desde el libro, para que no se confunda
+con ese grupo. Simulación en `docs/bitacora/arbitrajes/ola2-claude-xhigh.md`, «Ronda 2:
+correcciones».
 """
 
 from __future__ import annotations
 
+import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
@@ -37,10 +46,12 @@ __all__ = [
     "CLAVE_FRENTE",
     "MAX_FRENTE",
     "MENSAJE_RENGLON",
+    "MENSAJE_RESERVADO",
     "SIN_FRENTE",
     "FrenteDelPresupuesto",
     "PresupuestoPorFrentes",
     "con_frente",
+    "es_reservado",
     "frente_de",
     "poner_frentes",
     "por_frentes",
@@ -51,10 +62,25 @@ MENSAJE_RENGLON = "Ese renglón no está en el presupuesto o sale del espacio: v
 
 #: La directiva del frente en `ItemComputo.especificaciones` (empieza por «_»: R4 no la lee).
 CLAVE_FRENTE = "_frente"
-#: El título del grupo de los renglones sin frente, como lo dice la pantalla.
-SIN_FRENTE = "Sin frente"
+#: El título del grupo de los renglones sin frente, en la pantalla y en el PDF (R2-N2).
+SIN_FRENTE = "(sin frente)"
+#: Los nombres que un frente no puede tener (ya normalizados, ver `es_reservado`).
+_RESERVADOS = frozenset({"sin frente", "(sin frente)"})
+MENSAJE_RESERVADO = (
+    "Un frente no puede llamarse «Sin frente» ni «(sin frente)»: así se rotulan los renglones sin "
+    "frente. Para quitar el frente de un renglón deje el campo vacío; a una hoja del libro con ese "
+    "nombre, cámbiele el nombre en el libro."
+)
 #: Lo más largo que puede ser el nombre de un frente (una hoja de Excel se llama con 31).
 MAX_FRENTE = 80
+
+
+def es_reservado(frente: str | None) -> bool:
+    """Si `frente` se llama como el grupo de los renglones sin frente («Sin frente», «(sin
+    frente)»), sin distinguir mayúsculas, tildes ni blancos."""
+    descompuesto = unicodedata.normalize("NFKD", (frente or "").casefold())
+    sin_tildes = "".join(c for c in descompuesto if not unicodedata.combining(c))
+    return " ".join(sin_tildes.split()) in _RESERVADOS
 
 
 def frente_de(item: ItemComputo) -> str | None:
@@ -156,13 +182,16 @@ def repartir_por_frente[F: _FilaConClave](
 def poner_frentes(borrador: hoja.Borrador, frentes: Mapping[str, str | None]) -> hoja.Borrador:
     """El borrador con el frente de cada renglón propio de `frentes` (clave → frente; vacío o
     `None` lo quita). `HojaInvalida` si una clave no es de un renglón propio del borrador (los del
-    espacio salen de su modelo) o si un frente pasa de `MAX_FRENTE`."""
+    espacio salen de su modelo), si un frente pasa de `MAX_FRENTE` o si se llama como el grupo de
+    los renglones sin frente (`es_reservado`)."""
     claves = hoja.claves_propias(borrador)
     for clave, frente in frentes.items():
         if clave not in claves:
             raise HojaInvalida(MENSAJE_RENGLON)
         if len((frente or "").strip()) > MAX_FRENTE:
             raise HojaInvalida(f"El nombre de un frente no puede pasar de {MAX_FRENTE} caracteres.")
+        if es_reservado(frente):
+            raise HojaInvalida(MENSAJE_RESERVADO)
     items = tuple(
         con_frente(item, frentes[clave]) if clave in frentes else item
         for clave, item in zip(claves, borrador.items_base, strict=True)
