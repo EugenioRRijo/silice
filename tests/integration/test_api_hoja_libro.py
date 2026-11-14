@@ -711,3 +711,15 @@ def test_la_variante_lleva_su_propia_traza(ana) -> None:
     a = navegador.get("/v1/composicion/partidas/VF-001").json()["tablas"]["materiales"][0]
     assert (b["cantidad"], b["desperdicio"]) == ("0,5", "5")
     assert (a["cantidad"], a["desperdicio"]) == ("0,5", "4")
+
+
+def test_el_apu_del_pdf_lleva_la_neta_y_el_porcentaje_del_libro(ana) -> None:
+    """D3 con D10: el APU de VF-001 en el PDF dice la neta (0,5), el 4 % y la cantidad con
+    desperdicio (0,520), como la pestaña APU; antes solo decía 0,520."""
+    navegador, _ = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    r = navegador.get(f"/v1/hoja/borradores/{id_}/pdf", params={"partida": "VF-001"})
+    assert r.status_code == 200, r.text
+    with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+        texto = pdf.pages[0].extract_text() or ""
+    assert "Emulsión asfáltica ficticia l 0,5 4 0,520 2,00" in texto, texto
