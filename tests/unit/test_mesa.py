@@ -51,8 +51,10 @@ from aplicacion.procura import pendientes_de_compras
 from core import models
 from core.budget import crear_proyecto, elaborar, guardar_presupuesto
 from core.budget.control import guardar_parametros
+from core.budget.moneda import convertir_version
 from core.budget.valor_ganado import ParametrosControl
 from core.catalog import Catalogo, abrir_sesion, crear_motor
+from core.catalog.moneda import TasaDeclarada
 from core.contracts.apu import (
     ComposicionAPU,
     LineaEquipo,
@@ -442,6 +444,25 @@ def test_un_control_que_no_se_puede_calcular_lo_dice_con_un_texto_fijo(sesion) -
     assert obra.que_pasa == "No se pudo calcular el avance; ábralo en Control para ver el motivo."
     assert not re.search(r"\d{4}-\d{2}-\d{2}", obra.que_pasa)
     assert obra.siguiente == REGISTRAR
+
+
+def test_tras_convertir_la_obra_a_bs_la_version_en_usd_no_muestra_su_total(sesion) -> None:
+    # la línea base sigue sobre OB-001 (USD) y la obra pasó a Bs: su total, en USD, no puede salir
+    # con la etiqueta Bs de la obra (ni sumarse en la fila Bs de la cartera); queda sin total
+    ob.sembrar(sesion)
+    ob.declarar_linea_base(sesion)
+    ob.registrar_v01_y_v02(sesion)
+    convertir_version(
+        sesion, ob.NOMBRE, ob.CODIGO, "OB-BS", "Bs",
+        TasaDeclarada(D("40"), date(2026, 10, 1), "tasa ficticia"),
+        fuente="cambio ficticio", responsable="Ing. Prueba", catalogo=Catalogo(sesion),
+    )  # fmt: skip
+    sesion.flush()
+
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+
+    assert (obra.moneda, obra.version, obra.version_de_linea_base) == ("Bs", "OB-001", True)
+    assert obra.total is None
 
 
 def test_con_el_plan_empezado_y_sin_valuaciones_esta_atrasada_y_se_suma(sesion) -> None:
