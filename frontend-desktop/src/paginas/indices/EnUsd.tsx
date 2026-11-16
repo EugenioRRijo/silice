@@ -73,13 +73,18 @@ export function EnUsd() {
 
   const guardar = (revisada: Revisada) => {
     if (guardado.tipo === "enCurso") return;
+    // El guardado es de la vista revisada en este turno: si otra revisión la reemplazara, su respuesta ya no le toca.
+    const numero = consulta.current;
     setGuardado({ tipo: "enCurso" });
     pedir<{ mensajes: string[] }>("/v1/indices/en-usd/confirmar", {
       metodo: "POST",
       cuerpo: { serie: revisada.serie, lado: revisada.lado, huella: revisada.vista.huella },
     }).then(
-      (respuesta) => setGuardado({ tipo: "listo", datos: respuesta.mensajes }),
+      (respuesta) => {
+        if (numero === consulta.current) setGuardado({ tipo: "listo", datos: respuesta.mensajes });
+      },
       (error: unknown) => {
+        if (numero !== consulta.current) return;
         fallo(error);
         setGuardado({ tipo: "error", error });
       },
@@ -130,7 +135,13 @@ export function EnUsd() {
             </Select>
           </div>
           <div className="silice-indices__acciones">
-            <Button kind="secondary" size="md" onClick={revisar} disabled={vista.tipo === "enCurso"}>
+            {/* Con el guardado en vuelo no se revisa: la vista nueva traería un «Guardar» vivo y una segunda confirmación. */}
+            <Button
+              kind="secondary"
+              size="md"
+              onClick={revisar}
+              disabled={vista.tipo === "enCurso" || guardado.tipo === "enCurso"}
+            >
               Revisar
             </Button>
             {vista.tipo === "enCurso" && <InlineLoading description="Revisando..." status="active" />}
