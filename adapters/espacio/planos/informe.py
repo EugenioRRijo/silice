@@ -25,7 +25,8 @@ Decisiones (bitacora SF, SF5):
   archivo, solo se informa; no se puede marcar. Un `REC-<handle>` sin archivo (hojas de antes) se
   sustituye por el del mismo *handle* para no contar dos veces el mismo recorrido.
 * Una fila nueva cuyo `id` ya usa otra fila de la hoja (por ejemplo una escrita a mano) se OMITE con
-  su ítem; tambien las filas que la citan.
+  su ítem; tambien las filas que la citan. Lo que el lector dijo de una fila omitida (importada,
+  pendiente, aproximada) se retira: la fila no llega a la hoja y solo queda como OMITIDA.
 """
 
 from __future__ import annotations
@@ -290,10 +291,20 @@ class _Fusion:
         self.ids: dict[str, dict[str, str]] = {t: {} for t in (*self.filas, "esp_circuitos")}
         self.circuitos = {c.id: c for c in actual.circuitos}
         self.recorridos = {r.id: r for r in actual.recorridos}
-        self.informe: list[ItemInforme] = list(resultado.informe)
+        self.del_lector: list[ItemInforme] = list(resultado.informe)  # va primero en el informe
+        self.informe: list[ItemInforme] = []  # lo propio de la fusion
 
     def _item(self, tipo: TipoItem, tabla: str, referencia: str, fila: str, mensaje: str) -> None:
         self.informe.append(ItemInforme(tipo, tabla, referencia, fila, mensaje))
+
+    def _omitir(self, tabla: str, referencia: str, fila: str, mensaje: str) -> None:
+        """La fila no entra a la hoja: se retira lo que el lector dijo de ella y queda OMITIDA."""
+        self.del_lector = [
+            i
+            for i in self.del_lector
+            if not (i.tabla == tabla and i.fila == fila and i.tipo in _DEL_LECTOR)
+        ]
+        self._item(TipoItem.OMITIDO, tabla, referencia, fila, mensaje)
 
     def _en_alcance(self, fila) -> str | None:
         """Identificador en el plano de una fila que vino de ESTE archivo; si no, None."""
@@ -338,7 +349,7 @@ class _Fusion:
             clave = _identificador(origen_nuevo)
             fila_ref, motivo = self._remapear(nueva, tabla)
             if fila_ref is None:
-                self._item(TipoItem.OMITIDO, tabla, clave or "", nueva.id, f"{nueva.id}: {motivo}")
+                self._omitir(tabla, clave or "", nueva.id, f"{nueva.id}: {motivo}")
                 continue
             previa = existentes.get(clave) if clave else None
             if previa is not None:
@@ -347,8 +358,7 @@ class _Fusion:
                     tabla, nueva, fila_ref, previa, origen_nuevo, es_ambiente, es_punto
                 )
             elif nueva.id in self.filas[tabla]:
-                self._item(
-                    TipoItem.OMITIDO,
+                self._omitir(
                     tabla,
                     clave or "",
                     nueva.id,
@@ -423,13 +433,7 @@ class _Fusion:
             if (r.punto_id is not None and punto is None) or (
                 r.circuito_id is not None and circuito is None
             ):
-                self._item(
-                    TipoItem.OMITIDO,
-                    "esp_recorridos",
-                    "",
-                    r.id,
-                    f"{r.id}: cita una fila que se omitio",
-                )
+                self._omitir("esp_recorridos", "", r.id, f"{r.id}: cita una fila que se omitio")
                 continue
             final = replace(r, punto_id=punto, circuito_id=circuito)
             estado = "actualizado" if r.id in self.recorridos else "agregado"
@@ -477,8 +481,11 @@ class _Fusion:
             recorridos=tuple(self.recorridos.values()),
             sobrescrituras=self.actual.sobrescrituras,
         )
-        return espacio, tuple(self.informe)
+        return espacio, (*self.del_lector, *self.informe)
 
+
+#: Lo que el lector informa de una fila y deja de valer si la fusion la omite.
+_DEL_LECTOR = frozenset({TipoItem.IMPORTADO, TipoItem.PENDIENTE, TipoItem.APROXIMADO})
 
 #: Referencias entre filas que hay que traducir: tabla -> ((campo, tabla citada), ...).
 _REFERENCIAS: dict[str, tuple[tuple[str, str], ...]] = {
