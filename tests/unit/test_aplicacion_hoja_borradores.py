@@ -237,6 +237,28 @@ def test_reemplazar_un_borrador_ajeno_o_vencido_no_existe(registro, reloj):
         registro.reemplazar("ficha-a", vivo.id, _borrador(), rev=0)
 
 
+def test_reemplazar_un_borrador_descartado_mientras_esperaba_su_cerrojo_no_existe(
+    registro, monkeypatch
+):
+    """Otra ventana descarta el borrador entre `obtener` y el cerrojo del borrador: `reemplazar`
+    no lo da por cambiado (rev 1) cuando ya no esta en el registro. Sin hilos: el descarte se
+    intercala justo despues de `obtener`."""
+    vivo = _crear(registro)
+    obtener = registro.obtener
+
+    def obtener_y_descartar(huella: str, id_: str):
+        encontrado = obtener(huella, id_)
+        registro.descartar(huella, id_)  # lo que haria la otra ventana en ese instante
+        return encontrado
+
+    monkeypatch.setattr(registro, "obtener", obtener_y_descartar)
+    nuevo = _borrador("Bs")
+    with pytest.raises(BorradorInexistente):
+        registro.reemplazar("ficha-a", vivo.id, nuevo, rev=0)
+    assert vivo.rev == 0 and vivo.borrador is not nuevo  # nada cambio
+    assert registro.listar("ficha-a") == []
+
+
 def test_listar_devuelve_los_de_mi_ficha_del_mas_reciente_al_mas_antiguo_por_uso(registro, reloj):
     uno = _crear(registro, proyecto="P1")
     reloj.avanzar(minutes=1)
