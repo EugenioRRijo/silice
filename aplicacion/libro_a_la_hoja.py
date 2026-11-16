@@ -61,6 +61,7 @@ from core.contracts import Dominio, ItemComputo, OrigenTipo
 from core.contracts.apu import ComposicionAPU, ParametrosCosto
 
 __all__ = [
+    "CLAVE_CODIGO_LIBRO",
     "PREFIJO_LIBRO",
     "ApuDelLibro",
     "LibroLlevado",
@@ -76,6 +77,8 @@ __all__ = [
 
 #: El prefijo del `origen_id` de un renglón que vino del libro: «libro:FRENTE A!E4».
 PREFIJO_LIBRO = "libro:"
+#: La directiva con el código original del APU en el libro (`ItemComputo.especificaciones`).
+CLAVE_CODIGO_LIBRO = "_codigo_libro"
 #: Largo de `referencia_precio.referencia` (`core/models/entidades.py`).
 _LARGO_REFERENCIA = 60
 _VARIANTES = "BCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -438,6 +441,7 @@ def llevar_libro_a_la_hoja(
                         origen_id=f"{PREFIJO_LIBRO}{r.celda}",
                         origen_tipo=OrigenTipo.TABULAR,
                         dominio=dominio,
+                        especificaciones={CLAVE_CODIGO_LIBRO: r.apu.composicion.codigo_partida},
                     ),
                     r.frente,
                 )
