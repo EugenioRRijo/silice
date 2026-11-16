@@ -7,16 +7,20 @@ de tiempo (`_con_tope`): el hilo es demonio, así que una prueba en rojo no deja
 
 from __future__ import annotations
 
+import io
 import threading
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any
 
+import openpyxl
+
+from adapters.hoja_empresa.escritor import escribir_devolucion
 from adapters.hoja_empresa.escritor.copia import tamano_imagen
 from adapters.hoja_empresa.guardia import MAX_FILAS_HOJA
 from adapters.hoja_empresa.lector import leer_libro
-from adapters.hoja_empresa.modelo import Celda, Rotulo
+from adapters.hoja_empresa.modelo import Celda, DatosDevolucion, Rotulo
 from adapters.hoja_empresa.plantilla import filas_base_mo
 from adapters.hoja_empresa.reglas import reglas_del_libro
 from tests.fixtures.libros_empresa import libro_limpio
@@ -136,3 +140,37 @@ def test_regla_l9_del_resumen_no_recorre_filas_mas_alla_del_tope():
     vigilado = _Vigilado(formulas, "RESUMEN")
     reglas_del_libro(replace(libro, formulas=vigilado))
     assert vigilado.lejanas == 0
+
+
+# --- 3. Nombre de la hoja nueva cuando el libro ya trae una con ese nombre -----------------------
+
+
+def test_hoja_nueva_con_nombres_ocupados_no_cuelga_y_toma_un_numero_libre():
+    """Devolver un libro ya devuelto varias veces: el sufijo « (S)» recortado a 31 caracteres
+    llegaba a un punto fijo ('ALERTAS USD-Bs (S) (S) (S) ( (S') y el bucle no terminaba."""
+    ocupados = (
+        "ALERTAS USD-Bs",
+        "ALERTAS USD-Bs (S)",
+        "ALERTAS USD-Bs (S) (S)",
+        "ALERTAS USD-Bs (S) (S) (S)",
+        "ALERTAS USD-Bs (S) (S) (S) (S)",
+        "ALERTAS USD-Bs (S) (S) (S) ( (S",
+        "AUDITORÍA",
+        "AUDITORÍA (2)",
+    )
+    wb = openpyxl.load_workbook(io.BytesIO(libro_limpio().datos))
+    for nombre in ocupados:
+        wb.create_sheet(nombre)["A1"] = "copia anterior"
+    flujo = io.BytesIO()
+    wb.save(flujo)
+    datos = flujo.getvalue()
+    libro = leer_libro(datos, "devuelto.xlsx")
+    salida = _con_tope(
+        escribir_devolucion,
+        datos,
+        DatosDevolucion(libro=libro, apus={}, precios_unitarios={}, totales={}),
+        segundos=60.0,
+    )
+    hojas = openpyxl.load_workbook(io.BytesIO(salida)).sheetnames
+    assert hojas[-3:] == ["AUDITORÍA (3)", "TRAZABILIDAD", "ALERTAS USD-Bs (2)"]
+    assert set(ocupados) <= set(hojas)
