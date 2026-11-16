@@ -1006,9 +1006,17 @@ def _formatear(n: Decimal, fmt: str) -> str:
     digitos = parte_entera.replace(",", "")
     if len(digitos) < ceros:
         digitos = digitos.zfill(ceros)
-        parte_entera = f"{int(digitos):,}".zfill(ceros) if "," in entero else digitos
+        # Excel agrupa el número ya rellenado: TEXT(5;"0,000") da 0,005, no 0005.
+        parte_entera = _agrupar_miles(digitos) if "," in entero else digitos
     out = parte_entera + ("." + parte_dec if nd else "")
     return signo + out + ("%" if pct else "")
+
+
+def _agrupar_miles(digitos: str) -> str:
+    """`000012` -> `000,012`: de tres en tres desde la derecha, con la coma de miles de Excel."""
+    cabeza = len(digitos) % 3 or 3
+    grupos = [digitos[:cabeza]] + [digitos[i : i + 3] for i in range(cabeza, len(digitos), 3)]
+    return ",".join(grupos)
 
 
 def _f_left(ev: Evaluador, a: list[object]) -> object:
