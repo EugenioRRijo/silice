@@ -748,6 +748,27 @@ def test_reimportar_el_plano_editado_actualiza_agrega_y_marca_lo_que_desaparecio
     assert marca["importacion"] == "desaparecida"
 
 
+def test_el_mismo_plano_con_otro_nombre_deja_cada_fila_omitida_solo_como_omitida():
+    p = _con_punto_de_datos()
+    _electrico(p)
+    p.msp.add_lwpolyline([(3, 2), (3, 0.5)], dxfattribs={"layer": "REC-DATOS"})  # plana
+    hoja, _ = fusionar(Espacio(), importar_dxf(p.bytes(), nombre="a.dxf"))
+    _, informe = fusionar(hoja, importar_dxf(p.bytes(), nombre="b.dxf"))
+    estados: dict[tuple[str, str], set[TipoItem]] = {}
+    for i in informe:
+        estados.setdefault((i.tabla, i.fila), set()).add(i.tipo)
+    omitidas = {fila for fila, tipos_ in estados.items() if TipoItem.OMITIDO in tipos_}
+    assert {tabla for tabla, _ in omitidas} == {
+        "esp_ambientes",
+        "esp_fuentes",
+        "esp_puntos",
+        "esp_recorridos",
+    }
+    assert {fila: estados[fila] for fila in omitidas} == dict.fromkeys(
+        omitidas, {TipoItem.OMITIDO}
+    )
+
+
 def _planta_electrica(sala: str, cocina: str, toma: str, circuito: str, con_linea=True) -> Plano:
     """Un plano de una planta con su tablero, una toma y una LINE de REC-ELECTRICIDAD que sube
     desde la toma. Dos plantas dibujadas en el mismo orden comparten los *handles*."""
