@@ -1,9 +1,10 @@
 import { Add } from "@carbon/icons-react";
 import { useEffect, useId, useMemo } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Pildora } from "../comun/Pildora";
 import { claveDeObra, contarPorObra } from "../paginas/pendientes/logica";
 import { TEXTOS as TEXTOS_PENDIENTES } from "../paginas/pendientes/textos";
+import { useNavegarSeguro } from "../shell/navegarSeguro";
 import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import type { DestinoDeNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import "./BarraLateral.scss";
@@ -28,7 +29,9 @@ interface Props {
 // esta barra, se abre desde el botón de la persona (F6, T6).
 export function BarraLateral({ obraAbierta }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
-  const navegar = useNavigate();
+  // Ir a la obra recién creada es salir de la pantalla: con cambios sin guardar se pregunta, como en las demás
+  // navegaciones del marco. Si la persona se queda, la obra ya creada sigue en la lista (se recargó).
+  const navegar = useNavegarSeguro();
   const base = useId();
   const { obras, carpetaActual, tituloActual, estado, recargar } = useObras();
   // Los contadores solo se pintan con la lectura lista y mayor que cero: cargando o con error no hay número (ni uno falso).
@@ -162,7 +165,7 @@ export function BarraLateral({ obraAbierta }: Props) {
           cerrarNuevaObra();
           recargar();
           // El código lo da el servidor como texto; si no son dígitos no hay ruta a la obra nueva y se queda donde está.
-          if (/^\d+$/.test(obra.codigo)) navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
+          if (/^\d+$/.test(obra.codigo)) void navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
         }}
       />
     </aside>
