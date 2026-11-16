@@ -1114,3 +1114,35 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
             "frente": "Frente 2 (ficticio)",
         },
     ]
+
+
+# --- un fallo de la base es un 503 fijo, sin SQL, en toda ruta del control ----------------------
+
+
+@pytest.mark.parametrize(
+    ("ruta", "funcion"),
+    [
+        ("/v1/control/linea-base", "tiene_linea_base"),
+        ("/v1/control/valuaciones", "tiene_linea_base"),
+    ],
+)
+def test_un_fallo_de_la_base_en_el_control_es_503_fijo_y_sin_cache(
+    monkeypatch: pytest.MonkeyPatch, ruta: str, funcion: str
+) -> None:
+    """Antes solo `/partidas` traducía `SQLAlchemyError` (su prueba, arriba, sigue con su texto);
+    las demás daban 500. El manejador de la aplicación responde 503 con un texto fijo que no
+    nombra tablas ni columnas."""
+
+    def _falla(*_args, **_kwargs):
+        raise OperationalError("SELECT secreto FROM tabla_interna", {}, Exception("disco"))
+
+    monkeypatch.setattr(logica_control, funcion, _falla)
+
+    r = _con_clave().get(ruta, params=P)
+
+    assert r.status_code == 503
+    assert r.json() == {
+        "detalle": "No se pudo leer o guardar en la carpeta de trabajo. Intente de nuevo."
+    }
+    assert r.headers.get("cache-control") == "no-store"
+    assert "tabla_interna" not in r.text
