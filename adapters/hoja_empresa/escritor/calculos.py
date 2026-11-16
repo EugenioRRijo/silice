@@ -732,14 +732,20 @@ class Evaluador:
     # -- funciones --
 
     def _funcion(self, nombre: str, args: list[tuple | None]) -> object:
+        """Llama a la función con sus argumentos. Con argumentos de menos (`=IF()`, `=MOD(1)`, que
+        Excel no deja escribir pero un archivo puede traer) la función pide uno que no está: da
+        `#VALUE!` en vez de tumbar la devolución entera con un `IndexError`."""
         perezosa = _PEREZOSAS.get(nombre)
-        if perezosa is not None:
-            return perezosa(self, args)
         f = _FUNCIONES.get(nombre)
-        if f is None:
+        if perezosa is None and f is None:
             raise NoSoportado(f"función {nombre}")
-        valores = [self._ev(a) if a is not None else None for a in args]
-        return f(self, valores)
+        try:
+            if perezosa is not None:
+                return perezosa(self, args)
+            valores = [self._ev(a) if a is not None else None for a in args]
+            return f(self, valores)
+        except IndexError:
+            raise _Propaga(_VALOR) from None
 
 
 # --- Funciones perezosas -------------------------------------------------------------------------
