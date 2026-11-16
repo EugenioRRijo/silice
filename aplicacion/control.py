@@ -651,8 +651,9 @@ def precios_del_corte(
     """Los `PreciosDelCorte` que corresponden a la elección, o `None` si no se eligió ninguno.
 
     `perspectiva` debe ser la de la línea base (`perspectiva_de_la_linea_base`): los unitarios del
-    corte se comparan con los de la línea base. `corte` solo lo usan los precios declarados (sin él,
-    el de la última valuación); sin ninguno declarado hasta el corte, `ControlInvalido`."""
+    corte se comparan con los de la línea base. `corte` lo usan los precios declarados y la
+    escalatoria (sin él, el de la última valuación); sin ninguno declarado hasta el corte, o sin
+    línea base vigente a él para la escalatoria, `ControlInvalido`."""
     if elegido.metodo == METODO_DECLARADOS:
         try:
             declarados = precios_declarados(sesion, proyecto, catalogo, corte, perspectiva)
@@ -673,7 +674,10 @@ def precios_del_corte(
     if elegido.metodo == METODO_ESCALATORIA:
         if not elegido.fuente.strip():
             raise ControlInvalido("la escalatoria necesita la fuente de Km y R")
-        base = instantanea_control(sesion, proyecto, catalogo=catalogo).presupuesto
+        try:
+            base = instantanea_control(sesion, proyecto, catalogo=catalogo, corte=corte).presupuesto
+        except ValueError as error:
+            raise ControlInvalido(str(error)) from None
         unitarios = {
             p.item.codigo_partida: (
                 p.resultado.costo_directo if perspectiva == "costo" else p.resultado.precio_unitario
