@@ -848,15 +848,17 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
     otra, tasa = _otra_moneda(sesion, resultado)
 
     def en_otra(valor: Decimal | None) -> str:
+        """El monto en la otra moneda con su símbolo; sin monto o sin tasa, «no disponible» a secas
+        (la moneda solo acompaña a una cifra)."""
         if valor is None or tasa is None:
             return NO_DISPONIBLE
-        return formatear_decimal(convertir(valor, moneda, otra, tasa), 2)
+        return f"{formatear_decimal(convertir(valor, moneda, otra, tasa), 2)} {otra}"
 
     def monto(nombre: str, valor: Decimal | None, nota: str = "") -> dict[str, str]:
         return {
             "Indicador": f"{nombre} ({moneda})",
             "Valor": _monto(valor),
-            "En la otra moneda": f"{en_otra(valor)} {otra}" if tasa is not None else NO_DISPONIBLE,
+            "En la otra moneda": en_otra(valor),
             "Nota": nota,
         }
 
