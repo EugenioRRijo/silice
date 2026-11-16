@@ -526,7 +526,7 @@ def test_una_polilinea_rec_se_convierte_en_el_recorrido_declarado_del_punto():
     r = importar_dxf(p.bytes(), nombre="a.dxf")
     rec = r.recorridos[0]
     assert (rec.id, rec.modo, rec.punto_id) == (
-        f"REC-{poli.dxf.handle}",
+        f"REC-{poli.dxf.handle}@a.dxf",  # el handle solo es unico dentro de su archivo
         ModoRecorrido.DECLARADO,
         "PD",
     )
@@ -746,6 +746,51 @@ def test_reimportar_el_plano_editado_actualiza_agrega_y_marca_lo_que_desaparecio
         next(o for o in espacio.origenes if o.id == por_id["BORRADO"].origen_id).referencia
     )
     assert marca["importacion"] == "desaparecida"
+
+
+def _planta_electrica(sala: str, cocina: str, toma: str, circuito: str, con_linea=True) -> Plano:
+    """Un plano de una planta con su tablero, una toma y una LINE de REC-ELECTRICIDAD que sube
+    desde la toma. Dos plantas dibujadas en el mismo orden comparten los *handles*."""
+    p = Plano()
+    p.sala(sala, 0, 0, 4, 3)
+    p.sala(cocina, 4, 0, 6, 3)
+    p.bloque("FTE-ELEC", 1, 1, nombre="TABLERO", id=f"T-{sala}", altura="1.5")
+    p.bloque("PTO-TOMA", 2, 2, id=toma, altura="0.3", circuito=circuito, calibre="12 AWG")
+    if con_linea:
+        p.msp.add_line((2, 2, 0.3), (2, 2, 2.5), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    return p
+
+
+def test_dos_planos_con_el_mismo_handle_dan_recorridos_distintos_y_ninguno_se_pierde():
+    pb = importar_dxf(_planta_electrica("SALA", "COCINA", "T-1", "C1").bytes(), nombre="pb.dxf")
+    pa = importar_dxf(_planta_electrica("DORM", "BANO", "T-9", "C9").bytes(), nombre="pa.dxf")
+    assert pb.recorridos[0].id != pa.recorridos[0].id  # mismo handle, otro archivo
+    hoja, _ = fusionar(Espacio(), pb)
+    hoja, informe = fusionar(hoja, pa)
+    assert sorted(r.circuito_id for r in hoja.recorridos) == ["C1", "C9"]
+    recorridos = [i for i in informe if i.tabla == "esp_recorridos"]
+    assert [(i.tipo, i.fila) for i in recorridos if i.tipo is not TipoItem.APROXIMADO] == [
+        (TipoItem.IMPORTADO, pa.recorridos[0].id),
+        (TipoItem.IMPORTADO, pa.recorridos[0].id),
+    ]
+    assert "agregado" in recorridos[-1].mensaje
+
+
+def test_reimportar_un_plano_no_marca_desaparecidos_los_recorridos_de_otro_archivo():
+    pb = _planta_electrica("SALA", "COCINA", "T-1", "C1")
+    pa = _planta_electrica("DORM", "BANO", "T-9", "C9")
+    hoja, _ = fusionar(Espacio(), importar_dxf(pb.bytes(), nombre="pb.dxf"))
+    hoja, _ = fusionar(hoja, importar_dxf(pa.bytes(), nombre="pa.dxf"))
+    hoja, informe = fusionar(hoja, importar_dxf(pb.bytes(), nombre="pb.dxf"))
+    assert [i for i in informe if i.tipo is TipoItem.DESAPARECIDO] == []
+    assert len(hoja.recorridos) == 2
+
+    # pa sin su linea: solo su recorrido desaparece
+    sin_linea = _planta_electrica("DORM", "BANO", "T-9", "C9", con_linea=False)
+    _, informe = fusionar(hoja, importar_dxf(sin_linea.bytes(), nombre="pa.dxf"))
+    desaparecidos = [i.fila for i in informe if i.tipo is TipoItem.DESAPARECIDO]
+    de_pa = [r.id for r in hoja.recorridos if r.circuito_id == "C9"]
+    assert desaparecidos == de_pa
 
 
 # --- altura de un punto sin atributo ALTURA: cota z de la insercion ----------

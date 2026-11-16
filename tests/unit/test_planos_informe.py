@@ -338,26 +338,58 @@ def test_los_circuitos_existentes_se_conservan_y_los_nuevos_se_agregan():
     assert [(c.id, c.puntos_maximos) for c in espacio.circuitos] == [("C1", 4), ("C2", 6)]
 
 
-def test_un_recorrido_declarado_se_actualiza_por_id_y_se_informa_si_desaparece():
-    def rec(id_, y):
-        return Recorrido(
-            id=id_,
-            modo=ModoRecorrido.DECLARADO,
-            punto_id="P1",
-            tramos=(
-                Tramo(0, SuperficieTramo.TECHO, (Coord(D(0), D(0), D(2)), Coord(D(1), D(y), D(2)))),
-            ),
-        )
+def rec(id_, y=0, punto_id="P1"):
+    return Recorrido(
+        id=id_,
+        modo=ModoRecorrido.DECLARADO,
+        punto_id=punto_id,
+        tramos=(
+            Tramo(0, SuperficieTramo.TECHO, (Coord(D(0), D(0), D(2)), Coord(D(1), D(y), D(2)))),
+        ),
+    )
 
-    r1 = replace(basico(), recorridos=(rec("REC-1", 0), rec("REC-2", 0)))
+
+def test_un_recorrido_declarado_se_actualiza_por_id_y_se_informa_si_desaparece():
+    r1 = replace(basico(), recorridos=(rec("REC-1@a.dxf", 0), rec("REC-2@a.dxf", 0)))
     primero, _ = fusionar(Espacio(), r1)
-    r2 = replace(basico(), recorridos=(rec("REC-1", 1),))
+    r2 = replace(basico(), recorridos=(rec("REC-1@a.dxf", 1),))
     espacio, informe = fusionar(primero, r2)
-    assert [r.id for r in espacio.recorridos] == ["REC-1", "REC-2"]  # no se borra
+    assert [r.id for r in espacio.recorridos] == ["REC-1@a.dxf", "REC-2@a.dxf"]  # no se borra
     assert espacio.recorridos[0].tramos[0].vertices[1].y == D(1)
     assert [(i.tabla, i.fila) for i in informe if i.tipo is TipoItem.DESAPARECIDO] == [
-        ("esp_recorridos", "REC-2")
+        ("esp_recorridos", "REC-2@a.dxf")
     ]
+
+
+def test_el_recorrido_desaparecido_es_solo_el_del_mismo_archivo():
+    primero, _ = fusionar(Espacio(), replace(basico(), recorridos=(rec("REC-1@a.dxf"),)))
+    otro = resultado(
+        *(
+            (fila, replace(o, referencia={**dict(o.referencia), "archivo": "b.dxf"}))
+            for fila, o in (
+                ambiente("PATIO", "A9"),
+                fuente("F9", "F9H", ambiente_id="PATIO"),
+                punto("P9", "P9H", ambiente_id="PATIO", fuente_id="F9"),
+            )
+        ),
+        archivo="b.dxf",
+        recorridos=(rec("REC-1@b.dxf", punto_id="P9"),),
+    )
+    espacio, informe = fusionar(primero, otro)
+    assert sorted(r.id for r in espacio.recorridos) == ["REC-1@a.dxf", "REC-1@b.dxf"]
+    assert [i for i in informe if i.tipo is TipoItem.DESAPARECIDO] == []
+
+
+def test_un_recorrido_de_antes_sin_archivo_en_el_id_se_sustituye_y_no_se_duplica():
+    # una hoja guardada cuando el id era `REC-<handle>`: al reimportar no queda dos veces
+    antes = replace(fusionar(Espacio(), basico())[0], recorridos=(rec("REC-1"),))
+    espacio, informe = fusionar(antes, replace(basico(), recorridos=(rec("REC-1@a.dxf", 1),)))
+    assert [r.id for r in espacio.recorridos] == ["REC-1@a.dxf"]
+    ultimo = [i for i in informe if i.tabla == "esp_recorridos"][-1]
+    assert (ultimo.tipo, ultimo.mensaje) == (
+        TipoItem.IMPORTADO,
+        "REC-1@a.dxf: actualizado (antes REC-1)",
+    )
 
 
 def test_la_fusion_no_deja_referencias_colgadas():
