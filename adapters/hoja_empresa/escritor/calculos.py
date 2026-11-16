@@ -981,7 +981,8 @@ def _f_text(ev: Evaluador, a: list[object]) -> object:
     fmt = _a_texto(_esc(ev, a[1]))
     if isinstance(v, Err):
         raise _Propaga(v)
-    if not isinstance(v, Decimal | bool) and not (isinstance(v, str) and _texto_a_numero(v)):
+    es_numero = isinstance(v, str) and _texto_a_numero(v) is not None  # "0" también es número
+    if not isinstance(v, Decimal | bool) and not es_numero:
         return _a_texto(v)
     n = a_numero(v)
     return _formatear(n, fmt)
