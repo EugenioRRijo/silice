@@ -81,8 +81,11 @@ export function useGuardado({ id, rev, proyecto, alExpirar, alGuardada }: Opcion
       let respuesta: GuardadoRespuesta;
       try {
         // Lo que salió al desmontar una pestaña (la pausa de 400 ms no llegó a cumplirse) debe aceptarse antes de guardar.
-        await esperarEnvios(borrador);
-        const { rev: revVigente, fuente: texto } = actuales.current;
+        // Su `rev` se toma de lo que contestó el servidor: el de la página (`actuales`) solo se pone al día en el efecto tras
+        // volver a pintar, que todavía no ocurrió, y con el viejo el guardado daría 409.
+        const resumenes = await esperarEnvios(borrador);
+        const { rev: revDeLaPagina, fuente: texto } = actuales.current;
+        const revVigente = resumenes.reduce((mayor, r) => (r !== null && r.rev > mayor ? r.rev : mayor), revDeLaPagina);
         respuesta = await pedir<GuardadoRespuesta>(rutaDeGuardar(borrador), {
           metodo: "POST",
           cuerpo: cuerpoDeGuardado(revVigente, texto, confirmarVersionMasNueva),
