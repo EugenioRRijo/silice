@@ -44,7 +44,7 @@ from sqlalchemy.orm import Session
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.archivos import guardar_subida
-from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
+from api.dependencias import USUARIO_SIN_CLAVE, SesionDeEscrituraDep, SesionDep
 from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
 from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
 from api.esquemas_partidas import RenglonesDelContratoRespuesta, renglones_a_respuesta
@@ -789,7 +789,9 @@ class VersionRespuesta(BaseModel):
 
 
 @router.post("/recuperacion/elegir", response_model=VersionRespuesta, dependencies=[DECIDIR])
-def elegir(sesion: SesionDep, peticion: PeticionElegir, activa: Activa) -> VersionRespuesta:
+def elegir(
+    sesion: SesionDeEscrituraDep, peticion: PeticionElegir, activa: Activa
+) -> VersionRespuesta:
     """UC-20 5 y 6: crea la versión de la opción elegida y guarda la decisión.
 
     Recalcula las opciones con los mismos parámetros: la elección no depende de un cálculo previo

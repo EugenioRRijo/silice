@@ -63,11 +63,14 @@ def _cliente_http(fabrica_de_sesion: Callable[[], Any]) -> Iterator[Any]:
     menos `/salud` la exige). La sustitución se deshace en un `finally`: si el arranque del
     cliente falla, la siguiente prueba no hereda la base de esta.
     """
-    from api.dependencias import sesion_api
+    from api.dependencias import sesion_api, sesion_de_escritura_api
     from api.main import app
     from tests.fixtures.claves_api import cliente_de_prueba
 
+    # Las rutas que guardan piden la sesion de escritura (`BEGIN IMMEDIATE`): sobre la base de la
+    # prueba tambien, o escribirian en la carpeta del proceso.
     app.dependency_overrides[sesion_api] = fabrica_de_sesion
+    app.dependency_overrides[sesion_de_escritura_api] = fabrica_de_sesion
     try:
         with cliente_de_prueba() as cliente:
             yield cliente

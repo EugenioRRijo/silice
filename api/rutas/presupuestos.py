@@ -31,7 +31,7 @@ from starlette.background import BackgroundTask
 
 from api.acceso import EDITAR, LEER
 from api.archivos import guardar_subida
-from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
+from api.dependencias import USUARIO_SIN_CLAVE, SesionDeEscrituraDep, SesionDep
 from api.esquemas import (
     ActualizacionPeticion,
     ComparativoRespuesta,
@@ -130,7 +130,7 @@ _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
     dependencies=EDITAR,
 )
 def crear_proyecto_de_presupuestos(
-    sesion: SesionDep, peticion: ProyectoPeticion
+    sesion: SesionDeEscrituraDep, peticion: ProyectoPeticion
 ) -> ProyectoRespuesta:
     """UC-01, paso 1 (INV-086): crea el proyecto sobre el que luego se elabora
     (`POST /presupuestos`) o se importa (`POST /presupuestos/importar`) y confirma la transaccion.
@@ -158,7 +158,7 @@ def crear_proyecto_de_presupuestos(
     dependencies=EDITAR,
 )
 def crear_presupuesto(
-    sesion: SesionDep, peticion: PresupuestoPeticion
+    sesion: SesionDeEscrituraDep, peticion: PresupuestoPeticion
 ) -> PresupuestoCreadoRespuesta | JSONResponse:
     """Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda; los ítems sin
     partida quedan pendientes (flujo 3a).
@@ -235,7 +235,7 @@ def crear_presupuesto(
     dependencies=EDITAR,
 )
 def importar_presupuesto_de_tercero(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     archivo: Annotated[
         UploadFile,
         File(
@@ -359,7 +359,7 @@ def exportar_presupuesto_excel(
     "/presupuestos/{codigo}/actualizacion", response_model=ComparativoRespuesta, dependencies=EDITAR
 )
 def actualizar_presupuesto(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     codigo: str,
     peticion: ActualizacionPeticion,
     proyecto: str | None = None,
@@ -412,7 +412,7 @@ def actualizar_presupuesto(
     dependencies=[Depends(_QUIEN_EDITA)],  # antes que `sesion_api`: sin permiso no se abre el caso
 )
 def revalorar_presupuesto(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     quien: Annotated[SesionActiva | None, Depends(_QUIEN_EDITA)],
     archivo: Annotated[UploadFile, File(description="La lista de precios nueva, CSV o XLSX")],
     proyecto: Annotated[str, Form()],
@@ -492,7 +492,7 @@ def revalorar_presupuesto(
     "/presupuestos/{codigo}/descartar", response_model=DescarteRespuesta, dependencies=EDITAR
 )
 def descartar_version_revalorada(
-    sesion: SesionDep, codigo: str, proyecto: str | None = None
+    sesion: SesionDeEscrituraDep, codigo: str, proyecto: str | None = None
 ) -> DescarteRespuesta:
     """UC-02, flujo 7a: marca como descartada la última versión revalorada del proyecto.
 
