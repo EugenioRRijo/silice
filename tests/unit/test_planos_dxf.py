@@ -585,6 +585,39 @@ def test_una_rec_cuyo_extremo_coincide_con_dos_puntos_no_se_adivina():
     assert "varios puntos" in tipos(r, TipoItem.NO_RECONOCIDO)[0].mensaje
 
 
+@pytest.mark.parametrize(
+    ("lejos", "esperada"),
+    [
+        ((6, 6, 0.0), SuperficieTramo.PARED),  # de 0,3 m al piso: inclinado, no es piso
+        ((6, 6, 2.5), SuperficieTramo.PARED),  # de 0,3 m al techo (2,5 m): inclinado, no es techo
+        ((6, 6, 0.3), SuperficieTramo.PARED),  # a media altura
+    ],
+)
+@pytest.mark.parametrize("al_reves", [False, True])
+def test_la_superficie_del_tramo_no_depende_de_su_sentido(lejos, esperada, al_reves):
+    p = plano_base()
+    _electrico(p)  # T-A en (2;2;0,3)
+    a, b = ((2, 2, 0.3), lejos)
+    p.msp.add_line(*((b, a) if al_reves else (a, b)), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert [t.superficie for t in r.recorridos[0].tramos] == [esperada]
+
+
+@pytest.mark.parametrize("al_reves", [False, True])
+def test_el_tramo_con_las_dos_cotas_en_el_piso_o_en_el_techo_es_piso_o_techo(al_reves):
+    p = plano_base()
+    p.bloque("PTO-DATOS", 2, 2, id="PISO", altura="0")
+    p.bloque("PTO-DATOS", 3, 1, id="TECHO", altura="2.5")
+    for z in (0.0, 2.5):
+        a, b = ((2, 2, z), (3.5, 2.5, z)) if z == 0 else ((3, 1, z), (3.5, 2.5, z))
+        p.msp.add_line(*((b, a) if al_reves else (a, b)), dxfattribs={"layer": "REC-DATOS"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert {x.punto_id: x.tramos[0].superficie for x in r.recorridos} == {
+        "PISO": SuperficieTramo.PISO,
+        "TECHO": SuperficieTramo.TECHO,
+    }
+
+
 def test_una_rec_electrica_entre_dos_puntos_del_mismo_circuito_cuelga_de_ese_circuito():
     p = plano_base()
     _electrico(p)  # T-A (2;2) y T-B (3;2), los dos de C1, a 0,3 m
