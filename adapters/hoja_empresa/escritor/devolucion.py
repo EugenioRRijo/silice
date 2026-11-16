@@ -25,7 +25,7 @@ import io
 import re
 import unicodedata
 import warnings
-from collections.abc import Container, Sequence
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from decimal import Decimal
 
@@ -379,17 +379,21 @@ def _largas_a_valor(ctx: Contexto) -> None:
 _MAX_NOMBRE_HOJA = 31
 
 
-def _nombre_libre(nombre: str, ocupados: Container[str]) -> str:
+def _nombre_libre(nombre: str, ocupados: Iterable[str]) -> str:
     """`nombre`, o `nombre (2)`, `nombre (3)`... (la base recortada para caber en 31 caracteres),
     el primero que el libro no use. Un sufijo fijo recortado llegaba a un punto fijo
-    ('ALERTAS USD-Bs (S) (S) (S) ( (S') y el bucle no terminaba; el contador siempre avanza."""
-    if nombre not in ocupados:
+    ('ALERTAS USD-Bs (S) (S) (S) ( (S') y el bucle no terminaba; el contador siempre avanza.
+
+    Excel no distingue mayúsculas en el nombre de una hoja: «Alertas USD-Bs» ocupa
+    «ALERTAS USD-Bs» (y «alertas usd-bs (2)» ocupa el 2), así que se compara con `casefold`."""
+    usados = {o.casefold() for o in ocupados}
+    if nombre.casefold() not in usados:
         return nombre
     k = 2
     while True:
         sufijo = f" ({k})"
         candidato = nombre[: _MAX_NOMBRE_HOJA - len(sufijo)] + sufijo
-        if candidato not in ocupados:
+        if candidato.casefold() not in usados:
             return candidato
         k += 1
 
