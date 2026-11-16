@@ -80,3 +80,15 @@ def test_find_con_inicio_fuera_del_texto_da_value(formula):
 )
 def test_find_con_inicio_dentro_del_texto_no_cambia(formula, esperado):
     assert _evaluar(formula) == esperado
+
+
+# --- 7. TEXT de un texto que vale cero -----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("formula", "esperado"),
+    [('=TEXT("0","0000")', "0000"), ('=TEXT(0,"0000")', "0000"), ('=TEXT("1","0000")', "0001")],
+)
+def test_text_de_un_texto_numerico_cero_se_formatea(formula, esperado):
+    """`Decimal('0')` es falso: el texto "0" no se tomaba por número y salía tal cual."""
+    assert _evaluar(formula) == esperado
