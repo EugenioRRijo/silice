@@ -23,8 +23,8 @@ Aquí el libro ya auditado (`fusion.apu_por_hoja`, que quien llama corre: `aplic
    el frente que se diga. Un renglón sin APU o sin cantidad no se lleva y se dice. Llevar otra vez
    reemplaza los renglones de las mismas hojas; los demás no se tocan.
 3. **Los porcentajes.** La Hoja lleva un solo juego de parámetros por obra: los del libro
-   (prestaciones como FCAS, administración y utilidad) pasan al borrador; si las hojas usan juegos
-   distintos, `PorcentajesDistintos` (422) dice cuáles.
+   (prestaciones como FCAS, bono de alimentación, administración y utilidad) pasan al borrador;
+   si las hojas usan juegos distintos, `PorcentajesDistintos` (422) dice cuáles.
 
 Reglas que protegen los precios (D6): el libro se lleva a una obra **sin versiones** (una versión
 ya valorada con otra lista dejaría los precios del libro fuera; `ObraConVersiones`, 409), y su
@@ -49,6 +49,7 @@ from sqlalchemy.orm import Session
 
 from adapters.vial.constantes import TOLERANCIA_PRECIO
 from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, importaciones
+from aplicacion.cifras import texto_de_cifra
 from aplicacion.desperdicio import TrazaDesperdicio, guardar_trazas, trazas_vigentes
 from aplicacion.frentes import MENSAJE_RESERVADO, con_frente, es_reservado
 from aplicacion.hoja_desperdicio import unir
@@ -222,10 +223,21 @@ def _pct(fraccion: Decimal) -> str:
     return texto.replace(".", ",")
 
 
+def _del_pct(fraccion: Decimal) -> str:
+    return f"del {_pct(fraccion)} %"
+
+
+def _de_monto(monto: Decimal) -> str:
+    return f"de {texto_de_cifra(monto.normalize())}"
+
+
+#: Cada campo de `ParametrosCosto` con su rótulo y cómo se dice su valor: los porcentajes como
+#: «del 12 %»; el bono de alimentación, que es un monto diario por obrero, como «de 1.500,5».
 _CAMPOS = (
-    ("fcas", "unas prestaciones"),
-    ("administracion", "una administración"),
-    ("utilidad", "una utilidad"),
+    ("fcas", "unas prestaciones", _del_pct),
+    ("bono_alimentacion", "un bono de alimentación", _de_monto),
+    ("administracion", "una administración", _del_pct),
+    ("utilidad", "una utilidad", _del_pct),
 )
 
 
@@ -244,10 +256,14 @@ def _porcentajes(apus: Sequence[ApuDelLibro]) -> ParametrosCosto:
     for parametros, hojas in grupos.items():
         if parametros == mayoria:
             continue
-        distintos = [(c, t) for c, t in _CAMPOS if getattr(parametros, c) != getattr(mayoria, c)]
-        suyo = _y([f"{t} del {_pct(getattr(parametros, c))} %" for c, t in distintos])
-        demas = _y([f"del {_pct(getattr(mayoria, c))} %" for c, _t in distintos])
-        partes.append(f"{_y(hojas)} usa{'n' if len(hojas) > 1 else ''} {suyo} y las demás {demas}")
+        usa = f"{_y(hojas)} usa{'n' if len(hojas) > 1 else ''}"
+        distintos = [c for c in _CAMPOS if getattr(parametros, c[0]) != getattr(mayoria, c[0])]
+        if not distintos:  # un campo sin rótulo en `_CAMPOS`: nunca una frase sin nada que nombrar
+            partes.append(f"{usa} otros parámetros de costo que las demás")
+            continue
+        suyo = _y([f"{t} {decir(getattr(parametros, c))}" for c, t, decir in distintos])
+        demas = _y([decir(getattr(mayoria, c)) for c, _t, decir in distintos])
+        partes.append(f"{usa} {suyo} y las demás {demas}")
     raise PorcentajesDistintos(
         "Las hojas del libro no usan los mismos porcentajes y la Hoja lleva uno solo por obra: "
         + "; ".join(partes)
