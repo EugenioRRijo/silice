@@ -24,6 +24,7 @@ from core.budget.excel import (
     PESTANA_PLAN,
 )
 from core.budget.valor_ganado import ParametrosControl
+from core.budget.valuaciones import registrar_linea_base
 from core.catalog import Catalogo
 from core.catalog.indices import Observacion, definicion_tasa, registrar_importacion
 from tests.fixtures import control_ob_s2 as ob
@@ -289,6 +290,31 @@ def test_los_precios_del_corte_segun_el_metodo_elegido(obra):
         with pytest.raises(control.ControlInvalido, match=mensaje):
             control.precios_del_corte(obra, ob.NOMBRE, catalogo, elegido, "costo")
 
+
+def test_la_escalatoria_toma_la_linea_base_vigente_al_corte_y_no_a_la_ultima_valuacion(obra):
+    """Con dos líneas base (OB-001 desde el 02/11 y OB-R01 desde el 09/11), la escalatoria al corte
+    del 06/11 parte de los unitarios de OB-001, no de los de la línea base de la última valuación."""
+    ob.registrar_v01_y_v02(obra)  # hasta el 06/11 y el 13/11
+    rz.sembrar_revaloracion(obra)
+    registrar_linea_base(
+        obra, ob.NOMBRE, rz.REVALORADA, desde=date(2026, 11, 9), perspectiva="costo",
+        calendario=ob.CALENDARIO, fuente=ob.FUENTE, responsable=ob.RESPONSABLE,
+    )  # fmt: skip
+    obra.flush()
+    neutra = control.PrecioElegido(control.METODO_ESCALATORIA, km="1", r="0", fuente="S1")
+    precios = control.precios_del_corte(
+        obra, ob.NOMBRE, Catalogo(obra), neutra, "costo", corte=date(2026, 11, 6)
+    )
+    assert dict(precios.unitarios) == ob.UNITARIOS_BASE
+
+
+def test_la_escalatoria_sin_linea_base_al_corte_se_rechaza_con_control_invalido(obra):
+    ob.registrar_v01_y_v02(obra)
+    neutra = control.PrecioElegido(control.METODO_ESCALATORIA, km="1", r="0", fuente="S1")
+    with pytest.raises(control.ControlInvalido, match="no hay linea base"):
+        control.precios_del_corte(
+            obra, ob.NOMBRE, Catalogo(obra), neutra, "costo", corte=date(2026, 10, 1)
+        )
 
 def test_las_tres_hojas_del_excel_de_la_hoja_conservan_las_propias(obra, tmp_path):
     ob.registrar_v01_y_v02(obra)
