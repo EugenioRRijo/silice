@@ -911,3 +911,35 @@ def test_un_dominio_desconocido_es_422(cliente, items_payload):
     items[0]["dominio"] = "marciano"
 
     assert cliente.post("/presupuestos/calcular", json=_calculo(items)).status_code == 422
+
+
+# ---------------------------------------------------------------------------------------------
+# El Excel de una version guardada: si el libro no se escribe, el temporal no queda huerfano
+# ---------------------------------------------------------------------------------------------
+
+
+def test_si_exportar_el_excel_falla_el_temporal_se_borra(cliente, base, monkeypatch, tmp_path):
+    """`mkstemp` crea el archivo antes de `exportar_excel`; el `BackgroundTask` que lo borra solo
+    existe si la exportacion termina. Si falla, la ruta lo borra antes de relanzar."""
+    import tempfile
+
+    from api.rutas import presupuestos as rutas
+
+    creados: list[Path] = []
+    original = tempfile.mkstemp
+
+    def _mkstemp(*args, **kwargs):
+        descriptor, ruta = original(*args, dir=tmp_path, **kwargs)
+        creados.append(Path(ruta))
+        return descriptor, ruta
+
+    def _falla(*_args, **_kwargs):
+        raise RuntimeError("disco lleno")
+
+    monkeypatch.setattr(rutas.tempfile, "mkstemp", _mkstemp)
+    monkeypatch.setattr(rutas, "exportar_excel", _falla)
+
+    with pytest.raises(RuntimeError, match="disco lleno"):
+        cliente.get("/presupuestos/API-001/excel")
+
+    assert len(creados) == 1 and not creados[0].exists()
