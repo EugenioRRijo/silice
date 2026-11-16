@@ -39,11 +39,10 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
     PerfilYaInstalado,
     instalar_perfil_apu_por_hoja,
 )
-from api.admin_acceso import administrar, administrar_en_el_equipo, sin_cache
+from api.admin_acceso import RutaDeAdministracion, administrar, administrar_en_el_equipo
 from api.rutas.entregas import FRENO_FIRMA, MENSAJE_FRENO
 from api.rutas.libros import PerfilApuPorHojaRespuesta, perfil_a_respuesta
 from api.sesion_web import ahora
-from api.sin_eco import RutaSinEco as _RutaSinEco
 from api.sin_eco import sin_eco as _sin_eco
 from aplicacion.equipo import operacion_sensible_permitida
 from operacion.config import carpeta_perfiles_libros
@@ -60,8 +59,7 @@ ERRORES_ESPERADOS = (empresas.ClaveError, cuentas.ContrasenaInvalida, LookupErro
 router = APIRouter(
     prefix="/v1/admin/empresa",
     tags=["administracion"],
-    dependencies=[Depends(sin_cache)],
-    route_class=_RutaSinEco,
+    route_class=RutaDeAdministracion,
 )
 ADMIN = Depends(administrar(Accion.ADMINISTRAR_EMPRESA))
 EN_EL_EQUIPO = Depends(administrar_en_el_equipo(Sensible.CLAVE_DE_FIRMA))

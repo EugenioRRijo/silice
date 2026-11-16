@@ -19,9 +19,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from api.admin_acceso import administrar, administrar_en_el_equipo, sin_cache
+from api.admin_acceso import RutaDeAdministracion, administrar, administrar_en_el_equipo
 from api.sesion_web import ahora
-from api.sin_eco import RutaSinEco as _RutaSinEco
 from api.sin_eco import sin_eco as _sin_eco
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import claves_api
@@ -34,8 +33,7 @@ MENSAJE_CUERPO_INVALIDO = "Indique para qué es la clave como texto."
 router = APIRouter(
     prefix="/v1/admin/claves-api",
     tags=["administracion"],
-    dependencies=[Depends(sin_cache)],
-    route_class=_RutaSinEco,
+    route_class=RutaDeAdministracion,
 )
 ADMIN = Depends(administrar(Accion.ADMINISTRAR_RED_Y_API))
 EN_EL_EQUIPO = Depends(administrar_en_el_equipo(Sensible.CLAVE_DE_API))
