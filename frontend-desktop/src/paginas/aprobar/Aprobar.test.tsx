@@ -505,6 +505,19 @@ describe("cómo se llega", () => {
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/aprobar?envio=12");
   });
 
+  test("sin `?envio=`, con el índice en 403 y el rastro en 500, dice el fallo y no «No hay versiones esperando dictamen»", async () => {
+    // Un fallo del servidor al leer el rastro no es «no hay nada»: el 403 del índice solo dice que la cuenta no lo ve.
+    pendientes = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
+    const anterior = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) =>
+      String(entrada) === "/v1/aprobaciones?proyecto=3" ? json({ detalle: "Falla del servidor." }, 500) : anterior(entrada, init),
+    );
+    montar("/aprobar", { proyecto: "3", sesion: { ...SESION, acciones: [...SESION.acciones, "editar_hoja"] } });
+    expect(await screen.findByText("No se pudieron leer los envíos por aprobar")).toBeInTheDocument();
+    expect(screen.queryByText("No hay versiones esperando dictamen.")).not.toBeInTheDocument();
+    expect(alExpirar).not.toHaveBeenCalled();
+  });
+
   test("sin `?envio=`, sin índice y sin `editar_hoja`, no pide el rastro y lo dice", async () => {
     pendientes = () => json({ detalle: "Falla." }, 503);
     montar("/aprobar", { proyecto: "3" });
