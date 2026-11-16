@@ -241,6 +241,16 @@ def test_un_limite_legal_o_un_numero_ilegible_en_las_opciones_se_rechaza(obra):
     assert control.calcular_las_opciones(resultado, objetivo="25")[0].aplica is False
 
 
+def test_un_dia_objetivo_que_no_es_entero_se_rechaza_y_no_se_trunca(obra):
+    """El día hábil objetivo es un entero: «10.9» no se trunca en silencio a 10."""
+    ob.registrar_v01_y_v02(obra)
+    resultado = control.calcular_el_control(
+        obra, ob.NOMBRE, Catalogo(obra), precios=ob.precios_del_corte()
+    )
+    with pytest.raises(control.ControlInvalido, match=r"objetivo: '10\.9' debe ser un entero"):
+        control.calcular_las_opciones(resultado, objetivo="10.9")
+    assert control.calcular_las_opciones(resultado, objetivo="25.0")[0].aplica is False
+
 def test_anular_y_el_costo_real_desde_los_textos(obra):
     primera, _ = ob.registrar_v01_y_v02(obra)
     control.anular(obra, primera.id, motivo="error de medicion", responsable="Ing.")
