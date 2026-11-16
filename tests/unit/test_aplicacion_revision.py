@@ -354,6 +354,36 @@ def test_un_manifiesto_sin_emitido_o_proyecto_es_rechazado_aunque_no_liste_archi
     assert not carpeta.exists()
 
 
+@pytest.mark.parametrize(
+    "cadena",
+    [
+        b"[]",
+        {"eslabones": [{"codigo": "005", "huella_eslabon": "x"}], "cambios": None},
+        {"eslabones": [{"codigo": "005", "huella_eslabon": "x"}], "cambios": {"005": [["a"]]}},
+        {"eslabones": [{"codigo": ["005"], "huella_eslabon": "x"}], "cambios": {}},
+    ],
+    ids=["lista", "cambios_nulo", "fila_de_un_campo", "codigo_que_no_es_texto"],
+)
+def test_una_cadena_sin_la_forma_minima_no_se_registra_ni_rompe_el_analisis(mundo, cadena) -> None:
+    """Un paquete sin firma con `cadena.json` de otra forma (y su huella rehecha en el manifiesto)
+    es «alterado»: se audita igual, pero esa cadena no se puede leer ni registrar, como la de un
+    alterado por integridad. Antes: `AttributeError` o `ValueError` (500) con el paquete ya
+    registrado."""
+    from tests.fixtures.paquetes import canonico, con_archivo_rehecho
+
+    octetos = cadena if isinstance(cadena, bytes) else canonico(cadena)
+    datos = con_archivo_rehecho(
+        paquete(par=None, presupuesto=_documento(), anexos={}), "cadena.json", octetos
+    )
+    a = _analizar(mundo, datos)
+    v = a.recibido.verificacion
+    assert (v.estado, v.motivo, v.cadena) == ("alterado", "cadena", None)
+    assert a.reauditoria is not None and a.reauditoria.total_recalculado == TOTAL
+    assert a.cambios == () and a.armo == () and a.recibido.paquete_id == 0
+    caso, _, _ = mundo
+    assert caso.execute(select(paq.paq_recibido)).all() == []
+
+
 def test_analizar_un_archivo_rechazado_no_reaudita_ni_guarda_nada(mundo) -> None:
     a = _analizar(mundo, b"esto no es un zip")
     assert a.recibido.verificacion.estado == "rechazado"
