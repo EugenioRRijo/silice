@@ -155,10 +155,12 @@ def crear_proyecto_de_presupuestos(
             "la respuesta propone el del histórico (UC-01, flujo 3b)",
         }
     },
-    dependencies=EDITAR,
+    dependencies=[Depends(_QUIEN_EDITA)],  # antes que la sesión: sin permiso no se abre el caso
 )
 def crear_presupuesto(
-    sesion: SesionDeEscrituraDep, peticion: PresupuestoPeticion
+    sesion: SesionDeEscrituraDep,
+    peticion: PresupuestoPeticion,
+    quien: Annotated[SesionActiva | None, Depends(_QUIEN_EDITA)],
 ) -> PresupuestoCreadoRespuesta | JSONResponse:
     """Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda; los ítems sin
     partida quedan pendientes (flujo 3a).
@@ -216,7 +218,7 @@ def crear_presupuesto(
         lista=catalogo.lista_vigente(peticion.fecha),
         parametros=parametros,
         pendientes=resultado.pendientes,
-        usuario=USUARIO_SIN_CLAVE,
+        usuario=USUARIO_SIN_CLAVE if quien is None else quien.usuario,
     )
     sesion.commit()
 
@@ -232,10 +234,11 @@ def crear_presupuesto(
     "/presupuestos/importar",
     response_model=PresupuestoCreadoRespuesta,
     status_code=status.HTTP_201_CREATED,
-    dependencies=EDITAR,
+    dependencies=[Depends(_QUIEN_EDITA)],  # antes que la sesión: sin permiso no se abre el caso
 )
 def importar_presupuesto_de_tercero(
     sesion: SesionDeEscrituraDep,
+    quien: Annotated[SesionActiva | None, Depends(_QUIEN_EDITA)],
     archivo: Annotated[
         UploadFile,
         File(
@@ -261,7 +264,9 @@ def importar_presupuesto_de_tercero(
         ruta = guardar_subida(directorio, archivo)
         comprobar_libro_legible(ruta)
         try:
-            resultado = importar_presupuesto(sesion, ruta, destino, usuario=USUARIO_SIN_CLAVE)
+            resultado = importar_presupuesto(
+                sesion, ruta, destino, usuario=USUARIO_SIN_CLAVE if quien is None else quien.usuario
+            )
         except ValueError:
             sesion.rollback()
             raise
@@ -356,10 +361,13 @@ def exportar_presupuesto_excel(
 
 
 @router.post(
-    "/presupuestos/{codigo}/actualizacion", response_model=ComparativoRespuesta, dependencies=EDITAR
+    "/presupuestos/{codigo}/actualizacion",
+    response_model=ComparativoRespuesta,
+    dependencies=[Depends(_QUIEN_EDITA)],  # antes que la sesión: sin permiso no se abre el caso
 )
 def actualizar_presupuesto(
     sesion: SesionDeEscrituraDep,
+    quien: Annotated[SesionActiva | None, Depends(_QUIEN_EDITA)],
     codigo: str,
     peticion: ActualizacionPeticion,
     proyecto: str | None = None,
@@ -388,7 +396,7 @@ def actualizar_presupuesto(
         lista_nueva,
         peticion.codigo_nuevo,
         detectar_atipicos=_detector_de_atipicos(),
-        usuario=USUARIO_SIN_CLAVE,
+        usuario=USUARIO_SIN_CLAVE if quien is None else quien.usuario,
     )
     if comparativo.insumos_afectados == 0:
         raise HTTPException(
@@ -409,7 +417,7 @@ def actualizar_presupuesto(
 @router.post(
     "/presupuestos/revalorar",
     response_model=RevaloracionRespuesta,
-    dependencies=[Depends(_QUIEN_EDITA)],  # antes que `sesion_api`: sin permiso no se abre el caso
+    dependencies=[Depends(_QUIEN_EDITA)],  # antes que la sesión: sin permiso no se abre el caso
 )
 def revalorar_presupuesto(
     sesion: SesionDeEscrituraDep,
@@ -508,7 +516,7 @@ def descartar_version_revalorada(
 @router.post(
     "/presupuestos/calcular",
     response_model=CalculoRespuesta,
-    dependencies=[Depends(_QUIEN_EDITA)],  # antes que `sesion_api`: sin permiso no se abre el caso
+    dependencies=[Depends(_QUIEN_EDITA)],  # antes que la sesión: sin permiso no se abre el caso
     responses={
         status.HTTP_409_CONFLICT: {
             "model": RendimientosPorDeclararRespuesta,
