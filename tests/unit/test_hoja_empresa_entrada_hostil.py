@@ -174,3 +174,26 @@ def test_hoja_nueva_con_nombres_ocupados_no_cuelga_y_toma_un_numero_libre():
     hojas = openpyxl.load_workbook(io.BytesIO(salida)).sheetnames
     assert hojas[-3:] == ["AUDITORÍA (3)", "TRAZABILIDAD", "ALERTAS USD-Bs (2)"]
     assert set(ocupados) <= set(hojas)
+
+
+def test_hoja_nueva_no_choca_con_una_del_libro_que_solo_cambia_en_mayusculas():
+    """Excel no distingue mayúsculas en el nombre de una hoja: «Alertas USD-Bs» ya ocupa el de
+    «ALERTAS USD-Bs» y xlsxwriter lanzaba `DuplicateWorksheetName` y tumbaba la devolución. El
+    sufijo libre también se busca sin distinguir mayúsculas («trazabilidad (2)» ocupa el 2)."""
+    ocupados = ("Alertas USD-Bs", "Trazabilidad", "trazabilidad (2)")
+    wb = openpyxl.load_workbook(io.BytesIO(libro_limpio().datos))
+    for nombre in ocupados:
+        wb.create_sheet(nombre)["A1"] = "copia anterior"
+    flujo = io.BytesIO()
+    wb.save(flujo)
+    datos = flujo.getvalue()
+    libro = leer_libro(datos, "devuelto.xlsx")
+    salida = _con_tope(
+        escribir_devolucion,
+        datos,
+        DatosDevolucion(libro=libro, apus={}, precios_unitarios={}, totales={}),
+        segundos=60.0,
+    )
+    hojas = openpyxl.load_workbook(io.BytesIO(salida)).sheetnames
+    assert hojas[-3:] == ["AUDITORÍA", "TRAZABILIDAD (3)", "ALERTAS USD-Bs (2)"]
+    assert set(ocupados) <= set(hojas)
