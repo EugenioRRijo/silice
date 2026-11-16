@@ -221,6 +221,39 @@ def test_otro_libro_con_un_apu_distinto_entra_como_variante(ana) -> None:
     ]
 
 
+def _codigos_del_libro(id_: str) -> dict[str, str | None]:
+    """Clave de cada renglón del borrador vivo → su directiva `_codigo_libro` (las vistas no
+    muestran las directivas; se lee el borrador como en `test_api_hoja_llevar.py`)."""
+    vivo = hoja_borradores.REGISTRO._vivos[id_]
+    return {
+        f"{i.codigo_partida}|{i.origen_id}": i.especificaciones.get(libro_a_la_hoja.CLAVE_CODIGO_LIBRO)
+        for i in vivo.borrador.items_base
+    }
+
+
+def test_el_renglon_llevado_guarda_el_codigo_del_libro(ana) -> None:
+    """La variante VF-001-B guarda el código que tiene en el libro (`_codigo_libro=VF-001`), cada
+    renglón el suyo aunque coincida, y llevar otra vez el mismo libro no lo cambia."""
+    _llevar(ana)
+    primero = replace(
+        APUS[0],
+        materiales=(Material(1, "Emulsión asfáltica ficticia", "lt", "0.50", "4", "2.50"),),
+    )
+    libro_b = libro_apu((primero, *APUS[1:]))
+    r = _llevar(ana, libro=libro_b)
+    assert r.status_code == 200, r.text
+    borrador_id = r.json()["borrador_id"]
+    codigos = _codigos_del_libro(borrador_id)
+    assert len(codigos) == 10
+    for clave, codigo_libro in codigos.items():
+        codigo_hoja = clave.split("|", 1)[0]
+        assert codigo_libro == codigo_hoja.removesuffix("-B"), clave
+    assert sum(1 for c in codigos if c.startswith("VF-001-B|")) == 2
+    r2 = _llevar(ana, libro=libro_b)
+    assert r2.status_code == 200, r2.text
+    assert _codigos_del_libro(borrador_id) == codigos
+
+
 def test_sin_presupuesto_la_cantidad_es_la_de_cada_apu_y_el_frente_el_dicho(ana) -> None:
     navegador, _ = ana
     r = _llevar(ana, presupuesto=False, frente="Frente único", hoja_presupuesto=[])

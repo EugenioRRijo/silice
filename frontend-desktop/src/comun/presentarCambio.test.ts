@@ -30,6 +30,13 @@ describe("presentador común de las filas del registro de cambios", () => {
     expect(presentarValor("especificaciones", "_frente=Estación; 2")).toBe("Frente: Estación; 2");
   });
 
+  test("las especificaciones presentan «_codigo_libro» como «Código en el libro: …»", () => {
+    expect(presentarValor("especificaciones", "_codigo_libro=VF-001")).toBe("Código en el libro: VF-001");
+    expect(presentarValor("especificaciones", "_codigo_libro=VF-001; _frente=FRENTE A")).toBe(
+      "Código en el libro: VF-001; Frente: FRENTE A",
+    );
+  });
+
   test("N1: el alta de un punto con especificaciones lleva rótulos del servidor y no confunde un dato interno con un campo", () => {
     // Formato exacto de `_resumen_de_fila` (aplicacion/hoja.py): las columnas en orden, sin las vacías; las
     // especificaciones van como «clave=valor; clave=valor» dentro de la columna.
