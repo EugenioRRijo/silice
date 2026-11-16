@@ -63,3 +63,29 @@ def test_el_zip_del_juego_trae_las_bases_y_la_ficha(bases) -> None:
         assert zip_.read("ficha.json") == (carpeta / "ficha.json").read_bytes()
     assert nombres == esperados
     assert "ficha.json" in nombres and "instalacion.db" in nombres
+
+
+@pytest.mark.parametrize(
+    "ficha",
+    [
+        "[]",
+        '"texto"',
+        "7",
+        '{"motivo": "manual", "bases": null}',
+        '{"motivo": "manual", "bases": 3}',
+    ],
+    ids=["lista", "texto", "numero", "bases_nulo", "bases_numero"],
+)
+def test_una_ficha_que_no_tiene_la_forma_de_un_juego_se_salta(tmp_path: Path, ficha: str) -> None:
+    """Una `ficha.json` que es JSON válido pero no un objeto con su lista de bases se salta, como
+    una ilegible (y como `eventos_sin_revisar`): no es un 500 en la pestaña ni en la descarga."""
+    for nombre, contenido in (
+        ("20261012-100000-manual", json.dumps({"motivo": "manual", "bases": [{}, {}]})),
+        ("20261011-100000-mala", ficha),
+    ):
+        (tmp_path / nombre).mkdir()
+        (tmp_path / nombre / "ficha.json").write_text(contenido, encoding="utf-8")
+    juegos = instalacion.juegos_de_respaldo({"SILICE_RESPALDOS": str(tmp_path)})
+    assert [(j.nombre, j.motivo, j.bases) for j in juegos] == [
+        ("20261012-100000-manual", "manual", 2)
+    ]
