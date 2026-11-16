@@ -267,13 +267,16 @@ def declaracion_retroactiva(
     cadena: Mapping[str, Any], fecha: Callable[[str], str] = _iso
 ) -> str | None:
     """S3 §6.5: «Versiones 001 a 004 selladas el …», si la cadena del paquete trae eslabones
-    retroactivos; `None` si no. Es la misma declaración de la hoja, leída del paquete."""
+    retroactivos; `None` si no. Es la misma declaración de la hoja, leída del paquete. La cadena
+    de un alterado se muestra igual: un eslabón sin código o sin fecha no rompe el texto (la fecha
+    es la más temprana que se conozca, o «?» si ninguno la trae)."""
     retro = [e for e in cadena["eslabones"] if e.get("tipo") == "retroactivo"]
     if not retro:
         return None
-    codigos = [e["codigo"] for e in retro]
+    codigos = [str(e.get("codigo") or "") for e in retro]
     rango = codigos[0] if len(codigos) == 1 else f"{codigos[0]} a {codigos[-1]}"
-    cuando = min(str(e["fecha_hora"]) for e in retro)[:10]
+    fechas = [f for f in (str(e.get("fecha_hora") or "") for e in retro) if f]
+    cuando = min(fechas)[:10] if fechas else "?"
     plural = "Versión" if len(codigos) == 1 else "Versiones"
     return (
         f"{plural} {rango} selladas el {fecha(cuando)}: prueban que no cambiaron desde esa fecha; "
@@ -338,7 +341,7 @@ def revisor_armo(
     donde = [
         e["codigo"]
         for e in v.cadena["eslabones"]
-        if login_de(e.get("usuario", "")) == login_revisor
+        if login_de(str(e.get("usuario") or "")) == login_revisor
     ]
     emisor = login_de(str(v.manifiesto.get("usuario_emisor") or ""))
     if emisor == login_revisor and not donde:
