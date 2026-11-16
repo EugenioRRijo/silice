@@ -962,6 +962,20 @@ def test_un_corte_que_no_es_fecha_es_422_sin_eco() -> None:
     assert "ayer" not in r.text
 
 
+@pytest.mark.parametrize("corte", ["2026-11-06Basura", "2026-11-06T99:99", "20261106"])
+def test_un_corte_con_algo_mas_que_la_fecha_es_422(corte: str) -> None:
+    """El corte del calculo es AAAA-MM-DD entero: lo que sigue a los diez primeros caracteres no
+    se descarta en silencio (antes `[:10]` daba 200 con «2026-11-06Basura»)."""
+    r = _con_clave().get("/v1/control/calculo", params={**P, "corte": corte})
+    assert r.status_code == 422
+    assert "no es una fecha (AAAA-MM-DD)" in r.json()["detalle"]
+
+
+def test_un_corte_con_espacios_alrededor_sigue_valiendo() -> None:
+    r = _con_clave().get("/v1/control/calculo", params={**P, "corte": " 2026-11-06 "})
+    assert r.status_code == 200 and r.json()["corte"] == "2026-11-06"
+
+
 def test_la_lista_recortada_lo_dice(monkeypatch: pytest.MonkeyPatch) -> None:
     """Con el tope en 2, de las tres partidas se ofrecen dos y `truncada` lo dice: la interfaz
     no puede juzgar con una lista incompleta y deja que decida el servidor."""
