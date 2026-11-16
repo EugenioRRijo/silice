@@ -225,8 +225,9 @@ def _codigos_del_libro(id_: str) -> dict[str, str | None]:
     """Clave de cada renglón del borrador vivo → su directiva `_codigo_libro` (las vistas no
     muestran las directivas; se lee el borrador como en `test_api_hoja_llevar.py`)."""
     vivo = hoja_borradores.REGISTRO._vivos[id_]
+    clave = libro_a_la_hoja.CLAVE_CODIGO_LIBRO
     return {
-        f"{i.codigo_partida}|{i.origen_id}": i.especificaciones.get(libro_a_la_hoja.CLAVE_CODIGO_LIBRO)
+        f"{i.codigo_partida}|{i.origen_id}": i.especificaciones.get(clave)
         for i in vivo.borrador.items_base
     }
 
