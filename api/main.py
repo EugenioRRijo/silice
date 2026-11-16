@@ -12,6 +12,7 @@ from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
 from api import interfaz
@@ -265,6 +266,25 @@ def manejar_lookup_error(_request: Request, exc: LookupError) -> JSONResponse:
 def manejar_value_error(_request: Request, exc: ValueError) -> JSONResponse:
     """Datos de entrada invalidos segun las reglas del nucleo."""
     return JSONResponse(status_code=422, content={"detalle": str(exc)})
+
+
+#: El 503 de un fallo de la base que la ruta no tradujo con su propio texto (`MENSAJE_BASE` de cada
+#: router): fijo, sin SQL, tablas ni rutas del servidor.
+MENSAJE_BASE = "No se pudo leer o guardar en la carpeta de trabajo. Intente de nuevo."
+
+
+@app.exception_handler(SQLAlchemyError)
+def manejar_error_de_base(request: Request, _exc: SQLAlchemyError) -> JSONResponse:
+    """Un fallo de la base (ocupada, ilegible, una restriccion) en una ruta que no lo traduce: 503
+    con un texto fijo en vez de un 500 con la traza. El detalle va al registro, no al cuerpo, y la
+    respuesta no se guarda en el navegador (la arma este manejador, no la ruta: `RutaSinCache` no
+    la alcanza). Las rutas que ya capturan `SQLAlchemyError` conservan su propio mensaje."""
+    logging.getLogger("silice.api").exception("fallo de la base en %s", request.url.path)
+    return JSONResponse(
+        status_code=503,
+        content={"detalle": MENSAJE_BASE},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.exception_handler(ArithmeticError)
