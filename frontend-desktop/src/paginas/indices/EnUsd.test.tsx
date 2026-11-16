@@ -127,6 +127,25 @@ describe("Un índice en USD (RF-214)", () => {
     expect(cuerpos("/v1/indices/en-usd/confirmar")).toEqual([{ serie: "FIC-INPC", lado: "venta", huella: "b".repeat(64) }]);
   });
 
+  test("con el guardado en vuelo no se revisa otra vez: no sale una segunda confirmación", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    confirmar = () => new Promise<Response>((resolver) => (soltar = resolver)) as unknown as Response;
+    montar();
+    await userEvent.click(screen.getByRole("button", { name: "Expresar un índice en USD" }));
+    await screen.findByRole("combobox", { name: "Índice en bolívares" });
+    await userEvent.click(screen.getByRole("button", { name: "Revisar" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Guardar la serie en USD" }));
+    expect(screen.getByRole("button", { name: "Revisar" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Revisar" }));
+    // Si «Revisar» siguiera vivo, la vista nueva traería un «Guardar» habilitado con el primero aún en vuelo.
+    await waitFor(() => expect(cuerpos("/v1/indices/en-usd/ver")).toHaveLength(1));
+    expect(screen.getByRole("button", { name: "Guardar la serie en USD" })).toBeDisabled();
+    soltar(json({ mensajes: ["FIC-INPC-USD: guardada con 2 meses en USD."] }));
+    expect(await screen.findByText("FIC-INPC-USD: guardada con 2 meses en USD.")).toBeInTheDocument();
+    expect(cuerpos("/v1/indices/en-usd/confirmar")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Revisar" })).toBeEnabled();
+  });
+
   test("un 409 se muestra tal cual", async () => {
     const detalle = "Los índices o las tasas cambiaron desde que lo revisó: revíselo de nuevo.";
     confirmar = () => json({ detalle }, 409);
