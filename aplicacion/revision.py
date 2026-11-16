@@ -84,6 +84,7 @@ from paquete.verificar import (
     EmpresaConocida,
     Verificacion,
     evaluar_anterioridad,
+    filas_de_cambio_legibles,
     verificar,
 )
 from seguridad import empresas
@@ -413,6 +414,25 @@ def _huellas_de_anexos(archivos: Mapping[str, bytes]) -> dict[str, list[str]]:
     return salida
 
 
+def _cadena_legible(cadena: Any) -> bool:
+    """Si la cadena de un paquete, aunque no cuadre, tiene la forma mínima que leen la recepción y
+    «quién cambió qué»: un objeto con una lista de eslabones cuyo código y huella, si vienen, son
+    textos, y unos cambios por versión en filas de ocho textos. Lo que falte dentro de un eslabón
+    lo dice `recibir` como «rechazado» (los datos mínimos)."""
+    if not isinstance(cadena, dict):
+        return False
+    eslabones, cambios = cadena.get("eslabones"), cadena.get("cambios", {})
+    if not isinstance(eslabones, list) or not isinstance(cambios, dict):
+        return False
+    textos = all(
+        isinstance(e.get(campo, ""), str)
+        for e in eslabones
+        if isinstance(e, dict)
+        for campo in ("codigo", "huella_eslabon")
+    )
+    return textos and all(filas_de_cambio_legibles(f) for f in cambios.values())
+
+
 def _sin_datos_minimos(v: Verificacion) -> Verificacion:
     """`v` como «rechazado»: el manifiesto o la cadena no traen lo mínimo para registrarlo."""
     return replace(
@@ -439,6 +459,10 @@ def recibir(
     v = verificar(
         datos, buscar_empresa=_buscar_empresa(instalacion), recibido_en=ahora, mi_empresa=mi_empresa
     )
+    if v.cadena is not None and not _cadena_legible(v.cadena):
+        # Un alterado cuya cadena tiene otra forma se audita igual, pero sin cadena que leer: como
+        # el alterado por integridad, no se registra (no hay eslabones que atar al dictamen).
+        v = replace(v, cadena=None)
     if v.legible and v.manifiesto is not None:
         # Sin fecha de emisión no hay a qué día reauditar, y sin obra no hay con qué comparar: se
         # mira antes de la salida temprana de un alterado sin cadena, que tampoco se registra.

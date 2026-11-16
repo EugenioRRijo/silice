@@ -56,6 +56,7 @@ __all__ = [
     "armar_cadena_json",
     "banner",
     "evaluar_anterioridad",
+    "filas_de_cambio_legibles",
     "verificar",
 ]
 
@@ -126,15 +127,33 @@ def armar_cadena_json(
     }
 
 
+def filas_de_cambio_legibles(filas: Any) -> bool:
+    """Si `filas` son las de los `RegistroCambio` de una versión: una lista de filas de ocho
+    textos (`core.budget.cadena.fila_de_cambio`), lo que lee «quién cambió qué»."""
+    return isinstance(filas, list) and all(
+        isinstance(f, list) and len(f) == 8 and all(isinstance(x, str) for x in f) for f in filas
+    )
+
+
 def _comprobar_cadena(
-    cadena: Mapping[str, Any], manifiesto: Mapping[str, Any], archivos: Mapping[str, bytes]
+    cadena: Any, manifiesto: Mapping[str, Any], archivos: Mapping[str, bytes]
 ) -> str | None:
     """Motivo si la cadena no cuadra; `None` si sí. Verifica los enlaces y que cada eslabón
     sea consistente consigo mismo y con sus cambios; del contenido de las versiones anteriores
-    solo hay huellas (DA-S3-4), así que solo el último eslabón se ata al `presupuesto.json`."""
-    eslabones = cadena.get("eslabones")
-    if cadena.get("formato") != FORMATO_CADENA or not isinstance(eslabones, list) or not eslabones:
-        return "cadena.json no tiene la forma esperada"
+    solo hay huellas (DA-S3-4), así que solo el último eslabón se ata al `presupuesto.json`.
+    Un JSON válido con otra forma (una lista, unos cambios que no son un objeto) no cuadra."""
+    forma = "cadena.json no tiene la forma esperada"
+    if not isinstance(cadena, dict):
+        return forma
+    eslabones, todos_los_cambios = cadena.get("eslabones"), cadena.get("cambios", {})
+    if (
+        cadena.get("formato") != FORMATO_CADENA
+        or not isinstance(eslabones, list)
+        or not eslabones
+        or not isinstance(todos_los_cambios, dict)
+        or not all(filas_de_cambio_legibles(f) for f in todos_los_cambios.values())
+    ):
+        return forma
     anterior = GENESIS
     for e in eslabones:
         try:
@@ -149,7 +168,7 @@ def _comprobar_cadena(
                 tipo=e["tipo"],
                 version_formato=e["version_formato"],
             )
-            cambios = huella_de_filas_de_cambios(cadena.get("cambios", {}).get(e["codigo"], []))
+            cambios = huella_de_filas_de_cambios(todos_los_cambios.get(e["codigo"], []))
         except (KeyError, TypeError, ValueError):
             return "un eslabón de cadena.json está incompleto"
         if e["anterior"] != anterior or esperado != e["huella_eslabon"]:
