@@ -8,10 +8,18 @@ de tiempo (`_con_tope`): el hilo es demonio, así que una prueba en rojo no deja
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterator, Mapping
+from dataclasses import replace
+from types import SimpleNamespace
 from typing import Any
 
 from adapters.hoja_empresa.escritor.copia import tamano_imagen
+from adapters.hoja_empresa.guardia import MAX_FILAS_HOJA
+from adapters.hoja_empresa.lector import leer_libro
+from adapters.hoja_empresa.modelo import Celda, Rotulo
+from adapters.hoja_empresa.plantilla import filas_base_mo
+from adapters.hoja_empresa.reglas import reglas_del_libro
+from tests.fixtures.libros_empresa import libro_limpio
 
 #: Segundos que se le dan a cada llamada; la entrada sana tarda milésimas.
 TOPE = 5.0
@@ -71,3 +79,60 @@ def test_jpeg_sano_sigue_dando_su_tamano():
     app0 = b"\xff\xe0\x00\x10" + b"JFIF\x00" + b"\x00" * 9
     sof = b"\xff\xc0\x00\x11\x08" + (48).to_bytes(2, "big") + (64).to_bytes(2, "big") + b"\x03"
     assert _con_tope(tamano_imagen, b"\xff\xd8" + app0 + sof + b"\x00" * 9) == (64, 48)
+
+
+# --- 2. Rangos de fórmula sin cota (`=SUM(G1:G10000000)`) ---------------------------------------
+
+
+def _base_mo(formula: str) -> frozenset[int] | None:
+    apu = SimpleNamespace(rotulos={Rotulo.BASE_MO: Celda("APU-01", "G50")})
+    return filas_base_mo(apu, SimpleNamespace(formulas={"APU-01!G50": formula}))
+
+
+def test_filas_base_mo_no_expande_un_rango_mas_alla_del_tope_de_filas():
+    """El lector no deja pasar una hoja con algo escrito más allá de `MAX_FILAS_HOJA`: las filas
+    de más del rango están vacías y expandirlas costaba segundos y gigas (10⁷ filas: 29 s, 1 GiB).
+    """
+    filas = _base_mo("=SUM(G1:G1000000)")
+    assert filas is not None
+    assert max(filas) == MAX_FILAS_HOJA
+    assert len(filas) == MAX_FILAS_HOJA
+
+
+def test_filas_base_mo_de_los_rangos_normales_no_cambia():
+    assert _base_mo("=SUM(G19:G21)") == frozenset({19, 20, 21})
+    assert _base_mo("=SUM($G$17:$G$18)+G23") == frozenset({17, 18, 23})
+    assert _base_mo("=G19+G20") == frozenset({19, 20})
+    assert _base_mo(f"=SUM(G{MAX_FILAS_HOJA - 1}:G{MAX_FILAS_HOJA + 5})") == frozenset(
+        {MAX_FILAS_HOJA - 1, MAX_FILAS_HOJA}
+    )
+
+
+class _Vigilado(Mapping[str, str]):
+    """Las fórmulas del libro, anotando cada fila pedida de una hoja más allá del tope."""
+
+    def __init__(self, base: Mapping[str, str], hoja: str) -> None:
+        self._base = dict(base)
+        self._hoja = hoja
+        self.lejanas = 0
+
+    def __getitem__(self, clave: str) -> str:
+        hoja, _, ref = clave.partition("!")
+        if hoja == self._hoja and int("".join(c for c in ref if c.isdigit())) > MAX_FILAS_HOJA:
+            self.lejanas += 1
+        return self._base[clave]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._base)
+
+    def __len__(self) -> int:
+        return len(self._base)
+
+
+def test_regla_l9_del_resumen_no_recorre_filas_mas_alla_del_tope():
+    libro = leer_libro(libro_limpio().datos, "sintetico.xlsx")
+    formulas = dict(libro.formulas)
+    formulas["RESUMEN!B10"] = "=SUM(B4:B1000000)"
+    vigilado = _Vigilado(formulas, "RESUMEN")
+    reglas_del_libro(replace(libro, formulas=vigilado))
+    assert vigilado.lejanas == 0
