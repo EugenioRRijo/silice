@@ -78,6 +78,7 @@ from core.budget.importacion import (
 from core.verification import REGLAS, auditar
 from core.verification.texto import formatear_decimal
 from paquete import modelo as paq
+from paquete.formato import JsonRechazado, PaqueteRechazado
 from paquete.verificar import (
     RECHAZADO,
     EmpresaConocida,
@@ -546,8 +547,10 @@ class EntregaAnterior:
 def entrega_anterior(
     caso: Session, instalacion: Session, v: Verificacion
 ) -> EntregaAnterior | None:
-    """La última entrega del mismo proyecto y emisor emitida ANTES de `v`, releída del archivo
-    guardado (con el mismo lector seguro). `None` si no hay, o si el archivo ya no está."""
+    """La última entrega LEGIBLE del mismo proyecto y emisor emitida ANTES de `v`, releída del
+    archivo guardado (con el mismo lector seguro). `None` si no hay ninguna. Una entrega cuyo
+    archivo ya no está o cuyo documento no se puede leer se salta sin borrar su fila (es prueba,
+    23h): si no, un paquete roto ya registrado haría fallar a todos los siguientes."""
     if v.manifiesto is None:
         return None
     emitido = _emitido(v.manifiesto)
@@ -558,22 +561,25 @@ def entrega_anterior(
         )
         if f["huella_archivo"] != v.sha256 and f["emitido"] < emitido
     ]
-    if not previas:
-        return None
-    fila = max(previas, key=lambda f: f["emitido"])
-    ruta = Path(fila["ruta"])
-    if not ruta.is_file():
-        return None
-    antes = verificar(
-        ruta.read_bytes(), buscar_empresa=_buscar_empresa(instalacion), recibido_en=fila["fecha"]
-    )
-    if not antes.legible:
-        return None
-    return EntregaAnterior(
-        fila["codigo"],
-        leer_documento(antes.archivos),
-        tuple(huella for _, huella in json.loads(fila["cadena"])),
-    )
+    for fila in sorted(previas, key=lambda f: f["emitido"], reverse=True):
+        ruta = Path(fila["ruta"])
+        if not ruta.is_file():
+            continue
+        antes = verificar(
+            ruta.read_bytes(),
+            buscar_empresa=_buscar_empresa(instalacion),
+            recibido_en=fila["fecha"],
+        )
+        if not antes.legible:
+            continue
+        try:
+            documento = leer_documento(antes.archivos)
+        except (canonico.DocumentoInvalido, PaqueteRechazado, JsonRechazado):
+            continue
+        return EntregaAnterior(
+            fila["codigo"], documento, tuple(huella for _, huella in json.loads(fila["cadena"]))
+        )
+    return None
 
 
 def empresa_propia_para_revisar(instalacion: Session) -> tuple[str | None, str | None]:
