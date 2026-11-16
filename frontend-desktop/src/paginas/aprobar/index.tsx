@@ -104,6 +104,8 @@ function BuscarEnvio({ alEncontrar }: { alEncontrar: (id: number, reemplazar: bo
           if (ultimo) return encontrar.current(ultimo.id, true);
         } catch (e) {
           if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+          // Un fallo del rastro (no la sesión vencida) se dice: con el 403 del índice se pintaría «no hay nada».
+          else if (vigente) return setBusqueda({ estado: "fallo", error: e });
         }
       }
       if (!vigente) return;
