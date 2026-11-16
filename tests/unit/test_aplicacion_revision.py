@@ -326,6 +326,34 @@ def test_tras_un_paquete_registrado_con_presupuesto_vacio_el_siguiente_se_analiz
     assert len(list(carpeta.iterdir())) == 2
 
 
+@pytest.mark.parametrize(
+    "extra",
+    [{}, {"emitido": "2026-11-10T09:30:00"}, {"proyecto": "MIN-001"}, {"emitido": "ayer"}],
+    ids=["sin_emitido_ni_proyecto", "sin_proyecto", "sin_emitido", "emitido_que_no_es_fecha"],
+)
+def test_un_manifiesto_sin_emitido_o_proyecto_es_rechazado_aunque_no_liste_archivos(
+    mundo, extra
+) -> None:
+    """Un manifiesto con `archivos: []` da «alterado» por integridad y sin cadena; si además le
+    falta la fecha de emisión o la obra, no hay a qué fecha reauditarlo ni con qué compararlo: es
+    «rechazado» con el mensaje de los datos mínimos, no un `KeyError` crudo."""
+    from tests.fixtures.paquetes import canonico, escribir_zip
+
+    manifiesto = {"formato": "silice-paquete", "version_formato": 1, "archivos": [], **extra}
+    datos = escribir_zip(
+        {"manifiesto.json": canonico(manifiesto), "presupuesto.json": _documento()}
+    )
+    a = _analizar(mundo, datos)
+    v = a.recibido.verificacion
+    assert (v.estado, v.detalle) == (
+        "rechazado",
+        "El manifiesto o la cadena no traen los datos mínimos de un paquete.",
+    )
+    assert a.reauditoria is None and a.recibido.paquete_id == 0
+    _, _, carpeta = mundo
+    assert not carpeta.exists()
+
+
 def test_analizar_un_archivo_rechazado_no_reaudita_ni_guarda_nada(mundo) -> None:
     a = _analizar(mundo, b"esto no es un zip")
     assert a.recibido.verificacion.estado == "rechazado"
