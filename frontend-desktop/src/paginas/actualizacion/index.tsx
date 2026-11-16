@@ -135,10 +135,12 @@ export default function PaginaActualizacion() {
   const lista = presupuestos.tipo === "listo" ? presupuestos.lista : [];
   const base: PresupuestoListado | undefined = lista[Number(elegido)];
   const revalorando = resultado.tipo === "revalorando";
+  // Mientras se descarta la versión guardada no se revalora: el «hecho» tardío diría descartada a la versión nueva.
+  const ocupada = revalorando || descarte.tipo === "enCurso";
 
   const revalorar = (evento: FormEvent) => {
     evento.preventDefault();
-    if (!archivo || !base || revalorando) return;
+    if (!archivo || !base || ocupada) return;
     const numero = ++consultaRevalorar.current;
     const cuerpo = formularioRevaloracion({
       archivo,
@@ -286,7 +288,7 @@ export default function PaginaActualizacion() {
           )}
 
           <div className="silice-actualizacion__acciones">
-            <Button type="submit" kind="primary" size="md" disabled={archivo === null || revalorando}>
+            <Button type="submit" kind="primary" size="md" disabled={archivo === null || ocupada}>
               Revalorar presupuesto
             </Button>
             {revalorando && <InlineLoading description="Revalorando..." status="active" />}
