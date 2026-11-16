@@ -30,6 +30,7 @@ DESPUES = datetime(2026, 11, 10, 9, 30)
 RECIBIDO = datetime(2026, 11, 12, 10, 0)
 ID_1 = "11111111-1111-4111-8111-111111111111"
 ID_2 = "22222222-2222-4222-8222-222222222222"
+ID_3 = "33333333-3333-4333-8333-333333333333"
 
 
 def _doc(**cambios) -> bytes:
@@ -263,6 +264,35 @@ def test_si_el_archivo_anterior_ya_no_esta_no_hay_entrega_anterior(mundo) -> Non
     actual = _recibir(mundo, _paquete(DESPUES, "005", ID_1))
     primera.ruta.unlink()
     assert revision.entrega_anterior(caso, bd, actual.verificacion) is None
+
+
+def _roto(emitido: datetime, codigo: str, paquete_id: str) -> bytes:
+    """Un paquete firmado y con la cadena en regla cuyo `presupuesto.json` es `{}`: se registra
+    (23h), pero su documento no es un presupuesto de Silice y no se puede releer."""
+    return paquete(
+        par=PAR, presupuesto=b"{}", emitido=emitido, codigo=codigo, paquete_id=paquete_id, anexos={}
+    )
+
+
+def test_una_entrega_anterior_ilegible_no_bloquea_la_siguiente(mundo) -> None:
+    """El paquete roto queda registrado (es prueba documental) y la entrega siguiente no tiene a
+    qué compararse: `None`, no `DocumentoInvalido` en cada paquete válido posterior."""
+    caso, bd, _ = mundo
+    roto = _recibir(mundo, _roto(ANTES, "004", ID_2))
+    assert roto.paquete_id != 0 and roto.ruta.is_file()
+    actual = _recibir(mundo, _paquete(DESPUES, "005", ID_1))
+    assert revision.entrega_anterior(caso, bd, actual.verificacion) is None
+    assert _recibidos(caso) == 2  # la fila del roto sigue ahí
+
+
+def test_si_la_ultima_entrega_es_ilegible_la_anterior_es_la_legible_previa(mundo) -> None:
+    caso, bd, _ = mundo
+    _recibir(mundo, _paquete(datetime(2026, 11, 1, 9, 0), "003", ID_3))
+    _recibir(mundo, _roto(ANTES, "004", ID_2))
+    actual = _recibir(mundo, _paquete(DESPUES, "005", ID_1))
+    previa = revision.entrega_anterior(caso, bd, actual.verificacion)
+    assert previa is not None and previa.codigo == "003"
+    assert _recibidos(caso) == 3
 
 
 def test_la_empresa_propia_para_revisar_da_su_nombre_y_la_huella_de_su_clave(mundo) -> None:

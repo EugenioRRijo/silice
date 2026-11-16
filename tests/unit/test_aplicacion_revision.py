@@ -301,6 +301,31 @@ def test_si_otra_peticion_registro_el_mismo_archivo_se_relee_lo_registrado(
     assert len(caso.execute(select(paq.paq_recibido)).all()) == 1
 
 
+def test_tras_un_paquete_registrado_con_presupuesto_vacio_el_siguiente_se_analiza(mundo) -> None:
+    """Un paquete firmado cuyo `presupuesto.json` es `{}` queda guardado y registrado (23h) y su
+    análisis dice que el documento no es válido; el paquete VÁLIDO siguiente de la misma obra y
+    emisor no debe fallar al releer ese anterior (antes: `DocumentoInvalido` para siempre)."""
+    from core.budget.canonico import DocumentoInvalido
+
+    roto = paquete(
+        par=PAR,
+        presupuesto=b"{}",
+        anexos={},
+        emitido=datetime(2026, 11, 3, 9, 0),
+        codigo="004",
+        paquete_id="22222222-2222-4222-8222-222222222222",
+    )
+    with pytest.raises(DocumentoInvalido):
+        _analizar(mundo, roto)
+    bueno = paquete(par=PAR, presupuesto=_documento(), anexos={})
+    a = _analizar(mundo, bueno)
+    assert a.reauditoria is not None and a.reauditoria.total_recalculado == TOTAL
+    assert a.previa is None and a.diferencia is None
+    caso, _, carpeta = mundo
+    assert len(caso.execute(select(paq.paq_recibido)).all()) == 2  # el roto sigue registrado
+    assert len(list(carpeta.iterdir())) == 2
+
+
 def test_analizar_un_archivo_rechazado_no_reaudita_ni_guarda_nada(mundo) -> None:
     a = _analizar(mundo, b"esto no es un zip")
     assert a.recibido.verificacion.estado == "rechazado"
