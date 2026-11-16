@@ -304,9 +304,12 @@ function Anular({ proyecto, datos, alCambiar }: { proyecto: string; datos: Valua
   const [elegida, setElegida] = useState("");
   const [motivo, setMotivo] = useState("");
   if (datos.anulables.length === 0) return null;
+  // La elegida vale mientras siga en la lista: tras anularla la lista ya no la trae y el selector muestra la primera, que
+  // es la que se manda (antes se volvía a mandar la ya anulada).
+  const vigente = datos.anulables.some((a) => String(a.id) === elegida) ? elegida : String(datos.anulables[0]!.id);
   const anular = () =>
     ejecutar(async () => {
-      await pedir(`/v1/control/valuaciones/${elegida || datos.anulables[0]!.id}/anular`, {
+      await pedir(`/v1/control/valuaciones/${vigente}/anular`, {
         metodo: "POST",
         cuerpo: { motivo },
       });
@@ -317,7 +320,7 @@ function Anular({ proyecto, datos, alCambiar }: { proyecto: string; datos: Valua
     <details>
       <summary className="cds--type-body-compact-01">Anular una valuación</summary>
       <div className="silice-control__formulario" data-proyecto={proyecto}>
-        <Select id="anu-valuacion" labelText="Valuación" value={elegida} onChange={(e) => setElegida(e.target.value)}>
+        <Select id="anu-valuacion" labelText="Valuación" value={vigente} onChange={(e) => setElegida(e.target.value)}>
           {datos.anulables.map((a) => (
             <SelectItem key={a.id} value={String(a.id)} text={a.rotulo} />
           ))}
