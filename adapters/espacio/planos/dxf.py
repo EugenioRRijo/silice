@@ -775,12 +775,14 @@ class _Lector:
         for a, b in zip(vertices, vertices[1:], strict=False):
             if a.distancia(b) <= TOLERANCIA:
                 continue
+            # las dos cotas deciden (el sentido del dibujo no): techo o piso si ambas lo estan;
+            # un tramo vertical, inclinado o a media altura va por la pared
             vertical = abs(a.x - b.x) <= TOLERANCIA and abs(a.y - b.y) <= TOLERANCIA
             if vertical:
                 superficie = SuperficieTramo.PARED
-            elif a.z >= techo - TOLERANCIA:
+            elif min(a.z, b.z) >= techo - TOLERANCIA:
                 superficie = SuperficieTramo.TECHO
-            elif a.z <= TOLERANCIA:
+            elif max(a.z, b.z) <= TOLERANCIA:
                 superficie = SuperficieTramo.PISO
             else:
                 superficie = SuperficieTramo.PARED
