@@ -178,6 +178,7 @@ def test_con_tasa_y_sin_valor_la_otra_moneda_dice_no_disponible_sin_moneda(obra)
     assert filas["Desvío de precio (USD)"]["En la otra moneda"] == "no disponible"
     assert filas["PV (USD)"]["En la otra moneda"] == "1275000.00 Bs"
 
+
 def test_las_alertas_y_la_reproyeccion_se_muestran_siempre(obra):
     ob.registrar_v01_y_v02(obra)
     resultado = control.calcular_el_control(
@@ -251,6 +252,7 @@ def test_un_dia_objetivo_que_no_es_entero_se_rechaza_y_no_se_trunca(obra):
         control.calcular_las_opciones(resultado, objetivo="10.9")
     assert control.calcular_las_opciones(resultado, objetivo="25.0")[0].aplica is False
 
+
 def test_anular_y_el_costo_real_desde_los_textos(obra):
     primera, _ = ob.registrar_v01_y_v02(obra)
     control.anular(obra, primera.id, motivo="error de medicion", responsable="Ing.")
@@ -317,8 +319,8 @@ def test_los_precios_del_corte_segun_el_metodo_elegido(obra):
 
 
 def test_la_escalatoria_toma_la_linea_base_vigente_al_corte_y_no_a_la_ultima_valuacion(obra):
-    """Con dos líneas base (OB-001 desde el 02/11 y OB-R01 desde el 09/11), la escalatoria al corte
-    del 06/11 parte de los unitarios de OB-001, no de los de la línea base de la última valuación."""
+    """Con dos líneas base (OB-001 desde el 02/11 y OB-R01 desde el 09/11), la escalatoria al
+    corte del 06/11 parte de los unitarios de OB-001, no de la línea base de la última valuación."""
     ob.registrar_v01_y_v02(obra)  # hasta el 06/11 y el 13/11
     rz.sembrar_revaloracion(obra)
     registrar_linea_base(
@@ -340,6 +342,7 @@ def test_la_escalatoria_sin_linea_base_al_corte_se_rechaza_con_control_invalido(
         control.precios_del_corte(
             obra, ob.NOMBRE, Catalogo(obra), neutra, "costo", corte=date(2026, 10, 1)
         )
+
 
 def test_las_tres_hojas_del_excel_de_la_hoja_conservan_las_propias(obra, tmp_path):
     ob.registrar_v01_y_v02(obra)

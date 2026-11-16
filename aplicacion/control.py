@@ -720,8 +720,8 @@ def calcular_las_opciones(
     independientes: str = "",
 ) -> tuple[Opcion, ...]:
     """Las cuatro opciones de recuperación a pedido (UC-20 4). `objetivo` es el día hábil objetivo
-    (vacío = el fin del plan base). `ControlInvalido` si un límite legal se rompe o si el objetivo no
-    es un entero (no se trunca)."""
+    (vacío = el fin del plan base). `ControlInvalido` si un límite legal se rompe o si el objetivo
+    no es un entero (no se trunca)."""
     dia_objetivo = None
     if objetivo.strip():
         valor = _decimal(objetivo, "objetivo")
