@@ -579,6 +579,37 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(guardados().map((g) => g["rev"])).toEqual([3, 7]);
   });
 
+  test("guardar con una edición del desmontaje en vuelo espera su respuesta y manda el rev que ella dejó (no el viejo)", async () => {
+    // El PUT que sale al irse de «Ajustes de costo» queda en vuelo hasta que la prueba lo conteste.
+    let contestar: (r: Response) => void = () => undefined;
+    const puesta = new Promise<Response>((resolver) => {
+      contestar = resolver;
+    });
+    fetchFalso.mockImplementation(
+      ((impl) =>
+        async (...args: Parameters<typeof fetch>) =>
+          String(args[0]).endsWith("/parametros") && args[1]?.method === "PUT" ? puesta : impl(...args))(fetchFalso.getMockImplementation()!),
+    );
+    montar();
+    await userEvent.click(await screen.findByRole("tab", { name: "Ajustes de costo" }));
+    const campo = await screen.findByRole("textbox", { name: /^Administración/ });
+    fireEvent.change(campo, { target: { value: "0,20" } });
+    // Dentro de la pausa de 400 ms se va a otra pestaña: la edición sale al desmontar.
+    fireEvent.click(screen.getByRole("tab", { name: "Revisión" }));
+    await esperar(() => expect(llamadas("PUT", "/parametros")).toHaveLength(1));
+    const dialogo = await abrirModal();
+    await escribirFuente(dialogo);
+    fireEvent.click(confirmar(dialogo));
+    // El guardado no sale mientras el PUT siga en vuelo.
+    await act(async () => {
+      await new Promise<void>((r) => setImmediate(r));
+    });
+    expect(guardados()).toHaveLength(0);
+    contestar(json({ rev: 4, resumen: resumen({ rev: 4, cambios: 3 }) }));
+    await esperar(() => expect(guardados()).toHaveLength(1));
+    expect(guardados()[0]!["rev"]).toBe(4);
+  });
+
   test("409 «ya se guardó como la versión 004»: ofrece abrirla (sin pedir descartar, ya está guardado)", async () => {
     alGuardar = () => json({ detalle: "Este borrador ya se guardó como la versión 004; abra esa versión para seguir." }, 409);
     versiones = { ...VERSIONES, versiones: [fila("004", true, "002"), ...VERSIONES.versiones] };
