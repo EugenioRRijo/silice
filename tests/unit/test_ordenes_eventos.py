@@ -51,3 +51,25 @@ def test_la_orden_mal_formada_es_un_error_de_uso(capsys, argumentos: list[str]) 
         cli.main(argumentos)
     assert salida.value.code == 2
     capsys.readouterr()
+
+
+@pytest.mark.parametrize("contenido", ["{no es json", "[]", None])
+def test_revisar_un_archivo_ilegible_o_que_falta_dice_que_paso_y_sale_con_1(
+    capsys, contenido: str | None
+) -> None:
+    """Tras el arreglo de SEG-12 (`marcar_revisado` ya no sobrescribe un archivo ilegible), la
+    orden terminaba con una traza. Ahora dice qué pasó y qué hacer, sale con 1 y no escribe."""
+    archivo = config.carpeta_datos() / "eventos_perdidos_20261011-130000.json"
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    if contenido is not None:
+        archivo.write_text(contenido, encoding="utf-8")
+    assert cli.main(["eventos", "revisar", str(archivo)]) == 1
+    salida = capsys.readouterr()
+    assert salida.out == ""
+    assert archivo.name in salida.err and "no se marcó como revisado" in salida.err
+    assert "restaurarlo de un respaldo o retirarlo a mano" in salida.err
+    assert "Traceback" not in salida.err
+    if contenido is None:
+        assert not archivo.exists()
+    else:
+        assert archivo.read_text(encoding="utf-8") == contenido
