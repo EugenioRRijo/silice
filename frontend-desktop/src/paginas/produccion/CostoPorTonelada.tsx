@@ -48,6 +48,9 @@ export default function CostoPorTonelada() {
   // Sube cuando algo pudo cambiar la lista de cálculos del mes; y «enfocar», cuando hay un resultado nuevo que mostrar.
   const [version, setVersion] = useState(0);
   const [enfocar, setEnfocar] = useState(0);
+  // Turno de lo que se muestra: sube con cada cálculo, cada relectura, cada cambio de mes o de moneda y cada cálculo
+  // abierto de la lista; la respuesta que llegue con un turno viejo no se pone a la vista.
+  const turno = useRef(0);
   const region = useRef<HTMLElement>(null);
   const cajaDelError = useRef<HTMLDivElement>(null);
   const cajaDelErrorDePublicar = useRef<HTMLDivElement>(null);
@@ -71,6 +74,7 @@ export default function CostoPorTonelada() {
 
   // Un resultado de otro mes o de otra moneda no puede quedar a la vista como si fuera el de ahora.
   function cambiarDatos(accion: () => void) {
+    turno.current += 1;
     accion();
     setCalculo(null);
     setError(null);
@@ -88,13 +92,17 @@ export default function CostoPorTonelada() {
     setErrorDePublicar(null);
     setAviso(null);
     setCalculando(true);
+    const mio = ++turno.current;
     try {
-      setCalculo(await calcularCosto(periodo, moneda, reparto.activo ? (reparto.pesos ?? undefined) : undefined));
-      setEnfocar((n) => n + 1);
+      const nuevo = await calcularCosto(periodo, moneda, reparto.activo ? (reparto.pesos ?? undefined) : undefined);
+      // Se guardó aunque ya no se muestre: la lista de cálculos del mes cambió igual.
       setVersion((n) => n + 1);
+      if (mio !== turno.current) return;
+      setCalculo(nuevo);
+      setEnfocar((n) => n + 1);
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
-      else {
+      else if (mio === turno.current) {
         setCalculo(null);
         setError(razon);
       }
@@ -105,9 +113,11 @@ export default function CostoPorTonelada() {
 
   // Tras publicar (o tras un 409) se vuelve a leer el cálculo abierto para que muestre dónde quedó, sin mover el foco.
   async function releer(id: number) {
+    const mio = ++turno.current;
     setVersion((n) => n + 1);
     try {
-      setCalculo(await calculoGuardado(id));
+      const releido = await calculoGuardado(id);
+      if (mio === turno.current) setCalculo(releido);
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
     }
@@ -132,12 +142,20 @@ export default function CostoPorTonelada() {
         vuelve a calcular se crea otro y el anterior queda como estaba.
       </p>
       <div className="planta-barra">
-        <CampoTexto id="costo-mes" type="month" labelText="Mes" value={periodo} onChange={(e) => cambiarDatos(() => setPeriodo(e.target.value))} />
+        <CampoTexto
+          id="costo-mes"
+          type="month"
+          labelText="Mes"
+          value={periodo}
+          disabled={calculando}
+          onChange={(e) => cambiarDatos(() => setPeriodo(e.target.value))}
+        />
         <Select
           id="costo-moneda"
           labelText="Moneda del cálculo"
           ref={campoMoneda}
           value={moneda}
+          disabled={calculando}
           invalid={faltaMoneda && moneda === ""}
           invalidText={FALTA_MONEDA}
           onChange={(e) =>
@@ -204,6 +222,7 @@ export default function CostoPorTonelada() {
           version={version}
           alExpirar={alExpirar}
           alAbrir={(abierto) => {
+            turno.current += 1;
             setError(null);
             setErrorDePublicar(null);
             setAviso(null);
