@@ -38,6 +38,8 @@ class EventoPerdido:
 
 
 def juegos_de_respaldo(entorno: Mapping[str, str] | None = None) -> list[JuegoResumen]:
+    """Los juegos de respaldo, del más nuevo al más viejo. Una ficha ilegible, o que no es un
+    objeto con su lista de bases, se salta (como en `eventos_sin_revisar`)."""
     carpeta = config.carpeta_respaldos(entorno)
     if not carpeta.is_dir():
         return []
@@ -46,6 +48,8 @@ def juegos_de_respaldo(entorno: Mapping[str, str] | None = None) -> list[JuegoRe
         try:
             ficha = json.loads((ruta / "ficha.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
+            continue
+        if not isinstance(ficha, dict) or not isinstance(ficha.get("bases", []), list):
             continue
         juegos.append(
             JuegoResumen(
