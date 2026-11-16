@@ -12,6 +12,7 @@ import { olvidarFormularios } from "../../shell/sucio";
 import { cuerpoDeVista } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
+import { ContextoDelBorradorAbierto } from "../../comun/borradorAbierto";
 import { ContextoDeLaHoja, useHojaDeLaObra } from "./ProveedorDeLaHoja";
 
 // Tarea 3 del plan F4: el borrador de la Hoja vive en la obra (`ProveedorDeLaHoja`) y lo comparten Presupuesto, Archivos
@@ -113,11 +114,13 @@ afterEach(() => {
 // que dice y no porque falte el proveedor.
 function Relleno({ titulo }: { titulo: string }) {
   const hoja = useContext(ContextoDeLaHoja);
+  const abierto = useContext(ContextoDelBorradorAbierto);
   const navegar = useNavegarSeguro();
   return (
     <>
       <h1>{titulo}</h1>
       <p data-testid="borrador">{`borrador: ${hoja === null ? "sin hoja" : hoja.estado.estado}`}</p>
+      <p data-testid="borrador-abierto">{abierto ?? "ninguno"}</p>
       {hoja !== null && <ConLaHoja />}
       <button type="button" onClick={() => void navegar("/obra/empresa/7/presupuesto?version=001")}>
         Abrir la 001
@@ -288,6 +291,8 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto/componer"));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
     await borradorListoEnElRelleno();
+    // Componer lee el borrador de la obra sin importar de la Hoja (`comun/borradorAbierto.ts`, ronda 1 de la ola 2).
+    expect(screen.getByTestId("borrador-abierto").textContent).toBe("b-1");
     await waitFor(() => expect(servidor.de("PUT", "/v1/hoja/borradores/b-1/cantidades")).toHaveLength(1));
     await u.click(within(screen.getByRole("navigation", { name: "Vistas de Presupuesto" })).getByRole("link", { name: "Presupuesto" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));

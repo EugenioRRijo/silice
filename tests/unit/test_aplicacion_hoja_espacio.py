@@ -189,7 +189,7 @@ ERRORES = [
     ),
     pytest.param(
         _con("origenes", None, tipo="mapa"),
-        "origenes de medida, fila 1: tipo: 'mapa' no es un valor valido "
+        "origenes de medida, fila 1: tipo: 'mapa' no es un valor válido "
         "(plano, dxf, ifc, levantamiento, supuesto, ia)",
         id="lista-cerrada",
     ),
@@ -220,7 +220,7 @@ ERRORES = [
     ),
     pytest.param(
         _tramo_suelto(vertices="0,0,0"),
-        "vertices de recorridos, fila 1: vertices: un tramo necesita dos vertices x,y,z o mas, "
+        "vertices de recorridos, fila 1: vertices: un tramo necesita dos vértices x,y,z o más, "
         "separados por «;»",
         id="un-solo-vertice",
     ),

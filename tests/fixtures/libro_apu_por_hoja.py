@@ -102,6 +102,9 @@ class ApuFicticio:
     impuesto: str = "0"
     #: El P.U. que imprime la hoja; sin él, el que resulta del redondeo por renglón.
     impreso: str | None = None
+    #: Una segunda fila de impuesto («Otros impuestos (%)», libro por frentes del 2026-11-13);
+    #: sin ella la hoja no la trae.
+    otros_impuestos: str | None = None
     extra: dict[str, str] = field(default_factory=dict)
 
 
@@ -263,20 +266,28 @@ def _hoja_apu(libro, apu: ApuFicticio) -> None:
         ["Utilidad e imprevistos (%)", None, None, None, None, D(apu.utilidad), None],
         ["Financiamiento (%)", None, None, None, None, D(apu.financiamiento), None],
         ["Impuesto (%)", None, None, None, None, D(apu.impuesto), None],
+        *(
+            [["Otros impuestos (%)", None, None, None, None, D(apu.otros_impuestos), None]]
+            if apu.otros_impuestos is not None
+            else []
+        ),
         ["PRECIO UNITARIO", None, None, None, None, None, precio_impreso(apu)],
     ]
     for fila in filas:
         h.append([float(v) if isinstance(v, Decimal) else v for v in fila])
 
 
-def libro_apu(apus: tuple[ApuFicticio, ...] = APUS) -> bytes:
-    """El libro de APU (una hoja por partida, solo valores) como bytes de un .xlsx."""
+def libro_apu(apus: tuple[ApuFicticio, ...] = APUS, otras: tuple[str, ...] = ()) -> bytes:
+    """El libro de APU (una hoja por partida, solo valores) como bytes de un .xlsx. `otras` son
+    hojas que no son APU (con una nota en A1), al final."""
     import openpyxl
 
     libro = openpyxl.Workbook()
     libro.remove(libro.active)
     for apu in apus:
         _hoja_apu(libro, apu)
+    for titulo in otras:
+        libro.create_sheet(titulo)["A1"] = "nota ficticia"
     salida = io.BytesIO()
     libro.save(salida)
     return salida.getvalue()
@@ -350,6 +361,36 @@ def libro_presupuesto(renglones=RENGLONES) -> bytes:
     for numero, codigo, descripcion, unidad, cantidad, pu in renglones:
         total = _r(D(cantidad) * D(pu))
         hoja.append([numero, codigo, descripcion, unidad, float(cantidad), float(pu), float(total)])
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def libro_presupuesto_por_hojas(hojas: dict[str, tuple] | None = None) -> bytes:
+    """Un libro de presupuesto con una hoja por frente (libro por frentes del 2026-11-13): cada
+    hoja con la forma de «PRESUPUESTO». Por omisión, «FRENTE A» con el 60 % de cada cantidad de
+    `RENGLONES` y «FRENTE B» con el 40 % (suman la cantidad del presupuesto de siempre)."""
+    import openpyxl
+
+    if hojas is None:
+        hojas = {
+            titulo: tuple(
+                (n, c, d, u, str((D(q) * parte).normalize()), pu) for n, c, d, u, q, pu in RENGLONES
+            )
+            for titulo, parte in (("FRENTE A", D("0.6")), ("FRENTE B", D("0.4")))
+        }
+    libro = openpyxl.Workbook()
+    libro.remove(libro.active)
+    for titulo, renglones in hojas.items():
+        hoja = libro.create_sheet(titulo)
+        hoja.append(["PRESUPUESTO FICTICIO"])
+        hoja.append([])
+        hoja.append(["N°", "Código", "Descripción", "Unidad", "Cantidad", "P.U.", "Total"])
+        for numero, codigo, descripcion, unidad, cantidad, pu in renglones:
+            total = _r(D(cantidad) * D(pu))
+            hoja.append(
+                [numero, codigo, descripcion, unidad, float(cantidad), float(pu), float(total)]
+            )
     salida = io.BytesIO()
     libro.save(salida)
     return salida.getvalue()

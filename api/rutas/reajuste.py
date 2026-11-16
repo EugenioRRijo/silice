@@ -306,7 +306,7 @@ def _respuesta(sesion, p: EstudioPeticion, resultado) -> CalculoRespuesta:
         moneda=resultado.moneda,
         columnas=list(logica.COLUMNAS_REAJUSTE),
         filas=logica.filas_lado_a_lado(resultado),
-        avisos=list(resultado.avisos),
+        avisos=logica.avisos_con_remedio(resultado.avisos),
         mensaje_parcial=parcial,
         parciales=_parciales(sesion, p.proyecto, p.version)
         if resultado.estado is EstadoEstudio.CERRADO

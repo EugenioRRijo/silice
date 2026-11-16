@@ -46,6 +46,8 @@ const CATALOGO = [
   { codigo: "MAT-1", descripcion: "Cemento gris ficticio", unidad: "saco", precio: "18.00" },
   { codigo: "MAT-2", descripcion: "Cemento blanco ficticio", unidad: null, precio: null },
   { codigo: "MAT-3", descripcion: "Cemento rojo ficticio", unidad: "kg", precio: "9.00" },
+  // Un precio convertido de Bs con 28 cifras (ola 2, 2026-11-13).
+  { codigo: "MAT-4", descripcion: "Cemento convertido ficticio", unidad: "saco", precio: "5.041157684630738522954091816" },
 ];
 const FECHA = "2026-08-15";
 
@@ -169,6 +171,22 @@ describe("Componer en el panel: Esc no vuelve «tecleado» lo que puso el catál
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento rojo ficticio"));
     expect(precio()).toHaveValue("18,005");
     expect(precio()).toHaveAccessibleDescription(expect.stringContaining("El catálogo tiene 9,00 Bs; se conserva el precio que escribió."));
+  });
+
+  // Ola 2 (2026-11-13): el precio de 28 cifras se lee «5,04» en reposo; al entrar se edita completo y Esc lo devuelve al
+  // número completo, no a lo que se leía (devolver «5,04» crearía una variante del insumo al guardar).
+  test("Esc en un precio que se lee con dos decimales lo devuelve al número completo", async () => {
+    await abrirPanel();
+    await elegir("cemento c", /Cemento convertido ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("5,04"));
+    await userEvent.click(precio());
+    expect(precio()).toHaveValue("5,041157684630738522954091816");
+    await userEvent.type(precio(), "9");
+    await userEvent.keyboard("{Escape}");
+    expect(precio()).toHaveValue("5,041157684630738522954091816");
+    expect(screen.getByRole("complementary", { name: "Componer una partida" })).toBeInTheDocument();
+    await userEvent.tab();
+    expect(precio()).toHaveValue("5,04");
   });
 });
 

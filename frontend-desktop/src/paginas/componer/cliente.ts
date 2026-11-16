@@ -17,6 +17,19 @@ export interface Opciones {
   modalidades: string[];
 }
 
+// RF-200 (ola 2, 2026-11-13): los cuatro parámetros del precio unitario, como se teclean (coma decimal). Viajan al evaluar,
+// al prever y al guardar; el servidor calcula con ellos y no los guarda con la partida.
+export type ClaveDeParametro = "fcas" | "bono_alimentacion" | "administracion" | "utilidad";
+export type ParametrosDeTexto = Record<ClaveDeParametro, string>;
+
+// Un parámetro con su rótulo y su valor escrito: la forma de `GET /v1/composicion/parametros` y de los `campos` de la vista
+// `parametros` de la Hoja.
+export interface CampoDeParametro {
+  clave: string;
+  rotulo: string;
+  valor: string;
+}
+
 export interface Desglose {
   materiales: string;
   equipos: string;
@@ -132,8 +145,16 @@ export function opciones(): Promise<Opciones> {
   return pedir<Opciones>(`${BASE}/opciones`);
 }
 
-export function evaluar(cabecera: Cabecera, tablas: Tablas): Promise<Evaluacion> {
-  return pedir<Evaluacion>(`${BASE}/evaluar`, { metodo: "POST", cuerpo: { ...cabecera, ...tablas } });
+// Sin parámetros (null) el servidor calcula con los de omisión.
+const conParametros = (parametros: ParametrosDeTexto | null) => (parametros === null ? {} : { parametros });
+
+export function evaluar(cabecera: Cabecera, tablas: Tablas, parametros: ParametrosDeTexto | null = null): Promise<Evaluacion> {
+  return pedir<Evaluacion>(`${BASE}/evaluar`, { metodo: "POST", cuerpo: { ...cabecera, ...tablas, ...conParametros(parametros) } });
+}
+
+// Los parámetros de omisión (sin obra abierta), con su rótulo.
+export function parametrosDeOmision(): Promise<{ campos: CampoDeParametro[] }> {
+  return pedir<{ campos: CampoDeParametro[] }>(`${BASE}/parametros`);
 }
 
 export function partida(codigo: string): Promise<PartidaExistente> {
@@ -160,10 +181,26 @@ export function similares(dominio: string, descripcion: string): Promise<Similar
   );
 }
 
-export function guardar(cabecera: Cabecera, tablas: Tablas, datos: DatosDeGuardado): Promise<Guardado> {
-  return pedir<Guardado>(`${BASE}/guardar`, { metodo: "POST", cuerpo: { ...cabecera, ...tablas, ...datos } });
+export function guardar(
+  cabecera: Cabecera,
+  tablas: Tablas,
+  datos: DatosDeGuardado,
+  parametros: ParametrosDeTexto | null = null,
+): Promise<Guardado> {
+  return pedir<Guardado>(`${BASE}/guardar`, {
+    metodo: "POST",
+    cuerpo: { ...cabecera, ...tablas, ...datos, ...conParametros(parametros) },
+  });
 }
 
-export function prever(cabecera: Cabecera, tablas: Tablas, datos: DatosDeGuardado): Promise<Prevision> {
-  return pedir<Prevision>(`${BASE}/prever`, { metodo: "POST", cuerpo: { ...cabecera, ...tablas, ...datos } });
+export function prever(
+  cabecera: Cabecera,
+  tablas: Tablas,
+  datos: DatosDeGuardado,
+  parametros: ParametrosDeTexto | null = null,
+): Promise<Prevision> {
+  return pedir<Prevision>(`${BASE}/prever`, {
+    metodo: "POST",
+    cuerpo: { ...cabecera, ...tablas, ...datos, ...conParametros(parametros) },
+  });
 }

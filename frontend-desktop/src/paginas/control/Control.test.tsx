@@ -110,6 +110,8 @@ describe("Control de obra", () => {
   let calculo: () => Response;
   let valuaciones: () => Response;
   let lineaBase: () => Response;
+  // Ola 2 (2026-11-13): GET /v1/control/dias-por-periodo. Por omisión no responde (como un servidor anterior).
+  let diasDelPlan: () => Response;
   // Tarea 26: «Antes y después» de Recuperación (por omisión, sin línea base que comparar).
   let antesYDespues: () => Response;
 
@@ -121,9 +123,11 @@ describe("Control de obra", () => {
     calculo = () => json(CALCULO);
     valuaciones = () => json(VALUACIONES);
     lineaBase = () => json(LINEA_BASE);
+    diasDelPlan = () => json({ detalle: "ruta inesperada" }, 500);
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       const metodo = init?.method ?? "GET";
+      if (url.startsWith("/v1/control/dias-por-periodo")) return diasDelPlan();
       if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return lineaBase();
       if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return valuaciones();
       if (url.startsWith("/v1/control/calculo")) return calculo();
@@ -341,6 +345,66 @@ describe("Control de obra", () => {
       desde: "2026-11-02",
       perspectiva: "costo",
       fuente: "acta 1",
+    });
+  });
+
+  // Ola 2 (2026-11-13): los días hábiles por período salen del plan de la versión (Dia 1, Semana 5, Mes 20); se pedían a
+  // mano con 5 por omisión y un plan por días quedaba cinco veces más largo en Control.
+  describe("los días por período salen del plan", () => {
+    async function declarar(u: ReturnType<typeof userEvent.setup>) {
+      await u.type(screen.getByLabelText("Vigente desde"), "2026-11-02");
+      await u.type(screen.getByLabelText("Inicio de obra"), "2026-11-02");
+      await u.type(screen.getByLabelText("Fuente de la línea base"), "acta 1");
+      await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+      await screen.findByText("Línea base declarada.");
+    }
+
+    test("se proponen los del plan de la versión elegida y se envían", async () => {
+      diasDelPlan = () => json({ dias: "1", unidad: "dia", aviso: "" });
+      const u = montar();
+      const campo = await screen.findByLabelText("Días hábiles por período");
+      await waitFor(() => expect(campo).toHaveValue("1"));
+      expect(screen.getByText("Sale del plan de la versión, que va por días: 1 día hábil por período.")).toBeInTheDocument();
+      expect(fetchFalso.mock.calls.map(([u]) => String(u))).toContain("/v1/control/dias-por-periodo?proyecto=OB-S2&version=OB-001");
+      await declarar(u);
+      expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({ version: "OB-001", dias_por_periodo: "1" });
+    });
+
+    test("un plan por meses propone 20 y lo dice", async () => {
+      diasDelPlan = () => json({ dias: "20", unidad: "mes", aviso: "" });
+      montar();
+      const campo = await screen.findByLabelText("Días hábiles por período");
+      await waitFor(() => expect(campo).toHaveValue("20"));
+      expect(screen.getByText("Sale del plan de la versión, que va por meses: 20 días hábiles por período.")).toBeInTheDocument();
+    });
+
+    test("si el plan no dice su unidad se ve el aviso del servidor", async () => {
+      const AVISO = "El plan de la versión no dice su unidad: se proponen 20 días hábiles, un mes.";
+      diasDelPlan = () => json({ dias: "20", unidad: "", aviso: AVISO });
+      montar();
+      const campo = await screen.findByLabelText("Días hábiles por período");
+      await waitFor(() => expect(campo).toHaveValue("20"));
+      expect(screen.getByText(AVISO)).toBeInTheDocument();
+    });
+
+    test("lo que la persona escribe manda", async () => {
+      diasDelPlan = () => json({ dias: "5", unidad: "semana", aviso: "" });
+      const u = montar();
+      const campo = await screen.findByLabelText("Días hábiles por período");
+      await waitFor(() => expect(campo).toHaveValue("5"));
+      await u.clear(campo);
+      await u.type(campo, "3");
+      await declarar(u);
+      expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({ dias_por_periodo: "3" });
+    });
+
+    test("sin la propuesta el campo queda vacío y el servidor los toma del plan al declarar", async () => {
+      const u = montar();
+      const campo = await screen.findByLabelText("Días hábiles por período");
+      expect(campo).toHaveValue("");
+      expect(screen.getByText("Vacío: se toman del plan de la versión al declarar.")).toBeInTheDocument();
+      await declarar(u);
+      expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({ dias_por_periodo: "" });
     });
   });
 

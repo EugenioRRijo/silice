@@ -98,8 +98,30 @@ function resumenCompuesto(valor: string, clave: string): string | null {
     .join("; ");
 }
 
+// Las especificaciones de un renglón («clave=valor; clave=valor», ordenadas: `_cambios_de_especificaciones` de
+// aplicacion/hoja.py). Una clave que empieza por «_» es una directiva de Sílice, no un dato de la persona: la del frente
+// (`aplicacion/frentes.py`, «_frente») sale como «Frente: …» y las que no tienen rótulo no se muestran (ronda 1 del
+// árbitro de la ola 2, hallazgo 6). Un valor puede llevar «; » (un frente «Estación; 2»): solo se corta antes de otra
+// «clave=».
+const DIRECTIVAS: Record<string, string> = { _frente: "Frente" };
+
+function especificacionesLegibles(valor: string): string {
+  if (valor === "") return "";
+  return valor
+    .split(/; (?=[^\s;=]+=)/)
+    .flatMap((par) => {
+      const igual = par.indexOf("=");
+      const [k, v] = igual < 0 ? [par, ""] : [par.slice(0, igual), par.slice(igual + 1)];
+      if (Object.hasOwn(DIRECTIVAS, k)) return [`${DIRECTIVAS[k]}: ${v}`];
+      if (k.startsWith("_")) return [];
+      return [igual < 0 ? par : `${k}=${cifraSiLoEs(v)}`];
+    })
+    .join("; ");
+}
+
 // El antes o el después de un cambio de ese campo; `clave` es la de la fila del registro (dice de qué tabla es un resumen).
 export function presentarValor(campo: string, valor: string, clave = ""): string {
+  if (campo === "especificaciones") return especificacionesLegibles(valor);
   if (campo === "fila") {
     const compuesto = resumenCompuesto(valor, clave);
     if (compuesto !== null) return compuesto;

@@ -266,3 +266,98 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     expect(envio("/v1/control/costos")).toMatchObject({ partida: "" });
   });
 });
+
+// Ola 2 (2026-11-13, usabilidad 7 de la prueba de punta a punta): un contrato que repite un código en dos renglones (el
+// mismo trabajo en dos frentes) ofrecía un solo renglón. Ahora la lista trae cada renglón (`renglon`, `renglones`); la
+// valuación sigue siendo por código (el núcleo suma los renglones de un código) y la observación vacía dice el renglón.
+describe("Control: un código repetido en dos renglones se ofrece una vez por renglón", () => {
+  const fetchFalso = vi.fn<typeof fetch>();
+  const POR_RENGLON = {
+    version: "OB-003",
+    aviso: "",
+    truncada: false,
+    partidas: [
+      { codigo: "OB-A", descripcion: "Excavacion de zanja", unidad: "m3", renglon: 1, renglones: 2 },
+      { codigo: "OB-B", descripcion: "Tuberia de drenaje", unidad: "m", renglon: 2, renglones: 1 },
+      { codigo: "OB-A", descripcion: "Excavacion de zanja, frente 2 (ficticio)", unidad: "m3", renglon: 3, renglones: 2 },
+    ],
+  };
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchFalso);
+    fetchFalso.mockReset();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://x");
+      const metodo = init?.method ?? "GET";
+      if (url.pathname === "/v1/control/linea-base" && metodo === "GET") return json(LINEA_BASE);
+      if (url.pathname === "/v1/control/valuaciones" && metodo === "GET") return json(VALUACIONES);
+      if (url.pathname === "/v1/control/partidas" && metodo === "GET") return json(POR_RENGLON);
+      if (url.pathname === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 0, errores: 0 });
+      return json({ detalle: `ruta inesperada ${metodo} ${url.pathname}` }, 500);
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function montar() {
+    const aplicacion: Aplicacion = {
+      sesion: SESION,
+      proyecto: "OB-S2",
+      caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
+      recargarProyectos: vi.fn(),
+      alExpirar: vi.fn(),
+    };
+    render(
+      <ContextoAplicacion.Provider value={aplicacion}>
+        <PaginaControl />
+      </ContextoAplicacion.Provider>,
+    );
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByLabelText("Partida 1");
+    return u;
+  }
+
+  test("ofrece los dos renglones de OB-A, cada uno con su número", async () => {
+    const u = await montar();
+    await u.type(screen.getByLabelText("Partida 1"), "zanja");
+    const opciones = await screen.findAllByRole("option", { name: /Excavacion de zanja/ });
+    expect(opciones).toHaveLength(2);
+    expect(opciones[0]).toHaveTextContent("renglón 1 del presupuesto");
+    expect(opciones[1]).toHaveTextContent("frente 2");
+    expect(opciones[1]).toHaveTextContent("renglón 3 del presupuesto");
+  });
+
+  test("elegir el segundo renglón escribe el código y deja el renglón en la observación", async () => {
+    const u = await montar();
+    await u.type(screen.getByLabelText("Número"), "V-03");
+    await u.type(screen.getByLabelText("Partida 1"), "frente 2");
+    await u.click(await screen.findByRole("option", { name: /frente 2/ }));
+    expect(screen.getByLabelText("Partida 1")).toHaveValue("OB-A");
+    expect(screen.getByLabelText("Observación 1")).toHaveValue("Renglón 3");
+    // La revisión de la valuación es por código: la ayuda lo dice.
+    expect(screen.getByText(/2 renglones con este código: la valuación se revisa con su suma/)).toBeInTheDocument();
+    await u.type(screen.getByLabelText("Cantidad 1"), "30");
+    await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await screen.findByText(/Valuación registrada/);
+    const llamada = fetchFalso.mock.calls.find(([r, i]) => new URL(String(r), "http://x").pathname === "/v1/control/valuaciones" && i?.method === "POST");
+    expect((JSON.parse(String(llamada?.[1]?.body)) as { lineas: unknown[] }).lineas).toEqual([
+      { partida: "OB-A", cantidad: "30", fecha_medicion: "", observacion: "Renglón 3", causa: null },
+    ]);
+  });
+
+  test("una observación ya escrita no se pisa", async () => {
+    const u = await montar();
+    await u.type(screen.getByLabelText("Observación 1"), "medido con cinta");
+    await u.type(screen.getByLabelText("Partida 1"), "frente 2");
+    await u.click(await screen.findByRole("option", { name: /frente 2/ }));
+    expect(screen.getByLabelText("Observación 1")).toHaveValue("medido con cinta");
+  });
+
+  test("un código de un solo renglón no cambia la observación", async () => {
+    const u = await montar();
+    await u.type(screen.getByLabelText("Partida 1"), "tuberia");
+    await u.click(await screen.findByRole("option", { name: /Tuberia de drenaje/ }));
+    expect(screen.getByLabelText("Observación 1")).toHaveValue("");
+  });
+});

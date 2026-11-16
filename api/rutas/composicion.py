@@ -30,7 +30,7 @@ solo se traducen las tablas de texto y se arma la respuesta. Montos y decimales 
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from datetime import date, datetime
 from typing import Literal
@@ -41,6 +41,13 @@ from pydantic import BaseModel, Field
 from api.acceso import EDITAR
 from api.dependencias import SesionDep
 from api.sin_eco import RutaSinEco, sin_eco
+from aplicacion.componer_parametros import (
+    ParametrosInvalidos,
+    desglose_con_parametros,
+    mensaje_con_precio,
+    parametros_de_omision,
+    parametros_desde_textos,
+)
 from aplicacion.composicion import (
     ComposicionInvalida,
     Evaluacion,
@@ -66,7 +73,7 @@ from aplicacion.desperdicio import (
     trazas_vigentes,
 )
 from aplicacion.listas_para_armar import SinListaParaArmar
-from core.contracts import Dominio, ModalidadManoObra, ResultadoAPU
+from core.contracts import Dominio, ModalidadManoObra, ParametrosCosto, ResultadoAPU
 
 #: El 422 de forma de `guardar` y `prever`: fijo, sin repetir lo enviado.
 MENSAJE_FORMA_PREVER = (
@@ -126,8 +133,20 @@ class Cabecera(BaseModel):
     rendimiento: str = ""
 
 
+class ParametrosDeTexto(BaseModel):
+    """Los cuatro parámetros del precio unitario como se teclean (coma decimal), RF-200."""
+
+    fcas: str = ""
+    bono_alimentacion: str = ""
+    administracion: str = ""
+    utilidad: str = ""
+
+
 class PeticionEvaluar(Cabecera, Tablas):
-    """Cabecera y tablas tal como se teclean: todo texto, vacíos permitidos."""
+    """Cabecera y tablas tal como se teclean: todo texto, vacíos permitidos. `parametros`
+    (RF-200), si viene, es con qué se calcula el precio unitario; si no, los de omisión."""
+
+    parametros: ParametrosDeTexto | None = None
 
 
 class PeticionGuardar(PeticionEvaluar):
@@ -180,6 +199,19 @@ class EvaluacionRespuesta(BaseModel):
 class OpcionesRespuesta(BaseModel):
     dominios: list[str]
     modalidades: list[str]
+
+
+class CampoDeParametro(BaseModel):
+    clave: str
+    rotulo: str
+    valor: str
+
+
+class ParametrosRespuesta(BaseModel):
+    """Los parámetros de omisión con su rótulo (la misma forma que `campos` de la vista
+    `parametros` de la Hoja), RF-200."""
+
+    campos: list[CampoDeParametro]
 
 
 class PrecargaRespuesta(BaseModel):
@@ -339,6 +371,42 @@ def opciones() -> OpcionesRespuesta:
     )
 
 
+@router.get("/parametros", response_model=ParametrosRespuesta, dependencies=EDITAR)
+def parametros() -> ParametrosRespuesta:
+    """Los parámetros de omisión del precio unitario (NORMAS.md §4) con el rótulo de la Hoja: lo
+    que Componer propone sin una obra abierta (RF-200). Con una obra, la pantalla lee los de su
+    borrador (`GET /v1/hoja/borradores/{id}/vistas/parametros`)."""
+    return ParametrosRespuesta(
+        campos=[
+            CampoDeParametro(clave=clave, rotulo=rotulo, valor=valor)
+            for clave, rotulo, valor in parametros_de_omision()
+        ]
+    )
+
+
+def _parametros(peticion: PeticionEvaluar) -> ParametrosCosto | None:
+    """Los parámetros de la petición (RF-200), o `None` si no vienen (los de omisión).
+    `ParametrosInvalidos` si uno está mal escrito."""
+    if peticion.parametros is None:
+        return None
+    return parametros_desde_textos(peticion.parametros.model_dump())
+
+
+def _con_parametros(
+    peticion: PeticionEvaluar, materiales: Sequence[Mapping[str, str]], parametros: ParametrosCosto
+) -> ResultadoAPU:
+    return desglose_con_parametros(
+        peticion.codigo,
+        peticion.descripcion,
+        peticion.unidad,
+        peticion.rendimiento,
+        materiales,
+        _filas(peticion.equipos),
+        _filas(peticion.mano_obra),
+        parametros,
+    )
+
+
 @router.post("/evaluar", response_model=EvaluacionRespuesta, dependencies=EDITAR)
 def evaluar(sesion: SesionDep, peticion: PeticionEvaluar) -> EvaluacionRespuesta:
     """El desglose en vivo con sus advertencias, sin escribir (RB-2, RB-5). Con desperdicio, la
@@ -346,7 +414,8 @@ def evaluar(sesion: SesionDep, peticion: PeticionEvaluar) -> EvaluacionRespuesta
     try:
         por_fila = trazas_por_fila(_filas(peticion.materiales))
         materiales, _ = _materiales(peticion.materiales)
-    except ComposicionInvalida as error:
+        parametros_pedidos = _parametros(peticion)
+    except (ComposicionInvalida, ParametrosInvalidos) as error:
         return EvaluacionRespuesta(
             estado="incompleto",
             aviso=str(error),
@@ -366,6 +435,12 @@ def evaluar(sesion: SesionDep, peticion: PeticionEvaluar) -> EvaluacionRespuesta
         _filas(peticion.equipos),
         _filas(peticion.mano_obra),
     )
+    if parametros_pedidos is not None and evaluacion.resultado is not None:
+        # RF-200: el desglose que se ve, con los parámetros de la pantalla; el contraste y las
+        # advertencias siguen sobre la base de omisión (`aplicacion.componer_parametros`).
+        evaluacion = replace(
+            evaluacion, resultado=_con_parametros(peticion, materiales, parametros_pedidos)
+        )
     return _evaluacion(evaluacion, por_fila)
 
 
@@ -427,6 +502,7 @@ def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
     desperdicio (F5 vial) se guarda en la misma transacción."""
     try:
         materiales, trazas = _materiales(peticion.materiales)
+        parametros_pedidos = _parametros(peticion)
         resultado = guardar_desde_tablas(
             sesion,
             peticion.codigo,
@@ -443,11 +519,21 @@ def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
         )
     except SinListaParaArmar as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
-    except ComposicionInvalida as error:
+    except (ComposicionInvalida, ParametrosInvalidos) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if resultado.precio_unitario is None or resultado.mensaje is None:
         sesion.rollback()
         raise HTTPException(status_code=422, detail=resultado.motivo)
+    if parametros_pedidos is not None:
+        # RF-200: el precio del mensaje es el de los parámetros de la pantalla, como el desglose.
+        precio = presentar(
+            _con_parametros(peticion, materiales, parametros_pedidos).precio_unitario
+        )
+        resultado = replace(
+            resultado,
+            precio_unitario=precio,
+            mensaje=mensaje_con_precio(resultado.mensaje, resultado.precio_unitario, precio),
+        )
     # la hora solo fecha el rastro de la traza; no entra en ninguna cifra
     ahora = datetime.now().replace(microsecond=0)
     guardar_trazas(sesion, peticion.codigo.strip(), trazas, ahora=ahora)
@@ -466,6 +552,7 @@ def prever(sesion: SesionDep, peticion: PeticionGuardar) -> PrevisionRespuesta:
     nada: `prever_guardado` lo deshace siempre y aquí no se confirma."""
     try:
         materiales, _ = _materiales(peticion.materiales)
+        _parametros(peticion)  # RF-200: los mismos 422 que `guardar`
         prevision = prever_guardado(
             sesion,
             peticion.codigo,
@@ -482,7 +569,7 @@ def prever(sesion: SesionDep, peticion: PeticionGuardar) -> PrevisionRespuesta:
         )
     except SinListaParaArmar as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
-    except ComposicionInvalida as error:
+    except (ComposicionInvalida, ParametrosInvalidos) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     return _prevision(prevision)
 

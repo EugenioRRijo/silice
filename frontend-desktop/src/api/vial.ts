@@ -15,6 +15,9 @@ export interface CapaDeTramo {
   esponjamiento?: string | null;
   limpieza?: boolean;
   medicion?: string | null;
+  // Solo imprimación y riego de adherencia: la dosis es del APU con suministro y no se deriva el ligante (línea vial del
+  // 2026-11-13, D2). Falso u omitido, como antes.
+  suministro?: boolean;
 }
 
 // Una línea de demarcación o, con tipo «superficie», elementos iguales de `area_m2` cada uno (F5 vial).

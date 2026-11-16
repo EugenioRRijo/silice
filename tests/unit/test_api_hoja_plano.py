@@ -310,7 +310,7 @@ def test_p3_una_altura_invalida_es_422_con_el_texto_de_la_clasica_y_ninguna_se_c
     assert respuesta.status_code == 422
     assert respuesta.headers["cache-control"] == "no-store"
     assert respuesta.json() == {
-        "detalle": f"Altura de «ZB»: «{malo}» no es una altura valida. Escriba un numero de "
+        "detalle": f"Altura de «ZB»: «{malo}» no es una altura válida. Escriba un número de "
         "metros mayor que 0 y hasta 250, por ejemplo 2,50. No se cargó ninguna altura."
     }
     sigue = _alturas(navegador, ficha, id_, {}).json()  # nada enviado: la de antes, sin cambio
@@ -347,8 +347,8 @@ def test_p4_un_entero_invalido_es_422_con_el_texto_de_la_clasica_y_ninguno_se_de
     respuesta = _circuitos(navegador, ficha, id_, circuitos)
     assert respuesta.status_code == 422
     assert respuesta.json() == {
-        "detalle": "Circuito «C2»: los puntos maximos debe ser un numero entero de 1 o mas "
-        "(se escribio «0»). No se declaró ningún circuito."
+        "detalle": "Circuito «C2»: los puntos máximos debe ser un número entero de 1 o más "
+        "(se escribió «0»). No se declaró ningún circuito."
     }
     sigue = _circuitos(navegador, ficha, id_, {}).json()
     assert [c["id"] for c in sigue["circuitos_supuestos"]] == ["C1", "C2"]

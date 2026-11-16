@@ -11,7 +11,14 @@ from pydantic import BaseModel, Field
 
 from aplicacion.control import PartidasDeUnaVersion
 
-__all__ = ["PartidaDelContratoRespuesta", "PartidasDelContratoRespuesta", "partidas_a_respuesta"]
+__all__ = [
+    "PartidaDelContratoRespuesta",
+    "PartidasDelContratoRespuesta",
+    "RenglonDelContratoRespuesta",
+    "RenglonesDelContratoRespuesta",
+    "partidas_a_respuesta",
+    "renglones_a_respuesta",
+]
 
 
 class PartidaDelContratoRespuesta(BaseModel):
@@ -44,6 +51,43 @@ def partidas_a_respuesta(
         aviso=aviso,
         partidas=[
             PartidaDelContratoRespuesta(codigo=p.codigo, descripcion=p.descripcion, unidad=p.unidad)
+            for p in halladas.partidas
+        ],
+        truncada=halladas.truncada,
+    )
+
+
+class RenglonDelContratoRespuesta(PartidaDelContratoRespuesta):
+    """Un renglón del presupuesto (Control, ola 2 del 2026-11-13): un código repetido en dos
+    renglones se ofrece dos veces; la valuación sigue siendo por código."""
+
+    renglon: int = Field(description="El número del renglón en el presupuesto, desde 1")
+    renglones: int = Field(description="Cuántos renglones tiene ese código en el presupuesto")
+
+
+class RenglonesDelContratoRespuesta(PartidasDelContratoRespuesta):
+    partidas: list[RenglonDelContratoRespuesta] = Field(  # type: ignore[assignment]
+        description="Una por renglón del presupuesto, en su orden"
+    )
+
+
+def renglones_a_respuesta(
+    halladas: PartidasDeUnaVersion | None, aviso: str = ""
+) -> RenglonesDelContratoRespuesta:
+    """Como `partidas_a_respuesta`, con el número de cada renglón (`renglones_de_la_version`)."""
+    if halladas is None:
+        return RenglonesDelContratoRespuesta(version="", aviso=aviso, partidas=[])
+    return RenglonesDelContratoRespuesta(
+        version=halladas.version,
+        aviso=aviso,
+        partidas=[
+            RenglonDelContratoRespuesta(
+                codigo=p.codigo,
+                descripcion=p.descripcion,
+                unidad=p.unidad,
+                renglon=p.renglon or 0,
+                renglones=p.renglones or 0,
+            )
             for p in halladas.partidas
         ],
         truncada=halladas.truncada,

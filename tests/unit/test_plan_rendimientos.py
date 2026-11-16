@@ -72,11 +72,12 @@ PARTIDA_AJENA = (
 )
 DEMASIADO_LARGO = (
     "El plan desde los rendimientos tendría 501 períodos y la matriz admite 500: elija semanas o "
-    "más cuadrillas."
+    "meses, o más cuadrillas."
 )
 FORMA_RENDIMIENTOS = (
     "El plan desde los rendimientos no tiene la forma esperada: envíe rev (entero), las "
-    "cuadrillas de cada partida como texto, las partidas en paralelo y la unidad (dia o semana)."
+    "cuadrillas de cada partida como texto, las partidas en paralelo y la unidad (dia, semana o "
+    "mes)."
 )
 REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo."
 
@@ -476,10 +477,42 @@ def test_la_ruta_en_semanas(navegador):
     assert filas["OBRA-01"] == {"Semana 1": "1", "Semana 2": "0"}
 
 
+def test_la_ruta_en_meses(navegador):
+    # Ola 2 (2026-11-13): «Mes n» también desde la pestaña, no solo en la primera versión
+    cliente, ficha = navegador
+    id_, rev = _borrador_con_la_vivienda(cliente, ficha, {"OBRA-01": "18", "OBRA-02": "12"})
+    respuesta = _rendimientos(
+        cliente, ficha, id_, {"rev": rev, "cuadrillas": {}, "paralelas": [], "unidad": "mes"}
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    # 4 + 2 = 6 días hábiles → un mes de 20
+    assert respuesta.json()["plan"]["etiquetas"] == ["Mes 1"]
+
+
+def test_sin_plan_la_vista_trae_las_partidas_para_poner_las_cuadrillas(navegador):
+    # Ola 2 (2026-11-13): la salida del 422 de más de 10.000 días pide cuadrillas antes del plan
+    cliente, ficha = navegador
+    id_, _ = _borrador_con_la_vivienda(cliente, ficha, {"OBRA-04": "210", "OBRA-01": "18"})
+    vista = cliente.get(f"/v1/hoja/borradores/{id_}/vistas/plan").json()
+    assert vista["hay_plan"] is False and vista["filas"] == []
+    assert vista["partidas"] == ["OBRA-04", "OBRA-01"]
+
+
+def test_en_meses_demasiado_largo_solo_queda_asignar_cuadrillas():
+    # 10.020 días hábiles de una partida (45.090 ÷ 4,5) → 501 meses de 20
+    lista = duraciones([item("OBRA-01", "45090")], COMPOSICIONES, {})
+    with pytest.raises(PlanDemasiadoLargo) as error:
+        plan_por_rendimientos(lista, unidad="mes")
+    assert str(error.value) == (
+        "El plan desde los rendimientos tendría 501 períodos y la matriz admite 500: asigne más "
+        "cuadrillas a las partidas largas."
+    )
+
+
 @pytest.mark.parametrize(
     "cuerpo",
     [
-        {"rev": 0, "cuadrillas": {}, "paralelas": [], "unidad": "mes"},
+        {"rev": 0, "cuadrillas": {}, "paralelas": [], "unidad": "anio"},
         {"rev": "0", "cuadrillas": {}, "paralelas": [], "unidad": "dia"},
         {"rev": 0, "cuadrillas": {"OBRA-01": 2}, "paralelas": [], "unidad": "dia"},
         {"rev": 0, "cuadrillas": {}, "paralelas": [], "unidad": "dia", "otro": "VALOR-CENTINELA"},
@@ -562,8 +595,8 @@ def test_si_ni_en_meses_cabe_lo_dice_con_la_salida():
         plan_que_cabe([item("OBRA-01", "45004.5"), *ITEMS[1:]], COMPOSICIONES)
     assert str(error.value) == (
         "El plan desde los rendimientos tendría 503 meses y la matriz admite 500 períodos: en "
-        "«Plan y equilibrio» cree el plan y asigne más cuadrillas a las partidas largas, y "
-        "vuelva a guardar."
+        "«Plan y equilibrio» asigne más cuadrillas a las partidas largas, haga el plan desde los "
+        "rendimientos por meses y vuelva a guardar."
     )
 
 

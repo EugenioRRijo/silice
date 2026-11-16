@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { CampoConBusqueda } from "./CampoConBusqueda";
-import { buscadorDePartidasDelContrato, partidaDelContrato } from "./partidasDelContrato";
+import { buscadorDePartidasDelContrato, codigoRepetido, partidaDelContrato } from "./partidasDelContrato";
 import type { PartidaDelContrato } from "./partidasDelContrato";
 import { unidadEscrita } from "../comun/unidades";
 
@@ -15,6 +15,9 @@ interface Props {
   soloDelContrato: boolean;
   texto: string;
   alCambiarTexto: (texto: string) => void;
+  // Lo elegido de la lista, entero (con su renglón): si se da, se llama EN VEZ de `alCambiarTexto` y la página escribe
+  // el código (y lo que quiera más) de una vez.
+  alElegirPartida?: (partida: PartidaDelContrato) => void;
   alExpirar: () => void;
   invalido?: boolean;
   textoInvalido?: string;
@@ -37,6 +40,7 @@ export function CampoDePartida({
   soloDelContrato,
   texto,
   alCambiarTexto,
+  alElegirPartida,
   alExpirar,
   invalido,
   textoInvalido,
@@ -48,7 +52,9 @@ export function CampoDePartida({
   const buscar = useMemo(() => buscadorDePartidasDelContrato(partidas ?? []), [partidas]);
   const cerrada = soloDelContrato && partidas !== null;
   const elegida = partidas ? partidaDelContrato(partidas, texto) : null;
-  const ayudaViva = !enCelda && elegida ? `${elegida.descripcion} · ${unidadEscrita(elegida.unidad)}` : enCelda ? undefined : ayuda;
+  // Un código en varios renglones: la valuación se revisa con la suma de todos (el núcleo mide por código).
+  const repetido = elegida && codigoRepetido(elegida) ? ` · ${elegida.renglones} renglones con este código: la valuación se revisa con su suma` : "";
+  const ayudaViva = !enCelda && elegida ? `${elegida.descripcion} · ${unidadEscrita(elegida.unidad)}${repetido}` : enCelda ? undefined : ayuda;
   return (
     <CampoConBusqueda
       id={id}
@@ -59,7 +65,7 @@ export function CampoDePartida({
       texto={texto}
       alCambiarTexto={alCambiarTexto}
       buscar={buscar}
-      alElegir={(opcion) => alCambiarTexto(opcion.valor.codigo)}
+      alElegir={(opcion) => (alElegirPartida ? alElegirPartida(opcion.valor) : alCambiarTexto(opcion.valor.codigo))}
       valorPropio={cerrada ? undefined : { rotulo: (t) => `Usar «${t.trim()}» tal cual`, alUsar: (t) => alCambiarTexto(t.trim()) }}
       vacio={
         partidas === null

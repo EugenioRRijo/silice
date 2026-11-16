@@ -28,6 +28,7 @@ from core import models
 from core.budget import TablaExportable, cargar_elaboracion, exportar_hoja
 from core.budget.puente import PeriodoDelEstudio, estudio_con_valuaciones, periodos_declarados
 from core.budget.reajuste import (
+    AVISO_USD_BS,
     Clausula,
     Componente,
     Ejecutado,
@@ -216,6 +217,18 @@ PLANTILLAS_DE_REAJUSTE: tuple[tuple[str, str], ...] = (
 
 #: Restituye las tildes de un mensaje del núcleo de reajuste; otro texto pasa sin cambios.
 con_tildes_de_reajuste = catalogo_de_frases(PLANTILLAS_DE_REAJUSTE, HUECOS_DE_REAJUSTE)
+
+
+#: La salida de la advertencia S1-R11 (RF-214): la serie en USD se arma en «Índices del BCV».
+REMEDIO_USD_BS = (
+    "Para un contrato en USD, exprese el índice en USD en «Índices del BCV» y cite esa serie en "
+    "la cláusula."
+)
+
+
+def avisos_con_remedio(avisos: Sequence[str]) -> list[str]:
+    """Los avisos del estudio; el de un índice en Bs en un proyecto en USD, con su salida."""
+    return [f"{a}. {REMEDIO_USD_BS}" if a == AVISO_USD_BS else a for a in avisos]
 
 
 def _rotulo(campo: str) -> str:

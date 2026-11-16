@@ -12,6 +12,7 @@ import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { IvaDelPresupuesto, parrafosDeAyudaDelIva } from "./IvaDelPresupuesto";
+import { PresupuestoPorFrentes } from "./PresupuestoPorFrentes";
 import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
 import { PanelDeApu } from "./PanelDeApu";
 import type { PartidaDelPanel } from "./PanelDeApu";
@@ -333,6 +334,19 @@ function EditorDePresupuesto({
         Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
       {llevaIva(vista) && <IvaDelPresupuesto impuestos={vista.impuestos} moneda={vista.moneda} />}
+      {/* Libro por frentes (2026-11-13): los subtotales por frente, a pedido; los calcula el servidor. */}
+      <PresupuestoPorFrentes
+        id={id}
+        rev={rev}
+        filas={vista.filas}
+        moneda={vista.moneda}
+        puedeEditar={puedeEditar}
+        alAceptar={(resumen) => {
+          alAceptar(resumen);
+          alRelectura();
+        }}
+        alAusente={alAusente}
+      />
       {porQuitar !== null && (
         <ConfirmarQuitar
           partida={porQuitar.partida}

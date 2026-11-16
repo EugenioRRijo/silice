@@ -33,6 +33,18 @@ Hallazgos (`FilaHallazgo`, con su `HOJA!CELDA`; la acción es siempre «informad
   mitad tienen la misma que su APU. Pasa cuando el perfil lee la hoja de otro frente (prueba de
   punta a punta del 2026-11-13, E2E-2; umbral simulado en `docs/bitacora/2026-11-13-e2e-front.md`):
   cada renglón da su AH6 y este hallazgo dice la causa probable y qué hoja leyó el perfil.
+- **AH12** las hojas del libro de APU que no empiezan por el prefijo del perfil (INFO, en la A1 de
+  la primera): se nombran sin leerlas (a lo sumo `MAX_NOMBRADAS`), para que una hoja de APU mal
+  nombrada no se salte en silencio (libro por frentes, D3).
+
+**Varias hojas de presupuesto** (libro por frentes, ola 2, línea 3, 2026-11-13; decisiones
+simuladas en `docs/bitacora/2026-11-13-ola2-libro-por-frentes.md`): el perfil puede declarar una
+hoja por frente (`presupuesto.hojas`) y quien llama puede elegir otras (`hojas=`, D4). Con varias
+hojas, el precio unitario se compara renglón por renglón en cada hoja (AH5) y la cantidad del APU,
+una vez, con la **suma** de las hojas que traen ese renglón (AH6 y AH11, D1): un libro de APU que
+sirve a varios frentes lleva en su cabecera la cantidad de la obra entera. Con una hoja, todo es
+como antes. `ResultadoApuPorHoja.renglones` guarda cada renglón con su hoja (su frente) para quien
+lleva el libro a la Hoja.
 
 El enlace presupuesto ↔ APU es el número de renglón (la cabecera «Partida N°» de la hoja). Un
 libro de solo valores no trae fórmulas: las reglas L del libro conocido no aplican y la evidencia es
@@ -62,6 +74,7 @@ from typing import Any
 from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.lector_apu_por_hoja import (
     TOPE_CIFRA,
+    es_hoja_de_apu,
     leer_hojas,
     leer_libro_apu_por_hoja,
     letra,
@@ -85,11 +98,20 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
 from adapters.vial.constantes import TOLERANCIA_PRECIO
 from aplicacion.cifras import BandaIlegible, leer_banda
 from aplicacion.regla_desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
+from core.contracts.apu import ComposicionAPU, ParametrosCosto
 from core.costing.motor import calcular_apu
 from fusion.mapeo import composicion_de_apu_por_hoja
 
-__all__ = ["ApuRecalculado", "ResultadoApuPorHoja", "auditar_apu_por_hoja"]
+__all__ = [
+    "MAX_NOMBRADAS",
+    "ApuRecalculado",
+    "RenglonPresupuesto",
+    "ResultadoApuPorHoja",
+    "auditar_apu_por_hoja",
+]
 
+#: Cuántas hojas nombra a lo sumo un mensaje (AH12, una hoja pedida que no está): «… y n más».
+MAX_NOMBRADAS = 10
 _CERO = Decimal(0)
 _CIEN = Decimal(100)
 _CENTAVO = Decimal("0.01")
@@ -98,7 +120,12 @@ _INFORMADO = "informado"
 
 @dataclass(frozen=True, slots=True)
 class ApuRecalculado:
-    """Una hoja de APU: lo impreso y lo que recalcula Sílice (`None` si no es evaluable)."""
+    """Una hoja de APU: lo impreso y lo que recalcula Sílice (`None` si no es evaluable).
+
+    Libro por frentes (2026-11-13): también la composición del núcleo y sus parámetros (los mismos
+    con que se recalculó), la cantidad de la cabecera con su celda y la celda del precio de cada
+    línea en el orden canónico (materiales, equipos y mano de obra): lo que necesita quien lleva el
+    libro a la Hoja, sin volver a leerlo."""
 
     hoja: str
     numero: int | None
@@ -108,6 +135,11 @@ class ApuRecalculado:
     precio_impreso: Decimal
     precio_silice: Decimal | None
     celda_precio: str
+    composicion: ComposicionAPU | None = None
+    parametros: ParametrosCosto | None = None
+    cantidad: Decimal | None = None
+    celda_cantidad: str | None = None
+    celdas_precio: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,8 +153,12 @@ class ResultadoApuPorHoja:
     hallazgos: tuple[FilaHallazgo, ...]
     trazas: tuple[TrazaDesperdicio, ...]
     presupuesto: str | None = None
-    #: La hoja del libro de presupuesto que se leyó (la del perfil), `None` sin presupuesto.
+    #: La primera hoja del libro de presupuesto que se leyó, `None` sin presupuesto.
     hoja_presupuesto: str | None = None
+    #: Todas las hojas leídas del presupuesto (una por frente), en su orden; vacía sin presupuesto.
+    hojas_presupuesto: tuple[str, ...] = ()
+    #: Los renglones del presupuesto, hoja por hoja; vacía sin presupuesto.
+    renglones: tuple[RenglonPresupuesto, ...] = ()
 
 
 def _es(valor: Decimal, decimales: int | None = None) -> str:
@@ -259,13 +295,20 @@ def _evaluar(
             )
         )
     if apu.impuesto:
+        partes = (
+            f" ({_pct(apu.impuesto - apu.otros_impuestos)} % y otros impuestos del "
+            f"{_pct(apu.otros_impuestos)} %)"
+            if apu.otros_impuestos and apu.impuesto != apu.otros_impuestos
+            else ""
+        )
         hallazgos.append(
             _hallazgo(
                 "AH4",
                 "ADVERTENCIA",
-                apu.celdas.get("impuesto", celda_pu),
-                f"{_ident(apu)}: el APU suma un impuesto del {_pct(apu.impuesto)} %; el IVA va "
-                "sobre el total del presupuesto y contarlo también aquí lo cobraría dos veces.",
+                apu.celdas.get("impuesto", apu.celdas.get("otros_impuestos", celda_pu)),
+                f"{_ident(apu)}: el APU suma un impuesto del {_pct(apu.impuesto)} %{partes}; el "
+                "IVA va sobre el total del presupuesto y contarlo también aquí lo cobraría dos "
+                "veces.",
             )
         )
     silice = calcular_apu(composicion, parametros).precio_unitario if evaluable else None
@@ -304,6 +347,7 @@ def _evaluar(
                         diferencia,
                     )
                 )
+    orden = (TipoInsumo.MATERIAL, TipoInsumo.EQUIPO, TipoInsumo.MANO_OBRA)
     recalculado = ApuRecalculado(
         apu.hoja,
         apu.numero,
@@ -313,6 +357,16 @@ def _evaluar(
         impreso,
         silice,
         str(celda_pu),
+        composicion=composicion,
+        parametros=parametros,
+        cantidad=apu.cantidad,
+        celda_cantidad=str(apu.celdas["cantidad"]) if "cantidad" in apu.celdas else None,
+        celdas_precio=tuple(
+            str(linea.celdas["precio"])
+            for tipo in orden
+            for linea in apu.lineas
+            if linea.tipo is tipo and "precio" in linea.celdas
+        ),
     )
     return recalculado, hallazgos, trazas
 
@@ -321,7 +375,12 @@ def _evaluar(
 
 
 @dataclass(frozen=True, slots=True)
-class _Renglon:
+class RenglonPresupuesto:
+    """Un renglón del libro de presupuesto: su hoja (el frente), su fila (1-base), el número que lo
+    enlaza con su APU, el código, la cantidad y el precio unitario escritos (`None` si la celda no
+    trae un número). Lo usa también quien lleva el libro a la Hoja."""
+
+    hoja: str
     fila: int
     numero: int
     codigo: str
@@ -329,6 +388,13 @@ class _Renglon:
     precio: Decimal | None
     columnas: Mapping[str, int]
     encabezado: int  # la fila (1-base) de los encabezados de la hoja
+
+    def celda(self, campo: str) -> str:
+        return f"{self.hoja}!{letra(self.columnas[campo])}{self.fila}"
+
+    @property
+    def celda_cantidad(self) -> str:
+        return self.celda("cantidad")
 
 
 def _encabezado(filas: Sequence[Sequence[Any]], perfil: PerfilApuPorHoja):
@@ -346,16 +412,33 @@ def _encabezado(filas: Sequence[Sequence[Any]], perfil: PerfilApuPorHoja):
     return None
 
 
-def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str, list[_Renglon]]:
-    buscada = normalizar(perfil.hoja_presupuesto)
-    hojas = leer_hojas(datos, nombre, lambda titulo: normalizar(titulo) == buscada)
-    titulo = next((t for t in hojas if normalizar(t) == buscada), None)
-    if titulo is None:
-        raise ArchivoRechazado(
-            f"El libro «{nombre}» no tiene la hoja {perfil.hoja_presupuesto}: no parece el libro "
-            "de presupuesto de este perfil."
-        )
-    filas = hojas[titulo]
+def _y(nombres: Sequence[str]) -> str:
+    """«A», «A y B», «A, B y C»."""
+    return nombres[0] if len(nombres) == 1 else f"{', '.join(nombres[:-1])} y {nombres[-1]}"
+
+
+def _enumerar(nombres: Sequence[str]) -> str:
+    """Los nombres con `_y`, a lo sumo `MAX_NOMBRADAS` y «y n más»."""
+    if len(nombres) <= MAX_NOMBRADAS:
+        return _y(nombres)
+    return f"{', '.join(nombres[:MAX_NOMBRADAS])} y {len(nombres) - MAX_NOMBRADAS} más"
+
+
+def _faltan(nombre: str, faltan: Sequence[str], hay: Sequence[str]) -> ArchivoRechazado:
+    """El libro de presupuesto no tiene las hojas pedidas: dice cuáles faltan y cuáles hay."""
+    cuales = f"la hoja {faltan[0]}" if len(faltan) == 1 else f"las hojas {_y(faltan)}"
+    if not hay:
+        tiene = "no tiene ninguna hoja"
+    elif len(hay) == 1:
+        tiene = f"su hoja es {hay[0]}"
+    else:
+        tiene = f"sus hojas son {_enumerar(hay)}"
+    return ArchivoRechazado(f"El libro «{nombre}» no tiene {cuales}: {tiene}.")
+
+
+def _renglones_de_hoja(
+    titulo: str, filas: Sequence[Sequence[Any]], nombre: str, perfil: PerfilApuPorHoja
+) -> list[RenglonPresupuesto]:
     encabezado = _encabezado(filas, perfil)
     if encabezado is None:
         raise ArchivoRechazado(
@@ -386,7 +469,8 @@ def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str
                     f"del tope de {_es(TOPE_CIFRA)}: Sílice no enlaza el presupuesto con sus APU."
                 )
         renglones.append(
-            _Renglon(
+            RenglonPresupuesto(
+                titulo,
                 k,
                 int(numero),
                 "" if codigo is None else str(codigo).strip(),
@@ -396,7 +480,23 @@ def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str
                 i + 1,
             )
         )
-    return titulo, renglones
+    return renglones
+
+
+def _renglones(
+    datos: bytes, nombre: str, perfil: PerfilApuPorHoja, hojas: Sequence[str]
+) -> tuple[tuple[str, ...], list[RenglonPresupuesto]]:
+    """Las hojas leídas (con su nombre en el libro, en el orden pedido) y sus renglones. Solo se
+    leen esas hojas; si falta alguna, `ArchivoRechazado` dice cuáles faltan y cuáles hay."""
+    buscadas = list(dict.fromkeys(normalizar(h) for h in hojas))
+    leidas = leer_hojas(datos, nombre, lambda titulo: normalizar(titulo) in buscadas)
+    por_nombre = {normalizar(t): t for t in leidas}
+    faltan = [h for h in dict.fromkeys(hojas) if normalizar(h) not in por_nombre]
+    if faltan:
+        raise _faltan(nombre, faltan, list(leidas))
+    titulos = tuple(por_nombre[b] for b in buscadas)
+    renglones = [r for t in titulos for r in _renglones_de_hoja(t, leidas[t], nombre, perfil)]
+    return titulos, renglones
 
 
 def _primeras(apus: Sequence[ApuLeido]) -> dict[int, ApuLeido]:
@@ -424,79 +524,140 @@ def _repetidos(apus: Sequence[ApuLeido]) -> list[FilaHallazgo]:
     ]
 
 
+def _sin_prefijo(libro: LibroLeido, perfil: PerfilApuPorHoja) -> list[FilaHallazgo]:
+    """AH12: las hojas del libro de APU que no siguen el prefijo del perfil, por su nombre y sin
+    leerlas (libro por frentes, D3): un solo hallazgo que las nombra (a lo sumo `MAX_NOMBRADAS`)."""
+    otras = [t for t in libro.hojas if not es_hoja_de_apu(perfil, t)]
+    if not otras:
+        return []
+    prefijo = perfil.prefijo_hoja
+    if len(otras) == 1:
+        texto = (
+            f"La hoja {otras[0]} del libro no empieza por «{prefijo}» y no se leyó como APU. Si "
+            "es un APU, revise el prefijo del perfil."
+        )
+    else:
+        texto = (
+            f"{len(otras)} hojas del libro no empiezan por «{prefijo}» y no se leyeron como APU: "
+            f"{_enumerar(otras)}. Si alguna es un APU, revise el prefijo del perfil."
+        )
+    return [_hallazgo("AH12", "INFO", f"{otras[0]}!A1", texto)]
+
+
+def _sumas(renglones: Sequence[RenglonPresupuesto]) -> dict[int, tuple[Decimal, list[str]]]:
+    """Por número de renglón, la cantidad que suman las hojas que lo traen con cantidad y esas
+    hojas, en su orden (libro por frentes, D1)."""
+    sumas: dict[int, tuple[Decimal, list[str]]] = {}
+    for r in renglones:
+        if r.cantidad is None:
+            continue
+        total, hojas = sumas.get(r.numero, (_CERO, []))
+        sumas[r.numero] = (total + r.cantidad, hojas if r.hoja in hojas else [*hojas, r.hoja])
+    return sumas
+
+
 def _otra_obra(
-    titulo: str, renglones: Sequence[_Renglon], apus: Sequence[ApuLeido], perfil: str
+    titulos: Sequence[str],
+    renglones: Sequence[RenglonPresupuesto],
+    apus: Sequence[ApuLeido],
+    perfil: str,
 ) -> list[FilaHallazgo]:
     """AH11: de los renglones enlazados con cantidad en los dos lados (dos o más), menos de la
-    mitad tienen la misma que su APU (ver la cabecera del módulo)."""
+    mitad tienen la misma que su APU (ver la cabecera del módulo). Con varias hojas se juzga la
+    suma de las hojas."""
     por_numero = _primeras(apus)
-    pares = [
-        (r, por_numero[r.numero])
+    enlazados = [
+        r
         for r in renglones
         if r.numero in por_numero
         and r.cantidad is not None
         and por_numero[r.numero].cantidad is not None
     ]
-    casan = sum(1 for r, apu in pares if r.cantidad == apu.cantidad)
+    if len(titulos) == 1:  # cada renglón con su APU, como antes del libro por frentes
+        pares = [(r.cantidad, por_numero[r.numero]) for r in enlazados]
+    else:
+        sumas = _sumas(enlazados)
+        pares = [(total, por_numero[n]) for n, (total, _hojas) in sumas.items()]
+    casan = sum(1 for total, apu in pares if total == apu.cantidad)
     if len(pares) < 2 or casan * 2 >= len(pares):
         return []
-    primero = pares[0][0]
-    cuantos = "ninguno tiene" if casan == 0 else f"solo {casan} tiene{'' if casan == 1 else 'n'}"
-    return [
-        _hallazgo(
-            "AH11",
-            "ADVERTENCIA",
-            f"{titulo}!{letra(primero.columnas['cantidad'])}{primero.encabezado}",
-            f"La hoja {titulo} del presupuesto parece de otra obra: de {len(pares)} renglones "
-            f"enlazados con su APU, {cuantos} la misma cantidad. Revise el perfil: {perfil} lee "
-            f"la hoja {titulo}.",
+    primero = next((r for r in enlazados if r.hoja == titulos[0]), enlazados[0])
+    celda = f"{primero.hoja}!{letra(primero.columnas['cantidad'])}{primero.encabezado}"
+    if len(titulos) == 1:
+        cuantos = (
+            "ninguno tiene" if casan == 0 else f"solo {casan} tiene{'' if casan == 1 else 'n'}"
         )
-    ]
+        texto = (
+            f"La hoja {titulos[0]} del presupuesto parece de otra obra: de {len(pares)} renglones "
+            f"enlazados con su APU, {cuantos} la misma cantidad. Revise el perfil: {perfil} lee "
+            f"la hoja {titulos[0]}."
+        )
+    else:
+        cuantos = "ninguno suma" if casan == 0 else f"solo {casan} suma{'' if casan == 1 else 'n'}"
+        texto = (
+            f"Las hojas {_y(titulos)} del presupuesto parecen de otra obra: de {len(pares)} "
+            f"renglones enlazados con su APU, {cuantos} la misma cantidad. Revise el perfil o las "
+            f"hojas elegidas: se leyeron {_y(titulos)}."
+        )
+    return [_hallazgo("AH11", "ADVERTENCIA", celda, texto)]
 
 
 def _enlace(
-    titulo: str, renglones: Sequence[_Renglon], apus: Sequence[ApuLeido]
+    titulos: Sequence[str], renglones: Sequence[RenglonPresupuesto], apus: Sequence[ApuLeido]
 ) -> list[FilaHallazgo]:
     por_numero = _primeras(apus)
     tolerancia = Decimal(TOLERANCIA_PRECIO.valor)
+    varias = len(titulos) > 1
+    sumas = _sumas(renglones)
     hallazgos = []
     vistos: set[int] = set()
+    cantidad_vista: set[int] = set()
     for r in renglones:
         quien = f"Renglón {r.numero}" + (f" ({r.codigo})" if r.codigo else "")
-
-        def celda(campo: str, fila: int = r.fila, columnas: Mapping[str, int] = r.columnas) -> str:
-            return f"{titulo}!{letra(columnas[campo])}{fila}"
-
+        donde = f"{quien}, hoja {r.hoja}" if varias else quien
         apu = por_numero.get(r.numero)
         if apu is None:
             hallazgos.append(
                 _hallazgo(
                     "AH7",
                     "ADVERTENCIA",
-                    celda("numero"),
-                    f"{quien}: el presupuesto no tiene hoja de APU con ese número.",
+                    r.celda("numero"),
+                    f"{donde}: el presupuesto no tiene hoja de APU con ese número.",
                 )
             )
             continue
         vistos.add(r.numero)
-        if r.cantidad is not None and apu.cantidad is not None and r.cantidad != apu.cantidad:
-            hallazgos.append(
-                _hallazgo(
-                    "AH6",
-                    "ADVERTENCIA",
-                    celda("cantidad"),
-                    f"{quien}: el presupuesto dice una cantidad de {_es(r.cantidad)} y su APU "
-                    f"({apu.celdas.get('cantidad', apu.hoja)}) dice {_es(apu.cantidad)}.",
+        if r.cantidad is not None and apu.cantidad is not None and r.numero not in cantidad_vista:
+            # Con una hoja, cada renglón con su APU; con varias, la suma de las hojas, una vez.
+            total, hojas = sumas[r.numero] if varias else (r.cantidad, [r.hoja])
+            if varias:
+                cantidad_vista.add(r.numero)
+            if total != apu.cantidad:
+                if not varias:
+                    lado = f"el presupuesto dice una cantidad de {_es(total)}"
+                elif len(hojas) > 1:
+                    lado = (
+                        f"las hojas {_y(hojas)} del presupuesto suman una cantidad de {_es(total)}"
+                    )
+                else:
+                    lado = f"la hoja {hojas[0]} del presupuesto dice una cantidad de {_es(total)}"
+                hallazgos.append(
+                    _hallazgo(
+                        "AH6",
+                        "ADVERTENCIA",
+                        r.celda("cantidad"),
+                        f"{quien}: {lado} y su APU ({apu.celdas.get('cantidad', apu.hoja)}) dice "
+                        f"{_es(apu.cantidad)}.",
+                    )
                 )
-            )
         impreso = apu.guardados[Rotulo.PU]
         if r.precio is not None and abs(r.precio - impreso) > tolerancia:
             hallazgos.append(
                 _hallazgo(
                     "AH5",
                     "ERROR",
-                    celda("precio_unitario"),
-                    f"{quien}: el presupuesto dice un precio unitario de {_es(r.precio, 2)} y su "
+                    r.celda("precio_unitario"),
+                    f"{donde}: el presupuesto dice un precio unitario de {_es(r.precio, 2)} y su "
                     f"APU ({apu.rotulos[Rotulo.PU]}) imprime {_es(impreso, 2)}.",
                     r.precio - impreso,
                 )
@@ -522,17 +683,20 @@ def auditar_apu_por_hoja(
     presupuesto_nombre: str = "",
     perfil: str = "apu_por_hoja",
     carpeta_perfiles: Path | None = None,
+    hojas: Sequence[str] | None = None,
 ) -> ResultadoApuPorHoja:
     """Lee, recalcula e informa el libro de APU `datos` y, si viene, lo enlaza con su libro de
     presupuesto. `perfil` es el nombre del perfil, local o del paquete; `carpeta_perfiles`, la
-    carpeta de los perfiles locales de la instalación (ver la cabecera del módulo).
+    carpeta de los perfiles locales de la instalación (ver la cabecera del módulo). `hojas`, si
+    viene y no está vacía, son las hojas del presupuesto que se leen en vez de las del perfil
+    (libro por frentes, D4), sin distinguir mayúsculas ni espacios de más.
 
     Deja pasar `ArchivoRechazado` y `LibroNoInterpretable` (el mensaje es para el usuario) y
     `PerfilInvalido` si el perfil no existe o está mal escrito.
     """
     elegido = cargar_perfil_apu_por_hoja(perfil, carpetas_locales(carpeta_perfiles))
     libro = leer_libro_apu_por_hoja(datos, nombre, elegido)
-    apus, hallazgos, trazas = [], [], []
+    apus, hallazgos, trazas = [], [*_sin_prefijo(libro, elegido)], []
     for apu in libro.apus:
         try:
             recalculado, propios, suyas = _evaluar(apu, elegido)
@@ -545,11 +709,15 @@ def auditar_apu_por_hoja(
         hallazgos.extend(propios)
         trazas.extend(suyas)
     hallazgos.extend(_repetidos(libro.apus))
-    titulo = None
+    titulos: tuple[str, ...] = ()
+    renglones: list[RenglonPresupuesto] = []
     if presupuesto is not None:
-        titulo, renglones = _renglones(presupuesto, presupuesto_nombre or "presupuesto", elegido)
-        hallazgos.extend(_otra_obra(titulo, renglones, libro.apus, elegido.nombre))
-        hallazgos.extend(_enlace(titulo, renglones, libro.apus))
+        pedidas = tuple(h for h in hojas or () if h.strip()) or elegido.hojas_presupuesto
+        titulos, renglones = _renglones(
+            presupuesto, presupuesto_nombre or "presupuesto", elegido, pedidas
+        )
+        hallazgos.extend(_otra_obra(titulos, renglones, libro.apus, elegido.nombre))
+        hallazgos.extend(_enlace(titulos, renglones, libro.apus))
     return ResultadoApuPorHoja(
         libro=libro,
         perfil=elegido.nombre,
@@ -558,5 +726,7 @@ def auditar_apu_por_hoja(
         hallazgos=tuple(hallazgos),
         trazas=tuple(trazas),
         presupuesto=presupuesto_nombre or None if presupuesto is not None else None,
-        hoja_presupuesto=titulo,
+        hoja_presupuesto=titulos[0] if titulos else None,
+        hojas_presupuesto=titulos,
+        renglones=tuple(renglones),
     )

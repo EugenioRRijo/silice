@@ -11,6 +11,11 @@ administrador) con sesión o clave de API y trabajan sobre el caso de la sesión
 - `POST /confirmar` (multipart) -> vuelve a leer el archivo, comprueba que sea el que se leyó
   (`huella`) y guarda todas sus series en una transacción; dice qué hizo con cada una.
 
+- `GET /en-usd/origenes`, `POST /en-usd/ver` y `POST /en-usd/confirmar` (RF-214, ola 2 línea 4):
+  expresar en USD un índice mensual en Bs ya importado (`aplicacion.indices_usd`), para el reajuste
+  de un contrato en USD. `ver` no escribe y trae una muestra de la cuenta (primer y último mes);
+  `confirmar` exige la huella que `ver` devolvió (409 si los datos cambiaron).
+
 Sin estado en el servidor: el informe no se guarda entre «leer» y «confirmar»; el cliente reenvía
 el archivo y la ruta lo vuelve a leer, así que lo que se guarda es siempre lo que el archivo dice.
 El contenido de lo que se sube nunca se confía: el nombre se reduce a su último componente válido
@@ -28,11 +33,12 @@ from __future__ import annotations
 import json
 import tempfile
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 
 from adapters.bcv.informe import InformeImportacion
@@ -45,6 +51,8 @@ from api.dependencias import SesionDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
 from aplicacion import indices as logica
+from aplicacion import indices_usd
+from aplicacion.cifras import texto_de_cifra
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
@@ -288,3 +296,135 @@ def confirmar(
             f"No se pudo escribir en el caso: {_corto(motor or 'error de base')}",
         ) from None
     return ConfirmacionRespuesta(mensajes=mensajes)
+
+
+# --- Un índice en USD (RF-214) ------------------------------------------------------------
+
+
+class SerieOrigen(BaseModel):
+    clave: str
+    nombre: str
+    organismo: str
+
+
+class OrigenesRespuesta(BaseModel):
+    series: list[SerieOrigen]
+    lados: list[str]
+    lado_por_omision: str
+
+
+class EnUsdPeticion(BaseModel):
+    serie: str = Field(min_length=1, max_length=40)
+    lado: str = Field(default="venta", max_length=10)
+
+
+class EnUsdConfirmacion(EnUsdPeticion):
+    huella: str = Field(min_length=64, max_length=64)
+
+
+class MesMuestra(BaseModel):
+    mes: str
+    indice_bs: str
+    tasa_promedio: str
+    valor: str
+
+
+class MesSinUsd(BaseModel):
+    mes: str
+    motivo: str
+
+
+class EnUsdRespuesta(BaseModel):
+    serie_nueva: str
+    nombre: str
+    meses: int
+    desde: str
+    hasta: str
+    provisionales: int
+    muestra: list[MesMuestra] = Field(description="El primer y el último mes, con su cuenta.")
+    omitidos: list[MesSinUsd]
+    huella: str
+    ya_guardada: bool
+
+
+def _con(valor: Decimal, decimales: int) -> str:
+    return texto_de_cifra(valor.quantize(Decimal(1).scaleb(-decimales)))
+
+
+def _en_usd(funcion):
+    """Los errores de `aplicacion.indices_usd` con su código: 404, 409 o 422; nunca el SQL."""
+    try:
+        return funcion()
+    except indices_usd.SerieInexistente as error:
+        raise HTTPException(404, _corto(error), headers=SIN_CACHE) from None
+    except indices_usd.HuellaCambiada as error:
+        raise HTTPException(409, _corto(error), headers=SIN_CACHE) from None
+    except ValueError as error:
+        raise HTTPException(422, _corto(error), headers=SIN_CACHE) from None
+    except SQLAlchemyError:
+        raise HTTPException(503, "No se pudo leer o escribir el caso.", headers=SIN_CACHE) from None
+
+
+@router.get("/en-usd/origenes", response_model=OrigenesRespuesta)
+def origenes_en_usd(sesion: SesionDep, response: Response) -> OrigenesRespuesta:
+    """Los índices mensuales en Bs que se pueden expresar en USD (solo su definición)."""
+    response.headers.update(SIN_CACHE)
+    series = _en_usd(lambda: indices_usd.origenes(sesion))
+    return OrigenesRespuesta(
+        series=[
+            SerieOrigen(clave=s.codigo, nombre=s.nombre, organismo=s.organismo) for s in series
+        ],
+        lados=list(indices_usd.LADOS),
+        lado_por_omision="venta",
+    )
+
+
+@router.post("/en-usd/ver", response_model=EnUsdRespuesta)
+def ver_en_usd(sesion: SesionDep, peticion: EnUsdPeticion, response: Response) -> EnUsdRespuesta:
+    """Lo que se guardaría, con la cuenta del primer y el último mes. No escribe nada."""
+    response.headers.update(SIN_CACHE)
+    vista = _en_usd(lambda: indices_usd.ver(sesion, peticion.serie, lado=peticion.lado))
+    extremos = vista.meses[:1] + vista.meses[1:][-1:]
+    return EnUsdRespuesta(
+        serie_nueva=vista.serie_nueva,
+        nombre=vista.nombre,
+        meses=len(vista.meses),
+        desde=f"{vista.meses[0].mes:%m/%Y}" if vista.meses else "",
+        hasta=f"{vista.meses[-1].mes:%m/%Y}" if vista.meses else "",
+        provisionales=sum(1 for m in vista.meses if m.provisional),
+        muestra=[
+            MesMuestra(
+                mes=f"{m.mes:%m/%Y}",
+                indice_bs=texto_de_cifra(m.indice_bs.normalize()),
+                tasa_promedio=_con(m.tasa_promedio, 4),
+                valor=_con(m.valor, 6),
+            )
+            for m in extremos
+        ],
+        omitidos=[MesSinUsd(mes=f"{o.mes:%m/%Y}", motivo=o.motivo) for o in vista.omitidos],
+        huella=vista.huella,
+        ya_guardada=vista.ya_guardada,
+    )
+
+
+@router.post("/en-usd/confirmar", response_model=ConfirmacionRespuesta)
+def confirmar_en_usd(
+    sesion: SesionDep,
+    peticion: EnUsdConfirmacion,
+    activa: Annotated[SesionActiva, SOLO_CUENTA],
+    response: Response,
+) -> ConfirmacionRespuesta:
+    """Guarda la serie en USD si sus valores son los que se revisaron; el responsable es la
+    persona de la sesión (RF-82)."""
+    response.headers.update(SIN_CACHE)
+    mensaje = _en_usd(
+        lambda: indices_usd.guardar(
+            sesion,
+            peticion.serie,
+            huella=peticion.huella,
+            responsable=activa.usuario,
+            ahora=ahora(),
+            lado=peticion.lado,
+        )
+    )
+    return ConfirmacionRespuesta(mensajes=[mensaje])

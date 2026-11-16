@@ -39,6 +39,8 @@ from api.rutas import (
     fcas,
     hoja,
     hoja_exportar,
+    hoja_frentes,
+    hoja_libro,
     hoja_llevar,
     hoja_plano,
     indices,
@@ -183,6 +185,10 @@ app.include_router(revision.router)
 app.include_router(hoja.router)
 # Montar un presupuesto (T12): Elaborar lleva sus items a la Hoja de la obra, solo con sesion
 app.include_router(hoja_llevar.router)
+# Libro por frentes (2026-11-13): el libro auditado va a la Hoja de la obra, solo con sesion
+app.include_router(hoja_libro.router)
+# Libro por frentes (2026-11-13): el presupuesto agrupado por frente y el frente a mano
+app.include_router(hoja_frentes.router)
 # Migracion final (T10 · 3e-1): «Descargar Excel» de la hoja (X1), solo con sesion
 app.include_router(hoja_exportar.router)
 # Migracion final (T10 · 3e-2): importar un plano a la hoja (P1 a P6), solo con sesion

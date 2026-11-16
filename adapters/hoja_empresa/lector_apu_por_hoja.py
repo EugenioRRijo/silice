@@ -18,7 +18,8 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
   como fracción (250 → 2,5). Faltar la
   administración, la utilidad, el rendimiento o el precio unitario hace la hoja no interpretable
   (`LibroNoInterpretable`, con la hoja y el rótulo); las prestaciones, el financiamiento y el
-  impuesto que falten valen 0.
+  impuesto que falten valen 0. Si el perfil declara `otros_impuestos` (una segunda fila de
+  impuesto, libro por frentes del 2026-11-13), se lee igual y se suma al impuesto.
 - Un valor que el núcleo no admite (arbitraje F5 vial, P3) también la hace no interpretable, con
   su `HOJA!CELDA`: un rendimiento que no es mayor que cero; una cantidad, un precio, un
   desperdicio o un porcentaje negativos; un coeficiente de depreciación fuera de (0; 1]; y
@@ -73,7 +74,14 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
     cargar_perfil_apu_por_hoja,
 )
 
-__all__ = ["TOPE_CIFRA", "leer_hojas", "leer_libro_apu_por_hoja", "letra", "numero_de"]
+__all__ = [
+    "TOPE_CIFRA",
+    "es_hoja_de_apu",
+    "leer_hojas",
+    "leer_libro_apu_por_hoja",
+    "letra",
+    "numero_de",
+]
 
 _CERO = Decimal(0)
 _CIEN = Decimal(100)
@@ -305,7 +313,7 @@ def _linea(
         depreciacion=depreciacion,
         celdas={
             campo: Celda(hoja, f"{letra(columnas[campo])}{i + 1}")
-            for campo in ("unidad", "desperdicio", "bono")
+            for campo in ("unidad", "desperdicio", "bono", "precio")
             if campo in columnas
         },
     )
@@ -400,9 +408,16 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
         cantidad=cabecera.get("cantidad"),
         prestaciones=porcentajes["prestaciones"],
         financiamiento=porcentajes["financiamiento"],
-        impuesto=porcentajes["impuesto"],
+        impuesto=porcentajes["impuesto"] + porcentajes.get("otros_impuestos", _CERO),
         celdas=celdas,
+        otros_impuestos=porcentajes.get("otros_impuestos", _CERO),
     )
+
+
+def es_hoja_de_apu(perfil: PerfilApuPorHoja, titulo: str) -> bool:
+    """Si la hoja `titulo` es un APU para el perfil: su nombre empieza por `prefijo_hoja`
+    (comparados con `normalizar`). La única regla: la usan el lector y el AH12 de la auditoría."""
+    return normalizar(titulo).startswith(normalizar(perfil.prefijo_hoja))
 
 
 def leer_libro_apu_por_hoja(
@@ -414,10 +429,9 @@ def leer_libro_apu_por_hoja(
     APU; `LibroNoInterpretable` si una hoja de APU no trae lo que hace falta para recalcularla.
     """
     perfil = perfil or cargar_perfil_apu_por_hoja()
-    prefijo = normalizar(perfil.prefijo_hoja)
 
     def es_apu(titulo: str) -> bool:
-        return normalizar(titulo).startswith(prefijo)
+        return es_hoja_de_apu(perfil, titulo)
 
     hojas = leer_hojas(datos, nombre, es_apu)
     apus = tuple(

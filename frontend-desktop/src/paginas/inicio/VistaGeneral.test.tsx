@@ -548,7 +548,9 @@ describe("Vista general: la arenera y los permisos", () => {
   test("quien opera la arenera con su especialidad encendida ve la arenera", async () => {
     montar();
     expect(await bloque("Arenera: lo que requiere atención")).toBeInTheDocument();
-    expect(pedidas(RUTA_ARENERA)).toBe(1);
+    // El bloque se pinta («cargando») en el mismo commit en que se programa el efecto que lo pide: con toda la suite a la
+    // vez, el bloque puede verse antes de que corra ese efecto (corrector de la ronda 1 de la ola 2). Se espera el pedido.
+    await waitFor(() => expect(pedidas(RUTA_ARENERA)).toBe(1));
   });
 
   test("quien no opera la arenera no la ve ni la pide", async () => {

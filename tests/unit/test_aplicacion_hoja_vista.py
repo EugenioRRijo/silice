@@ -294,8 +294,8 @@ CONCEPTOS_DEL_CIERRE = [
     "Equipos",
     "Mano de obra",
     "= Costo directo",
-    "+ Administracion",
-    "= Con administracion",
+    "+ Administración",
+    "= Con administración",
     "+ Utilidad",
     "= Precio unitario",
 ]
@@ -829,8 +829,8 @@ def test_los_subtotales_y_el_cierre_de_af_llave_son_la_cascada_a_mano(_of001):
         ("Equipos", "0.71523", "entre el rendimiento"),
         ("Mano de obra", "1.970255", "FCAS 6 y bono 5.81, entre el rendimiento"),
         ("= Costo directo", "10.433785", ""),
-        ("+ Administracion", "1.56506775", "15.0 % del costo directo"),
-        ("= Con administracion", "11.99885275", ""),
+        ("+ Administración", "1.56506775", "15.0 % del costo directo"),
+        ("= Con administración", "11.99885275", ""),
         ("+ Utilidad", "1.199885275", "10.0 % en cascada"),
         ("= Precio unitario", "13.198738025", ""),
     ]

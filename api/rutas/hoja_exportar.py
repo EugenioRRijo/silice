@@ -1,4 +1,5 @@
-"""`/v1/hoja/borradores/{id}/excel`: exportar el borrador vivo a Excel (T10, 3e-1, ruta X1).
+"""`/v1/hoja/borradores/{id}/excel` y `/pdf`: exportar el borrador vivo a Excel (T10, 3e-1, ruta
+X1) y a PDF (RF-213, ola 2 línea 4, 2026-11-13).
 
 Es el boton «Descargar Excel» de la pagina clasica (`ui/paginas/hoja.py:556-573`) hecho servicio
 sobre `aplicacion.hoja_exportar`. `GET` sin cuerpo ni `rev`: arma el libro del borrador vivo (con
@@ -13,11 +14,17 @@ devuelve con eco).
 
 Errores propios: 422 `No se pudo preparar el Excel: {error}` si el libro lanza `ValueError`
 (paridad con P:571) y 503 fijo si falla la base (no se repite el `orig` del driver).
+
+El PDF (`GET .../pdf?partida=`) tiene el mismo acceso y la misma cabecera `no-store`: sin `partida`,
+el presupuesto y un APU por página; con ella, solo su APU (404 si no tiene uno valorado). Lo arma
+`aplicacion.presupuesto_pdf` con las vistas de la Hoja; tampoco escribe nada.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep
@@ -25,8 +32,9 @@ from api.rutas import hoja as rutas_hoja
 from api.rutas.hoja import CuentaQueVe, IdDeBorrador
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
-from aplicacion import hoja_exportar
+from aplicacion import hoja_exportar, presupuesto_pdf
 
+TIPO_PDF = "application/pdf"
 TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -61,5 +69,42 @@ def exportar_excel(
     return Response(
         content=contenido,
         media_type=TIPO_XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@router.get(
+    "/borradores/{id}/pdf",
+    response_class=Response,
+    responses={200: {"content": {TIPO_PDF: {}}, "description": "El PDF del borrador."}},
+)
+def exportar_pdf(
+    id: IdDeBorrador,
+    request: Request,
+    activa: CuentaQueVe,
+    partida: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
+    agrupar: Annotated[
+        Literal["frente", "ninguno"],
+        Query(description="«frente» (por omisión): por frente si hay; «ninguno»: lista corrida"),
+    ] = "frente",
+) -> Response:
+    """RF-213: el presupuesto del borrador vivo en PDF (encabezado, partidas, subtotal, IVA y
+    total) y el APU de cada partida, uno por página; con `partida`, solo el de esa partida. Si
+    algún renglón tiene frente, las partidas salen por frente con el subtotal de cada uno (los de
+    `vistas/frentes`); `agrupar=ninguno`, en una sola lista (ronda 1 del árbitro de la ola 2)."""
+    vivo = rutas_hoja._vivo(request, activa, id)
+    agrupador = (
+        presupuesto_pdf.por_frente(vivo) if agrupar == "frente" else presupuesto_pdf.sin_agrupar
+    )
+    try:
+        documento = presupuesto_pdf.documento_de_la_hoja(
+            vivo, rutas_hoja._hoy(), partida=partida, agrupar=agrupador
+        )
+    except presupuesto_pdf.PartidaSinApu as error:
+        raise HTTPException(status_code=404, detail=str(error)) from None
+    nombre = presupuesto_pdf.nombre_del_pdf(vivo.version, partida=partida)
+    return Response(
+        content=presupuesto_pdf.pdf_en_bytes(documento),
+        media_type=TIPO_PDF,
         headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
     )

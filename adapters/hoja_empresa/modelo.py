@@ -209,13 +209,16 @@ class ApuLeido:
     #: la hoja con el presupuesto, la cantidad de la cabecera, las prestaciones como fracción (2,5
     #: es 250 %: lo que recibe el núcleo como FCAS), el financiamiento y el impuesto del pie (como
     #: fracción) y la celda de cada dato con nombre (`celdas`: «cantidad», «rendimiento»,
-    #: «prestaciones», «administracion», «utilidad», «financiamiento», «impuesto»).
+    #: «prestaciones», «administracion», «utilidad», «financiamiento», «impuesto»,
+    #: «otros_impuestos»). `impuesto` es el total; `otros_impuestos`, la parte de la segunda fila
+    #: de impuesto si el perfil la declara (libro por frentes, 2026-11-13).
     numero: int | None = None
     cantidad: Decimal | None = None
     prestaciones: Decimal | None = None
     financiamiento: Decimal = Decimal(0)
     impuesto: Decimal = Decimal(0)
     celdas: Mapping[str, Celda] = field(default_factory=dict)
+    otros_impuestos: Decimal = Decimal(0)
 
     @property
     def ident(self) -> str:

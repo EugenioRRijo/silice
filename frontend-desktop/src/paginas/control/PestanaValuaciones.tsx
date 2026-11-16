@@ -34,7 +34,7 @@ import { MONEDAS } from "../../comun/monedas";
 import { useCarga } from "../../comun/useCarga";
 import type { Carga } from "../../comun/useCarga";
 import { CampoDePartida } from "../../comun/CampoDePartida";
-import { AVISO_LISTA_RECORTADA, listaRecortada, partidaDelContrato, partidasOfrecidas } from "../../comun/partidasDelContrato";
+import { AVISO_LISTA_RECORTADA, codigoRepetido, listaRecortada, partidaDelContrato, partidasOfrecidas } from "../../comun/partidasDelContrato";
 import type { PartidaDelContrato, PartidasDelContrato } from "../../comun/partidasDelContrato";
 import { AYUDA_CAUSA_SUGERIDA, causaDeLinea, sugeridasPorPartida } from "./procura";
 import type { Procura } from "./procura";
@@ -112,6 +112,18 @@ function Registrar({
     if (k === "partida" && i in erroresDePartida) setErroresDePartida((previos) => Object.fromEntries(Object.entries(previos).filter(([k]) => Number(k) !== i)));
     setLineas(lineas.map((l, j) => (j === i ? { ...l, [k]: valor } : l)));
   };
+  // Elegir de la lista escribe el código; si el código está en varios renglones y la observación está vacía, la observación
+  // dice cuál se midió (ola 2, 2026-11-13: la valuación sigue siendo por código).
+  const elegirPartida = (i: number, p: PartidaDelContrato) => {
+    if (i in erroresDePartida) setErroresDePartida((previos) => Object.fromEntries(Object.entries(previos).filter(([k]) => Number(k) !== i)));
+    setLineas(
+      lineas.map((l, j) =>
+        j !== i
+          ? l
+          : { ...l, partida: p.codigo, observacion: codigoRepetido(p) && p.renglon !== undefined && !l.observacion.trim() ? `Renglón ${p.renglon}` : l.observacion },
+      ),
+    );
+  };
   const registrar = () => {
     const nuevos: Record<number, string> = {};
     const fuera: Record<number, string> = {};
@@ -174,6 +186,7 @@ function Registrar({
                 soloDelContrato={!guia.truncada}
                 texto={l.partida}
                 alCambiarTexto={(t) => cambiarLinea(i, "partida", t)}
+                alElegirPartida={(p) => elegirPartida(i, p)}
                 alExpirar={alExpirar}
                 invalido={i in erroresDePartida}
                 textoInvalido={erroresDePartida[i]}

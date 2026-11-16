@@ -75,7 +75,7 @@ FORMA = (
     "El guardado no tiene la forma esperada: envíe rev (entero) y la fuente como texto de hasta "
     "300 caracteres."
 )
-SIN_FUENTE = "Escriba la fuente del cambio: por que se cambia y con que respaldo."
+SIN_FUENTE = "Escriba la fuente del cambio: por qué se cambia y con qué respaldo."
 SIN_FUENTE_MEDIDA = "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
 SIN_CAMBIOS = "No hay cambios para guardar: edite alguna celda primero."
 HOJA_VACIA = (
