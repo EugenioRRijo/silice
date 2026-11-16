@@ -523,6 +523,42 @@ def test_la_declaracion_retroactiva_formatea_la_fecha_y_no_el_codigo() -> None:
     assert texto.startswith("Versión 2026-01-01 ") and " el 05/11/2026:" in texto
 
 
+def test_la_declaracion_retroactiva_no_lanza_con_un_eslabon_sin_fecha() -> None:
+    """La cadena de un paquete alterado se muestra igual (S3 §6.5): un eslabón retroactivo sin
+    `fecha_hora` no da la fecha, pero no es un `KeyError` (la API respondía 404 con su texto)."""
+    from aplicacion import revision
+
+    sin_fecha = {"tipo": "retroactivo", "codigo": "001"}
+    con_fecha = {"tipo": "retroactivo", "codigo": "002", "fecha_hora": "2026-11-05T09:00"}
+    texto = revision.declaracion_retroactiva({"eslabones": [sin_fecha, con_fecha]})
+    assert texto.startswith("Versiones 001 a 002 selladas el 2026-11-05:")
+    solo = revision.declaracion_retroactiva({"eslabones": [sin_fecha]})
+    assert solo.startswith("Versión 001 selladas el ?:")
+
+
+def test_quien_armo_no_lanza_con_un_usuario_que_no_es_texto() -> None:
+    """Un eslabón con `usuario: 123` (cadena alterada, sin firma) no es de nadie: no un
+    `TypeError` (500); el eslabón con el login de quien revisa sí cuenta."""
+    from aplicacion import revision
+    from paquete.verificar import Verificacion
+
+    v = Verificacion(
+        "alterado",
+        "cadena",
+        "",
+        "0" * 64,
+        {"presupuesto.json": b"{}"},
+        {"empresa": EMPRESA},
+        {
+            "eslabones": [
+                {"codigo": "001", "huella_eslabon": "x", "usuario": 123},
+                {"codigo": "002", "huella_eslabon": "y", "usuario": "Rita <rita>"},
+            ]
+        },
+    )
+    assert revision.revisor_armo(v, login_revisor="rita", empresa_propia=(EMPRESA, None)) == ["002"]
+
+
 def test_el_texto_de_dictamen_formatea_la_fecha_y_no_el_login() -> None:
     from aplicacion import revision
 
