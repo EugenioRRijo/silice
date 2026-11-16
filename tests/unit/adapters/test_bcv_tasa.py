@@ -109,3 +109,14 @@ def test_las_cifras_en_bs_se_leen_por_su_posicion_aunque_sobren_celdas():
     fila = ("USD", "E.U.A.", D("1.0"), D("1.0"), D("858.02"), D("860.18"), None, D("7"))
     compra, venta = _leer(_hoja_con_fila_usd(fila)).series
     assert (compra.valores[0].valor, venta.valores[0].valor) == (D("858.02"), D("860.18"))
+
+
+@pytest.mark.parametrize("raro", [D("NaN"), D("Infinity"), D("sNaN")])
+def test_una_cifra_no_finita_se_rechaza_con_su_motivo_y_no_tumba_la_importacion(raro):
+    """Verificacion 3b (F9): un NaN lanzaba `InvalidOperation` (un 422 generico) al comparar, y un
+    infinito entraba como tasa. Los dos se rechazan en su hoja como cualquier otra cifra mala."""
+    fila = ("USD", "E.U.A.", D("1.0"), D("1.0"), D("858.02"), raro)
+    informe = _leer(_hoja_con_fila_usd(fila))
+    assert [len(s.valores) for s in informe.series] == [0, 0]
+    assert [r.lugar for r in informe.rechazos] == ["a!3"]
+    assert "no finito" in informe.rechazos[0].motivo
