@@ -26,6 +26,7 @@ from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import replace
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pdfplumber
@@ -40,10 +41,12 @@ from core.budget.moneda import declarar_moneda
 from core.budget.persistencia import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
 from core.contracts import Dominio
+from core.contracts.apu import ParametrosCosto
 from operacion import config
 from operacion.base_datos import preparar_base
 from tests.fixtures.carpeta_aprobaciones import OBRA, sembrar_vivienda
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
+from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.hoja_versiones_api import registrar_tasa_en
 from tests.fixtures.libro_apu_por_hoja import (
     APUS,
@@ -226,7 +229,9 @@ def _codigos_del_libro(id_: str) -> dict[str, str | None]:
     muestran las directivas; se lee el borrador como en `test_api_hoja_llevar.py`)."""
     vivo = hoja_borradores.REGISTRO._vivos[id_]
     return {
-        f"{i.codigo_partida}|{i.origen_id}": i.especificaciones.get(libro_a_la_hoja.CLAVE_CODIGO_LIBRO)
+        f"{i.codigo_partida}|{i.origen_id}": i.especificaciones.get(
+            libro_a_la_hoja.CLAVE_CODIGO_LIBRO
+        )
         for i in vivo.borrador.items_base
     }
 
@@ -399,6 +404,28 @@ def test_apus_con_porcentajes_distintos_no_se_llevan_juntos(ana) -> None:
         "Las hojas del libro no usan los mismos porcentajes y la Hoja lleva uno solo por obra: "
         "APU 3 usa una utilidad del 12 % y las demás del 10 %."
     )
+
+
+def test_un_borrador_con_solo_renglones_del_espacio_y_otros_porcentajes_no_los_pierde(
+    ana,
+) -> None:
+    """Los renglones que salen del espacio de la obra (no de las hojas del libro) también son del
+    borrador: si este trae otros porcentajes, llevar el libro no se los cambia sin avisar."""
+    id_ = _llevar(ana).json()["borrador_id"]
+    vivo = hoja_borradores.REGISTRO._vivos[id_]
+    otros = ParametrosCosto(utilidad=Decimal("0.20"))
+    vivo.borrador = replace(
+        vivo.borrador, items_base=(), espacio=espacio_of001(), parametros=otros
+    )  # solo renglones del espacio, con una utilidad del 20 %
+    rev = vivo.rev
+    r = _llevar(ana)
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        "El borrador de la obra ya tiene renglones con otros porcentajes: lleve el libro a una "
+        "obra nueva o quite esos renglones."
+    )
+    assert vivo.borrador.parametros == otros and vivo.rev == rev
+    assert vivo.borrador.items_base == ()
 
 
 def test_quien_revisa_no_lleva_el_libro() -> None:
