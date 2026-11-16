@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { InformeAuditoriaRespuesta, SesionRespuesta } from "../../api/tipos";
@@ -392,6 +392,33 @@ describe("Actualizar precios", () => {
     await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
     expect(await screen.findByRole("button", { name: "Descartar versión" })).toBeInTheDocument();
     expect(screen.queryByText(/descartada/)).toBeNull();
+  });
+
+  test("mientras se descarta no se revalora: el «descartada» tardío no cae sobre una versión nueva", async () => {
+    let terminar: (r: Response) => void = () => {};
+    fetchFalso.mockImplementation(async (ruta, opciones) => {
+      const url = String(ruta);
+      if (url === "/presupuestos" && (opciones?.method ?? "GET") === "GET") return presupuestos();
+      if (url === "/listas-precios/vista-previa") return vista();
+      if (url === "/presupuestos/revalorar") return revalorar();
+      if (url.includes("/descartar")) return new Promise<Response>((resolver) => (terminar = resolver));
+      return json({ detalle: "ruta inesperada " + url }, 404);
+    });
+    montar();
+    const { usuario } = await subir();
+    const boton = screen.getByRole("button", { name: "Revalorar presupuesto" });
+    await usuario.click(boton);
+    await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
+    await usuario.click(screen.getByRole("button", { name: "Confirmar descarte" }));
+    await waitFor(() => expect(llamada("/descartar")).toBeDefined());
+    expect(boton).toBeDisabled();
+    // Ni siquiera enviando el formulario por otra vía (Intro en un campo) sale una revaloración nueva.
+    fireEvent.submit(boton.closest("form")!);
+    const revaloraciones = () => fetchFalso.mock.calls.filter(([r]) => String(r) === "/presupuestos/revalorar");
+    expect(revaloraciones()).toHaveLength(1);
+    terminar(json({ codigo: "002", descartada: true, fecha: "2026-10-18" }));
+    expect(await screen.findByText(/Versión 002 descartada/)).toBeInTheDocument();
+    expect(boton).toBeEnabled();
   });
 
   test("un 422 muestra el detalle y no hay resultado", async () => {
