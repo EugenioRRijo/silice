@@ -1,7 +1,7 @@
 import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -183,16 +183,25 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
   const delPerfil = hojasDe(perfiles?.find((p) => p.nombre === perfil) ?? { hoja_presupuesto: POR_OMISION_HOJA });
   const porOmision = (hojasDelPresupuesto ?? []).filter((h) => delPerfil.some((d) => igualada(d) === igualada(h)));
   const hojas = hojasDelPresupuesto === null ? [] : (marcadas ?? porOmision);
+  // Mientras se leen las hojas de un presupuesto no se elige otro; y si aun así llegara tarde la lectura de uno anterior,
+  // el turno la descarta para que no se pinten sus hojas con otro presupuesto elegido.
+  const [leyendoHojas, setLeyendoHojas] = useState(false);
+  const lecturaDeHojas = useRef(0);
 
   async function elegirPresupuesto(archivo: File) {
+    const numero = ++lecturaDeHojas.current;
     setPresupuesto(archivo);
     setHojasDelPresupuesto(null);
     setMarcadas(null);
+    setLeyendoHojas(true);
     try {
-      setHojasDelPresupuesto(await hojasDelLibro(archivo));
+      const leidas = await hojasDelLibro(archivo);
+      if (numero === lecturaDeHojas.current) setHojasDelPresupuesto(leidas);
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       // sin la lista de hojas decide el perfil: el error del libro lo dirá la auditoría
+    } finally {
+      if (numero === lecturaDeHojas.current) setLeyendoHojas(false);
     }
   }
 
@@ -265,7 +274,7 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
         etiqueta="Opcional: suelte aquí el .xlsx del presupuesto, o haga clic para elegirlo"
         extensiones={[".xlsx"]}
         alElegir={(archivo) => void elegirPresupuesto(archivo)}
-        deshabilitada={auditando}
+        deshabilitada={auditando || leyendoHojas}
       />
       {hojasDelPresupuesto !== null && hojasDelPresupuesto.length > 0 && (
         <fieldset className="cds--fieldset">
