@@ -720,12 +720,19 @@ def calcular_las_opciones(
     independientes: str = "",
 ) -> tuple[Opcion, ...]:
     """Las cuatro opciones de recuperación a pedido (UC-20 4). `objetivo` es el día hábil objetivo
-    (vacío = el fin del plan base). `ControlInvalido` si un límite legal se rompe."""
+    (vacío = el fin del plan base). `ControlInvalido` si un límite legal se rompe o si el objetivo no
+    es un entero (no se trunca)."""
+    dia_objetivo = None
+    if objetivo.strip():
+        valor = _decimal(objetivo, "objetivo")
+        if valor != valor.to_integral_value():
+            raise ControlInvalido(f"objetivo: {objetivo!r} debe ser un entero")
+        dia_objetivo = int(valor)
     try:
         contexto = contexto_de_recuperacion(
             resultado,
             composiciones_de_la_linea_base(resultado),
-            objetivo=int(_decimal(objetivo, "objetivo")) if objetivo.strip() else None,
+            objetivo=dia_objetivo,
             horas_previas=_decimal(horas_previas or "0", "horas extra previas"),
         )
         return opciones(contexto)
