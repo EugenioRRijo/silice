@@ -237,8 +237,16 @@ def _heads() -> dict[str, str | None]:
 
 
 def _clasificar(ruta: Path, destino: Destino) -> tuple[str, EstadoBase]:
-    """«al_dia», «nueva» o «pendiente»; `BaseMasNueva` si la revisión es desconocida."""
+    """«al_dia», «nueva» o «pendiente»; `BaseMasNueva` si la revisión es desconocida y
+    `BaseNoAdoptable` si trae una revisión pero ninguna tabla de datos: no es nueva (Alembic
+    seguiría desde esa revisión y la dejaría a medias) ni está al día."""
     estado = leer_estado(ruta)
+    if (
+        estado.revision is not None
+        and estado.sin_datos
+        and estado.revision in revisiones_conocidas(destino)
+    ):
+        raise BaseNoAdoptable([f"trae la revisión {estado.revision} pero está sin tablas de datos"])
     if estado.existe and respaldo.TABLA_VERSION in estado.tablas:
         if estado.revision == revision_head(destino):
             return "al_dia", estado
