@@ -1051,6 +1051,8 @@ def _f_find(ev: Evaluador, a: list[object]) -> object:
     sub = _a_texto(_esc(ev, a[0]))
     t = _a_texto(_esc(ev, a[1]))
     inicio = int(_num_arg(ev, a[2])) if len(a) > 2 and a[2] is not None else 1
+    if inicio < 1 or inicio > len(t) + 1:  # Excel: el inicio cae dentro del texto o justo tras él
+        raise _Propaga(_VALOR)
     i = t.find(sub, inicio - 1)
     if i < 0:
         raise _Propaga(_VALOR)
