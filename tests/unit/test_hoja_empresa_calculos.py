@@ -92,3 +92,35 @@ def test_find_con_inicio_dentro_del_texto_no_cambia(formula, esperado):
 def test_text_de_un_texto_numerico_cero_se_formatea(formula, esperado):
     """`Decimal('0')` es falso: el texto "0" no se tomaba por número y salía tal cual."""
     assert _evaluar(formula) == esperado
+
+
+# --- 8. TEXT con separador de miles y ceros a la izquierda ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("formula", "esperado"),
+    [
+        ('=TEXT(5,"#,0000")', "0,005"),
+        ('=TEXT(5,"0,000")', "0,005"),
+        ('=TEXT(12,"#,000000")', "000,012"),
+        ('=TEXT(-5,"0,000")', "-0,005"),
+        ('=TEXT(5.5,"0,000.0")', "0,005.5"),
+    ],
+)
+def test_text_con_miles_agrupa_tambien_los_ceros_de_relleno(formula, esperado):
+    """Excel agrupa de tres en tres desde la derecha el número ya rellenado con ceros. Aquí se
+    emula el formato del libro (el de Excel, coma de miles), no la convención de la interfaz."""
+    assert _evaluar(formula) == esperado
+
+
+@pytest.mark.parametrize(
+    ("formula", "esperado"),
+    [
+        ('=TEXT(1234,"#,0000")', "1,234"),
+        ('=TEXT(1234567,"#,##0")', "1,234,567"),
+        ('=TEXT(1234567.891,"#,##0.00")', "1,234,567.89"),
+        ('=TEXT(5,"0000")', "0005"),
+    ],
+)
+def test_text_sin_relleno_o_sin_miles_no_cambia(formula, esperado):
+    assert _evaluar(formula) == esperado
