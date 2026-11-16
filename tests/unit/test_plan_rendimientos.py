@@ -295,6 +295,19 @@ def test_en_la_hoja_una_partida_con_cantidad_0_va_al_ultimo_periodo_sin_alargar_
     assert avisos == [CANTIDAD_CERO]
 
 
+def test_en_la_hoja_una_partida_pendiente_no_reserva_el_dia_1_y_conserva_su_aviso():
+    # OBRA-99 sin composición (pendiente) va primero; OBRA-01: 18 ÷ 4,5 = 4 días, del Dia 1 al 4.
+    # Al guardar, `hoja.ajustar_plan` quita las no valoradas: si OBRA-99 reservara el Dia 1, el
+    # plan guardado empezaría en «Dia 2»
+    renglones = [_sin_composicion(), *ITEMS[:1]]
+    plan, avisos = plan_del_borrador(renglones, COMPOSICIONES)
+    assert [e for e, _ in plan] == _dias(4)
+    assert _fracciones(plan, "OBRA-01") == dict.fromkeys(_dias(4), D("0.25"))
+    assert "OBRA-99" not in {c for _, reparto in plan for c, _ in reparto}
+    assert avisos == [SIN_RENDIMIENTO]
+    assert hoja.ajustar_plan(plan, ["OBRA-01"]) == plan
+
+
 # --- la edición del borrador vivo -------------------------------------------------------------
 
 
