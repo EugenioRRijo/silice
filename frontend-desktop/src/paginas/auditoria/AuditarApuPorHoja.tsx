@@ -10,6 +10,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { useCarga } from "../../comun/useCarga";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { unidadEscrita } from "../../comun/unidades";
+import { rutaOPendientes } from "../../marco/espacios";
 import { MONEDAS, rotuloDeMoneda } from "../../comun/monedas";
 import { enumeradas } from "../../comun/perfilesDeLibros";
 import type { PerfilDisponible } from "../../comun/perfilesDeLibros";
@@ -484,7 +485,7 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
           {/* Pasada en navegador de la ola 2 (D11): los renglones quedan en el borrador vivo de la Hoja, que vive en el
               servidor ligado a la sesión, como todo borrador (`aplicacion/hoja_borradores.py`): se retoma en la misma
               sesión y se pierde al salir o al volver a entrar. El aviso lo dice, lleva a la Hoja de la obra (la dirección
-              corta `#/hoja` abre la de la obra de la sesión, la misma a la que se llevó) y recuerda que llevar otra vez
+              corta de la Hoja (`rutaOPendientes("hoja")`, «/hoja») abre la de la obra de la sesión, la misma a la que se llevó) y recuerda que llevar otra vez
               no duplica nada. Nombre accesible: el título, como el aviso AH11. */}
           <span id={ID_TITULO_LLEVADO} hidden>
             {`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar.`}
@@ -500,7 +501,7 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
           />
           {/* Carbon no admite controles dentro de un aviso en línea: el enlace va debajo. */}
           <p className="cds--type-body-compact-01">
-            <a className="cds--link" href="#/hoja">{`Abrir la Hoja de «${obra}»`}</a>
+            <a className="cds--link" href={`#${rutaOPendientes("hoja")}`}>{`Abrir la Hoja de «${obra}»`}</a>
           </p>
           <TablaDensa etiqueta="Partidas llevadas a la Hoja" columnas={COLUMNAS_LLEVADAS} filas={filas} />
           {llevado.sin_apu.length > 0 && (
