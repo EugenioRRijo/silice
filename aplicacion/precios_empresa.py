@@ -137,13 +137,32 @@ def _unidades_del_catalogo(sesion) -> dict[tuple[str, str], list[str]]:
 
 def _separar(sesion, desconocidos: Sequence[PrecioLeido]) -> tuple[list[PrecioLeido], list[str]]:
     """Los desconocidos que son insumos nuevos y el aviso de los que el catalogo tiene con otra
-    unidad (no se dan de alta: serian un homonimo con otra unidad, el flujo 2b de UC-02)."""
+    unidad (no se dan de alta: serian un homonimo con otra unidad, el flujo 2b de UC-02). Un
+    insumo nuevo que el mismo archivo trae con dos unidades tampoco: un solo aviso por insumo."""
     unidades = _unidades_del_catalogo(sesion)
+    en_el_archivo: dict[tuple[str, str], list[str]] = {}
+    for leido in desconocidos:
+        clave = (leido.tipo.value, normalizar_texto(leido.descripcion))
+        if clave not in unidades:
+            suyas = en_el_archivo.setdefault(clave, [])
+            texto = leido.unidad or "sin unidad"
+            if texto not in suyas:
+                suyas.append(texto)
     nuevos: list[PrecioLeido] = []
     avisos: list[str] = []
+    avisados: set[tuple[str, str]] = set()
     for leido in desconocidos:
-        suyas = unidades.get((leido.tipo.value, normalizar_texto(leido.descripcion)))
-        if suyas is None:
+        clave = (leido.tipo.value, normalizar_texto(leido.descripcion))
+        suyas = unidades.get(clave)
+        if suyas is None and len(en_el_archivo[clave]) > 1:
+            if clave not in avisados:
+                avisados.add(clave)
+                avisos.append(
+                    f"«{leido.descripcion}» viene en el archivo en "
+                    f"{' y en '.join(en_el_archivo[clave])}: no entró ni se dio de alta (serían "
+                    "dos insumos con el mismo nombre); deje en el archivo una sola unidad."
+                )
+        elif suyas is None:
             nuevos.append(leido)
         else:
             avisos.append(
