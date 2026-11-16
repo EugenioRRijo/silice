@@ -286,3 +286,24 @@ def test_la_marca_de_la_demostracion_sigue_en_los_casos(
     assert navegador.get("/v1/casos").json()["es_demostracion"] is False
     _abrir(ficha, DEMO)
     assert navegador.get("/v1/casos").json()["es_demostracion"] is True
+
+
+def test_la_carpeta_de_la_empresa_escrita_de_otra_forma_sigue_siendo_la_de_la_empresa(
+    tmp_path, monkeypatch
+) -> None:
+    """La carpeta abierta se compara con la de la empresa resolviendo las dos rutas, como ya se
+    compara al listar las demás: `datos/x/../empresa.db` es `datos/empresa.db` y no una carpeta
+    ajena llamada «empresa»."""
+    (tmp_path / "x").mkdir()
+    empresa = tmp_path / "empresa.db"
+    empresa.touch()
+    rodeo = tmp_path / "x" / ".." / "empresa.db"
+    monkeypatch.setattr(rutas_obras, "url_del_proceso", lambda: f"sqlite:///{empresa.as_posix()}")
+    monkeypatch.setattr(
+        rutas_obras, "url_de_la_peticion", lambda _r: f"sqlite:///{rodeo.as_posix()}"
+    )
+
+    actual, carpetas = rutas_obras._carpetas_visibles(None, None)  # la clave de API: sin cuenta
+
+    assert actual is None
+    assert carpetas == [(None, empresa)]
