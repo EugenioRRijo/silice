@@ -45,6 +45,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from openpyxl.utils.cell import column_index_from_string as _col
 from openpyxl.utils.cell import get_column_letter as _letra
 
+from adapters.hoja_empresa.guardia import MAX_FILAS_HOJA
 from adapters.hoja_empresa.modelo import (
     VINCULO_ILEGIBLE,
     ApuLeido,
@@ -1630,9 +1631,10 @@ def _l9_resumen(ctx: _Contexto) -> list[Hallazgo]:
         etiqueta = normalizar(ctx.etiqueta(hoja, fila))
         es_composicion = es_costo = False
         if m is not None and m.group(1) == m.group(3):
+            # Hasta el tope de filas del lector: más allá la hoja está vacía (guardia).
             fs = [
                 ctx.libro.formulas.get(f"{hoja}!{m.group(1)}{x}", "").upper()
-                for x in range(int(m.group(2)), int(m.group(4)) + 1)
+                for x in range(int(m.group(2)), min(int(m.group(4)), MAX_FILAS_HOJA) + 1)
             ]
             es_composicion = sum("SUMPRODUCT(" in x for x in fs) >= 2
             # El costo de la obra suma montos que leen PRESUPUESTO, no pesos en %.
