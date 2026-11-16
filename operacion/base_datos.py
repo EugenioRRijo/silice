@@ -515,7 +515,8 @@ def subir_caso(
     entorno: Mapping[str, str] | None = None,
 ) -> ResultadoPreparacion:
     """Copia un `.db` subido a la carpeta de casos con nombre saneado y lo prepara; si no se puede
-    preparar, no queda en la carpeta."""
+    preparar, no queda en la carpeta. Como la subida de `aplicacion/casos.py`, su respaldo previo
+    lleva `MOTIVO_SUBIDA` y no desplaza al de la migración real."""
     ruta = resolver_caso(sanear_nombre(nombre_original), carpeta, entorno=entorno)
     if ruta.exists():
         raise CasoYaExiste(
@@ -526,7 +527,7 @@ def subir_caso(
     ruta.parent.mkdir(parents=True, exist_ok=True)
     ruta.write_bytes(contenido)
     try:
-        return preparar_base(ruta, entorno=entorno)
+        return preparar_base(ruta, entorno=entorno, motivo=respaldo.MOTIVO_SUBIDA)
     except ErrorDeBase:
         ruta.unlink(missing_ok=True)
         raise
