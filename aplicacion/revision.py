@@ -413,6 +413,16 @@ def _huellas_de_anexos(archivos: Mapping[str, bytes]) -> dict[str, list[str]]:
     return salida
 
 
+def _sin_datos_minimos(v: Verificacion) -> Verificacion:
+    """`v` como «rechazado»: el manifiesto o la cadena no traen lo mínimo para registrarlo."""
+    return replace(
+        v,
+        estado=RECHAZADO,
+        motivo="rechazado",
+        detalle="El manifiesto o la cadena no traen los datos mínimos de un paquete.",
+    )
+
+
 def recibir(
     datos: bytes,
     nombre: str,
@@ -429,6 +439,14 @@ def recibir(
     v = verificar(
         datos, buscar_empresa=_buscar_empresa(instalacion), recibido_en=ahora, mi_empresa=mi_empresa
     )
+    if v.legible and v.manifiesto is not None:
+        # Sin fecha de emisión no hay a qué día reauditar, y sin obra no hay con qué comparar: se
+        # mira antes de la salida temprana de un alterado sin cadena, que tampoco se registra.
+        try:
+            _emitido(v.manifiesto)
+            str(v.manifiesto["proyecto"])
+        except (KeyError, ValueError, TypeError):
+            return Recibido(_sin_datos_minimos(v), 0, Path(), False, (), "")
     if not v.legible or v.cadena is None or v.manifiesto is None:
         return Recibido(v, 0, Path(), False, (), "")
     m = v.manifiesto
@@ -437,13 +455,7 @@ def recibir(
         proyecto, codigo, paquete_id = str(m["proyecto"]), str(m["codigo"]), str(m["paquete_id"])
         eslabones = [[e["codigo"], e["huella_eslabon"]] for e in v.cadena["eslabones"]]
     except (KeyError, ValueError, TypeError):
-        malo = replace(
-            v,
-            estado=RECHAZADO,
-            motivo="rechazado",
-            detalle="El manifiesto o la cadena no traen los datos mínimos de un paquete.",
-        )
-        return Recibido(malo, 0, Path(), False, (), "")
+        return Recibido(_sin_datos_minimos(v), 0, Path(), False, (), "")
     existente = paq.buscar_por_huella(caso, v.sha256)
     huella_clave = str(m.get("huella_clave") or "")
     previos = paq.paquetes_del_proyecto(caso, proyecto, huella_clave)
