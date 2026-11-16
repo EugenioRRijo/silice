@@ -133,6 +133,11 @@ def leer_tasa(
             )
             continue
         c, v = cifras[2:]
+        if not (c.is_finite() and v.is_finite()):  # antes de comparar: un NaN lanza al comparar
+            rechazos.append(
+                Rechazo(f"{hoja.nombre}!{n + 1}", "valor no finito en compra o venta")
+            )
+            continue
         if c <= 0 or v <= 0:
             rechazos.append(Rechazo(f"{hoja.nombre}!{n + 1}", "el valor debe ser mayor que cero"))
             continue
