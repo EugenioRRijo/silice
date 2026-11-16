@@ -432,8 +432,12 @@ def llevar_libro_a_la_hoja(
     with vivo.cerrojo:
         antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano, vivo.importaciones)
         try:
+            # Los renglones que no vienen de las hojas que se llevan: los propios del borrador y
+            # también los que salen del espacio de la obra (`items_sin_escribir`).
             ajenos = [
-                i for i in vivo.borrador.items_base if _hoja_del_origen(i.origen_id) not in hojas
+                i
+                for i in hoja.items_sin_escribir(vivo.borrador)
+                if _hoja_del_origen(i.origen_id) not in hojas
             ]
             if ajenos and vivo.borrador.parametros != parametros:
                 raise PorcentajesDistintos(
