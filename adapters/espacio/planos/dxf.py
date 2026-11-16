@@ -685,36 +685,27 @@ class _Lector:
             planta = abs(p.posicion.x - v.x) <= TOLERANCIA and abs(p.posicion.y - v.y) <= TOLERANCIA
             return planta and (not es_3d or abs(p.posicion.z - v.z) <= TOLERANCIA)
 
-        tocados = sorted(
-            {
+        por_extremo = [
+            sorted(
                 p.id
                 for p in self.acc.puntos.values()
-                if p.especialidad is especialidad and any(toca(p, v) for v in extremos)
-            }
-        )
+                if p.especialidad is especialidad and toca(p, v)
+            )
+            for v in extremos
+        ]
+        tocados = sorted({*por_extremo[0], *por_extremo[1]})
         if not tocados:
             self._no_reconocido(
                 "esp_recorridos", e, f"el recorrido no toca ningun punto de {especialidad.value}"
             )
             return
-        if len(tocados) > 1:
-            self._no_reconocido(
-                "esp_recorridos",
-                e,
-                f"un extremo coincide con varios puntos ({', '.join(tocados)}): no se adivina",
-            )
-            return
-        punto = self.acc.puntos[tocados[0]]
-        dueno: dict[str, str | None] = {"punto_id": punto.id, "circuito_id": None}
         if especialidad is Especialidad.ELECTRICIDAD:
-            if punto.circuito_id is None:
-                self._no_reconocido(
-                    "esp_recorridos",
-                    e,
-                    f"el punto {punto.id} no tiene circuito: no hay donde colgarlo",
-                )
-                return
-            dueno = {"punto_id": None, "circuito_id": punto.circuito_id}
+            dueno, motivo = self._circuito_del_recorrido(tocados)
+        else:
+            dueno, motivo = self._punto_del_recorrido(tocados, por_extremo)
+        if dueno is None:
+            self._no_reconocido("esp_recorridos", e, motivo)
+            return
         tramos = self._tramos(vertices)
         if not tramos:
             self._no_reconocido("esp_recorridos", e, "el recorrido no tiene longitud")
@@ -740,6 +731,43 @@ class _Lector:
                 e.dxf.handle,
                 id_,
             )
+
+    @staticmethod
+    def _punto_del_recorrido(tocados: list[str], por_extremo: list[list[str]]):
+        """`(dueno, motivo)`: el punto de agua o datos al que pertenece el recorrido, o None y por
+        que no se adivina (un extremo sobre varios puntos, o cada extremo sobre uno distinto)."""
+        if len(tocados) == 1:
+            return {"punto_id": tocados[0], "circuito_id": None}, ""
+        varios = next((ids for ids in por_extremo if len(ids) > 1), None)
+        if varios:
+            return (
+                None,
+                f"un extremo coincide con varios puntos ({', '.join(varios)}): no se adivina",
+            )
+        return None, (
+            f"cada extremo toca un punto distinto ({', '.join(tocados)}): no se adivina de cual es"
+        )
+
+    def _circuito_del_recorrido(self, tocados: list[str]):
+        """`(dueno, motivo)`: el circuito de los puntos electricos que toca el recorrido (todos del
+        mismo), o None y por que no hay donde colgarlo."""
+        por_circuito: dict[str | None, list[str]] = defaultdict(list)
+        for id_ in tocados:
+            por_circuito[self.acc.puntos[id_].circuito_id].append(id_)
+        if len(por_circuito) == 1 and None not in por_circuito:
+            return {"punto_id": None, "circuito_id": next(iter(por_circuito))}, ""
+        if len(por_circuito) == 1:
+            if len(tocados) == 1:
+                return None, f"el punto {tocados[0]} no tiene circuito: no hay donde colgarlo"
+            return (
+                None,
+                f"los puntos {', '.join(tocados)} no tienen circuito: no hay donde colgarlo",
+            )
+        detalle = "; ".join(
+            f"{circuito or 'sin circuito'}: {', '.join(ids)}"
+            for circuito, ids in sorted(por_circuito.items(), key=lambda c: (c[0] is None, c[0]))
+        )
+        return None, f"los puntos que toca son de circuitos distintos ({detalle}): no se adivina"
 
     def _tramos(self, vertices: list[Coord]) -> list[Tramo]:
         techo = max((a.alto for a in self.acc.ambientes.values()), default=ALTO_PROVISIONAL)

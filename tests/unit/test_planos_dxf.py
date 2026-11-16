@@ -805,9 +805,7 @@ def test_el_mismo_plano_con_otro_nombre_deja_cada_fila_omitida_solo_como_omitida
         "esp_puntos",
         "esp_recorridos",
     }
-    assert {fila: estados[fila] for fila in omitidas} == dict.fromkeys(
-        omitidas, {TipoItem.OMITIDO}
-    )
+    assert {fila: estados[fila] for fila in omitidas} == dict.fromkeys(omitidas, {TipoItem.OMITIDO})
 
 
 def _planta_electrica(sala: str, cocina: str, toma: str, circuito: str, con_linea=True) -> Plano:
