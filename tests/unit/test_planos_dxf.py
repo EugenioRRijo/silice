@@ -585,6 +585,47 @@ def test_una_rec_cuyo_extremo_coincide_con_dos_puntos_no_se_adivina():
     assert "varios puntos" in tipos(r, TipoItem.NO_RECONOCIDO)[0].mensaje
 
 
+def test_una_rec_electrica_entre_dos_puntos_del_mismo_circuito_cuelga_de_ese_circuito():
+    p = plano_base()
+    _electrico(p)  # T-A (2;2) y T-B (3;2), los dos de C1, a 0,3 m
+    p.msp.add_line((2, 2, 0.3), (3, 2, 0.3), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert [(x.circuito_id, x.punto_id) for x in r.recorridos] == [("C1", None)]
+    assert [i for i in tipos(r, TipoItem.NO_RECONOCIDO) if i.tabla == "esp_recorridos"] == []
+
+
+def test_un_extremo_electrico_sobre_dos_puntos_del_mismo_circuito_tambien_cuelga_de_el():
+    p = plano_base()
+    _electrico(p)
+    p.bloque("PTO-TOMA", 2, 2, id="T-C", altura="0.3", circuito="C1", calibre="12 AWG")
+    p.msp.add_line((2, 2, 0.3), (2, 2, 2.5), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert [x.circuito_id for x in r.recorridos] == ["C1"]
+
+
+def test_una_rec_electrica_entre_circuitos_distintos_no_se_adivina_y_lo_dice():
+    p = plano_base()
+    _electrico(p)  # T-A en C1 (2;2;0,3) y L-A en C2 (3;1;2,5)
+    p.msp.add_line((2, 2, 0.3), (3, 1, 2.5), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert r.recorridos == ()
+    (item,) = [i for i in tipos(r, TipoItem.NO_RECONOCIDO) if i.tabla == "esp_recorridos"]
+    assert "circuitos distintos" in item.mensaje and "C1" in item.mensaje and "C2" in item.mensaje
+    assert "un extremo coincide" not in item.mensaje
+
+
+def test_una_rec_cuyos_extremos_tocan_dos_puntos_distintos_no_se_adivina_y_lo_dice():
+    p = plano_base()
+    p.bloque("PTO-DATOS", 2, 2, id="A", altura="0.3")
+    p.bloque("PTO-DATOS", 3, 2, id="B", altura="0.3")
+    p.msp.add_polyline3d([(2, 2, 0.3), (2, 2, 2.5), (3, 2, 0.3)], dxfattribs={"layer": "REC-DATOS"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert r.recorridos == ()
+    (item,) = tipos(r, TipoItem.NO_RECONOCIDO)
+    assert "cada extremo toca un punto distinto (A, B)" in item.mensaje
+    assert "un extremo coincide" not in item.mensaje
+
+
 # --- unidades ----------
 
 
