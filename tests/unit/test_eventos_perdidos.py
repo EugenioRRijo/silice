@@ -172,10 +172,23 @@ def test_dos_pendientes_hay_que_revisar_los_dos() -> None:
     assert eventos_perdidos.bloqueadas() is False
 
 
-def test_marcar_revisado_un_archivo_ilegible_lo_deja_revisado() -> None:
-    archivo = _pendiente("eventos_perdidos_20261011-140000.json", "{no es json")
-    eventos_perdidos.marcar_revisado(archivo, por="admin")
-    assert eventos_perdidos.bloqueadas() is False
+@pytest.mark.parametrize("contenido", ["{no es json", "[]", "", None])
+def test_marcar_revisado_un_archivo_ilegible_o_que_falta_falla_y_no_lo_toca(contenido) -> None:
+    """Verificacion 3b (F7; SEG-12): sobrescribir un archivo ilegible con `{"revisado": true}`
+    desbloqueaba lo sensible sin que nadie viera las diferencias. Ahora falla y no escribe."""
+    archivo = config.carpeta_datos() / "eventos_perdidos_20261011-140000.json"
+    if contenido is None:
+        archivo.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        _pendiente(archivo.name, contenido)
+    with pytest.raises(eventos_perdidos.EventosIlegibles, match=archivo.name):
+        eventos_perdidos.marcar_revisado(archivo, por="admin")
+    if contenido is None:
+        assert not archivo.exists()
+    else:
+        assert archivo.read_text(encoding="utf-8") == contenido
+        assert eventos_perdidos.bloqueadas() is True
+    assert not archivo.with_name(archivo.name + ".tmp").exists()
 
 
 def test_el_resumen_cuenta_eventos_y_diferencias() -> None:
