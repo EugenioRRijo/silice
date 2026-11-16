@@ -351,7 +351,12 @@ def exportar_presupuesto_excel(
     presupuesto, informe = _cargar(sesion, codigo, proyecto)
     descriptor, ruta_texto = tempfile.mkstemp(suffix=".xlsx")
     os.close(descriptor)  # exportar_excel abre la ruta por su cuenta (openpyxl.Workbook.save)
-    ruta = exportar_excel(presupuesto, informe, Path(ruta_texto))
+    try:
+        ruta = exportar_excel(presupuesto, informe, Path(ruta_texto))
+    except BaseException:
+        # Sin libro no hay respuesta ni `BackgroundTask` que borre el temporal: se borra aqui.
+        Path(ruta_texto).unlink(missing_ok=True)
+        raise
     return FileResponse(
         ruta,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
