@@ -841,6 +841,55 @@ def test_el_mismo_plano_con_otro_nombre_deja_cada_fila_omitida_solo_como_omitida
     assert {fila: estados[fila] for fila in omitidas} == dict.fromkeys(omitidas, {TipoItem.OMITIDO})
 
 
+NO_FINITOS = [float("nan"), float("inf")]
+
+
+def _no_finito(r, handle: str):
+    """El item NO_RECONOCIDO de la entidad `handle` por una coordenada no finita."""
+    assert r.estado is EstadoImportacion.IMPORTADA  # lo demas del plano sigue entrando
+    return [i for i in tipos(r, TipoItem.NO_RECONOCIDO) if i.referencia == handle]
+
+
+@pytest.mark.parametrize("malo", NO_FINITOS)
+def test_un_ambiente_con_un_vertice_no_finito_no_se_importa_y_se_nombra(malo):
+    p = plano_base()
+    poli = p.msp.add_lwpolyline(
+        [(10, 10), (14, 10), (14, 12), (10, malo)], close=True, dxfattribs={"layer": "AMBIENTES"}
+    )
+    p.texto("BANO", 11, 11)
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    (item,) = _no_finito(r, poli.dxf.handle)
+    assert item.tabla == "AMBIENTES" and "no finita" in item.mensaje
+    assert [a.id for a in r.ambientes] == ["COCINA", "SALA"]
+
+
+@pytest.mark.parametrize("malo", NO_FINITOS)
+def test_un_recorrido_con_un_vertice_no_finito_no_se_importa_y_se_nombra(malo):
+    p = _con_punto_de_datos()
+    poli = p.msp.add_polyline3d(
+        [(3, 2, 0.5), (3, 2, malo), (0.5, 2, 2.5)], dxfattribs={"layer": "REC-DATOS"}
+    )
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    (item,) = _no_finito(r, poli.dxf.handle)
+    assert item.tabla == "esp_recorridos" and "no finita" in item.mensaje
+    assert r.recorridos == ()
+
+
+@pytest.mark.parametrize("malo", NO_FINITOS)
+@pytest.mark.parametrize(
+    ("capa", "tabla"), [("PTO-DATOS", "esp_puntos"), ("FTE-DATOS", "esp_fuentes")]
+)
+@pytest.mark.parametrize("eje", ["x", "z"])
+def test_un_bloque_con_insercion_no_finita_no_se_importa_y_se_nombra(malo, capa, tabla, eje):
+    p = plano_base()
+    x, z = (malo, 0.0) if eje == "x" else (2, malo)
+    bloque = p.bloque(capa, x, 2, z=z, id="MALO")
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    (item,) = _no_finito(r, bloque.dxf.handle)
+    assert item.tabla == tabla and "no finita" in item.mensaje
+    assert r.puntos == () and r.fuentes == ()
+
+
 def _planta_electrica(sala: str, cocina: str, toma: str, circuito: str, con_linea=True) -> Plano:
     """Un plano de una planta con su tablero, una toma y una LINE de REC-ELECTRICIDAD que sube
     desde la toma. Dos plantas dibujadas en el mismo orden comparten los *handles*."""
