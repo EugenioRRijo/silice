@@ -37,3 +37,27 @@ def _evaluar(formula: str, nombres: dict[str, str] | None = None) -> object:
 )
 def test_funcion_con_argumentos_de_menos_da_value_y_no_tumba_la_devolucion(formula):
     assert _evaluar(formula) == VALOR
+
+
+# --- 5. Nombre definido que se refiere a sí mismo ------------------------------------------------
+
+#: El calculador marca así una referencia circular entre celdas (`Evaluador.celda`); un nombre que
+#: se usa a sí mismo es la misma referencia circular.
+CIRCULAR = Err("#CIRC")
+
+
+@pytest.mark.parametrize(
+    "nombres",
+    [{"DSEM": "=DSEM+1"}, {"IDA": "=VUELTA+1", "VUELTA": "=IDA*2"}],
+    ids=["directo", "por-otro-nombre"],
+)
+def test_nombre_que_se_usa_a_si_mismo_es_referencia_circular(nombres):
+    """`programacion.py` evalúa el texto de DSEM con `Evaluador.formula`: el `RecursionError`
+    tumbaba la devolución entera."""
+    primero = next(iter(nombres))
+    assert _evaluar(f"={primero}", nombres) == CIRCULAR
+
+
+def test_nombre_repetido_sin_ciclo_se_sigue_calculando():
+    nombres = {"DOS": "=2", "CUATRO": "=DOS+DOS"}
+    assert _evaluar("=CUATRO*DOS", nombres) == 8
