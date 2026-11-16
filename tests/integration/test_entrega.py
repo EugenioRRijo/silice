@@ -977,6 +977,41 @@ def test_un_database_is_locked_al_leer_el_rastro_no_se_firma_como_sin_aprobada(
     assert len(_eventos(bd)) == eventos_antes
 
 
+def test_sin_las_tablas_del_asistente_no_hay_anexo_de_ia(emisor) -> None:
+    """Una carpeta sin el registro de IA (la base del emisor de estas pruebas no lo tiene): el
+    anexo es opcional y no viaja."""
+    caso, _, _, version, _ = emisor
+    assert (
+        not caso.connection()
+        .execute(text("SELECT 1 FROM sqlite_master WHERE name = 'ia_sesiones'"))
+        .first()
+    )
+    assert entrega.anexo_de_ia(caso, version) is None
+
+
+@pytest.mark.parametrize(
+    "texto", ["database is locked", "no such column: ia_sesiones.version_guardada"]
+)
+def test_otro_fallo_al_leer_el_registro_de_ia_sube_y_no_se_firma_sin_el_anexo(
+    emisor, monkeypatch, texto
+) -> None:
+    """Como la marca «Versión NO aprobada»: solo «no such table» significa «aquí nunca hubo
+    asistente». Con la base ocupada o ilegible, firmar el paquete sin `anexos/ia.json` diría que
+    la IA no participó: el error sube (la ruta lo da como 503) y no se registra la entrega."""
+
+    def falla(*_args, **_kwargs):
+        raise _error_de_sqlite(texto)
+
+    monkeypatch.setattr(entrega.registro_ia, "anexo_ia", falla)
+    caso, bd, _, version, _ = emisor
+    eventos_antes = len(_eventos(bd))
+    with pytest.raises(OperationalError, match=texto):
+        entrega.anexo_de_ia(caso, version)
+    with pytest.raises(OperationalError, match=texto):
+        _entregar(caso, bd, version)
+    assert len(_eventos(bd)) == eventos_antes
+
+
 def test_sin_firma_la_marca_que_falta_en_el_informe_con_su_huella_recalculada_no_pasa(
     emisor, revisor
 ) -> None:
