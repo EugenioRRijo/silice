@@ -502,6 +502,22 @@ describe("Reajuste de precios", () => {
     expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
   });
 
+  test("un error que llega despues de editar se descarta: no queda un aviso viejo sobre lo editado", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    calcular = () => new Promise<Response>((resolver) => (soltar = resolver)) as unknown as Response;
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await irA(u, "1. La cláusula");
+    await u.type(screen.getByLabelText("Duración (meses)"), "2");
+    soltar(json({ detalle: "Escriba «Inicio del contrato»: es obligatorio (UC-18)." }, 422));
+    await irA(u, "2. Períodos y lo ejecutado");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Calcular" })).toBeEnabled());
+    expect(screen.queryByText(/Escriba «Inicio del contrato»/)).not.toBeInTheDocument();
+  });
+
   test("el Excel se descarga con el nombre que propone la API", async () => {
     const u = userEvent.setup();
     montar();
