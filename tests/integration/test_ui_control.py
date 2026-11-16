@@ -163,6 +163,21 @@ def test_sin_tasa_del_corte_la_otra_moneda_dice_no_disponible(obra):
     assert "sin precios del corte" in filas["Desvío de precio (USD)"]["Nota"]
 
 
+def test_con_tasa_y_sin_valor_la_otra_moneda_dice_no_disponible_sin_moneda(obra):
+    """Con tasa del corte pero sin el monto (sin precios del corte no hay desvío de precio), la
+    otra moneda dice «no disponible» a secas: la moneda solo acompaña a una cifra."""
+    ob.registrar_v01_y_v02(obra)
+    registrar_importacion(
+        obra, definicion_tasa("venta"), [Observacion(ob.CORTE, D("850"))], archivo="t.xls",
+        huella="a" * 64, fuente="https://www.bcv.org.ve/", fecha_descarga=date(2026, 11, 20),
+        responsable="Admin", filas_leidas=1, filas_rechazadas=0,
+    )  # fmt: skip
+    resultado = control.calcular_el_control(obra, ob.NOMBRE, Catalogo(obra))
+    filas = {f["Indicador"]: f for f in control.filas_de_indicadores(obra, resultado)}
+    assert filas["Desvío de precio (USD)"]["Valor"] == "no disponible"
+    assert filas["Desvío de precio (USD)"]["En la otra moneda"] == "no disponible"
+    assert filas["PV (USD)"]["En la otra moneda"] == "1275000.00 Bs"
+
 def test_las_alertas_y_la_reproyeccion_se_muestran_siempre(obra):
     ob.registrar_v01_y_v02(obra)
     resultado = control.calcular_el_control(
