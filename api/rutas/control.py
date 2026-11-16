@@ -30,6 +30,7 @@ previo en memoria. Los textos que vienen de fuera
 
 from __future__ import annotations
 
+import re
 import tempfile
 from datetime import date
 from typing import Annotated
@@ -103,11 +104,18 @@ def _existe(sesion: Session, proyecto: str) -> str:
     return encontrado.nombre
 
 
+#: El corte es la fecha entera y nada mas: `fromisoformat` acepta tambien `20261106` y fechas con
+#: hora, y recortar a diez caracteres daba por buena «2026-11-06Basura».
+_FECHA_DEL_CORTE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
 def _corte(texto: str | None) -> date | None:
     if texto is None or not texto.strip():
         return None
     try:
-        return date.fromisoformat(texto.strip()[:10])
+        if not _FECHA_DEL_CORTE.fullmatch(texto.strip()):
+            raise ValueError(texto)
+        return date.fromisoformat(texto.strip())
     except ValueError:
         raise logica.ControlInvalido(f"corte: {texto!r} no es una fecha (AAAA-MM-DD)") from None
 
