@@ -20,8 +20,10 @@ Decisiones (bitacora SF, SF5):
 * El circuito importado lleva un origen SUPUESTO (RS-17) que R8 lee mientras conserve los valores
   supuestos; `declarar_circuitos` (sobre el resultado) y `declarar_circuito` (sobre la hoja) lo
   retiran. Un circuito que ya existe no recibe marca nueva al reimportar.
-* Un recorrido declarado no tiene origen en el modelo: se empareja por su `id` (`REC-<handle>`) y,
-  si desaparece, solo se informa; no se puede marcar.
+* Un recorrido declarado no tiene origen en el modelo: se empareja por su `id`
+  (`REC-<handle>@<archivo>`; el *handle* solo es unico dentro de su archivo) y, si desaparece de SU
+  archivo, solo se informa; no se puede marcar. Un `REC-<handle>` sin archivo (hojas de antes) se
+  sustituye por el del mismo *handle* para no contar dos veces el mismo recorrido.
 * Una fila nueva cuyo `id` ya usa otra fila de la hoja (por ejemplo una escrita a mano) se OMITE con
   su ítem; tambien las filas que la citan.
 """
@@ -52,6 +54,7 @@ __all__ = [
     "declarar_circuito",
     "declarar_circuitos",
     "fusionar",
+    "id_recorrido_dxf",
 ]
 
 #: Las tablas `esp_*` que una importacion puede llenar, en el orden de `ResultadoImportacion.filas`.
@@ -64,8 +67,24 @@ TABLAS = (
     "esp_recorridos",
 )
 
-#: Prefijo de los `id` de los recorridos declarados que crea la importacion de DXF (`REC-<handle>`).
+#: Prefijo de los `id` de los recorridos declarados que crea la importacion de DXF
+#: (`REC-<handle>@<archivo>`).
 PREFIJO_RECORRIDO_DXF = "REC-"
+
+
+def id_recorrido_dxf(handle: str, archivo: str) -> str:
+    """`id` del recorrido declarado de la entidad `handle` de `archivo`. Un *handle* es hexadecimal
+    (sin `@`), asi que el primer `@` separa sin ambiguedad el *handle* del archivo."""
+    return f"{PREFIJO_RECORRIDO_DXF}{handle}@{archivo}"
+
+
+def _partes_recorrido_dxf(id_: str) -> tuple[str, str | None] | None:
+    """`(handle, archivo)` de un `id` de recorrido de DXF; archivo None si es de antes (sin `@`);
+    None si el `id` no es de un recorrido de DXF."""
+    if not id_.startswith(PREFIJO_RECORRIDO_DXF):
+        return None
+    handle, arroba, archivo = id_[len(PREFIJO_RECORRIDO_DXF) :].partition("@")
+    return handle, (archivo if arroba else None)
 
 
 class EstadoImportacion(StrEnum):
@@ -413,20 +432,19 @@ class _Fusion:
                 )
                 continue
             final = replace(r, punto_id=punto, circuito_id=circuito)
-            existia = r.id in self.recorridos
+            estado = "actualizado" if r.id in self.recorridos else "agregado"
+            antes = self._de_antes(r.id)
+            if antes is not None:
+                del self.recorridos[antes]
+                estado = f"actualizado (antes {antes})"
             self.recorridos[r.id] = final
             nuevos[r.id] = final
-            self._item(
-                TipoItem.IMPORTADO,
-                "esp_recorridos",
-                "",
-                r.id,
-                f"{r.id}: {'actualizado' if existia else 'agregado'}",
-            )
+            self._item(TipoItem.IMPORTADO, "esp_recorridos", "", r.id, f"{r.id}: {estado}")
         if self.resultado.formato != "dxf":
             return
         for id_ in sorted(self.recorridos):
-            if id_.startswith(PREFIJO_RECORRIDO_DXF) and id_ not in nuevos:
+            partes = _partes_recorrido_dxf(id_)
+            if partes and partes[1] == self.resultado.archivo and id_ not in nuevos:
                 self._item(
                     TipoItem.DESAPARECIDO,
                     "esp_recorridos",
@@ -434,6 +452,14 @@ class _Fusion:
                     id_,
                     f"{id_}: ya no esta en el plano; se conserva (un recorrido no lleva marca)",
                 )
+
+    def _de_antes(self, id_: str) -> str | None:
+        """El `REC-<handle>` sin archivo (hoja de antes) del mismo *handle* que `id_`, si esta."""
+        partes = _partes_recorrido_dxf(id_) if self.resultado.formato == "dxf" else None
+        if partes is None or partes[1] is None:
+            return None
+        antes = f"{PREFIJO_RECORRIDO_DXF}{partes[0]}"
+        return antes if antes in self.recorridos else None
 
     def ejecutar(self) -> tuple[Espacio, tuple[ItemInforme, ...]]:
         r = self.resultado

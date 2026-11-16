@@ -7,7 +7,7 @@ Convencion de capas (los nombres no distinguen mayusculas):
 | `AMBIENTES` | polilinea cerrada con un texto adentro (su nombre) | ambiente |
 | `FTE-AGUA`, `FTE-DRENAJE`, `FTE-DATOS`, `FTE-ELEC` | bloque insertado | fuente |
 | `PTO-AGUA`, `PTO-DRENAJE`, `PTO-DATOS`, `PTO-TOMA`, `PTO-LUZ` | bloque con atributos | punto |
-| `REC-<especialidad>` | polilinea abierta | recorrido declarado (opcional) |
+| `REC-<especialidad>` | polilinea abierta | recorrido declarado `REC-<handle>@<archivo>` |
 
 Atributos de bloque (texto, en las unidades del dibujo cuando son longitudes; coma o punto decimal):
 `ID` (el `id` de la fila; sin el, `<capa>-<handle>`), `ALTURA` (cota z del punto o de la fuente),
@@ -75,7 +75,12 @@ from adapters.espacio.planos.comun import (
     sin_filas,
     superficie_de,
 )
-from adapters.espacio.planos.informe import EstadoImportacion, ResultadoImportacion, TipoItem
+from adapters.espacio.planos.informe import (
+    EstadoImportacion,
+    ResultadoImportacion,
+    TipoItem,
+    id_recorrido_dxf,
+)
 from adapters.espacio.reglas import (
     ALTO_PROVISIONAL,
     ALTURA_PENDIENTE,
@@ -714,7 +719,7 @@ class _Lector:
         if not tramos:
             self._no_reconocido("esp_recorridos", e, "el recorrido no tiene longitud")
             return
-        id_ = f"REC-{e.dxf.handle}"
+        id_ = id_recorrido_dxf(e.dxf.handle, self.archivo)
         self.acc.recorridos[id_] = Recorrido(
             id=id_, modo=ModoRecorrido.DECLARADO, tramos=tuple(tramos), **dueno
         )
