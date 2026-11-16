@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -44,6 +44,10 @@ function valuaciones(anulables: Valuaciones["anulables"]): Valuaciones {
 function Envoltura() {
   const [clave, setClave] = useState(0);
   return <PestanaValuaciones proyecto="OB-S2" clave={clave} alCambiar={() => setClave((c) => c + 1)} />;
+}
+
+function campoArchivo(): HTMLInputElement {
+  return document.querySelector('input[type="file"]') as HTMLInputElement;
 }
 
 describe("Pestaña de valuaciones", () => {
@@ -105,5 +109,52 @@ describe("Pestaña de valuaciones", () => {
     await u.click(screen.getByRole("button", { name: "Anular" }));
     await waitFor(() => expect(anulacionesPedidas()).toHaveLength(2));
     expect(anulacionesPedidas()).toEqual([`/v1/control/valuaciones/${V02.id}/anular`, `/v1/control/valuaciones/${V01.id}/anular`]);
+  });
+
+  // El informe previo dice de qué archivo es: el de un archivo que tardó no puede quedar rotulado con el que se eligió
+  // después.
+  test("el informe previo nunca queda rotulado con otro archivo", async () => {
+    const pendientes: Record<string, (r: Response) => void> = {};
+    informe = (cuerpo) => {
+      const nombre = (cuerpo.get("archivo") as File).name;
+      if (nombre === "val2.xlsx") return json({ informe: ["Informe de val2"] });
+      return new Promise<Response>((resolver) => (pendientes[nombre] = resolver));
+    };
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.upload(campoArchivo(), new File(["x"], "val1.xlsx"));
+    await u.upload(campoArchivo(), new File(["x"], "val2.xlsx"));
+    // El de val1 responde el último; se deja que su respuesta termine de llegar antes de mirar.
+    pendientes["val1.xlsx"]?.(json({ informe: ["Informe de val1"] }));
+    await screen.findByText(/^Informe de val/);
+    await act(() => new Promise((resolver) => setTimeout(resolver, 50)));
+    const de = /Informe previo de (val\d)\.xlsx:/.exec(screen.getByText(/^Informe previo de /).textContent ?? "")?.[1];
+    expect(screen.getByText(/^Informe de val/)).toHaveTextContent(`Informe de ${de}`);
+  });
+
+  test("mientras se lee el archivo no se puede elegir otro", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    informe = () => new Promise<Response>((resolver) => (soltar = resolver));
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.upload(campoArchivo(), new File(["x"], "val1.xlsx"));
+    expect(campoArchivo()).toBeDisabled();
+    soltar(json({ informe: ["Informe de val1"] }));
+    await screen.findByText("Informe de val1");
+    expect(campoArchivo()).toBeEnabled();
+  });
+
+  test("mientras se importa no se puede elegir otro archivo", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    importar = () => new Promise<Response>((resolver) => (soltar = resolver));
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.upload(campoArchivo(), new File(["x"], "val1.xlsx"));
+    await screen.findByText("sin novedades");
+    await u.click(screen.getByRole("button", { name: "Importar" }));
+    expect(campoArchivo()).toBeDisabled();
+    soltar(json({ importadas: 1 }));
+    expect(await screen.findByText("1 valuación(es) importada(s).")).toBeInTheDocument();
+    expect(campoArchivo()).toBeEnabled();
   });
 });
