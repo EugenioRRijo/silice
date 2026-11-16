@@ -61,3 +61,22 @@ def test_nombre_que_se_usa_a_si_mismo_es_referencia_circular(nombres):
 def test_nombre_repetido_sin_ciclo_se_sigue_calculando():
     nombres = {"DOS": "=2", "CUATRO": "=DOS+DOS"}
     assert _evaluar("=CUATRO*DOS", nombres) == 8
+
+
+# --- 6. FIND con un inicio fuera del texto -------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "formula", ['=FIND("a","cba",0)', '=FIND("a","cba",-1)', '=FIND("","cba",5)']
+)
+def test_find_con_inicio_fuera_del_texto_da_value(formula):
+    """Excel: el inicio va de 1 al largo del texto + 1; fuera de eso, #VALUE!."""
+    assert _evaluar(formula) == VALOR
+
+
+@pytest.mark.parametrize(
+    ("formula", "esperado"),
+    [('=FIND("a","cba")', 3), ('=FIND("a","cba",3)', 3), ('=FIND("","cba",4)', 4)],
+)
+def test_find_con_inicio_dentro_del_texto_no_cambia(formula, esperado):
+    assert _evaluar(formula) == esperado
