@@ -36,6 +36,7 @@ la marca puesta sigue en ADVERTENCIA hasta `cargar_alturas`, que quita la marca.
 
 from __future__ import annotations
 
+import math
 import tempfile
 from collections import Counter, defaultdict
 from dataclasses import replace
@@ -298,6 +299,16 @@ class _Lector:
     def _no_reconocido(self, tabla: str, e, mensaje: str, fila: str = "") -> None:
         self.acc.item(TipoItem.NO_RECONOCIDO, tabla, mensaje, e.dxf.handle, fila)
 
+    def _finita(self, tabla: str, e, coordenadas, que: str, fila: str = "") -> bool:
+        """True si todas las coordenadas son finitas; si no (NaN o infinito, que no se pueden medir
+        ni pasar a `Decimal`), la entidad va al informe con su *handle* y no se importa."""
+        if all(math.isfinite(c) for punto in coordenadas for c in punto):
+            return True
+        self._no_reconocido(
+            tabla, e, f"{que} con una coordenada no finita (NaN o infinito): no se mide", fila
+        )
+        return False
+
     def _ambiente_de(self, atributos, x: Decimal, y: Decimal, tabla: str, e, fila: str):
         elegido = atributos.get("AMBIENTE")
         if elegido:
@@ -334,6 +345,8 @@ class _Lector:
         usados: set[str] = set()
         for e in poligonos:
             vertices, cerrada, arcos, _ = _geometria(e)
+            if not self._finita("AMBIENTES", e, vertices, "polilinea"):
+                continue
             contorno = _cerrada(vertices, cerrada)
             if not contorno:
                 self._no_reconocido(
@@ -426,6 +439,8 @@ class _Lector:
             if id_ in self.acc.fuentes:
                 self._no_reconocido("esp_fuentes", e, f"el id {id_!r} esta repetido", id_)
                 continue
+            if not self._finita("esp_fuentes", e, [e.dxf.insert], f"{id_}: insercion", id_):
+                continue
             x, y = self._m(e.dxf.insert.x), self._m(e.dxf.insert.y)
             z = self._altura(atributos, e)[0]
             ambiente = self._ambiente_de(atributos, x, y, "esp_fuentes", e, id_)
@@ -474,6 +489,8 @@ class _Lector:
             id_ = atributos.get("ID") or f"{capa}-{e.dxf.handle}"
             if id_ in self.acc.puntos:
                 self._no_reconocido("esp_puntos", e, f"el id {id_!r} esta repetido", id_)
+                continue
+            if not self._finita("esp_puntos", e, [e.dxf.insert], f"{id_}: insercion", id_):
                 continue
             x, y = self._m(e.dxf.insert.x), self._m(e.dxf.insert.y)
             ambiente = self._ambiente_de(atributos, x, y, "esp_puntos", e, id_)
@@ -669,6 +686,8 @@ class _Lector:
     def recorridos(self, entidades) -> None:
         for e, sufijo in entidades:
             vertices, cerrada, _, es_3d = _geometria(e)
+            if not self._finita("esp_recorridos", e, vertices, "polilinea"):
+                continue
             if cerrada or (len(vertices) >= 4 and vertices[0] == vertices[-1]):
                 self._no_reconocido(
                     "esp_recorridos", e, "polilinea cerrada: un recorrido es abierto"
@@ -853,7 +872,8 @@ def importar_dxf(
 
     Nunca lanza por un archivo malo: devuelve un resultado `RECHAZADA` (malformado, mas de 20 MB o
     mas entidades que el tope) o `DETENIDA` (falta la unidad, con `pide_unidad`) con su mensaje y
-    sin filas."""
+    sin filas. Una entidad con una coordenada no finita (NaN o infinito) va al informe como no
+    reconocida, con su *handle*, y el resto del plano se importa."""
     doc, archivo, rechazo, auditoria = _leer(contenido, nombre)
     if rechazo is not None:
         return rechazo
