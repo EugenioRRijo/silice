@@ -24,6 +24,8 @@ ETIQUETA_FECHA_VALOR = "fecha valor"
 CODIGO_USD = "USD"
 PATRON_NOMBRE = re.compile(r"^2_1_2([a-d])(\d{2})_smc\.xls$", re.IGNORECASE)
 DIAS_DE_FECHA_VALOR = 7
+#: Cifras que siguen al pais en la fila de una moneda: M.E./US$ y Bs, compra y venta de cada una.
+CIFRAS_TRAS_EL_PAIS = 4
 _FECHA = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
 _SIN_ETIQUETA = object()
 
@@ -113,15 +115,24 @@ def leer_tasa(
             continue
         n, fila = fila_usd
         # Tras el codigo vienen el pais, la cotizacion M.E./US$ (compra y venta: 1.0 y 1.0 para el
-        # USD) y los Bs por moneda (compra y venta): las dos ultimas cifras son las de Bs.
-        despues = fila[[i for i, c in enumerate(fila) if _es_usd(c)][0] + 1 :]
-        numeros = [c for c in despues if c is not None][-2:]
-        if len(numeros) < 2 or not all(isinstance(x, Decimal) for x in numeros):
+        # USD) y los Bs por moneda (compra y venta). Las cuatro cifras se leen por su posicion: si
+        # falta una, tomar «las dos ultimas» metia la cotizacion M.E./US$ como tasa en Bs.
+        inicio = [i for i, c in enumerate(fila) if _es_usd(c)][0] + 2
+        cifras = fila[inicio : inicio + CIFRAS_TRAS_EL_PAIS]
+        if len(cifras) < CIFRAS_TRAS_EL_PAIS or any(x is None for x in cifras):
+            rechazos.append(
+                Rechazo(
+                    f"{hoja.nombre}!{n + 1}",
+                    "falta una cifra de la fila USD (M.E./US$ y Bs, compra y venta)",
+                )
+            )
+            continue
+        if not all(isinstance(x, Decimal) for x in cifras):
             rechazos.append(
                 Rechazo(f"{hoja.nombre}!{n + 1}", "valor no numerico en compra o venta")
             )
             continue
-        c, v = numeros
+        c, v = cifras[2:]
         if c <= 0 or v <= 0:
             rechazos.append(Rechazo(f"{hoja.nombre}!{n + 1}", "el valor debe ser mayor que cero"))
             continue
