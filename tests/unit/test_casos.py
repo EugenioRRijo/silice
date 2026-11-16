@@ -119,3 +119,14 @@ def test_subir_una_base_mas_nueva_no_la_deja_en_la_carpeta(tmp_path: Path) -> No
     with pytest.raises(BaseMasNueva):
         subir_caso("futura.db", futura.read_bytes(), tmp_path / "casos")
     assert not (tmp_path / "casos" / "futura.db").exists()
+
+
+def test_el_respaldo_previo_de_una_subida_se_rotula_como_subida(tmp_path: Path) -> None:
+    """Verificacion 3b (F4): `subir_caso` rotulaba su juego como migracion y, al podar, desplazaba
+    al respaldo de la migracion real. Como la subida de `aplicacion/casos.py`, usa `MOTIVO_SUBIDA`."""
+    from operacion import respaldo
+
+    contenido = (bases_prueba.carpeta_version("0.5.0") / "demo.db").read_bytes()
+    resultado = subir_caso("vieja.db", contenido, tmp_path / "casos")
+    assert resultado.juego is not None
+    assert respaldo.leer_ficha(resultado.juego)["motivo"] == respaldo.MOTIVO_SUBIDA
