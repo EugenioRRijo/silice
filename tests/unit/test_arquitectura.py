@@ -1407,3 +1407,144 @@ def test_ciclo_de_paquetes_sin_sobrantes():
     hoy = _ciclos_de_paquetes()
     esperado = [CICLO_DE_PAQUETES_CONOCIDO] if CICLO_DE_PAQUETES_CONOCIDO else []
     assert hoy == esperado, f"actualizar CICLO_DE_PAQUETES_CONOCIDO a {[sorted(c) for c in hoy]}"
+
+
+# --- Tarea 1.4: una sola presentacion numerica en la API ----------------------------------------
+
+#: Donde vivira la presentacion unica de la API (tarea 2.2); aun no existe, se excluye por nombre.
+PRESENTACION_DE_LA_API = "api/presentacion.py"
+
+
+def _menciona(anotacion: ast.expr | None, nombre: str) -> bool:
+    return anotacion is not None and any(
+        (isinstance(n, ast.Name) and n.id == nombre)
+        or (isinstance(n, ast.Attribute) and n.attr == nombre)
+        for n in ast.walk(anotacion)
+    )
+
+
+def _es_presentadora(funcion: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Funcion privada con un parametro anotado `Decimal` que devuelve `str`."""
+    argumentos = funcion.args
+    parametros = [*argumentos.posonlyargs, *argumentos.args, *argumentos.kwonlyargs]
+    return (
+        funcion.name.startswith("_")
+        and any(_menciona(p.annotation, "Decimal") for p in parametros)
+        and _menciona(funcion.returns, "str")
+    )
+
+
+def _es_sitio_de_presentacion(nodo: ast.AST) -> bool:
+    if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef):
+        return _es_presentadora(nodo)
+    if isinstance(nodo, ast.Call):
+        if isinstance(nodo.func, ast.Attribute) and nodo.func.attr == "quantize":
+            return True
+        return (
+            isinstance(nodo.func, ast.Name)
+            and nodo.func.id == "format"
+            and len(nodo.args) == 2
+            and isinstance(nodo.args[1], ast.Constant)
+            and isinstance(nodo.args[1].value, str)
+            and nodo.args[1].value.endswith("f")
+        )
+    nombre = (
+        nodo.id
+        if isinstance(nodo, ast.Name)
+        else nodo.attr
+        if isinstance(nodo, ast.Attribute)
+        else ""
+    )
+    return nombre.startswith("ROUND_HALF_")
+
+
+def _sitios_de_presentacion(archivo: Path) -> list[int]:
+    """Lineas donde `archivo` presenta una cifra por su cuenta: `.quantize(`, un `ROUND_HALF_*`,
+    `format(x, "f")` (o `".2f"`) o una funcion privada `Decimal -> str`. Lo que va dentro de un
+    sitio no cuenta otra vez: `_x(v: Decimal) -> str: return format(v, "f")` es un sitio, y
+    `v.quantize(q, rounding=ROUND_HALF_UP)` tambien. `texto_de_cifra` no es un sitio."""
+    dentro: set[int] = set()
+    sitios: list[int] = []
+    for nodo in ast.walk(_arbol(archivo)):
+        if id(nodo) in dentro or not _es_sitio_de_presentacion(nodo):
+            continue
+        sitios.append(nodo.lineno)
+        dentro.update(id(hijo) for hijo in ast.walk(nodo))
+    return sorted(sitios)
+
+
+def _presentacion_suelta_en_api() -> dict[str, list[int]]:
+    return {
+        _ruta(archivo): sitios
+        for archivo in _archivos("api")
+        if _ruta(archivo) != PRESENTACION_DE_LA_API and (sitios := _sitios_de_presentacion(archivo))
+    }
+
+
+#: Archivo de `api/` -> sitios que presentan cifras por su cuenta (2026-11-17, a802d728). La ola 2
+#: los lleva a `api/presentacion.py`.
+PRESENTACION_SUELTA_EN_API: dict[str, int] = {
+    "api/esquemas_corte.py": 3,
+    "api/esquemas_hoja.py": 1,
+    "api/esquemas_informe.py": 1,
+    "api/esquemas_vial.py": 4,
+    "api/rutas/admin_asistente.py": 1,
+    "api/rutas/aprobaciones.py": 1,
+    "api/rutas/auditorias.py": 2,
+    "api/rutas/auditorias_libro.py": 1,
+    "api/rutas/computos.py": 2,
+    "api/rutas/consulta.py": 1,
+    "api/rutas/control.py": 1,
+    "api/rutas/entregas.py": 1,
+    "api/rutas/fcas.py": 1,
+    "api/rutas/hoja_libro.py": 1,
+    "api/rutas/indices.py": 1,
+    "api/rutas/libros.py": 7,
+    "api/rutas/mercado.py": 4,
+    "api/rutas/obras.py": 5,
+    "api/rutas/procura.py": 1,
+    "api/rutas/produccion.py": 5,
+    "api/rutas/produccion_planta.py": 5,
+    "api/rutas/rendimientos.py": 1,
+    "api/rutas/revision.py": 1,
+    "api/rutas/riesgo.py": 2,
+    "api/rutas/tablero.py": 2,
+}
+
+
+def test_la_api_presenta_cifras_en_un_solo_sitio():
+    peores = sorted(
+        f"{ruta}: {len(sitios)} sitios (congelado {PRESENTACION_SUELTA_EN_API.get(ruta, 0)}): "
+        + ", ".join(f"{ruta}:{linea}" for linea in sitios)
+        for ruta, sitios in _presentacion_suelta_en_api().items()
+        if len(sitios) > PRESENTACION_SUELTA_EN_API.get(ruta, 0)
+    )
+    assert peores == [], f"la cifra se presenta en {PRESENTACION_DE_LA_API}:\n" + "\n".join(peores)
+
+
+def test_la_api_presenta_cifras_en_un_solo_sitio_sin_sobrantes():
+    hoy = _presentacion_suelta_en_api()
+    sobrantes = sorted(
+        f"{ruta}: {congelado} -> {len(hoy.get(ruta, []))}"
+        for ruta, congelado in PRESENTACION_SUELTA_EN_API.items()
+        if len(hoy.get(ruta, [])) < congelado
+    )
+    assert sobrantes == [], "bajar o borrar en PRESENTACION_SUELTA_EN_API: " + "; ".join(sobrantes)
+
+
+def test_la_api_presenta_cifras_en_un_solo_sitio_ve_la_falta(tmp_path):
+    fuentes = {
+        'def _x(v: Decimal) -> str:\n    return format(v, "f")\n': [1],
+        "def _y(v: Decimal) -> str:\n    return str(v.quantize(Decimal('0.01')))\n": [1],
+        "t = v.quantize(Q, rounding=ROUND_HALF_UP)\n": [1],
+        "import decimal\nmodo = decimal.ROUND_HALF_EVEN\n": [2],
+        'a = format(v, "f")\nb = format(v, ".2f")\nc = format(n, "d")\n': [1, 2],
+        "def publica(v: Decimal) -> str:\n    return texto_de_cifra(v)\n": [],
+        "def _z(v: int) -> str:\n    return str(v)\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"modulo_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _sitios_de_presentacion(archivo)
+    assert detectadas == fuentes
