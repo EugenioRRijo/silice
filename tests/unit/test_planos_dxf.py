@@ -526,7 +526,7 @@ def test_una_polilinea_rec_se_convierte_en_el_recorrido_declarado_del_punto():
     r = importar_dxf(p.bytes(), nombre="a.dxf")
     rec = r.recorridos[0]
     assert (rec.id, rec.modo, rec.punto_id) == (
-        f"REC-{poli.dxf.handle}",
+        f"REC-{poli.dxf.handle}@a.dxf",  # el handle solo es unico dentro de su archivo
         ModoRecorrido.DECLARADO,
         "PD",
     )
@@ -583,6 +583,80 @@ def test_una_rec_cuyo_extremo_coincide_con_dos_puntos_no_se_adivina():
     r = importar_dxf(p.bytes(), nombre="a.dxf")
     assert r.recorridos == ()
     assert "varios puntos" in tipos(r, TipoItem.NO_RECONOCIDO)[0].mensaje
+
+
+@pytest.mark.parametrize(
+    ("lejos", "esperada"),
+    [
+        ((6, 6, 0.0), SuperficieTramo.PARED),  # de 0,3 m al piso: inclinado, no es piso
+        ((6, 6, 2.5), SuperficieTramo.PARED),  # de 0,3 m al techo (2,5 m): inclinado, no es techo
+        ((6, 6, 0.3), SuperficieTramo.PARED),  # a media altura
+    ],
+)
+@pytest.mark.parametrize("al_reves", [False, True])
+def test_la_superficie_del_tramo_no_depende_de_su_sentido(lejos, esperada, al_reves):
+    p = plano_base()
+    _electrico(p)  # T-A en (2;2;0,3)
+    a, b = ((2, 2, 0.3), lejos)
+    p.msp.add_line(*((b, a) if al_reves else (a, b)), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert [t.superficie for t in r.recorridos[0].tramos] == [esperada]
+
+
+@pytest.mark.parametrize("al_reves", [False, True])
+def test_el_tramo_con_las_dos_cotas_en_el_piso_o_en_el_techo_es_piso_o_techo(al_reves):
+    p = plano_base()
+    p.bloque("PTO-DATOS", 2, 2, id="PISO", altura="0")
+    p.bloque("PTO-DATOS", 3, 1, id="TECHO", altura="2.5")
+    for z in (0.0, 2.5):
+        a, b = ((2, 2, z), (3.5, 2.5, z)) if z == 0 else ((3, 1, z), (3.5, 2.5, z))
+        p.msp.add_line(*((b, a) if al_reves else (a, b)), dxfattribs={"layer": "REC-DATOS"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert {x.punto_id: x.tramos[0].superficie for x in r.recorridos} == {
+        "PISO": SuperficieTramo.PISO,
+        "TECHO": SuperficieTramo.TECHO,
+    }
+
+
+def test_una_rec_electrica_entre_dos_puntos_del_mismo_circuito_cuelga_de_ese_circuito():
+    p = plano_base()
+    _electrico(p)  # T-A (2;2) y T-B (3;2), los dos de C1, a 0,3 m
+    p.msp.add_line((2, 2, 0.3), (3, 2, 0.3), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert [(x.circuito_id, x.punto_id) for x in r.recorridos] == [("C1", None)]
+    assert [i for i in tipos(r, TipoItem.NO_RECONOCIDO) if i.tabla == "esp_recorridos"] == []
+
+
+def test_un_extremo_electrico_sobre_dos_puntos_del_mismo_circuito_tambien_cuelga_de_el():
+    p = plano_base()
+    _electrico(p)
+    p.bloque("PTO-TOMA", 2, 2, id="T-C", altura="0.3", circuito="C1", calibre="12 AWG")
+    p.msp.add_line((2, 2, 0.3), (2, 2, 2.5), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert [x.circuito_id for x in r.recorridos] == ["C1"]
+
+
+def test_una_rec_electrica_entre_circuitos_distintos_no_se_adivina_y_lo_dice():
+    p = plano_base()
+    _electrico(p)  # T-A en C1 (2;2;0,3) y L-A en C2 (3;1;2,5)
+    p.msp.add_line((2, 2, 0.3), (3, 1, 2.5), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert r.recorridos == ()
+    (item,) = [i for i in tipos(r, TipoItem.NO_RECONOCIDO) if i.tabla == "esp_recorridos"]
+    assert "circuitos distintos" in item.mensaje and "C1" in item.mensaje and "C2" in item.mensaje
+    assert "un extremo coincide" not in item.mensaje
+
+
+def test_una_rec_cuyos_extremos_tocan_dos_puntos_distintos_no_se_adivina_y_lo_dice():
+    p = plano_base()
+    p.bloque("PTO-DATOS", 2, 2, id="A", altura="0.3")
+    p.bloque("PTO-DATOS", 3, 2, id="B", altura="0.3")
+    p.msp.add_polyline3d([(2, 2, 0.3), (2, 2, 2.5), (3, 2, 0.3)], dxfattribs={"layer": "REC-DATOS"})
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert r.recorridos == ()
+    (item,) = tipos(r, TipoItem.NO_RECONOCIDO)
+    assert "cada extremo toca un punto distinto (A, B)" in item.mensaje
+    assert "un extremo coincide" not in item.mensaje
 
 
 # --- unidades ----------
@@ -746,6 +820,119 @@ def test_reimportar_el_plano_editado_actualiza_agrega_y_marca_lo_que_desaparecio
         next(o for o in espacio.origenes if o.id == por_id["BORRADO"].origen_id).referencia
     )
     assert marca["importacion"] == "desaparecida"
+
+
+def test_el_mismo_plano_con_otro_nombre_deja_cada_fila_omitida_solo_como_omitida():
+    p = _con_punto_de_datos()
+    _electrico(p)
+    p.msp.add_lwpolyline([(3, 2), (3, 0.5)], dxfattribs={"layer": "REC-DATOS"})  # plana
+    hoja, _ = fusionar(Espacio(), importar_dxf(p.bytes(), nombre="a.dxf"))
+    _, informe = fusionar(hoja, importar_dxf(p.bytes(), nombre="b.dxf"))
+    estados: dict[tuple[str, str], set[TipoItem]] = {}
+    for i in informe:
+        estados.setdefault((i.tabla, i.fila), set()).add(i.tipo)
+    omitidas = {fila for fila, tipos_ in estados.items() if TipoItem.OMITIDO in tipos_}
+    assert {tabla for tabla, _ in omitidas} == {
+        "esp_ambientes",
+        "esp_fuentes",
+        "esp_puntos",
+        "esp_recorridos",
+    }
+    assert {fila: estados[fila] for fila in omitidas} == dict.fromkeys(omitidas, {TipoItem.OMITIDO})
+
+
+NO_FINITOS = [float("nan"), float("inf")]
+
+
+def _no_finito(r, handle: str):
+    """El item NO_RECONOCIDO de la entidad `handle` por una coordenada no finita."""
+    assert r.estado is EstadoImportacion.IMPORTADA  # lo demas del plano sigue entrando
+    return [i for i in tipos(r, TipoItem.NO_RECONOCIDO) if i.referencia == handle]
+
+
+@pytest.mark.parametrize("malo", NO_FINITOS)
+def test_un_ambiente_con_un_vertice_no_finito_no_se_importa_y_se_nombra(malo):
+    p = plano_base()
+    poli = p.msp.add_lwpolyline(
+        [(10, 10), (14, 10), (14, 12), (10, malo)], close=True, dxfattribs={"layer": "AMBIENTES"}
+    )
+    p.texto("BANO", 11, 11)
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    (item,) = _no_finito(r, poli.dxf.handle)
+    assert item.tabla == "AMBIENTES" and "no finita" in item.mensaje
+    assert [a.id for a in r.ambientes] == ["COCINA", "SALA"]
+
+
+@pytest.mark.parametrize("malo", NO_FINITOS)
+def test_un_recorrido_con_un_vertice_no_finito_no_se_importa_y_se_nombra(malo):
+    p = _con_punto_de_datos()
+    poli = p.msp.add_polyline3d(
+        [(3, 2, 0.5), (3, 2, malo), (0.5, 2, 2.5)], dxfattribs={"layer": "REC-DATOS"}
+    )
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    (item,) = _no_finito(r, poli.dxf.handle)
+    assert item.tabla == "esp_recorridos" and "no finita" in item.mensaje
+    assert r.recorridos == ()
+
+
+@pytest.mark.parametrize("malo", NO_FINITOS)
+@pytest.mark.parametrize(
+    ("capa", "tabla"), [("PTO-DATOS", "esp_puntos"), ("FTE-DATOS", "esp_fuentes")]
+)
+@pytest.mark.parametrize("eje", ["x", "z"])
+def test_un_bloque_con_insercion_no_finita_no_se_importa_y_se_nombra(malo, capa, tabla, eje):
+    p = plano_base()
+    x, z = (malo, 0.0) if eje == "x" else (2, malo)
+    bloque = p.bloque(capa, x, 2, z=z, id="MALO")
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    (item,) = _no_finito(r, bloque.dxf.handle)
+    assert item.tabla == tabla and "no finita" in item.mensaje
+    assert r.puntos == () and r.fuentes == ()
+
+
+def _planta_electrica(sala: str, cocina: str, toma: str, circuito: str, con_linea=True) -> Plano:
+    """Un plano de una planta con su tablero, una toma y una LINE de REC-ELECTRICIDAD que sube
+    desde la toma. Dos plantas dibujadas en el mismo orden comparten los *handles*."""
+    p = Plano()
+    p.sala(sala, 0, 0, 4, 3)
+    p.sala(cocina, 4, 0, 6, 3)
+    p.bloque("FTE-ELEC", 1, 1, nombre="TABLERO", id=f"T-{sala}", altura="1.5")
+    p.bloque("PTO-TOMA", 2, 2, id=toma, altura="0.3", circuito=circuito, calibre="12 AWG")
+    if con_linea:
+        p.msp.add_line((2, 2, 0.3), (2, 2, 2.5), dxfattribs={"layer": "REC-ELECTRICIDAD"})
+    return p
+
+
+def test_dos_planos_con_el_mismo_handle_dan_recorridos_distintos_y_ninguno_se_pierde():
+    pb = importar_dxf(_planta_electrica("SALA", "COCINA", "T-1", "C1").bytes(), nombre="pb.dxf")
+    pa = importar_dxf(_planta_electrica("DORM", "BANO", "T-9", "C9").bytes(), nombre="pa.dxf")
+    assert pb.recorridos[0].id != pa.recorridos[0].id  # mismo handle, otro archivo
+    hoja, _ = fusionar(Espacio(), pb)
+    hoja, informe = fusionar(hoja, pa)
+    assert sorted(r.circuito_id for r in hoja.recorridos) == ["C1", "C9"]
+    recorridos = [i for i in informe if i.tabla == "esp_recorridos"]
+    assert [(i.tipo, i.fila) for i in recorridos if i.tipo is not TipoItem.APROXIMADO] == [
+        (TipoItem.IMPORTADO, pa.recorridos[0].id),
+        (TipoItem.IMPORTADO, pa.recorridos[0].id),
+    ]
+    assert "agregado" in recorridos[-1].mensaje
+
+
+def test_reimportar_un_plano_no_marca_desaparecidos_los_recorridos_de_otro_archivo():
+    pb = _planta_electrica("SALA", "COCINA", "T-1", "C1")
+    pa = _planta_electrica("DORM", "BANO", "T-9", "C9")
+    hoja, _ = fusionar(Espacio(), importar_dxf(pb.bytes(), nombre="pb.dxf"))
+    hoja, _ = fusionar(hoja, importar_dxf(pa.bytes(), nombre="pa.dxf"))
+    hoja, informe = fusionar(hoja, importar_dxf(pb.bytes(), nombre="pb.dxf"))
+    assert [i for i in informe if i.tipo is TipoItem.DESAPARECIDO] == []
+    assert len(hoja.recorridos) == 2
+
+    # pa sin su linea: solo su recorrido desaparece
+    sin_linea = _planta_electrica("DORM", "BANO", "T-9", "C9", con_linea=False)
+    _, informe = fusionar(hoja, importar_dxf(sin_linea.bytes(), nombre="pa.dxf"))
+    desaparecidos = [i.fila for i in informe if i.tipo is TipoItem.DESAPARECIDO]
+    de_pa = [r.id for r in hoja.recorridos if r.circuito_id == "C9"]
+    assert desaparecidos == de_pa
 
 
 # --- altura de un punto sin atributo ALTURA: cota z de la insercion ----------

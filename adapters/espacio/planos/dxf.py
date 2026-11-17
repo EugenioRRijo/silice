@@ -7,7 +7,7 @@ Convencion de capas (los nombres no distinguen mayusculas):
 | `AMBIENTES` | polilinea cerrada con un texto adentro (su nombre) | ambiente |
 | `FTE-AGUA`, `FTE-DRENAJE`, `FTE-DATOS`, `FTE-ELEC` | bloque insertado | fuente |
 | `PTO-AGUA`, `PTO-DRENAJE`, `PTO-DATOS`, `PTO-TOMA`, `PTO-LUZ` | bloque con atributos | punto |
-| `REC-<especialidad>` | polilinea abierta | recorrido declarado (opcional) |
+| `REC-<especialidad>` | polilinea abierta | recorrido declarado `REC-<handle>@<archivo>` |
 
 Atributos de bloque (texto, en las unidades del dibujo cuando son longitudes; coma o punto decimal):
 `ID` (el `id` de la fila; sin el, `<capa>-<handle>`), `ALTURA` (cota z del punto o de la fuente),
@@ -36,6 +36,7 @@ la marca puesta sigue en ADVERTENCIA hasta `cargar_alturas`, que quita la marca.
 
 from __future__ import annotations
 
+import math
 import tempfile
 from collections import Counter, defaultdict
 from dataclasses import replace
@@ -75,7 +76,12 @@ from adapters.espacio.planos.comun import (
     sin_filas,
     superficie_de,
 )
-from adapters.espacio.planos.informe import EstadoImportacion, ResultadoImportacion, TipoItem
+from adapters.espacio.planos.informe import (
+    EstadoImportacion,
+    ResultadoImportacion,
+    TipoItem,
+    id_recorrido_dxf,
+)
 from adapters.espacio.reglas import (
     ALTO_PROVISIONAL,
     ALTURA_PENDIENTE,
@@ -293,6 +299,16 @@ class _Lector:
     def _no_reconocido(self, tabla: str, e, mensaje: str, fila: str = "") -> None:
         self.acc.item(TipoItem.NO_RECONOCIDO, tabla, mensaje, e.dxf.handle, fila)
 
+    def _finita(self, tabla: str, e, coordenadas, que: str, fila: str = "") -> bool:
+        """True si todas las coordenadas son finitas; si no (NaN o infinito, que no se pueden medir
+        ni pasar a `Decimal`), la entidad va al informe con su *handle* y no se importa."""
+        if all(math.isfinite(c) for punto in coordenadas for c in punto):
+            return True
+        self._no_reconocido(
+            tabla, e, f"{que} con una coordenada no finita (NaN o infinito): no se mide", fila
+        )
+        return False
+
     def _ambiente_de(self, atributos, x: Decimal, y: Decimal, tabla: str, e, fila: str):
         elegido = atributos.get("AMBIENTE")
         if elegido:
@@ -329,6 +345,8 @@ class _Lector:
         usados: set[str] = set()
         for e in poligonos:
             vertices, cerrada, arcos, _ = _geometria(e)
+            if not self._finita("AMBIENTES", e, vertices, "polilinea"):
+                continue
             contorno = _cerrada(vertices, cerrada)
             if not contorno:
                 self._no_reconocido(
@@ -421,6 +439,8 @@ class _Lector:
             if id_ in self.acc.fuentes:
                 self._no_reconocido("esp_fuentes", e, f"el id {id_!r} esta repetido", id_)
                 continue
+            if not self._finita("esp_fuentes", e, [e.dxf.insert], f"{id_}: insercion", id_):
+                continue
             x, y = self._m(e.dxf.insert.x), self._m(e.dxf.insert.y)
             z = self._altura(atributos, e)[0]
             ambiente = self._ambiente_de(atributos, x, y, "esp_fuentes", e, id_)
@@ -469,6 +489,8 @@ class _Lector:
             id_ = atributos.get("ID") or f"{capa}-{e.dxf.handle}"
             if id_ in self.acc.puntos:
                 self._no_reconocido("esp_puntos", e, f"el id {id_!r} esta repetido", id_)
+                continue
+            if not self._finita("esp_puntos", e, [e.dxf.insert], f"{id_}: insercion", id_):
                 continue
             x, y = self._m(e.dxf.insert.x), self._m(e.dxf.insert.y)
             ambiente = self._ambiente_de(atributos, x, y, "esp_puntos", e, id_)
@@ -664,6 +686,8 @@ class _Lector:
     def recorridos(self, entidades) -> None:
         for e, sufijo in entidades:
             vertices, cerrada, _, es_3d = _geometria(e)
+            if not self._finita("esp_recorridos", e, vertices, "polilinea"):
+                continue
             if cerrada or (len(vertices) >= 4 and vertices[0] == vertices[-1]):
                 self._no_reconocido(
                     "esp_recorridos", e, "polilinea cerrada: un recorrido es abierto"
@@ -680,41 +704,32 @@ class _Lector:
             planta = abs(p.posicion.x - v.x) <= TOLERANCIA and abs(p.posicion.y - v.y) <= TOLERANCIA
             return planta and (not es_3d or abs(p.posicion.z - v.z) <= TOLERANCIA)
 
-        tocados = sorted(
-            {
+        por_extremo = [
+            sorted(
                 p.id
                 for p in self.acc.puntos.values()
-                if p.especialidad is especialidad and any(toca(p, v) for v in extremos)
-            }
-        )
+                if p.especialidad is especialidad and toca(p, v)
+            )
+            for v in extremos
+        ]
+        tocados = sorted({*por_extremo[0], *por_extremo[1]})
         if not tocados:
             self._no_reconocido(
                 "esp_recorridos", e, f"el recorrido no toca ningun punto de {especialidad.value}"
             )
             return
-        if len(tocados) > 1:
-            self._no_reconocido(
-                "esp_recorridos",
-                e,
-                f"un extremo coincide con varios puntos ({', '.join(tocados)}): no se adivina",
-            )
-            return
-        punto = self.acc.puntos[tocados[0]]
-        dueno: dict[str, str | None] = {"punto_id": punto.id, "circuito_id": None}
         if especialidad is Especialidad.ELECTRICIDAD:
-            if punto.circuito_id is None:
-                self._no_reconocido(
-                    "esp_recorridos",
-                    e,
-                    f"el punto {punto.id} no tiene circuito: no hay donde colgarlo",
-                )
-                return
-            dueno = {"punto_id": None, "circuito_id": punto.circuito_id}
+            dueno, motivo = self._circuito_del_recorrido(tocados)
+        else:
+            dueno, motivo = self._punto_del_recorrido(tocados, por_extremo)
+        if dueno is None:
+            self._no_reconocido("esp_recorridos", e, motivo)
+            return
         tramos = self._tramos(vertices)
         if not tramos:
             self._no_reconocido("esp_recorridos", e, "el recorrido no tiene longitud")
             return
-        id_ = f"REC-{e.dxf.handle}"
+        id_ = id_recorrido_dxf(e.dxf.handle, self.archivo)
         self.acc.recorridos[id_] = Recorrido(
             id=id_, modo=ModoRecorrido.DECLARADO, tramos=tuple(tramos), **dueno
         )
@@ -736,18 +751,57 @@ class _Lector:
                 id_,
             )
 
+    @staticmethod
+    def _punto_del_recorrido(tocados: list[str], por_extremo: list[list[str]]):
+        """`(dueno, motivo)`: el punto de agua o datos al que pertenece el recorrido, o None y por
+        que no se adivina (un extremo sobre varios puntos, o cada extremo sobre uno distinto)."""
+        if len(tocados) == 1:
+            return {"punto_id": tocados[0], "circuito_id": None}, ""
+        varios = next((ids for ids in por_extremo if len(ids) > 1), None)
+        if varios:
+            return (
+                None,
+                f"un extremo coincide con varios puntos ({', '.join(varios)}): no se adivina",
+            )
+        return None, (
+            f"cada extremo toca un punto distinto ({', '.join(tocados)}): no se adivina de cual es"
+        )
+
+    def _circuito_del_recorrido(self, tocados: list[str]):
+        """`(dueno, motivo)`: el circuito de los puntos electricos que toca el recorrido (todos del
+        mismo), o None y por que no hay donde colgarlo."""
+        por_circuito: dict[str | None, list[str]] = defaultdict(list)
+        for id_ in tocados:
+            por_circuito[self.acc.puntos[id_].circuito_id].append(id_)
+        if len(por_circuito) == 1 and None not in por_circuito:
+            return {"punto_id": None, "circuito_id": next(iter(por_circuito))}, ""
+        if len(por_circuito) == 1:
+            if len(tocados) == 1:
+                return None, f"el punto {tocados[0]} no tiene circuito: no hay donde colgarlo"
+            return (
+                None,
+                f"los puntos {', '.join(tocados)} no tienen circuito: no hay donde colgarlo",
+            )
+        detalle = "; ".join(
+            f"{circuito or 'sin circuito'}: {', '.join(ids)}"
+            for circuito, ids in sorted(por_circuito.items(), key=lambda c: (c[0] is None, c[0]))
+        )
+        return None, f"los puntos que toca son de circuitos distintos ({detalle}): no se adivina"
+
     def _tramos(self, vertices: list[Coord]) -> list[Tramo]:
         techo = max((a.alto for a in self.acc.ambientes.values()), default=ALTO_PROVISIONAL)
         tramos = []
         for a, b in zip(vertices, vertices[1:], strict=False):
             if a.distancia(b) <= TOLERANCIA:
                 continue
+            # las dos cotas deciden (el sentido del dibujo no): techo o piso si ambas lo estan;
+            # un tramo vertical, inclinado o a media altura va por la pared
             vertical = abs(a.x - b.x) <= TOLERANCIA and abs(a.y - b.y) <= TOLERANCIA
             if vertical:
                 superficie = SuperficieTramo.PARED
-            elif a.z >= techo - TOLERANCIA:
+            elif min(a.z, b.z) >= techo - TOLERANCIA:
                 superficie = SuperficieTramo.TECHO
-            elif a.z <= TOLERANCIA:
+            elif max(a.z, b.z) <= TOLERANCIA:
                 superficie = SuperficieTramo.PISO
             else:
                 superficie = SuperficieTramo.PARED
@@ -818,7 +872,8 @@ def importar_dxf(
 
     Nunca lanza por un archivo malo: devuelve un resultado `RECHAZADA` (malformado, mas de 20 MB o
     mas entidades que el tope) o `DETENIDA` (falta la unidad, con `pide_unidad`) con su mensaje y
-    sin filas."""
+    sin filas. Una entidad con una coordenada no finita (NaN o infinito) va al informe como no
+    reconocida, con su *handle*, y el resto del plano se importa."""
     doc, archivo, rechazo, auditoria = _leer(contenido, nombre)
     if rechazo is not None:
         return rechazo
