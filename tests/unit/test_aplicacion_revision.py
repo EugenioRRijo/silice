@@ -361,8 +361,21 @@ def test_un_manifiesto_sin_emitido_o_proyecto_es_rechazado_aunque_no_liste_archi
         {"eslabones": [{"codigo": "005", "huella_eslabon": "x"}], "cambios": None},
         {"eslabones": [{"codigo": "005", "huella_eslabon": "x"}], "cambios": {"005": [["a"]]}},
         {"eslabones": [{"codigo": ["005"], "huella_eslabon": "x"}], "cambios": {}},
+        {"eslabones": ["x"], "cambios": {}},
+        {"eslabones": [5], "cambios": {}},
+        {"eslabones": [None], "cambios": {}},
+        {"eslabones": [{"codigo": "005", "huella_eslabon": "x"}, "x"], "cambios": {}},
     ],
-    ids=["lista", "cambios_nulo", "fila_de_un_campo", "codigo_que_no_es_texto"],
+    ids=[
+        "lista",
+        "cambios_nulo",
+        "fila_de_un_campo",
+        "codigo_que_no_es_texto",
+        "eslabon_texto",
+        "eslabon_numero",
+        "eslabon_nulo",
+        "eslabon_texto_tras_uno_bueno",
+    ],  # fmt: skip
 )
 def test_una_cadena_sin_la_forma_minima_no_se_registra_ni_rompe_el_analisis(mundo, cadena) -> None:
     """Un paquete sin firma con `cadena.json` de otra forma (y su huella rehecha en el manifiesto)
