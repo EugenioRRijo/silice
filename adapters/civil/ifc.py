@@ -20,6 +20,7 @@ declarado para civil) y la biblioteca estandar estan libres. `tests/unit/test_ar
 
 from __future__ import annotations
 
+import math
 from codecs import BOM_UTF8
 from decimal import Decimal
 from pathlib import Path
@@ -155,7 +156,15 @@ class AdaptadorCivilIFC(AdaptadorDominio):
                 f"cantidad ambigua: {len(candidatos)} valores {clase_esperada} para el elemento "
                 f"{global_id!r} en {Path(fuente).name!r}"
             )
-        return Decimal(str(candidatos[0]))
+        # Un valor vacio (`$` en el STEP) o no finito (`1.E999` es infinito) no es una cantidad:
+        # se rechaza como los demas errores del lector, no con un `InvalidOperation` sin contexto.
+        valor = candidatos[0]
+        if not isinstance(valor, int | float) or not math.isfinite(valor):
+            raise ValueError(
+                f"la cantidad {clase_esperada} del elemento {global_id!r} en "
+                f"{Path(fuente).name!r} no tiene un valor numerico finito ({valor!r})"
+            )
+        return Decimal(str(valor))
 
 
 def _abrir_modelo(ruta: Path) -> ifcopenshell.file:

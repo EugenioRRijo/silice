@@ -183,3 +183,12 @@ def test_una_nota_al_pie_sin_valor_no_es_un_rechazo_pero_un_mes_sin_valor_si():
     )
     assert [r.motivo for r in informe.rechazos] == ["valor no numerico"]
     assert len(valores) == 1
+
+
+@pytest.mark.parametrize("raro", [D("NaN"), D("Infinity"), D("sNaN")])
+def test_un_indice_no_finito_se_rechaza_con_su_motivo(raro):
+    """Verificacion 3b (F9): un NaN lanzaba `InvalidOperation` al compararlo con cero y un infinito
+    entraba en la serie. Los dos se rechazan en su fila y las demas siguen."""
+    informe = _leer(_hoja(("Ene-2026", D("100")), ("Feb-2026", raro)))
+    assert [r.motivo for r in informe.rechazos] == ["valor no finito"]
+    assert [v.valor for v in informe.series[0].valores] == [D("100")]

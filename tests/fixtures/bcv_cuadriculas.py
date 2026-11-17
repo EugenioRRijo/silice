@@ -26,8 +26,9 @@ def hoja_tasa(
         (
             ("BANCO CENTRAL DE VENEZUELA", None, None),
             (f"{etiqueta} {fecha}", None, None),
-            ("EUR", D("1000.1"), D("1002.3")),
-            (codigo, compra, venta),
+            # Como el archivo real: codigo, pais, M.E./US$ (compra y venta) y Bs (compra y venta).
+            ("EUR", "Zona Euro", D("1.1356"), D("1.13563"), D("1000.1"), D("1002.3")),
+            (codigo, "E.U.A.", D("1.0"), D("1.0"), compra, venta),
         ),
     )
 

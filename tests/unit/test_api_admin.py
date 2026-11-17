@@ -657,6 +657,25 @@ def test_revisar_dos_veces_y_quien_revisa_consta() -> None:
     assert navegador.post(url, headers=cab).status_code == 404
 
 
+def test_revisar_un_archivo_de_eventos_corrupto_da_409_y_no_lo_desbloquea() -> None:
+    """Verificacion 3b (F7; SEG-12): marcar revisado un archivo ilegible lo sobrescribia y
+    desbloqueaba lo sensible sin que nadie viera las diferencias. Ahora es un 409 y no se toca."""
+    archivo = config.carpeta_datos() / "eventos_perdidos_roto.json"
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text("{no es json", encoding="utf-8")
+    navegador, cab = _admin()
+    r = navegador.post(f"/v1/admin/instalacion/eventos/{archivo.name}/revisar", headers=cab)
+    assert (r.status_code, r.json()) == (
+        409,
+        {
+            "detalle": "El archivo de eventos perdidos no se puede leer, así que no se marcó "
+            "como revisado. Restáurelo de un respaldo o pida ayuda."
+        },
+    )
+    assert archivo.read_text(encoding="utf-8") == "{no es json"
+    assert navegador.get("/v1/admin/instalacion").json()["sensible"]["permitida"] is False
+
+
 def test_un_archivo_de_eventos_corrupto_no_tumba_la_pantalla() -> None:
     archivo = config.carpeta_datos() / "eventos_perdidos_roto.json"
     archivo.parent.mkdir(parents=True, exist_ok=True)

@@ -31,6 +31,11 @@ SEMBRADOS = {
     ),
     "consulta": ("GET http://127.0.0.1:8501/x?token=abc123def", "abc123def"),
     "codigo de instalacion": ("codigo_de_instalacion=K7QFM9XRA2PTW4HN", "K7QFM9XRA2"),
+    # Verificacion 3b (F10): con la comilla de cierre entre la clave y `:` salian integros.
+    "JSON, contraseña": ('{"password": "mi_secreto_real", "token": "abc123"}', "mi_secreto"),
+    "JSON, token": ('{"password": "mi_secreto_real", "token": "abc123"}', "abc123"),
+    "JSON sin espacios": ('{"clave":"Qw3rtyLarga"}', "Qw3rty"),
+    "repr de un dict": ("{'password': 'x9_hunter'}", "x9_hunter"),
 }
 
 
@@ -89,6 +94,17 @@ def test_una_excepcion_guarda_tipo_mensaje_y_lineas_sin_valores(registro_en) -> 
     assert "ValueError" in texto and ".py:" in texto
     assert "sk-ant-api03" not in texto and "hunter2xyz" not in texto
     assert "raise ValueError" not in texto  # ni el texto de la línea de código
+
+
+def test_en_json_y_en_el_repr_de_un_dict_se_tapa_el_valor_y_quedan_las_comillas() -> None:
+    """Verificacion 3b (F10): la clave seguida de su comilla de cierre (`"password": "..."`,
+    `'password': '...'`) no se reconocia. Se tapa el valor y la forma del texto se conserva."""
+    assert registro.limpiar('{"password": "mi_secreto_real", "token": "abc123"}', "") == (
+        f'{{"password": "{registro.MARCA}", "token": "{registro.MARCA}"}}'
+    )
+    assert registro.limpiar("{'password': 'x'}", "") == f"{{'password': '{registro.MARCA}'}}"
+    assert registro.limpiar("dict(password='zz')", "") == f"dict(password='{registro.MARCA}')"
+    assert registro.limpiar('{"usuario": "ana"}', "") == '{"usuario": "ana"}'
 
 
 def test_el_perfil_del_usuario_se_reescribe() -> None:

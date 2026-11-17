@@ -1,3 +1,6 @@
+import zipfile
+from decimal import Decimal
+
 import openpyxl
 import pytest
 
@@ -88,3 +91,22 @@ def test_el_aviso_de_las_cifras_leidas_se_dice_sin_jerga(tmp_path):
     avisos = abrir_libro(ruta).avisos
     assert "1.200 cifras del libro se leyeron con todos los decimales que guarda Excel." in avisos
     assert not any("float" in a or "repr" in a for a in avisos)
+
+
+def test_una_cifra_infinita_de_un_xlsx_no_llega_como_decimal(tmp_path):
+    """Verificacion 3b (F9): openpyxl lee la celda `1e999` como `inf` y el lector la convertia en
+    `Decimal('Infinity')`, que la tasa aceptaba. Un no finito llega como texto, no como cifra."""
+    libro = openpyxl.Workbook()
+    libro.active.title = "01072026"
+    libro.active.append(["USD", 11111.5, 22222.5])
+    origen, ruta = tmp_path / "o.xlsx", tmp_path / "t.xlsx"
+    libro.save(origen)
+    with zipfile.ZipFile(origen) as zin, zipfile.ZipFile(ruta, "w") as zout:
+        for info in zin.infolist():
+            datos = zin.read(info.filename)
+            if info.filename == "xl/worksheets/sheet1.xml":
+                datos = datos.replace(b"11111.5", b"1e999").replace(b"22222.5", b"-1e999")
+            zout.writestr(info, datos)
+    (fila,) = abrir_libro(ruta).hojas[0].filas
+    assert fila[0] == "USD"
+    assert not any(isinstance(c, Decimal) for c in fila[1:])

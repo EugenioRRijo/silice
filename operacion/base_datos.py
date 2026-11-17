@@ -237,8 +237,16 @@ def _heads() -> dict[str, str | None]:
 
 
 def _clasificar(ruta: Path, destino: Destino) -> tuple[str, EstadoBase]:
-    """«al_dia», «nueva» o «pendiente»; `BaseMasNueva` si la revisión es desconocida."""
+    """«al_dia», «nueva» o «pendiente»; `BaseMasNueva` si la revisión es desconocida y
+    `BaseNoAdoptable` si trae una revisión pero ninguna tabla de datos: no es nueva (Alembic
+    seguiría desde esa revisión y la dejaría a medias) ni está al día."""
     estado = leer_estado(ruta)
+    if (
+        estado.revision is not None
+        and estado.sin_datos
+        and estado.revision in revisiones_conocidas(destino)
+    ):
+        raise BaseNoAdoptable([f"trae la revisión {estado.revision} pero está sin tablas de datos"])
     if estado.existe and respaldo.TABLA_VERSION in estado.tablas:
         if estado.revision == revision_head(destino):
             return "al_dia", estado
@@ -515,7 +523,8 @@ def subir_caso(
     entorno: Mapping[str, str] | None = None,
 ) -> ResultadoPreparacion:
     """Copia un `.db` subido a la carpeta de casos con nombre saneado y lo prepara; si no se puede
-    preparar, no queda en la carpeta."""
+    preparar, no queda en la carpeta. Como la subida de `aplicacion/casos.py`, su respaldo previo
+    lleva `MOTIVO_SUBIDA` y no desplaza al de la migración real."""
     ruta = resolver_caso(sanear_nombre(nombre_original), carpeta, entorno=entorno)
     if ruta.exists():
         raise CasoYaExiste(
@@ -526,7 +535,7 @@ def subir_caso(
     ruta.parent.mkdir(parents=True, exist_ok=True)
     ruta.write_bytes(contenido)
     try:
-        return preparar_base(ruta, entorno=entorno)
+        return preparar_base(ruta, entorno=entorno, motivo=respaldo.MOTIVO_SUBIDA)
     except ErrorDeBase:
         ruta.unlink(missing_ok=True)
         raise
