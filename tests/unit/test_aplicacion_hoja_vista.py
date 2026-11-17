@@ -1291,3 +1291,37 @@ def test_un_quitar_a_mitad_de_la_vista_del_espacio_no_mezcla_dos_borradores(_of0
     assert vista.filas == hoja.filas_editables_del_espacio(_of001.borrador.espacio)
     assert vista.derivadas  # las cantidades del mismo borrador que las filas
     assert vivo.borrador is vacio
+
+
+# Las nueve vistas que releen `vivo` despues de `calculo` van enteras bajo el cerrojo. Las dos
+# pruebas de arriba lo comprueban en conducta para presupuesto y espacio; esta cubre el conjunto
+# exacto, asi que una vista nueva que reciba `vivo` sin el decorador la pone en rojo. `calculo`
+# toma el cerrojo por su cuenta y `version_mas_nueva` lee dos campos que no cambian tras abrir.
+_VISTAS_CON_CERROJO = {
+    "resumen", "base", "vista_espacio", "vista_presupuesto", "vista_apu", "vista_plan",
+    "vista_equilibrio", "vista_parametros", "informe_de_auditoria",
+}  # fmt: skip
+_RECIBEN_VIVO_SIN_DECORADOR = {"calculo", "version_mas_nueva"}
+
+
+def _publicas_que_reciben_vivo() -> dict[str, object]:
+    import inspect
+
+    funciones = {}
+    for nombre, funcion in inspect.getmembers(hoja_vista, inspect.isfunction):
+        if nombre.startswith("_") or funcion.__module__ != hoja_vista.__name__:
+            continue
+        parametros = list(inspect.signature(inspect.unwrap(funcion)).parameters)
+        if parametros[:1] == ["vivo"]:
+            funciones[nombre] = funcion
+    return funciones
+
+
+def test_las_funciones_que_reciben_vivo_son_las_nueve_vistas_y_las_dos_exentas():
+    assert set(_publicas_que_reciben_vivo()) == _VISTAS_CON_CERROJO | _RECIBEN_VIVO_SIN_DECORADOR
+
+
+@pytest.mark.parametrize("nombre", sorted(_VISTAS_CON_CERROJO))
+def test_cada_vista_que_relee_vivo_corre_bajo_el_cerrojo(nombre):
+    funcion = _publicas_que_reciben_vivo()[nombre]
+    assert funcion.__code__.co_name == "con_cerrojo", f"{nombre} no lleva @_con_el_cerrojo"
