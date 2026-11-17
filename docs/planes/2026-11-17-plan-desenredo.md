@@ -687,6 +687,25 @@ en 5.3, la lista de paquetes. Ningún paso toca `core/`.
 
 ---
 
+## Anexo: hallazgos del arbitraje de la depuración unida (2026-11-17)
+
+El [arbitraje xhigh](../bitacora/arbitrajes/depuracion-unida-claude-xhigh.md) de `feature/depuracion-unida` mandó
+aquí los hallazgos de la segunda opinión que tocan código anterior a la unión (decisión simulada DS-4). Cada uno
+entra en la ola que dice la tabla, con TDD como las demás tareas; las líneas son las de `feature/depuracion-unida`.
+
+| Tarea | Hallazgo | Qué se hace | Ola | Prueba en rojo |
+|---|---|---|---|---|
+| A.1 | H1, H7 | `adapters/hoja_empresa/pdf.py:262-270` (`_fmt`) y `aplicacion/libro_a_la_hoja.py:221-223` (`_pct`) presentan con `texto_de_cifra` (al alza, coma y punto de miles; sin «-0»). El adaptador no importa `api/`: usa la ayuda de `aplicacion`, o la de `core.verification.texto` | 2 (junto a 2.3) | `_fmt(Decimal("1.00005")) == "1,0001"`, `_fmt(Decimal("-0")) == "0"`, `_pct(Decimal("12.5")) == "1.250"` |
+| A.2 | H11 | Los 18 routers con `RutaSinCache` dejan de poner `Cache-Control` a mano (constantes `SIN_CACHE` locales y `headers=`) | 3 | Guardia en `tests/unit/test_arquitectura.py`: un módulo con `route_class` derivada de `RutaSinCache` no contiene el literal `"Cache-Control"`; las pruebas de `no-store` existentes son el oráculo de conducta |
+| A.3 | H8 y DS-2 | `declarar_rendimiento_propuesto` (`api/rutas/presupuestos.py:601`), `rendimientos.py:97` y las escrituras con BEGIN diferido de `control.py` pasan a `SesionDeEscrituraDep`; se decide si el 503 genérico de `api/main.py` sigue siendo el último recurso | 3 | Añadirlas a `QUE_ESCRIBEN` de `tests/unit/test_api_escritura_inmediata.py` |
+| A.4 | H9, H10 | `_carpetas_visibles` (`api/rutas/obras.py:304-335`) a `aplicacion`; un solo texto para `EventosIlegibles` junto a la excepción, citado por la API (409) y por la CLI (`operacion/ordenes_100.py:155-164`) | 3 | El `detalle` del 409 y la salida de la CLI contienen la misma constante |
+| A.5 | H13 | En `useEdicionDeSeccion.ts`, el `reenviar` que nace en el `finally` de una acción con la pestaña ya desmontada se registra con `registrarEnvio` | 4 (front de la Hoja) | Acción pendiente, se escribe, se desmonta la pestaña, se resuelve la acción: `esperarEnvios(borrador)` espera también el PUT del reenvío |
+| A.6 | DS-3, opción B | Mejora: el desglose del desperdicio cuenta como cambio y guardar escribe sus trazas sin crear versión (hoy E6 rechaza la edición que solo cambia el desglose). Toca `hoja_vista`, `hoja_guardado`, el contrato de guardar y el front | Después de la ola 4; pide el visto bueno de Eugenio | Editar solo el desglose deja `cambios > 0` y guardar responde 200 con las trazas nuevas |
+
+Rechazados por el arbitraje, sin tarea: H12 (descartar dentro de la pausa de 400 ms; inocuo) y H14 (el doble POST
+no ocurre).
+
+
 ## Resumen
 
 | Ola | Tareas | Necesita aval |
