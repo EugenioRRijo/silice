@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "MENSAJE_DESPERDICIOS",
+    "MENSAJE_SOLO_DESGLOSE",
     "con_desperdicio_en_materiales",
     "desgloses_visibles",
     "guardar_con_la_version",
@@ -64,6 +65,12 @@ __all__ = [
 MENSAJE_DESPERDICIOS = (
     "materiales: los desperdicios enviados no corresponden a las líneas de materiales del APU: "
     "vuelva a cargarlo."
+)
+#: Acta DS-3 (depuración del 2026-11-15, L3, opción A): la traza se guarda con la versión, y una
+#: edición que deja la misma composición no la cambia; por eso no entra.
+MENSAJE_SOLO_DESGLOSE = (
+    "Ese cambio deja la misma cantidad y solo reparte distinto el desperdicio. Sílice guarda el "
+    "desglose junto con un cambio de cantidad: cambie la cantidad o deje el desglose como estaba."
 )
 
 _CERO = Decimal(0)
