@@ -24,7 +24,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import select
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from adapters.espacio import cargar_espacio
@@ -115,10 +115,15 @@ def anexos_de_cadena(session: Session, version: models.Presupuesto) -> Mapping[s
 def anexo_de_ia(session: Session, version: models.Presupuesto) -> bytes | None:
     """`anexos/ia.json` del asistente (S4, `asistente.registro.anexo_ia`): las sesiones con
     propuestas aceptadas y guardadas hasta esta versión, sin fichas ni costos ni claves (RV-19).
-    `None` si no hay ninguna o si la base aún no tiene el registro de IA."""
+    `None` si no hay ninguna o si la base aún no tiene el registro de IA. Como en
+    `marca_de_no_aprobada`, solo la tabla ausente significa eso: un «database is locked» u otro
+    fallo sube como `SQLAlchemyError` (503 en la ruta), porque firmar el paquete sin el anexo
+    diría que la IA no participó."""
     try:
         return registro_ia.anexo_ia(session.connection(), version.proyecto.nombre, version.codigo)
-    except SQLAlchemyError:
+    except OperationalError as error:
+        if "no such table" not in str(error.orig):
+            raise
         return None
 
 
