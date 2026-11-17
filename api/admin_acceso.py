@@ -10,18 +10,23 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from fastapi import HTTPException, Request, Response
+from fastapi import HTTPException, Request
 
 from api.sesion_web import exigir_clave_o_sesion, exigir_equipo_propio
+from api.sin_cache import RutaSinCache
+from api.sin_eco import RutaSinEco
 from seguridad.permisos import Accion, Sensible
 from seguridad.sesiones import SesionActiva
 
 MENSAJE_SOLO_CUENTA = "Administrar la instalación exige entrar con una cuenta de administrador."
 
 
-def sin_cache(response: Response) -> None:
-    """Ninguna respuesta de Administracion se guarda en el navegador (huellas, etiquetas, rutas)."""
-    response.headers["Cache-Control"] = "no-store"
+class RutaDeAdministracion(RutaSinCache, RutaSinEco):
+    """Ninguna respuesta de Administracion se guarda en el navegador (huellas, etiquetas, rutas),
+    tampoco un 401, un 403 o un 422: una dependencia que pusiera la cabecera solo alcanza a la
+    respuesta de exito, porque el rechazo lo arma el manejador de `HTTPException` con una nueva.
+    El orden importa: `RutaSinCache` envuelve a `RutaSinEco` (el 422 sin eco tambien sale con la
+    cabecera)."""
 
 
 def _solo_cuenta(

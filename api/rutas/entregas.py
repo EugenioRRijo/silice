@@ -39,6 +39,7 @@ from sqlalchemy.orm import Session
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.rutas.sesion import Detalle
 from api.sesion_web import ahora, exigir_clave_o_sesion
+from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import aprobaciones
 from aplicacion import entrega as logica
@@ -69,7 +70,10 @@ FRENO_FIRMA = cuentas.FrenoGlobal()
 SIN_CACHE = {"Cache-Control": "no-store"}  # un paquete y su resumen no se guardan en el navegador
 
 
-class _RutaEntregas(RutaSinEco):
+class _RutaEntregas(RutaSinCache, RutaSinEco):
+    """`no-store` tambien en los rechazos (401, 403, 422); el orden importa: `RutaSinCache`
+    envuelve a `RutaSinEco` (diseño de la Hoja §1.3-7)."""
+
     mensaje_por_omision = MENSAJE_CUERPO_INVALIDO
 
 

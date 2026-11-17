@@ -28,9 +28,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from api.admin_acceso import administrar, sin_cache
+from api.admin_acceso import RutaDeAdministracion, administrar
 from api.sesion_web import ahora
-from api.sin_eco import RutaSinEco as _RutaSinEco
 from api.sin_eco import sin_eco as _sin_eco
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import empresas, firma
@@ -53,8 +52,7 @@ ERRORES_ESPERADOS = (empresas.ClaveError, ValueError)
 router = APIRouter(
     prefix="/v1/admin/empresas-registradas",
     tags=["administracion"],
-    dependencies=[Depends(sin_cache)],
-    route_class=_RutaSinEco,
+    route_class=RutaDeAdministracion,
 )
 ADMIN = Depends(administrar(Accion.ADMINISTRAR_EMPRESA))
 

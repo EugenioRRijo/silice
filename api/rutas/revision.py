@@ -49,6 +49,7 @@ from api.proteccion import LIMITE_CUERPO
 from api.redaccion import pulir
 from api.rutas.auditorias import ServiciosDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
+from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import revision as logica
 from core import models
@@ -83,7 +84,10 @@ SIN_CACHE = {"Cache-Control": "no-store"}  # lo recibido y su análisis no se gu
 ERRORES_DEL_PAQUETE = (PaqueteRechazado, JsonRechazado, ValueError)  # la clásica: `st.error(str())`
 
 
-class _RutaRevision(RutaSinEco):
+class _RutaRevision(RutaSinCache, RutaSinEco):
+    """`no-store` tambien en los rechazos (401, 403, 422); el orden importa: `RutaSinCache`
+    envuelve a `RutaSinEco` (diseño de la Hoja §1.3-7)."""
+
     mensaje_por_omision = MENSAJE_CUERPO_INVALIDO
 
 

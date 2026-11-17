@@ -211,15 +211,10 @@ def _es_texto_fijo(valor: ast.expr) -> bool:
     return nombre is not None and nombre.isupper()
 
 
-#: Las rutas de presupuestos escriben sin sesion de persona cuando la API corre sin clave y usan la
-#: constante `USUARIO_SIN_CLAVE` ("api (sin clave)"): excepcion unica, por archivo y por nombre.
-SIN_CLAVE_PERMITIDO = {"api/rutas/presupuestos.py"}
-
-
 def _responsables_fijos(archivo: Path) -> list[str]:
-    sin_clave = archivo.is_relative_to(RAIZ) and (
-        archivo.relative_to(RAIZ).as_posix() in SIN_CLAVE_PERMITIDO
-    )
+    """`USUARIO_SIN_CLAVE` ("api (sin clave)") solo vale como respaldo de quien no tiene sesion:
+    `USUARIO_SIN_CLAVE if quien is None else quien.usuario` no es un texto fijo (es una expresion
+    condicional); pasarla sola firmaria con ella tambien a quien llega con su cookie (RF-82)."""
     salida = []
     for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
         if not isinstance(nodo, ast.Call):
@@ -233,7 +228,6 @@ def _responsables_fijos(archivo: Path) -> list[str]:
                 v
                 for v in valores
                 if _es_texto_fijo(v)
-                and not (sin_clave and isinstance(v, ast.Name) and v.id == "USUARIO_SIN_CLAVE")
                 # `quien() or hoja.RESPONSABLE_POR_OMISION`: la transición (RP8-4), permitida
                 and not (
                     permitido
@@ -269,12 +263,14 @@ def test_la_vigilancia_de_responsables_fijos_ve_cada_forma(tmp_path: Path) -> No
     )
     lineas = sorted(int(d.rsplit(":", 1)[1]) for d in _responsables_fijos(archivo))
     assert lineas == [1, 2, 3, 5]
-    # `USUARIO_SIN_CLAVE` solo se perdona en api/rutas/presupuestos.py, nunca en otro archivo
+    # `USUARIO_SIN_CLAVE` sola es fija en todo archivo; como respaldo de `quien`, no
     otro = tmp_path / "y.py"
-    otro.write_text("f(usuario=USUARIO_SIN_CLAVE)\n", encoding="utf-8")
-    assert len(_responsables_fijos(otro)) == 1
-    permitido = RAIZ / "api" / "rutas" / "presupuestos.py"
-    assert _responsables_fijos(permitido) == []
+    otro.write_text(
+        "f(usuario=USUARIO_SIN_CLAVE)\n"
+        "f(usuario=USUARIO_SIN_CLAVE if quien is None else quien.usuario)\n",
+        encoding="utf-8",
+    )
+    assert [int(d.rsplit(":", 1)[1]) for d in _responsables_fijos(otro)] == [1]
 
 
 def test_la_guardia_de_responsables_recorre_la_capa_que_guarda() -> None:

@@ -316,7 +316,8 @@ def _carpetas_visibles(
     la lista. Así lo cumplen a la vez `/todas`, `/pendientes/todas` y `/resumen/todas`."""
     empresa = ruta_de_url(url_del_proceso())
     abierta = ruta_de_url(url_de_la_peticion(request))
-    es_empresa = abierta is None or abierta == empresa
+    # resueltas las dos, como al listar las demas: `datos/x/../empresa.db` es la de la empresa
+    es_empresa = abierta is None or (empresa is not None and abierta.resolve() == empresa.resolve())
     actual = None if es_empresa else abierta.name  # type: ignore[union-attr]
     en_uso = abierta if abierta is not None else empresa
     if en_uso is not None and es_demostracion(en_uso.name):

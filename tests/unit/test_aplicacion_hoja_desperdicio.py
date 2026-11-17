@@ -43,6 +43,8 @@ APU = ComposicionAPU(
 DE_COMPONER = TrazaDesperdicio("Ligante ficticio", "l", D("0.50"), D("4"), D("0.5200"))
 DE_LA_HOJA = TrazaDesperdicio("Ligante ficticio", "l", D("0.60"), D("5"), D("0.6300"))
 FECHA = date(2026, 11, 13)
+#: La traza de la arena sin porcentaje: 1,2 + 0 % = 1,2 (la línea dice «sin desperdicio»).
+ARENA_SIN = TrazaDesperdicio("Arena ficticia", "m3", D("1.2"), D("0"), D("1.2"))
 
 
 def test_el_porcentaje_convierte_la_neta_en_la_cantidad_y_deja_la_traza():
@@ -51,19 +53,26 @@ def test_el_porcentaje_convierte_la_neta_en_la_cantidad_y_deja_la_traza():
     assert nueva.materiales[1].cantidad == D("2.10")  # 2 × 1,05, a mano
     assert nueva.materiales[1].precio == LIGANTE.precio
     assert nueva.equipos == APU.equipos and nueva.rendimiento == APU.rendimiento
-    assert trazas == (TrazaDesperdicio("Ligante ficticio", "l", D("2"), D("5"), D("2.10")),)
+    assert trazas == (
+        ARENA_SIN,
+        TrazaDesperdicio("Ligante ficticio", "l", D("2"), D("5"), D("2.10")),
+    )
 
 
 @pytest.mark.parametrize("vacio", ["", "  ", "0", "0,0", "﻿", " "])
 def test_un_porcentaje_vacio_o_cero_no_es_desperdicio(vacio: str):
+    """La línea queda como está y su traza es de 0 % (la Hoja dice «sin desperdicio»), que unir
+    no devuelve: no hay desglose que mostrar."""
     nueva, trazas = con_desperdicio_en_materiales(APU, [vacio, vacio])
-    assert nueva == APU and trazas == ()
+    assert nueva == APU
+    assert trazas == (ARENA_SIN, TrazaDesperdicio("Ligante ficticio", "l", D("2"), D("0"), D("2")))
+    assert unir(trazas, []) == []
 
 
 def test_la_coma_decimal_del_porcentaje():
     nueva, trazas = con_desperdicio_en_materiales(APU, ["", "2,5"])
     assert nueva.materiales[1].cantidad == D("2.050")  # 2 × 1,025
-    assert trazas[0].desperdicio_pct == D("2.5")
+    assert trazas[1].desperdicio_pct == D("2.5")
 
 
 @pytest.mark.parametrize(
@@ -135,6 +144,24 @@ def test_la_traza_de_la_hoja_se_arma_recortada_como_la_de_componer():
     con_espacios = LineaMaterial("Ligante ficticio ", "l ", D("2"), D("3"))
     apu = replace(APU, materiales=(ARENA, con_espacios))
     _, trazas = con_desperdicio_en_materiales(apu, ["", "5"])
-    assert trazas == (TrazaDesperdicio("Ligante ficticio", "l", D("2"), D("5"), D("2.10")),)
+    nueva = TrazaDesperdicio("Ligante ficticio", "l", D("2"), D("5"), D("2.10"))
+    assert trazas == (ARENA_SIN, nueva)
     vigente = TrazaDesperdicio("Ligante ficticio", "l", D("1"), D("110"), D("2.10"))
-    assert unir(trazas, [vigente]) == list(trazas)  # misma línea y cantidad: manda la nueva
+    assert unir(trazas, [vigente]) == [nueva]  # misma línea y cantidad: manda la nueva
+
+
+def test_una_linea_sin_porcentaje_deja_sin_desglose_la_vigente_de_la_misma_cantidad():
+    """Depuración del 2026-11-15 (L2): la Hoja manda un porcentaje por material, así que «» dice
+    «esta línea no lleva desperdicio». La traza vigente de la misma descripción, unidad y cantidad
+    (0,50 + 4 % = 0,52) ya no se muestra ni se guarda: manda lo más nuevo, como con otro desglose
+    de la misma cantidad."""
+    sin = replace(
+        APU, materiales=(ARENA, LineaMaterial("Ligante ficticio", "l", D("0.52"), D("3")))
+    )
+    nueva, trazas = con_desperdicio_en_materiales(sin, ["", ""])
+    assert nueva == sin
+    assert unir(trazas, [DE_COMPONER]) == []
+    borrador = Borrador(fecha=FECHA, composiciones={"VIA-01": nueva})
+    vigentes = {"VIA-01": [DE_COMPONER]}
+    # la partida escribe un guardado sin trazas: la de Componer deja de valer para esa cantidad
+    assert por_guardar(borrador, {"VIA-01": trazas}, vigentes.__getitem__) == {"VIA-01": []}
