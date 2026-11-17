@@ -431,3 +431,26 @@ def test_al_guardar_sin_porcentaje_la_traza_vigente_de_esa_linea_deja_de_valer(
         f"/v1/hoja/borradores/{abierto.json()['id']}/vistas/apu", params={"partida": "AF-LLAVE"}
     ).json()["detalle"]
     assert detalle["desperdicios"] == []
+
+
+# --- Depuración del 2026-11-15, L3: cambiar solo el desglose es un cambio del borrador ----------
+
+
+def test_cambiar_solo_el_desglose_sube_el_rev_y_repetirlo_no(_caso: Path) -> None:
+    """0,625 × 1,60 = 1 (a mano), la misma cantidad que 0,8 × 1,25: la composición no cambia, pero
+    lo que la Hoja muestra y guardará sí, así que el `rev` sube (otra ventana con el `rev` viejo
+    debe recargar y no pisar el desglose). La misma edición otra vez no cambia nada."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    primera = _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"])
+    assert primera.status_code == 200, primera.text
+    assert primera.json()["apu"]["detalle"]["desperdicios"] == [
+        {"fila": 1, "texto": "0,625 + 60 %", "neta": "0,625", "porcentaje": "60"}
+    ]
+    assert primera.json()["rev"] == 1
+    rezagada = _editar(navegador, ficha, id_, cantidades, 0, ["0,8"], ["25"])
+    assert rezagada.status_code == 409, rezagada.text
+    otra_vez = _editar(navegador, ficha, id_, cantidades, 1, ["0,625"], ["60"])
+    assert otra_vez.status_code == 200, otra_vez.text
+    assert otra_vez.json()["rev"] == 1
