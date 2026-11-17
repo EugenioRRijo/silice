@@ -50,6 +50,7 @@ from aplicacion.desperdicio import TrazaDesperdicio, trazas_vigentes
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
 from aplicacion.hoja_desperdicio import (
+    MENSAJE_SOLO_DESGLOSE,
     con_desperdicio_en_materiales,
     desgloses_visibles,
     trazas_del_borrador,
@@ -72,6 +73,7 @@ from aplicacion.plan_rendimientos import (
 from core import models
 from core.budget import PeriodoPlan
 from core.catalog import Catalogo
+from core.contracts.apu import ComposicionAPU
 from core.contracts.dominio import Dominio
 
 __all__ = [
@@ -456,9 +458,10 @@ def editar_apu(
     un material con porcentaje es su neta y se guarda la cantidad con desperdicio; las trazas de la
     partida quedan en el borrador hasta guardar la version (`aplicacion.hoja_desperdicio`). Sin
     `desperdicios`, las trazas que el borrador ya tenia no cambian (siguen casando por la linea).
-    Cambiar solo el desglose (la misma cantidad con otra neta y otro porcentaje, o sin ellos) no
-    cambia la composicion, pero si lo que la Hoja muestra y guardara: sube `rev` igual
-    (depuracion del 2026-11-15, L3).
+    Una edicion que deja la composicion igual y solo cambia el desglose que la Hoja muestra (la
+    misma cantidad con otra neta y otro porcentaje, o sin ellos) es `HojaInvalida`
+    (`MENSAJE_SOLO_DESGLOSE`, acta DS-3 de la depuracion del 2026-11-15, L3): el borrador y su
+    `rev` no cambian. Mandar el desglose que ya se muestra no es error ni cambio.
     """
     trazas: tuple[TrazaDesperdicio, ...] | None = None
 
@@ -478,25 +481,33 @@ def editar_apu(
         if desperdicios is not None:
             nueva, trazas = con_desperdicio_en_materiales(nueva, desperdicios)
         if nueva == actual:
+            if trazas is not None and _otro_desglose(sesion, vivo, partida, actual, trazas):
+                raise HojaInvalida(MENSAJE_SOLO_DESGLOSE)
             return None
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
     # el cerrojo del borrador (reentrante) cubre la edicion y sus trazas: nadie ve una sin la otra
     vivo = hoja_borradores.obtener(huella, id)
     with vivo.cerrojo:
-        antes = trazas_del_borrador(vivo, partida)
         editado = cambiar_borrador(sesion, huella, id, rev, construir)
-        if trazas is None:
-            return editado
-        if editado.rev == rev and trazas != antes:  # la composicion quedo igual
-            filas = hoja.filas_de_apu(editado.borrador.composiciones[partida])[0]
-            vigentes = trazas_vigentes(sesion, partida)
-            if desgloses_visibles(filas, trazas, vigentes) != desgloses_visibles(
-                filas, antes, vigentes
-            ):
-                editado = hoja_borradores.reemplazar(huella, id, editado.borrador, rev)
-        editado.desperdicios = {**editado.desperdicios, partida: trazas}
+        if trazas is not None:
+            editado.desperdicios = {**editado.desperdicios, partida: trazas}
         return editado
+
+
+def _otro_desglose(
+    sesion: Session,
+    vivo: BorradorVivo,
+    codigo: str,
+    composicion: ComposicionAPU,
+    trazas: Sequence[TrazaDesperdicio],
+) -> bool:
+    """Si las `trazas` nuevas cambian el desglose que la Hoja muestra en `composicion`: las del
+    borrador antes que las vigentes de la partida (`hoja_desperdicio.desgloses_visibles`)."""
+    filas = hoja.filas_de_apu(composicion)[0]
+    vigentes = trazas_vigentes(sesion, codigo)
+    antes = trazas_del_borrador(vivo, codigo)
+    return desgloses_visibles(filas, trazas, vigentes) != desgloses_visibles(filas, antes, vigentes)
 
 
 def _insumo_de_la_lista(

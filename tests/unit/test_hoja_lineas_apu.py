@@ -570,3 +570,31 @@ def test_una_version_en_otra_moneda_que_la_linea_base_no_se_compara(base):
         "La versión 002 está en USD y la línea base 001 en Bs: no se comparan montos en monedas "
         "distintas."
     )
+
+
+# --- Depuración del 2026-11-15, L3 (acta DS-3, opción A): solo el desglose no entra ------------
+
+SOLO_DESGLOSE = (
+    "Ese cambio deja la misma cantidad y solo reparte distinto el desperdicio. Sílice guarda el "
+    "desglose junto con un cambio de cantidad: cambie la cantidad o deje el desglose como estaba."
+)
+
+
+def test_una_edicion_que_solo_cambia_el_desglose_se_rechaza_y_el_borrador_no_cambia(base):
+    """El Cemento gris de OBRA-02 lleva 1; 0,8 + 25 % da 0,8 × 1,25 = 1 (a mano), la misma
+    cantidad: la composición no cambia y solo el desglose sería otro. Se rechaza; el borrador, el
+    `rev` y las trazas quedan como estaban. Mandar lo que ya hay no es error ni cambio."""
+    vivo = _abierto(base)
+    antes = vivo.borrador
+
+    def editar(materiales, desperdicios):
+        return hoja_edicion.editar_apu(
+            base, "ficha", vivo.id, 0, "OBRA-02", "6", materiales, ["1"], ["2"], desperdicios
+        )
+
+    with pytest.raises(HojaInvalida) as error:
+        editar(["0,8"], ["25"])
+    assert str(error.value) == SOLO_DESGLOSE
+    assert vivo.rev == 0 and vivo.borrador is antes and vivo.desperdicios == {}
+    igual = editar(["1"], [""])
+    assert igual.rev == 0 and igual.borrador is antes

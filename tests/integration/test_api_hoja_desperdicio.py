@@ -377,21 +377,6 @@ def test_porcentajes_de_frontera_que_se_aceptan(
 # --- Depuración del 2026-11-15, L2: borrar el porcentaje quita el desglose ----------------------
 
 
-def test_borrar_el_porcentaje_quita_el_desglose_vigente_de_la_linea(_caso: Path) -> None:
-    """Con la traza 0,8 + 25 % (= 1) vigente, la Hoja manda la cantidad 1 sin porcentaje: dice
-    que la línea no lleva desperdicio, así que la vista ya no muestra «0,8 + 25 %»."""
-    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
-    navegador, ficha = con_cuenta(app, "ana")
-    id_, cantidades = _abrir(navegador, ficha)
-    respuesta = _editar(navegador, ficha, id_, cantidades, 0, ["1"], [""])
-    assert respuesta.status_code == 200, respuesta.text
-    assert respuesta.json()["apu"]["detalle"]["desperdicios"] == []
-    leida = navegador.get(
-        f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "AF-LLAVE"}
-    ).json()["detalle"]
-    assert leida["desperdicios"] == []
-
-
 def test_al_guardar_sin_porcentaje_la_traza_vigente_de_esa_linea_deja_de_valer(
     _caso: Path,
 ) -> None:
@@ -433,24 +418,35 @@ def test_al_guardar_sin_porcentaje_la_traza_vigente_de_esa_linea_deja_de_valer(
     assert detalle["desperdicios"] == []
 
 
-# --- Depuración del 2026-11-15, L3: cambiar solo el desglose es un cambio del borrador ----------
+# --- Depuración del 2026-11-15, L3 (acta DS-3, opción A): solo el desglose no entra ---------
+
+SOLO_DESGLOSE = (
+    "Ese cambio deja la misma cantidad y solo reparte distinto el desperdicio. Sílice guarda el "
+    "desglose junto con un cambio de cantidad: cambie la cantidad o deje el desglose como estaba."
+)
 
 
-def test_cambiar_solo_el_desglose_sube_el_rev_y_repetirlo_no(_caso: Path) -> None:
-    """0,625 × 1,60 = 1 (a mano), la misma cantidad que 0,8 × 1,25: la composición no cambia, pero
-    lo que la Hoja muestra y guardará sí, así que el `rev` sube (otra ventana con el `rev` viejo
-    debe recargar y no pisar el desglose). La misma edición otra vez no cambia nada."""
+@pytest.mark.parametrize(
+    ("materiales", "desperdicios"),
+    [(["0,625"], ["60"]), (["1"], [""])],  # 0,625 × 1,60 = 1 y 1 sin desperdicio (a mano)
+)
+def test_cambiar_solo_el_desglose_es_422_y_el_borrador_no_cambia(
+    _caso: Path, materiales: list[str], desperdicios: list[str]
+) -> None:
+    """Con 0,8 + 25 % (= 1) vigente, otro reparto de la misma cantidad o quitarle el porcentaje
+    deja la composición igual: es 422 con el texto del acta DS-3, sin caché, y el borrador sigue
+    en rev 0 con «0,8 + 25 %». Mandar lo que ya se muestra no es error ni sube el rev."""
     _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
     navegador, ficha = con_cuenta(app, "ana")
     id_, cantidades = _abrir(navegador, ficha)
-    primera = _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"])
-    assert primera.status_code == 200, primera.text
-    assert primera.json()["apu"]["detalle"]["desperdicios"] == [
-        {"fila": 1, "texto": "0,625 + 60 %", "neta": "0,625", "porcentaje": "60"}
-    ]
-    assert primera.json()["rev"] == 1
-    rezagada = _editar(navegador, ficha, id_, cantidades, 0, ["0,8"], ["25"])
-    assert rezagada.status_code == 409, rezagada.text
-    otra_vez = _editar(navegador, ficha, id_, cantidades, 1, ["0,625"], ["60"])
-    assert otra_vez.status_code == 200, otra_vez.text
-    assert otra_vez.json()["rev"] == 1
+    rechazada = _editar(navegador, ficha, id_, cantidades, 0, materiales, desperdicios)
+    assert rechazada.status_code == 422, rechazada.text
+    assert rechazada.json()["detalle"] == SOLO_DESGLOSE
+    assert rechazada.headers["cache-control"] == "no-store"
+    leida = navegador.get(
+        f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "AF-LLAVE"}
+    ).json()["detalle"]
+    assert leida["desperdicios"] == [LLAVE_0_8]
+    igual = _editar(navegador, ficha, id_, cantidades, 0, ["0,8"], ["25"])
+    assert igual.status_code == 200, igual.text
+    assert igual.json()["rev"] == 0
