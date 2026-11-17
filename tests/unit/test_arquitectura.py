@@ -9,6 +9,7 @@ Complementa a `git diff --stat core/` (Sesión I5): vigila la dependencia, no so
 """
 
 import ast
+import functools
 import re
 import sys
 from pathlib import Path
@@ -756,10 +757,12 @@ def _nodos_de_tipado(arbol: ast.AST) -> set[int]:
     }
 
 
-def _imports_con_linea(archivo: Path, raiz: Path = RAIZ) -> list[tuple[int, str]]:
+@functools.cache
+def _imports_con_linea(archivo: Path, raiz: Path = RAIZ) -> tuple[tuple[int, str], ...]:
     """`(linea, modulo)` de cada import de ejecucion de `archivo`: fuera de `if TYPE_CHECKING:`,
     con los perezosos (dentro de funciones) y los relativos resueltos a nombre absoluto.
-    `from a import b` registra `a` y `a.b`, porque `b` puede ser un submodulo."""
+    `from a import b` registra `a` y `a.b`, porque `b` puede ser un submodulo. Se guarda en cache:
+    las guardias de la ola 1 leen cada archivo una sola vez."""
     arbol = _arbol(archivo)
     tipado = _nodos_de_tipado(arbol)
     paquete = archivo.relative_to(raiz).with_suffix("").parts[:-1]
@@ -777,7 +780,7 @@ def _imports_con_linea(archivo: Path, raiz: Path = RAIZ) -> list[tuple[int, str]
                 modulo = nodo.module or ""
             nombres.append((nodo.lineno, modulo))
             nombres.extend((nodo.lineno, f"{modulo}.{alias.name}") for alias in nodo.names)
-    return sorted(nombres)
+    return tuple(sorted(nombres))
 
 
 # --- Tarea 1.1: matriz de dependencias entre paquetes -------------------------------------------
@@ -958,12 +961,14 @@ def test_la_matriz_ignora_type_checking(tmp_path):
 # --- Tarea 1.2: las rutas no consultan la base ni entran al nucleo por dentro -------------------
 
 
+@functools.cache
 def _es_modulo(nombre: str, raiz: Path = RAIZ) -> bool:
     ruta = raiz.joinpath(*nombre.split("."))
     return ruta.with_suffix(".py").is_file() or (ruta / "__init__.py").is_file()
 
 
-def _modulos_usados(archivo: Path, raiz: Path = RAIZ) -> list[tuple[int, str]]:
+@functools.cache
+def _modulos_usados(archivo: Path, raiz: Path = RAIZ) -> tuple[tuple[int, str], ...]:
     """`(linea, modulo)` que `archivo` carga en ejecucion: `from a import b` cuenta `a.b` si `b` es
     un submodulo y `a` si no lo es (una funcion o una clase de `a`). Sin `if TYPE_CHECKING:`."""
     arbol = _arbol(archivo)
@@ -984,7 +989,7 @@ def _modulos_usados(archivo: Path, raiz: Path = RAIZ) -> list[tuple[int, str]]:
             for alias in nodo.names:
                 hijo = f"{modulo}.{alias.name}"
                 usados.add((nodo.lineno, hijo if _es_modulo(hijo, raiz) else modulo))
-    return sorted(usados)
+    return tuple(sorted(usados))
 
 
 def _archivos_de_rutas(raiz: Path = RAIZ) -> list[Path]:
