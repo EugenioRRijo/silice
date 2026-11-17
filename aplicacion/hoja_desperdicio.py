@@ -27,6 +27,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
@@ -64,12 +65,18 @@ MENSAJE_DESPERDICIOS = (
     "vuelva a cargarlo."
 )
 
+_CERO = Decimal(0)
+
 
 def con_desperdicio_en_materiales(
     composicion: ComposicionAPU, porcentajes: Sequence[str]
 ) -> tuple[ComposicionAPU, tuple[TrazaDesperdicio, ...]]:
     """`composicion`, cuyas cantidades de material son las netas ya leídas, con la cantidad con
-    desperdicio en cada material de porcentaje no vacío ni cero, y la traza de cada uno.
+    desperdicio en cada material de porcentaje no vacío ni cero, y la traza de cada material.
+
+    Un material sin porcentaje (vacío o cero) deja su línea como está y su traza es de 0 %: la
+    Hoja dice «esta línea no lleva desperdicio», y `unir` deja por ella la vigente de la misma
+    descripción, unidad y cantidad sin mostrarla ni guardarla (depuración del 2026-11-15, L2).
 
     `HojaInvalida` si no hay un porcentaje por material (`MENSAJE_DESPERDICIOS`) o si uno no es
     una cifra de 0 a menos de 100 («materiales, fila N: el desperdicio «…» …»)."""
@@ -80,18 +87,18 @@ def con_desperdicio_en_materiales(
     for numero, (linea, texto) in enumerate(
         zip(composicion.materiales, porcentajes, strict=True), start=1
     ):
-        if not texto.strip(BLANCOS):  # el recorte de `aplicacion/cifras` (árbitro 13/11, M4)
+        porcentaje = _CERO
+        if texto.strip(BLANCOS):  # el recorte de `aplicacion/cifras` (árbitro 13/11, M4)
+            try:
+                porcentaje = porcentaje_escrito(texto, f"materiales, fila {numero}", ": ")
+            except ComposicionInvalida as error:
+                raise HojaInvalida(str(error)) from error
+        if porcentaje.is_zero():  # también «-0» y «0,0»: la línea queda como está
+            porcentaje, cantidad = _CERO, linea.cantidad
             lineas.append(linea)
-            continue
-        try:
-            porcentaje = porcentaje_escrito(texto, f"materiales, fila {numero}", ": ")
-        except ComposicionInvalida as error:
-            raise HojaInvalida(str(error)) from error
-        if porcentaje.is_zero():
-            lineas.append(linea)
-            continue
-        cantidad = cantidad_con_desperdicio(linea.cantidad, porcentaje)
-        lineas.append(replace(linea, cantidad=cantidad))
+        else:
+            cantidad = cantidad_con_desperdicio(linea.cantidad, porcentaje)
+            lineas.append(replace(linea, cantidad=cantidad))
         trazas.append(
             # recortadas como las de Componer (`texto_de_celda`): unir y por_guardar las comparan
             # con las vigentes (Argon, ronda 2 del árbitro, 2026-11-13)
@@ -115,9 +122,13 @@ def unir(
 ) -> list[TrazaDesperdicio]:
     """Las trazas `nuevas` (las del borrador) y, detrás, las `vigentes` de otra línea: una vigente
     con la misma descripción, unidad y cantidad que una nueva se deja (otro desglose de la misma
-    cantidad: manda el más nuevo)."""
+    cantidad: manda el más nuevo). Una nueva de 0 % (la línea sin desperdicio) deja la vigente de
+    su línea y no se devuelve: no hay desglose que mostrar ni que guardar."""
     propias = {_clave(t) for t in nuevas}
-    return [*nuevas, *(t for t in vigentes if _clave(t) not in propias)]
+    return [
+        *(t for t in nuevas if not t.desperdicio_pct.is_zero()),
+        *(t for t in vigentes if _clave(t) not in propias),
+    ]
 
 
 def trazas_del_borrador(vivo: BorradorVivo, codigo: str) -> tuple[TrazaDesperdicio, ...]:
