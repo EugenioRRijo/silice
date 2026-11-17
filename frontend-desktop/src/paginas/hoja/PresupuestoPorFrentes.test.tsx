@@ -272,4 +272,24 @@ describe("El presupuesto por frente", () => {
       "3. VF-009 · Señal ficticia",
     ]);
   });
+
+  test("si el renglón elegido deja de estar (se quitó en la Hoja), «Poner el frente» manda el que muestra el selector", async () => {
+    const valor = { alExpirar: vi.fn() } as unknown as Aplicacion;
+    const panel = (filas: typeof FILAS) => (
+      <ContextoAplicacion.Provider value={valor}>
+        <PresupuestoPorFrentes id={ID} rev={3} filas={filas} moneda="Bs" puedeEditar alAceptar={vi.fn()} alAusente={vi.fn()} />
+      </ContextoAplicacion.Provider>
+    );
+    const { rerender } = render(panel(FILAS));
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    await usuario.selectOptions(await screen.findByRole("combobox", { name: "Renglón" }), "VF-009|a-mano:1");
+    // La Hoja quitó VF-009: el selector solo ofrece VF-001.
+    rerender(panel([FILAS[0]!]));
+    expect(screen.getByRole("combobox", { name: "Renglón" })).toHaveValue("VF-001|libro:FRENTE A!E4");
+    await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
+    await waitFor(() => expect(fetchFalso.mock.calls.some(([, o]) => o?.method === "PUT")).toBe(true));
+    const edicion = fetchFalso.mock.calls.find(([, o]) => o?.method === "PUT")!;
+    expect(JSON.parse(String(edicion[1]?.body))).toEqual({ rev: 3, filas: [{ clave: "VF-001|libro:FRENTE A!E4", frente: "Norte" }] });
+  });
 });

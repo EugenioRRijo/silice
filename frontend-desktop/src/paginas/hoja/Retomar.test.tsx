@@ -337,6 +337,36 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     expect(screen.queryByRole("button", { name: /Retomar borrador/ })).toBeNull();
   });
 
+  test("tras retomar, «Descartar cambios» → «Descartar y abrir de nuevo» abre un borrador nuevo de la versión (no relee el borrado)", async () => {
+    lista = () => json({ borradores: [guardado()] });
+    // El servidor simulado se comporta como el de verdad: el borrador retomado existe hasta que se borra.
+    let vivo = true;
+    alVivo = (id) => {
+      if (!vivo) return json({ detalle: FALTA }, 404);
+      const b = borrador("002", { rev: 4, cambios: 2 });
+      return json({ id, base: b.base, resumen: b.resumen });
+    };
+    alBorrar = () => {
+      vivo = false;
+      return new Response(null, { status: 204 });
+    };
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: "Retomar borrador de OF-001 (2 cambios)" }));
+    await screen.findByText(/Versión 002 · 2 cambios sin guardar/);
+    fireEvent.click(within(estado()).getByRole("button", { name: "Descartar cambios" }));
+    fireEvent.click(within(estado()).getByRole("button", { name: "Descartar y abrir de nuevo" }));
+    await esperar(() => expect(aperturas()).toEqual([{ proyecto: "OF-001", version: "002" }]));
+    expect(borrados()).toHaveLength(1);
+    const o = orden();
+    expect(o.indexOf(`DELETE /v1/hoja/borradores/${ID}`)).toBeLessThan(o.indexOf("POST /v1/hoja/borradores"));
+    // El borrado no se vuelve a pedir: después del DELETE no hay otro GET del borrador retomado.
+    expect(o.lastIndexOf(`GET /v1/hoja/borradores/${ID}`)).toBeLessThan(o.indexOf(`DELETE /v1/hoja/borradores/${ID}`));
+    expect(await screen.findByText(/Sin cambios sin guardar/)).toBeInTheDocument();
+    expect(screen.queryByText("El borrador ya no está")).toBeNull();
+    // Ni vuelve a ofrecer el borrador que se acaba de descartar.
+    expect(screen.queryByRole("button", { name: /Retomar borrador/ })).toBeNull();
+  });
+
   test("E11: si al abrir el servidor contesta 409 con el borrador existente, se ofrece retomarlo en vez de mostrar un error", async () => {
     let pedidas = 0;
     lista = () => (pedidas++ === 0 ? json({ borradores: [] }) : json({ borradores: [guardado()] }));

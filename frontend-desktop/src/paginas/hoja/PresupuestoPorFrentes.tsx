@@ -89,7 +89,9 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
   const propias = filas.filter((f) => f.quitable && f.clave);
   const [renglon, setRenglon] = useState("");
   const [frente, setFrente] = useState("");
-  const elegido = renglon || propias[0]?.clave || "";
+  // El elegido solo vale mientras siga entre los renglones propios: si la Hoja lo quitó, el selector muestra el primero
+  // y eso es lo que se manda (con la clave vieja el servidor contestaría un 422 que nadie entendería).
+  const elegido = propias.some((f) => f.clave === renglon) ? renglon : (propias[0]?.clave ?? "");
 
   // El `rev` para el que se pidió (o llegó) la vista que se muestra; `null` mientras el panel no se abrió.
   const pedidaPara = useRef<number | null>(null);
