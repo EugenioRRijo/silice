@@ -250,6 +250,53 @@ describe("Auditar un libro con un APU por hoja", () => {
     expect(ofrecidas).toEqual([nombrado.includes("b.xlsx") ? "DE B" : "DE A"]);
   });
 
+  // P13 (auditoría 2026-11-15): mientras se leen las hojas del presupuesto no se puede auditar; si no, la auditoría sale
+  // sin hojas marcadas y el servidor elige por el perfil.
+  test("no deja auditar mientras se leen las hojas del presupuesto y manda las leídas al terminar", async () => {
+    let entregarHojas: (r: Response) => void = () => undefined;
+    fetchFalso.mockImplementation(async (ruta) => {
+      if (String(ruta) === "/v1/libros/perfiles-apu-por-hoja") return json(PERFILES_FRENTES);
+      if (String(ruta) === "/v1/libros/hojas") return new Promise<Response>((resolver) => (entregarHojas = resolver));
+      return json({ ...INFORME, presupuesto: "frentes.xlsx", hoja_presupuesto: "FRENTE A", hojas_presupuesto: ["FRENTE A", "FRENTE B"] });
+    });
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    const selector = await screen.findByRole("combobox", { name: "Perfil del libro" });
+    await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(2));
+    await usuario.selectOptions(selector, "por_frentes");
+    const [apu, presupuesto] = campos();
+    await usuario.upload(apu, new File(["x"], "obra.xlsx"));
+    await usuario.upload(presupuesto, new File(["y"], "frentes.xlsx"));
+    const boton = screen.getByRole("button", { name: "Auditar el libro de APU" });
+    await waitFor(() => expect(hojasPedidas()).toHaveLength(1));
+    expect(boton).toBeDisabled();
+    expect(screen.getByText("Leyendo las hojas del presupuesto...")).toBeInTheDocument();
+    entregarHojas(json({ hojas: ["RESUMEN", "FRENTE A", "FRENTE B"] }));
+    await screen.findByRole("group", { name: "Hojas del presupuesto que se comparan" });
+    expect(boton).toBeEnabled();
+    expect(screen.queryByText("Leyendo las hojas del presupuesto...")).not.toBeInTheDocument();
+    await usuario.click(boton);
+    await waitFor(() => expect(auditorias()).toHaveLength(1));
+    expect((auditorias()[0]![1]?.body as FormData).getAll("hoja_presupuesto")).toEqual(["FRENTE A", "FRENTE B"]);
+  });
+
+  test("si las hojas no se pueden leer, se puede auditar y decide el perfil", async () => {
+    fetchFalso.mockImplementation(async (ruta) => {
+      if (String(ruta) === "/v1/libros/perfiles-apu-por-hoja") return json(PERFILES_FRENTES);
+      if (String(ruta) === "/v1/libros/hojas") return json({ detail: "no se pudo leer" }, 422);
+      return json(INFORME);
+    });
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    await screen.findByRole("combobox", { name: "Perfil del libro" });
+    const [apu, presupuesto] = campos();
+    await usuario.upload(apu, new File(["x"], "obra.xlsx"));
+    await usuario.upload(presupuesto, new File(["y"], "roto.xlsx"));
+    await waitFor(() => expect(hojasPedidas()).toHaveLength(1));
+    await waitFor(() => expect(screen.queryByText("Leyendo las hojas del presupuesto...")).not.toBeInTheDocument());
+    await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
+    await waitFor(() => expect(auditorias()).toHaveLength(1));
+    expect((auditorias()[0]![1]?.body as FormData).getAll("hoja_presupuesto")).toEqual([]);
+  });
+
   // Libro por frentes: llevar a la Hoja el libro auditado (`POST /v1/hoja/libro`). La pantalla vuelve a mandar los dos
   // libros, el perfil y las hojas, más la obra y la moneda de los precios; el servidor dice cada partida con el P.U. del
   // libro y el de la Hoja (ya presentados) y si casan. Datos FICTICIOS.

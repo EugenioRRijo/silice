@@ -183,8 +183,9 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
   const delPerfil = hojasDe(perfiles?.find((p) => p.nombre === perfil) ?? { hoja_presupuesto: POR_OMISION_HOJA });
   const porOmision = (hojasDelPresupuesto ?? []).filter((h) => delPerfil.some((d) => igualada(d) === igualada(h)));
   const hojas = hojasDelPresupuesto === null ? [] : (marcadas ?? porOmision);
-  // Mientras se leen las hojas de un presupuesto no se elige otro; y si aun así llegara tarde la lectura de uno anterior,
-  // el turno la descarta para que no se pinten sus hojas con otro presupuesto elegido.
+  // Mientras se leen las hojas de un presupuesto no se elige otro ni se audita (P13: saldría sin hojas marcadas y el
+  // servidor elegiría por el perfil); y si aun así llegara tarde la lectura de uno anterior, el turno la descarta para que
+  // no se pinten sus hojas con otro presupuesto elegido.
   const [leyendoHojas, setLeyendoHojas] = useState(false);
   const lecturaDeHojas = useRef(0);
 
@@ -303,9 +304,10 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
           .join(" · ")}
       </p>
       <div className="silice-inicio__acciones">
-        <Button kind="primary" size="md" disabled={libro === null || auditando} onClick={() => void auditar()}>
+        <Button kind="primary" size="md" disabled={libro === null || auditando || leyendoHojas} onClick={() => void auditar()}>
           Auditar el libro de APU
         </Button>
+        {leyendoHojas && <InlineLoading description="Leyendo las hojas del presupuesto..." />}
         {auditando && <InlineLoading description="Recalculando cada hoja..." />}
       </div>
       <AvisoError error={error} titulo="No se auditó el libro" />
