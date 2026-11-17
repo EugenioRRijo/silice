@@ -372,3 +372,62 @@ def test_porcentajes_de_frontera_que_se_aceptan(
     assert respuesta.status_code == 200, respuesta.text
     desperdicios = respuesta.json()["apu"]["detalle"]["desperdicios"]
     assert [d["porcentaje"] for d in desperdicios] == ([] if porcentaje is None else [porcentaje])
+
+
+# --- Depuración del 2026-11-15, L2: borrar el porcentaje quita el desglose ----------------------
+
+
+def test_borrar_el_porcentaje_quita_el_desglose_vigente_de_la_linea(_caso: Path) -> None:
+    """Con la traza 0,8 + 25 % (= 1) vigente, la Hoja manda la cantidad 1 sin porcentaje: dice
+    que la línea no lleva desperdicio, así que la vista ya no muestra «0,8 + 25 %»."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    respuesta = _editar(navegador, ficha, id_, cantidades, 0, ["1"], [""])
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["apu"]["detalle"]["desperdicios"] == []
+    leida = navegador.get(
+        f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "AF-LLAVE"}
+    ).json()["detalle"]
+    assert leida["desperdicios"] == []
+
+
+def test_al_guardar_sin_porcentaje_la_traza_vigente_de_esa_linea_deja_de_valer(
+    _caso: Path,
+) -> None:
+    """Con otro cambio que guardar (el rendimiento), la línea que la Hoja dejó sin porcentaje no
+    vuelve a mostrar «0,8 + 25 %» en la versión nueva: manda lo más nuevo (bitácora del
+    2026-11-13, §3, riesgo 1), y la base registra un guardado sin trazas."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/AF-LLAVE",
+        json={
+            "rev": 0,
+            "rendimiento": "25",
+            "materiales": ["1"],
+            "desperdicios": [""],
+            "equipos": cantidades["equipos"],
+            "mano_obra": cantidades["mano de obra"],
+        },
+        headers=protegida(ficha),
+    )
+    assert editado.status_code == 200, editado.text
+    guardado = navegador.post(
+        f"/v1/hoja/borradores/{id_}/guardar",
+        json={"rev": editado.json()["rev"], "fuente": "Acta ficticia de obra"},
+        headers=protegida(ficha),
+    )
+    assert guardado.status_code == 200, guardado.text
+    assert _trazas(_caso) == []
+    abierto = navegador.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": NOMBRE_OF001, "version": guardado.json()["codigo"]},
+        headers=protegida(ficha),
+    )
+    assert abierto.status_code == 201, abierto.text
+    detalle = navegador.get(
+        f"/v1/hoja/borradores/{abierto.json()['id']}/vistas/apu", params={"partida": "AF-LLAVE"}
+    ).json()["detalle"]
+    assert detalle["desperdicios"] == []

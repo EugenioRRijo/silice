@@ -138,3 +138,20 @@ def test_la_traza_de_la_hoja_se_arma_recortada_como_la_de_componer():
     assert trazas == (TrazaDesperdicio("Ligante ficticio", "l", D("2"), D("5"), D("2.10")),)
     vigente = TrazaDesperdicio("Ligante ficticio", "l", D("1"), D("110"), D("2.10"))
     assert unir(trazas, [vigente]) == list(trazas)  # misma línea y cantidad: manda la nueva
+
+
+def test_una_linea_sin_porcentaje_deja_sin_desglose_la_vigente_de_la_misma_cantidad():
+    """Depuración del 2026-11-15 (L2): la Hoja manda un porcentaje por material, así que «» dice
+    «esta línea no lleva desperdicio». La traza vigente de la misma descripción, unidad y cantidad
+    (0,50 + 4 % = 0,52) ya no se muestra ni se guarda: manda lo más nuevo, como con otro desglose
+    de la misma cantidad."""
+    sin = replace(
+        APU, materiales=(ARENA, LineaMaterial("Ligante ficticio", "l", D("0.52"), D("3")))
+    )
+    nueva, trazas = con_desperdicio_en_materiales(sin, ["", ""])
+    assert nueva == sin
+    assert unir(trazas, [DE_COMPONER]) == []
+    borrador = Borrador(fecha=FECHA, composiciones={"VIA-01": nueva})
+    vigentes = {"VIA-01": [DE_COMPONER]}
+    # la partida escribe un guardado sin trazas: la de Componer deja de valer para esa cantidad
+    assert por_guardar(borrador, {"VIA-01": trazas}, vigentes.__getitem__) == {"VIA-01": []}
