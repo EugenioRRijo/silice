@@ -20,6 +20,9 @@ congelada; la lista solo puede achicarse.
 decisión de Eugenio del mismo día sobre el redondeo de presentación. Líneas confirmadas en
 `.worktrees/s2m4` (rama `feature/mejoras-ola2`, 8edeb9ae).
 
+**Unión (P.3):** `feature/depuracion-unida` a802d728 (PR #111, 12.984 pruebas en verde). Las listas congeladas de la
+ola 1 se miden sobre ese commit y las ramas de las olas 1 a 4 se apilan sobre él.
+
 ## Restricciones globales
 
 - `core/` no cambia. Se puede **llamar** a `core.verification.texto.formatear_decimal`
@@ -81,12 +84,12 @@ Ramas en `s2m4` (`git branch --list "feature/depurar-*"`), commits propios sobre
 Las doce borran 156 líneas de `docs/bitacora/auditoria-agy-2026-11-15.md` y tocan 3 líneas de
 `tests/integration/test_api_hoja_libro.py`: es el conflicto que se repite en cada unión.
 
-- [ ] **P.1** Unir las once ramas con contenido en una rama de trabajo (aquí
+- [x] **P.1** Unir las once ramas con contenido en una rama de trabajo (aquí
   `feature/depuracion-unida`; el nombre lo pone quien una) sobre `feature/mejoras-ola2`.
-- [ ] **P.2** Línea base verde, con la salida guardada para comparar:
+- [x] **P.2** Línea base verde, con la salida guardada para comparar:
   `uv run pytest -W error -q` · `uv run ruff check .` · `uv run python scripts/meta_datos.py` ·
   `uv run python scripts/guardia_nucleo.py`.
-- [ ] **P.3** Anotar el commit de la unión en la cabecera de este plan. Todas las listas
+- [x] **P.3** Anotar el commit de la unión en la cabecera de este plan. Todas las listas
   congeladas de la ola 1 se miden sobre ese commit.
 
 Ninguna tarea empieza antes de P.3. Las ramas sugeridas salen de `feature/depuracion-unida`.
