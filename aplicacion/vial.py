@@ -40,7 +40,6 @@ la fecha con que `reglas_viales` busca la receta vigente cuando la Hoja abre una
 from __future__ import annotations
 
 import json
-import re
 import tempfile
 from collections.abc import Sequence
 from contextlib import AbstractContextManager, ExitStack
@@ -114,7 +113,8 @@ LARGO_USUARIO = 200
 MAX_TRAMOS = 2000
 MAX_CAPAS = 50
 MAX_LINEAS_DE_DEMARCACION = 20
-_NOMBRE_INVALIDO = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+#: El nombre con que se escribe en disco el CSV de tramos que se lee (`tramos_desde_csv`).
+ARCHIVO_TEMPORAL = "tramos.csv"
 
 
 class VersionInexistente(LookupError):  # noqa: N818
@@ -455,17 +455,19 @@ def cantidades_de_tramos(tramos: Sequence[Tramo]) -> list[CantidadVial]:
 
 def tramos_desde_csv(contenido: bytes, nombre: str) -> list[Tramo]:
     """Los tramos del CSV `contenido` (formato de `data/samples/vial/README.md`). Todo o nada:
-    un error en cualquier fila es un `ValueError` que nombra el archivo y la fila."""
-    limpio = _NOMBRE_INVALIDO.sub("_", nombre.replace("\\", "/").rsplit("/", 1)[-1]).strip()
-    seguro = (limpio or "tramos.csv")[:100]
+    un error en cualquier fila es un `ValueError` que nombra el archivo y la fila.
+
+    El archivo temporal se llama siempre `ARCHIVO_TEMPORAL`: el nombre de la persona («....» u otro
+    que Windows no acepta) no llega al disco y solo aparece, recortado, en los mensajes."""
+    mostrado = nombre[:100]
     with tempfile.TemporaryDirectory(prefix="silice-tramos-") as carpeta:
-        ruta = Path(carpeta) / seguro
+        ruta = Path(carpeta) / ARCHIVO_TEMPORAL
         ruta.write_bytes(contenido)
         try:
             tramos = leer_tramos(ruta)
         except ValueError as error:
-            raise ValueError(str(error).replace(repr(seguro), repr(nombre[:100]))) from None
-    _dentro_de_los_topes(tramos, nombre[:100])
+            raise ValueError(str(error).replace(repr(ARCHIVO_TEMPORAL), repr(mostrado))) from None
+    _dentro_de_los_topes(tramos, mostrado)
     return tramos
 
 

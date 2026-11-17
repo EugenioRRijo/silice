@@ -266,6 +266,13 @@ def cuadrillas_escritas(textos: Mapping[str, str]) -> dict[str, int]:
     return cuadrillas
 
 
+def _valoradas(
+    lista: Sequence[Duracion], composiciones: Mapping[str, ComposicionAPU]
+) -> list[Duracion]:
+    """Las duraciones de las partidas con composición: las pendientes no ocupan días del plan."""
+    return [d for d in lista if d.codigo in composiciones]
+
+
 def plan_del_borrador(
     items: Sequence[ItemComputo],
     composiciones: Mapping[str, ComposicionAPU],
@@ -278,10 +285,14 @@ def plan_del_borrador(
 
     La curva exige que cada partida valorada sume 1 (`core.budget.curva`): las que se quedaron
     fuera del plan por tener cantidad 0 (monto 0) van enteras al último período, sin alargar el
-    plan. Sin ningún período, van a un primer período.
+    plan. Sin ningún período, van a un primer período. Una partida pendiente (sin composición)
+    no entra al plan, solo su aviso: al guardar, `hoja.ajustar_plan` la quita, y si hubiera
+    reservado un día el plan guardado empezaría en «Dia 2».
     """
     lista = duraciones(items, composiciones, cuadrillas or {})
-    plan = plan_por_rendimientos(lista, paralelas=paralelas, unidad=unidad)
+    plan = plan_por_rendimientos(
+        _valoradas(lista, composiciones), paralelas=paralelas, unidad=unidad
+    )
     en_el_plan = {codigo for _, reparto in plan for codigo, _ in reparto}
     fuera = tuple(
         (d.codigo, UNO) for d in lista if d.codigo in composiciones and d.codigo not in en_el_plan
@@ -306,7 +317,7 @@ def plan_que_cabe(
     podía guardar, y las cuadrillas solo se ponen con un plan hecho. Por días es exactamente el
     plan de siempre (`plan_del_borrador`). `PlanDemasiadoLargo` si ni en meses cabe, con la salida.
     """
-    _, mayor_fin = _tramos(duraciones(items, composiciones, {}), ())
+    _, mayor_fin = _tramos(_valoradas(duraciones(items, composiciones, {}), composiciones), ())
     por_dias = _periodos(mayor_fin, "dia")
     for unidad in UNIDADES_DE_LA_PRIMERA:
         if _periodos(mayor_fin, unidad) <= MAXIMO_DE_PERIODOS:

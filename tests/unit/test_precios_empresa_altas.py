@@ -191,6 +191,42 @@ def test_dos_filas_nuevas_del_mismo_insumo_con_precios_distintos_no_crean_nada(
     assert sesion.scalars(select(models.ListaEmpresa)).first() is None
 
 
+DOS_UNIDADES = (
+    "tipo,insumo,unidad,precio,fecha,fuente\n"
+    "material,Ladrillo de prueba,saco,10.00,2026-10-05,x\n"
+    "material,Bloque de prueba,und,0.80,2026-10-05,x\n"
+    "material,Ladrillo de prueba,kg,1.00,2026-10-05,x\n"
+)
+AVISO_DOS_UNIDADES = (
+    "«Ladrillo de prueba» viene en el archivo en saco y en kg: no entró ni se dio de alta (serían "
+    "dos insumos con el mismo nombre); deje en el archivo una sola unidad."
+)
+
+
+def test_un_insumo_nuevo_con_dos_unidades_en_el_archivo_no_se_da_de_alta_y_se_avisa(
+    sesion: Session, tmp_path: Path
+) -> None:
+    """Dos filas nuevas del mismo material en saco y en kg darían MAT-003 y MAT-004 con el mismo
+    nombre: el homónimo que `_separar` ya prohíbe frente al catálogo (flujo 2b de UC-02)."""
+    ruta = tmp_path / "dos_unidades.csv"
+    ruta.write_text(DOS_UNIDADES, encoding="utf-8")
+    revision = precios_empresa.revisar_archivo(sesion, ruta)
+    assert [n.descripcion for n in revision.nuevos] == ["Bloque de prueba"]
+    assert revision.otra_unidad == (AVISO_DOS_UNIDADES,)
+    antes = _insumos(sesion)
+    resumen = _crear(sesion, ruta, dar_de_alta=True)
+    assert resumen.dados_de_alta == ("Bloque de prueba",)
+    assert resumen.desconocidos == ()
+    assert resumen.otra_unidad == (AVISO_DOS_UNIDADES,)
+    assert _insumos(sesion) == antes + 1
+    assert (
+        sesion.scalars(
+            select(models.Insumo).where(models.Insumo.descripcion == "Ladrillo de prueba")
+        ).all()
+        == []
+    )
+
+
 def test_una_fila_sin_fecha_ni_fuente_toma_las_de_la_lista(sesion: Session, tmp_path: Path) -> None:
     """D-11: el formulario ya pide la fecha y la fuente de la lista; la fila no las repite."""
     ruta = tmp_path / "sin_fecha.csv"

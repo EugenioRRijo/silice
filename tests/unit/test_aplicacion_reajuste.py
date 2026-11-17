@@ -9,6 +9,7 @@ import pytest
 
 from aplicacion import reajuste
 from aplicacion.hoja import HojaInvalida
+from core.budget.reajuste import AVISO_USD_BS, EstadoEstudio, ResultadoEstudio
 from core.catalog import abrir_sesion, crear_esquema, crear_motor
 from tests.fixtures.reajuste_pantalla import CAMPOS, COMPONENTES, EJECUTADO, PERIODOS
 from tests.fixtures.reajuste_s1 import NOMBRE, sembrar
@@ -136,3 +137,23 @@ def test_los_rotulos_de_los_campos_llevan_tildes_y_no_nombran_la_spec():
         "version_comprobacion": "Versión de comprobación",
         "periodo": "Número del período (ejecutado)",
     }
+
+
+def test_el_aviso_de_un_indice_en_bs_lleva_su_salida_en_el_excel_y_en_la_tabla():
+    """RF-214: la advertencia S1-R11 dice la salida también en la fila «Total» de la hoja
+    «Reajuste» del Excel y de la tabla lado a lado, como en la respuesta de la API."""
+    resultado = ResultadoEstudio(
+        moneda="USD",
+        periodos=(),
+        total_escalatoria=D("100"),
+        total_comprobacion=D("100"),
+        total_reconocido=D("100"),
+        estado=EstadoEstudio.CERRADO,
+        fecha_corte=None,
+        avisos=(AVISO_USD_BS,),
+    )
+    esperado = f"estado: cerrado; {AVISO_USD_BS}. {reajuste.REMEDIO_USD_BS}"
+    (total,) = reajuste.tabla_reajuste(resultado).filas
+    assert total[0] == "Total" and total[-1] == esperado
+    (fila,) = reajuste.filas_lado_a_lado(resultado)
+    assert list(fila.values())[-1] == esperado

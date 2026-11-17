@@ -603,7 +603,7 @@ def _valores(resultado: ResultadoEstudio) -> list[tuple]:
             _suma(c.comprobacion_otra for c in comparaciones),
             _suma(c.diferencia_otra for c in comparaciones),
             None,
-            "; ".join((f"estado: {resultado.estado.value}", *resultado.avisos)),
+            "; ".join((f"estado: {resultado.estado.value}", *avisos_con_remedio(resultado.avisos))),
         )
     )
     return filas

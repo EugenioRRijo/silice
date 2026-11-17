@@ -651,8 +651,9 @@ def precios_del_corte(
     """Los `PreciosDelCorte` que corresponden a la elección, o `None` si no se eligió ninguno.
 
     `perspectiva` debe ser la de la línea base (`perspectiva_de_la_linea_base`): los unitarios del
-    corte se comparan con los de la línea base. `corte` solo lo usan los precios declarados (sin él,
-    el de la última valuación); sin ninguno declarado hasta el corte, `ControlInvalido`."""
+    corte se comparan con los de la línea base. `corte` lo usan los precios declarados y la
+    escalatoria (sin él, el de la última valuación); sin ninguno declarado hasta el corte, o sin
+    línea base vigente a él para la escalatoria, `ControlInvalido`."""
     if elegido.metodo == METODO_DECLARADOS:
         try:
             declarados = precios_declarados(sesion, proyecto, catalogo, corte, perspectiva)
@@ -673,7 +674,10 @@ def precios_del_corte(
     if elegido.metodo == METODO_ESCALATORIA:
         if not elegido.fuente.strip():
             raise ControlInvalido("la escalatoria necesita la fuente de Km y R")
-        base = instantanea_control(sesion, proyecto, catalogo=catalogo).presupuesto
+        try:
+            base = instantanea_control(sesion, proyecto, catalogo=catalogo, corte=corte).presupuesto
+        except ValueError as error:
+            raise ControlInvalido(str(error)) from None
         unitarios = {
             p.item.codigo_partida: (
                 p.resultado.costo_directo if perspectiva == "costo" else p.resultado.precio_unitario
@@ -716,12 +720,19 @@ def calcular_las_opciones(
     independientes: str = "",
 ) -> tuple[Opcion, ...]:
     """Las cuatro opciones de recuperación a pedido (UC-20 4). `objetivo` es el día hábil objetivo
-    (vacío = el fin del plan base). `ControlInvalido` si un límite legal se rompe."""
+    (vacío = el fin del plan base). `ControlInvalido` si un límite legal se rompe o si el objetivo
+    no es un entero (no se trunca)."""
+    dia_objetivo = None
+    if objetivo.strip():
+        valor = _decimal(objetivo, "objetivo")
+        if valor != valor.to_integral_value():
+            raise ControlInvalido(f"objetivo: {objetivo!r} debe ser un entero")
+        dia_objetivo = int(valor)
     try:
         contexto = contexto_de_recuperacion(
             resultado,
             composiciones_de_la_linea_base(resultado),
-            objetivo=int(_decimal(objetivo, "objetivo")) if objetivo.strip() else None,
+            objetivo=dia_objetivo,
             horas_previas=_decimal(horas_previas or "0", "horas extra previas"),
         )
         return opciones(contexto)
@@ -844,15 +855,17 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
     otra, tasa = _otra_moneda(sesion, resultado)
 
     def en_otra(valor: Decimal | None) -> str:
+        """El monto en la otra moneda con su símbolo; sin monto o sin tasa, «no disponible» a secas
+        (la moneda solo acompaña a una cifra)."""
         if valor is None or tasa is None:
             return NO_DISPONIBLE
-        return formatear_decimal(convertir(valor, moneda, otra, tasa), 2)
+        return f"{formatear_decimal(convertir(valor, moneda, otra, tasa), 2)} {otra}"
 
     def monto(nombre: str, valor: Decimal | None, nota: str = "") -> dict[str, str]:
         return {
             "Indicador": f"{nombre} ({moneda})",
             "Valor": _monto(valor),
-            "En la otra moneda": f"{en_otra(valor)} {otra}" if tasa is not None else NO_DISPONIBLE,
+            "En la otra moneda": en_otra(valor),
             "Nota": nota,
         }
 
