@@ -82,7 +82,7 @@ import unicodedata
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -102,6 +102,7 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
 )
 from adapters.hoja_empresa.visual import LibroVisual, replicar_libro
 from api.dependencias import USUARIO_API, SesionDep
+from api.presentacion import exacto, exacto_o_nada, exacto_sin_ceros, monto, porcentaje
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
 from fusion.alertas import ContextoPrecios
@@ -137,7 +138,6 @@ MENSAJE_PDF = "El PDF no se pudo interpretar."
 AVISO_HISTORIAL = "No se pudo guardar la auditoría en el historial."
 #: Indicadores de la franja (RS2-7): clave del total -> título, en el orden en que se muestran.
 INDICADORES = {"SUBSINIVA": "Subtotal sin IVA", "IVATOT": "IVA", "TOTALGEN": "Total general"}
-CENTESIMA = Decimal("0.01")
 
 
 # --- Esquemas de la respuesta --------------------------------------------------------------------
@@ -180,7 +180,8 @@ class TrazaRespuesta(BaseModel):
 
 class IndicadorRespuesta(BaseModel):
     """Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`.
-    Es presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al par;
+    Es presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al alza
+    (decisión de Eugenio, 2026-11-17);
     el exacto está en `totales_libro` y `totales_silice`. `delta_pct` es nulo si la meta es cero.
     `sentido = "exactitud"` (RS2-13) es el libro contra Sílice (la meta es el total de Sílice).
     Decisión de Eugenio, V-16 (2026-10-21), que supera a la lectura anterior de «toda desviación
@@ -574,47 +575,12 @@ def _guardar(registrar: Callable[[Session], object]) -> str | None:
 # --- Serialización -------------------------------------------------------------------------------
 
 
-def _texto(valor: Decimal | None) -> str | None:
-    return None if valor is None else format(valor, "f")
-
-
 def _iso(valor: date | None) -> str | None:
     return None if valor is None else valor.isoformat()
 
 
 def _montos(mapa) -> dict[str, str]:
-    return {str(k): format(v, "f") for k, v in (mapa or {}).items() if v is not None}
-
-
-def _exacto(valor: Decimal) -> str:
-    """Texto decimal exacto sin ceros de relleno ni notación científica: `4358.2082500` ->
-    `4358.20825`, `1E+3` -> `1000`, `-0.000` -> `0`. No redondea: solo quita lo que no es cifra."""
-    texto = format(valor, "f")
-    if "." in texto:
-        texto = texto.rstrip("0").rstrip(".")
-    return "0" if texto in ("-0", "") else texto
-
-
-def _centesimas(valor: Decimal) -> str:
-    """Un monto presentado en centésimas al par; si no cabe en la precisión decimal, el exacto."""
-    try:
-        presentado = valor.quantize(CENTESIMA, ROUND_HALF_EVEN)
-    except InvalidOperation:
-        return _exacto(valor)
-    return format(presentado.copy_abs() if presentado == 0 else presentado, "f")
-
-
-def _porcentaje(delta: Decimal, meta: Decimal) -> Decimal | None:
-    """Δ ÷ meta × 100 en centésimas al par; `None` si la meta es 0 o si el porcentaje no cabe en
-    la precisión decimal (InvalidOperation al cuantizar: más de ~26 cifras enteras). `-0.00` sale
-    como `0.00`: sin variación no lleva signo."""
-    if meta == 0:
-        return None
-    try:
-        pct = (delta / meta * 100).quantize(CENTESIMA, ROUND_HALF_EVEN)
-    except InvalidOperation:
-        return None
-    return pct.copy_abs() if pct == 0 else pct
+    return {str(k): exacto(v) for k, v in (mapa or {}).items() if v is not None}
 
 
 def indicadores_de(
@@ -622,27 +588,28 @@ def indicadores_de(
 ) -> list[IndicadorRespuesta]:
     """Los indicadores de la franja (RS2-7), en el orden de `INDICADORES` y solo con las claves
     presentes (y no nulas) en los dos totales: `actual` = libro, `meta` = Sílice,
-    `delta = actual - meta` y `delta_pct = delta / meta * 100` en centésimas con redondeo al par,
-    o `None` si `meta == 0` o no cabe (`_porcentaje`). Función pura; los montos se presentan en
-    centésimas al par (`_centesimas`, RS2-12) y un Δ de menos de medio centavo es sin variación."""
+    `delta = actual - meta` y `delta_pct = delta / meta * 100` en centésimas al alza, o `None` si
+    `meta == 0` o no cabe (`api.presentacion.porcentaje`). Función pura; los montos se presentan
+    en centésimas al alza (`api.presentacion.monto`, RS2-12, decisión de Eugenio del 2026-11-17) y
+    un Δ de menos de medio centavo es sin variación."""
     indicadores: list[IndicadorRespuesta] = []
     for clave, titulo in INDICADORES.items():
         actual, meta = totales_libro.get(clave), totales_silice.get(clave)
         if actual is None or meta is None:
             continue
         delta = actual - meta
-        delta_presentado = _centesimas(delta)
-        pct = _porcentaje(delta, meta)
+        delta_presentado = monto(delta)
+        pct = porcentaje(delta, meta)
         if pct is not None and Decimal(delta_presentado) == 0:
-            pct = Decimal("0.00")  # Δ menor que medio centavo: sin variación, también en Δ%
+            pct = monto(Decimal(0))  # Δ menor que medio centavo: sin variación, también en Δ%
         indicadores.append(
             IndicadorRespuesta(
                 clave=clave,
                 titulo=titulo,
-                actual=_centesimas(actual),
-                meta=_centesimas(meta),
+                actual=monto(actual),
+                meta=monto(meta),
                 delta=delta_presentado,
-                delta_pct=_texto(pct),
+                delta_pct=pct,
                 sentido="exactitud",
             )
         )
@@ -755,7 +722,7 @@ async def auditar_libro(
                 severidad=h.severidad,
                 descripcion=h.descripcion,
                 celda=h.celda,
-                impacto=_texto(h.impacto),
+                impacto=exacto_o_nada(h.impacto),
                 accion=h.accion,
             )
             for h in r.hallazgos_tabla
@@ -766,12 +733,12 @@ async def auditar_libro(
                 descripcion=a.descripcion,
                 tipo=a.tipo,
                 moneda=a.moneda,
-                precio=format(a.precio, "f"),
+                precio=exacto(a.precio),
                 fecha=a.fecha,
                 fuente=a.fuente,
-                tasa=_texto(a.tasa),
-                precio_bs=_texto(a.precio_bs),
-                variacion=_texto(a.variacion),
+                tasa=exacto_o_nada(a.tasa),
+                precio_bs=exacto_o_nada(a.precio_bs),
+                variacion=exacto_o_nada(a.variacion),
                 mensaje=a.mensaje,
             )
             for a in r.alertas
@@ -847,8 +814,8 @@ async def revisar_pdf(
         por_severidad=por_severidad,
         renglones_computos=len(leido.computos),
         renglones_presupuesto=len(leido.presupuesto),
-        total_computos=_texto(leido.total_computos),
-        total_impreso=_texto(leido.total_impreso),
+        total_computos=exacto_o_nada(leido.total_computos),
+        total_impreso=exacto_o_nada(leido.total_impreso),
         notas=list(leido.notas),
         hallazgos=[
             HallazgoLibroRespuesta(
@@ -856,7 +823,7 @@ async def revisar_pdf(
                 severidad=h.severidad,
                 descripcion=h.descripcion,
                 celda=h.celda,
-                impacto=_texto(h.impacto),
+                impacto=exacto_o_nada(h.impacto),
                 accion=h.accion,
             )
             for h in r.hallazgos_tabla
@@ -878,12 +845,6 @@ async def replicar(
         return await run_in_threadpool(lambda: _visual(replicar_libro(datos, nombre)))
     except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
         raise _rechazo(error, MENSAJE_LIBRO, "POST /v1/libros/replica") from None
-
-
-def _dos_decimales(valor: Decimal) -> str:
-    """Un precio presentado a dos decimales, ROUND_HALF_UP: la misma regla que los mensajes de
-    `fusion.apu_por_hoja` (el exacto viaja aparte)."""
-    return format(valor.quantize(CENTESIMA, ROUND_HALF_UP), "f")
 
 
 class PerfilApuPorHojaRespuesta(BaseModel):
@@ -1007,9 +968,9 @@ async def auditar_apu_por_hoja_ruta(
                 codigo=a.codigo,
                 descripcion=a.descripcion,
                 unidad=a.unidad,
-                precio_impreso=_dos_decimales(a.precio_impreso),
-                precio_silice=None if a.precio_silice is None else _dos_decimales(a.precio_silice),
-                precio_silice_exacto=_texto(a.precio_silice),
+                precio_impreso=monto(a.precio_impreso),
+                precio_silice=None if a.precio_silice is None else monto(a.precio_silice),
+                precio_silice_exacto=exacto_o_nada(a.precio_silice),
                 celda_precio=a.celda_precio,
             )
             for a in r.apus
@@ -1020,7 +981,7 @@ async def auditar_apu_por_hoja_ruta(
                 severidad=h.severidad,
                 descripcion=h.descripcion,
                 celda=h.celda,
-                impacto=_texto(h.impacto),
+                impacto=exacto_o_nada(h.impacto),
                 accion=h.accion,
             )
             for h in r.hallazgos
@@ -1029,9 +990,9 @@ async def auditar_apu_por_hoja_ruta(
             DesperdicioLeidoRespuesta(
                 descripcion=t.descripcion,
                 unidad=t.unidad,
-                cantidad_neta=_exacto(t.cantidad_neta),
-                desperdicio_pct=_exacto(t.desperdicio_pct),
-                cantidad=_exacto(t.cantidad),
+                cantidad_neta=exacto_sin_ceros(t.cantidad_neta),
+                desperdicio_pct=exacto_sin_ceros(t.desperdicio_pct),
+                cantidad=exacto_sin_ceros(t.cantidad),
             )
             for t in r.trazas
         ],

@@ -159,6 +159,12 @@ subir nada.
    Componer **solo el reparto del desperdicio** y la cantidad queda igual, la edición se rechaza con un mensaje que lo
    explica, en vez de perderse sin aviso al cerrar. Guardar ese reparto sin crear versión queda como mejora en el
    plan de desenredo. Faltan revisar y fusionar los PR de `feature/depuracion-unida` y `docs/sincronizar-agentes`.
+13. Redondeo de los libros (2026-11-17, `feature/desenredo-cifras`, tarea 2.3 del plan de desenredo): **RS2-12 pasa
+   de redondear al par a redondear al alza** (`ROUND_HALF_UP`). Es la decisión de Eugenio del 2026-11-17 (dos
+   decimales al alza al presentar) aplicada a la franja de indicadores de la auditoría de un libro: `actual`, `meta`,
+   `delta` y `delta_pct` salen ahora de `api/presentacion.py`. Solo cambia la mitad exacta: un Δ% de 0,125 se ve
+   0,13 (antes 0,12) y un total de 1.000,125 se ve 1.000,13 (antes 1.000,12). El cálculo y los exactos de
+   `totales_libro` y `totales_silice` no cambian. Para probar en el navegador: la franja de indicadores de un libro.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 

@@ -15,7 +15,7 @@ Oráculos, ninguno sale del código bajo prueba:
   trunc((36 × 7 + 5) ÷ 7 × 256) ÷ 256 = trunc(9 398,857…) ÷ 256 = 9 398 ÷ 256 = 36,7109375.
 - Los mensajes de error son los literales de la guardia, del adaptador visual y de la sesión.
 - `indicadores_de`: cuentas a mano en cada caso (Δ = actual − meta; Δ% = Δ ÷ meta × 100 en
-  centésimas con redondeo al par).
+  centésimas con redondeo al alza, decisión de Eugenio del 2026-11-17).
 """
 
 from __future__ import annotations
@@ -395,19 +395,19 @@ def test_solo_las_claves_presentes_en_los_dos_totales() -> None:
 @pytest.mark.parametrize(
     ("actual", "delta", "delta_pct"),
     [
-        # 1,25 ÷ 1 000 × 100 = 0,125 -> 0,12 (al par; al alza sería 0,13)
-        ("1001.25", "1.25", "0.12"),
-        # 1,35 ÷ 1 000 × 100 = 0,135 -> 0,14 (al par)
+        # 1,25 ÷ 1 000 × 100 = 0,125 -> 0,13 (al alza; al par sería 0,12)
+        ("1001.25", "1.25", "0.13"),
+        # 1,35 ÷ 1 000 × 100 = 0,135 -> 0,14 (al alza y al par)
         ("1001.35", "1.35", "0.14"),
-        # −1,25 ÷ 1 000 × 100 = −0,125 -> −0,12
-        ("998.75", "-1.25", "-0.12"),
+        # −1,25 ÷ 1 000 × 100 = −0,125 -> −0,13 (la mitad se aleja del cero)
+        ("998.75", "-1.25", "-0.13"),
         # 0,00049 ÷ 1 000 × 100 = 0,000049 -> 0,00
         ("1000.00049", "0.00", "0.00"),  # Δ < medio centavo: 0,00
         # −0,00001 ÷ 1 000 × 100 = −0,000001 -> −0,00, que se muestra sin signo: 0,00
         ("999.99999", "0.00", "0.00"),  # ídem, sin signo
     ],
 )
-def test_delta_pct_en_centesimas_con_redondeo_al_par(actual, delta, delta_pct) -> None:
+def test_delta_pct_en_centesimas_con_redondeo_al_alza(actual, delta, delta_pct) -> None:
     i = _uno(actual, "1000")
     assert (i.delta, i.delta_pct) == (delta, delta_pct)
 
@@ -420,8 +420,9 @@ def test_los_montos_viajan_como_texto_sin_notacion_cientifica() -> None:
 @pytest.mark.parametrize(
     ("actual", "meta", "esperado"),
     [
-        # RS2-12: la franja presenta en centésimas al par (NORMAS §2.3); el exacto sigue en
-        # totales_libro y totales_silice. 4 358,20825 -> 4 358,21 (resto 0,00825 > medio centavo).
+        # RS2-12: la franja presenta en centésimas al alza (decisión de Eugenio, 2026-11-17); el
+        # exacto sigue en totales_libro y totales_silice. 4 358,20825 -> 4 358,21 (resto 0,00825
+        # > medio centavo).
         ("4358.20825", "4358.2082500", ("4358.21", "4358.21", "0.00", "0.00")),
         ("100.10", "100.000", ("100.10", "100.00", "0.10", "0.10")),
         # −0,000 se presenta 0,00, sin signo
@@ -434,11 +435,14 @@ def test_los_montos_viajan_como_texto_sin_notacion_cientifica() -> None:
         ),
         # Δ = 0,004 sobre meta 0,01 sería 40 %; como Δ se presenta 0,00, Δ% también (coherencia)
         ("0.014", "0.01", ("0.01", "0.01", "0.00", "0.00")),
-        # 154,275 al par en centésimas -> 154,28 (el 7 es impar)
+        # 154,275 en centésimas -> 154,28 al alza (y también al par: el 7 es impar)
         ("4203.93325", "4358.20825", ("4203.93", "4358.21", "-154.28", "-3.54")),
+        # 1 000,125 -> 1 000,13 al alza (al par sería 1 000,12); Δ = 0,125 -> 0,13;
+        # Δ% = 0,125 ÷ 1 000 × 100 = 0,0125 -> 0,01
+        ("1000.125", "1000", ("1000.13", "1000.00", "0.13", "0.01")),
     ],
 )
-def test_los_montos_se_presentan_en_centesimas_al_par(actual, meta, esperado) -> None:
+def test_los_montos_se_presentan_en_centesimas_al_alza(actual, meta, esperado) -> None:
     i = _uno(actual, meta)
     assert (i.actual, i.meta, i.delta, i.delta_pct) == esperado
 

@@ -1505,7 +1505,6 @@ PRESENTACION_SUELTA_EN_API: dict[str, int] = {
     "api/rutas/fcas.py": 1,
     "api/rutas/hoja_libro.py": 1,
     "api/rutas/indices.py": 1,
-    "api/rutas/libros.py": 7,
     "api/rutas/mercado.py": 4,
     "api/rutas/obras.py": 5,
     "api/rutas/procura.py": 1,
@@ -1593,7 +1592,6 @@ MODULOS_GRANDES: dict[str, int] = {
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1061,
     "aplicacion/hoja_vista.py": 1055,
-    "api/rutas/libros.py": 1038,
 }
 
 
