@@ -1,10 +1,13 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { ObraDeCarpetaRespuesta, PendienteDeObra, SesionRespuesta } from "../api/tipos";
 import { ContextoAplicacion } from "../shell/contexto";
+import { DialogoSalida } from "../shell/DialogoSalida";
+import { cancelarSalida } from "../shell/salida";
+import { olvidarFormularios, useFormularioSucio } from "../shell/sucio";
 import { sesionDe } from "../shell/obras/datosDePrueba";
 import { BarraLateral } from "./BarraLateral";
 import { ContextoPendientes } from "./usePendientes";
@@ -653,6 +656,41 @@ describe("BarraLateral: la obra recién creada", () => {
       expect(screen.getByTestId("ubicacion").textContent).not.toContain("NaN");
       expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1);
     });
+  });
+});
+
+// Ir a la obra recién creada es salir de la pantalla: con un formulario sucio se pregunta antes, como en cualquier otra
+// navegación del marco (Marco.irSeguro, useNavegarSeguro). La obra ya está creada; quedarse no la deshace.
+describe("BarraLateral: la obra recién creada, con cambios sin guardar", () => {
+  afterEach(() => {
+    cancelarSalida();
+    olvidarFormularios();
+  });
+
+  async function crearConFormularioSucio() {
+    renderHook(() => useFormularioSucio("hoja", true));
+    render(<DialogoSalida />);
+    conCreacionDeCodigo("9");
+    pintar();
+    await listaDeObras();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    await screen.findByRole("dialog", { name: "Nueva obra" });
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
+    await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
+    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
+  }
+
+  it("pregunta antes de salir y «Quedarme» deja a la persona donde estaba", async () => {
+    await crearConFormularioSucio();
+    await userEvent.click(await screen.findByRole("button", { name: "Quedarme" }));
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/inicio/pendientes");
+  });
+
+  it("«Salir y descartar» abre la obra nueva", async () => {
+    await crearConFormularioSucio();
+    await userEvent.click(await screen.findByRole("button", { name: "Salir y descartar" }));
+    await waitFor(() => expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/9/resumen"));
   });
 });
 
