@@ -8,29 +8,13 @@ persiste `core.models.tipos.DecimalExacto`.
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, InvalidOperation
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# La API lee los decimales de maquina como la capa de aplicacion (una sola regla y un solo mensaje).
+from aplicacion.composicion import decimal_desde_texto as decimal_desde_texto
 from aplicacion.impuestos import ALICUOTA_IVA, ResumenImpuestos
 from core.verification.texto import formatear_decimal
-
-
-def decimal_desde_texto(texto: str, campo: str) -> Decimal:
-    """`Decimal` construido desde el texto de la peticion, o `ValueError` con el campo culpable.
-
-    `Decimal("12,50")` lanza `InvalidOperation`, que NO hereda de `ValueError` y llegaria al
-    cliente como 500 crudo; y `Decimal("NaN")`/`Decimal("Infinity")` parsean pero no son montos
-    (la primera comparacion del nucleo lanzaria `InvalidOperation`). Ambos casos se declaran aqui,
-    en la frontera, como `ValueError` -> 422 (`api.main.manejar_value_error`).
-    """
-    try:
-        valor = Decimal(texto)
-    except InvalidOperation as exc:
-        raise ValueError(f"{campo}: {texto!r} no es un monto decimal valido") from exc
-    if not valor.is_finite():
-        raise ValueError(f"{campo}: {texto!r} no es un monto finito")
-    return valor
 
 
 class PartidaRespuesta(BaseModel):

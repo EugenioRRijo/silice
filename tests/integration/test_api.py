@@ -167,6 +167,26 @@ def test_cantidad_decimal_malformada_responde_422_no_500(cliente, items_payload)
     assert "12,50" in r.json()["detalle"]
 
 
+def test_un_monto_ilegible_en_la_api_es_422_y_nombra_el_campo(cliente, items_payload):
+    """La API y la capa de aplicacion leen con la misma `decimal_desde_texto` (tarea 2.1 del plan
+    de desenredo): el 422 nombra el campo y usa el mensaje de la capa de aplicacion."""
+    items = items_payload
+    items[0]["cantidad"] = "12,50"
+    r = cliente.post(
+        "/presupuestos",
+        json={
+            "codigo": "API-ILEGIBLE",
+            "fecha": "2026-04-28",
+            "moneda": "USD",
+            "proyecto": "Drenaje de la clínica",
+            "items": items,
+        },
+    )
+    assert r.status_code == 422
+    assert "cantidad de " in r.json()["detalle"]
+    assert "no es un numero decimal valido" in r.json()["detalle"]
+
+
 def test_parametro_decimal_no_finito_responde_422(cliente, items_payload):
     """`Decimal("NaN")` SI parsea, pero no es un monto: debe rechazarse en la frontera, no
     propagarse hasta que una comparacion del nucleo lance `InvalidOperation` (500 crudo).
