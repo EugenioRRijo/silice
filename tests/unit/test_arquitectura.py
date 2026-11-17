@@ -725,3 +725,230 @@ def test_fusion_no_importa_la_configuracion_de_la_instalacion():
         if modulo == "operacion.config" or modulo.startswith("operacion.config.")
     )
     assert culpables == []
+
+
+# --- Plan de desenredo, ola 1 (2026-11-17): guardias con lista congelada ------------------------
+#
+# Cada guardia fotografia la deuda de capas medida sobre `feature/depuracion-unida` (a802d728) y
+# falla si empeora; su prueba `_sin_sobrantes` falla si mejora y nadie borra la fila: la lista solo
+# se achica (docs/planes/2026-11-17-plan-desenredo.md, ola 1). Las ayudas viven aqui porque ningun
+# modulo de prueba importa de otro
+# (`test_ningun_modulo_de_prueba_importa_de_otro_modulo_de_prueba`).
+
+#: Los paquetes de primer nivel del repositorio, nucleo incluido.
+PAQUETES_INTERNOS = frozenset(PAQUETES_FUERA_DEL_NUCLEO) | {"core"}
+_SOLO_TIPADO = frozenset({"TYPE_CHECKING", "typing.TYPE_CHECKING"})
+
+
+def _arbol(archivo: Path) -> ast.Module:
+    return ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+
+
+def _nodos_de_tipado(arbol: ast.AST) -> set[int]:
+    """`id` de cada nodo bajo un `if TYPE_CHECKING:` (solo el cuerpo; el `else` se ejecuta)."""
+    return {
+        id(nodo)
+        for bloque in ast.walk(arbol)
+        if isinstance(bloque, ast.If) and ast.unparse(bloque.test) in _SOLO_TIPADO
+        for sentencia in bloque.body
+        for nodo in ast.walk(sentencia)
+    }
+
+
+def _imports_con_linea(archivo: Path, raiz: Path = RAIZ) -> list[tuple[int, str]]:
+    """`(linea, modulo)` de cada import de ejecucion de `archivo`: fuera de `if TYPE_CHECKING:`,
+    con los perezosos (dentro de funciones) y los relativos resueltos a nombre absoluto.
+    `from a import b` registra `a` y `a.b`, porque `b` puede ser un submodulo."""
+    arbol = _arbol(archivo)
+    tipado = _nodos_de_tipado(arbol)
+    paquete = archivo.relative_to(raiz).with_suffix("").parts[:-1]
+    nombres: list[tuple[int, str]] = []
+    for nodo in ast.walk(arbol):
+        if id(nodo) in tipado:
+            continue
+        if isinstance(nodo, ast.Import):
+            nombres.extend((nodo.lineno, alias.name) for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom):
+            if nodo.level:
+                base = paquete[: len(paquete) - (nodo.level - 1)]
+                modulo = ".".join((*base, *([nodo.module] if nodo.module else [])))
+            else:
+                modulo = nodo.module or ""
+            nombres.append((nodo.lineno, modulo))
+            nombres.extend((nodo.lineno, f"{modulo}.{alias.name}") for alias in nodo.names)
+    return sorted(nombres)
+
+
+# --- Tarea 1.1: matriz de dependencias entre paquetes -------------------------------------------
+
+
+def _imports_de_ejecucion_de_paquete(paquete: str, raiz: Path = RAIZ) -> dict[str, set[str]]:
+    """Paquete interno de primer nivel importado por `paquete` -> `archivo:linea` que lo importan.
+
+    Incluye los imports locales dentro de funciones y excluye los de `if TYPE_CHECKING:`; el propio
+    paquete no cuenta (no es una dependencia entre paquetes)."""
+    aristas: dict[str, set[str]] = {}
+    for archivo in sorted((raiz / paquete).rglob("*.py")):
+        for linea, modulo in _imports_con_linea(archivo, raiz):
+            destino = modulo.split(".")[0]
+            if destino in PAQUETES_INTERNOS and destino != paquete:
+                sitio = f"{archivo.relative_to(raiz).as_posix()}:{linea}"
+                aristas.setdefault(destino, set()).add(sitio)
+    return aristas
+
+
+#: Lista blanca de cada paquete (2026-11-17, medida sobre a802d728). Es la fuente de las
+#: dependencias entre paquetes mientras `docs/arquitectura.md` §4 espera su enmienda (aval del
+#: tutor). Una arista nueva hace fallar la guardia; una que desaparece obliga a borrarla.
+DEPENDENCIAS_PERMITIDAS: dict[str, frozenset[str]] = {
+    "adapters": frozenset({"core"}),  # solo core.contracts: lo afina la guardia por adaptador
+    "api": frozenset(
+        {
+            "adapters",
+            "aplicacion",
+            "asistente",
+            "auditoria",
+            "core",
+            "fusion",
+            "ml",
+            "operacion",
+            "paquete",
+            "produccion",
+            "seguridad",
+        }
+    ),
+    "aplicacion": frozenset(
+        {
+            "adapters",
+            "asistente",
+            "auditoria",
+            "core",
+            "ml",
+            "operacion",
+            "paquete",
+            "produccion",
+            "seguridad",
+        }
+    ),
+    "asistente": frozenset(
+        {
+            "adapters",
+            "aplicacion",  # ciclo, ola 5
+            "core",
+            "operacion",
+            "seguridad",
+        }
+    ),
+    "auditoria": frozenset({"adapters", "core", "paquete", "seguridad"}),
+    "core": frozenset(),
+    "fusion": frozenset(
+        {
+            "adapters",
+            "aplicacion",  # ciclo, ola 5
+            "auditoria",
+            "core",
+            "operacion",
+        }
+    ),
+    "instalador": frozenset(
+        {
+            "ml",
+            "operacion",
+            "tests",  # cierra un ciclo con tests -> instalador; 1.3 no mira tests ni scripts
+        }
+    ),
+    "migraciones": frozenset(
+        {
+            "adapters",
+            "aplicacion",  # ciclo, ola 5
+            "asistente",  # ciclo, ola 5
+            "core",
+            "fusion",  # ciclo, ola 5
+            "paquete",
+            "produccion",
+            "seguridad",
+        }
+    ),
+    "ml": frozenset({"core"}),  # solo core.contracts (test_ml_solo_importa_core_contracts...)
+    "operacion": frozenset(
+        {
+            "migraciones",
+            "ml",
+            "scripts",  # cierra un ciclo con scripts -> operacion; 1.3 no mira tests ni scripts
+            "seguridad",
+        }
+    ),
+    "paquete": frozenset({"core", "seguridad"}),
+    "produccion": frozenset(),
+    "scripts": frozenset(
+        {
+            "adapters",
+            "api",
+            "aplicacion",
+            "asistente",
+            "core",
+            "fusion",
+            "instalador",
+            "ml",
+            "operacion",
+            "seguridad",
+            "tests",
+        }
+    ),
+    "seguridad": frozenset(
+        {
+            "operacion",  # ciclo, ola 5
+        }
+    ),
+    "tests": PAQUETES_INTERNOS - {"tests"},  # las pruebas recorren todos los paquetes
+}
+
+
+def test_cada_paquete_solo_importa_su_lista_blanca_de_la_matriz():
+    nuevas = sorted(
+        f"{paquete} -> {destino} ({min(sitios)}; {len(sitios)} sitios)"
+        for paquete in sorted(PAQUETES_INTERNOS)
+        for destino, sitios in _imports_de_ejecucion_de_paquete(paquete).items()
+        if destino not in DEPENDENCIAS_PERMITIDAS.get(paquete, frozenset())
+    )
+    assert nuevas == [], "aristas fuera de DEPENDENCIAS_PERMITIDAS:\n" + "\n".join(nuevas)
+
+
+def test_la_matriz_sin_sobrantes():
+    """Una arista permitida que ya nadie usa se borra de la matriz: la lista solo se achica."""
+    sobrantes = sorted(
+        f"{paquete} -> {destino}"
+        for paquete, destinos in DEPENDENCIAS_PERMITIDAS.items()
+        for destino in destinos - set(_imports_de_ejecucion_de_paquete(paquete))
+    )
+    assert sobrantes == [], "aristas que ya no existen; borrarlas de la matriz: " + ", ".join(
+        sobrantes
+    )
+
+
+def test_la_matriz_cubre_todo_paquete():
+    assert set(DEPENDENCIAS_PERMITIDAS) == set(PAQUETES_INTERNOS)
+
+
+def test_la_matriz_ve_un_import_local(tmp_path):
+    carpeta = tmp_path / "falso"
+    carpeta.mkdir()
+    (carpeta / "modulo.py").write_text(
+        "import decimal\n\n\ndef f():\n    from api import x\n    return x\n", encoding="utf-8"
+    )
+    assert _imports_de_ejecucion_de_paquete("falso", raiz=tmp_path) == {
+        "api": {"falso/modulo.py:5"}
+    }
+
+
+def test_la_matriz_ignora_type_checking(tmp_path):
+    carpeta = tmp_path / "falso"
+    carpeta.mkdir()
+    (carpeta / "modulo.py").write_text(
+        "from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from api import x\n"
+        "else:\n    from seguridad import y\n",
+        encoding="utf-8",
+    )
+    assert _imports_de_ejecucion_de_paquete("falso", raiz=tmp_path) == {
+        "seguridad": {"falso/modulo.py:6"}
+    }
