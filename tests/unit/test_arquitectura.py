@@ -9,6 +9,7 @@ Complementa a `git diff --stat core/` (Sesión I5): vigila la dependencia, no so
 """
 
 import ast
+import re
 import sys
 from pathlib import Path
 
@@ -1690,3 +1691,68 @@ def test_el_modelo_de_datos_ve_la_falta():
     tablas = {"partida", "presupuesto", "insumo", "clave_api"}
     assert _tablas_sin_documentar(tablas, texto) == {"insumo", "clave_api"}
     assert _tablas_sin_documentar({"precio"}, "`precio_unitario` y precio a secas") == {"precio"}
+
+
+# --- Tarea 1.7: todo RF del ERS esta en el plan de pruebas --------------------------------------
+
+#: `RF-N` con el guion normal o con el de no separacion (U+2011), que es el que usa el ERS.
+_RF = re.compile("(?<![A-Za-z0-9])RF[-‑]([0-9]+)")
+
+
+def _requisitos(texto: str) -> set[str]:
+    """Los `RF-N` que nombra `texto`, normalizados con el guion normal."""
+    return {f"RF-{numero}" for numero in _RF.findall(texto)}
+
+
+def _seccion_de_trazabilidad(plan: str) -> str:
+    """De `docs/plan_pruebas.md`, lo que va de `## 8.` (RF -> prueba) a `## 9.`."""
+    inicio = plan.index("\n## 8.")
+    return plan[inicio : plan.index("\n## 9.", inicio)]
+
+
+def _rf_sin_prueba() -> set[str]:
+    ers = (RAIZ / "docs" / "ERS.md").read_text(encoding="utf-8")
+    plan = (RAIZ / "docs" / "plan_pruebas.md").read_text(encoding="utf-8")
+    return _requisitos(ers) - _requisitos(_seccion_de_trazabilidad(plan))
+
+
+def _rangos_de_rf(*rangos: tuple[int, int]) -> frozenset[str]:
+    return frozenset(f"RF-{n}" for desde, hasta in rangos for n in range(desde, hasta + 1))
+
+
+#: RF del ERS sin fila en `docs/plan_pruebas.md` §8 (2026-11-17, a802d728): 80 de 191. Rangos
+#: cerrados en los dos extremos.
+RF_SIN_PRUEBA: frozenset[str] = _rangos_de_rf(
+    (80, 89),
+    (101, 110),
+    (119, 119),
+    (126, 126),
+    (128, 128),
+    (131, 132),
+    (137, 137),
+    (140, 140),
+    (147, 147),
+    (155, 156),
+    (159, 161),
+    (166, 168),
+    (170, 202),
+    (204, 214),
+)
+
+
+def test_todo_rf_tiene_fila_en_el_plan_de_pruebas():
+    nuevos = sorted(_rf_sin_prueba() - RF_SIN_PRUEBA, key=lambda rf: int(rf[3:]))
+    assert nuevos == [], f"RF del ERS sin fila en docs/plan_pruebas.md §8: {nuevos}"
+
+
+def test_todo_rf_tiene_fila_en_el_plan_de_pruebas_sin_sobrantes():
+    """Un RF que ya tiene su fila en §8, o que salio del ERS, se borra de la lista."""
+    sobrantes = sorted(RF_SIN_PRUEBA - _rf_sin_prueba(), key=lambda rf: int(rf[3:]))
+    assert sobrantes == [], f"borrar de RF_SIN_PRUEBA: {sobrantes}"
+
+
+def test_la_trazabilidad_del_plan_de_pruebas_lee_los_dos_guiones():
+    texto = "RF‑7 y RF-8 se piden; NRF-9 y RF10 no son requisitos; RF-12 vale.\n"
+    assert _requisitos(texto) == {"RF-7", "RF-8", "RF-12"}
+    plan = "## 7. Otra\nRF-1\n## 8. Trazabilidad\n| RF‑2 |\n## 9. RNF\nRF-3\n"
+    assert _requisitos(_seccion_de_trazabilidad(plan)) == {"RF-2"}
