@@ -952,3 +952,246 @@ def test_la_matriz_ignora_type_checking(tmp_path):
     assert _imports_de_ejecucion_de_paquete("falso", raiz=tmp_path) == {
         "seguridad": {"falso/modulo.py:6"}
     }
+
+
+# --- Tarea 1.2: las rutas no consultan la base ni entran al nucleo por dentro -------------------
+
+
+def _es_modulo(nombre: str, raiz: Path = RAIZ) -> bool:
+    ruta = raiz.joinpath(*nombre.split("."))
+    return ruta.with_suffix(".py").is_file() or (ruta / "__init__.py").is_file()
+
+
+def _modulos_usados(archivo: Path, raiz: Path = RAIZ) -> list[tuple[int, str]]:
+    """`(linea, modulo)` que `archivo` carga en ejecucion: `from a import b` cuenta `a.b` si `b` es
+    un submodulo y `a` si no lo es (una funcion o una clase de `a`). Sin `if TYPE_CHECKING:`."""
+    arbol = _arbol(archivo)
+    tipado = _nodos_de_tipado(arbol)
+    paquete = archivo.relative_to(raiz).with_suffix("").parts[:-1]
+    usados: set[tuple[int, str]] = set()
+    for nodo in ast.walk(arbol):
+        if id(nodo) in tipado:
+            continue
+        if isinstance(nodo, ast.Import):
+            usados.update((nodo.lineno, alias.name) for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom):
+            if nodo.level:
+                base = paquete[: len(paquete) - (nodo.level - 1)]
+                modulo = ".".join((*base, *([nodo.module] if nodo.module else [])))
+            else:
+                modulo = nodo.module or ""
+            for alias in nodo.names:
+                hijo = f"{modulo}.{alias.name}"
+                usados.add((nodo.lineno, hijo if _es_modulo(hijo, raiz) else modulo))
+    return sorted(usados)
+
+
+def _archivos_de_rutas(raiz: Path = RAIZ) -> list[Path]:
+    return sorted((raiz / "api" / "rutas").rglob("*.py"))
+
+
+def _llamadas_select(archivo: Path) -> list[int]:
+    """Lineas de cada llamada `select(...)` o `x.select(...)`, por AST: un comentario no cuenta."""
+    return sorted(
+        nodo.lineno
+        for nodo in ast.walk(_arbol(archivo))
+        if isinstance(nodo, ast.Call)
+        and (
+            (isinstance(nodo.func, ast.Name) and nodo.func.id == "select")
+            or (isinstance(nodo.func, ast.Attribute) and nodo.func.attr == "select")
+        )
+    )
+
+
+def _importa_modelos_del_nucleo(archivo: Path, raiz: Path = RAIZ) -> list[int]:
+    """Lineas donde `archivo` importa `core.models` (`from core import models` incluido)."""
+    return sorted(
+        {
+            linea
+            for linea, modulo in _modulos_usados(archivo, raiz)
+            if modulo == "core.models" or modulo.startswith("core.models.")
+        }
+    )
+
+
+def _es_nucleo_de_superficie(modulo: str) -> bool:
+    """Lo unico del nucleo que una ruta puede importar: los contratos y la presentacion de texto."""
+    return (
+        modulo == "core.contracts"
+        or modulo.startswith("core.contracts.")
+        or modulo == "core.verification.texto"
+    )
+
+
+def _nucleo_profundo(archivo: Path, raiz: Path = RAIZ) -> dict[str, int]:
+    """Modulo del nucleo que no es de superficie -> primera linea que lo importa. `core.models`
+    queda fuera: lo vigila su propia lista (`MODELOS_EN_RUTAS`)."""
+    hallados: dict[str, int] = {}
+    for linea, modulo in _modulos_usados(archivo, raiz):
+        es_modelo = modulo == "core.models" or modulo.startswith("core.models.")
+        if modulo.startswith("core.") and not es_modelo and not _es_nucleo_de_superficie(modulo):
+            hallados.setdefault(modulo, linea)
+    return hallados
+
+
+#: Llamadas `select(` por archivo de `api/rutas` (2026-11-17, a802d728): la ola 3 las muda a
+#: `aplicacion`, `seguridad` y `produccion`.
+SELECT_EN_RUTAS: dict[str, int] = {
+    "api/rutas/admin_claves_api.py": 1,
+    "api/rutas/admin_empresas_registradas.py": 1,
+    "api/rutas/cuentas.py": 1,
+    "api/rutas/entregas.py": 1,
+    "api/rutas/listas.py": 1,
+    "api/rutas/presupuestos.py": 4,
+    "api/rutas/produccion.py": 2,
+    "api/rutas/reajuste.py": 1,
+    "api/rutas/rendimientos.py": 1,
+}
+
+#: Archivos de `api/rutas` que importan `core.models` (2026-11-17, a802d728).
+MODELOS_EN_RUTAS: frozenset[str] = frozenset(
+    {
+        "api/rutas/entregas.py",
+        "api/rutas/listas.py",
+        "api/rutas/presupuestos.py",
+        "api/rutas/reajuste.py",
+        "api/rutas/rendimientos.py",
+        "api/rutas/revision.py",
+    }
+)
+
+#: Archivo de `api/rutas` -> modulos del nucleo que no son `core.contracts.*` ni
+#: `core.verification.texto` (2026-11-17, a802d728).
+NUCLEO_PROFUNDO_EN_RUTAS: dict[str, frozenset[str]] = {
+    "api/rutas/aprobaciones.py": frozenset({"core.catalog"}),
+    "api/rutas/auditorias.py": frozenset({"core.budget.canonico"}),
+    "api/rutas/busqueda.py": frozenset({"core.catalog"}),
+    "api/rutas/catalogo.py": frozenset({"core.catalog"}),
+    "api/rutas/control.py": frozenset({"core.budget.control", "core.catalog"}),
+    "api/rutas/entregas.py": frozenset({"core.budget.canonico"}),
+    "api/rutas/hoja.py": frozenset({"core.budget.moneda", "core.catalog"}),
+    "api/rutas/listas.py": frozenset({"core.catalog", "core.catalog.precios"}),
+    "api/rutas/mercado.py": frozenset(
+        {"core.catalog", "core.catalog.errores", "core.catalog.moneda"}
+    ),
+    "api/rutas/obras.py": frozenset({"core.catalog", "core.catalog.indices"}),
+    "api/rutas/presupuestos.py": frozenset(
+        {"core.budget", "core.budget.instantanea", "core.catalog", "core.verification.informe"}
+    ),
+    "api/rutas/proyectos.py": frozenset({"core.catalog"}),
+    "api/rutas/reajuste.py": frozenset({"core.budget.reajuste"}),
+    "api/rutas/rendimientos.py": frozenset({"core.catalog"}),
+    "api/rutas/revision.py": frozenset({"core.budget.comparacion"}),
+    "api/rutas/sesion.py": frozenset({"core.catalog"}),
+    "api/rutas/tablero.py": frozenset({"core.catalog"}),
+}
+
+
+def test_las_rutas_no_consultan_la_base():
+    peores = []
+    for archivo in _archivos_de_rutas():
+        lineas = _llamadas_select(archivo)
+        congelado = SELECT_EN_RUTAS.get(_ruta(archivo), 0)
+        if len(lineas) > congelado:
+            sitios = ", ".join(f"{_ruta(archivo)}:{linea}" for linea in lineas)
+            peores.append(f"{len(lineas)} select() (congelado {congelado}): {sitios}")
+    assert peores == [], "la consulta va en aplicacion/, no en la ruta:\n" + "\n".join(peores)
+
+
+def test_las_rutas_no_consultan_la_base_sin_sobrantes():
+    sobrantes = []
+    for ruta, congelado in sorted(SELECT_EN_RUTAS.items()):
+        hoy = len(_llamadas_select(RAIZ / ruta)) if (RAIZ / ruta).is_file() else 0
+        if hoy < congelado:
+            sobrantes.append(f"{ruta}: {congelado} -> {hoy}" + ("" if hoy else " (borrar la fila)"))
+    assert sobrantes == [], "bajar SELECT_EN_RUTAS: " + "; ".join(sobrantes)
+
+
+def test_las_rutas_no_consultan_la_base_ve_la_falta(tmp_path):
+    archivo = tmp_path / "ruta.py"
+    archivo.write_text(
+        "import sqlalchemy as sa\nfrom sqlalchemy import select\n\n"
+        "# select(Partida) en un comentario no cuenta\n"
+        'consulta = select(1).where(True)\notra = sa.select(2)\ntexto = "select(3)"\n',
+        encoding="utf-8",
+    )
+    assert _llamadas_select(archivo) == [5, 6]
+
+
+def test_las_rutas_no_importan_los_modelos_del_nucleo():
+    nuevos = sorted(
+        f"{_ruta(archivo)}:{lineas[0]}"
+        for archivo in _archivos_de_rutas()
+        if (lineas := _importa_modelos_del_nucleo(archivo))
+        and _ruta(archivo) not in MODELOS_EN_RUTAS
+    )
+    assert nuevos == [], f"importan core.models fuera de MODELOS_EN_RUTAS: {nuevos}"
+
+
+def test_las_rutas_no_importan_los_modelos_del_nucleo_sin_sobrantes():
+    sobrantes = sorted(
+        ruta
+        for ruta in MODELOS_EN_RUTAS
+        if not (RAIZ / ruta).is_file() or not _importa_modelos_del_nucleo(RAIZ / ruta)
+    )
+    assert sobrantes == [], (
+        f"ya no importan core.models; borrarlas de MODELOS_EN_RUTAS: {sobrantes}"
+    )
+
+
+def test_las_rutas_no_importan_los_modelos_del_nucleo_ve_la_falta(tmp_path):
+    fuentes = {
+        "from core.models import Partida\n": [1],
+        "from core import models\n": [1],
+        "import core.models\n": [1],
+        "def f():\n    from core.models import Insumo\n": [2],
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from core.models import X\n": [],
+        "from core.contracts import Dominio\n": [],
+    }
+    for paquete in ("core", "core/models"):
+        (tmp_path / paquete).mkdir()
+        (tmp_path / paquete / "__init__.py").write_text("", encoding="utf-8")
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"ruta_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _importa_modelos_del_nucleo(archivo, raiz=tmp_path)
+    assert detectadas == fuentes
+
+
+def test_las_rutas_no_entran_al_nucleo_por_dentro():
+    nuevos = sorted(
+        f"{_ruta(archivo)}:{linea} {modulo}"
+        for archivo in _archivos_de_rutas()
+        for modulo, linea in _nucleo_profundo(archivo).items()
+        if modulo not in NUCLEO_PROFUNDO_EN_RUTAS.get(_ruta(archivo), frozenset())
+    )
+    assert nuevos == [], (
+        "del nucleo, una ruta solo importa los contratos y el texto:\n" + "\n".join(nuevos)
+    )
+
+
+def test_las_rutas_no_entran_al_nucleo_por_dentro_sin_sobrantes():
+    sobrantes = sorted(
+        f"{ruta}: {modulo}"
+        for ruta, modulos in NUCLEO_PROFUNDO_EN_RUTAS.items()
+        for modulo in modulos
+        - (set(_nucleo_profundo(RAIZ / ruta)) if (RAIZ / ruta).is_file() else set())
+    )
+    assert sobrantes == [], f"borrar de NUCLEO_PROFUNDO_EN_RUTAS: {sobrantes}"
+
+
+def test_las_rutas_no_entran_al_nucleo_por_dentro_ve_la_falta(tmp_path):
+    for paquete in ("core", "core/budget", "core/verification", "core/contracts"):
+        (tmp_path / paquete).mkdir(parents=True)
+        (tmp_path / paquete / "__init__.py").write_text("", encoding="utf-8")
+    for modulo in ("core/budget/cadena.py", "core/verification/texto.py"):
+        (tmp_path / modulo).write_text("", encoding="utf-8")
+    ruta = tmp_path / "api" / "rutas" / "obra.py"
+    ruta.parent.mkdir(parents=True)
+    ruta.write_text(
+        "from core.contracts import Dominio\nfrom core.verification import texto\n"
+        "from core.budget import cadena\n\n\ndef f():\n    from core.budget import elaborar\n",
+        encoding="utf-8",
+    )
+    assert _nucleo_profundo(ruta, raiz=tmp_path) == {"core.budget.cadena": 3, "core.budget": 7}
