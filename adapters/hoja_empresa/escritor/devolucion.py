@@ -25,7 +25,7 @@ import io
 import re
 import unicodedata
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from decimal import Decimal
 
@@ -375,6 +375,29 @@ def _largas_a_valor(ctx: Contexto) -> None:
                 cel.formula, cel.valor, cel.fijo = None, valor, NADA
 
 
+#: Caracteres máximos del nombre de una hoja de Excel.
+_MAX_NOMBRE_HOJA = 31
+
+
+def _nombre_libre(nombre: str, ocupados: Iterable[str]) -> str:
+    """`nombre`, o `nombre (2)`, `nombre (3)`... (la base recortada para caber en 31 caracteres),
+    el primero que el libro no use. Un sufijo fijo recortado llegaba a un punto fijo
+    ('ALERTAS USD-Bs (S) (S) (S) ( (S') y el bucle no terminaba; el contador siempre avanza.
+
+    Excel no distingue mayúsculas en el nombre de una hoja: «Alertas USD-Bs» ocupa
+    «ALERTAS USD-Bs» (y «alertas usd-bs (2)» ocupa el 2), así que se compara con `casefold`."""
+    usados = {o.casefold() for o in ocupados}
+    if nombre.casefold() not in usados:
+        return nombre
+    k = 2
+    while True:
+        sufijo = f" ({k})"
+        candidato = nombre[: _MAX_NOMBRE_HOJA - len(sufijo)] + sufijo
+        if candidato.casefold() not in usados:
+            return candidato
+        k += 1
+
+
 def _fecha_creacion(texto: str) -> datetime:
     """La fecha de la devolución como fecha de creación del documento: la misma entrada da los
     mismos bytes (XlsxWriter pondría la hora del reloj)."""
@@ -434,10 +457,7 @@ def escribir_devolucion(
             hoja_alertas(datos, kit),
         )
         for h in nuevas:
-            nombre = h.nombre
-            while nombre in ctx.salida.hojas:
-                nombre = (nombre[:28] + " (S)")[:31]
-            h.nombre = nombre
+            h.nombre = _nombre_libre(h.nombre, ctx.salida.hojas)
             ctx.salida.agregar(h)
         _evaluar(ctx, ev, [h.nombre for h in nuevas])
 

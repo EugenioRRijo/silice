@@ -41,6 +41,10 @@ __all__ = [
 Aviso = tuple[str, str, str, str]
 
 _EMU_PX = 9525
+#: Segmentos de un JPEG que se recorren buscando el SOF. SUPUESTO_DECLARADO (depuración del lector,
+#: 2026-11-15): un JPEG de cámara o de escáner trae unas decenas (APPn, DQT, DHT...); más allá la
+#: cabecera es hostil y la imagen se copia sin escala, como cuando no se puede leer.
+_MAX_SEGMENTOS_JPEG = 1_000
 _OPERADORES = {
     "equal": "==",
     "notEqual": "!=",
@@ -367,11 +371,16 @@ def tamano_imagen(datos: bytes) -> tuple[int, int] | None:
     if datos[:2] == b"\xff\xd8":
         flujo = io.BytesIO(datos)
         flujo.read(2)
-        while True:
+        for _ in range(_MAX_SEGMENTOS_JPEG):
             marca = flujo.read(2)
             if len(marca) < 2 or marca[0] != 0xFF:
                 return None
-            largo = int.from_bytes(flujo.read(2), "big")
+            crudo = flujo.read(2)
+            largo = int.from_bytes(crudo, "big")
+            # El largo cuenta sus propios 2 bytes: menos que eso (o el archivo acabado tras la
+            # marca) volvería a leer la misma marca sin fin.
+            if len(crudo) < 2 or largo < 2:
+                return None
             if marca[1] in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD):
                 bloque = flujo.read(5)
                 if len(bloque) < 5:

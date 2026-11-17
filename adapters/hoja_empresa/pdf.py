@@ -262,7 +262,8 @@ def _expresion(texto: str) -> tuple[Decimal, Decimal] | None:
 def _fmt(valor: Decimal, signo: bool = False) -> str:
     """Cifra para el texto del informe, con la convención venezolana (1.446,65)."""
     if valor == valor.to_integral_value():
-        texto = f"{valor.quantize(Decimal(1)):{'+' if signo else ''},}"
+        # Sin `quantize`: con 29 dígitos o más pide más precisión que la del contexto (28).
+        texto = f"{valor:{'+' if signo else ''},.0f}"
     else:
         decimales = min(4, max(2, -int(valor.as_tuple().exponent)))
         texto = f"{valor:{'+' if signo else ''},.{decimales}f}"
