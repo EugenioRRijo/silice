@@ -219,8 +219,8 @@ def _y(textos: Sequence[str]) -> str:
 
 
 def _pct(fraccion: Decimal) -> str:
-    texto = format((fraccion * _CIEN).normalize(), "f")
-    return texto.replace(".", ",")
+    """La fracción en por ciento, exacta, con coma decimal y punto de miles: 0,125 -> «12,5»."""
+    return texto_de_cifra((fraccion * _CIEN).normalize())
 
 
 def _del_pct(fraccion: Decimal) -> str:

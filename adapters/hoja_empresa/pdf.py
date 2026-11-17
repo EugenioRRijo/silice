@@ -45,7 +45,7 @@ import unicodedata
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation, localcontext
 from typing import TYPE_CHECKING, Any
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
@@ -260,13 +260,13 @@ def _expresion(texto: str) -> tuple[Decimal, Decimal] | None:
 
 
 def _fmt(valor: Decimal, signo: bool = False) -> str:
-    """Cifra para el texto del informe, con la convención venezolana (1.446,65)."""
-    if valor == valor.to_integral_value():
-        # Sin `quantize`: con 29 dígitos o más pide más precisión que la del contexto (28).
-        texto = f"{valor:{'+' if signo else ''},.0f}"
-    else:
-        decimales = min(4, max(2, -int(valor.as_tuple().exponent)))
+    """Cifra del informe (1.446,65): de 2 a 4 decimales al alza y sin signo si sale cero."""
+    decimales = min(4, max(2, -int(valor.as_tuple().exponent)))
+    decimales = 0 if valor == valor.to_integral_value() else decimales
+    with localcontext() as contexto:  # el formato redondea con el modo del contexto; `quantize`,
+        contexto.rounding = ROUND_HALF_UP  # con 29 dígitos o más, pide más de 28 de precisión
         texto = f"{valor:{'+' if signo else ''},.{decimales}f}"
+    texto = texto.lstrip("+-") if Decimal(texto.replace(",", "")).is_zero() else texto
     return texto.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
 
 
