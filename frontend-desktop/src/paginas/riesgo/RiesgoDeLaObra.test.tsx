@@ -311,4 +311,31 @@ describe("Riesgo de la obra", () => {
     expect(aviso).toHaveTextContent("solo hay 9 meses completos; se necesitan 12");
     expect(screen.queryByRole("region", { name: "Resultado de la proyección" })).toBeNull();
   });
+
+  // Lo que se ve es de la versión elegida: la proyección y la comprobación de VIA-002 no siguen a la vista al elegir
+  // VIA-001, porque se leerían como de la nueva versión.
+  test("al elegir otra versión se retiran la proyección y la comprobación de la anterior", async () => {
+    montar();
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    await screen.findByRole("region", { name: "Resultado de la proyección" });
+    await usuario.click(screen.getByRole("button", { name: "Comprobar hacia atrás" }));
+    await screen.findByRole("region", { name: "Comprobación hacia atrás" });
+    await usuario.selectOptions(screen.getByLabelText("Versión"), "VIA-001");
+    expect(screen.queryByRole("region", { name: "Resultado de la proyección" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Comprobación hacia atrás" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Descargar el informe de riesgo" })).toBeNull();
+  });
+
+  test("mientras se proyecta no se puede cambiar de versión", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    proyeccion = () => new Promise<Response>((resolver) => (soltar = resolver));
+    montar();
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    expect(screen.getByLabelText("Versión")).toBeDisabled();
+    soltar(json(PROYECCION));
+    await screen.findByRole("region", { name: "Resultado de la proyección" });
+    expect(screen.getByLabelText("Versión")).toBeEnabled();
+  });
 });

@@ -597,6 +597,22 @@ describe("Existencias de la arenera", () => {
       expect(screen.queryByLabelText("Columna de fecha")).not.toBeInTheDocument();
       expect(screen.getByText(/otro\.xlsx/)).toBeInTheDocument();
     });
+
+    // El resultado y las columnas pedidas son del archivo que se ve: mientras se importa no se elige otro (antes, el
+    // resultado de un reporte quedaba a la vista bajo el nombre del que se eligió después).
+    test("mientras se importa no se puede elegir otro archivo", async () => {
+      let soltar: (r: Response) => void = () => undefined;
+      servidor.responder(`POST ${IMPORTAR}`, () => new Promise<Response>((resolver) => (soltar = resolver)));
+      await abrirImportar();
+      await elegir();
+      await usuario.click(screen.getByRole("button", { name: "Importar" }));
+      const entrada = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await waitFor(() => expect(entrada).toBeDisabled());
+      soltar(json({ registrados: 5, ya_registrados: 0, a_la_bandeja: 0, huella: "e".repeat(64) }));
+      await screen.findByRole("region", { name: "Resultado de la importación" });
+      expect(entrada).toBeEnabled();
+      expect(screen.getByText(/reporte_octubre\.csv/)).toBeInTheDocument();
+    });
   });
 
   describe("pestana Pesajes sospechosos", () => {

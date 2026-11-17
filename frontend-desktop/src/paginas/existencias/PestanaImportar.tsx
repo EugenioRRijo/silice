@@ -1,6 +1,6 @@
 import { Button, RadioButton, RadioButtonGroup } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -63,8 +63,12 @@ export function PestanaImportar({ alImportar, alVerSospechosos, reacciones }: Pr
   const [error, setError] = useState<unknown>(null);
   const [resultado, setResultado] = useState<ImportacionRespuesta | null>(null);
   const [importando, setImportando] = useState(false);
+  // Turno de la importación: sube al importar y al elegir otro archivo; la respuesta que llegue con un turno viejo es de
+  // otro archivo y no se pone a la vista.
+  const turno = useRef(0);
 
   const elegir = (elegido: File) => {
+    turno.current += 1;
     setArchivo(elegido);
     setFaltan(null);
     setColumnas({});
@@ -99,13 +103,24 @@ export function PestanaImportar({ alImportar, alVerSospechosos, reacciones }: Pr
     if (faltan !== null) cuerpo.append("mapeo", JSON.stringify(mapeo));
 
     setImportando(true);
+    const mio = ++turno.current;
     try {
       const respuesta = await pedir<ImportacionRespuesta>(RUTA_IMPORTAR, { metodo: "POST", cuerpo });
+      // Lo importado entró aunque ya se eligiera otro archivo: el tablero se vuelve a leer igual.
+      if (mio !== turno.current) {
+        alImportar();
+        return;
+      }
       setResultado(respuesta);
       setFaltan(null);
       setColumnas({});
       alImportar();
     } catch (razon) {
+      // De otro archivo: no se muestra, pero una sesión vencida o un permiso negado valen igual.
+      if (mio !== turno.current) {
+        reaccionar(razon, reacciones);
+        return;
+      }
       const campos = camposFaltantes(razon);
       if (campos) {
         setFaltan(campos);
@@ -134,6 +149,7 @@ export function PestanaImportar({ alImportar, alVerSospechosos, reacciones }: Pr
         etiqueta="Arrastre el archivo a este recuadro, o haga clic para elegirlo"
         extensiones={[".csv", ".xlsx"]}
         alElegir={elegir}
+        deshabilitada={importando}
       />
       {archivo && (
         <p className="cds--type-body-compact-01">

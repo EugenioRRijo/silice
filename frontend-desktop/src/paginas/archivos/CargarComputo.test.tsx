@@ -730,6 +730,23 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     await waitFor(() => expect(within(dialogo).getByRole("button", { name: "Cerrar" })).toBeEnabled());
   });
 
+  // El cómputo extraído es del tipo de obra que se ve: mientras se extrae, el tipo no se cambia (antes, los ítems de
+  // telecomunicaciones llegaban con el selector ya en otro tipo).
+  test("mientras se extrae no se puede cambiar el tipo de obra", async () => {
+    let soltar: (r: Response) => void = () => {};
+    computo = () => new Promise<Response>((r) => (soltar = r)) as unknown as Response;
+    const u = montar();
+    const dialogo = await elegirElComputo(u);
+    const tipo = within(dialogo).getByLabelText("Tipo de obra del archivo");
+    await u.selectOptions(tipo, "telecom");
+    await u.click(within(dialogo).getByRole("button", { name: "Extraer cómputo" }));
+    await waitFor(() => expect(tipo).toBeDisabled());
+    soltar(json(DIECIOCHO));
+    await within(dialogo).findByRole("table", { name: "Cómputo extraído" });
+    expect(tipo).toBeEnabled();
+    expect(tipo).toHaveValue("telecom");
+  });
+
   test("cuenta que revisa: ni «Subir plano o cómputo» ni «Cargar cómputo» (Foco 3)", async () => {
     registro = [COMPUTO_LLEVADO];
     montar(sesionDe("rita"));

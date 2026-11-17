@@ -1,6 +1,6 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -241,14 +241,17 @@ function Importar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => 
   const [archivo, setArchivo] = useState<File | null>(null);
   const [informe, setInforme] = useState<string[] | null>(null);
   const [fuente, setFuente] = useState("");
+  // Turno de la lectura: el informe de un archivo que tardó no se pone bajo el nombre del que se eligió después.
+  const turno = useRef(0);
   const elegir = (f: File) => {
+    const mio = ++turno.current;
     setArchivo(f);
     setInforme(null);
     const cuerpo = new FormData();
     cuerpo.append("archivo", f);
     void lectura.ejecutar(async () => {
       const r = await pedir<{ informe: string[] }>("/v1/control/importar/informe", { metodo: "POST", cuerpo });
-      setInforme(r.informe);
+      if (mio === turno.current) setInforme(r.informe);
       return "";
     });
   };
@@ -272,7 +275,14 @@ function Importar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => 
           Hojas Valuaciones (numero, desde, hasta, fecha, inspector), Lineas (numero, codigo_partida, cantidad,
           fecha_medicion, observacion) y Costos (opcional). Un archivo malformado se rechaza entero.
         </p>
-        <SubidaArchivo id="control-xlsx" etiqueta="Suelte aquí el libro .xlsx o haga clic para elegirlo" extensiones={[".xlsx"]} alElegir={elegir} />
+        {/* Mientras se lee o se importa no se elige otro: el informe y la importación son del archivo que se ve. */}
+        <SubidaArchivo
+          id="control-xlsx"
+          etiqueta="Suelte aquí el libro .xlsx o haga clic para elegirlo"
+          extensiones={[".xlsx"]}
+          alElegir={elegir}
+          deshabilitada={lectura.estado.enviando || importacion.estado.enviando}
+        />
         <AvisoError error={lectura.estado.error} titulo="No se pudo leer el archivo" />
         {informe && (
           <>
@@ -304,9 +314,12 @@ function Anular({ proyecto, datos, alCambiar }: { proyecto: string; datos: Valua
   const [elegida, setElegida] = useState("");
   const [motivo, setMotivo] = useState("");
   if (datos.anulables.length === 0) return null;
+  // La elegida vale mientras siga en la lista: tras anularla la lista ya no la trae y el selector muestra la primera, que
+  // es la que se manda (antes se volvía a mandar la ya anulada).
+  const vigente = datos.anulables.some((a) => String(a.id) === elegida) ? elegida : String(datos.anulables[0]!.id);
   const anular = () =>
     ejecutar(async () => {
-      await pedir(`/v1/control/valuaciones/${elegida || datos.anulables[0]!.id}/anular`, {
+      await pedir(`/v1/control/valuaciones/${vigente}/anular`, {
         metodo: "POST",
         cuerpo: { motivo },
       });
@@ -317,7 +330,7 @@ function Anular({ proyecto, datos, alCambiar }: { proyecto: string; datos: Valua
     <details>
       <summary className="cds--type-body-compact-01">Anular una valuación</summary>
       <div className="silice-control__formulario" data-proyecto={proyecto}>
-        <Select id="anu-valuacion" labelText="Valuación" value={elegida} onChange={(e) => setElegida(e.target.value)}>
+        <Select id="anu-valuacion" labelText="Valuación" value={vigente} onChange={(e) => setElegida(e.target.value)}>
           {datos.anulables.map((a) => (
             <SelectItem key={a.id} value={String(a.id)} text={a.rotulo} />
           ))}

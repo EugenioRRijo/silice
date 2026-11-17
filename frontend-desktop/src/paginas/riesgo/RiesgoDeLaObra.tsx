@@ -59,6 +59,9 @@ export default function RiesgoDeLaObra() {
   // Lo que se pidió en la última proyección: el informe en Excel se baja con lo mismo.
   const [proyectado, setProyectado] = useState<PedidoDeProyeccion | null>(null);
   const [comprobacion, setComprobacion] = useState<Pedido<ComprobacionDeLaObra>>(NADA);
+  // Turno del último pedido: sube con cada pedido y al cambiar de versión, y la respuesta que llegue con un turno viejo
+  // se descarta (sería de otra versión o de un pedido ya reemplazado).
+  const turno = useRef(0);
   const regionProyeccion = useRef<HTMLElement>(null);
   const regionComprobacion = useRef<HTMLElement>(null);
   const cajaDelError = useRef<HTMLDivElement>(null);
@@ -92,16 +95,29 @@ export default function RiesgoDeLaObra() {
     setMapaDe({ version, mapa: nuevo });
   }
 
+  // Lo que se ve es de la versión elegida: la proyección, la comprobación y lo proyectado de la anterior se retiran.
+  function elegirVersion(codigo: string) {
+    turno.current += 1;
+    setElegida(codigo);
+    setProyeccion(NADA);
+    setComprobacion(NADA);
+    setProyectado(null);
+  }
+
   function marcarInicio(texto: string) {
     setErrores((e) => ({ ...e, inicio: texto }));
     setEnfocarInicio((n) => n + 1);
   }
 
   async function pedir<T>(fijar: (p: Pedido<T>) => void, llamar: () => Promise<T>) {
+    const mio = ++turno.current;
     fijar({ estado: "cargando" });
     try {
-      fijar({ estado: "listo", datos: await llamar() });
+      const datos = await llamar();
+      if (mio !== turno.current) return;
+      fijar({ estado: "listo", datos });
     } catch (razon) {
+      if (mio !== turno.current) return;
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       // El 422 de la fecha de inicio es de un campo: se dice en él, no en un aviso bajo los botones.
       if (razon instanceof ErrorDeApi && razon.estado === 422 && pideLaFechaDeInicio(razon.detalle)) {
@@ -157,7 +173,13 @@ export default function RiesgoDeLaObra() {
       {versiones.estado === "listo" && ofrecidas.length === 0 && <EstadoVacio titulo={SIN_VERSIONES} />}
       {version !== null && (
         <>
-          <Select id="riesgo-version" labelText="Versión" value={version} onChange={(e) => setElegida(e.target.value)}>
+          <Select
+            id="riesgo-version"
+            labelText="Versión"
+            value={version}
+            disabled={ocupado}
+            onChange={(e) => elegirVersion(e.target.value)}
+          >
             {ofrecidas.map((v) => (
               <SelectItem key={v.codigo} value={v.codigo} text={v.codigo} />
             ))}
