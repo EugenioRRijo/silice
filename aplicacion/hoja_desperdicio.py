@@ -52,6 +52,7 @@ if TYPE_CHECKING:
 __all__ = [
     "MENSAJE_DESPERDICIOS",
     "con_desperdicio_en_materiales",
+    "desgloses_visibles",
     "guardar_con_la_version",
     "por_guardar",
     "trazas_del_borrador",
@@ -129,6 +130,16 @@ def unir(
         *(t for t in nuevas if not t.desperdicio_pct.is_zero()),
         *(t for t in vigentes if _clave(t) not in propias),
     ]
+
+
+def desgloses_visibles(
+    filas: Sequence[Mapping[str, str]],
+    propias: Sequence[TrazaDesperdicio],
+    vigentes: Sequence[TrazaDesperdicio],
+) -> list[tuple[int, TrazaDesperdicio]]:
+    """El número de fila (desde 1) y la traza de cada fila de materiales que la Hoja muestra con
+    desglose: las `propias` del borrador antes que las `vigentes` de la partida (`unir`)."""
+    return trazas_de_las_filas(filas, unir(propias, vigentes))
 
 
 def trazas_del_borrador(vivo: BorradorVivo, codigo: str) -> tuple[TrazaDesperdicio, ...]:

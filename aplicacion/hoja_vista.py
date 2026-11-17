@@ -35,10 +35,10 @@ from adapters.espacio.modelo import (
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.cifras import texto_de_cifra
-from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje, trazas_de_las_filas
+from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje
 from aplicacion.frentes import frente_de
 from aplicacion.hoja_borradores import BorradorVivo
-from aplicacion.hoja_desperdicio import trazas_del_borrador, unir
+from aplicacion.hoja_desperdicio import desgloses_visibles, trazas_del_borrador
 from aplicacion.hoja_partidas import (
     PREFIJO_A_MANO,
     PREFIJO_TRAMO,
@@ -645,12 +645,10 @@ def _detalle_de_apu(
                 texto_de_cifra(traza.cantidad_neta),
                 texto_de_cifra(traza.desperdicio_pct),
             )
-            for fila, traza in trazas_de_las_filas(
+            for fila, traza in desgloses_visibles(
                 tablas[0],
-                unir(
-                    trazas_del_borrador(vivo, codigo),
-                    trazas(codigo) if trazas is not None else (),
-                ),
+                trazas_del_borrador(vivo, codigo),
+                trazas(codigo) if trazas is not None else (),
             )
         ),
     )

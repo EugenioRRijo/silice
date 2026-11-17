@@ -46,10 +46,14 @@ from sqlalchemy.orm import Session
 from aplicacion import hoja, hoja_borradores, hoja_lineas_apu, hoja_vista
 from aplicacion.cifras import BLANCOS, MENSAJE_CIFRA, CifraInvalida, cifra_escrita
 from aplicacion.composicion import texto_de_celda
-from aplicacion.desperdicio import TrazaDesperdicio
+from aplicacion.desperdicio import TrazaDesperdicio, trazas_vigentes
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
-from aplicacion.hoja_desperdicio import con_desperdicio_en_materiales
+from aplicacion.hoja_desperdicio import (
+    con_desperdicio_en_materiales,
+    desgloses_visibles,
+    trazas_del_borrador,
+)
 from aplicacion.hoja_lineas_apu import SinVersionGuardada
 from aplicacion.hoja_partidas import (
     CalculoInvalido,
@@ -452,6 +456,9 @@ def editar_apu(
     un material con porcentaje es su neta y se guarda la cantidad con desperdicio; las trazas de la
     partida quedan en el borrador hasta guardar la version (`aplicacion.hoja_desperdicio`). Sin
     `desperdicios`, las trazas que el borrador ya tenia no cambian (siguen casando por la linea).
+    Cambiar solo el desglose (la misma cantidad con otra neta y otro porcentaje, o sin ellos) no
+    cambia la composicion, pero si lo que la Hoja muestra y guardara: sube `rev` igual
+    (depuracion del 2026-11-15, L3).
     """
     trazas: tuple[TrazaDesperdicio, ...] | None = None
 
@@ -477,9 +484,18 @@ def editar_apu(
     # el cerrojo del borrador (reentrante) cubre la edicion y sus trazas: nadie ve una sin la otra
     vivo = hoja_borradores.obtener(huella, id)
     with vivo.cerrojo:
+        antes = trazas_del_borrador(vivo, partida)
         editado = cambiar_borrador(sesion, huella, id, rev, construir)
-        if trazas is not None:
-            editado.desperdicios = {**editado.desperdicios, partida: trazas}
+        if trazas is None:
+            return editado
+        if editado.rev == rev and trazas != antes:  # la composicion quedo igual
+            filas = hoja.filas_de_apu(editado.borrador.composiciones[partida])[0]
+            vigentes = trazas_vigentes(sesion, partida)
+            if desgloses_visibles(filas, trazas, vigentes) != desgloses_visibles(
+                filas, antes, vigentes
+            ):
+                editado = hoja_borradores.reemplazar(huella, id, editado.borrador, rev)
+        editado.desperdicios = {**editado.desperdicios, partida: trazas}
         return editado
 
 
