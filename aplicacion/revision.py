@@ -420,17 +420,18 @@ def _huellas_de_anexos(archivos: Mapping[str, bytes]) -> dict[str, list[str]]:
 def _cadena_legible(cadena: Any) -> bool:
     """Si la cadena de un paquete, aunque no cuadre, tiene la forma mínima que leen la recepción y
     «quién cambió qué»: un objeto con una lista de eslabones cuyo código y huella, si vienen, son
-    textos, y unos cambios por versión en filas de ocho textos. Lo que falte dentro de un eslabón
-    lo dice `recibir` como «rechazado» (los datos mínimos)."""
+    textos (y cada eslabón, un objeto), y unos cambios por versión en filas de ocho textos. Lo que
+    falte dentro de un eslabón lo dice `recibir` como «rechazado» (los datos mínimos)."""
     if not isinstance(cadena, dict):
         return False
     eslabones, cambios = cadena.get("eslabones"), cadena.get("cambios", {})
     if not isinstance(eslabones, list) or not isinstance(cambios, dict):
         return False
+    if not all(isinstance(e, dict) for e in eslabones):
+        return False  # un eslabón `"x"`, `5` o `null` no se lee: antes se saltaba y daba 500
     textos = all(
         isinstance(e.get(campo, ""), str)
         for e in eslabones
-        if isinstance(e, dict)
         for campo in ("codigo", "huella_eslabon")
     )
     return textos and all(filas_de_cambio_legibles(f) for f in cambios.values())
@@ -440,6 +441,7 @@ def _sin_datos_minimos(v: Verificacion) -> Verificacion:
     """`v` como «rechazado»: el manifiesto o la cadena no traen lo mínimo para registrarlo."""
     return replace(
         v,
+        cadena=None,  # la ruta no lee la cadena de un rechazado
         estado=RECHAZADO,
         motivo="rechazado",
         detalle="El manifiesto o la cadena no traen los datos mínimos de un paquete.",
