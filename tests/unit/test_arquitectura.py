@@ -1417,7 +1417,7 @@ def test_ciclo_de_paquetes_sin_sobrantes():
 
 # --- Tarea 1.4: una sola presentacion numerica en la API ----------------------------------------
 
-#: Donde vivira la presentacion unica de la API (tarea 2.2); aun no existe, se excluye por nombre.
+#: La presentacion unica de la API (tarea 2.2): se excluye por nombre.
 PRESENTACION_DE_LA_API = "api/presentacion.py"
 
 
