@@ -1633,3 +1633,60 @@ def test_el_tope_ve_la_falta(tmp_path):
     (tmp_path / "tests" / "test_x.py").write_text("x = 1\n" * 5000, encoding="utf-8")
     (tmp_path / "start.py").write_text("x = 1\n", encoding="utf-8")
     assert _lineas_de_produccion(tmp_path) == {"api/grande.py": TOPE_DE_LINEAS + 1, "start.py": 1}
+
+
+# --- Tarea 1.6: toda tabla esta en el modelo de datos -------------------------------------------
+
+
+def _tablas_del_programa() -> set[str]:
+    """Las tablas de las dos bases (`migraciones/metadatos.py`); se importa aqui para no cargar
+    todos los modelos al recoger las pruebas de este archivo."""
+    from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
+
+    return {nombre for meta in (*METADATAS_CASO, *METADATAS_INSTALACION) for nombre in meta.tables}
+
+
+def _tablas_sin_documentar(tablas: set[str], texto: str) -> set[str]:
+    """Las tablas cuyo nombre no aparece, exacto y entre comillas invertidas, en `texto`."""
+    return {tabla for tabla in tablas if f"`{tabla}`" not in texto}
+
+
+def _texto_del_modelo_de_datos() -> str:
+    return (RAIZ / "docs" / "modelo_datos.md").read_text(encoding="utf-8")
+
+
+#: Tablas que `docs/modelo_datos.md` no nombra (2026-11-17, a802d728). Cada fila se borra cuando
+#: su tabla entra en el documento (trabajo de documentacion aparte).
+TABLAS_SIN_DOCUMENTAR: frozenset[str] = frozenset(
+    """
+    apu_desperdicio apu_desperdicio_guardado cambio_precio clave_api clave_empresa
+    codigo_instalacion composicion_apu descarte_version ejecucion empresa_propia
+    empresa_registrada eslabon_version esp_sobrescrituras evento_acceso ficha_obra hallazgo
+    hoja_importaciones incidencia_cambio insumo intento_acceso item_computo lista_precios
+    modulo_cambio mp_aprobacion_evento mp_carpeta mp_causa_retraso mp_compra mp_eleccion
+    mp_indice_aprobacion mp_nota_medicion mp_observacion mp_plazo_entrega mp_precio_corte
+    mp_precio_objetivo paq_dictamen paq_recibido partida partida_presupuestada presupuesto
+    prod_calculo prod_costo prod_publicacion prod_receta prod_receta_componente punto_curva
+    sesion vial_tramo vial_tramos_guardado
+    """.split()
+)
+
+
+def test_toda_tabla_esta_en_el_modelo_de_datos():
+    faltan = _tablas_sin_documentar(_tablas_del_programa(), _texto_del_modelo_de_datos())
+    nuevas = sorted(faltan - TABLAS_SIN_DOCUMENTAR)
+    assert nuevas == [], f"tablas que docs/modelo_datos.md no nombra entre `comillas`: {nuevas}"
+
+
+def test_toda_tabla_esta_en_el_modelo_de_datos_sin_sobrantes():
+    """Una tabla que ya esta documentada, o que ya no existe, se borra de la lista."""
+    faltan = _tablas_sin_documentar(_tablas_del_programa(), _texto_del_modelo_de_datos())
+    sobrantes = sorted(TABLAS_SIN_DOCUMENTAR - faltan)
+    assert sobrantes == [], f"borrar de TABLAS_SIN_DOCUMENTAR: {sobrantes}"
+
+
+def test_el_modelo_de_datos_ve_la_falta():
+    texto = "La tabla `partida` guarda ...; `presupuesto_version` no es `presupuesto`.\n"
+    tablas = {"partida", "presupuesto", "insumo", "clave_api"}
+    assert _tablas_sin_documentar(tablas, texto) == {"insumo", "clave_api"}
+    assert _tablas_sin_documentar({"precio"}, "`precio_unitario` y precio a secas") == {"precio"}
