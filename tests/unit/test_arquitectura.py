@@ -1548,3 +1548,88 @@ def test_la_api_presenta_cifras_en_un_solo_sitio_ve_la_falta(tmp_path):
         archivo.write_text(fuente, encoding="utf-8")
         detectadas[fuente] = _sitios_de_presentacion(archivo)
     assert detectadas == fuentes
+
+
+# --- Tarea 1.5: tope de tamano por modulo -------------------------------------------------------
+
+TOPE_DE_LINEAS = 1000
+
+
+def _lineas_de_produccion(raiz: Path = RAIZ) -> dict[str, int]:
+    """Lineas de cada `.py` de produccion: los paquetes fuera de `core/` y de `tests/`, y los
+    sueltos de la raiz (`start.py`)."""
+    archivos = [*raiz.glob("*.py")] + [
+        archivo
+        for paquete in sorted(set(PAQUETES_FUERA_DEL_NUCLEO) - {"tests"})
+        for archivo in (raiz / paquete).rglob("*.py")
+    ]
+    return {
+        archivo.relative_to(raiz).as_posix(): len(archivo.read_text(encoding="utf-8").splitlines())
+        for archivo in sorted(archivos)
+    }
+
+
+#: Modulos que ya pasan del tope (2026-11-17, a802d728) -> sus lineas ese dia. Ninguno crece; la
+#: ola 4 los parte dejando una fachada que reexporta.
+MODULOS_GRANDES: dict[str, int] = {
+    "aplicacion/hoja.py": 3195,
+    "scripts/recorrido_ux_playwright.py": 2321,
+    "scripts/fusion_verificar.py": 2124,
+    "adapters/hoja_empresa/reglas.py": 1707,
+    "aplicacion/control.py": 1584,
+    "aplicacion/composicion.py": 1471,
+    "adapters/hoja_empresa/pdf.py": 1389,
+    "api/rutas/hoja.py": 1348,
+    "adapters/hoja_empresa/escritor/calculos.py": 1317,
+    "scripts/probar_precios_maprex.py": 1222,
+    "scripts/anonimizar_libro.py": 1163,
+    "api/rutas/presupuestos.py": 1132,
+    "scripts/informe_ti001.py": 1102,
+    "api/esquemas_hoja.py": 1061,
+    "aplicacion/hoja_vista.py": 1055,
+    "api/rutas/libros.py": 1038,
+}
+
+
+def test_ningun_modulo_pasa_del_tope():
+    nuevos = sorted(
+        f"{ruta} ({lineas} lineas)"
+        for ruta, lineas in _lineas_de_produccion().items()
+        if lineas > TOPE_DE_LINEAS and ruta not in MODULOS_GRANDES
+    )
+    assert nuevos == [], f"modulos de mas de {TOPE_DE_LINEAS} lineas: {nuevos}"
+
+
+def test_un_modulo_grande_no_crece_sobre_su_tope():
+    hoy = _lineas_de_produccion()
+    crecidos = sorted(
+        f"{ruta}: {congelado} -> {hoy[ruta]}"
+        for ruta, congelado in MODULOS_GRANDES.items()
+        if hoy.get(ruta, 0) > congelado
+    )
+    assert crecidos == [], f"modulos grandes que crecieron: {crecidos}"
+
+
+def test_modulos_grandes_sin_sobrantes_bajo_el_tope():
+    """Si un modulo baja del tope se borra su fila; si baja de su valor, el valor se baja al
+    numero nuevo que muestra el mensaje."""
+    hoy = _lineas_de_produccion()
+    sobrantes = []
+    for ruta, congelado in sorted(MODULOS_GRANDES.items()):
+        lineas = hoy.get(ruta, 0)
+        if lineas <= TOPE_DE_LINEAS:
+            sobrantes.append(f"{ruta}: {lineas} lineas, ya cabe en el tope (borrar la fila)")
+        elif lineas < congelado:
+            sobrantes.append(f'"{ruta}": {lineas},  (era {congelado})')
+    assert sobrantes == [], "actualizar MODULOS_GRANDES:\n" + "\n".join(sobrantes)
+
+
+def test_el_tope_ve_la_falta(tmp_path):
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "grande.py").write_text("x = 1\n" * (TOPE_DE_LINEAS + 1), encoding="utf-8")
+    (tmp_path / "core").mkdir()
+    (tmp_path / "core" / "nucleo.py").write_text("x = 1\n" * 5000, encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_x.py").write_text("x = 1\n" * 5000, encoding="utf-8")
+    (tmp_path / "start.py").write_text("x = 1\n", encoding="utf-8")
+    assert _lineas_de_produccion(tmp_path) == {"api/grande.py": TOPE_DE_LINEAS + 1, "start.py": 1}
