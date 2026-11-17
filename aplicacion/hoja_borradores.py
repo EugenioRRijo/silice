@@ -253,9 +253,12 @@ class Registro:
     def reemplazar(self, huella: str, id: str, borrador: Borrador, rev: int) -> BorradorVivo:
         """Fija el borrador nuevo si `rev` es el vigente: sube `rev` e invalida la cache. Cada
         `re_estimar_cada` cambios vuelve a estimar el tamano y, si el total ya no cabe, expulsa
-        el menos usado (nunca este)."""
+        el menos usado (nunca este). Si otra ventana lo descarto mientras se esperaba su cerrojo,
+        `BorradorInexistente`: no se cambia un borrador que ya no esta en el registro."""
         vivo = self.obtener(huella, id)
-        with vivo.cerrojo:
+        with vivo.cerrojo, self._exclusivo():  # primero el del borrador y luego el del registro
+            if self._vivos.get(vivo.id) is not vivo:
+                raise BorradorInexistente(id)
             if vivo.rev != rev:
                 raise RevDesactualizado(id)
             vivo.borrador = borrador
@@ -263,9 +266,7 @@ class Registro:
             vivo.calculo = None
             if vivo.rev % self._re_estimar_cada == 0:
                 vivo.tamano = self._medir(borrador)
-                with self._exclusivo():  # primero el del borrador y luego el del registro
-                    if self._vivos.get(vivo.id) is vivo:
-                        self._expulsar_hasta_caber(vivo)
+                self._expulsar_hasta_caber(vivo)
             return vivo
 
     def descartar(self, huella: str, id: str) -> None:
