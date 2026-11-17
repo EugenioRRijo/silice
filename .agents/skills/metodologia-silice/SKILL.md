@@ -45,20 +45,33 @@ Cada hecho vive en un lugar y los demás documentos lo enlazan. Antes de escribi
 cifra, estado), busca su fuente única (`docs/metodologia.md` §5). No copies bloques de documentos:
 enlázalos.
 
+En el código, lo mismo: **una sola función por regla**. Antes de escribir una, búscala
+(`git grep -n "def <nombre>"` y por lo que hace). La lógica de negocio vive en `aplicacion/`; las rutas
+de `api/rutas/` solo traducen HTTP (sin `select()` ni reglas). Deuda conocida que no se repite:
+`decimal_desde_texto` duplicada (`api/esquemas.py`, `aplicacion/composicion.py`) y formateadores de
+montos privados en rutas (la presentación es `core/verification/texto.py` `formatear_decimal`).
+
 ## 5. Reglas del dominio que no se negocian
 
 - `core/` no cambia sin expediente y aval del tutor (`scripts/guardia_nucleo.py`).
 - Dinero y cantidades con `Decimal` (Python) o texto exacto (front); la interfaz no calcula.
 - Coma decimal y punto de miles en toda entrada y salida.
+- Redondeo (decisión de Eugenio del 2026-11-17, pendiente de ratificar por el tutor): cálculo con 28
+  dígitos y `ROUND_HALF_EVEN`; presentación a dos decimales con `ROUND_HALF_UP`
+  (`core/verification/texto.py`, `formatear_decimal`).
 - Datos reales nunca en el repositorio ni en tus mensajes: NORMAS §1. Procesas en la nube de Google.
 
 ## 6. Comandos de comprobación
 
+Los de [AGENTS.md](../../../AGENTS.md):
+
 ```powershell
-uv run --active pytest <archivos> -q -W error -p no:cacheprovider
-uv run --active ruff check <archivos>; uv run --active ruff format --check <archivos>
-$env:PYTHONIOENCODING="utf-8"; uv run --active python scripts/meta_datos.py
-cd frontend-desktop; npx vitest run <ruta>; npm run lint
+uv run pytest -W error -q                 # suite de Python
+uv run ruff check .                       # estilo
+uv run python scripts/meta_datos.py       # naturaleza de los datos (D1-D4)
+cd frontend-desktop; npm run lint; npx vitest run --maxWorkers=3
 ```
 
-No corras la suite completa salvo que te lo pidan: tarda y compite con otros agentes por la máquina.
+Para lo que tocaste, acota: `uv run pytest <archivos> -W error -q`, `npx vitest run <ruta>`. Si la consola
+es cp1252, antepón `$env:PYTHONIOENCODING="utf-8"`. No corras la suite completa salvo que te lo pidan:
+tarda y compite con otros agentes por la máquina.

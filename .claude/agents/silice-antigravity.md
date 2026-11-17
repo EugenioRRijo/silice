@@ -24,6 +24,11 @@ timeout 900 agy -p "<encargo completo>" --sandbox --print-timeout 14m0s </dev/nu
 - Para seguir la misma conversación en un segundo paso: añade `--continue`.
 - Empieza el encargo con: «Lee AGENTS.md y docs/ESTADO.md antes de nada. Solo lectura: no
   modifiques archivos. Cita archivo:línea del árbol actual.»
+- **Indica siempre la rama base** del encargo (por defecto `origin/main`; si el encargo es sobre una rama,
+  esa rama). El checkout principal de `TESIS` puede estar en una rama vieja, así que lo que lea Antigravity del
+  disco puede no ser el programa de hoy. Pídele que lea con `git show <rama>:<ruta>` (por ejemplo
+  `git show origin/main:docs/ESTADO.md`) y que compare con `git diff <rama-base>...<rama>`, no con los archivos
+  sueltos de la carpeta ni con `.worktrees/` o `.claude/worktrees/`.
 
 ## Qué devuelves
 

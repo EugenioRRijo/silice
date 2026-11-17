@@ -7,6 +7,12 @@ description: >-
 
 # Skill: Asistente de IA y Modelos de Aprendizaje Automático
 
+> **Vigente al 2026-11-17.** El modo local con Ollama está **en pausa** por decisión de Eugenio (RS-8, 2026-10-18;
+> `docs/ERS.md`, RF-90 (b) diferido): el código no se retira, pero no se amplía ni se da por cumplido; el proveedor en
+> uso es Claude. La lógica que arma datos para la IA o para `ml/` vive en `asistente/` o en `aplicacion/` (por
+> ejemplo `aplicacion/atipicos.py`), nunca en `api/rutas/`. Estado del proyecto:
+> [docs/ESTADO.md](../../../docs/ESTADO.md).
+
 Esta guía define cómo operar y extender el componente de inteligencia artificial y machine learning de Sílice (`asistente/` y `ml/`).
 
 ---
@@ -18,13 +24,14 @@ Para cumplir con **RNF-08** (operación sin conexión forzada y sin fugas de dat
 1. **Modo Cloud (Claude API):**
    - Utilizado cuando el usuario configura voluntariamente una clave de Anthropic.
    - Ideal para síntesis complejas de memoria descriptiva y auditorías forenses profundas.
-2. **Modo Offline / Local (Ollama):**
+2. **Modo Offline / Local (Ollama), en pausa (RS-8):**
    - Para instalaciones aisladas o en obra sin internet.
    - Conecta a un daemon de Ollama local (`http://127.0.0.1:11434`, bucle local comprobado por **IP resuelta**; versión mínima en `asistente/config_ia.json`). El modelo lo fija el administrador (`asistente/configuracion.py`, campo `modelo_local`); el experimento usa el de `asistente/experimento/protocolo.json`.
    - **Invariante:** la IA nunca escribe un número final; solo propone datos de entrada por las herramientas del sistema y el usuario confirma (spec S4 §1).
 3. **Almacenamiento Seguro de Credenciales:**
    - **NUNCA** almacenar claves API en archivos de texto, `.env` o bases de datos SQLite.
-   - Utilizar el módulo `keyring` del sistema operativo (Windows Credential Manager / DPAPI) mediante `seguridad.secretos`.
+   - La clave de IA la guarda `asistente/clave.py` con `keyring` (en Windows, el Administrador de credenciales); si el
+     almacén no está disponible, se cifra con `seguridad.secretos` (Argon2id → AES-GCM).
 
 ---
 
