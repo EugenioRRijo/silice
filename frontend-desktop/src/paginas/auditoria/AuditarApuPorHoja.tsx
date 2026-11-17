@@ -1,7 +1,7 @@
 import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -180,6 +180,10 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
   // perfil que el libro tiene).
   const [hojasDelPresupuesto, setHojasDelPresupuesto] = useState<string[] | null>(null);
   const [marcadas, setMarcadas] = useState<string[] | null>(null);
+  // P13: mientras se leen las hojas no se audita (saldría sin hojas marcadas y el servidor elegiría por el perfil). Si dos
+  // libros se eligen seguidos, solo la lectura más reciente suelta la espera.
+  const [leyendoHojas, setLeyendoHojas] = useState(false);
+  const lecturaVigente = useRef(0);
   const delPerfil = hojasDe(perfiles?.find((p) => p.nombre === perfil) ?? { hoja_presupuesto: POR_OMISION_HOJA });
   const porOmision = (hojasDelPresupuesto ?? []).filter((h) => delPerfil.some((d) => igualada(d) === igualada(h)));
   const hojas = hojasDelPresupuesto === null ? [] : (marcadas ?? porOmision);
@@ -188,11 +192,16 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
     setPresupuesto(archivo);
     setHojasDelPresupuesto(null);
     setMarcadas(null);
+    const lectura = ++lecturaVigente.current;
+    setLeyendoHojas(true);
     try {
-      setHojasDelPresupuesto(await hojasDelLibro(archivo));
+      const leidas = await hojasDelLibro(archivo);
+      if (lectura === lecturaVigente.current) setHojasDelPresupuesto(leidas);
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       // sin la lista de hojas decide el perfil: el error del libro lo dirá la auditoría
+    } finally {
+      if (lectura === lecturaVigente.current) setLeyendoHojas(false);
     }
   }
 
@@ -294,9 +303,10 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
           .join(" · ")}
       </p>
       <div className="silice-inicio__acciones">
-        <Button kind="primary" size="md" disabled={libro === null || auditando} onClick={() => void auditar()}>
+        <Button kind="primary" size="md" disabled={libro === null || auditando || leyendoHojas} onClick={() => void auditar()}>
           Auditar el libro de APU
         </Button>
+        {leyendoHojas && <InlineLoading description="Leyendo las hojas del presupuesto..." />}
         {auditando && <InlineLoading description="Recalculando cada hoja..." />}
       </div>
       <AvisoError error={error} titulo="No se auditó el libro" />
