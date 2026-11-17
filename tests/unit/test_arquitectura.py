@@ -1195,3 +1195,215 @@ def test_las_rutas_no_entran_al_nucleo_por_dentro_ve_la_falta(tmp_path):
         encoding="utf-8",
     )
     assert _nucleo_profundo(ruta, raiz=tmp_path) == {"core.budget.cadena": 3, "core.budget": 7}
+
+
+# --- Tarea 1.3: cero ciclos nuevos --------------------------------------------------------------
+#
+# Los grafos de 1.3 miran el programa: `tests` y `scripts` quedan fuera porque importan todo por
+# oficio (con ellos, todo el programa seria un solo ciclo). Sus aristas hacia el programa las
+# congela la matriz de 1.1, que tambien ve `operacion -> scripts` e `instalador -> tests`.
+
+PAQUETES_DEL_PROGRAMA = PAQUETES_INTERNOS - {"tests", "scripts"}
+
+
+def _componentes_fuertes(grafo: dict[str, set[str]]) -> list[frozenset[str]]:
+    """Componentes fuertemente conexos de dos o mas nodos (Tarjan, iterativo: sin recursion)."""
+    indice: dict[str, int] = {}
+    enlace: dict[str, int] = {}
+    pila: list[str] = []
+    en_pila: set[str] = set()
+    componentes: list[frozenset[str]] = []
+    nodos = sorted(set(grafo) | {v for vecinos in grafo.values() for v in vecinos})
+    for raiz in nodos:
+        if raiz in indice:
+            continue
+        trabajo = [(raiz, iter(sorted(grafo.get(raiz, ()))))]
+        indice[raiz] = enlace[raiz] = len(indice)
+        pila.append(raiz)
+        en_pila.add(raiz)
+        while trabajo:
+            nodo, vecinos = trabajo[-1]
+            vecino = next(vecinos, None)
+            if vecino is None:
+                trabajo.pop()
+                if trabajo:
+                    padre = trabajo[-1][0]
+                    enlace[padre] = min(enlace[padre], enlace[nodo])
+                if enlace[nodo] == indice[nodo]:
+                    componente = set()
+                    while True:
+                        miembro = pila.pop()
+                        en_pila.discard(miembro)
+                        componente.add(miembro)
+                        if miembro == nodo:
+                            break
+                    if len(componente) > 1:
+                        componentes.append(frozenset(componente))
+            elif vecino not in indice:
+                indice[vecino] = enlace[vecino] = len(indice)
+                pila.append(vecino)
+                en_pila.add(vecino)
+                trabajo.append((vecino, iter(sorted(grafo.get(vecino, ())))))
+            elif vecino in en_pila:
+                enlace[nodo] = min(enlace[nodo], indice[vecino])
+    return sorted(componentes, key=sorted)
+
+
+def _aristas_de_modulos(paquetes: frozenset[str], raiz: Path = RAIZ) -> dict[tuple[str, str], str]:
+    """`(modulo, modulo importado)` -> primer `archivo:linea`, entre modulos de `paquetes`.
+
+    Imports de ejecucion (locales incluidos, sin `if TYPE_CHECKING:`); `from a import b` apunta a
+    `a.b` si es un submodulo y a `a` (su `__init__`) si no lo es."""
+    archivos = [a for paquete in sorted(paquetes) for a in sorted((raiz / paquete).rglob("*.py"))]
+    modulos = {}
+    for archivo in archivos:
+        partes = archivo.relative_to(raiz).with_suffix("").parts
+        modulos[archivo] = ".".join(partes[:-1] if partes[-1] == "__init__" else partes)
+    conocidos = set(modulos.values())
+    aristas: dict[tuple[str, str], str] = {}
+    for archivo, origen in modulos.items():
+        for linea, destino in _modulos_usados(archivo, raiz):
+            if destino in conocidos and destino != origen:
+                sitio = f"{archivo.relative_to(raiz).as_posix()}:{linea}"
+                aristas.setdefault((origen, destino), sitio)
+    return aristas
+
+
+def _grafo(aristas) -> dict[str, set[str]]:
+    grafo: dict[str, set[str]] = {}
+    for origen, destino in aristas:
+        grafo.setdefault(origen, set()).add(destino)
+    return grafo
+
+
+def _describir_componente(componente: frozenset[str], aristas: dict) -> str:
+    internas = sorted(
+        f"{origen} -> {destino} ({sitio})"
+        for (origen, destino), sitio in aristas.items()
+        if origen in componente and destino in componente
+    )
+    return f"{sorted(componente)}:\n    " + "\n    ".join(internas)
+
+
+#: Ciclos de importacion entre modulos del programa (2026-11-17, a802d728): componente -> motivo.
+#: Salir de ellos es la ola 5 (aval del tutor). Sin los imports locales no hay ninguno: todos
+#: estan esquivados dentro de funciones.
+CICLOS_CONOCIDOS: dict[frozenset[str], str] = {
+    frozenset(
+        {
+            "aplicacion.aprobaciones",
+            "aplicacion.control",
+            "aplicacion.entrega",
+            "aplicacion.frentes",
+            "aplicacion.hoja",
+            "aplicacion.hoja_partidas",
+            "aplicacion.mercado",
+            "aplicacion.mesa",
+            "aplicacion.precios_declarados",
+            "aplicacion.procura",
+            "aplicacion.vial",
+        }
+    ): "2026-11-17, la mesa reune los pendientes de todos y ellos le piden sus tipos (tarea 5.1)",
+    frozenset({"seguridad.cuentas", "seguridad.sesiones"}): (
+        "2026-11-17, sesiones toma texto_responsable de cuentas dentro de una funcion (tarea 5.2)"
+    ),
+}
+
+#: El unico ciclo entre paquetes del programa (2026-11-17, a802d728); lo rompen las seis aristas
+#: marcadas `# ciclo, ola 5` en `DEPENDENCIAS_PERMITIDAS`.
+CICLO_DE_PAQUETES_CONOCIDO: frozenset[str] = frozenset(
+    {
+        "aplicacion",
+        "asistente",
+        "auditoria",
+        "fusion",
+        "migraciones",
+        "operacion",
+        "paquete",
+        "seguridad",
+    }
+)
+
+
+def _ciclos_de_modulos():
+    aristas = _aristas_de_modulos(PAQUETES_DEL_PROGRAMA)
+    return _componentes_fuertes(_grafo(aristas)), aristas
+
+
+def test_el_detector_de_componentes_ve_dos_ciclos_separados():
+    grafo = {"a": {"b"}, "b": {"a", "c"}, "c": {"d"}, "d": {"c"}, "e": {"a"}}
+    assert _componentes_fuertes(grafo) == [frozenset({"a", "b"}), frozenset({"c", "d"})]
+    assert _componentes_fuertes({"a": {"b"}, "b": {"c"}, "c": set()}) == []
+    assert _componentes_fuertes({"a": {"b"}, "b": {"c"}, "c": {"a"}}) == [frozenset("abc")]
+
+
+def test_el_grafo_de_modulos_ve_un_ciclo_por_import_local(tmp_path):
+    """El rojo de verdad: dos modulos falsos que se importan, uno de ellos dentro de una funcion,
+    forman un ciclo; el import bajo `if TYPE_CHECKING:` no cierra otro."""
+    carpeta = tmp_path / "falso"
+    carpeta.mkdir()
+    (carpeta / "__init__.py").write_text("", encoding="utf-8")
+    (carpeta / "a.py").write_text("from falso import b\n", encoding="utf-8")
+    (carpeta / "b.py").write_text("def f():\n    from falso.a import g\n", encoding="utf-8")
+    (carpeta / "c.py").write_text(
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from falso import a\n",
+        encoding="utf-8",
+    )
+    (carpeta / "d.py").write_text("from falso import c\n", encoding="utf-8")
+    aristas = _aristas_de_modulos(frozenset({"falso"}), raiz=tmp_path)
+    assert aristas[("falso.b", "falso.a")] == "falso/b.py:2"
+    assert _componentes_fuertes(_grafo(aristas)) == [frozenset({"falso.a", "falso.b"})]
+
+
+def test_no_aparecen_ciclos_nuevos():
+    componentes, aristas = _ciclos_de_modulos()
+    nuevos = [
+        _describir_componente(c, aristas)
+        for c in componentes
+        if not any(c & conocido for conocido in CICLOS_CONOCIDOS)
+    ]
+    assert nuevos == [], "ciclos de importacion nuevos:\n" + "\n".join(nuevos)
+
+
+def test_un_ciclo_conocido_no_crece():
+    componentes, aristas = _ciclos_de_modulos()
+    crecidos = [
+        f"{_describir_componente(c, aristas)}\n  nuevos: {sorted(c - conocido)}"
+        for c in componentes
+        for conocido in CICLOS_CONOCIDOS
+        if c & conocido and not c <= conocido
+    ]
+    assert crecidos == [], "ciclos conocidos que crecieron:\n" + "\n".join(crecidos)
+
+
+def test_ciclos_conocidos_sin_sobrantes():
+    """Un ciclo conocido que se achico o desaparecio obliga a actualizar o borrar su fila."""
+    componentes, _ = _ciclos_de_modulos()
+    sobrantes = [sorted(c) for c in CICLOS_CONOCIDOS if c not in componentes]
+    assert sobrantes == [], f"actualizar o borrar de CICLOS_CONOCIDOS: {sobrantes}; hoy: " + str(
+        [sorted(c) for c in componentes]
+    )
+
+
+def _ciclos_de_paquetes():
+    grafo = {
+        paquete: set(_imports_de_ejecucion_de_paquete(paquete)) & PAQUETES_DEL_PROGRAMA
+        for paquete in PAQUETES_DEL_PROGRAMA
+    }
+    return _componentes_fuertes(grafo)
+
+
+def test_no_aparecen_ciclos_nuevos_de_paquetes():
+    """Ni un segundo ciclo entre paquetes ni un paquete mas en el conocido."""
+    fuera = [
+        f"{sorted(c)} (nuevos: {sorted(c - CICLO_DE_PAQUETES_CONOCIDO)})"
+        for c in _ciclos_de_paquetes()
+        if not c <= CICLO_DE_PAQUETES_CONOCIDO
+    ]
+    assert fuera == [], f"ciclos de paquetes fuera de CICLO_DE_PAQUETES_CONOCIDO: {fuera}"
+
+
+def test_ciclo_de_paquetes_sin_sobrantes():
+    hoy = _ciclos_de_paquetes()
+    esperado = [CICLO_DE_PAQUETES_CONOCIDO] if CICLO_DE_PAQUETES_CONOCIDO else []
+    assert hoy == esperado, f"actualizar CICLO_DE_PAQUETES_CONOCIDO a {[sorted(c) for c in hoy]}"
