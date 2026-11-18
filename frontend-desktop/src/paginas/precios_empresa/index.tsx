@@ -356,7 +356,10 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
             {creacion.creada.id !== undefined && !puedeArmar && (
               <p className="cds--type-body-compact-01">{SIN_PERMISO_PARA_ARMAR}</p>
             )}
-            {creacion.creada.id !== undefined && puedeArmar && (
+            {creacion.creada.id !== undefined && puedeArmar && creacion.creada.aviso_para_armar && (
+              <p className="cds--type-body-compact-01">{creacion.creada.aviso_para_armar}</p>
+            )}
+            {creacion.creada.id !== undefined && puedeArmar && !creacion.creada.aviso_para_armar && (
               <div className="silice-precios-empresa__acciones">
                 <Button
                   kind="secondary"

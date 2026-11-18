@@ -14,6 +14,13 @@ export interface PartidaDelContrato {
   // código; Reajuste no los trae (una por código).
   renglon?: number;
   renglones?: number;
+  // El frente del renglón (pasada en navegador de la ola 2, D5): dos renglones de un código en dos frentes se distinguen.
+  frente?: string | null;
+}
+
+// «renglón 3 del presupuesto, frente «FRENTE B»»: cuál renglón de un código repetido es (D5).
+export function rotuloDelRenglon(p: PartidaDelContrato): string {
+  return `renglón ${p.renglon} del presupuesto${p.frente ? `, frente «${p.frente}»` : ""}`;
 }
 
 // true si el código de `p` está en más de un renglón del presupuesto.
@@ -58,7 +65,7 @@ export function buscadorDePartidasDelContrato(partidas: PartidaDelContrato[]) {
       secundaria: [
         p.codigo,
         unidadEscrita(p.unidad),
-        ...(codigoRepetido(p) && p.renglon !== undefined ? [`renglón ${p.renglon} del presupuesto`] : []),
+        ...(codigoRepetido(p) && p.renglon !== undefined ? [rotuloDelRenglon(p)] : []),
       ],
       valor: p,
     }),

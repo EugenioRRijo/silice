@@ -89,13 +89,13 @@ def _base(s: Session) -> int:
     return s.scalars(select(models.ListaPrecios.id)).one()
 
 
-def _crear(s: Session, ruta: Path, **extra) -> precios_empresa.ResumenEmpresa:
+def _crear(s: Session, ruta: Path, *, base_id: int | None = None, **extra):
     return precios_empresa.crear_lista(
         s,
         ruta,
         empresa_nombre="Empresa ficticia",
         empresa_rif="J-00000000-0",
-        base_id=_base(s),
+        base_id=_base(s) if base_id is None else base_id,
         moneda="USD",
         fecha=FECHA,
         fuente=FUENTE,
@@ -142,12 +142,9 @@ def test_sin_confirmar_el_alta_los_nuevos_no_entran_y_se_dice_por_que_los_otros(
     resumen = _crear(sesion, archivo)
     assert resumen.propios == 2
     assert resumen.dados_de_alta == ()
-    assert resumen.desconocidos == (
-        "Bloque de prueba",
-        "Retro de prueba",
-        "Chofer de prueba",
-        "Arena de prueba",
-    )
+    # los de otra unidad SÍ están en el catálogo: van en `otra_unidad`, no entre los desconocidos
+    # («no están en el catálogo»), que se contradecían (pasada en navegador de la ola 2, D9a)
+    assert resumen.desconocidos == ("Bloque de prueba", "Retro de prueba")
     assert resumen.otra_unidad == OTRA_UNIDAD
     assert _insumos(sesion) == antes
 
@@ -159,7 +156,7 @@ def test_con_el_alta_confirmada_los_nuevos_entran_con_su_precio_y_los_de_otra_un
     resumen = _crear(sesion, archivo, dar_de_alta=True)
     assert resumen.propios == 4
     assert resumen.dados_de_alta == ("Bloque de prueba", "Retro de prueba")
-    assert resumen.desconocidos == ("Chofer de prueba", "Arena de prueba")
+    assert resumen.desconocidos == ()  # los de otra unidad no son desconocidos (D9a)
     assert resumen.otra_unidad == OTRA_UNIDAD
     assert _insumos(sesion) == antes + 2
     precios = _precios_de_la_empresa(sesion)
@@ -194,6 +191,42 @@ def test_dos_filas_nuevas_del_mismo_insumo_con_precios_distintos_no_crean_nada(
     assert sesion.scalars(select(models.ListaEmpresa)).first() is None
 
 
+DOS_UNIDADES = (
+    "tipo,insumo,unidad,precio,fecha,fuente\n"
+    "material,Ladrillo de prueba,saco,10.00,2026-10-05,x\n"
+    "material,Bloque de prueba,und,0.80,2026-10-05,x\n"
+    "material,Ladrillo de prueba,kg,1.00,2026-10-05,x\n"
+)
+AVISO_DOS_UNIDADES = (
+    "«Ladrillo de prueba» viene en el archivo en saco y en kg: no entró ni se dio de alta (serían "
+    "dos insumos con el mismo nombre); deje en el archivo una sola unidad."
+)
+
+
+def test_un_insumo_nuevo_con_dos_unidades_en_el_archivo_no_se_da_de_alta_y_se_avisa(
+    sesion: Session, tmp_path: Path
+) -> None:
+    """Dos filas nuevas del mismo material en saco y en kg darían MAT-003 y MAT-004 con el mismo
+    nombre: el homónimo que `_separar` ya prohíbe frente al catálogo (flujo 2b de UC-02)."""
+    ruta = tmp_path / "dos_unidades.csv"
+    ruta.write_text(DOS_UNIDADES, encoding="utf-8")
+    revision = precios_empresa.revisar_archivo(sesion, ruta)
+    assert [n.descripcion for n in revision.nuevos] == ["Bloque de prueba"]
+    assert revision.otra_unidad == (AVISO_DOS_UNIDADES,)
+    antes = _insumos(sesion)
+    resumen = _crear(sesion, ruta, dar_de_alta=True)
+    assert resumen.dados_de_alta == ("Bloque de prueba",)
+    assert resumen.desconocidos == ()
+    assert resumen.otra_unidad == (AVISO_DOS_UNIDADES,)
+    assert _insumos(sesion) == antes + 1
+    assert (
+        sesion.scalars(
+            select(models.Insumo).where(models.Insumo.descripcion == "Ladrillo de prueba")
+        ).all()
+        == []
+    )
+
+
 def test_una_fila_sin_fecha_ni_fuente_toma_las_de_la_lista(sesion: Session, tmp_path: Path) -> None:
     """D-11: el formulario ya pide la fecha y la fuente de la lista; la fila no las repite."""
     ruta = tmp_path / "sin_fecha.csv"
@@ -208,3 +241,17 @@ def test_una_fila_sin_fecha_ni_fuente_toma_las_de_la_lista(sesion: Session, tmp_
         .where(models.Insumo.codigo == "MAT-001")
     ).one()
     assert (origen.fecha_precio, origen.fuente) == (FECHA, FUENTE)
+
+
+def test_dos_listas_del_mismo_dia_sin_nombre_no_se_llaman_igual(
+    sesion: Session, archivo: Path
+) -> None:
+    """D9c de la pasada en navegador: las dos se llamaban «Empresa ficticia 2026-10-05». Como la
+    lista para armar (`listas_para_armar._nombre_libre`) y como Excel, la segunda lleva « (2)»."""
+    base = _base(sesion)
+    primera, segunda, tercera = (_crear(sesion, archivo, base_id=base) for _ in range(3))
+    assert (primera.nombre, segunda.nombre, tercera.nombre) == (
+        "Empresa ficticia 2026-10-05",
+        "Empresa ficticia 2026-10-05 (2)",
+        "Empresa ficticia 2026-10-05 (3)",
+    )

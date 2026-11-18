@@ -140,6 +140,9 @@ class ApuRecalculado:
     cantidad: Decimal | None = None
     celda_cantidad: str | None = None
     celdas_precio: tuple[str, ...] = ()
+    #: La traza del desperdicio de sus materiales (la neta y el porcentaje que imprime la hoja):
+    #: viaja con la composición cuando el libro se lleva a la Hoja (pasada en navegador, D10).
+    trazas: tuple[TrazaDesperdicio, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -367,6 +370,7 @@ def _evaluar(
             for linea in apu.lineas
             if linea.tipo is tipo and "precio" in linea.celdas
         ),
+        trazas=tuple(trazas),
     )
     return recalculado, hallazgos, trazas
 

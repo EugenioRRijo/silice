@@ -822,6 +822,7 @@ TRES_PARTIDAS = [
         "unidad": "m3",
         "renglon": 1,
         "renglones": 1,
+        "frente": None,
     },
     {
         "codigo": "OB-B",
@@ -829,6 +830,7 @@ TRES_PARTIDAS = [
         "unidad": "m",
         "renglon": 2,
         "renglones": 1,
+        "frente": None,
     },
     {
         "codigo": "OB-C",
@@ -836,6 +838,7 @@ TRES_PARTIDAS = [
         "unidad": "m3",
         "renglon": 3,
         "renglones": 1,
+        "frente": None,
     },
 ]
 
@@ -959,6 +962,20 @@ def test_un_corte_que_no_es_fecha_es_422_sin_eco() -> None:
     assert "ayer" not in r.text
 
 
+@pytest.mark.parametrize("corte", ["2026-11-06Basura", "2026-11-06T99:99", "20261106"])
+def test_un_corte_con_algo_mas_que_la_fecha_es_422(corte: str) -> None:
+    """El corte del calculo es AAAA-MM-DD entero: lo que sigue a los diez primeros caracteres no
+    se descarta en silencio (antes `[:10]` daba 200 con «2026-11-06Basura»)."""
+    r = _con_clave().get("/v1/control/calculo", params={**P, "corte": corte})
+    assert r.status_code == 422
+    assert "no es una fecha (AAAA-MM-DD)" in r.json()["detalle"]
+
+
+def test_un_corte_con_espacios_alrededor_sigue_valiendo() -> None:
+    r = _con_clave().get("/v1/control/calculo", params={**P, "corte": " 2026-11-06 "})
+    assert r.status_code == 200 and r.json()["corte"] == "2026-11-06"
+
+
 def test_la_lista_recortada_lo_dice(monkeypatch: pytest.MonkeyPatch) -> None:
     """Con el tope en 2, de las tres partidas se ofrecen dos y `truncada` lo dice: la interfaz
     no puede juzgar con una lista incompleta y deja que decida el servidor."""
@@ -1046,8 +1063,12 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
                 select(models.Presupuesto).where(models.Presupuesto.codigo == ob.CODIGO)
             ).one()
             a, b, _ = ob.items()
+            # el frente del renglón (pasada en navegador de la ola 2, D5): el selector lo nombra
             otra = replace(
-                a, descripcion="Excavacion de zanja, frente 2 (ficticio)", origen_id="frente-2:OB-A"
+                a,
+                descripcion="Excavacion de zanja, frente 2 (ficticio)",
+                origen_id="frente-2:OB-A",
+                especificaciones={**a.especificaciones, "_frente": "Frente 2 (ficticio)"},
             )
             plan = [("Semana 1", (("OB-A", Decimal(1)), ("OB-B", Decimal(1))))]
             resultado = elaborar(
@@ -1074,6 +1095,7 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
             "unidad": "m3",
             "renglon": 1,
             "renglones": 2,
+            "frente": None,
         },
         {
             "codigo": "OB-B",
@@ -1081,6 +1103,7 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
             "unidad": "m",
             "renglon": 2,
             "renglones": 1,
+            "frente": None,
         },
         {
             "codigo": "OB-A",
@@ -1088,5 +1111,38 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
             "unidad": "m3",
             "renglon": 3,
             "renglones": 2,
+            "frente": "Frente 2 (ficticio)",
         },
     ]
+
+
+# --- un fallo de la base es un 503 fijo, sin SQL, en toda ruta del control ----------------------
+
+
+@pytest.mark.parametrize(
+    ("ruta", "funcion"),
+    [
+        ("/v1/control/linea-base", "tiene_linea_base"),
+        ("/v1/control/valuaciones", "tiene_linea_base"),
+    ],
+)
+def test_un_fallo_de_la_base_en_el_control_es_503_fijo_y_sin_cache(
+    monkeypatch: pytest.MonkeyPatch, ruta: str, funcion: str
+) -> None:
+    """Antes solo `/partidas` traducía `SQLAlchemyError` (su prueba, arriba, sigue con su texto);
+    las demás daban 500. El manejador de la aplicación responde 503 con un texto fijo que no
+    nombra tablas ni columnas."""
+
+    def _falla(*_args, **_kwargs):
+        raise OperationalError("SELECT secreto FROM tabla_interna", {}, Exception("disco"))
+
+    monkeypatch.setattr(logica_control, funcion, _falla)
+
+    r = _con_clave().get(ruta, params=P)
+
+    assert r.status_code == 503
+    assert r.json() == {
+        "detalle": "No se pudo leer o guardar en la carpeta de trabajo. Intente de nuevo."
+    }
+    assert r.headers.get("cache-control") == "no-store"
+    assert "tabla_interna" not in r.text

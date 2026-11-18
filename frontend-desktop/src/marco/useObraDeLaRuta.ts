@@ -12,16 +12,19 @@
 // un estado `error` con `reintentar` para los fallos que no dicen «no existe» (servidor caído, 500), porque mandar a
 // Pendientes con «Esa obra ya no existe» sería falso. Dicen «no existe»: la obra o la carpeta que no están en la
 // lista, un 403 o 404 al cambiar de carpeta, un 404 al fijar la obra, una sección desconocida o sin pantalla y un
-// número de obra que no es un entero positivo.
+// número de obra que no es un entero positivo. Un 401 en cualquier paso llama a `alExpirar` del contexto: al montar
+// también lo ven `useObras` y el marco, pero al «Reintentar», al «Retomar» o al pasar a otra obra solo pasa por aquí, y
+// sin él la persona vería «Revise la conexión» con un botón que vuelve a fallar.
 //
 // Sin carreras: cada entrada espera a que termine la anterior (una cola), y la que quedó vieja no sigue al paso
 // siguiente ni toca el estado. No se aborta la petición en vuelo: el servidor podría aplicarla igual y el cambio
 // viejo llegaría después del nuevo; esperándola, el nuevo siempre es el último que el servidor recibe.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { abrirCarpeta, recordarObra, volverALaCarpetaDeLaEmpresa } from "../api/carpetaYObra";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { ObrasTodasRespuesta } from "../api/tipos";
+import { ContextoAplicacion } from "../shell/contexto";
 import { vigilanteDelNavegador, type VigilanteDeObra } from "./otraPestana";
 import { carpetaDeLaRuta, seccionPorId, type SeccionDef } from "./secciones";
 
@@ -57,7 +60,12 @@ function dicenQueNoExiste(paso: Paso, e: unknown): boolean {
 }
 
 // Los pasos 0-2. Devuelve null si la entrada quedó vieja (otra la reemplazó): entonces no sigue escribiendo.
-async function entrar(carpeta: string | null, obraId: number, vigente: () => boolean): Promise<Fase | null> {
+async function entrar(
+  carpeta: string | null,
+  obraId: number,
+  vigente: () => boolean,
+  alExpirar: () => void,
+): Promise<Fase | null> {
   let paso: Paso = "leer";
   try {
     if (!vigente()) return null;
@@ -77,6 +85,8 @@ async function entrar(carpeta: string | null, obraId: number, vigente: () => boo
     return vigente() ? "lista" : null;
   } catch (e) {
     if (!vigente()) return null;
+    // La sesión vencida no es «no existe»: queda el error y el marco lleva a la puerta de la sesión.
+    if (esEstado(e, 401)) alExpirar();
     return dicenQueNoExiste(paso, e) ? "no_existe" : "error";
   }
 }
@@ -114,12 +124,18 @@ export function useObraDeLaRuta({ vigilante = vigilanteDelNavegador() }: Opcione
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const cola = useRef<Promise<void>>(Promise.resolve());
   const clave = JSON.stringify([carpeta, obraId, intento]);
+  // En una referencia y no como dependencia del efecto: si el marco diera otra función, no se volvería a entrar.
+  const alExpirar = useContext(ContextoAplicacion)?.alExpirar;
+  const alExpirarVigente = useRef(alExpirar);
+  useEffect(() => {
+    alExpirarVigente.current = alExpirar;
+  }, [alExpirar]);
 
   useEffect(() => {
     if (!hayDestino) return;
     let vigente = true;
     const turno = cola.current.then(async () => {
-      const fase = await entrar(carpeta, obraId, () => vigente);
+      const fase = await entrar(carpeta, obraId, () => vigente, () => alExpirarVigente.current?.());
       if (fase === null || !vigente) return;
       setResultado({ clave, fase });
       if (fase === "lista") vigilante.anunciarObra(carpeta, obraId);

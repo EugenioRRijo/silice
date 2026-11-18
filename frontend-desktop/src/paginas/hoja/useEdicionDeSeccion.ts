@@ -183,15 +183,20 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
 
   // Una acción que no puede adelantarse a lo escrito (por ejemplo «Usar este insumo»): primero sale la edición que espera la
   // pausa, se espera a la que va en vuelo y solo entonces se manda la acción con el `rev` que contestó el servidor.
+  // Si el servidor rechazó lo escrito (un 422, por ejemplo), la acción no sale: al aceptarse daría por aceptado todo lo
+  // escrito (el campo volvería al valor del servidor) y borraría el aviso, y el rechazo se perdería en silencio.
   const accionarEnOrden = useCallback(
     async (peticion: (rev: number) => Peticion): Promise<Resumen | null> => {
       const m = motor.current;
+      // Lo que contestó el envío de lo escrito que se esperó (undefined: no había ninguno).
+      let previo: Resumen | null | undefined;
       if (m.temporizador !== null) {
         clearTimeout(m.temporizador);
         m.temporizador = null;
-        await enviarEdicion();
+        previo = await enviarEdicion();
       }
-      while (m.enVuelo && m.envioEnCurso !== null) await m.envioEnCurso;
+      while (m.enVuelo && m.envioEnCurso !== null) previo = await m.envioEnCurso;
+      if (previo === null) return null;
       return mandar((rev) => peticion(rev), false);
     },
     [mandar, enviarEdicion],

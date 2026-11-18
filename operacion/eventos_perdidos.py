@@ -137,8 +137,19 @@ def resumen(archivo: Path) -> dict[str, Any]:
     }
 
 
+class EventosIlegibles(Exception):  # noqa: N818
+    """El archivo de eventos perdidos falta o no se puede leer: no se marca como revisado."""
+
+
 def marcar_revisado(archivo: Path, *, por: str | None = None) -> None:
-    datos = _leer(archivo) or {}
+    """Marca el archivo como revisado conservando lo demás. Si falta o no se puede leer lanza
+    `EventosIlegibles` y no escribe: sobrescribirlo desbloquearía lo sensible sin que nadie viera
+    las diferencias (SEG-12)."""
+    datos = _leer(archivo)
+    if datos is None:
+        raise EventosIlegibles(
+            f"{archivo.name} falta o no se puede leer: no se marcó como revisado."
+        )
     datos.update(
         revisado=True, revisado_por=por, revisado_en=datetime.now().isoformat(timespec="seconds")
     )

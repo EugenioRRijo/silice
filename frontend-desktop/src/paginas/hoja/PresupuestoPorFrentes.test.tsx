@@ -219,4 +219,77 @@ describe("El presupuesto por frente", () => {
     await waitFor(() => expect(alAceptar).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("button", { name: "Ocultar el presupuesto por frente" })).not.toBeDisabled();
   });
+
+  // Pasada en navegador de la ola 2: D4, «póngalo abajo» sin nada abajo; D5, dos renglones con el mismo código no se
+  // distinguían en el selector.
+  const SIN_FRENTES = { ...VISTA, frentes: [{ frente: null, renglones: 2, pendientes: 0, total: VISTA.total }], con_frentes: false };
+  function montarCon(filas: Array<(typeof FILAS)[number] & { frente?: string | null }>, puedeEditar = true) {
+    const valor = { alExpirar: vi.fn() } as unknown as Aplicacion;
+    render(
+      <ContextoAplicacion.Provider value={valor}>
+        <PresupuestoPorFrentes id={ID} rev={3} filas={filas} moneda="Bs" puedeEditar={puedeEditar} alAceptar={vi.fn()} alAusente={vi.fn()} />
+      </ContextoAplicacion.Provider>,
+    );
+  }
+
+  test("sin renglones propios no dice «póngalo abajo», porque abajo no hay nada", async () => {
+    fetchFalso.mockImplementation(async () => json(SIN_FRENTES));
+    montarCon(FILAS.map((f) => ({ ...f, quitable: false })));
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    await screen.findByRole("table", { name: "Presupuesto por frente" });
+    expect(screen.queryByRole("combobox", { name: "Renglón" })).toBeNull();
+    expect(screen.queryByText(/póngalo abajo/)).toBeNull();
+    expect(screen.getByText(/Ningún renglón tiene frente/)).toHaveTextContent(/salen del espacio de la obra/);
+  });
+
+  test("con renglones propios sí invita a ponerlo abajo", async () => {
+    fetchFalso.mockImplementation(async () => json(SIN_FRENTES));
+    montarCon(FILAS);
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    expect(await screen.findByText(/póngalo abajo/)).toBeInTheDocument();
+  });
+
+  test("quien solo lee no recibe la invitación a ponerlo abajo", async () => {
+    fetchFalso.mockImplementation(async () => json(SIN_FRENTES));
+    montarCon(FILAS, false);
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    await screen.findByRole("table", { name: "Presupuesto por frente" });
+    expect(screen.queryByText(/póngalo abajo/)).toBeNull();
+    expect(screen.getByText("Ningún renglón tiene frente.")).toBeInTheDocument();
+  });
+
+  test("el selector nombra el frente de cada renglón que lo tiene", async () => {
+    montarCon([
+      { clave: "VF-001|libro:FRENTE A!E4", partida: "VF-001", descripcion: "Riego ficticio", quitable: true, frente: "FRENTE A" },
+      { clave: "VF-001|libro:FRENTE B!E4", partida: "VF-001", descripcion: "Riego ficticio", quitable: true, frente: "FRENTE B" },
+      { clave: "VF-009|a-mano:1", partida: "VF-009", descripcion: "Señal ficticia", quitable: true, frente: null },
+    ]);
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    const selector = await screen.findByRole("combobox", { name: "Renglón" });
+    expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "1. VF-001 (FRENTE A) · Riego ficticio",
+      "2. VF-001 (FRENTE B) · Riego ficticio",
+      "3. VF-009 · Señal ficticia",
+    ]);
+  });
+
+  test("si el renglón elegido deja de estar (se quitó en la Hoja), «Poner el frente» manda el que muestra el selector", async () => {
+    const valor = { alExpirar: vi.fn() } as unknown as Aplicacion;
+    const panel = (filas: typeof FILAS) => (
+      <ContextoAplicacion.Provider value={valor}>
+        <PresupuestoPorFrentes id={ID} rev={3} filas={filas} moneda="Bs" puedeEditar alAceptar={vi.fn()} alAusente={vi.fn()} />
+      </ContextoAplicacion.Provider>
+    );
+    const { rerender } = render(panel(FILAS));
+    await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+    await usuario.selectOptions(await screen.findByRole("combobox", { name: "Renglón" }), "VF-009|a-mano:1");
+    // La Hoja quitó VF-009: el selector solo ofrece VF-001.
+    rerender(panel([FILAS[0]!]));
+    expect(screen.getByRole("combobox", { name: "Renglón" })).toHaveValue("VF-001|libro:FRENTE A!E4");
+    await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
+    await waitFor(() => expect(fetchFalso.mock.calls.some(([, o]) => o?.method === "PUT")).toBe(true));
+    const edicion = fetchFalso.mock.calls.find(([, o]) => o?.method === "PUT")!;
+    expect(JSON.parse(String(edicion[1]?.body))).toEqual({ rev: 3, filas: [{ clave: "VF-001|libro:FRENTE A!E4", frente: "Norte" }] });
+  });
 });

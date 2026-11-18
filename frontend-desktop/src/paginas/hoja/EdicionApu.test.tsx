@@ -230,6 +230,20 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     throw ultimo;
   }
 
+  // Mejoras de la ola 2: «PDF de este APU» va en la columna de la lista, bajo las partidas. Envolver el editor en otra caja
+  // juntaba sus dos columnas (centro y cierre) en una y deshacía la rejilla de 12rem · 1fr · 16rem de D2.
+  test("«PDF de este APU» va en la columna de la lista y la rejilla del APU conserva sus tres columnas", async () => {
+    await irAApu();
+    const boton = screen.getByRole("button", { name: "PDF de este APU" });
+    expect(boton.closest(".silice-hoja__apu-lista")).not.toBeNull();
+    const rejilla = boton.closest(".silice-hoja__apu");
+    expect(Array.from(rejilla?.children ?? []).map((h) => h.className)).toEqual([
+      "silice-hoja__apu-lista",
+      "silice-hoja__apu-centro",
+      "silice-hoja__apu-cierre",
+    ]);
+  });
+
   // --- 3c-F11: edición de cantidades y rendimiento -----------------------------------------------------------------------
 
   test("cada línea tiene su cantidad editable con nombre accesible «Cantidad, {rubro} fila {n}», y el rendimiento también", async () => {

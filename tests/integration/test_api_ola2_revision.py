@@ -150,6 +150,79 @@ def test_revalorar_con_la_cuenta_sella_nombre_y_login_de_la_persona(
     assert _usuario_sellado(sesion, "API-002") == "Ana <ana>"
 
 
+# Las otras rutas que guardan una version aceptan la misma cookie (`EDITAR`): tambien sellan a la
+# persona, no a `USUARIO_SIN_CLAVE` (RF-82). La clave de API, antes que `navegador` (`base`).
+
+
+def test_elaborar_con_la_cuenta_sella_nombre_y_login_de_la_persona(
+    cliente, sesion, items_payload, navegador
+):
+    from tests.fixtures.sesion_web import protegida
+
+    persona, ficha = navegador
+    cuerpo = {
+        "codigo": "API-001",
+        "fecha": "2026-04-28",
+        "moneda": "USD",
+        "proyecto": NOMBRE_PROYECTO,
+        "items": items_payload,
+    }
+    respuesta = persona.post("/presupuestos", json=cuerpo, headers=protegida(ficha))
+
+    assert respuesta.status_code == 201, respuesta.text
+    assert _usuario_sellado(sesion, "API-001") == "Ana <ana>"
+
+
+def test_actualizar_con_la_cuenta_sella_nombre_y_login_de_la_persona(
+    cliente, sesion, base, navegador
+):
+    from tests.fixtures.sesion_web import protegida
+
+    persona, ficha = navegador
+    with MUESTRA.open("rb") as f:
+        lista = persona.post(
+            "/listas-precios",
+            files={"archivo": (MUESTRA.name, f, "text/csv")},
+            data={"nombre": "L2", "moneda": "USD", "fecha_vigencia": "2026-06-01"},
+            headers=protegida(ficha),
+        )
+    assert lista.status_code == 201, lista.text
+    respuesta = persona.post(
+        "/presupuestos/API-001/actualizacion",
+        json={"lista": "L2", "codigo_nuevo": "API-002"},
+        headers=protegida(ficha),
+    )
+
+    assert respuesta.status_code == 200, respuesta.text
+    assert _usuario_sellado(sesion, "API-002") == "Ana <ana>"
+
+
+def test_importar_con_la_cuenta_sella_nombre_y_login_de_la_persona(
+    cliente, sesion, tmp_path, navegador
+):
+    from tests.fixtures.presupuesto_tabular import escribir_presupuesto_tabular, presupuesto_tercero
+    from tests.fixtures.sesion_web import protegida
+
+    persona, ficha = navegador
+    tercero = "Auditoria del drenaje de un tercero"
+    alta = persona.post(
+        "/proyectos", json={"nombre": tercero, "dominio": "civil"}, headers=protegida(ficha)
+    )
+    assert alta.status_code == 201, alta.text
+    ruta = escribir_presupuesto_tabular(tmp_path)
+    tipo = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    with ruta.open("rb") as f:
+        respuesta = persona.post(
+            "/presupuestos/importar",
+            files={"archivo": (ruta.name, f, tipo)},
+            data={"proyecto": tercero},
+            headers=protegida(ficha),
+        )
+
+    assert respuesta.status_code == 201, respuesta.text
+    assert _usuario_sellado(sesion, presupuesto_tercero().codigo) == "Ana <ana>"
+
+
 # ---------------------------------------------------------------------------------------------
 # [2] SF3-R4: revalorar conserva el plan guardado de la versión de origen
 # ---------------------------------------------------------------------------------------------
@@ -838,3 +911,35 @@ def test_un_dominio_desconocido_es_422(cliente, items_payload):
     items[0]["dominio"] = "marciano"
 
     assert cliente.post("/presupuestos/calcular", json=_calculo(items)).status_code == 422
+
+
+# ---------------------------------------------------------------------------------------------
+# El Excel de una version guardada: si el libro no se escribe, el temporal no queda huerfano
+# ---------------------------------------------------------------------------------------------
+
+
+def test_si_exportar_el_excel_falla_el_temporal_se_borra(cliente, base, monkeypatch, tmp_path):
+    """`mkstemp` crea el archivo antes de `exportar_excel`; el `BackgroundTask` que lo borra solo
+    existe si la exportacion termina. Si falla, la ruta lo borra antes de relanzar."""
+    import tempfile
+
+    from api.rutas import presupuestos as rutas
+
+    creados: list[Path] = []
+    original = tempfile.mkstemp
+
+    def _mkstemp(*args, **kwargs):
+        descriptor, ruta = original(*args, dir=tmp_path, **kwargs)
+        creados.append(Path(ruta))
+        return descriptor, ruta
+
+    def _falla(*_args, **_kwargs):
+        raise RuntimeError("disco lleno")
+
+    monkeypatch.setattr(rutas.tempfile, "mkstemp", _mkstemp)
+    monkeypatch.setattr(rutas, "exportar_excel", _falla)
+
+    with pytest.raises(RuntimeError, match="disco lleno"):
+        cliente.get("/presupuestos/API-001/excel")
+
+    assert len(creados) == 1 and not creados[0].exists()

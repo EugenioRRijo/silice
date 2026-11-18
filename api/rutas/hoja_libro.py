@@ -109,6 +109,7 @@ def para_llevar(
             cantidad=a.cantidad,
             celda_cantidad=a.celda_cantidad,
             celdas_precio=a.celdas_precio,
+            trazas=a.trazas,
         )
         for a in r.apus
         if a.composicion is not None and a.parametros is not None

@@ -16,6 +16,11 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 MUESTRAS = RAIZ / "data" / "samples"
+#: El 422 de unos `codigos` que no son el mapeo: escrito a mano, no importado de la ruta.
+MENSAJE_CODIGOS = (
+    "'codigos' debe ser un objeto JSON que asocie cada tipo de elemento a su codigo de partida, "
+    "los dos como texto."
+)
 
 
 def _subir(cliente, dominio: str, nombre: str, contenido: bytes, tipo: str = "text/csv"):
@@ -105,3 +110,22 @@ def test_un_step_de_esquema_no_soportado_responde_422_sin_la_ruta_del_servidor(c
     assert "modelo_ifc9.ifc" in detalle
     assert "esquema" in detalle
     assert _sin_rutas(detalle), detalle
+
+
+@pytest.mark.parametrize("codigos", ["123", "true", "[1]", '"ab"', "null", "{", '{"concreto": 1}'])
+def test_unos_codigos_que_no_son_un_objeto_de_texto_a_texto_son_422_con_mensaje_fijo(
+    cliente, codigos
+):
+    """`codigos` llega como texto JSON: un numero, un booleano o una lista no son el mapeo de tipo
+    de elemento a partida. Antes `dict(...)` del adaptador lanzaba `TypeError` (500); ahora es un
+    422 con un mensaje fijo que no repite lo enviado."""
+    contenido = (MUESTRAS / "civil" / "tanquillas_y_zanja.csv").read_bytes()
+
+    r = cliente.post(
+        "/computos/civil",
+        files={"archivo": ("computo.csv", contenido, "text/csv")},
+        data={"codigos": codigos},
+    )
+
+    assert r.status_code == 422
+    assert r.json() == {"detalle": MENSAJE_CODIGOS}

@@ -239,6 +239,8 @@ def leer_inpc(
             if anterior and mes != _siguiente(anterior)
             else "valor no numerico"
             if valor is None
+            else "valor no finito"  # antes de comparar con cero: un NaN lanza al comparar
+            if not valor.is_finite()
             else "el valor debe ser mayor que cero"
             if valor <= 0
             else ""

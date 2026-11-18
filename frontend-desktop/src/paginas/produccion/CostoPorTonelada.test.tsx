@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -336,5 +336,47 @@ describe("Costo por tonelada", () => {
     const alerta = await screen.findByRole("alert");
     expect(alerta).toHaveTextContent("No se pudo calcular el costo");
     expect(alerta).not.toHaveTextContent("No se pudo publicar el costo");
+  });
+
+  // Mientras se calcula, el mes y la moneda quedan quietos: el resultado que llegue es del mes y la moneda que se ven.
+  test("mientras se calcula no se puede cambiar el mes ni la moneda", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    calculo = () => new Promise<Response>((resolver) => (soltar = resolver)) as unknown as Response;
+    montar();
+    await screen.findByText(/AGR-12: 150 t/);
+    await usuario.selectOptions(screen.getByLabelText("Moneda del cálculo"), "USD");
+    await usuario.click(screen.getByRole("button", { name: "Calcular costo por tonelada" }));
+    expect(screen.getByLabelText("Mes")).toBeDisabled();
+    expect(screen.getByLabelText("Moneda del cálculo")).toBeDisabled();
+    soltar(json(CALCULO, 201));
+    await screen.findByRole("region", { name: "Resultado del cálculo" });
+    expect(screen.getByLabelText("Mes")).toBeEnabled();
+    expect(screen.getByLabelText("Moneda del cálculo")).toBeEnabled();
+  });
+
+  // Tras publicar se vuelve a leer el cálculo; si mientras tanto se cambió de moneda, lo releído es de la anterior y no
+  // puede volver a la vista como si fuera de la nueva.
+  test("lo releído tras publicar no vuelve a la vista si ya se cambió de moneda", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    const leer = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://prueba");
+      if (url.pathname === "/v1/produccion/calculos/7" && (init?.method ?? "GET") === "GET") {
+        return new Promise<Response>((resolver) => (soltar = resolver));
+      }
+      return leer!(entrada, init);
+    });
+    montar(ADMIN);
+    const resultado = await calcular();
+    await within(resultado).findByText("Constructora Ficticia, C.A. (J-00000000-0)");
+    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    await usuario.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Publicar" }));
+    await screen.findByText('Publicado: lista "Costo propio 2026-11, cálculo n.º 7".');
+    await usuario.selectOptions(screen.getByLabelText("Moneda del cálculo"), "Bs");
+    expect(screen.queryByRole("region", { name: "Resultado del cálculo" })).not.toBeInTheDocument();
+    soltar(json({ ...CALCULO, publicado: { lista_id: 12, caso: "obra", registrado: "2026-11-30T10:05:00" } }));
+    await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/produccion/calculos/7")).toBe(true));
+    await act(() => new Promise((resolver) => setTimeout(resolver, 50)));
+    expect(screen.queryByRole("region", { name: "Resultado del cálculo" })).not.toBeInTheDocument();
   });
 });

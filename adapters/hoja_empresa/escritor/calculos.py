@@ -117,6 +117,8 @@ _NA = Err("#N/A")
 _REF = Err("#REF!")
 _NUM = Err("#NUM!")
 _NOMBRE = Err("#NAME?")
+#: Referencia circular: una celda o un nombre definido que se usa a sí mismo.
+_CIRC = Err("#CIRC")
 
 
 class _Propaga(Exception):  # noqa: N818
@@ -466,6 +468,7 @@ class Evaluador:
         self.nombres = {_clave_nombre(k): v for k, v in nombres.items()}
         self._memo: dict[tuple[str, int, int], object] = {}
         self._curso: set[tuple[str, int, int]] = set()
+        self._nombres_curso: set[str] = set()
         self._ast: dict[str, tuple] = {}
         self._ctx: list[tuple[str, int, int]] = []
         self.rota_blanca = False
@@ -518,7 +521,7 @@ class Evaluador:
             v = cel.fijo
         elif cel.formula:
             if clave in self._curso:
-                return Err("#CIRC")
+                return _CIRC
             if self._agotado is not None:  # solo llega aquí la celda más externa
                 v = self._conservar(hoja, f, c, cel.respaldo, self._agotado)
             elif len(self._curso) >= MAX_PROFUNDIDAD:
@@ -613,16 +616,24 @@ class Evaluador:
         return Rango(hoja, r.f1, r.c1, f2, c2)
 
     def _nombre(self, nombre: str) -> object:
-        texto = self.nombres.get(f"{self._hoja}!{nombre}".upper()) or self.nombres.get(
-            nombre.upper()
-        )
+        """Valor de un nombre definido. Uno que se usa a sí mismo, directamente (`DSEM` =
+        `=DSEM+1`) o por otro nombre, es una referencia circular, como la de las celdas."""
+        local = f"{self._hoja}!{nombre}".upper()
+        clave = local if self.nombres.get(local) else nombre.upper()
+        texto = self.nombres.get(clave)
         if texto is None:
             return _NOMBRE
         texto = texto.lstrip("=")
         r = analizar_ref(texto)
         if isinstance(r, Ref):
             return self._rango_de_ref(r)
-        return self._ev(_Analizador("=" + texto).analizar())
+        if clave in self._nombres_curso:
+            return _CIRC
+        self._nombres_curso.add(clave)
+        try:
+            return self._ev(_Analizador("=" + texto).analizar())
+        finally:
+            self._nombres_curso.discard(clave)
 
     def _escalar(self, v: object) -> object:
         if isinstance(v, Rango):
@@ -732,14 +743,20 @@ class Evaluador:
     # -- funciones --
 
     def _funcion(self, nombre: str, args: list[tuple | None]) -> object:
+        """Llama a la función con sus argumentos. Con argumentos de menos (`=IF()`, `=MOD(1)`, que
+        Excel no deja escribir pero un archivo puede traer) la función pide uno que no está: da
+        `#VALUE!` en vez de tumbar la devolución entera con un `IndexError`."""
         perezosa = _PEREZOSAS.get(nombre)
-        if perezosa is not None:
-            return perezosa(self, args)
         f = _FUNCIONES.get(nombre)
-        if f is None:
+        if perezosa is None and f is None:
             raise NoSoportado(f"función {nombre}")
-        valores = [self._ev(a) if a is not None else None for a in args]
-        return f(self, valores)
+        try:
+            if perezosa is not None:
+                return perezosa(self, args)
+            valores = [self._ev(a) if a is not None else None for a in args]
+            return f(self, valores)
+        except IndexError:
+            raise _Propaga(_VALOR) from None
 
 
 # --- Funciones perezosas -------------------------------------------------------------------------
@@ -964,7 +981,8 @@ def _f_text(ev: Evaluador, a: list[object]) -> object:
     fmt = _a_texto(_esc(ev, a[1]))
     if isinstance(v, Err):
         raise _Propaga(v)
-    if not isinstance(v, Decimal | bool) and not (isinstance(v, str) and _texto_a_numero(v)):
+    es_numero = isinstance(v, str) and _texto_a_numero(v) is not None  # "0" también es número
+    if not isinstance(v, Decimal | bool) and not es_numero:
         return _a_texto(v)
     n = a_numero(v)
     return _formatear(n, fmt)
@@ -988,9 +1006,17 @@ def _formatear(n: Decimal, fmt: str) -> str:
     digitos = parte_entera.replace(",", "")
     if len(digitos) < ceros:
         digitos = digitos.zfill(ceros)
-        parte_entera = f"{int(digitos):,}".zfill(ceros) if "," in entero else digitos
+        # Excel agrupa el número ya rellenado: TEXT(5;"0,000") da 0,005, no 0005.
+        parte_entera = _agrupar_miles(digitos) if "," in entero else digitos
     out = parte_entera + ("." + parte_dec if nd else "")
     return signo + out + ("%" if pct else "")
+
+
+def _agrupar_miles(digitos: str) -> str:
+    """`000012` -> `000,012`: de tres en tres desde la derecha, con la coma de miles de Excel."""
+    cabeza = len(digitos) % 3 or 3
+    grupos = [digitos[:cabeza]] + [digitos[i : i + 3] for i in range(cabeza, len(digitos), 3)]
+    return ",".join(grupos)
 
 
 def _f_left(ev: Evaluador, a: list[object]) -> object:
@@ -1034,6 +1060,8 @@ def _f_find(ev: Evaluador, a: list[object]) -> object:
     sub = _a_texto(_esc(ev, a[0]))
     t = _a_texto(_esc(ev, a[1]))
     inicio = int(_num_arg(ev, a[2])) if len(a) > 2 and a[2] is not None else 1
+    if inicio < 1 or inicio > len(t) + 1:  # Excel: el inicio cae dentro del texto o justo tras él
+        raise _Propaga(_VALOR)
     i = t.find(sub, inicio - 1)
     if i < 0:
         raise _Propaga(_VALOR)

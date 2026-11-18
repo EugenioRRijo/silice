@@ -78,11 +78,13 @@ from core.budget.importacion import (
 from core.verification import REGLAS, auditar
 from core.verification.texto import formatear_decimal
 from paquete import modelo as paq
+from paquete.formato import JsonRechazado, PaqueteRechazado
 from paquete.verificar import (
     RECHAZADO,
     EmpresaConocida,
     Verificacion,
     evaluar_anterioridad,
+    filas_de_cambio_legibles,
     verificar,
 )
 from seguridad import empresas
@@ -265,13 +267,16 @@ def declaracion_retroactiva(
     cadena: Mapping[str, Any], fecha: Callable[[str], str] = _iso
 ) -> str | None:
     """S3 §6.5: «Versiones 001 a 004 selladas el …», si la cadena del paquete trae eslabones
-    retroactivos; `None` si no. Es la misma declaración de la hoja, leída del paquete."""
+    retroactivos; `None` si no. Es la misma declaración de la hoja, leída del paquete. La cadena
+    de un alterado se muestra igual: un eslabón sin código o sin fecha no rompe el texto (la fecha
+    es la más temprana que se conozca, o «?» si ninguno la trae)."""
     retro = [e for e in cadena["eslabones"] if e.get("tipo") == "retroactivo"]
     if not retro:
         return None
-    codigos = [e["codigo"] for e in retro]
+    codigos = [str(e.get("codigo") or "") for e in retro]
     rango = codigos[0] if len(codigos) == 1 else f"{codigos[0]} a {codigos[-1]}"
-    cuando = min(str(e["fecha_hora"]) for e in retro)[:10]
+    fechas = [f for f in (str(e.get("fecha_hora") or "") for e in retro) if f]
+    cuando = min(fechas)[:10] if fechas else "?"
     plural = "Versión" if len(codigos) == 1 else "Versiones"
     return (
         f"{plural} {rango} selladas el {fecha(cuando)}: prueban que no cambiaron desde esa fecha; "
@@ -336,7 +341,7 @@ def revisor_armo(
     donde = [
         e["codigo"]
         for e in v.cadena["eslabones"]
-        if login_de(e.get("usuario", "")) == login_revisor
+        if login_de(str(e.get("usuario") or "")) == login_revisor
     ]
     emisor = login_de(str(v.manifiesto.get("usuario_emisor") or ""))
     if emisor == login_revisor and not donde:
@@ -412,6 +417,37 @@ def _huellas_de_anexos(archivos: Mapping[str, bytes]) -> dict[str, list[str]]:
     return salida
 
 
+def _cadena_legible(cadena: Any) -> bool:
+    """Si la cadena de un paquete, aunque no cuadre, tiene la forma mínima que leen la recepción y
+    «quién cambió qué»: un objeto con una lista de eslabones cuyo código y huella, si vienen, son
+    textos (y cada eslabón, un objeto), y unos cambios por versión en filas de ocho textos. Lo que
+    falte dentro de un eslabón lo dice `recibir` como «rechazado» (los datos mínimos)."""
+    if not isinstance(cadena, dict):
+        return False
+    eslabones, cambios = cadena.get("eslabones"), cadena.get("cambios", {})
+    if not isinstance(eslabones, list) or not isinstance(cambios, dict):
+        return False
+    if not all(isinstance(e, dict) for e in eslabones):
+        return False  # un eslabón `"x"`, `5` o `null` no se lee: antes se saltaba y daba 500
+    textos = all(
+        isinstance(e.get(campo, ""), str)
+        for e in eslabones
+        for campo in ("codigo", "huella_eslabon")
+    )
+    return textos and all(filas_de_cambio_legibles(f) for f in cambios.values())
+
+
+def _sin_datos_minimos(v: Verificacion) -> Verificacion:
+    """`v` como «rechazado»: el manifiesto o la cadena no traen lo mínimo para registrarlo."""
+    return replace(
+        v,
+        cadena=None,  # la ruta no lee la cadena de un rechazado
+        estado=RECHAZADO,
+        motivo="rechazado",
+        detalle="El manifiesto o la cadena no traen los datos mínimos de un paquete.",
+    )
+
+
 def recibir(
     datos: bytes,
     nombre: str,
@@ -428,6 +464,18 @@ def recibir(
     v = verificar(
         datos, buscar_empresa=_buscar_empresa(instalacion), recibido_en=ahora, mi_empresa=mi_empresa
     )
+    if v.cadena is not None and not _cadena_legible(v.cadena):
+        # Un alterado cuya cadena tiene otra forma se audita igual, pero sin cadena que leer: como
+        # el alterado por integridad, no se registra (no hay eslabones que atar al dictamen).
+        v = replace(v, cadena=None)
+    if v.legible and v.manifiesto is not None:
+        # Sin fecha de emisión no hay a qué día reauditar, y sin obra no hay con qué comparar: se
+        # mira antes de la salida temprana de un alterado sin cadena, que tampoco se registra.
+        try:
+            _emitido(v.manifiesto)
+            str(v.manifiesto["proyecto"])
+        except (KeyError, ValueError, TypeError):
+            return Recibido(_sin_datos_minimos(v), 0, Path(), False, (), "")
     if not v.legible or v.cadena is None or v.manifiesto is None:
         return Recibido(v, 0, Path(), False, (), "")
     m = v.manifiesto
@@ -436,13 +484,7 @@ def recibir(
         proyecto, codigo, paquete_id = str(m["proyecto"]), str(m["codigo"]), str(m["paquete_id"])
         eslabones = [[e["codigo"], e["huella_eslabon"]] for e in v.cadena["eslabones"]]
     except (KeyError, ValueError, TypeError):
-        malo = replace(
-            v,
-            estado=RECHAZADO,
-            motivo="rechazado",
-            detalle="El manifiesto o la cadena no traen los datos mínimos de un paquete.",
-        )
-        return Recibido(malo, 0, Path(), False, (), "")
+        return Recibido(_sin_datos_minimos(v), 0, Path(), False, (), "")
     existente = paq.buscar_por_huella(caso, v.sha256)
     huella_clave = str(m.get("huella_clave") or "")
     previos = paq.paquetes_del_proyecto(caso, proyecto, huella_clave)
@@ -546,8 +588,10 @@ class EntregaAnterior:
 def entrega_anterior(
     caso: Session, instalacion: Session, v: Verificacion
 ) -> EntregaAnterior | None:
-    """La última entrega del mismo proyecto y emisor emitida ANTES de `v`, releída del archivo
-    guardado (con el mismo lector seguro). `None` si no hay, o si el archivo ya no está."""
+    """La última entrega LEGIBLE del mismo proyecto y emisor emitida ANTES de `v`, releída del
+    archivo guardado (con el mismo lector seguro). `None` si no hay ninguna. Una entrega cuyo
+    archivo ya no está o cuyo documento no se puede leer se salta sin borrar su fila (es prueba,
+    23h): si no, un paquete roto ya registrado haría fallar a todos los siguientes."""
     if v.manifiesto is None:
         return None
     emitido = _emitido(v.manifiesto)
@@ -558,22 +602,25 @@ def entrega_anterior(
         )
         if f["huella_archivo"] != v.sha256 and f["emitido"] < emitido
     ]
-    if not previas:
-        return None
-    fila = max(previas, key=lambda f: f["emitido"])
-    ruta = Path(fila["ruta"])
-    if not ruta.is_file():
-        return None
-    antes = verificar(
-        ruta.read_bytes(), buscar_empresa=_buscar_empresa(instalacion), recibido_en=fila["fecha"]
-    )
-    if not antes.legible:
-        return None
-    return EntregaAnterior(
-        fila["codigo"],
-        leer_documento(antes.archivos),
-        tuple(huella for _, huella in json.loads(fila["cadena"])),
-    )
+    for fila in sorted(previas, key=lambda f: f["emitido"], reverse=True):
+        ruta = Path(fila["ruta"])
+        if not ruta.is_file():
+            continue
+        antes = verificar(
+            ruta.read_bytes(),
+            buscar_empresa=_buscar_empresa(instalacion),
+            recibido_en=fila["fecha"],
+        )
+        if not antes.legible:
+            continue
+        try:
+            documento = leer_documento(antes.archivos)
+        except (canonico.DocumentoInvalido, PaqueteRechazado, JsonRechazado):
+            continue
+        return EntregaAnterior(
+            fila["codigo"], documento, tuple(huella for _, huella in json.loads(fila["cadena"]))
+        )
+    return None
 
 
 def empresa_propia_para_revisar(instalacion: Session) -> tuple[str | None, str | None]:

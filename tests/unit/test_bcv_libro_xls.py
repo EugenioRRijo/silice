@@ -223,3 +223,19 @@ def test_un_total_justo_en_el_tope_se_lee(monkeypatch, tmp_path):
     monkeypatch.setattr(modulo, "MAX_CELDAS_TOTAL", 12)
     _xlrd_falso(monkeypatch, [_Hoja(_dia(n), 2, 2) for n in range(3)])
     assert len(modulo.abrir_libro(_xls(tmp_path)).hojas) == 3
+
+
+# --- Verificacion 3b (F9): una cifra no finita del .xls no llega como Decimal ---
+
+
+class _HojaNoFinita(_Hoja):
+    def cell(self, r: int, c: int) -> _Celda:
+        self.leidas += 1
+        return _Celda(2, (float("nan"), float("inf"), float("-inf"), 2.5)[c])
+
+
+def test_una_cifra_no_finita_de_un_xls_no_llega_como_decimal(monkeypatch, tmp_path):
+    _xlrd_falso(monkeypatch, [_HojaNoFinita("01072026", 1, 4)])
+    (fila,) = modulo.abrir_libro(_xls(tmp_path)).hojas[0].filas
+    assert not any(isinstance(c, Decimal) for c in fila[:3])
+    assert fila[3] == Decimal("2.5")

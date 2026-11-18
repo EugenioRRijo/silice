@@ -99,11 +99,14 @@ function resumenCompuesto(valor: string, clave: string): string | null {
 }
 
 // Las especificaciones de un renglón («clave=valor; clave=valor», ordenadas: `_cambios_de_especificaciones` de
-// aplicacion/hoja.py). Una clave que empieza por «_» es una directiva de Sílice, no un dato de la persona: la del frente
-// (`aplicacion/frentes.py`, «_frente») sale como «Frente: …» y las que no tienen rótulo no se muestran (ronda 1 del
-// árbitro de la ola 2, hallazgo 6). Un valor puede llevar «; » (un frente «Estación; 2»): solo se corta antes de otra
-// «clave=».
-const DIRECTIVAS: Record<string, string> = { _frente: "Frente" };
+// aplicacion/hoja.py). Una clave que empieza por «_» es una directiva de Sílice, no un dato de la persona: las que
+// tienen rótulo (`_frente` de `aplicacion/frentes.py`, `_codigo_libro` de `aplicacion/libro_a_la_hoja.py`) salen como
+// «Rótulo: …» y las demás no se muestran (ronda 1 del árbitro de la ola 2, hallazgo 6). Un valor puede llevar «; »
+// (un frente «Estación; 2»): solo se corta antes de otra «clave=».
+const DIRECTIVAS: Record<string, string> = {
+  _frente: "Frente",
+  _codigo_libro: "Código en el libro",
+};
 
 function especificacionesLegibles(valor: string): string {
   if (valor === "") return "";

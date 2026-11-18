@@ -372,3 +372,81 @@ def test_porcentajes_de_frontera_que_se_aceptan(
     assert respuesta.status_code == 200, respuesta.text
     desperdicios = respuesta.json()["apu"]["detalle"]["desperdicios"]
     assert [d["porcentaje"] for d in desperdicios] == ([] if porcentaje is None else [porcentaje])
+
+
+# --- Depuración del 2026-11-15, L2: borrar el porcentaje quita el desglose ----------------------
+
+
+def test_al_guardar_sin_porcentaje_la_traza_vigente_de_esa_linea_deja_de_valer(
+    _caso: Path,
+) -> None:
+    """Con otro cambio que guardar (el rendimiento), la línea que la Hoja dejó sin porcentaje no
+    vuelve a mostrar «0,8 + 25 %» en la versión nueva: manda lo más nuevo (bitácora del
+    2026-11-13, §3, riesgo 1), y la base registra un guardado sin trazas."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/AF-LLAVE",
+        json={
+            "rev": 0,
+            "rendimiento": "25",
+            "materiales": ["1"],
+            "desperdicios": [""],
+            "equipos": cantidades["equipos"],
+            "mano_obra": cantidades["mano de obra"],
+        },
+        headers=protegida(ficha),
+    )
+    assert editado.status_code == 200, editado.text
+    guardado = navegador.post(
+        f"/v1/hoja/borradores/{id_}/guardar",
+        json={"rev": editado.json()["rev"], "fuente": "Acta ficticia de obra"},
+        headers=protegida(ficha),
+    )
+    assert guardado.status_code == 200, guardado.text
+    assert _trazas(_caso) == []
+    abierto = navegador.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": NOMBRE_OF001, "version": guardado.json()["codigo"]},
+        headers=protegida(ficha),
+    )
+    assert abierto.status_code == 201, abierto.text
+    detalle = navegador.get(
+        f"/v1/hoja/borradores/{abierto.json()['id']}/vistas/apu", params={"partida": "AF-LLAVE"}
+    ).json()["detalle"]
+    assert detalle["desperdicios"] == []
+
+
+# --- Depuración del 2026-11-15, L3 (acta DS-3, opción A): solo el desglose no entra ---------
+
+SOLO_DESGLOSE = (
+    "Ese cambio deja la misma cantidad y solo reparte distinto el desperdicio. Sílice guarda el "
+    "desglose junto con un cambio de cantidad: cambie la cantidad o deje el desglose como estaba."
+)
+
+
+@pytest.mark.parametrize(
+    ("materiales", "desperdicios"),
+    [(["0,625"], ["60"]), (["1"], [""])],  # 0,625 × 1,60 = 1 y 1 sin desperdicio (a mano)
+)
+def test_cambiar_solo_el_desglose_es_422_y_el_borrador_no_cambia(
+    _caso: Path, materiales: list[str], desperdicios: list[str]
+) -> None:
+    """Con 0,8 + 25 % (= 1) vigente, otro reparto de la misma cantidad o quitarle el porcentaje
+    deja la composición igual: es 422 con el texto del acta DS-3, sin caché, y el borrador sigue
+    en rev 0 con «0,8 + 25 %». Mandar lo que ya se muestra no es error ni sube el rev."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    rechazada = _editar(navegador, ficha, id_, cantidades, 0, materiales, desperdicios)
+    assert rechazada.status_code == 422, rechazada.text
+    assert rechazada.json()["detalle"] == SOLO_DESGLOSE
+    assert rechazada.headers["cache-control"] == "no-store"
+    leida = navegador.get(
+        f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "AF-LLAVE"}
+    ).json()["detalle"]
+    assert leida["desperdicios"] == [LLAVE_0_8]
+    igual = _editar(navegador, ficha, id_, cantidades, 0, ["0,8"], ["25"])
+    assert igual.status_code == 200, igual.text
+    assert igual.json()["rev"] == 0

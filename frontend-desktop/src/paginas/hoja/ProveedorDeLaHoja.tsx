@@ -137,7 +137,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
           ? delProyecto
           : (datos.por_omision ?? null);
 
-  const { estado, refrescar, reabrir, aplicar, descartarCambios, descartarActual, cerrarGuardado } = useBorrador(
+  const { estado, refrescar, reabrir, aplicar, descartarActual, cerrarGuardado } = useBorrador(
     proyecto,
     codigo,
     alExpirar,
@@ -233,6 +233,12 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     setRetomando(null);
     setSinOfertas(proyecto);
     reabrir();
+  };
+  // «Descartar cambios»: se borra el borrador del servidor y se abre uno nuevo de la versión guardada. Si era un borrador
+  // retomado hay que olvidarlo (como «Abrir de nuevo»): si no, la clave sigue llevando su id y se vuelve a pedir el que
+  // se acaba de borrar, y la lista de ofertas, leída antes, lo volvería a ofrecer.
+  const descartarCambios = async () => {
+    if (await descartarActual()) reabrirNuevo();
   };
 
   useEffect(() => {

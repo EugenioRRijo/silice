@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorDeApi, pedir, type OpcionesDePeticion } from "../api/cliente";
+import { ContextoAplicacion, type Aplicacion } from "../shell/contexto";
 import { busDePestanas } from "../test/pestanasFalsas";
 import { crearVigilante, type VigilanteDeObra } from "./otraPestana";
 import { PATRON_DE_OBRA, rutaDeObra } from "./secciones";
@@ -90,14 +91,20 @@ function servidor(abierta: string | null) {
   };
 }
 
-function montar(ruta: string, vigilante: VigilanteDeObra = crearVigilante(null)) {
-  const envoltura = ({ children }: { children: ReactNode }) => (
-    <MemoryRouter initialEntries={[ruta]}>
-      <Routes>
-        <Route path={PATRON_DE_OBRA} element={children} />
-      </Routes>
-    </MemoryRouter>
-  );
+// Con `alExpirar`, el gancho va dentro del contexto de la aplicacion (como en el marco); sin el, fuera de el.
+function montar(ruta: string, vigilante: VigilanteDeObra = crearVigilante(null), alExpirar?: () => void) {
+  const envoltura = ({ children }: { children: ReactNode }) => {
+    const rutas = (
+      <MemoryRouter initialEntries={[ruta]}>
+        <Routes>
+          <Route path={PATRON_DE_OBRA} element={children} />
+        </Routes>
+      </MemoryRouter>
+    );
+    if (!alExpirar) return rutas;
+    const aplicacion = { alExpirar } as unknown as Aplicacion;
+    return <ContextoAplicacion.Provider value={aplicacion}>{rutas}</ContextoAplicacion.Provider>;
+  };
   return renderHook(() => ({ estado: useObraDeLaRuta({ vigilante }), navegar: useNavigate() }), { wrapper: envoltura });
 }
 
@@ -210,6 +217,39 @@ describe("useObraDeLaRuta", () => {
       `POST /v1/casos/actual {"nombre":"${SUR}"}`,
       PUT_3,
     ]);
+  });
+
+  // Al montar, el 401 lo ven `useObras` y el marco; al «Reintentar», al «Retomar» o al pasar a otra obra solo pasa por
+  // aqui, y sin `alExpirar` la persona veria «Revise la conexion» con un boton que vuelve a fallar.
+  it.each([
+    ["GET /v1/obras/todas"],
+    ["POST /v1/casos/actual"],
+    ["PUT /v1/sesion/proyecto"],
+  ])("un 401 en %s al reintentar llama a alExpirar", async (clave) => {
+    const api = servidor(NORTE);
+    const alExpirar = vi.fn();
+    api.fallarUnaVez("POST /v1/casos/actual", new ErrorDeApi(500, "Se cayo."));
+    const { result } = montar(rutaDeObra(SUR, 3, "presupuesto"), crearVigilante(null), alExpirar);
+    await waitFor(() => expect(result.current.estado.tipo).toBe("error"));
+    expect(alExpirar).not.toHaveBeenCalled();
+    const estado = result.current.estado;
+    if (estado.tipo !== "error") throw new Error("no hubo error");
+
+    api.fallarUnaVez(clave, new ErrorDeApi(401, "Sesion vencida."));
+    act(() => estado.reintentar());
+    await waitFor(() => expect(alExpirar).toHaveBeenCalledTimes(1));
+    expect(result.current.estado.tipo).toBe("error");
+  });
+
+  it("un 401 al pasar a otra obra llama a alExpirar", async () => {
+    const api = servidor(SUR);
+    const alExpirar = vi.fn();
+    const { result } = montar(rutaDeObra(SUR, 3, "presupuesto"), crearVigilante(null), alExpirar);
+    await waitFor(() => expect(result.current.estado.tipo).toBe("lista"));
+
+    api.fallarUnaVez("POST /v1/casos/actual", new ErrorDeApi(401, "Sesion vencida."));
+    act(() => void result.current.navegar(rutaDeObra(NORTE, 2, "presupuesto")));
+    await waitFor(() => expect(alExpirar).toHaveBeenCalledTimes(1));
   });
 
   it("cambiar de seccion dentro de la misma obra no vuelve a pedir nada", async () => {

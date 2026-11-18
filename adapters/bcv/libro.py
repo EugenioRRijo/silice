@@ -1,11 +1,13 @@
 """Abre un libro del BCV (.xls con xlrd, .xlsx con openpyxl; ambos importados en la función) y lo
 entrega como cuadrícula neutra. Un número que llega como float se lleva a Decimal con repr y se
-declara en `Libro.avisos` (S1 §7.2)."""
+declara en `Libro.avisos` (S1 §7.2); uno no finito (infinito o NaN, p. ej. una celda `1e999`) llega
+como texto, para que los lectores lo rechacen como cifra no numérica."""
 
 from __future__ import annotations
 
 import hashlib
 import io
+import math
 import re
 import zipfile
 import zlib
@@ -220,7 +222,7 @@ def _xls(contenido: bytes, nombre: str) -> tuple[tuple[Hoja, ...], int, tuple[st
                         fila.append(None)
                     elif celda.ctype == xlrd.XL_CELL_TEXT:
                         fila.append(celda.value.strip() or None)
-                    elif celda.ctype == xlrd.XL_CELL_NUMBER:
+                    elif celda.ctype == xlrd.XL_CELL_NUMBER and math.isfinite(celda.value):
                         floats += 1
                         fila.append(Decimal(repr(celda.value)))
                     elif celda.ctype == xlrd.XL_CELL_DATE:
@@ -254,7 +256,7 @@ def _xlsx(ruta: Path) -> tuple[tuple[Hoja, ...], int, tuple[str, ...]]:
                     raise _demasiadas_celdas(ruta.name)
                 fila: list[Celda] = []
                 for v in valores:
-                    if isinstance(v, float):
+                    if isinstance(v, float) and math.isfinite(v):
                         floats += 1
                         fila.append(Decimal(repr(v)))
                     elif isinstance(v, int) and not isinstance(v, bool):

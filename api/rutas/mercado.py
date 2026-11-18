@@ -427,7 +427,20 @@ def leer_objetivos(
     return ObjetivosRespuesta(objetivos=respuesta)
 
 
-@router.get("/{lado}/{codigo}", response_model=EstudioRespuesta, dependencies=[EDITAR_HOJA])
+# `:path` en cada código: uno con «/» («1/2 pulg») llega entero, como en la Hoja (pasada en
+# navegador de la ola 2, D6). Por eso «afectados» va antes que el estudio: `/{lado}/{codigo:path}`
+# también casaría con `/compra/X/afectados`, y Starlette toma la primera ruta que casa.
+@router.get(
+    "/compra/{codigo:path}/afectados",
+    response_model=AfectadosRespuesta,
+    dependencies=[EDITAR_HOJA],
+)
+def afectados(sesion: SesionDep, codigo: Codigo) -> AfectadosRespuesta:
+    """Las partidas del catálogo que cambian de precio si cambia el del insumo."""
+    return AfectadosRespuesta(apus=_traducir(lambda: apus_afectados(sesion, codigo)))
+
+
+@router.get("/{lado}/{codigo:path}", response_model=EstudioRespuesta, dependencies=[EDITAR_HOJA])
 def leer_estudio(
     sesion: SesionDep,
     lado: Lado,
@@ -539,16 +552,8 @@ def anular(
     return Anulada(id=observacion_id, anulada_por=_traducir(escribir))
 
 
-@router.get(
-    "/compra/{codigo}/afectados", response_model=AfectadosRespuesta, dependencies=[EDITAR_HOJA]
-)
-def afectados(sesion: SesionDep, codigo: Codigo) -> AfectadosRespuesta:
-    """Las partidas del catálogo que cambian de precio si cambia el del insumo."""
-    return AfectadosRespuesta(apus=_traducir(lambda: apus_afectados(sesion, codigo)))
-
-
 @router.post(
-    "/compra/{codigo}/usar", response_model=UsarCompraRespuesta, dependencies=[EDITAR_HOJA]
+    "/compra/{codigo:path}/usar", response_model=UsarCompraRespuesta, dependencies=[EDITAR_HOJA]
 )
 def usar_compra(
     sesion: SesionDeEscrituraDep, codigo: Codigo, datos: UsarCompra, activa: Activa
@@ -594,7 +599,9 @@ def usar_compra(
     return _traducir(escribir)
 
 
-@router.post("/cobro/{codigo}/usar", response_model=ObjetivoRespuesta, dependencies=[EDITAR_HOJA])
+@router.post(
+    "/cobro/{codigo:path}/usar", response_model=ObjetivoRespuesta, dependencies=[EDITAR_HOJA]
+)
 def usar_cobro(
     sesion: SesionDeEscrituraDep, codigo: Codigo, datos: UsarCobro, activa: Activa
 ) -> ObjetivoRespuesta:

@@ -301,6 +301,102 @@ def test_si_otra_peticion_registro_el_mismo_archivo_se_relee_lo_registrado(
     assert len(caso.execute(select(paq.paq_recibido)).all()) == 1
 
 
+def test_tras_un_paquete_registrado_con_presupuesto_vacio_el_siguiente_se_analiza(mundo) -> None:
+    """Un paquete firmado cuyo `presupuesto.json` es `{}` queda guardado y registrado (23h) y su
+    análisis dice que el documento no es válido; el paquete VÁLIDO siguiente de la misma obra y
+    emisor no debe fallar al releer ese anterior (antes: `DocumentoInvalido` para siempre)."""
+    from core.budget.canonico import DocumentoInvalido
+
+    roto = paquete(
+        par=PAR,
+        presupuesto=b"{}",
+        anexos={},
+        emitido=datetime(2026, 11, 3, 9, 0),
+        codigo="004",
+        paquete_id="22222222-2222-4222-8222-222222222222",
+    )
+    with pytest.raises(DocumentoInvalido):
+        _analizar(mundo, roto)
+    bueno = paquete(par=PAR, presupuesto=_documento(), anexos={})
+    a = _analizar(mundo, bueno)
+    assert a.reauditoria is not None and a.reauditoria.total_recalculado == TOTAL
+    assert a.previa is None and a.diferencia is None
+    caso, _, carpeta = mundo
+    assert len(caso.execute(select(paq.paq_recibido)).all()) == 2  # el roto sigue registrado
+    assert len(list(carpeta.iterdir())) == 2
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{}, {"emitido": "2026-11-10T09:30:00"}, {"proyecto": "MIN-001"}, {"emitido": "ayer"}],
+    ids=["sin_emitido_ni_proyecto", "sin_proyecto", "sin_emitido", "emitido_que_no_es_fecha"],
+)
+def test_un_manifiesto_sin_emitido_o_proyecto_es_rechazado_aunque_no_liste_archivos(
+    mundo, extra
+) -> None:
+    """Un manifiesto con `archivos: []` da «alterado» por integridad y sin cadena; si además le
+    falta la fecha de emisión o la obra, no hay a qué fecha reauditarlo ni con qué compararlo: es
+    «rechazado» con el mensaje de los datos mínimos, no un `KeyError` crudo."""
+    from tests.fixtures.paquetes import canonico, escribir_zip
+
+    manifiesto = {"formato": "silice-paquete", "version_formato": 1, "archivos": [], **extra}
+    datos = escribir_zip(
+        {"manifiesto.json": canonico(manifiesto), "presupuesto.json": _documento()}
+    )
+    a = _analizar(mundo, datos)
+    v = a.recibido.verificacion
+    assert (v.estado, v.detalle) == (
+        "rechazado",
+        "El manifiesto o la cadena no traen los datos mínimos de un paquete.",
+    )
+    assert a.reauditoria is None and a.recibido.paquete_id == 0
+    _, _, carpeta = mundo
+    assert not carpeta.exists()
+
+
+@pytest.mark.parametrize(
+    "cadena",
+    [
+        b"[]",
+        {"eslabones": [{"codigo": "005", "huella_eslabon": "x"}], "cambios": None},
+        {"eslabones": [{"codigo": "005", "huella_eslabon": "x"}], "cambios": {"005": [["a"]]}},
+        {"eslabones": [{"codigo": ["005"], "huella_eslabon": "x"}], "cambios": {}},
+        {"eslabones": ["x"], "cambios": {}},
+        {"eslabones": [5], "cambios": {}},
+        {"eslabones": [None], "cambios": {}},
+        {"eslabones": [{"codigo": "005", "huella_eslabon": "x"}, "x"], "cambios": {}},
+    ],
+    ids=[
+        "lista",
+        "cambios_nulo",
+        "fila_de_un_campo",
+        "codigo_que_no_es_texto",
+        "eslabon_texto",
+        "eslabon_numero",
+        "eslabon_nulo",
+        "eslabon_texto_tras_uno_bueno",
+    ],  # fmt: skip
+)
+def test_una_cadena_sin_la_forma_minima_no_se_registra_ni_rompe_el_analisis(mundo, cadena) -> None:
+    """Un paquete sin firma con `cadena.json` de otra forma (y su huella rehecha en el manifiesto)
+    es «alterado»: se audita igual, pero esa cadena no se puede leer ni registrar, como la de un
+    alterado por integridad. Antes: `AttributeError` o `ValueError` (500) con el paquete ya
+    registrado."""
+    from tests.fixtures.paquetes import canonico, con_archivo_rehecho
+
+    octetos = cadena if isinstance(cadena, bytes) else canonico(cadena)
+    datos = con_archivo_rehecho(
+        paquete(par=None, presupuesto=_documento(), anexos={}), "cadena.json", octetos
+    )
+    a = _analizar(mundo, datos)
+    v = a.recibido.verificacion
+    assert (v.estado, v.motivo, v.cadena) == ("alterado", "cadena", None)
+    assert a.reauditoria is not None and a.reauditoria.total_recalculado == TOTAL
+    assert a.cambios == () and a.armo == () and a.recibido.paquete_id == 0
+    caso, _, _ = mundo
+    assert caso.execute(select(paq.paq_recibido)).all() == []
+
+
 def test_analizar_un_archivo_rechazado_no_reaudita_ni_guarda_nada(mundo) -> None:
     a = _analizar(mundo, b"esto no es un zip")
     assert a.recibido.verificacion.estado == "rechazado"
@@ -438,6 +534,42 @@ def test_la_declaracion_retroactiva_formatea_la_fecha_y_no_el_codigo() -> None:
     }
     texto = revision.declaracion_retroactiva(cadena, fecha=revision.fecha_es)
     assert texto.startswith("Versión 2026-01-01 ") and " el 05/11/2026:" in texto
+
+
+def test_la_declaracion_retroactiva_no_lanza_con_un_eslabon_sin_fecha() -> None:
+    """La cadena de un paquete alterado se muestra igual (S3 §6.5): un eslabón retroactivo sin
+    `fecha_hora` no da la fecha, pero no es un `KeyError` (la API respondía 404 con su texto)."""
+    from aplicacion import revision
+
+    sin_fecha = {"tipo": "retroactivo", "codigo": "001"}
+    con_fecha = {"tipo": "retroactivo", "codigo": "002", "fecha_hora": "2026-11-05T09:00"}
+    texto = revision.declaracion_retroactiva({"eslabones": [sin_fecha, con_fecha]})
+    assert texto.startswith("Versiones 001 a 002 selladas el 2026-11-05:")
+    solo = revision.declaracion_retroactiva({"eslabones": [sin_fecha]})
+    assert solo.startswith("Versión 001 selladas el ?:")
+
+
+def test_quien_armo_no_lanza_con_un_usuario_que_no_es_texto() -> None:
+    """Un eslabón con `usuario: 123` (cadena alterada, sin firma) no es de nadie: no un
+    `TypeError` (500); el eslabón con el login de quien revisa sí cuenta."""
+    from aplicacion import revision
+    from paquete.verificar import Verificacion
+
+    v = Verificacion(
+        "alterado",
+        "cadena",
+        "",
+        "0" * 64,
+        {"presupuesto.json": b"{}"},
+        {"empresa": EMPRESA},
+        {
+            "eslabones": [
+                {"codigo": "001", "huella_eslabon": "x", "usuario": 123},
+                {"codigo": "002", "huella_eslabon": "y", "usuario": "Rita <rita>"},
+            ]
+        },
+    )
+    assert revision.revisor_armo(v, login_revisor="rita", empresa_propia=(EMPRESA, None)) == ["002"]
 
 
 def test_el_texto_de_dictamen_formatea_la_fecha_y_no_el_login() -> None:

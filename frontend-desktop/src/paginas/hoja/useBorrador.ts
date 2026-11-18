@@ -143,12 +143,7 @@ export function useBorrador(
     return true;
   }, [alExpirar]);
 
-  // «Descartar cambios»: se borra el borrador del servidor y se abre otro desde la versión guardada.
-  const descartarCambios = useCallback(async () => {
-    if (await borrarActual()) setIntento((n) => n + 1);
-  }, [borrarActual]);
-
   let estado: EstadoBorrador = { estado: "inactivo" };
   if (clave !== null) estado = resultado?.clave === clave ? resultado.valor : { estado: "abriendo" };
-  return { estado, refrescar, reabrir, aplicar, descartarCambios, descartarActual: borrarActual, cerrarGuardado };
+  return { estado, refrescar, reabrir, aplicar, descartarActual: borrarActual, cerrarGuardado };
 }

@@ -1,11 +1,13 @@
 import { configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { BotonExcel } from "./BotonExcel";
-import { NOMBRE_PDF_POR_OMISION, rutaDelPdf } from "./logicaPdf";
+import { BotonPdfDelApu } from "./BotonPdf";
+import { NOMBRE_PDF_APU_POR_OMISION, NOMBRE_PDF_POR_OMISION, rutaDelPdf } from "./logicaPdf";
 
 // RF-213 (ola 2, línea 4): «Descargar PDF» al lado de «Descargar Excel», en el mismo grupo «Exportar la hoja». Pide
 // `GET /v1/hoja/borradores/{id}/pdf` y guarda el archivo con el nombre del servidor; un error se muestra tal cual. La
@@ -49,7 +51,7 @@ describe("Botón «Descargar PDF» de la hoja (RF-213)", () => {
     vi.unstubAllGlobals();
   });
 
-  function montar() {
+  function montar(elemento: ReactNode = <BotonExcel id={ID} />) {
     const valor: Aplicacion = {
       sesion: SESION,
       proyecto: "OF-001",
@@ -57,17 +59,15 @@ describe("Botón «Descargar PDF» de la hoja (RF-213)", () => {
       recargarProyectos: vi.fn(),
       alExpirar: vi.fn(),
     };
-    return render(
-      <ContextoAplicacion.Provider value={valor}>
-        <BotonExcel id={ID} />
-      </ContextoAplicacion.Provider>,
-    );
+    return render(<ContextoAplicacion.Provider value={valor}>{elemento}</ContextoAplicacion.Provider>);
   }
 
   test("la ruta es la del PDF del borrador y el id viaja codificado", () => {
     expect(rutaDelPdf(ID)).toBe("/v1/hoja/borradores/id-borrador-aaaaaaaaaaaa/pdf");
     expect(rutaDelPdf("a/b?c")).toBe("/v1/hoja/borradores/a%2Fb%3Fc/pdf");
+    expect(rutaDelPdf(ID, "AF-CODO-1/2")).toBe("/v1/hoja/borradores/id-borrador-aaaaaaaaaaaa/pdf?partida=AF-CODO-1%2F2");
     expect(NOMBRE_PDF_POR_OMISION).toBe("presupuesto_borrador.pdf");
+    expect(NOMBRE_PDF_APU_POR_OMISION).toBe("apu_borrador.pdf");
   });
 
   test("va en el grupo «Exportar la hoja», después de «Descargar Excel», y no es el principal", () => {
@@ -105,6 +105,37 @@ describe("Botón «Descargar PDF» de la hoja (RF-213)", () => {
     );
     montar();
     await userEvent.click(screen.getByRole("button", { name: "Descargar PDF" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(detalle);
+    expect(guardados).toEqual([]);
+  });
+
+  test("el botón del APU pide ?partida= codificado y guarda con el nombre del servidor", async () => {
+    fetchFalso.mockResolvedValue(pdf("apu_AF-CODO-1_2.pdf"));
+    montar(<BotonPdfDelApu id={ID} partida="AF-CODO-1/2" />);
+    const boton = screen.getByRole("button", { name: "PDF de este APU" });
+    expect(boton).not.toHaveClass("cds--btn--primary");
+    await userEvent.click(boton);
+    await waitFor(() => expect(guardados).toEqual(["apu_AF-CODO-1_2.pdf"]));
+    const [ruta, init] = fetchFalso.mock.calls[0]!;
+    expect(String(ruta)).toBe(`/v1/hoja/borradores/${ID}/pdf?partida=AF-CODO-1%2F2`);
+    expect(init?.method ?? "GET").toBe("GET");
+    expect(init?.body).toBeUndefined();
+  });
+
+  test("el botón del APU sin nombre del servidor usa apu_borrador.pdf", async () => {
+    fetchFalso.mockResolvedValue(new Response(new Uint8Array([1]), { status: 200 }));
+    montar(<BotonPdfDelApu id={ID} partida="AF-CODO-1/2" />);
+    await userEvent.click(screen.getByRole("button", { name: "PDF de este APU" }));
+    await waitFor(() => expect(guardados).toEqual(["apu_borrador.pdf"]));
+  });
+
+  test("un 404 al pedir el PDF de un APU muestra el detalle del servidor tal cual y no guarda nada", async () => {
+    const detalle = "La partida «AF-CODO-1/2» no tiene APU en el borrador.";
+    fetchFalso.mockResolvedValue(
+      new Response(JSON.stringify({ detalle }), { status: 404, headers: { "Content-Type": "application/json" } }),
+    );
+    montar(<BotonPdfDelApu id={ID} partida="AF-CODO-1/2" />);
+    await userEvent.click(screen.getByRole("button", { name: "PDF de este APU" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(detalle);
     expect(guardados).toEqual([]);
   });

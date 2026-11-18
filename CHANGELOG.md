@@ -254,6 +254,17 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- **Depuración del código espagueti, unida** (2026-11-15/17; `docs/bitacora/auditoria-agy-2026-11-15.md`, arbitraje
+  `docs/bitacora/arbitrajes/depuracion-unida-claude-xhigh.md`, decisiones simuladas
+  `docs/bitacora/2026-11-17-decisiones-simuladas.md`): se unen las 13 ramas `feature/depurar-*` de los hallazgos
+  verificados. Entre ellas: rutas que guardan con `BEGIN IMMEDIATE` y sellan a quien tiene la sesión; `no-store` en
+  administración, revisión y entregas; un 503 fijo ante un fallo de la base; cada vista de la Hoja corre bajo el
+  cerrojo del borrador (las nueve, fijadas por una prueba de conjunto exacto); `/v1/obras` compara las carpetas
+  resolviendo sus rutas; la auditoría por hoja tiene un solo estado de lectura; borrar el porcentaje del desperdicio
+  quita el desglose de esa línea; una edición de Componer que **solo cambia el desglose** del desperdicio (misma
+  cantidad) se rechaza con un 422 que lo explica, en vez de perderse al cerrar (DS-3). La segunda opinión
+  (Hydrogen) dejó un MAYOR, ya corregido: un paquete `.silice` cuya cadena trae eslabones que no son objetos daba
+  500 al recibirlo; ahora es «alterado» sin cadena. `core/` no cambia.
 - **Ola 2, re-congelado de la Hoja, plan por períodos y Control** (2026-11-13; acta
   `docs/bitacora/2026-11-13-recongelado-experimento-2.md`, autorizado por Eugenio; `docs/bitacora/2026-11-13-ola2-recongelado-y-plan.md`;
   RF-196 a RF-199): `_estado_de_precio` mira la fuente declarada de cada precio (D-17); el plan por rendimientos usa

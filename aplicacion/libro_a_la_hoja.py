@@ -11,15 +11,20 @@ Aquí el libro ya auditado (`fusion.apu_por_hoja`, que quien llama corre: `aplic
    código ya está con la **misma** composición y los mismos precios, se reutiliza (llevar otra vez
    no duplica nada); si está con otra, entra como variante «-B», «-C»… (otro frente con otro precio;
    D6). Cada precio que escribe el libro lleva su referencia: «<libro>, <HOJA!CELDA>»
-   (`core.catalog.origen.fijar_referencia`), así la pestaña Precios dice de dónde salió.
+   (`core.catalog.origen.fijar_referencia`), así la pestaña Precios dice de dónde salió. La
+   **traza del desperdicio** (la neta y el porcentaje que imprime la hoja) entra con la composición,
+   en la misma transacción, como la guarda Componer (`aplicacion.desperdicio.guardar_trazas`): la
+   Hoja y Componer muestran «0,5 + 4 %» y no la cantidad sola, que invitaría a escribir el 4 % otra
+   vez (pasada en navegador de la ola 2, D10). Si el código ya estaba con la misma composición, su
+   traza se une a la vigente (`hoja_desperdicio.unir`) y llevar otra vez no escribe nada.
 2. **Los renglones.** Con presupuesto, uno por renglón enlazado con su APU, con la cantidad del
    presupuesto, su origen (`libro:<HOJA!CELDA>` de la cantidad, TABULAR) y su frente (la hoja del
    presupuesto, `aplicacion.frentes`). Sin presupuesto, uno por APU con la cantidad de su cabecera y
    el frente que se diga. Un renglón sin APU o sin cantidad no se lleva y se dice. Llevar otra vez
    reemplaza los renglones de las mismas hojas; los demás no se tocan.
 3. **Los porcentajes.** La Hoja lleva un solo juego de parámetros por obra: los del libro
-   (prestaciones como FCAS, administración y utilidad) pasan al borrador; si las hojas usan juegos
-   distintos, `PorcentajesDistintos` (422) dice cuáles.
+   (prestaciones como FCAS, bono de alimentación, administración y utilidad) pasan al borrador;
+   si las hojas usan juegos distintos, `PorcentajesDistintos` (422) dice cuáles.
 
 Reglas que protegen los precios (D6): el libro se lleva a una obra **sin versiones** (una versión
 ya valorada con otra lista dejaría los precios del libro fuera; `ObraConVersiones`, 409), y su
@@ -36,7 +41,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -44,7 +49,10 @@ from sqlalchemy.orm import Session
 
 from adapters.vial.constantes import TOLERANCIA_PRECIO
 from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, importaciones
+from aplicacion.cifras import texto_de_cifra
+from aplicacion.desperdicio import TrazaDesperdicio, guardar_trazas, trazas_vigentes
 from aplicacion.frentes import MENSAJE_RESERVADO, con_frente, es_reservado
+from aplicacion.hoja_desperdicio import unir
 from aplicacion.listas_para_armar import lista_de_hoy, lista_para_armar
 from core import models
 from core.budget.moneda import moneda_del_proyecto
@@ -54,6 +62,7 @@ from core.contracts import Dominio, ItemComputo, OrigenTipo
 from core.contracts.apu import ComposicionAPU, ParametrosCosto
 
 __all__ = [
+    "CLAVE_CODIGO_LIBRO",
     "PREFIJO_LIBRO",
     "ApuDelLibro",
     "LibroLlevado",
@@ -69,6 +78,8 @@ __all__ = [
 
 #: El prefijo del `origen_id` de un renglón que vino del libro: «libro:FRENTE A!E4».
 PREFIJO_LIBRO = "libro:"
+#: La directiva con el código original del APU en el libro (`ItemComputo.especificaciones`).
+CLAVE_CODIGO_LIBRO = "_codigo_libro"
 #: Largo de `referencia_precio.referencia` (`core/models/entidades.py`).
 _LARGO_REFERENCIA = 60
 _VARIANTES = "BCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -99,8 +110,9 @@ class ObraConVersiones(Exception):  # noqa: N818
 @dataclass(frozen=True, slots=True)
 class ApuDelLibro:
     """Una hoja de APU auditada: su composición (con el código del libro) y sus parámetros, el P.U.
-    impreso y el que recalculó la auditoría, la cantidad de la cabecera con su celda y la celda del
-    precio de cada línea, en el orden canónico (materiales, equipos y mano de obra)."""
+    impreso y el que recalculó la auditoría, la cantidad de la cabecera con su celda, la celda del
+    precio de cada línea, en el orden canónico (materiales, equipos y mano de obra), y la traza
+    del desperdicio de sus materiales."""
 
     hoja: str
     numero: int | None
@@ -110,6 +122,7 @@ class ApuDelLibro:
     cantidad: Decimal | None = None
     celda_cantidad: str | None = None
     celdas_precio: tuple[str, ...] = ()
+    trazas: tuple[TrazaDesperdicio, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,10 +223,21 @@ def _pct(fraccion: Decimal) -> str:
     return texto.replace(".", ",")
 
 
+def _del_pct(fraccion: Decimal) -> str:
+    return f"del {_pct(fraccion)} %"
+
+
+def _de_monto(monto: Decimal) -> str:
+    return f"de {texto_de_cifra(monto.normalize())}"
+
+
+#: Cada campo de `ParametrosCosto` con su rótulo y cómo se dice su valor: los porcentajes como
+#: «del 12 %»; el bono de alimentación, que es un monto diario por obrero, como «de 1.500,5».
 _CAMPOS = (
-    ("fcas", "unas prestaciones"),
-    ("administracion", "una administración"),
-    ("utilidad", "una utilidad"),
+    ("fcas", "unas prestaciones", _del_pct),
+    ("bono_alimentacion", "un bono de alimentación", _de_monto),
+    ("administracion", "una administración", _del_pct),
+    ("utilidad", "una utilidad", _del_pct),
 )
 
 
@@ -232,10 +256,14 @@ def _porcentajes(apus: Sequence[ApuDelLibro]) -> ParametrosCosto:
     for parametros, hojas in grupos.items():
         if parametros == mayoria:
             continue
-        distintos = [(c, t) for c, t in _CAMPOS if getattr(parametros, c) != getattr(mayoria, c)]
-        suyo = _y([f"{t} del {_pct(getattr(parametros, c))} %" for c, t in distintos])
-        demas = _y([f"del {_pct(getattr(mayoria, c))} %" for c, _t in distintos])
-        partes.append(f"{_y(hojas)} usa{'n' if len(hojas) > 1 else ''} {suyo} y las demás {demas}")
+        usa = f"{_y(hojas)} usa{'n' if len(hojas) > 1 else ''}"
+        distintos = [c for c in _CAMPOS if getattr(parametros, c[0]) != getattr(mayoria, c[0])]
+        if not distintos:  # un campo sin rótulo en `_CAMPOS`: nunca una frase sin nada que nombrar
+            partes.append(f"{usa} otros parámetros de costo que las demás")
+            continue
+        suyo = _y([f"{t} {decir(getattr(parametros, c))}" for c, t, decir in distintos])
+        demas = _y([decir(getattr(mayoria, c)) for c, _t, decir in distintos])
+        partes.append(f"{usa} {suyo} y las demás {demas}")
     raise PorcentajesDistintos(
         "Las hojas del libro no usan los mismos porcentajes y la Hoja lleva uno solo por obra: "
         + "; ".join(partes)
@@ -281,10 +309,25 @@ def _al_catalogo(
             # comparar otra partida), no los vería. Expediente de `core/` propuesto en la bitácora.
             sesion.expire(lista, ["precios"])
             _referenciar(sesion, codigo, lista, apu, archivo)
+            _trazar(sesion, codigo, apu)
             return codigo, True
         if _misma(catalogo, composicion, fecha, lista):
+            _trazar(sesion, codigo, apu)
             return codigo, False
     raise LibroSinRenglones(f"La partida «{base}» ya tiene demasiadas variantes en el catálogo.")
+
+
+def _trazar(sesion: Session, codigo: str, apu: ApuDelLibro) -> None:
+    """La traza del desperdicio del APU, unida a la vigente de `codigo` (la de otra línea se
+    conserva; la de la misma línea, manda la del libro). Sin `commit`: va con el catálogo. Si la
+    unión es ya la vigente (llevar otra vez), no escribe nada."""
+    if not apu.trazas:
+        return
+    antes = trazas_vigentes(sesion, codigo)
+    unidas = unir(apu.trazas, antes)
+    if unidas != antes:
+        # la hora solo fecha el rastro de la traza; no entra en ninguna cifra (como Componer)
+        guardar_trazas(sesion, codigo, unidas, ahora=datetime.now().replace(microsecond=0))
 
 
 def _referenciar(
@@ -389,8 +432,12 @@ def llevar_libro_a_la_hoja(
     with vivo.cerrojo:
         antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano, vivo.importaciones)
         try:
+            # Los renglones que no vienen de las hojas que se llevan: los propios del borrador y
+            # también los que salen del espacio de la obra (`items_sin_escribir`).
             ajenos = [
-                i for i in vivo.borrador.items_base if _hoja_del_origen(i.origen_id) not in hojas
+                i
+                for i in hoja.items_sin_escribir(vivo.borrador)
+                if _hoja_del_origen(i.origen_id) not in hojas
             ]
             if ajenos and vivo.borrador.parametros != parametros:
                 raise PorcentajesDistintos(
@@ -414,6 +461,7 @@ def llevar_libro_a_la_hoja(
                         origen_id=f"{PREFIJO_LIBRO}{r.celda}",
                         origen_tipo=OrigenTipo.TABULAR,
                         dominio=dominio,
+                        especificaciones={CLAVE_CODIGO_LIBRO: r.apu.composicion.codigo_partida},
                     ),
                     r.frente,
                 )

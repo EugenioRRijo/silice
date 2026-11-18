@@ -250,6 +250,21 @@ def test_csv_que_no_es_texto_utf8() -> None:
         vial.tramos_desde_csv(b"\xff\xfe\x00\x00", "x.csv")
 
 
+@pytest.mark.parametrize("nombre", ["." * 100 + ".csv", "....", " .. "])
+def test_csv_con_un_nombre_que_windows_no_acepta_se_lee_igual(nombre: str) -> None:
+    # «....» recortado es la propia carpeta en Windows: el archivo temporal no lleva ese nombre
+    assert [t.id for t in vial.tramos_desde_csv(MUESTRA.read_bytes(), nombre)] == ["T1", "T2", "T3"]
+
+
+def test_csv_malo_con_un_nombre_raro_dice_ese_nombre_y_no_el_temporal() -> None:
+    nombre = "." * 100 + ".csv"
+    malo = MUESTRA.read_text(encoding="utf-8").replace("T2;1,2;2,0;6,50", "T2;2,0;1,2;6,50")
+    with pytest.raises(ValueError) as error:
+        vial.tramos_desde_csv(malo.encode("utf-8"), nombre)
+    assert f"el archivo {nombre[:100]!r}, fila 7" in str(error.value)
+    assert "tramos.csv" not in str(error.value)
+
+
 # --- Tarea 9: reglas del auditor ------------------------------------------------------------------
 
 MEZCLA = Receta(

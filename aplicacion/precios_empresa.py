@@ -137,13 +137,32 @@ def _unidades_del_catalogo(sesion) -> dict[tuple[str, str], list[str]]:
 
 def _separar(sesion, desconocidos: Sequence[PrecioLeido]) -> tuple[list[PrecioLeido], list[str]]:
     """Los desconocidos que son insumos nuevos y el aviso de los que el catalogo tiene con otra
-    unidad (no se dan de alta: serian un homonimo con otra unidad, el flujo 2b de UC-02)."""
+    unidad (no se dan de alta: serian un homonimo con otra unidad, el flujo 2b de UC-02). Un
+    insumo nuevo que el mismo archivo trae con dos unidades tampoco: un solo aviso por insumo."""
     unidades = _unidades_del_catalogo(sesion)
+    en_el_archivo: dict[tuple[str, str], list[str]] = {}
+    for leido in desconocidos:
+        clave = (leido.tipo.value, normalizar_texto(leido.descripcion))
+        if clave not in unidades:
+            suyas = en_el_archivo.setdefault(clave, [])
+            texto = leido.unidad or "sin unidad"
+            if texto not in suyas:
+                suyas.append(texto)
     nuevos: list[PrecioLeido] = []
     avisos: list[str] = []
+    avisados: set[tuple[str, str]] = set()
     for leido in desconocidos:
-        suyas = unidades.get((leido.tipo.value, normalizar_texto(leido.descripcion)))
-        if suyas is None:
+        clave = (leido.tipo.value, normalizar_texto(leido.descripcion))
+        suyas = unidades.get(clave)
+        if suyas is None and len(en_el_archivo[clave]) > 1:
+            if clave not in avisados:
+                avisados.add(clave)
+                avisos.append(
+                    f"«{leido.descripcion}» viene en el archivo en "
+                    f"{' y en '.join(en_el_archivo[clave])}: no entró ni se dio de alta (serían "
+                    "dos insumos con el mismo nombre); deje en el archivo una sola unidad."
+                )
+        elif suyas is None:
             nuevos.append(leido)
         else:
             avisos.append(
@@ -190,6 +209,25 @@ def _dar_de_alta(sesion, nuevos: Sequence[PrecioLeido]) -> list[str]:
     return [mismos[0].descripcion for mismos in por_identidad.values()]
 
 
+#: El largo con que `core.catalog.empresa.crear_lista_de_empresa` recorta el nombre de la lista.
+_LARGO_NOMBRE = 120
+
+
+def _nombre_libre(sesion, empresa_nombre: str, fecha: date) -> str:
+    """El nombre por omisión de la lista, «{empresa} {aaaa-mm-dd}», y « (2)», « (3)»… si ya hay
+    una lista con ese nombre (pasada en navegador de la ola 2, D9c: dos listas del mismo día se
+    llamaban igual). Es la convención de la lista para armar (`listas_para_armar._nombre_libre`)."""
+    raiz = f"{empresa_nombre} {fecha:%Y-%m-%d}"
+    existentes = set(sesion.scalars(select(models.ListaPrecios.nombre)))
+    numero = 1
+    while True:
+        extra = "" if numero == 1 else f" ({numero})"
+        nombre = raiz[: _LARGO_NOMBRE - len(extra)] + extra
+        if nombre not in existentes:
+            return nombre
+        numero += 1
+
+
 def crear_lista(
     sesion,
     ruta: Path,
@@ -207,7 +245,11 @@ def crear_lista(
     conoce y crea la lista de empresa sobre la base elegida. Si la base esta en otra moneda, se
     convierte con la tasa del BCV aplicable a `fecha` (S1 §6.1). Con `dar_de_alta` (la
     confirmacion de la persona, tras `revisar_archivo`) los insumos nuevos se dan de alta y su
-    precio entra a la lista; los de otra unidad nunca. Confirma o deshace todo."""
+    precio entra a la lista; los de otra unidad nunca. Confirma o deshace todo.
+
+    `desconocidos` son solo los insumos que el catálogo no tiene: uno que tiene con otra unidad va
+    en `otra_unidad` (antes iba en los dos y se contradecían; pasada en navegador, D9a). Sin
+    `nombre`, el de omisión con « (2)»… si ya existe (D9c)."""
     exigir_moneda(moneda)
     leidos = _con_la_lista(leer_lista_precios(ruta), fecha, fuente)
 
@@ -221,6 +263,8 @@ def crear_lista(
         if dar_de_alta and nuevos:
             dados = _dar_de_alta(sesion, nuevos)
             propios, desconocidos = precios_propios_desde(sesion, leidos)
+        # los de otra unidad están en el catálogo: no son desconocidos (D9a)
+        sin_catalogo, _ = _separar(sesion, desconocidos)
         tasa_base = None
         if base.moneda != moneda:
             tasa_base = TasaDeclarada.de_importacion(tasa_aplicable(sesion, fecha))
@@ -234,13 +278,13 @@ def crear_lista(
             fecha=fecha,
             fuente=fuente,
             referencia=lista_de_referencia(sesion),
-            nombre=nombre.strip() or None,
+            nombre=nombre.strip() or _nombre_libre(sesion, empresa_nombre, fecha),
             tasa_base=tasa_base,
         )
         return ResumenEmpresa(
             lista.nombre,
             len(propios),
-            tuple(leido.descripcion for leido in desconocidos),
+            tuple(leido.descripcion for leido in sin_catalogo),
             tuple(dados),
             tuple(avisos),
             lista.id,

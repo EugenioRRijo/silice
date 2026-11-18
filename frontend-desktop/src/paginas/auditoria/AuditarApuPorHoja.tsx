@@ -1,7 +1,7 @@
 import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -10,6 +10,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { useCarga } from "../../comun/useCarga";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { unidadEscrita } from "../../comun/unidades";
+import { rutaOPendientes } from "../../marco/espacios";
 import { MONEDAS, rotuloDeMoneda } from "../../comun/monedas";
 import { enumeradas } from "../../comun/perfilesDeLibros";
 import type { PerfilDisponible } from "../../comun/perfilesDeLibros";
@@ -116,6 +117,7 @@ const RUTA_PERFILES = "/v1/libros/perfiles-apu-por-hoja";
 const AVISO_OTRA_OBRA = "AH11";
 const ID_TITULO_OTRA_OBRA = "auditoria-apu-por-hoja-otra-obra";
 const TITULO_OTRA_OBRA = "La hoja del presupuesto parece de otra obra";
+const ID_TITULO_LLEVADO = "auditoria-apu-llevado";
 const origenDe = (origen: "paquete" | "local") => (origen === "local" ? "de esta instalación" : "del paquete");
 
 function textoDelPerfil(p: PerfilDisponible): string {
@@ -181,16 +183,26 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
   const delPerfil = hojasDe(perfiles?.find((p) => p.nombre === perfil) ?? { hoja_presupuesto: POR_OMISION_HOJA });
   const porOmision = (hojasDelPresupuesto ?? []).filter((h) => delPerfil.some((d) => igualada(d) === igualada(h)));
   const hojas = hojasDelPresupuesto === null ? [] : (marcadas ?? porOmision);
+  // Mientras se leen las hojas de un presupuesto no se elige otro ni se audita (P13: saldría sin hojas marcadas y el
+  // servidor elegiría por el perfil); y si aun así llegara tarde la lectura de uno anterior, el turno la descarta para que
+  // no se pinten sus hojas con otro presupuesto elegido.
+  const [leyendoHojas, setLeyendoHojas] = useState(false);
+  const lecturaDeHojas = useRef(0);
 
   async function elegirPresupuesto(archivo: File) {
+    const numero = ++lecturaDeHojas.current;
     setPresupuesto(archivo);
     setHojasDelPresupuesto(null);
     setMarcadas(null);
+    setLeyendoHojas(true);
     try {
-      setHojasDelPresupuesto(await hojasDelLibro(archivo));
+      const leidas = await hojasDelLibro(archivo);
+      if (numero === lecturaDeHojas.current) setHojasDelPresupuesto(leidas);
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       // sin la lista de hojas decide el perfil: el error del libro lo dirá la auditoría
+    } finally {
+      if (numero === lecturaDeHojas.current) setLeyendoHojas(false);
     }
   }
 
@@ -263,7 +275,7 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
         etiqueta="Opcional: suelte aquí el .xlsx del presupuesto, o haga clic para elegirlo"
         extensiones={[".xlsx"]}
         alElegir={(archivo) => void elegirPresupuesto(archivo)}
-        deshabilitada={auditando}
+        deshabilitada={auditando || leyendoHojas}
       />
       {hojasDelPresupuesto !== null && hojasDelPresupuesto.length > 0 && (
         <fieldset className="cds--fieldset">
@@ -292,9 +304,10 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
           .join(" · ")}
       </p>
       <div className="silice-inicio__acciones">
-        <Button kind="primary" size="md" disabled={libro === null || auditando} onClick={() => void auditar()}>
+        <Button kind="primary" size="md" disabled={libro === null || auditando || leyendoHojas} onClick={() => void auditar()}>
           Auditar el libro de APU
         </Button>
+        {leyendoHojas && <InlineLoading description="Leyendo las hojas del presupuesto..." />}
         {auditando && <InlineLoading description="Recalculando cada hoja..." />}
       </div>
       <AvisoError error={error} titulo="No se auditó el libro" />
@@ -480,13 +493,27 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
       <AvisoError error={error} titulo="No se llevó el libro" />
       {llevado && (
         <>
+          {/* Pasada en navegador de la ola 2 (D11): los renglones quedan en el borrador vivo de la Hoja, que vive en el
+              servidor ligado a la sesión, como todo borrador (`aplicacion/hoja_borradores.py`): se retoma en la misma
+              sesión y se pierde al salir o al volver a entrar. El aviso lo dice, lleva a la Hoja de la obra (la dirección
+              corta de la Hoja (`rutaOPendientes("hoja")`, «/hoja») abre la de la obra de la sesión, la misma a la que se llevó) y recuerda que llevar otra vez
+              no duplica nada. Nombre accesible: el título, como el aviso AH11. */}
+          <span id={ID_TITULO_LLEVADO} hidden>
+            {`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar.`}
+          </span>
           <InlineNotification
             kind="success"
             role="status"
-            title={`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar: ábrala para revisarlos y guardar la versión.`}
+            aria-labelledby={ID_TITULO_LLEVADO}
+            title={`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar.`}
+            subtitle="Ábrala, retome el borrador, revíselo y guarde la versión. Un borrador sin guardar se pierde al salir de Sílice; si se perdió, vuelva a llevar el libro: no duplica nada."
             lowContrast
             hideCloseButton
           />
+          {/* Carbon no admite controles dentro de un aviso en línea: el enlace va debajo. */}
+          <p className="cds--type-body-compact-01">
+            <a className="cds--link" href={`#${rutaOPendientes("hoja")}`}>{`Abrir la Hoja de «${obra}»`}</a>
+          </p>
           <TablaDensa etiqueta="Partidas llevadas a la Hoja" columnas={COLUMNAS_LLEVADAS} filas={filas} />
           {llevado.sin_apu.length > 0 && (
             <p className="silice-inicio__nota cds--type-body-compact-01">{`No se llevaron, sin hoja de APU: ${enumeradas(llevado.sin_apu)}.`}</p>

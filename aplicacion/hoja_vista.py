@@ -16,10 +16,12 @@ Parametros, Auditoria, Precios y Trazabilidad.
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal, localcontext
+from typing import Concatenate
 
 from adapters.espacio import Espacio
 from adapters.espacio.conexion import con_conexion
@@ -33,9 +35,10 @@ from adapters.espacio.modelo import (
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.cifras import texto_de_cifra
-from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje, trazas_de_las_filas
+from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje
+from aplicacion.frentes import frente_de
 from aplicacion.hoja_borradores import BorradorVivo
-from aplicacion.hoja_desperdicio import trazas_del_borrador, unir
+from aplicacion.hoja_desperdicio import desgloses_visibles, trazas_del_borrador
 from aplicacion.hoja_partidas import (
     PREFIJO_A_MANO,
     PREFIJO_TRAMO,
@@ -141,6 +144,23 @@ def _base_de_comparacion(vivo: BorradorVivo) -> hoja.Borrador:
     return hoja.Borrador(fecha=vivo.borrador.fecha, moneda=vivo.borrador.moneda)
 
 
+def _con_el_cerrojo[**P, T](
+    vista: Callable[Concatenate[BorradorVivo, P], T],
+) -> Callable[Concatenate[BorradorVivo, P], T]:
+    """La vista entera bajo el cerrojo del borrador. `calculo(vivo)` lo toma y lo suelta, y lo que
+    la vista relee despues (`vivo.borrador`) tiene que ser el borrador que se calculo: un
+    `/quitar` concurrente en medio daba `KeyError` en `calculadas[clave]` (500) o filas de un
+    borrador con el estado de otro. Es un `RLock`: `calculo` lo vuelve a tomar sin trabarse, como
+    en `api/rutas/hoja_frentes.py`."""
+
+    @functools.wraps(vista)
+    def con_cerrojo(vivo: BorradorVivo, *args: P.args, **kwargs: P.kwargs) -> T:
+        with vivo.cerrojo:
+            return vista(vivo, *args, **kwargs)
+
+    return con_cerrojo
+
+
 def calculo(vivo: BorradorVivo) -> tuple[hoja.ResultadoHoja, list]:
     """El resultado y los cambios del borrador vivo; se calculan una vez por `rev`."""
     with vivo.cerrojo:
@@ -161,6 +181,7 @@ def version_mas_nueva(vivo: BorradorVivo, vigente: str | None) -> str | None:
     return vigente
 
 
+@_con_el_cerrojo
 def resumen(vivo: BorradorVivo, version_mas_nueva: str | None = None) -> ResumenHoja:
     resultado, cambios = calculo(vivo)
     presupuesto = resultado.elaboracion.presupuesto
@@ -185,6 +206,7 @@ def resumen(vivo: BorradorVivo, version_mas_nueva: str | None = None) -> Resumen
     )
 
 
+@_con_el_cerrojo
 def base(vivo: BorradorVivo, vigente: str | None) -> BaseAbierta:
     abierta = vivo.abierta
     return BaseAbierta(
@@ -320,6 +342,7 @@ def _tabla(clave: str) -> TablaDelEspacio:
     )
 
 
+@_con_el_cerrojo
 def vista_espacio(vivo: BorradorVivo) -> VistaEspacio:
     """La pestana Espacio y metrajes en lectura (P:1190-1233): las cinco tablas con su Estado por
     fila, las cantidades derivadas, el total y los pendientes del catalogo."""
@@ -377,6 +400,9 @@ class FilaDePresupuesto:
     nota: str | None
     calculo: str | None
     de_tramo: bool = False
+    #: El frente del renglón (`aplicacion.frentes`), `None` sin frente (pasada en navegador de la
+    #: ola 2, D5: el selector de «Poner el frente» lo nombra).
+    frente: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -387,6 +413,7 @@ class VistaPresupuesto:
     vacio_mensaje: str | None
 
 
+@_con_el_cerrojo
 def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
     """La pestana Presupuesto en lectura (P:1744-1790): una fila por renglon con su cantidad, la
     calculada, el precio unitario, el total y el Estado."""
@@ -430,6 +457,7 @@ def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
                 nota=vivo.borrador.notas.get(clave),
                 calculo=calculo_tecleable(item.regla) if a_mano and not escrita else None,
                 de_tramo=item.origen_id.startswith(PREFIJO_TRAMO),
+                frente=frente_de(item),
             )
         )
     return VistaPresupuesto(
@@ -617,17 +645,16 @@ def _detalle_de_apu(
                 texto_de_cifra(traza.cantidad_neta),
                 texto_de_cifra(traza.desperdicio_pct),
             )
-            for fila, traza in trazas_de_las_filas(
+            for fila, traza in desgloses_visibles(
                 tablas[0],
-                unir(
-                    trazas_del_borrador(vivo, codigo),
-                    trazas(codigo) if trazas is not None else (),
-                ),
+                trazas_del_borrador(vivo, codigo),
+                trazas(codigo) if trazas is not None else (),
             )
         ),
     )
 
 
+@_con_el_cerrojo
 def vista_apu(
     vivo: BorradorVivo,
     partida: str | None = None,
@@ -697,6 +724,7 @@ class VistaPlan:
     partidas: tuple[str, ...] = ()
 
 
+@_con_el_cerrojo
 def vista_plan(vivo: BorradorVivo) -> VistaPlan:
     """La pestana Plan y curva en lectura (P:1796-1848): la matriz partida por periodo y la curva
     de inversion (periodo, monto, acumulado y % acumulado)."""
@@ -770,6 +798,7 @@ def equilibrio_a_vista(pe: PuntoEquilibrio, moneda: str) -> VistaEquilibrio:
     )
 
 
+@_con_el_cerrojo
 def vista_equilibrio(vivo: BorradorVivo) -> VistaEquilibrio:
     """La pestana Punto de equilibrio (no se edita, RS-4): sale del calculo del borrador vivo."""
     resultado, _ = calculo(vivo)
@@ -802,6 +831,7 @@ class VistaParametros:
     puede_convertir: bool
 
 
+@_con_el_cerrojo
 def vista_parametros(
     vivo: BorradorVivo, moneda_proyecto: str, puede_convertir: bool
 ) -> VistaParametros:
@@ -830,6 +860,7 @@ def vista_parametros(
 # --- Auditoria (R11) ----------------------------------------------------------------------------
 
 
+@_con_el_cerrojo
 def informe_de_auditoria(vivo: BorradorVivo) -> InformeAuditoria:
     """El informe de la pestana Auditoria (P:2124-2128): todas las reglas sobre el borrador vigente,
     con R17 (viene de `elaborar`, no de la base). La API lo serializa con `informe_a_respuesta`.

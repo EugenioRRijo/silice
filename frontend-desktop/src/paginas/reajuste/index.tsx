@@ -245,14 +245,16 @@ function Formulario({
   const revaloradas = contexto.versiones.filter((v) => v.revalorada).map((v) => v.codigo);
 
   async function enviar<T>(ruta: string, cuerpo: object): Promise<T | undefined> {
+    const marca = edicion.current;
     setOcupado(true);
     setError(null);
     try {
       return await pedir<T>(ruta, { metodo: "POST", cuerpo });
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
-      // El detalle tal cual: las fechas del sistema ya llegan en dd/mm/aaaa (aplicacion/reajuste.py).
-      setError(e);
+      // El detalle tal cual: las fechas del sistema ya llegan en dd/mm/aaaa (aplicacion/reajuste.py). Si se editó con el
+      // pedido en vuelo, el error es de datos viejos y no se pinta sobre lo editado (igual que la respuesta buena).
+      if (marca === edicion.current) setError(e);
       return undefined;
     } finally {
       setOcupado(false);

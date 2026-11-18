@@ -20,6 +20,28 @@ from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 router = APIRouter(tags=["computos"])
 
 _EXTENSION_IFC = ".ifc"
+#: El 422 de unos `codigos` que no son el mapeo: fijo, no repite lo enviado ni el error de `json`.
+MENSAJE_CODIGOS = (
+    "'codigos' debe ser un objeto JSON que asocie cada tipo de elemento a su codigo de partida, "
+    "los dos como texto."
+)
+
+
+def _mapeo_de_codigos(texto: str | None) -> dict[str, str] | None:
+    """El mapeo `codigos` del formulario, o `None` si no vino. Un numero, un booleano, una lista,
+    `null` o un objeto con valores que no son texto no son el mapeo: antes llegaban al adaptador,
+    cuyo `dict(...)` lanzaba `TypeError` (500)."""
+    if texto is None:
+        return None
+    try:
+        mapeo = json.loads(texto)
+    except ValueError:
+        mapeo = None
+    if not isinstance(mapeo, dict) or not all(
+        isinstance(clave, str) and isinstance(valor, str) for clave, valor in mapeo.items()
+    ):
+        raise HTTPException(status_code=422, detail=MENSAJE_CODIGOS)
+    return mapeo
 
 
 def _adaptador(
@@ -80,7 +102,7 @@ def computar(
     adaptador (`columnas_numericas`) pasan a punto decimal (`aplicacion/computo_csv.py`); uno
     separado por coma se lee como siempre.
     """
-    mapeo_codigos = json.loads(codigos) if codigos is not None else None
+    mapeo_codigos = _mapeo_de_codigos(codigos)
     adaptador = _adaptador(dominio, mapeo_codigos, archivo.filename)
     numericas: tuple[str, ...] | None = getattr(adaptador, "columnas_numericas", None)
     with tempfile.TemporaryDirectory() as carpeta:

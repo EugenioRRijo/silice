@@ -141,6 +141,25 @@ def test_una_base_sin_modalidad_no_es_adoptable_y_no_se_toca(tmp_path: Path) -> 
     assert respaldo.huella(ruta) == antes
 
 
+@pytest.mark.parametrize("posicion", [len(base_datos.revisiones_en_orden(Destino.CASO)) // 2, -1])
+def test_una_base_con_revision_y_sin_tablas_de_datos_no_es_adoptable_y_no_se_toca(
+    tmp_path: Path, posicion: int
+) -> None:
+    """Verificacion 3b (F8): una SQLite con solo `alembic_version` se tomaba por «nueva»; Alembic
+    seguia desde esa revision y la base quedaba a medias (sin `partidas` ni `apu`), o al dia sin
+    ninguna tabla. Con revision y sin datos no es nueva: se rechaza sin tocarla."""
+    revision = base_datos.revisiones_en_orden(Destino.CASO)[posicion]
+    ruta = tmp_path / "solo_version.db"
+    with closing(sqlite3.connect(ruta)) as conexion:
+        conexion.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) PRIMARY KEY)")
+        conexion.execute("INSERT INTO alembic_version VALUES (?)", (revision,))
+        conexion.commit()
+    antes = respaldo.huella(ruta)
+    with pytest.raises(BaseNoAdoptable, match="sin tablas de datos"):
+        preparar_base(ruta)
+    assert respaldo.huella(ruta) == antes and _juegos() == []
+
+
 def test_una_base_de_una_version_mas_nueva_no_se_toca(tmp_path: Path) -> None:
     ruta = bases_prueba.crear_base_futura(tmp_path / "futura.db")
     antes = respaldo.huella(ruta)

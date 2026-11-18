@@ -26,12 +26,15 @@ _PATRONES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"sk-ant-[A-Za-z0-9_\-]+"), MARCA),
     (re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=\-]+"), "Bearer " + MARCA),
     (re.compile(r"(?i)(x-silice-clave\s*[:=]\s*)\S+"), r"\1" + MARCA),
+    # La clave admite su comilla de cierre antes de `:` o `=` (JSON y repr de un dict); un valor
+    # entre comillas se tapa por dentro y conserva sus comillas (\3 o \4; el grupo que no
+    # participa se sustituye por nada).
     (
         re.compile(
             r"(?i)\b(contrase[nñ]a|password|passwd|clave|secreto|token"
-            r"|codigo(?:_de)?_instalaci[oó]n)(\s*[:=]\s*)(\"[^\"]*\"|'[^']*'|\S+)"
+            r"|codigo(?:_de)?_instalaci[oó]n)([\"']?\s*[:=]\s*)(?:(\")[^\"]*\"|(')[^']*'|\S+)"
         ),
-        r"\1\2" + MARCA,
+        r"\1\2\3\4" + MARCA + r"\3\4",
     ),
     (re.compile(r"(https?://[^\s?\"']+)\?[^\s\"'<>]+"), r"\1?" + MARCA),
 )

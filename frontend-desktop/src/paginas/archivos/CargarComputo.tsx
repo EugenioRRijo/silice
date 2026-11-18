@@ -1,5 +1,5 @@
 import { Button, Select, SelectItem } from "@carbon/react";
-import { useContext, useEffect, useId, useState } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 import { Link, useInRouterContext } from "react-router";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CarpetaRespuesta } from "../../api/tipos";
@@ -79,6 +79,9 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true 
   const [paso, setPaso] = useState<Paso>(NADA);
   const [ocupado, setOcupado] = useState<Ocupacion>(null);
   const [fallo, setFallo] = useState<{ titulo: string; error: unknown } | null>(null);
+  // Turno de la extracción: sube al extraer y al cambiar de tipo de obra; un cómputo que llegue con un turno viejo es de
+  // otro tipo y no se pone en la tabla.
+  const turno = useRef(0);
 
   useEffect(() => {
     alOcuparse(ocupado !== null);
@@ -107,12 +110,14 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true 
 
   const extraer = () =>
     ocupar("extrayendo", "No se pudo extraer el cómputo", async () => {
+      const mio = ++turno.current;
       setItems(null);
       setPaso(NADA);
       const datos = new FormData();
       datos.append("archivo", archivo);
       if (esCivil) datos.append("codigos", JSON.stringify(mapeoCodigos(seleccionCivil(elegidos))));
-      setItems(await pedir<ItemComputo[]>(`/computos/${dominio}`, { metodo: "POST", cuerpo: datos }));
+      const extraidos = await pedir<ItemComputo[]>(`/computos/${dominio}`, { metodo: "POST", cuerpo: datos });
+      if (mio === turno.current) setItems(extraidos);
     });
 
   async function enviar(lista: PartidaParaLlevar[]) {
@@ -171,6 +176,7 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true 
   }
 
   const cambiarDominio = (nuevo: Dominio) => {
+    turno.current += 1;
     setDominio(nuevo);
     setItems(null);
     setPaso(NADA);
@@ -185,7 +191,14 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true 
       )}
       {sinLista && <FranjaDelPaso tipo="falta" texto={FALTA_LA_LISTA} />}
       {carpeta.estado !== "listo" && carpeta.estado !== "cargando" && <AvisoError error={carpeta.error} titulo="No se pudo leer la carpeta" />}
-      <Select id="computo-dominio" labelText="Tipo de obra del archivo" size="sm" value={dominio} onChange={(e) => cambiarDominio(e.target.value as Dominio)}>
+      <Select
+        id="computo-dominio"
+        labelText="Tipo de obra del archivo"
+        size="sm"
+        value={dominio}
+        disabled={ocupado !== null}
+        onChange={(e) => cambiarDominio(e.target.value as Dominio)}
+      >
         {DOMINIOS.map((d) => (
           <SelectItem key={d} value={d} text={NOMBRE_DEL_DOMINIO[d]} />
         ))}

@@ -266,6 +266,77 @@ def test_la_cadena_que_no_cuadra_es_alterada_aunque_no_tenga_firma() -> None:
     assert v.detalle == "el eslabón de la versión 004 no cuadra"
 
 
+def _cadena_de_otra_forma(**cambios) -> bytes:
+    """La cadena del paquete con los campos de `cambios` en lo más alto, en JSON canónico."""
+    cadena = json.loads(leer_zip(paquete(par=None))["cadena.json"])
+    cadena.update(cambios)
+    return canonico(cadena)
+
+
+@pytest.mark.parametrize(
+    "cadena",
+    [
+        b"[]",
+        b'"texto"',
+        b"7",
+        _cadena_de_otra_forma(cambios=None),
+        _cadena_de_otra_forma(cambios=[]),
+    ],
+    ids=["lista", "texto", "numero", "cambios_nulo", "cambios_lista"],
+)
+def test_una_cadena_con_otra_forma_es_alterada_sin_lanzar(cadena: bytes) -> None:
+    """`cadena.json` es JSON válido pero no un objeto con eslabones y cambios: «alterado» por la
+    cadena con su motivo, no un `AttributeError` (que la API daba como 500)."""
+    v = ver(con_archivo_rehecho(paquete(par=None), "cadena.json", cadena))
+    assert (v.estado, v.motivo, v.detalle) == (
+        ALTERADO,
+        "cadena",
+        "cadena.json no tiene la forma esperada",
+    )
+
+
+def _con_filas_de_cambio(filas: list) -> bytes:
+    """Un paquete SIN firma de una sola versión (005) cuyos cambios son `filas`, con la huella de
+    cambios, la del eslabón y la que declara el manifiesto rehechas: la cadena cuadra."""
+    from tests.fixtures.paquetes import huella_cambios, huella_eslabon
+
+    base = paquete(par=None, codigos=("005",))
+    cadena = json.loads(leer_zip(base)["cadena.json"])
+    [e] = cadena["eslabones"]
+    e["huella_cambios"] = huella_cambios(filas)
+    e["huella_eslabon"] = huella_eslabon(
+        anterior=e["anterior"],
+        codigo=e["codigo"],
+        contenido=e["huella_contenido"],
+        cambios=e["huella_cambios"],
+        anexos=e["huella_anexos"],
+        usuario=e["usuario"],
+        fecha_hora=e["fecha_hora"],
+        tipo=e["tipo"],
+        version_formato=e["version_formato"],
+    )
+    cadena["cambios"] = {"005": filas}
+    return con_manifiesto(
+        con_archivo_rehecho(base, "cadena.json", canonico(cadena)),
+        ultima_huella_eslabon=e["huella_eslabon"],
+    )
+
+
+def test_cambios_que_no_son_filas_de_ocho_textos_son_alterados_aunque_cuadren_sus_huellas():
+    """Sin firma nada impide rehacer las huellas: unos cambios de tres campos, o con un número,
+    cuadran como cadena pero no son `RegistroCambio` (sus ocho textos,
+    `core.budget.cadena.fila_de_cambio`), y «quién cambió qué» no los puede leer."""
+    ocho = ["apu", "MIN-001|Arena", "cantidad", "1.00", "1.50", "memoria", "Ana <ana>", "x"]
+    assert ver(_con_filas_de_cambio([ocho])).estado == NO_VERIFICADO  # control: cuadra
+    for filas in ([ocho[:3]], [[*ocho[:6], 7, ocho[7]]], ["texto"]):
+        v = ver(_con_filas_de_cambio(filas))
+        assert (v.estado, v.motivo, v.detalle) == (
+            ALTERADO,
+            "cadena",
+            "cadena.json no tiene la forma esperada",
+        )
+
+
 def test_la_cadena_atada_a_otro_presupuesto_es_alterada() -> None:
     """Presupuesto cambiado y su huella rehecha en el manifiesto de un paquete SIN firma: el
     último eslabón sigue sellando el presupuesto original."""

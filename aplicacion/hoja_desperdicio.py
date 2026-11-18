@@ -27,6 +27,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
@@ -50,7 +51,9 @@ if TYPE_CHECKING:
 
 __all__ = [
     "MENSAJE_DESPERDICIOS",
+    "MENSAJE_SOLO_DESGLOSE",
     "con_desperdicio_en_materiales",
+    "desgloses_visibles",
     "guardar_con_la_version",
     "por_guardar",
     "trazas_del_borrador",
@@ -63,13 +66,25 @@ MENSAJE_DESPERDICIOS = (
     "materiales: los desperdicios enviados no corresponden a las líneas de materiales del APU: "
     "vuelva a cargarlo."
 )
+#: Acta DS-3 (depuración del 2026-11-15, L3, opción A): la traza se guarda con la versión, y una
+#: edición que deja la misma composición no la cambia; por eso no entra.
+MENSAJE_SOLO_DESGLOSE = (
+    "Ese cambio deja la misma cantidad y solo reparte distinto el desperdicio. Sílice guarda el "
+    "desglose junto con un cambio de cantidad: cambie la cantidad o deje el desglose como estaba."
+)
+
+_CERO = Decimal(0)
 
 
 def con_desperdicio_en_materiales(
     composicion: ComposicionAPU, porcentajes: Sequence[str]
 ) -> tuple[ComposicionAPU, tuple[TrazaDesperdicio, ...]]:
     """`composicion`, cuyas cantidades de material son las netas ya leídas, con la cantidad con
-    desperdicio en cada material de porcentaje no vacío ni cero, y la traza de cada uno.
+    desperdicio en cada material de porcentaje no vacío ni cero, y la traza de cada material.
+
+    Un material sin porcentaje (vacío o cero) deja su línea como está y su traza es de 0 %: la
+    Hoja dice «esta línea no lleva desperdicio», y `unir` deja por ella la vigente de la misma
+    descripción, unidad y cantidad sin mostrarla ni guardarla (depuración del 2026-11-15, L2).
 
     `HojaInvalida` si no hay un porcentaje por material (`MENSAJE_DESPERDICIOS`) o si uno no es
     una cifra de 0 a menos de 100 («materiales, fila N: el desperdicio «…» …»)."""
@@ -80,18 +95,18 @@ def con_desperdicio_en_materiales(
     for numero, (linea, texto) in enumerate(
         zip(composicion.materiales, porcentajes, strict=True), start=1
     ):
-        if not texto.strip(BLANCOS):  # el recorte de `aplicacion/cifras` (árbitro 13/11, M4)
+        porcentaje = _CERO
+        if texto.strip(BLANCOS):  # el recorte de `aplicacion/cifras` (árbitro 13/11, M4)
+            try:
+                porcentaje = porcentaje_escrito(texto, f"materiales, fila {numero}", ": ")
+            except ComposicionInvalida as error:
+                raise HojaInvalida(str(error)) from error
+        if porcentaje.is_zero():  # también «-0» y «0,0»: la línea queda como está
+            porcentaje, cantidad = _CERO, linea.cantidad
             lineas.append(linea)
-            continue
-        try:
-            porcentaje = porcentaje_escrito(texto, f"materiales, fila {numero}", ": ")
-        except ComposicionInvalida as error:
-            raise HojaInvalida(str(error)) from error
-        if porcentaje.is_zero():
-            lineas.append(linea)
-            continue
-        cantidad = cantidad_con_desperdicio(linea.cantidad, porcentaje)
-        lineas.append(replace(linea, cantidad=cantidad))
+        else:
+            cantidad = cantidad_con_desperdicio(linea.cantidad, porcentaje)
+            lineas.append(replace(linea, cantidad=cantidad))
         trazas.append(
             # recortadas como las de Componer (`texto_de_celda`): unir y por_guardar las comparan
             # con las vigentes (Argon, ronda 2 del árbitro, 2026-11-13)
@@ -115,9 +130,23 @@ def unir(
 ) -> list[TrazaDesperdicio]:
     """Las trazas `nuevas` (las del borrador) y, detrás, las `vigentes` de otra línea: una vigente
     con la misma descripción, unidad y cantidad que una nueva se deja (otro desglose de la misma
-    cantidad: manda el más nuevo)."""
+    cantidad: manda el más nuevo). Una nueva de 0 % (la línea sin desperdicio) deja la vigente de
+    su línea y no se devuelve: no hay desglose que mostrar ni que guardar."""
     propias = {_clave(t) for t in nuevas}
-    return [*nuevas, *(t for t in vigentes if _clave(t) not in propias)]
+    return [
+        *(t for t in nuevas if not t.desperdicio_pct.is_zero()),
+        *(t for t in vigentes if _clave(t) not in propias),
+    ]
+
+
+def desgloses_visibles(
+    filas: Sequence[Mapping[str, str]],
+    propias: Sequence[TrazaDesperdicio],
+    vigentes: Sequence[TrazaDesperdicio],
+) -> list[tuple[int, TrazaDesperdicio]]:
+    """El número de fila (desde 1) y la traza de cada fila de materiales que la Hoja muestra con
+    desglose: las `propias` del borrador antes que las `vigentes` de la partida (`unir`)."""
+    return trazas_de_las_filas(filas, unir(propias, vigentes))
 
 
 def trazas_del_borrador(vivo: BorradorVivo, codigo: str) -> tuple[TrazaDesperdicio, ...]:

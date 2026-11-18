@@ -110,3 +110,29 @@ def test_uc04_2a_reimportar_empareja_por_global_id(tmp_path):
     assert sin_par.pares == ()
     assert sin_par.solo_anteriores == tuple(anteriores)
     assert sin_par.solo_nuevos == tuple(ajenos)
+
+
+@pytest.mark.parametrize("valor", ["$", "1.E999"])
+def test_una_cantidad_sin_valor_o_no_finita_se_rechaza_con_global_id_y_archivo(tmp_path, valor):
+    """Verificacion 3b (F6): `IFCQUANTITYVOLUME('VolumenConcreto',$,$,$,$)` lanzaba
+    `InvalidOperation` (un 422 generico sin GlobalId ni archivo) y un `1.E999` entraba como
+    cantidad infinita. Los dos son el `ValueError` de los demas errores del lector."""
+    import re
+
+    import ifcopenshell
+
+    from adapters.civil.ifc import AdaptadorCivilIFC
+    from scripts.generar_tanquilla_ifc import generar
+
+    ruta = tmp_path / "tanquilla_sin_volumen.ifc"
+    generar(ruta)
+    global_id = ifcopenshell.open(str(ruta)).by_type("IfcBuildingElementProxy")[0].GlobalId
+    texto = ruta.read_text(encoding="utf-8")
+    linea = re.search(r"IFCQUANTITYVOLUME\([^\n]*\);", texto).group(0)
+    partes = linea.removeprefix("IFCQUANTITYVOLUME(").removesuffix(");").split(",")
+    partes[3] = valor  # VolumeValue
+    ruta.write_text(texto.replace(linea, f"IFCQUANTITYVOLUME({','.join(partes)});"), "utf-8")
+
+    with pytest.raises(ValueError) as error:
+        AdaptadorCivilIFC().extraer(ruta)
+    assert global_id in str(error.value) and "tanquilla_sin_volumen.ifc" in str(error.value)

@@ -1030,3 +1030,40 @@ def test_una_moneda_que_el_sistema_no_admite_es_422_fijo_sin_eco(ana, caso: Path
     assert (respuesta.status_code, respuesta.json()) == (422, {"detalle": MENSAJE_MONEDA})
     assert moneda not in respuesta.text
     _sin_cache(respuesta)
+
+
+# --- un código con «/» (pasada en navegador de la ola 2, D6) -----------------------------------
+
+
+def test_un_codigo_con_barra_llega_entero_a_cada_ruta(ana) -> None:
+    """La interfaz codifica la «/» (`encodeURIComponent`: «%2F») y el servidor la recibe
+    decodificada: sin `:path` ninguna de estas rutas casaba y respondían el 404 genérico de
+    FastAPI («Not Found»), no el de la regla. Con el código entero, cada una dice el suyo."""
+    navegador, cabeceras = ana
+    codigo = "OBRA-1%2F2"
+    partida = navegador.get(f"{RUTA}/cobro/{codigo}")
+    assert (partida.status_code, partida.json()) == (
+        404,
+        {"detalle": "No hay ninguna partida «OBRA-1/2» en el catálogo de esta carpeta de trabajo."},
+    )
+    insumo = navegador.get(f"{RUTA}/compra/MAT-1%2F2")
+    assert insumo.json() == {
+        "detalle": "No hay ningún insumo «MAT-1/2» en esta carpeta de trabajo."
+    }
+    afectados = navegador.get(f"{RUTA}/compra/MAT-1%2F2/afectados")
+    assert afectados.status_code == 404
+    assert "MAT-1/2" in afectados.json()["detalle"]
+    usar = navegador.post(
+        f"{RUTA}/cobro/{codigo}/usar",
+        json={"precio": "10,00", "observaciones": []},
+        headers=cabeceras,
+    )
+    assert "detail" not in usar.json(), usar.text
+    compra = navegador.post(
+        f"{RUTA}/compra/MAT-1%2F2/usar", json={"precio": "10,00"}, headers=cabeceras
+    )
+    assert "detail" not in compra.json(), compra.text
+    # la ruta de siempre sigue casando
+    assert navegador.get(f"{RUTA}/compra/MAT-001/afectados").json() == {
+        "apus": ["OBRA-02", "OBRA-04"]
+    }

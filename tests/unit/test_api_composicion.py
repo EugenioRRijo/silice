@@ -704,3 +704,30 @@ def test_los_parametros_no_cambian_el_contraste_ni_las_advertencias(api: TestCli
     assert sin["desglose"]["precio_unitario"] == "10.19"
     assert con["advertencias"] == sin["advertencias"]
     assert con["contraste"] == sin["contraste"]
+
+
+# --- un código con «/» (pasada en navegador de la ola 2, D6) -----------------------------------
+
+CON_BARRA = "VIA-CODO-1/2"
+
+
+def test_la_precarga_de_un_codigo_con_barra_no_es_404(api: TestClient) -> None:
+    """La interfaz codifica la «/» (`encodeURIComponent`: «%2F») y el servidor la recibe
+    decodificada; sin `:path` la ruta no casa y respondía 404, aunque su contrato es «nunca 404».
+    Guardado por la API, el código vuelve con su composición y su desperdicio."""
+    nuevo = api.get(f"/v1/composicion/partidas/{CON_BARRA.replace('/', '%2F')}")
+    assert nuevo.status_code == 200, nuevo.text
+    assert nuevo.json()["existe"] is False
+    respuesta = api.post(
+        "/v1/composicion/guardar",
+        json={
+            **_cuerpo_desp(LIGANTE, codigo=CON_BARRA),
+            "fecha": "2026-05-01",
+            "condiciones": "condiciones ficticias de la prueba del código con barra",
+        },
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    precarga = api.get(f"/v1/composicion/partidas/{CON_BARRA.replace('/', '%2F')}")
+    assert precarga.status_code == 200, precarga.text
+    assert precarga.json()["existe"] is True
+    assert precarga.json()["tablas"]["materiales"] == [LIGANTE]

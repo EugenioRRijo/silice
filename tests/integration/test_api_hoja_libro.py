@@ -26,6 +26,7 @@ from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import replace
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pdfplumber
@@ -40,10 +41,12 @@ from core.budget.moneda import declarar_moneda
 from core.budget.persistencia import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
 from core.contracts import Dominio
+from core.contracts.apu import ParametrosCosto
 from operacion import config
 from operacion.base_datos import preparar_base
 from tests.fixtures.carpeta_aprobaciones import OBRA, sembrar_vivienda
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
+from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.hoja_versiones_api import registrar_tasa_en
 from tests.fixtures.libro_apu_por_hoja import (
     APUS,
@@ -221,6 +224,40 @@ def test_otro_libro_con_un_apu_distinto_entra_como_variante(ana) -> None:
     ]
 
 
+def _codigos_del_libro(id_: str) -> dict[str, str | None]:
+    """Clave de cada renglón del borrador vivo → su directiva `_codigo_libro` (las vistas no
+    muestran las directivas; se lee el borrador como en `test_api_hoja_llevar.py`)."""
+    vivo = hoja_borradores.REGISTRO._vivos[id_]
+    clave = libro_a_la_hoja.CLAVE_CODIGO_LIBRO
+    return {
+        f"{i.codigo_partida}|{i.origen_id}": i.especificaciones.get(clave)
+        for i in vivo.borrador.items_base
+    }
+
+
+def test_el_renglon_llevado_guarda_el_codigo_del_libro(ana) -> None:
+    """La variante VF-001-B guarda el código que tiene en el libro (`_codigo_libro=VF-001`), cada
+    renglón el suyo aunque coincida, y llevar otra vez el mismo libro no lo cambia."""
+    _llevar(ana)
+    primero = replace(
+        APUS[0],
+        materiales=(Material(1, "Emulsión asfáltica ficticia", "lt", "0.50", "4", "2.50"),),
+    )
+    libro_b = libro_apu((primero, *APUS[1:]))
+    r = _llevar(ana, libro=libro_b)
+    assert r.status_code == 200, r.text
+    borrador_id = r.json()["borrador_id"]
+    codigos = _codigos_del_libro(borrador_id)
+    assert len(codigos) == 10
+    for clave, codigo_libro in codigos.items():
+        codigo_hoja = clave.split("|", 1)[0]
+        assert codigo_libro == codigo_hoja.removesuffix("-B"), clave
+    assert sum(1 for c in codigos if c.startswith("VF-001-B|")) == 2
+    r2 = _llevar(ana, libro=libro_b)
+    assert r2.status_code == 200, r2.text
+    assert _codigos_del_libro(borrador_id) == codigos
+
+
 def test_sin_presupuesto_la_cantidad_es_la_de_cada_apu_y_el_frente_el_dicho(ana) -> None:
     navegador, _ = ana
     r = _llevar(ana, presupuesto=False, frente="Frente único", hoja_presupuesto=[])
@@ -366,6 +403,28 @@ def test_apus_con_porcentajes_distintos_no_se_llevan_juntos(ana) -> None:
         "Las hojas del libro no usan los mismos porcentajes y la Hoja lleva uno solo por obra: "
         "APU 3 usa una utilidad del 12 % y las demás del 10 %."
     )
+
+
+def test_un_borrador_con_solo_renglones_del_espacio_y_otros_porcentajes_no_los_pierde(
+    ana,
+) -> None:
+    """Los renglones que salen del espacio de la obra (no de las hojas del libro) también son del
+    borrador: si este trae otros porcentajes, llevar el libro no se los cambia sin avisar."""
+    id_ = _llevar(ana).json()["borrador_id"]
+    vivo = hoja_borradores.REGISTRO._vivos[id_]
+    otros = ParametrosCosto(utilidad=Decimal("0.20"))
+    vivo.borrador = replace(
+        vivo.borrador, items_base=(), espacio=espacio_of001(), parametros=otros
+    )  # solo renglones del espacio, con una utilidad del 20 %
+    rev = vivo.rev
+    r = _llevar(ana)
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        "El borrador de la obra ya tiene renglones con otros porcentajes: lleve el libro a una "
+        "obra nueva o quite esos renglones."
+    )
+    assert vivo.borrador.parametros == otros and vivo.rev == rev
+    assert vivo.borrador.items_base == ()
 
 
 def test_quien_revisa_no_lleva_el_libro() -> None:
@@ -657,3 +716,80 @@ def test_el_pdf_rotula_el_grupo_de_los_renglones_sin_frente(ana) -> None:
     texto = _texto_del_pdf(navegador, id_)
     assert "Subtotal (sin frente) 1.246,66" in texto
     assert "Sin frente" not in texto
+
+
+# --- la traza del desperdicio viaja con el libro (pasada en navegador de la ola 2, D10) -------
+
+EMULSION = {"fila": 1, "texto": "0,5 + 4 %", "neta": "0,5", "porcentaje": "4"}
+
+
+def _guardados_de_desperdicio() -> int:
+    with closing(sqlite3.connect(config.carpeta_casos() / "via.db")) as conexion:
+        return conexion.execute("SELECT COUNT(*) FROM apu_desperdicio_guardado").fetchone()[0]
+
+
+def test_la_hoja_y_componer_ven_la_neta_y_el_porcentaje_del_libro(ana) -> None:
+    """La auditoría lee «0,5 + 4 %» en la emulsión del APU 1; antes, llevado el libro, la Hoja y
+    Componer mostraban 0,520 con el porcentaje vacío, y escribir el 4 % lo aplicaba dos veces
+    (0,5408). La traza entra con la composición, en la misma transacción, como en Componer."""
+    navegador, _ = ana
+    r = _llevar(ana)
+    assert r.status_code == 200, r.text
+    vista = navegador.get(
+        f"/v1/hoja/borradores/{r.json()['borrador_id']}/vistas/apu", params={"partida": "VF-001"}
+    )
+    assert vista.status_code == 200, vista.text
+    assert vista.json()["detalle"]["desperdicios"] == [EMULSION]
+    precarga = navegador.get("/v1/composicion/partidas/VF-001")
+    assert precarga.status_code == 200, precarga.text
+    emulsion = precarga.json()["tablas"]["materiales"][0]
+    assert (emulsion["cantidad"], emulsion["desperdicio"]) == ("0,5", "4")
+    # la arena de secado (0 %) no tiene traza: se ve su cantidad, sin porcentaje
+    assert "desperdicio" not in precarga.json()["tablas"]["materiales"][1]
+
+
+def test_llevar_otra_vez_no_escribe_otra_traza(ana) -> None:
+    assert _llevar(ana).status_code == 200
+    antes = _guardados_de_desperdicio()
+    assert antes == 1  # solo VF-001 tiene un material con desperdicio
+    assert _llevar(ana).status_code == 200
+    assert _guardados_de_desperdicio() == antes
+
+
+def test_la_variante_lleva_su_propia_traza(ana) -> None:
+    navegador, _ = ana
+    _llevar(ana)
+    primero = replace(
+        APUS[0],
+        materiales=(Material(1, "Emulsión asfáltica ficticia", "lt", "0.50", "5", "2.00"),),
+    )
+    r = _llevar(ana, libro=libro_apu((primero, *APUS[1:])))
+    assert r.status_code == 200, r.text
+    assert r.json()["partidas"][0]["codigo"] == "VF-001-B"
+    b = navegador.get("/v1/composicion/partidas/VF-001-B").json()["tablas"]["materiales"][0]
+    a = navegador.get("/v1/composicion/partidas/VF-001").json()["tablas"]["materiales"][0]
+    assert (b["cantidad"], b["desperdicio"]) == ("0,5", "5")
+    assert (a["cantidad"], a["desperdicio"]) == ("0,5", "4")
+
+
+def test_el_apu_del_pdf_lleva_la_neta_y_el_porcentaje_del_libro(ana) -> None:
+    """D3 con D10: el APU de VF-001 en el PDF dice la neta (0,5), el 4 % y la cantidad con
+    desperdicio (0,520), como la pestaña APU; antes solo decía 0,520."""
+    navegador, _ = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    r = navegador.get(f"/v1/hoja/borradores/{id_}/pdf", params={"partida": "VF-001"})
+    assert r.status_code == 200, r.text
+    with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+        texto = pdf.pages[0].extract_text() or ""
+    assert "Emulsión asfáltica ficticia l 0,5 4 0,520 2,00" in texto, texto
+
+
+def test_cada_renglon_del_presupuesto_dice_su_frente(ana) -> None:
+    """D5 de la pasada en navegador: «1. VF-001 · Riego…» y «6. VF-001 · Riego…» no se
+    distinguían en el selector de «Poner el frente»; la fila trae su frente para nombrarlo."""
+    navegador, _ = ana
+    filas = _filas(navegador, _llevar(ana).json()["borrador_id"])
+    assert [(f["partida"], f["frente"]) for f in filas if f["partida"] == "VF-001"] == [
+        ("VF-001", "FRENTE A"),
+        ("VF-001", "FRENTE B"),
+    ]

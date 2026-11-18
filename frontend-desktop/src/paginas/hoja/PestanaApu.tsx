@@ -2,6 +2,7 @@ import { RadioButton, RadioButtonGroup } from "@carbon/react";
 import { Search } from "../../comun/carbonEs";
 import { useCallback, useEffect, useState } from "react";
 import { AyudaDePestana } from "./AyudaDePestana";
+import { BotonPdfDelApu } from "./BotonPdf";
 import { EditorDelDetalle } from "./EditorDeApu";
 import { VistaCarga } from "./VistaCarga";
 import { rutaDeVista } from "./logica";
@@ -81,6 +82,10 @@ export function PestanaApu(props: Props) {
                   <RadioButton key={p.codigo} id={`apu-${p.codigo}`} value={p.codigo} labelText={`${p.codigo} · ${p.descripcion}`} />
                 ))}
               </RadioButtonGroup>
+              {/* El PDF de la partida elegida (`?partida=`). Va bajo la lista y no junto al editor: el editor pinta dos
+                  columnas de la rejilla (centro y cierre) y otra caja las juntaría. Descargar no escribe: lo ve también
+                  quien solo lee. */}
+              {vista.detalle !== null && <BotonPdfDelApu id={props.id} partida={vista.detalle.codigo} />}
             </div>
             {vista.detalle !== null && (
               <EditorDelDetalle key={vista.detalle.codigo} {...props} detalle={vista.detalle} alRelectura={alRelectura} />

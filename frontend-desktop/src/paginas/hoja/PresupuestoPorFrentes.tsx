@@ -40,6 +40,8 @@ interface FilaDelPresupuesto {
   partida?: string | null;
   descripcion?: string | null;
   quitable?: boolean | null;
+  // El frente del renglón, o null sin frente: el selector lo nombra (pasada en navegador de la ola 2, D5).
+  frente?: string | null;
 }
 
 interface Props {
@@ -63,6 +65,18 @@ const COLUMNAS: ColumnaDensa[] = [
   { clave: "total", titulo: "Subtotal", numerica: true, ordenable: false, presentar: formatoEsVe },
 ];
 
+// «1. VF-001 (FRENTE A) · Riego…»: dos renglones con el mismo código en dos frentes se distinguen (D5).
+const rotuloDelRenglon = (f: FilaDelPresupuesto, i: number) =>
+  `${i + 1}. ${f.partida ?? ""}${f.frente ? ` (${f.frente})` : ""} · ${f.descripcion ?? ""}`;
+
+// D4: «póngalo abajo» solo si abajo hay con qué ponerlo. Un renglón que sale del espacio de la obra no cambia de frente
+// aquí (`aplicacion/frentes.py`, `poner_frentes`), y quien solo lee no cambia ninguno.
+function sinFrentes(editable: boolean, propias: number): string {
+  if (!editable) return "Ningún renglón tiene frente.";
+  if (propias > 0) return "Ningún renglón tiene frente: póngalo abajo, o lleve a la Hoja un libro con una hoja de presupuesto por frente.";
+  return "Ningún renglón tiene frente. Los renglones que salen del espacio de la obra no llevan frente a mano: para agruparlos, lleve a la Hoja un libro con una hoja de presupuesto por frente.";
+}
+
 const renglones = (f: Frente) =>
   f.pendientes > 0 ? `${f.renglones} (${f.pendientes} ${f.pendientes === 1 ? "pendiente" : "pendientes"})` : String(f.renglones);
 
@@ -75,7 +89,9 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
   const propias = filas.filter((f) => f.quitable && f.clave);
   const [renglon, setRenglon] = useState("");
   const [frente, setFrente] = useState("");
-  const elegido = renglon || propias[0]?.clave || "";
+  // El elegido solo vale mientras siga entre los renglones propios: si la Hoja lo quitó, el selector muestra el primero
+  // y eso es lo que se manda (con la clave vieja el servidor contestaría un 422 que nadie entendería).
+  const elegido = propias.some((f) => f.clave === renglon) ? renglon : (propias[0]?.clave ?? "");
 
   // El `rev` para el que se pidió (o llegó) la vista que se muestra; `null` mientras el panel no se abrió.
   const pedidaPara = useRef<number | null>(null);
@@ -164,11 +180,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
       <AvisoError error={error} titulo="No se pudo leer o cambiar el presupuesto por frente" />
       {vista && (
         <>
-          {!vista.con_frentes && (
-            <p className="cds--type-body-compact-01">
-              Ningún renglón tiene frente: póngalo abajo, o lleve a la Hoja un libro con una hoja de presupuesto por frente.
-            </p>
-          )}
+          {!vista.con_frentes && <p className="cds--type-body-compact-01">{sinFrentes(puedeEditar, propias.length)}</p>}
           <TablaDensa
             etiqueta="Presupuesto por frente"
             columnas={COLUMNAS}
@@ -186,7 +198,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
         <div className="silice-hoja__frentes-edicion">
           <Select id="hoja-frente-renglon" labelText="Renglón" value={elegido} onChange={(e) => setRenglon(e.target.value)} disabled={ocupado}>
             {propias.map((f, i) => (
-              <SelectItem key={f.clave!} value={f.clave!} text={`${i + 1}. ${f.partida ?? ""} · ${f.descripcion ?? ""}`} />
+              <SelectItem key={f.clave!} value={f.clave!} text={rotuloDelRenglon(f, i)} />
             ))}
           </Select>
           <CampoTexto

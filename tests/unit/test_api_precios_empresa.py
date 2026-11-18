@@ -864,9 +864,39 @@ def test_con_el_alta_confirmada_el_insumo_nuevo_entra_a_la_lista(_entorno) -> No
     assert cuerpo["dados_de_alta"] == ["INSUMO INEXISTENTE DEMO"]
     # el numero de la lista, para usarla como lista para armar (POST /v1/carpeta/lista-para-armar)
     assert {"id": cuerpo["id"], "nombre": cuerpo["nombre"]} in navegador.get(URL).json()["listas"]
-    assert cuerpo["desconocidos"] == ["ARENA LAVADA"]
+    # ARENA LAVADA está en el catálogo con otra unidad: va en `otra_unidad`, no entre los
+    # desconocidos («no están en el catálogo»), que se contradecían (pasada en navegador, D9a)
+    assert cuerpo["desconocidos"] == []
     assert cuerpo["otra_unidad"] == [OTRA_UNIDAD_ARENA]
     assert cuerpo["mensaje"] == (
         f"Lista «{cuerpo['nombre']}» creada con 2 precios propios; se dio de alta 1 insumo nuevo "
         "en el catálogo."
     )
+
+
+# --- la lista para armar solo se ofrece en la moneda de la carpeta (pasada en navegador, D9b) ---
+
+
+def test_una_lista_en_otra_moneda_que_la_carpeta_lo_dice_al_crearla(_entorno) -> None:
+    """Antes se ofrecía «Usarla como lista para armar» y solo al pulsarlo llegaba el 409 «cree la
+    lista de la empresa en USD». La respuesta dice la moneda de la lista y, si la carpeta trabaja
+    en otra, por qué no puede ser su lista para armar (la interfaz lo muestra en vez del botón)."""
+    _, _, cuerpo = _con_empresa_creada()  # en Bs, sobre la referencia MaPreX
+    assert cuerpo["moneda"] == "Bs"
+    assert cuerpo["aviso_para_armar"] == (
+        "Esta carpeta trabaja en USD: una lista en Bs no puede ser su lista para armar. "
+        "Cree la lista de la empresa en USD."
+    )
+
+
+def test_una_lista_en_la_moneda_de_la_carpeta_no_trae_aviso(
+    _entorno, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Si la carpeta trabaja en Bs, la lista de la empresa en Bs puede ser su lista para armar: la
+    respuesta no trae aviso. (La carpeta de la prueba trabaja en USD, por su lista vigente; aquí se
+    fija en Bs la lectura de la ruta, la misma regla que usa `crear_lista_para_armar`.)"""
+    from api.rutas import precios_empresa as ruta
+
+    monkeypatch.setattr(ruta, "moneda_de_la_carpeta", lambda _sesion: "Bs")
+    _, _, cuerpo = _con_empresa_creada()
+    assert (cuerpo["moneda"], cuerpo["aviso_para_armar"]) == ("Bs", None)

@@ -938,3 +938,26 @@ def test_procesar_libro_rechaza_un_pdf_cifrado():
             pdf=paginas_en_blanco(1, encrypt="clave-ficticia"),
             fecha_devolucion=FECHA,
         )
+
+
+# --- Cifras del informe con muchos dígitos (depuración del lector, 2026-11-15) -------------------
+
+
+@pytest.mark.parametrize(
+    ("valor", "signo", "esperado"),
+    [
+        (Decimal(10**28), False, "10.000.000.000.000.000.000.000.000.000"),
+        (Decimal("1E+30"), False, "1.000.000.000.000.000.000.000.000.000.000"),
+        # Dos cifras de 15 dígitos: el producto tiene 30 y `quantize` pedía más de 28 de precisión.
+        (
+            Decimal(999999999999999) * Decimal(999999999999999),
+            True,
+            "+999.999.999.999.998.000.000.000.000.000",
+        ),
+        (Decimal("1446"), True, "+1.446"),
+        (Decimal("1446.65"), False, "1.446,65"),
+        (Decimal("12.000"), False, "12"),
+    ],
+)
+def test_fmt_de_un_entero_de_29_digitos_o_mas_no_lanza(valor, signo, esperado):
+    assert modulo_pdf._fmt(valor, signo) == esperado

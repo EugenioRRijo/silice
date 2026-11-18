@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { configure, render, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as sass from "sass";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -567,6 +567,40 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await waitFor(() => expect(screen.getAllByRole("textbox", { name: /^Cantidad, Presupuesto fila/ })).toHaveLength(3));
     expect(screen.getByRole("textbox", { name: "Cantidad, Presupuesto fila 1" })).toHaveValue("2.5");
     expect(screen.getByText(/presupuesto, fila 1 \(AF-LLAVE\): Use la coma/)).toBeInTheDocument();
+  });
+
+  test("«Quitar» dentro de la pausa manda primero lo escrito; si el servidor lo rechaza (422), no quita y el aviso y lo escrito quedan", async () => {
+    conVersion([LLAVE_DEL_ESPACIO, PARED]);
+    alPonerCantidades = () => json({ detalle: CIFRA_EN_LA_FILA_1 }, 422);
+    montar();
+    const fila1 = () => screen.getByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
+    await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
+    // Con el reloj falso la pausa de 400 ms no se cumple sola: lo escrito sale porque «Quitar» lo saca.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.change(fila1(), { target: { value: "abc" } });
+      fireEvent.click(screen.getByRole("button", { name: "Quitar OBRA-04, Presupuesto fila 2" }));
+      let confirmacion: HTMLElement | null = null;
+      for (let i = 0; i < 300 && confirmacion === null; i++) {
+        await act(async () => {
+          await new Promise<void>((resolver) => setImmediate(resolver));
+        });
+        confirmacion = screen.queryByRole("alertdialog", { name: "Quitar partida" });
+      }
+      fireEvent.click(within(confirmacion!).getByRole("button", { name: "Quitar" }));
+    } finally {
+      vi.useRealTimers();
+    }
+    await waitFor(() =>
+      expect(escrituras(RUTA_CANTIDADES, "PUT")).toEqual([{ rev: 0, filas: [{ clave: LLAVE_DEL_ESPACIO.clave, cantidad: "abc" }] }]),
+    );
+    await new Promise((r) => setTimeout(r, 300)); // tiempo de sobra para que saliera el quitar, si saliera
+    // Lo escrito fue rechazado: el quitar no sale, la fila sigue y lo rechazado queda escrito, marcado y con su aviso.
+    expect(escrituras(RUTA_QUITAR)).toEqual([]);
+    expect(screen.getByText("Pared de bloques de arcilla de 15 cm")).toBeInTheDocument();
+    expect(screen.getByText(/presupuesto, fila 1 \(AF-LLAVE\): Use la coma/)).toBeInTheDocument();
+    expect(fila1()).toHaveValue("abc");
+    expect(fila1()).toHaveAttribute("aria-invalid", "true");
   });
 
   // Quita la fila 2 con la respuesta retenida, escribe 4 en la fila 1 mientras va, deja pasar la pausa y suelta `respuesta`.

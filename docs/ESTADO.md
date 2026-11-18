@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-14 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-17 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -29,7 +29,8 @@ instalador con huella SHA-256 firmada.
 
 | PR o rama | Qué trae | Estado |
 |---|---|---|
-| `feature/ola2` | Ola 2 (2026-11-13/14): re-congelado de la Hoja, plan por períodos y Control; pendientes del front y parámetros en Componer; libro por frentes (llevar el libro auditado a la Hoja, presupuesto por frente); PDF del presupuesto e índices del BCV en USD (§3) | Árbitro xhigh: devuelta en la ronda 1 (2 MAYOR), aprobada con cambios en las rondas 2 y 3, todo corregido; PR a `main` |
+| `feature/depuracion-unida` | La depuración del código espagueti (2026-11-15/17): las 13 ramas `feature/depurar-*` unidas sobre `feature/mejoras-ola2` (32 commits que aún no están en `main`: la PR los lleva), más las correcciones del arbitraje (H3, DS-2, DS-3) | Suite completa en verde; segunda opinión de Hydrogen verificada y [arbitraje xhigh](bitacora/arbitrajes/depuracion-unida-claude-xhigh.md) aprobado con una corrección, ya hecha; PR a `main` sin fusionar |
+| #110 `docs/sincronizar-agentes` | Fichas de agentes y skills al día, manual de orquestación nuevo (`docs/manual_orquestacion.md`), auditoría de la interfaz con unslop y plan de desenredo (`docs/planes/2026-11-17-plan-desenredo.md`, 24 tareas en 5 olas); los documentos llegan con esa PR | Solo documentación; sin fusionar |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -102,7 +103,7 @@ subir nada.
 ## 4. Lo que espera a Eugenio
 
 1. **Hecho el 2026-11-13:** #105, #106 y #108 (con #107) fusionados por Claude, con la CI en verde y la autorización
-   de Eugenio. Falta el PR de `feature/ola2`. Diez ramas remotas viejas ya contenidas en `main` siguen en GitHub: el
+   de Eugenio; `feature/ola2` entró como #109. Diez ramas remotas viejas ya contenidas en `main` siguen en GitHub: el
    control de permisos no dejó borrarlas (lista en el informe del 2026-11-14).
 2. Probar la tanda de detalles en el navegador, en especial la columna «Estado» del Presupuesto a 1366 px (D13) y la
    tabla apilada de la Vista general (D14), que jsdom no mide.
@@ -152,6 +153,11 @@ subir nada.
      del servidor; D2, AH11 avisa cuando casan menos de la mitad de dos o más renglones enlazados (ADVERTENCIA); D3, el
      «Motivo» de Versiones dice el tipo y la fuente; D4, la lista de sugerencias se abre arriba si abajo no cabe.
    - **Con el tutor**: los expedientes de `core/` que dejó la prueba (§5, punto 6).
+12. Depuración unida (2026-11-17; Eugenio ausente, cola activa): cinco decisiones **simuladas** y elegidas, todas
+   reversibles ([acta](bitacora/2026-11-17-decisiones-simuladas.md)). DS-3 cambia una conducta: si alguien edita en
+   Componer **solo el reparto del desperdicio** y la cantidad queda igual, la edición se rechaza con un mensaje que lo
+   explica, en vez de perderse sin aviso al cerrar. Guardar ese reparto sin crear versión queda como mejora en el
+   plan de desenredo. Faltan revisar y fusionar los PR de `feature/depuracion-unida` y `docs/sincronizar-agentes`.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 

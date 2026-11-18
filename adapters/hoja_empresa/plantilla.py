@@ -21,6 +21,7 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
+from adapters.hoja_empresa.guardia import MAX_FILAS_HOJA
 from adapters.hoja_empresa.modelo import ApuLeido, LibroLeido, LineaApu, Rotulo, TipoInsumo
 from adapters.hoja_empresa.perfil import Perfil
 from core.contracts.apu import ModalidadManoObra
@@ -190,7 +191,10 @@ def factor_linea(linea: LineaApu, libro: LibroLeido, perfil: Perfil) -> Decimal:
 def filas_base_mo(apu: ApuLeido, libro: LibroLeido) -> frozenset[int] | None:
     """Las filas que suma la fórmula del subtotal de salarios base (`=SUM(G19:G21)`,
     `=SUM(G17:G18)`, `=G19+G20`), o `None` si no hay fórmula o no es una suma de celdas de su
-    columna."""
+    columna.
+
+    Un rango se recorta a `MAX_FILAS_HOJA`: el lector rechaza la hoja con algo escrito más allá, así
+    que esas filas están vacías, y `=SUM(G1:G10000000)` ya no cuesta segundos y gigas."""
     celda = apu.rotulos.get(Rotulo.BASE_MO)
     formula = libro.formulas.get(str(celda)) if celda is not None else None
     if not formula or celda is None:
@@ -199,7 +203,7 @@ def filas_base_mo(apu: ApuLeido, libro: LibroLeido) -> frozenset[int] | None:
     texto = formula.replace("$", "").upper()
     filas: set[int] = set()
     for desde, hasta in re.findall(rf"{columna}(\d+):{columna}(\d+)", texto):
-        filas.update(range(int(desde), int(hasta) + 1))
+        filas.update(range(int(desde), min(int(hasta), MAX_FILAS_HOJA) + 1))
     sin_rangos = re.sub(rf"{columna}\d+:{columna}\d+", "", texto)
     filas.update(int(f) for f in re.findall(rf"(?<![A-Z]){columna}(\d+)", sin_rangos))
     return frozenset(filas) or None

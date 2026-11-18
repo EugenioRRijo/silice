@@ -135,7 +135,8 @@ DECLARAR_LA_LINEA_BASE = Siguiente("Declarar la línea base", "control")
 @dataclass(frozen=True)
 class ObraEnMesa:
     """Una obra de la carpeta en la mesa. `version` y `total` son los de la versión de la línea
-    base o, sin ella, los de la vigente. `corte`, `ev`, `pv`, `bac` y `spi` son los del control al
+    base o, sin ella, los de la vigente; `total` es `None` si esa versión no está en la `moneda` de
+    la obra (convertida después). `corte`, `ev`, `pv`, `bac` y `spi` son los del control al
     último corte (`None` si no se calculó); `retraso_dias`, los días hábiles que el término
     reproyectado pasa del plan (`None` si no pasa). `version_de_linea_base` dice cuál de las dos es
     `version`: `True` la de la línea base, `False` la vigente."""
@@ -363,15 +364,22 @@ def obras_de_la_mesa(sesion: Session, catalogo: Catalogo, hoy: date) -> list[Obr
                 estado = _EN_BLANCO
         else:
             estado = _en_curso(sesion, catalogo, fila.nombre, hoy)
+        moneda = moneda_del_proyecto(sesion, proyecto)
         obras.append(
             ObraEnMesa(
                 codigo=str(fila.id),
                 nombre=fila.nombre,
                 cliente=de_cada_obra.get(fila.id, SIN_FICHA).cliente,
-                moneda=moneda_del_proyecto(sesion, proyecto),
+                moneda=moneda,
                 etapa=estado.etapa,
                 version=None if version is None else version.codigo,
-                total=None if version is None else _total(sesion, version.id),
+                # el total va con la moneda de la obra: si la versión quedó en la otra (la obra se
+                # convirtió después de declarar la línea base), no se muestra ni se suma
+                total=(
+                    None
+                    if version is None or version.moneda != moneda
+                    else _total(sesion, version.id)
+                ),
                 corte=estado.corte,
                 ev=estado.ev,
                 pv=estado.pv,

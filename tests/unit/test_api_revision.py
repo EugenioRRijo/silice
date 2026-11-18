@@ -531,6 +531,24 @@ def test_un_paquete_alterado_no_admite_dictamen_y_no_es_un_500() -> None:
     assert _filas("paq_dictamen") == []
 
 
+def test_una_cadena_con_eslabones_que_no_son_objetos_es_alterado_y_no_un_500() -> None:
+    """Un eslabón que no es objeto (`"x"`, `5`, `null`) no deja la cadena en el veredicto: el
+    paquete es «alterado» sin cadena que leer, como un código que no es texto. Antes
+    `_cadena_legible` se saltaba esos eslabones y `declaracion_retroactiva` hacía `.get` sobre
+    un texto: `AttributeError`, 500 (hallazgo H3 de la segunda opinión del 2026-11-17)."""
+    from tests.fixtures.paquetes import canonico, con_archivo_rehecho
+
+    navegador, ficha = _rita()
+    cadena = {"formato": "silice-cadena", "eslabones": ["x"], "cambios": {}}
+    datos = con_archivo_rehecho(
+        paquete(par=None, presupuesto=_documento(), anexos={}), "cadena.json", canonico(cadena)
+    )
+    r = _subir(navegador, ficha, datos)
+    assert r.status_code == 200, r.text
+    assert (r.json()["estado"], r.json()["retroactiva"]) == ("alterado", None)
+    assert _filas("paq_recibido") == []
+
+
 def test_el_mismo_archivo_dos_veces_a_la_vez_no_es_un_500(monkeypatch) -> None:
     """Carrera: la otra petición registró el archivo entre la búsqueda por huella y la inserción.
     Se simula haciendo que la búsqueda no lo vea una vez: la recepción relee lo ya registrado."""

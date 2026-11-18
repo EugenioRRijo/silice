@@ -657,6 +657,25 @@ def test_revisar_dos_veces_y_quien_revisa_consta() -> None:
     assert navegador.post(url, headers=cab).status_code == 404
 
 
+def test_revisar_un_archivo_de_eventos_corrupto_da_409_y_no_lo_desbloquea() -> None:
+    """Verificacion 3b (F7; SEG-12): marcar revisado un archivo ilegible lo sobrescribia y
+    desbloqueaba lo sensible sin que nadie viera las diferencias. Ahora es un 409 y no se toca."""
+    archivo = config.carpeta_datos() / "eventos_perdidos_roto.json"
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text("{no es json", encoding="utf-8")
+    navegador, cab = _admin()
+    r = navegador.post(f"/v1/admin/instalacion/eventos/{archivo.name}/revisar", headers=cab)
+    assert (r.status_code, r.json()) == (
+        409,
+        {
+            "detalle": "El archivo de eventos perdidos no se puede leer, así que no se marcó "
+            "como revisado. Restáurelo de un respaldo o pida ayuda."
+        },
+    )
+    assert archivo.read_text(encoding="utf-8") == "{no es json"
+    assert navegador.get("/v1/admin/instalacion").json()["sensible"]["permitida"] is False
+
+
 def test_un_archivo_de_eventos_corrupto_no_tumba_la_pantalla() -> None:
     archivo = config.carpeta_datos() / "eventos_perdidos_roto.json"
     archivo.parent.mkdir(parents=True, exist_ok=True)
@@ -665,3 +684,57 @@ def test_un_archivo_de_eventos_corrupto_no_tumba_la_pantalla() -> None:
     r = navegador.get("/v1/admin/instalacion")
     assert r.status_code == 200
     assert r.json()["pendientes"] == [{"nombre": archivo.name, "diferencias": [], "eventos": 0}]
+
+
+# --- no-store también en los rechazos (401, 403, 422) ------------------------------------------
+
+ADMIN_GET = [
+    "/v1/admin/empresa",
+    "/v1/admin/claves-api",
+    "/v1/admin/instalacion",
+    "/v1/admin/asistente",
+    "/v1/admin/empresas-registradas",
+]
+
+
+@pytest.mark.parametrize("ruta", ADMIN_GET)
+def test_los_rechazos_de_administracion_tampoco_se_guardan(ruta: str) -> None:
+    """La dependencia `sin_cache` pone la cabecera en la respuesta de éxito, pero un 401 o un 403
+    lo arma el manejador de `HTTPException` con una respuesta nueva: sin `RutaSinCache` el rechazo
+    salía sin `no-store`."""
+    sin_sesion = cliente(app).get(ruta)
+    arma, _ = con_cuenta(app, "ana")
+    con_clave = cliente(app)
+    con_clave.headers[CABECERA] = crear_clave_de_prueba()
+    respuestas = [sin_sesion, arma.get(ruta), con_clave.get(ruta)]
+    assert [r.status_code for r in respuestas] == [401, 403, 403]
+    assert all(r.headers.get("cache-control") == "no-store" for r in respuestas)
+
+
+def test_el_422_de_administracion_no_se_guarda() -> None:
+    navegador, cab = _admin()
+    respuesta = navegador.post("/v1/admin/empresa", json={"nombre": 1}, headers=cab)
+    assert respuesta.status_code == 422
+    assert respuesta.headers.get("cache-control") == "no-store"
+
+
+@pytest.mark.parametrize(
+    ("metodo", "ruta"),
+    [
+        ("POST", "/v1/revision/paquete"),
+        ("POST", "/v1/revision/contra-lista"),
+        ("GET", "/v1/entregas/versiones"),
+        ("POST", "/v1/entregas"),
+    ],
+)
+def test_los_rechazos_de_revision_y_entregas_no_se_guardan(metodo: str, ruta: str) -> None:
+    """Lo recibido y su análisis (revisión) y un paquete (entregas) no se guardan en el navegador:
+    tampoco el 401 sin clave ni el 422 de un cuerpo que falta."""
+    sin_clave = cliente(app).request(metodo, ruta)
+    con_clave = cliente(app)
+    con_clave.headers[CABECERA] = crear_clave_de_prueba()
+    respuestas = [sin_clave]
+    if metodo == "POST":
+        respuestas.append(con_clave.request(metodo, ruta))
+    assert [r.status_code for r in respuestas] == [401, 422][: len(respuestas)]
+    assert all(r.headers.get("cache-control") == "no-store" for r in respuestas)

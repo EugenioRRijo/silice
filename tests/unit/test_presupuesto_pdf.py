@@ -24,6 +24,7 @@ import pdfplumber
 import pytest
 
 from aplicacion import hoja
+from aplicacion.desperdicio import TrazaDesperdicio
 from aplicacion.hoja_borradores import Registro
 from aplicacion.presupuesto_pdf import (
     ApuDelPdf,
@@ -140,7 +141,8 @@ def test_el_pdf_trae_el_encabezado_las_partidas_y_los_totales_con_coma_decimal_y
         "La alícuota del IVA: a cotejar con la Gaceta vigente.",
     ):
         assert esperado in todo, esperado
-    assert "Precio unitario (USD)" in paginas[0] and "Total (USD)" in paginas[0]
+    # el encabezado se parte en líneas en su columna (D3): «Precio unitario» y «(USD)»
+    assert "Precio unitario" in paginas[0] and "Total (USD)" in paginas[0]
 
 
 def test_el_apu_va_en_su_pagina_con_sus_grupos_y_el_texto_del_usuario_no_es_marcado():
@@ -166,7 +168,7 @@ def test_con_150_partidas_el_encabezado_de_la_tabla_se_repite_y_cada_pagina_se_n
         assert f"Página {n} de {len(paginas)}" in pagina
         assert "Obra ficticia «El Ñandú»" in pagina  # el pie dice de qué obra es la hoja suelta
     for pagina in paginas[:-1]:
-        assert "Descripción" in pagina and "Precio unitario (USD)" in pagina
+        assert "Descripción" in pagina and "Precio unitario" in pagina and "Total (USD)" in pagina
     todo = "\n".join(paginas)
     assert all(f"FIC-{n:03d}" in todo for n in range(1, 151))
 
@@ -349,3 +351,89 @@ def test_las_cifras_del_apu_se_leen_con_coma_decimal_y_punto_de_miles(_of001):
     filas = documento.apus[0].tablas[0].filas
     assert filas[0][2:] == ("1.000", "1.000,00")
     assert filas[1][2:] == ("2", "10,50")
+
+
+# --- maquetación y desperdicio (pasada en navegador de la ola 2, D3) ---------------------------
+
+LLAVE = "Llave de paso de bola PVC 1/2 pulg [PLOG26]"
+TRAZA_LLAVE = TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000"))
+
+
+def _lineas(contenido: bytes) -> list[str]:
+    return [linea for pagina in _texto(contenido) for linea in pagina.splitlines()]
+
+
+def test_un_codigo_una_unidad_y_un_porcentaje_no_se_parten_a_media_palabra():
+    """En la pasada se leía «unida/d», «AF-PICADO-P/ARED», «DT-FACEPLAT/E» y «0 /%»: el código
+    entra en su columna (o se parte en un guion), la unidad «unidad» entra entera y el número no
+    se separa de su «%»."""
+    renglones = tuple(
+        replace(
+            _renglon(n),
+            partida=codigo,
+            unidad="unidad",
+            descripcion='Codo de agua fría 1/2" (desperdicio 0 %: supuesto declarado)',
+        )
+        for n, codigo in enumerate(
+            ("AF-PICADO-PARED", "DT-FACEPLATE", "DR-TUB-PVC-1-1/2", "DT-CAN-EMT-3/4"), start=1
+        )
+    )
+    documento = replace(_documento(), grupos=(Grupo("", renglones, None),), apus=())
+    lineas = _lineas(pdf_en_bytes(documento))
+    todo = "\n".join(lineas)
+    for codigo in ("AF-PICADO-PARED", "DT-FACEPLATE", "DR-TUB-PVC-1-1/2", "DT-CAN-EMT-3/4"):
+        assert codigo in todo, codigo
+    assert not any(linea.split()[-1:] == ["unida"] for linea in lineas), todo
+    assert not any(linea.lstrip().startswith("%") for linea in lineas), todo
+    assert todo.count("0 %") == 4
+
+
+def test_las_unidades_se_escriben_como_en_la_interfaz():
+    """La interfaz escribe «m²», «m³» y «día» (`comun/unidades.ts`); el PDF decía «m2» y «m3»."""
+    renglones = (
+        replace(_renglon(1), unidad="m2"),
+        replace(_renglon(2), unidad="m3"),
+        replace(_renglon(3), unidad="dia"),
+    )
+    base = _documento()
+    (apu,) = base.apus
+    materiales = replace(apu.tablas[0], filas=(("Arena ficticia", "m3", "0,5", "10,00"),))
+    documento = replace(
+        base,
+        grupos=(Grupo("", renglones, None),),
+        apus=(replace(apu, unidad="m2", tablas=(materiales, *apu.tablas[1:])),),
+    )
+    lineas = _lineas(pdf_en_bytes(documento))
+    todo = "\n".join(lineas)
+    assert "m2" not in todo.replace("cm²", "") and "m3" not in todo, todo
+    assert "Rendimiento: 12,5 m² por día" in todo
+    assert sum(1 for linea in lineas if " m³ " in f" {linea} ") >= 2  # el renglón y el material
+    assert any(" día " in f" {linea} " for linea in lineas)
+
+
+def test_el_apu_con_traza_lleva_la_neta_el_porcentaje_y_la_cantidad_con_desperdicio(_of001):
+    """Como la pestaña APU: «Cantidad» es la neta, «Desperdicio (%)» el porcentaje y «Cantidad con
+    desperdicio» la que multiplica el precio; una línea sin traza deja esas dos vacías."""
+    documento = documento_de_la_hoja(
+        _vivo(_of001),
+        HOY,
+        partida="AF-LLAVE",
+        trazas=lambda codigo: [TRAZA_LLAVE] if codigo == "AF-LLAVE" else [],
+    )
+    (materiales, *_) = documento.apus[0].tablas
+    assert materiales.columnas == (
+        "Descripción",
+        "Unidad",
+        "Cantidad",
+        "Desperdicio (%)",
+        "Cantidad con desperdicio",
+        "Precio",
+    )
+    assert materiales.filas[0][:5] == (LLAVE, "pieza", "0,8", "25", "1")
+    todo = "\n".join(_texto(pdf_en_bytes(documento)))
+    # los encabezados se parten en su columna: «Desperdicio» / «(%)», «Cantidad» / «con» / ...
+    assert "Desperdicio" in todo and "(%)" in todo
+    assert "pieza 0,8 25 1 7,75" in todo
+    # sin traza, las columnas de siempre
+    sin = documento_de_la_hoja(_vivo(_of001), HOY, partida="AF-LLAVE")
+    assert sin.apus[0].tablas[0].columnas == ("Descripción", "Unidad", "Cantidad", "Precio")

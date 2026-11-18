@@ -17,6 +17,14 @@ ola 2, hallazgo 8): un grupo por frente, como `vistas/frentes` (`aplicacion.fren
 único si ningún renglón tiene frente; es el de la ruta por omisión. El agrupador se llama bajo el
 cerrojo del borrador, con las cifras del mismo `rev`.
 
+**La maquetación** (pasada en navegador de la ola 2, D3; simulación en la bitácora
+`2026-11-14-ola2-navegador.md`): un código se parte solo en un guion y la columna lo cabe entero
+en los casos de prueba; la unidad «unidad» entra en la suya; un número no se separa de su «%»
+(espacio duro); los encabezados se parten en líneas en vez de pisar la columna vecina; y las
+unidades se escriben como en la interfaz («m²», «m³», «día»; `comun/unidades.ts`). Con la traza
+del desperdicio (`trazas`, las vigentes de la base que pasa la ruta), el APU lleva, como la
+pestaña APU, la neta en «Cantidad», el «Desperdicio (%)» y la «Cantidad con desperdicio».
+
 No escribe nada: ni la base, ni el borrador (`rev` no cambia). Sin FastAPI (RM-1).
 """
 
@@ -60,6 +68,15 @@ _LARGO_MAXIMO = 100
 _PROHIBIDOS = re.compile(
     "[" + chr(0) + "-" + chr(8) + chr(11) + "-" + chr(31) + chr(0xD800) + "-" + chr(0xDFFF) + "]"
 )
+#: Cómo escribe la interfaz las unidades canónicas del servidor (`frontend-desktop/src/comun/
+#: unidades.ts`): solo se presentan así; el valor no cambia.
+_UNIDADES = {"m2": "m²", "m3": "m³", "dia": "día"}
+#: Un número seguido de « %»: el espacio pasa a ser duro (U+00A0, que reportlab no parte).
+_NUMERO_Y_PORCIENTO = re.compile(r"(\d) %")
+_ESPACIO_DURO = "\\1\u00a0%"
+#: Las columnas del APU con la traza del desperdicio, tras «Cantidad» (como la pestaña APU).
+DESPERDICIO = "Desperdicio (%)"
+CON_DESPERDICIO = "Cantidad con desperdicio"
 
 
 class PartidaSinApu(LookupError):  # noqa: N818 (como TasaNoDisponible del núcleo)
@@ -172,6 +189,11 @@ def _porcentaje(fraccion: Decimal) -> str:
     return texto_de_cifra((fraccion * 100).normalize())
 
 
+def unidad_escrita(unidad: str) -> str:
+    """«m2» → «m²», «m3» → «m³», «dia» → «día»; las demás, tal cual (como la interfaz)."""
+    return _UNIDADES.get(unidad, unidad)
+
+
 def _celda(clave: str, texto: str) -> str:
     """Una celda del APU: las cifras exactas tal cual; los montos a dos decimales. Las celdas ya
     vienen en es-VE (`composicion.filas_desde_composicion`): se leen con `cifra_escrita`, no con
@@ -264,6 +286,33 @@ def _parametros(vivo: BorradorVivo) -> str:
     )
 
 
+def _tabla(
+    grupo: hoja_vista.GrupoDeApu, desperdicios: Sequence[hoja_vista.DesperdicioDeLinea]
+) -> TablaDeApu:
+    """Un rubro del APU. En Materiales con alguna traza, como la pestaña APU: «Cantidad» es la
+    neta de la línea con traza, y tras ella van «Desperdicio (%)» y «Cantidad con desperdicio» (la
+    que multiplica el precio); una línea sin traza deja esas dos vacías."""
+    claves = [c.clave for c in grupo.columnas]
+    columnas = [c.rotulo for c in grupo.columnas]
+    filas = [[_celda(c, fila.get(c, "")) for c in claves] for fila in grupo.filas]
+    if grupo.clave == "materiales" and desperdicios and "cantidad" in claves:
+        donde = claves.index("cantidad")
+        columnas[donde + 1 : donde + 1] = [DESPERDICIO, CON_DESPERDICIO]
+        por_fila = {d.fila: d for d in desperdicios}
+        for numero, fila in enumerate(filas, start=1):
+            traza = por_fila.get(numero)
+            if traza is None:
+                fila[donde + 1 : donde + 1] = ["", ""]
+            else:
+                fila[donde : donde + 1] = [traza.neta, traza.porcentaje, fila[donde]]
+    return TablaDeApu(
+        grupo.rotulo,
+        tuple(columnas),
+        tuple(tuple(fila) for fila in filas),
+        _de_monto(grupo.subtotal),
+    )
+
+
 def _apu(detalle: hoja_vista.DetalleDeApu, parametros: str) -> ApuDelPdf:
     return ApuDelPdf(
         codigo=detalle.codigo,
@@ -271,18 +320,7 @@ def _apu(detalle: hoja_vista.DetalleDeApu, parametros: str) -> ApuDelPdf:
         unidad=detalle.unidad,
         rendimiento=detalle.rendimiento,
         parametros=parametros,
-        tablas=tuple(
-            TablaDeApu(
-                grupo.rotulo,
-                tuple(c.rotulo for c in grupo.columnas),
-                tuple(
-                    tuple(_celda(c.clave, fila.get(c.clave, "")) for c in grupo.columnas)
-                    for fila in grupo.filas
-                ),
-                _de_monto(grupo.subtotal),
-            )
-            for grupo in detalle.grupos
-        ),
+        tablas=tuple(_tabla(grupo, detalle.desperdicios) for grupo in detalle.grupos),
         cierre=tuple(LineaDeCierre(f.concepto, _de_monto(f.monto)) for f in detalle.cierre),
     )
 
@@ -293,10 +331,13 @@ def documento_de_la_hoja(
     *,
     partida: str | None = None,
     agrupar: Agrupador = sin_agrupar,
+    trazas: hoja_vista.TrazasDePartida | None = None,
 ) -> DocumentoPdf:
     """El documento del borrador vivo: el presupuesto y un APU por partida valorada; con
     `partida`, solo su APU (`PartidaSinApu` si no tiene uno valorado). Todo bajo el cerrojo del
-    borrador: las cifras son las de un mismo `rev`."""
+    borrador: las cifras son las de un mismo `rev`. `trazas` da las trazas vigentes del
+    desperdicio de una partida (las de la base; las del borrador se leen siempre), como en la
+    vista del APU."""
     with vivo.cerrojo:
         resumen = hoja_vista.resumen(vivo)
         vista = hoja_vista.vista_presupuesto(vivo)
@@ -307,7 +348,7 @@ def documento_de_la_hoja(
             )
         parametros = _parametros(vivo)
         apus = tuple(
-            _apu(hoja_vista.vista_apu(vivo, codigo).detalle, parametros)
+            _apu(hoja_vista.vista_apu(vivo, codigo, trazas=trazas).detalle, parametros)
             for codigo in ([partida] if partida is not None else codigos)
         )
         fecha = vivo.borrador.fecha
@@ -392,15 +433,22 @@ def pdf_en_bytes(documento: DocumentoPdf) -> bytes:
     e = documento.encabezado
     moneda = _limpio(e.moneda)
     normal = ParagraphStyle("normal", fontName=_LETRA, fontSize=8, leading=10)
-    celda = ParagraphStyle("celda", parent=normal, fontSize=7.5, leading=9)
+    # un código largo se parte en su guion, no a media palabra (D3)
+    celda = ParagraphStyle("celda", parent=normal, fontSize=7.5, leading=9, embeddedHyphenation=1)
     negrita = ParagraphStyle("negrita", parent=celda, fontName=_NEGRITA)
     derecha = ParagraphStyle("derecha", parent=celda, alignment=TA_RIGHT)
+    titulo_derecha = ParagraphStyle("titulo_derecha", parent=negrita, alignment=TA_RIGHT)
     titulo = ParagraphStyle("titulo", parent=normal, fontName=_NEGRITA, fontSize=15, leading=19)
     subtitulo = ParagraphStyle("sub", parent=normal, fontName=_NEGRITA, fontSize=11, leading=14)
     rotulo = ParagraphStyle("rotulo", parent=normal, fontName=_NEGRITA, fontSize=9, leading=12)
 
     def p(texto: str, estilo=celda) -> Paragraph:
-        return Paragraph(escape(_limpio(texto)), estilo)
+        return Paragraph(_NUMERO_Y_PORCIENTO.sub(_ESPACIO_DURO, escape(_limpio(texto))), estilo)
+
+    def titulos(textos: Sequence[str], desde: int) -> list[Paragraph]:
+        """Los encabezados de una tabla como párrafos: se parten en líneas en vez de pisar la
+        columna vecina; a la derecha desde la columna `desde`, como sus cifras."""
+        return [p(x, titulo_derecha if i >= desde else negrita) for i, x in enumerate(textos)]
 
     ancho = letter[0] - 3 * cm
     base = [
@@ -427,17 +475,21 @@ def pdf_en_bytes(documento: DocumentoPdf) -> bytes:
         return [*partes, Spacer(1, 10)]
 
     def presupuesto() -> list:
-        anchos = [0.9 * cm, 2.3 * cm, 5.6 * cm, 1.3 * cm, 2.0 * cm, 3.3 * cm, 3.1 * cm]
+        # simulación de D3: el código y la unidad «unidad» caben enteros; los montos se ciñen
+        anchos = [0.8 * cm, 3.0 * cm, 5.6 * cm, 1.5 * cm, 1.9 * cm, 2.9 * cm, 2.8 * cm]
         filas: list[list] = [
-            [
-                "N°",
-                "Código",
-                "Descripción",
-                "Unidad",
-                "Cantidad",
-                f"Precio unitario ({moneda})",
-                f"Total ({moneda})",
-            ]
+            titulos(
+                [
+                    "N°",
+                    "Código",
+                    "Descripción",
+                    "Unidad",
+                    "Cantidad",
+                    f"Precio unitario ({moneda})",
+                    f"Total ({moneda})",
+                ],
+                desde=4,
+            )
         ]
         estilo = list(base) + [("ALIGN", (4, 0), (-1, -1), "RIGHT")]
         hay = any(g.renglones for g in documento.grupos)
@@ -454,7 +506,7 @@ def pdf_en_bytes(documento: DocumentoPdf) -> bytes:
                         r.numero,
                         p(r.partida),
                         p(r.descripcion),
-                        p(r.unidad),
+                        p(unidad_escrita(r.unidad)),
                         p(r.cantidad, derecha),
                         r.precio_unitario,
                         r.total,
@@ -492,18 +544,29 @@ def pdf_en_bytes(documento: DocumentoPdf) -> bytes:
         partes = [
             p(TITULO_APU, subtitulo),
             p(f"{a.codigo} · {a.descripcion}", rotulo),
-            p(f"Unidad: {a.unidad} · Rendimiento: {a.rendimiento} {a.unidad} por día", normal),
+            p(
+                f"Unidad: {unidad_escrita(a.unidad)} · Rendimiento: {a.rendimiento} "
+                f"{unidad_escrita(a.unidad)} por día",
+                normal,
+            ),
             p(a.parametros, normal),
             Spacer(1, 6),
         ]
         for t in a.tablas:
             columnas = len(t.columnas)
-            filas: list[list] = [list(t.columnas)]
+            filas: list[list] = [titulos(t.columnas, desde=1)]
+            unidad = t.columnas.index("Unidad") if "Unidad" in t.columnas else None
             estilo = list(base) + [("ALIGN", (1, 0), (-1, -1), "RIGHT")]
             if not t.filas:
                 filas.append([p(SIN_LINEAS)] + [""] * (columnas - 1))
                 estilo.append(("SPAN", (0, 1), (-1, 1)))
-            filas += [[p(c) if i == 0 else c for i, c in enumerate(f)] for f in t.filas]
+            filas += [
+                [
+                    p(c) if i == 0 else unidad_escrita(c) if i == unidad else c
+                    for i, c in enumerate(f)
+                ]
+                for f in t.filas
+            ]
             filas.append([p(POR_UNIDAD, negrita)] + [""] * (columnas - 2) + [f"{t.subtotal}"])
             n = len(filas) - 1
             estilo += [("SPAN", (0, n), (-2, n)), ("FONT", (-1, n), (-1, n), _NEGRITA, 7.5)]
