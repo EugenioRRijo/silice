@@ -2129,14 +2129,73 @@ def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
     assert detectadas == fuentes
 
 
-#: La busqueda de obra por nombre escrita a mano; vive solo en `aplicacion/proyectos.py`.
-BUSQUEDA_DE_OBRA_POR_NOMBRE = "select(models.Proyecto).where(models.Proyecto.nombre =="
-
 #: Archivos que la repiten y no se pueden tocar (2026-11-17): `aplicacion/hoja.py` es un archivo
 #: del auditor del experimento congelado (`asistente/experimento/protocolo.json`, RS-9; Eugenio,
 #: 2026-10-18: el protocolo no se toca) y cambiarlo rompe
 #: `test_experimento_congelado_vigente.py`. Sale de aqui cuando se vuelva a congelar a proposito.
 BUSQUEDA_DE_OBRA_CONGELADA: frozenset[str] = frozenset({"aplicacion/hoja.py"})
+
+
+def _es_la_obra(nodo: ast.AST) -> bool:
+    """`Proyecto` o `models.Proyecto`: la entidad entera, no una columna suya."""
+    return (isinstance(nodo, ast.Name) and nodo.id == "Proyecto") or (
+        isinstance(nodo, ast.Attribute) and nodo.attr == "Proyecto"
+    )
+
+
+def _es_nombre_de_la_obra(nodo: ast.AST) -> bool:
+    return isinstance(nodo, ast.Attribute) and nodo.attr == "nombre" and _es_la_obra(nodo.value)
+
+
+def _filtra_por_nombre(llamada: ast.Call) -> bool:
+    """`.where(Proyecto.nombre == x)` (en cualquier lado del `==`), `.filter(...)` igual, o
+    `.filter_by(nombre=x)`."""
+    metodo = llamada.func.attr if isinstance(llamada.func, ast.Attribute) else ""
+    if metodo == "filter_by":
+        return any(clave.arg == "nombre" for clave in llamada.keywords)
+    return metodo in {"where", "filter"} and any(
+        isinstance(n, ast.Compare)
+        and any(isinstance(op, ast.Eq) for op in n.ops)
+        and any(map(_es_nombre_de_la_obra, (n.left, *n.comparators)))
+        for argumento in llamada.args
+        for n in ast.walk(argumento)
+    )
+
+
+def _raiz_de_la_cadena(llamada: ast.Call) -> ast.Call:
+    """La primera llamada de `a(...).b(...).c(...)` (la `a(...)`)."""
+    while isinstance(llamada.func, ast.Attribute) and isinstance(llamada.func.value, ast.Call):
+        llamada = llamada.func.value
+    return llamada
+
+
+def _consulta_de_la_obra(llamada: ast.Call) -> bool:
+    """`select(Proyecto)` o `x.query(Proyecto)`: la obra entera es lo unico que se pide."""
+    funcion = llamada.func
+    nombre = (
+        funcion.id
+        if isinstance(funcion, ast.Name)
+        else funcion.attr
+        if isinstance(funcion, ast.Attribute)
+        else ""
+    )
+    return nombre in {"select", "query"} and len(llamada.args) == 1 and _es_la_obra(llamada.args[0])
+
+
+def _busquedas_de_obra_por_nombre(archivo: Path) -> list[int]:
+    """Lineas de cada `select(Proyecto)` (o `query(Proyecto)`) cuya cadena filtra por
+    `Proyecto.nombre ==`, por AST: el `.where(` partido en varias lineas, el `==` al reves y el
+    nombre sin `models.` cuentan; un comentario no. Pedir otra entidad unida a la obra
+    (`select(Presupuesto).join(Proyecto).where(...)`) no es buscar la obra."""
+    return sorted(
+        {
+            raiz.lineno
+            for nodo in ast.walk(_arbol(archivo))
+            if isinstance(nodo, ast.Call)
+            and _filtra_por_nombre(nodo)
+            and _consulta_de_la_obra(raiz := _raiz_de_la_cadena(nodo))
+        }
+    )
 
 
 def test_una_sola_busqueda_de_obra_por_nombre():
@@ -2147,16 +2206,40 @@ def test_una_sola_busqueda_de_obra_por_nombre():
         ruta
         for paquete in ("api", "aplicacion")
         for archivo in _archivos(paquete)
-        if BUSQUEDA_DE_OBRA_POR_NOMBRE in archivo.read_text(encoding="utf-8")
-        and (ruta := _ruta(archivo))
+        if _busquedas_de_obra_por_nombre(archivo) and (ruta := _ruta(archivo))
     )
     assert sorted(set(sitios) - BUSQUEDA_DE_OBRA_CONGELADA) == ["aplicacion/proyectos.py"]
 
 
 def test_una_sola_busqueda_de_obra_por_nombre_sin_sobrantes():
     for ruta in BUSQUEDA_DE_OBRA_CONGELADA:
-        texto = (RAIZ / ruta).read_text(encoding="utf-8")
-        assert BUSQUEDA_DE_OBRA_POR_NOMBRE in texto, f"borrar {ruta} de BUSQUEDA_DE_OBRA_CONGELADA"
+        assert _busquedas_de_obra_por_nombre(RAIZ / ruta), (
+            f"borrar {ruta} de BUSQUEDA_DE_OBRA_CONGELADA"
+        )
+
+
+def test_una_sola_busqueda_de_obra_por_nombre_ve_la_falta(tmp_path):
+    """Anexo A.7: por AST, no por una subcadena de una linea."""
+    fuentes = {
+        "q = select(models.Proyecto).where(models.Proyecto.nombre == n)\n": [1],
+        "q = select(models.Proyecto).where(\n    models.Proyecto.nombre == n\n)\n": [1],
+        "q = (\n    select(models.Proyecto)\n    .where(models.Proyecto.nombre == n)\n)\n": [2],
+        "q = select(Proyecto).where(Proyecto.nombre == n)\n": [1],
+        "q = select(models.Proyecto).where(n == models.Proyecto.nombre).limit(1)\n": [1],
+        "q = sesion.query(models.Proyecto).filter(models.Proyecto.nombre == n)\n": [1],
+        "q = sesion.query(models.Proyecto).filter_by(nombre=n)\n": [1],
+        # Lo que no es buscar la obra: otra entidad unida a la obra, otra columna, otro orden.
+        "q = select(Presupuesto).join(Proyecto).where(Proyecto.nombre == n)\n": [],
+        "q = select(models.Proyecto).where(models.Proyecto.id == n)\n": [],
+        "q = select(models.Proyecto).order_by(models.Proyecto.nombre)\n": [],
+        '# select(models.Proyecto).where(models.Proyecto.nombre == n)\nt = "x"\n': [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"obra_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _busquedas_de_obra_por_nombre(archivo)
+    assert detectadas == fuentes
 
 
 # --- Anexo A.2: un router con `RutaSinCache` no pone `Cache-Control` a mano --------------------
