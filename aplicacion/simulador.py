@@ -40,7 +40,7 @@ FilaSimulada = tuple[str, str, str, Decimal]
 
 
 def simular(
-    precios: dict[str, tuple[str, str, Decimal]],
+    precios: dict[tuple[str, str], tuple[str, Decimal]],
     variacion_max: Decimal,
     semilla: int,
     solo: set[str] | None,
@@ -48,7 +48,7 @@ def simular(
     """Aplica variaciones deterministas a una lista de precios.
 
     Args:
-        precios: {insumo: (tipo, unidad, precio_decimal)}
+        precios: {(insumo, unidad): (tipo, precio_decimal)}
         variacion_max: porcentaje máximo de variación (ej: Decimal("10") para ±10%)
         semilla: número para reproducibilidad
         solo: conjunto de nombres de insumos a incluir; None para todos
@@ -60,7 +60,7 @@ def simular(
     pb_max = int(variacion_max * 100)  # puntos básicos
 
     resultados = []
-    for insumo, (tipo, unidad, precio) in sorted(precios.items()):
+    for (insumo, unidad), (tipo, precio) in sorted(precios.items()):
         if solo is not None and insumo not in solo:
             continue
 
@@ -118,11 +118,11 @@ def insumos_de_texto(insumos: str | Sequence[str] | None) -> set[str] | None:
     return {i.strip() for i in partes if i.strip()}
 
 
-def precios_vigentes(catalogo: Catalogo) -> dict[str, tuple[str, str, Decimal]]:
-    """`{insumo: (tipo, unidad, precio)}` de la lista vigente, tal como espera `simular()`."""
+def precios_vigentes(catalogo: Catalogo) -> dict[tuple[str, str], tuple[str, Decimal]]:
+    """`{(insumo, unidad): (tipo, precio)}` de la lista vigente, tal como espera `simular()`."""
     lista = catalogo.lista_vigente()
     return {
-        precio.insumo.descripcion: (precio.insumo.tipo, precio.insumo.unidad, precio.precio)
+        (precio.insumo.descripcion, precio.insumo.unidad): (precio.insumo.tipo, precio.precio)
         for precio in lista.precios
     }
 

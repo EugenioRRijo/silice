@@ -71,9 +71,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             precios_dict = {}
             for precio_insumo in lista.precios:
                 insumo = precio_insumo.insumo
-                precios_dict[insumo.descripcion] = (
+                precios_dict[(insumo.descripcion, insumo.unidad)] = (
                     insumo.tipo.value,
-                    insumo.unidad,
                     precio_insumo.precio,
                 )
 
