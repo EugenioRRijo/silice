@@ -11,6 +11,8 @@ interface Opciones {
   alExpirar: () => void;
   // El servidor guardó este borrador (o ya estaba guardado): ya no hay cambios que conservar.
   cerrarGuardado: () => void;
+  // Vuelve a leer el mismo borrador (anexo A.6: guardar solo el desglose no crea versión y el borrador sigue abierto).
+  refrescarBorrador: () => Promise<void>;
   recargarVersiones: (nueva?: string) => Promise<void>;
   // La página olvida las ofertas de retomar (lo que había se resolvió al guardar).
   olvidarOfertas: () => void;
@@ -40,6 +42,7 @@ export function useGuardadoDeLaPagina({
   rev,
   alExpirar,
   cerrarGuardado,
+  refrescarBorrador,
   recargarVersiones,
   olvidarOfertas,
   elegirVersion,
@@ -47,7 +50,7 @@ export function useGuardadoDeLaPagina({
   hayConfirmacion,
   alCrearseVersion,
 }: Opciones) {
-  const [exito, setExito] = useState<{ proyecto: string; texto: string } | null>(null);
+  const [exito, setExito] = useState<{ proyecto: string; texto: string; titulo?: string } | null>(null);
   // El foco vuelve a su sitio cuando el diálogo ya se cerró y el `inert` se quitó (en un navegador real no se puede enfocar
   // dentro de un subárbol inert): quien cierra el diálogo anota adónde, y el efecto de abajo (tras cada commit) lo cumple.
   const devolverFoco = useRef<DestinoDelFoco | null>(null);
@@ -78,9 +81,16 @@ export function useGuardadoDeLaPagina({
   );
   const alGuardada = useCallback(
     async (r: GuardadoRespuesta) => {
+      if (r.version_nueva === false) {
+        // Anexo A.6: solo se guardó el desglose; la versión es la misma y el borrador sigue abierto, ya sin cambios.
+        setExito({ proyecto, texto: textoDeExito(r, r.proyecto), titulo: "Desglose guardado" });
+        await refrescarBorrador();
+        devolverFoco.current = "version";
+        return;
+      }
       await alCrearVersion(r.codigo, textoDeExito(r, r.proyecto));
     },
-    [alCrearVersion],
+    [alCrearVersion, proyecto, refrescarBorrador],
   );
   const guardado = useGuardado({ id, rev, proyecto, alExpirar, alGuardada });
   const cancelarGuardado = guardado.cerrar;

@@ -415,7 +415,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
     expect(within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual([
       "APU",
-      "AF-LLAVE|material|1",
+      "AF-LLAVE, material|1", // la clave de toda línea del APU se presenta así (rotuloDeOrigen)
       "Desperdicio",
       "0,8 + 25 %",
       "0,625 + 60 %",

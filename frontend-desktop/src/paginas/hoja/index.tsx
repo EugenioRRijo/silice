@@ -197,7 +197,7 @@ function CuerpoDeLaHoja() {
           kind="success"
           role="status"
           lowContrast
-          title="Versión guardada"
+          title={exito.titulo ?? "Versión guardada"}
           subtitle={exito.texto}
           onCloseButtonClick={quitarExito}
         />

@@ -27,6 +27,7 @@ const CAMPOS: Record<string, string> = {
   cotizacion: "Cotización",
   creacion: "Creación",
   descripcion: "Descripción",
+  desperdicio: "Desperdicio",
   empotrado: "Empotrado",
   especialidad: "Especialidad",
   especificaciones: "Especificaciones",

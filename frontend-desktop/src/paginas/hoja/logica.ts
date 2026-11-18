@@ -95,6 +95,9 @@ export interface Resumen {
   // Tarea 9: el borrador no tiene espacio (una obra civil) y la Hoja abre en «Presupuesto». La API lo manda siempre; es
   // opcional solo para los datos de prueba anteriores, que no lo traen (y abren en «Espacio y metrajes»).
   espacio_vacio?: boolean;
+  // Anexo A.6: cuántos de los `cambios` son de un desglose del desperdicio (la misma cantidad con otra neta y otro
+  // porcentaje). Si son todos, guardar escribe el desglose sin versión nueva. Opcional como `espacio_vacio`.
+  desgloses?: number;
 }
 
 export interface BorradorVivo {
