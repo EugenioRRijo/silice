@@ -254,6 +254,22 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     },
     [carpetaActual, puedeEditarHoja, obrasDeLaCarpeta, navegar, fallo],
   );
+  // «Ver el catálogo» de un pendiente de otra carpeta: la herramienta trabaja con la carpeta abierta, así que se abre antes
+  // la del pendiente (con la misma pregunta y aviso de siempre) y solo si se abrió se va a la herramienta.
+  const abrirDePendiente = useCallback(
+    async (destino: string, antes?: { carpeta: string | null }) => {
+      if (antes !== undefined) {
+        try {
+          if (!(await (antes.carpeta === null ? volverALaEmpresa() : abrirCarpeta(antes.carpeta)))) return;
+        } catch (e) {
+          fallo(e);
+          return;
+        }
+      }
+      await irSeguro(destino);
+    },
+    [volverALaEmpresa, abrirCarpeta, irSeguro, fallo],
+  );
   const contenido = useRef<HTMLElement>(null);
   const alClicAntes = (e: MouseEvent<HTMLDivElement>) => {
     if (!esClicSimple(e)) return;
@@ -372,7 +388,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                         element={
                           <EspacioDeInicio
                             general={pantalla(paginaPorId("inicio", paginas))}
-                            pendientes={<Bandeja alAbrir={(ruta) => void irSeguro(ruta)} obras={obras.obras} />}
+                            pendientes={<Bandeja alAbrir={(ruta, antes) => void abrirDePendiente(ruta, antes)} obras={obras.obras} carpetaActual={obras.carpetaActual} />}
                           />
                         }
                       />
