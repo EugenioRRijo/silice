@@ -16,9 +16,9 @@ const estilos = nodo
   .readFileSync(`${nodo.cwd()}/src/paginas/produccion/planta.scss`, "utf-8")
   .replace(/\/\/.*$/gm, "");
 
-// El cuerpo de la primera regla cuyo selector es exactamente `selector` (sin anidar más de un nivel).
+// El cuerpo de la regla de primer nivel (al comienzo de una línea) cuyo selector es exactamente `selector`.
 function regla(selector: string): string {
-  const inicio = estilos.indexOf(`${selector} {`);
+  const inicio = estilos.search(new RegExp(`^${selector.replace(/[.]/g, "\\.")} \\{`, "m"));
   expect(inicio, `falta la regla ${selector}`).toBeGreaterThanOrEqual(0);
   let nivel = 0;
   for (let i = estilos.indexOf("{", inicio); i < estilos.length; i++) {

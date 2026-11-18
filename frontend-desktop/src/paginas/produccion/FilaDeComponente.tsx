@@ -62,6 +62,7 @@ export function FilaDeComponente({ numero, base, fila, producto = "", sePuedeQui
       </Select>
       {puedeMarcarLigante && (
         <Checkbox
+          className="receta-componente__ligante"
           id={`${base}-ligante`}
           labelText="Es el ligante"
           helperText="El asfalto de la mezcla: con él compara la fórmula de trabajo la auditoría de los tramos."
