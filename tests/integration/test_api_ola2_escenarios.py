@@ -112,7 +112,8 @@ def test_el_csv_con_un_parametro_fuera_de_rango_es_422(cliente, presupuesto_001)
     )
 
     assert respuesta.status_code == 422
-    assert "utilidad" in respuesta.json()["detalle"]
+    # prueba en vivo del 2026-11-18, hallazgo 5: el nombre de la pantalla y la coma decimal
+    assert respuesta.json()["detalle"] == "Utilidad: el valor no puede ser negativo (-0,10)."
 
 
 def test_el_csv_no_guarda_nada(cliente, presupuesto_001):

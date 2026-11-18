@@ -495,7 +495,8 @@ def test_anotar_un_costo_y_un_monto_ilegible_da_422() -> None:
     assert navegador.post("/v1/control/costos", json=bueno, headers=cabeceras).status_code == 200
     malo = {**bueno, "monto": "cien"}
     respuesta = navegador.post("/v1/control/costos", json=malo, headers=cabeceras)
-    assert respuesta.status_code == 422 and "no es un numero decimal" in respuesta.json()["detalle"]
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == "«Monto» no es un número válido."
 
 
 def test_los_costos_anotados_se_listan_en_el_orden_en_que_se_anotaron() -> None:

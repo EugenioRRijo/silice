@@ -63,12 +63,12 @@ def test_declarar_la_linea_base_desde_los_textos_de_la_pantalla(obra_sin_linea_b
 @pytest.mark.parametrize(
     ("campo", "valor", "mensaje"),
     [
-        ("desde", "02/11/2026", "desde: '02/11/2026' no es una fecha"),
-        ("dias_por_periodo", "cinco", "dias por periodo: 'cinco' no es un numero"),
-        ("dias_por_periodo", "2.5", "debe ser un entero"),
+        ("desde", "02/11/2026", "«Vigente desde»: «02/11/2026» no es una fecha válida"),
+        ("dias_por_periodo", "cinco", "«Días hábiles por período» no es un número válido"),
+        ("dias_por_periodo", "2.5", "debe ser un número entero"),
         ("dias_por_periodo", "0", "1 o mas"),
         ("perspectiva", "otra", "perspectiva"),
-        ("feriados", "2026-13-40", "feriado: '2026-13-40' no es una fecha"),
+        ("feriados", "2026-13-40", "«Feriados»: «2026-13-40» no es una fecha válida"),
         ("fuente", "", "obligatoria"),
     ],
 )
@@ -97,11 +97,11 @@ def test_registrar_una_valuacion_devuelve_el_control_al_corte_de_su_hasta(obra):
 
 
 def test_una_cantidad_ilegible_o_negativa_se_rechaza_con_su_fila_y_no_se_escribe(obra):
-    for cantidad, mensaje in (("cuarenta", "fila 1, cantidad"), ("-3", "no puede ser negativa")):
+    for cantidad, mensaje in (("cuarenta", "«Cantidad 1»"), ("-3", "no puede ser negativa")):
         filas = [{**FILAS_V01[0], "Cantidad": cantidad}]
         with pytest.raises(control.ControlInvalido, match=mensaje):
             _registrar_v01(obra, filas=filas)
-    with pytest.raises(control.ControlInvalido, match="fila 1: falta la partida"):
+    with pytest.raises(control.ControlInvalido, match="Línea 1: falta la partida"):
         control.lineas_desde_filas([{"Partida": "", "Cantidad": "5"}])
     assert obra.scalar(select(func.count()).select_from(models.Valuacion)) == 0
 
