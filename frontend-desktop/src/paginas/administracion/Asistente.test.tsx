@@ -176,6 +176,27 @@ describe("Asistente de IA", () => {
     expect(await screen.findByText(detalle)).toBeInTheDocument();
   });
 
+  // Prueba en vivo (2026-11-18): tras probar «0» y teclear «abc» se veían a la vez el error viejo del servidor y el nuevo del
+  // navegador. Al cambiar el campo, el aviso del servidor sobre ese valor ya no vale.
+  test("al cambiar el tope se quita el error que dio el servidor, y no se ve junto al del navegador", async () => {
+    const usuario = userEvent.setup();
+    const detalle = "El tope de costo debe ser mayor que cero: escriba, por ejemplo, 2,50.";
+    fetchFalso.mockResolvedValueOnce(json(FABRICA));
+    fetchFalso.mockResolvedValueOnce(json({ detalle }, 400));
+    montar();
+    const tope = await screen.findByLabelText("Tope de costo por sesión (USD)");
+    await usuario.clear(tope);
+    await usuario.type(tope, "0");
+    await usuario.click(screen.getByRole("button", { name: "Guardar la configuración" }));
+    expect(await screen.findByText(detalle)).toBeInTheDocument();
+    await usuario.clear(tope);
+    await usuario.type(tope, "abc");
+    expect(screen.queryByText(detalle)).toBeNull();
+    await usuario.click(screen.getByRole("button", { name: "Guardar la configuración" }));
+    expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
+    expect(screen.queryByText(detalle)).toBeNull();
+  });
+
   test("registra la clave: la manda solo en el cuerpo, vacía los campos y no la deja en la página", async () => {
     const usuario = userEvent.setup();
     fetchFalso.mockResolvedValueOnce(json(FABRICA));
