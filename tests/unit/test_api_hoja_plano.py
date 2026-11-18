@@ -489,6 +489,19 @@ def test_p5_sobre_of001_las_filas_ya_escritas_se_omiten_y_rev_no_sube(planos) ->
     assert por_tipo["Omitido"] == IMPORTADOS_OF001 and cuerpo["fusion"]["filas_por_tabla"] == []
     assert _carpetas(planos) == []
     assert _fusionar(navegador, ficha, id_).json() == {"detalle": SIN_IMPORTACION}
+    # Prueba en vivo del 2026-11-18: no dice «Se fusionó… use Guardar versión» si no entró nada,
+    # sino que no entró ninguna fila y por qué; y el registro no queda «sin guardar» para siempre.
+    mensaje = cuerpo["mensaje"]
+    assert mensaje.startswith(
+        f"No entró ninguna fila de «of001.dxf»: las {IMPORTADOS_OF001} filas del plano se "
+        "omitieron. Por ejemplo, "
+    ), mensaje
+    assert "su id ya lo usa otra fila de la hoja" in mensaje
+    assert mensaje.endswith("El borrador no cambió: no hay nada que guardar.")
+    assert "Guardar versión" not in mensaje
+    registro = navegador.get("/v1/hoja/importaciones", params={"proyecto": NOMBRE_OF001})
+    assert registro.status_code == 200, registro.text
+    assert [i for i in registro.json()["importaciones"] if not i["guardada"]] == []
 
 
 def test_p5_con_un_rev_viejo_es_409_y_la_importacion_queda() -> None:
