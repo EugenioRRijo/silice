@@ -262,3 +262,28 @@ def test_toda_ruta_no_get_con_la_sesion_comun_esta_clasificada_ve_la_falta() -> 
         ("POST", "/w/sin-firma"),
     }
     assert {camino for _, camino in vistas} <= set(prueba.openapi()["paths"])
+
+
+def test_toda_ruta_no_get_con_la_sesion_comun_esta_clasificada_ve_la_subdependencia() -> None:
+    """DS-50 (1): la sesion comun que llega por una subdependencia de una dependencia del
+    `include_router` (no la dependencia misma) tambien cuenta."""
+
+    def dep(sesion: SesionDep) -> None: ...
+
+    def de_escritura(sesion: SesionDeEscrituraDep) -> None: ...
+
+    r = APIRouter()
+
+    @r.post("/por-debajo")
+    def por_debajo() -> None: ...
+
+    bien = APIRouter()
+
+    @bien.post("/bien")
+    def bien_ruta() -> None: ...
+
+    prueba = FastAPI()
+    prueba.include_router(r, prefix="/s", dependencies=[Depends(dep)])
+    prueba.include_router(bien, prefix="/e", dependencies=[Depends(de_escritura)])
+
+    assert _no_get_con_la_sesion_comun(prueba.router) == {("POST", "/s/por-debajo")}
