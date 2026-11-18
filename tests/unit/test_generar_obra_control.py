@@ -138,3 +138,40 @@ def test_la_demo_de_control_siembra_valuaciones_y_costos_que_no_pasan_de_hoy(tmp
             assert all(c.fecha <= hoy for c in sesion.scalars(select(models.CostoReal)))
     finally:
         motor.dispose()
+
+
+def test_la_demo_de_control_trae_historia_didactica_de_la_tasa_para_riesgo(tmp_path):
+    # Prueba en vivo del 2026-11-18, hallazgo 4: Riesgo no corría en ningún caso de la demo
+    # («solo hay 0 meses completos; se necesitan 12»). La tasa es ficticia y lo dice (NORMAS §1).
+    from datetime import date
+
+    from sqlalchemy import select
+
+    import start
+    from aplicacion.riesgo.proyeccion import (
+        MINIMO_DE_MESES,
+        SERIE_TASA,
+        ParametrosProyeccion,
+        historia_para_proyectar,
+        meses_completos,
+    )
+    from aplicacion.riesgo.series import MapaSeries
+    from core import models
+    from core.catalog import abrir_sesion, crear_motor
+
+    hoy = date(2026, 11, 18)
+    destino = tmp_path / "obra_control.db"
+    start.sembrar_obra_control(destino, hoy=hoy)
+    motor = crear_motor(f"sqlite:///{destino.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            p = ParametrosProyeccion(inicio=start.inicio_de_la_demo(hoy))
+            historia = historia_para_proyectar(sesion, MapaSeries({}), p)
+            completos = meses_completos(historia, [SERIE_TASA], p)
+            assert len(completos) >= int(MINIMO_DE_MESES.valor)
+            (importacion,) = sesion.scalars(select(models.ImportacionIndice))
+            assert "ficticia" in importacion.fuente and "didáctica" in importacion.fuente
+            # ninguna observación es del futuro
+            assert all(v.fecha <= hoy for v in sesion.scalars(select(models.ValorIndice)))
+    finally:
+        motor.dispose()
