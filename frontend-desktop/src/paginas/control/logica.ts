@@ -151,6 +151,29 @@ export interface Valuaciones {
   anulables: { id: number; rotulo: string }[];
   corte_por_defecto: string | null;
   causas: CausaDeRetraso[];
+  // Los hallazgos de R13 y R14 al corte por defecto, ya legibles (la API los arma; la pantalla solo los pinta).
+  hallazgos?: HallazgoDeValuacion[];
+}
+
+// Un hallazgo de la revisión de una valuación: la valuación que lo trae (vacía si es de una partida), la regla, la
+// severidad con su nombre para la persona («Error», «Advertencia», «Información») y el mensaje.
+export interface HallazgoDeValuacion {
+  valuacion: string;
+  regla: string;
+  severidad: string;
+  mensaje: string;
+}
+
+// Lo que responde registrar una valuación: el corte, los conteos y cada hallazgo.
+export interface RegistroDeValuacion {
+  corte: string;
+  hallazgos: number;
+  errores: number;
+  detalle?: HallazgoDeValuacion[];
+}
+
+export function textoDeHallazgo(h: HallazgoDeValuacion): string {
+  return `${h.severidad} (${h.regla}): ${h.mensaje}`;
 }
 
 // MP-7: una partida que termina despues de su plan. El texto ya viene armado por la API («A atrasada 5 días: Compra

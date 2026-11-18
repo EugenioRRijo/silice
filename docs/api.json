@@ -21306,6 +21306,35 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HallazgoDeValuacion": {
+        "properties": {
+          "valuacion": {
+            "type": "string",
+            "title": "Valuacion"
+          },
+          "regla": {
+            "type": "string",
+            "title": "Regla"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valuacion",
+          "regla",
+          "severidad",
+          "mensaje"
+        ],
+        "title": "HallazgoDeValuacion",
+        "description": "Un hallazgo de R13 o R14 como lo lee la persona: la valuación que lo trae (vacía si es de\nuna partida), la regla, la severidad («Error», «Advertencia»…) y el mensaje."
+      },
       "HallazgoGuardadoRespuesta": {
         "properties": {
           "regla": {
@@ -27341,6 +27370,13 @@
           "errores": {
             "type": "integer",
             "title": "Errores"
+          },
+          "detalle": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoDeValuacion"
+            },
+            "type": "array",
+            "title": "Detalle"
           }
         },
         "type": "object",
@@ -29873,6 +29909,13 @@
             "type": "string",
             "title": "Perspectiva",
             "default": ""
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoDeValuacion"
+            },
+            "type": "array",
+            "title": "Hallazgos"
           }
         },
         "type": "object",

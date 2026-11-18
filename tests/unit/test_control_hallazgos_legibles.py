@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from aplicacion import control
+from aplicacion.control_hallazgos import hallazgos_de_valuaciones, mensaje_de_hallazgo
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
 from tests.fixtures import control_ob_s2 as ob
@@ -96,11 +97,11 @@ HOY = date(2026, 11, 18)
 def test_cada_frase_de_r13_y_r14_sale_con_tildes_fechas_del_sistema_y_coma(
     del_nucleo: str, legible: str
 ) -> None:
-    assert control.mensaje_de_hallazgo(del_nucleo) == legible
+    assert mensaje_de_hallazgo(del_nucleo) == legible
 
 
 def test_una_frase_que_no_es_del_nucleo_solo_se_cierra_con_mayuscula_y_punto() -> None:
-    assert control.mensaje_de_hallazgo("algo nuevo del nucleo") == "Algo nuevo del nucleo."
+    assert mensaje_de_hallazgo("algo nuevo del nucleo") == "Algo nuevo del nucleo."
 
 
 @pytest.fixture
@@ -125,7 +126,7 @@ def test_los_hallazgos_de_las_valuaciones_dicen_valuacion_regla_severidad_y_mens
     sesion,
 ) -> None:
     resultado = control.calcular_el_control(sesion, ob.NOMBRE, Catalogo(sesion), hoy=HOY)
-    filas = control.hallazgos_de_valuaciones(resultado)
+    filas = hallazgos_de_valuaciones(resultado)
     assert {tuple(f.values()) for f in filas} == {
         (
             "V-03",

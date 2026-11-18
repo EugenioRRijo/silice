@@ -144,3 +144,10 @@ details > summary {
   background: var(--cds-layer, #fff);
   border-block-start: 1px solid var(--silice-divisor);
 }
+
+// Prueba en vivo del 2026-11-18, hallazgo 2: cada hallazgo de la revisión en su línea, legible a 65 caracteres.
+.silice-control__hallazgos {
+  max-inline-size: 65ch;
+  padding-inline-start: 1rem;
+  list-style: disc;
+}

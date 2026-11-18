@@ -24,10 +24,11 @@ import {
   porcentajeDeAlicuota,
   rutaDe,
   sinLineasVacias,
+  textoDeHallazgo,
   useAccion,
   useCargaSuave,
 } from "./logica";
-import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
+import type { CausaDeRetraso, LineaEditable, RegistroDeValuacion, Valuaciones } from "./logica";
 import { fechaDeRanura, periodoCompacto } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { MONEDAS } from "../../comun/monedas";
@@ -52,6 +53,46 @@ function Resultado({ exito, error }: { exito: string; error: unknown }) {
       {exito && <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={exito} />}
     </>
   );
+}
+
+// Prueba en vivo del 2026-11-18, hallazgo 2: con errores en la revisión el aviso no es verde de éxito; cada hallazgo se
+// lee con su severidad, su regla y su mensaje.
+function AvisoDeRegistro({ registro }: { registro: RegistroDeValuacion }) {
+  const corte = fechaDeRanura(registro.corte);
+  const detalle = registro.detalle ?? [];
+  const lista =
+    detalle.length > 0 ? (
+      <ul className="silice-control__hallazgos">
+        {detalle.map((h, i) => (
+          <li key={i} className="cds--type-body-compact-01">
+            {textoDeHallazgo(h)}
+          </li>
+        ))}
+      </ul>
+    ) : undefined;
+  if (registro.errores > 0) {
+    const errores = registro.errores === 1 ? "1 error" : `${registro.errores} errores`;
+    return (
+      <InlineNotification
+        kind="warning"
+        lowContrast
+        hideCloseButton
+        role="alert"
+        title={`Valuación registrada (corte ${corte}), pero la revisión encontró ${errores}.`}
+        subtitle={
+          <>
+            <span>Revise cada hallazgo; si la valuación está mal, anúlela y regístrela de nuevo.</span>
+            {lista}
+          </>
+        }
+      />
+    );
+  }
+  const titulo =
+    registro.hallazgos === 0
+      ? `Valuación registrada: corte ${corte}, sin hallazgos en la revisión.`
+      : `Valuación registrada: corte ${corte}, ${registro.hallazgos} hallazgo(s) en la revisión, ninguno con severidad Error.`;
+  return <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={titulo} subtitle={lista} />;
 }
 
 interface PartidasDeLaObra {
@@ -88,6 +129,7 @@ function Registrar({
 }) {
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
+  const [registro, setRegistro] = useState<RegistroDeValuacion | null>(null);
   const [v, setV] = useState({ numero: "", desde: "", hasta: "", fecha: "", inspector: "", fuente: "" });
   const [lineas, setLineas] = useState<LineaEditable[]>([{ ...LINEA_VACIA }]);
   // MP-7, Tarea 24: la procura sugiere una causa por partida al «hasta» de la valuacion (sin él, a hoy). Una linea cuyo
@@ -137,8 +179,9 @@ function Registrar({
     setErrores(nuevos);
     setErroresDePartida(fuera);
     if (Object.keys(nuevos).length > 0 || Object.keys(fuera).length > 0) return;
+    setRegistro(null);
     void ejecutar(async () => {
-      const r = await pedir<{ corte: string; hallazgos: number; errores: number }>("/v1/control/valuaciones", {
+      const r = await pedir<RegistroDeValuacion>("/v1/control/valuaciones", {
         metodo: "POST",
         cuerpo: {
           proyecto,
@@ -152,7 +195,8 @@ function Registrar({
           ).map(lineaParaApi),
         },
       });
-      return `Valuación registrada: corte ${fechaDeRanura(r.corte)}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
+      setRegistro(r);
+      return "";
     });
   };
   return (
@@ -229,6 +273,7 @@ function Registrar({
           </Button>
         </div>
         <Resultado exito={estado.exito} error={estado.error} />
+        {registro && !estado.enviando && !estado.error && <AvisoDeRegistro registro={registro} />}
       </div>
     </details>
   );
@@ -447,6 +492,20 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
           <div className="silice-control__valuaciones">
             <TablaDensa etiqueta="Valuaciones registradas" columnas={COLUMNAS_DE_VALUACIONES} filas={conId(datos.filas)} />
           </div>
+        )}
+        {(datos.hallazgos ?? []).length > 0 && (
+          <>
+            <h3 id="control-hallazgos" className="cds--type-heading-compact-01">
+              Hallazgos de la revisión
+            </h3>
+            <ul className="silice-control__hallazgos" aria-label="Hallazgos de la revisión de las valuaciones">
+              {(datos.hallazgos ?? []).map((h, i) => (
+                <li key={i} className="cds--type-body-compact-01">
+                  {h.valuacion ? `${h.valuacion} · ${textoDeHallazgo(h)}` : textoDeHallazgo(h)}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
         {datos.filas.length > 0 && (
           <p className="silice-control__nota cds--type-helper-text-01">

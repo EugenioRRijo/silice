@@ -55,6 +55,7 @@ from api.sin_eco import RutaSinEco
 from aplicacion import control as logica
 from aplicacion.causas import CAUSAS, atrasos
 from aplicacion.control_corte import ultimo_corte
+from aplicacion.control_hallazgos import hallazgos_de_valuaciones
 from aplicacion.precios_declarados import precios_convertidos
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.control import ResultadoControl
@@ -350,6 +351,30 @@ class CausaRespuesta(BaseModel):
     nombre: str
 
 
+class HallazgoDeValuacion(BaseModel):
+    """Un hallazgo de R13 o R14 como lo lee la persona: la valuación que lo trae (vacía si es de
+    una partida), la regla, la severidad («Error», «Advertencia»…) y el mensaje."""
+
+    valuacion: str
+    regla: str
+    severidad: str
+    mensaje: str
+
+
+def _hallazgos(resultado: ResultadoControl | None) -> list[HallazgoDeValuacion]:
+    if resultado is None:
+        return []
+    return [
+        HallazgoDeValuacion(
+            valuacion=f["Valuacion"],
+            regla=f["Regla"],
+            severidad=f["Severidad"],
+            mensaje=f["Mensaje"],
+        )
+        for f in hallazgos_de_valuaciones(resultado)
+    ]
+
+
 class ValuacionesRespuesta(BaseModel):
     tiene_linea_base: bool
     filas: list[Fila]
@@ -364,6 +389,8 @@ class ValuacionesRespuesta(BaseModel):
     #: La perspectiva de la línea base («costo» o «precio»); vacía sin línea base. Con «costo»
     #: el IVA de lo medido no es una cifra facturable (T18-3).
     perspectiva: str = ""
+    #: Los hallazgos de R13 y R14 al corte por defecto, legibles (prueba en vivo 2026-11-18).
+    hallazgos: list[HallazgoDeValuacion] = Field(default_factory=list)
 
 
 @router.get("/valuaciones", response_model=ValuacionesRespuesta)
@@ -398,6 +425,7 @@ def valuaciones(sesion: SesionDep, proyecto: str) -> ValuacionesRespuesta:
         corte_por_defecto=logica.corte_por_defecto(sesion, proyecto).isoformat(),
         impuestos=impuestos_a_respuesta(logica.impuestos_de_valuaciones(resultado)),
         perspectiva=logica.perspectiva_de_la_linea_base(sesion, proyecto, None),
+        hallazgos=_hallazgos(resultado),
     )
 
 
@@ -425,6 +453,8 @@ class RegistroRespuesta(BaseModel):
     corte: str
     hallazgos: int
     errores: int
+    #: Cada hallazgo legible (antes solo volvían los conteos: prueba en vivo 2026-11-18).
+    detalle: list[HallazgoDeValuacion] = Field(default_factory=list)
 
 
 @router.post("/valuaciones", response_model=RegistroRespuesta)
@@ -461,6 +491,7 @@ def registrar_valuacion(
         corte=resultado.instantanea.corte.isoformat(),
         hallazgos=len(hallazgos),
         errores=sum(1 for h in hallazgos if h.severidad.name == "ERROR"),
+        detalle=_hallazgos(resultado),
     )
 
 
