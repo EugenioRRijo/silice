@@ -498,6 +498,46 @@ def test_anotar_un_costo_y_un_monto_ilegible_da_422() -> None:
     assert respuesta.status_code == 422 and "no es un numero decimal" in respuesta.json()["detalle"]
 
 
+def test_los_costos_anotados_se_listan_en_el_orden_en_que_se_anotaron() -> None:
+    # Prueba en vivo del 2026-11-18, hallazgo 3: un costo anotado no se podía ver.
+    navegador, cabeceras = _arma()
+    bueno = {
+        **P,
+        "monto": "100.00",
+        "moneda": "USD",
+        "fecha": "2026-11-12",
+        "partida": "OB-A",
+        "fuente": "factura 12",
+    }
+    assert navegador.post("/v1/control/costos", json=bueno, headers=cabeceras).status_code == 200
+    respuesta = navegador.get("/v1/control/costos", params=P)
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.headers.get("cache-control") == "no-store"
+    filas = respuesta.json()["filas"]
+    assert [{k: v for k, v in f.items() if k != "Responsable"} for f in filas] == [
+        {
+            "Fecha": "13/11/2026",
+            "Monto": "1280.00",
+            "Moneda": "USD",
+            "Partida": "",
+            "Fuente": "libro de obra ficticio",
+        },
+        {
+            "Fecha": "12/11/2026",
+            "Monto": "100.00",
+            "Moneda": "USD",
+            "Partida": "OB-A",
+            "Fuente": "factura 12",
+        },
+    ]
+    assert filas[0]["Responsable"] == ob.RESPONSABLE
+    assert "ana" in filas[1]["Responsable"]
+
+
+def test_los_costos_de_una_obra_que_no_existe_son_404() -> None:
+    assert _con_clave().get("/v1/control/costos", params={"proyecto": "NO"}).status_code == 404
+
+
 def test_importar_un_xlsx_muestra_el_informe_previo_y_luego_registra(
     _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

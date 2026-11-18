@@ -162,6 +162,7 @@ TABLA = {
     ("POST", "/v1/control/valuaciones"): CONTROLAR,
     ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"): CONTROLAR,
     ("POST", "/v1/control/costos"): CONTROLAR,
+    ("GET", "/v1/control/costos"): CONTROLAR,  # prueba en vivo 2026-11-18: ver los costos
     ("POST", "/v1/control/importar/informe"): CONTROLAR,
     ("POST", "/v1/control/importar"): CONTROLAR,
     ("GET", "/v1/control/calculo"): CONTROLAR,

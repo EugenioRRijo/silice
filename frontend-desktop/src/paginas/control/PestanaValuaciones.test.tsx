@@ -57,6 +57,7 @@ describe("Pestaña de valuaciones", () => {
   let importar: () => Response | Promise<Response>;
   let registro: unknown;
   let hallazgosDeLaLista: Valuaciones["hallazgos"];
+  let costos: Record<string, string>[];
 
   function montar() {
     render(
@@ -82,11 +83,13 @@ describe("Pestaña de valuaciones", () => {
     importar = () => json({ importadas: 1 });
     registro = { corte: "2026-11-13", hallazgos: 0, errores: 0, detalle: [] };
     hallazgosDeLaLista = [];
+    costos = [];
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       const metodo = init?.method ?? "GET";
       if (url.startsWith("/v1/control/valuaciones?") && metodo === "GET") return json({ ...valuaciones(anulables), hallazgos: hallazgosDeLaLista });
       if (url === "/v1/control/valuaciones" && metodo === "POST") return json(registro);
+      if (url.startsWith("/v1/control/costos?") && metodo === "GET") return json({ filas: costos });
       const anular = /^\/v1\/control\/valuaciones\/(\d+)\/anular$/.exec(url);
       if (anular && metodo === "POST") {
         anulables = anulables.filter((a) => String(a.id) !== anular[1]);
@@ -203,5 +206,17 @@ describe("Pestaña de valuaciones", () => {
     montar();
     const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de las valuaciones" });
     expect(within(lista).getByText("V-02 · Error (R14): La valuación V-02 no tiene inspector.")).toBeInTheDocument();
+  });
+
+  // Prueba en vivo del 2026-11-18, hallazgo 3: un costo anotado no se podía ver.
+  test("los costos anotados se ven en una tabla con el monto en es-VE", async () => {
+    costos = [
+      { Fecha: "13/11/2026", Monto: "1280.00", Moneda: "USD", Partida: "", Fuente: "libro de obra ficticio", Responsable: "Residente Ficticio" },
+    ];
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Costos incurridos anotados" });
+    expect(within(tabla).getByText("13/11/2026")).toBeInTheDocument();
+    expect(within(tabla).getByText("1.280,00")).toBeInTheDocument();
+    expect(within(tabla).getByText("libro de obra ficticio")).toBeInTheDocument();
   });
 });
