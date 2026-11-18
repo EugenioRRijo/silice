@@ -858,3 +858,59 @@ def test_abrir_y_guardar_en_una_base_sin_la_tabla_de_notas(tmp_path: Path) -> No
             assert segunda.borrador.notas == {clave: "Muro del patio"}
     finally:
         motor.dispose()
+
+
+# --- prueba en vivo del 2026-11-18 (frente B): una partida compuesta hoy en una versión vieja ---
+
+#: La partida que se compone en Componer DESPUÉS de guardar VIV-001 (ficticia).
+PINTURA = ("OBRA-07", "Pintura de caucho en paredes", "m2", "Pintura de caucho")
+SIN_PRECIO_EN_LA_VERSION = (
+    "No se agregó la partida «OBRA-07»: quedaría pendiente en el Presupuesto, sin precio, porque "
+    "el Presupuesto arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, al "
+    "25/10/2026, y con ella no se puede valorar. Insumos sin precio en «Lista Bs de prueba»: "
+    "«OBRA-07» («Pintura de caucho»). Esos precios están en «Lista Bs de prueba al 25/10/2026». "
+    "Qué hacer: en Componer, guarde esa partida con fecha 01/10/2026: sus precios quedan en "
+    "«Lista Bs de prueba» y su rendimiento a esa fecha (si la partida ya existía, cambie también "
+    "las condiciones del rendimiento para que se registre de nuevo). Luego vuelva a agregarla."
+)
+
+
+def _componer_hoy(ruta: Path) -> None:
+    """Componer guarda OBRA-07 hoy (25/10/2026): como la lista para armar rige desde el 01/10 y
+    ya la usa VIV-001, sus precios van a una lista nueva «… al 25/10/2026» (`lista_de_hoy`)."""
+    from aplicacion.composicion import guardar_composicion
+    from core.contracts.apu import ComposicionAPU, LineaMaterial
+
+    codigo, descripcion, unidad, material = PINTURA
+    apu = ComposicionAPU(
+        codigo, descripcion, unidad, D("40"),
+        materiales=(LineaMaterial(material, "gal", D("0.05"), D("30")),),
+    )  # fmt: skip
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            assert guardar_composicion(sesion, apu, Dominio.CIVIL, HOY, "prueba").motivo is None
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+
+def test_una_partida_sin_precio_en_la_lista_de_la_version_no_se_agrega_y_dice_que_hacer(
+    _entorno: Path,
+) -> None:
+    """Antes entraba como «Pendiente» («PENDIENTE: sin APU en el catálogo»), la versión se
+    guardaba con ese error y luego no se podía enviar a aprobación. Ahora: 409 con qué insumos
+    faltan en qué lista de la versión, dónde están y qué hacer; el borrador no cambia."""
+    navegador, ficha = _ana()
+    blanco = _abierto(navegador, ficha)
+    assert _agregar(navegador, ficha, blanco, cantidad="210").status_code == 200
+    assert _guardar(navegador, ficha, blanco, 1, codigo="VIV-001").status_code == 200
+    _componer_hoy(_entorno)
+    id_ = _abierto(navegador, ficha, VIVIENDA, "VIV-001")
+
+    respuesta = _agregar(navegador, ficha, id_, codigo="OBRA-07", cantidad="3")
+
+    assert respuesta.status_code == 409, respuesta.text
+    assert respuesta.json() == {"detalle": SIN_PRECIO_EN_LA_VERSION}
+    resumen = _resumen(navegador, id_)
+    assert (resumen["rev"], resumen["cambios"], resumen["pendientes_catalogo"]) == (0, 0, 0)
