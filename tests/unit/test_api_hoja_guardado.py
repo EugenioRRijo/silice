@@ -346,7 +346,17 @@ def test_guardar_con_fuente_crea_la_002_con_su_registro_exacto_y_los_literales_d
     assert respuesta.status_code == 200, respuesta.text
     assert respuesta.headers["cache-control"] == "no-store"
     cuerpo = respuesta.json()
-    assert set(cuerpo) == {"codigo", "proyecto", "cambios", "total", "primera", "mensaje"}
+    assert set(cuerpo) == {
+        "codigo",
+        "proyecto",
+        "cambios",
+        "total",
+        "primera",
+        "mensaje",
+        "version_nueva",
+        "desgloses",
+    }
+    assert (cuerpo["version_nueva"], cuerpo["desgloses"]) == (True, 0)
     assert (cuerpo["codigo"], cuerpo["proyecto"], cuerpo["cambios"], cuerpo["primera"]) == (
         "002",
         NOMBRE_OF001,

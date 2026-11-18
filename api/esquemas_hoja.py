@@ -76,6 +76,9 @@ class ResumenHojaRespuesta(BaseModel):
     guardado_como: str | None
     #: El borrador no tiene espacio (una obra civil): la Hoja abre en Presupuesto (Tarea 9, O-7).
     espacio_vacio: bool
+    #: Cuántos de los `cambios` son de un desglose del desperdicio (anexo A.6): si son todos,
+    #: guardar escribe las trazas sin versión nueva.
+    desgloses: int
 
 
 class VersionHojaRespuesta(BaseModel):
@@ -199,6 +202,7 @@ def resumen_a_respuesta(resumen: ResumenHoja) -> ResumenHojaRespuesta:
         version_mas_nueva=resumen.version_mas_nueva,
         guardado_como=resumen.guardado_como,
         espacio_vacio=resumen.espacio_vacio,
+        desgloses=resumen.desgloses,
     )
 
 
@@ -915,6 +919,11 @@ class GuardadoRespuesta(BaseModel):
     total: MontoHojaRespuesta
     primera: bool
     mensaje: str
+    #: Falso si solo se guardaron desgloses del desperdicio (anexo A.6): `codigo` es la versión
+    #: abierta, que sigue igual, y el borrador sigue abierto.
+    version_nueva: bool
+    #: Las líneas cuyo desglose se guardó sin cambiar su cantidad.
+    desgloses: int
 
 
 def guardado_a_respuesta(guardado: Guardado) -> GuardadoRespuesta:
@@ -925,6 +934,8 @@ def guardado_a_respuesta(guardado: Guardado) -> GuardadoRespuesta:
         total=monto_a_respuesta(guardado.total),
         primera=guardado.primera,
         mensaje=guardado.mensaje,
+        version_nueva=guardado.version_nueva,
+        desgloses=guardado.desgloses,
     )
 
 

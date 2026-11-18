@@ -52,6 +52,14 @@ plan por rendimientos en la primera unidad que cabe en la matriz (dias, semanas 
 solo lo arma por dias y con mas de 500 periodos no guardaba); si no es por dias, el mensaje lo dice.
 `aplicacion/hoja.py` (congelado) no cambia.
 
+2026-11-18 (anexo A.6 del desenredo; acta DS-3, opcion B, y DS-48): si lo unico que cambio son
+desgloses del desperdicio (`hoja_desperdicio.cambios_de_desglose`, sin celdas: la misma cantidad
+con otra neta y otro porcentaje), guardar escribe solo sus trazas, en su propia transaccion de
+escritura, y **no crea version**: la version abierta no se toca (las trazas viven por partida y
+solo se insertan), el `rev` no sube y el borrador sigue abierto, ya sin cambios. No pide fuente
+(la traza no tiene donde guardarla) ni confirma una version mas nueva (el texto de ese aviso habla
+de una version que aqui no se crea).
+
 Sin FastAPI ni Streamlit (RM-1).
 """
 
@@ -116,7 +124,11 @@ class VersionMasNueva(Exception):  # noqa: N818
 
 @dataclass(frozen=True, slots=True)
 class Guardado:
-    """Lo que dejo S1: la version creada, cuantas celdas registro, su total y el aviso."""
+    """Lo que dejo S1: la version creada, cuantas celdas registro, su total y el aviso.
+
+    `version_nueva` es falso si solo se guardaron desgloses del desperdicio (anexo A.6): entonces
+    `codigo` es el de la version abierta, que sigue igual, y `cambios` es 0. `desgloses` cuenta
+    las lineas cuyo desglose se guardo sin cambiar su cantidad (con version o sin ella)."""
 
     codigo: str
     proyecto: str
@@ -124,6 +136,8 @@ class Guardado:
     total: hoja_vista.Monto
     primera: bool
     mensaje: str
+    version_nueva: bool = True
+    desgloses: int = 0
 
 
 def _ahora() -> datetime:
@@ -178,6 +192,8 @@ def guardar(
             guardado = _primera(sesion, vivo, borrador, fuente, responsable, codigo)
         elif codigo is not None:
             raise HojaInvalida(CODIGO_SOLO_PRIMERA)
+        elif _solo_desglose(vivo, borrador):
+            return _desglose(sesion, vivo, borrador, fuente, responsable)  # sigue abierto
         else:
             guardado = _version(
                 sesion, vivo, borrador, fuente, responsable, confirmar_version_mas_nueva
@@ -208,6 +224,7 @@ def _version(
             )
             if mas_nueva is not None:
                 raise VersionMasNueva(mas_nueva, abierta.codigo)
+        desgloses = _cuantos_desgloses(sesion, vivo, borrador)
         # 2026-11-13: las trazas del desperdicio que dejo la Hoja, en esta misma transaccion
         hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
         with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
@@ -226,6 +243,80 @@ def _version(
         total=total,
         primera=False,
         mensaje=_mensaje(guardada.codigo, guardada.cambios, total, vivo.proyecto, False),
+        desgloses=desgloses,
+    )
+
+
+def _solo_desglose(vivo: BorradorVivo, borrador: hoja.Borrador) -> bool:
+    """Si el borrador no cambia ninguna celda de la version abierta pero si algun desglose (la
+    cuenta de la vista, contra las vigentes anotadas al editar)."""
+    abierta = vivo.abierta
+    assert abierta is not None
+    return not hoja.cambios_entre(abierta.borrador, borrador) and bool(
+        hoja_desperdicio.cambios_de_desglose(
+            abierta.borrador, borrador, vivo.desperdicios, vivo.vigentes_del_desperdicio
+        )
+    )
+
+
+def _cuantos_desgloses(sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador) -> int:
+    """Las lineas cuyo desglose cambia contra las trazas vigentes de AHORA en la base."""
+    abierta = vivo.abierta
+    assert abierta is not None
+    return len(
+        hoja_desperdicio.cambios_de_desglose(
+            abierta.borrador,
+            borrador,
+            vivo.desperdicios,
+            hoja_desperdicio.vigentes_de_la_base(sesion, vivo),
+        )
+    )
+
+
+def _desglose(
+    sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador, fuente: str, responsable: str
+) -> Guardado:
+    """Escribe las trazas del borrador sin crear version (anexo A.6): la version abierta, el
+    `rev` y el borrador quedan como estaban, salvo la cuenta de cambios, que se vacia. Si al
+    releer la base ya no hay nada que escribir (otra persona guardo ese mismo desglose), el
+    `HojaInvalida` de siempre («No hay cambios para guardar»)."""
+    abierta = vivo.abierta
+    assert abierta is not None
+    if abierta.solo_lectura:
+        raise VersionSoloLectura(MENSAJE_SOLO_LECTURA)
+    total = hoja_vista.monto(hoja_vista.calculo(vivo)[0].elaboracion.presupuesto.total)
+    try:
+        desgloses = _cuantos_desgloses(sesion, vivo, borrador)  # antes, `BEGIN IMMEDIATE`
+        escritas = hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
+        if desgloses and escritas:
+            sesion.commit()
+        else:
+            sesion.rollback()
+    except BaseException:
+        sesion.rollback()
+        raise
+    # lo que la version abierta muestra ahora: contra eso se cuenta lo que quede por guardar
+    vivo.vigentes_del_desperdicio = {
+        **vivo.vigentes_del_desperdicio,
+        **{codigo: tuple(trazas) for codigo, trazas in escritas.items()},
+    }
+    vivo.calculo = None
+    if not (desgloses and escritas):
+        motivo = hoja.motivo_para_no_guardar(abierta.borrador, borrador, fuente, responsable)
+        raise HojaInvalida(motivo or "No hay cambios para guardar.")
+    lineas = plural(desgloses, "línea", "líneas")
+    return Guardado(
+        codigo=abierta.codigo,
+        proyecto=vivo.proyecto,
+        cambios=0,
+        total=total,
+        primera=False,
+        mensaje=(
+            f"Se guardó el desglose del desperdicio de {lineas}. La cantidad no cambió, así que "
+            f"la versión {abierta.codigo} sigue siendo la misma."
+        ),
+        version_nueva=False,
+        desgloses=desgloses,
     )
 
 

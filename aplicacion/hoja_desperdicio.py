@@ -65,6 +65,7 @@ __all__ = [
     "por_guardar",
     "trazas_del_borrador",
     "unir",
+    "vigentes_de_la_base",
 ]
 
 #: El navegador manda un porcentaje por material, en el orden del APU; otra cuenta solo llega de
@@ -231,11 +232,20 @@ def por_guardar(
 
 def guardar_con_la_version(
     sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador, *, ahora: datetime
-) -> None:
-    """Escribe en `sesion` las trazas del borrador que `por_guardar` pide. **Sin `commit`**: va en
-    la transacción de la versión (`hoja_guardado`), que confirma o deshace todo junto."""
+) -> dict[str, list[TrazaDesperdicio]]:
+    """Escribe en `sesion` las trazas del borrador que `por_guardar` pide y las devuelve por
+    partida. **Sin `commit`**: va en la transacción de la versión (`hoja_guardado`), o sola si
+    solo cambió el desglose (anexo A.6), y quien guarda confirma o deshace todo junto."""
     pendientes = por_guardar(
         borrador, vivo.desperdicios, lambda codigo: trazas_vigentes(sesion, codigo)
     )
     for codigo, trazas in pendientes.items():
         guardar_trazas(sesion, codigo, trazas, ahora=ahora)
+    return pendientes
+
+
+def vigentes_de_la_base(
+    sesion: Session, vivo: BorradorVivo
+) -> dict[str, tuple[TrazaDesperdicio, ...]]:
+    """Las trazas vigentes en la base de cada partida cuyo desglose editó la Hoja en `vivo`."""
+    return {codigo: tuple(trazas_vigentes(sesion, codigo)) for codigo in vivo.desperdicios}
