@@ -281,14 +281,23 @@ class RendimientoPorDeclarar:
     propuesta: PropuestaRendimiento | None
 
 
+def es_rendimiento_vigente(
+    tipo: TipoRendimiento | str, fecha_rendimiento: date, fecha: date
+) -> bool:
+    """La politica de «rendimiento vigente» fuera del nucleo, en un solo sitio (plan de desenredo,
+    tarea 2.5): lo que `Catalogo.composicion` exige para reconstruir un APU, un rendimiento
+    ESTIMADO de fecha no posterior a `fecha`. `tipo` puede ser el texto de la fila ORM
+    (`"estimado"`), como en `aplicacion.hoja_vial`."""
+    return TipoRendimiento(tipo) is TipoRendimiento.ESTIMADO and fecha_rendimiento <= fecha
+
+
 def rendimientos_por_declarar(
     sesion: Session, items: Sequence[ItemComputo], fecha: date
 ) -> tuple[RendimientoPorDeclarar, ...]:
     """UC-01 3b: las partidas de `items` sin rendimiento estimado vigente a `fecha`, en su orden,
     cada una con la propuesta de `proponer_rendimiento` (el rendimiento y su dispersion).
 
-    Vigente es lo que `Catalogo.composicion` exige para reconstruir un APU: un rendimiento ESTIMADO
-    de fecha no posterior a la del presupuesto. Los codigos sin partida no cuentan: quedan
+    Vigente es lo que dice `es_rendimiento_vigente`. Los codigos sin partida no cuentan: quedan
     pendientes (flujo 3a).
 
     `Catalogo.composiciones` resuelve la lista de precios antes que los rendimientos, asi que sin
@@ -307,7 +316,7 @@ def rendimientos_por_declarar(
         RendimientoPorDeclarar(codigo, proponer_rendimiento(sesion, codigo))
         for codigo in codigos
         if not any(
-            rendimiento.tipo is TipoRendimiento.ESTIMADO and rendimiento.fecha <= fecha
+            es_rendimiento_vigente(rendimiento.tipo, rendimiento.fecha, fecha)
             for rendimiento in catalogo.rendimientos(codigo)
         )
     )
@@ -320,7 +329,7 @@ def rendimiento_por_declarar(sesion: Session, codigo: str, fecha: date) -> Rendi
     catalogo = Catalogo(sesion)
     catalogo.partida(codigo)
     if any(
-        rendimiento.tipo is TipoRendimiento.ESTIMADO and rendimiento.fecha <= fecha
+        es_rendimiento_vigente(rendimiento.tipo, rendimiento.fecha, fecha)
         for rendimiento in catalogo.rendimientos(codigo)
     ):
         raise ValueError(f"la partida {codigo} ya tiene un rendimiento estimado vigente al {fecha}")

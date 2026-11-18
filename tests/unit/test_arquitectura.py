@@ -1046,11 +1046,9 @@ SELECT_EN_RUTAS: dict[str, int] = {
     "api/rutas/admin_claves_api.py": 1,
     "api/rutas/admin_empresas_registradas.py": 1,
     "api/rutas/cuentas.py": 1,
-    "api/rutas/entregas.py": 1,
     "api/rutas/listas.py": 1,
-    "api/rutas/presupuestos.py": 4,
+    "api/rutas/presupuestos.py": 3,
     "api/rutas/produccion.py": 2,
-    "api/rutas/reajuste.py": 1,
     "api/rutas/rendimientos.py": 1,
 }
 
@@ -1060,7 +1058,6 @@ MODELOS_EN_RUTAS: frozenset[str] = frozenset(
         "api/rutas/entregas.py",
         "api/rutas/listas.py",
         "api/rutas/presupuestos.py",
-        "api/rutas/reajuste.py",
         "api/rutas/rendimientos.py",
         "api/rutas/revision.py",
     }
@@ -1574,7 +1571,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
-    "api/rutas/presupuestos.py": 1132,
+    "api/rutas/presupuestos.py": 1110,
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,
@@ -1764,3 +1761,88 @@ def test_una_sola_lectura_de_decimal_de_maquina():
     definiciones = _definiciones("decimal_desde_texto")
     assert len(definiciones) == 1, f"una sola lectura en aplicacion/composicion.py: {definiciones}"
     assert definiciones[0].startswith("aplicacion/composicion.py:")
+
+
+# --- Tarea 2.5: una sola politica de «rendimiento vigente» y una sola busqueda de obra ----------
+
+
+def _es_estimado(nodo: ast.AST) -> bool:
+    """`TipoRendimiento.ESTIMADO` (o su `.value`) dentro de una comparacion."""
+    return any(
+        isinstance(n, ast.Attribute)
+        and n.attr == "ESTIMADO"
+        and isinstance(n.value, ast.Name)
+        and n.value.id == "TipoRendimiento"
+        for n in ast.walk(nodo)
+    )
+
+
+def _politicas_de_vigencia(archivo: Path) -> list[int]:
+    """Lineas de cada `a and b` que compara con `TipoRendimiento.ESTIMADO` y con un `<=`: la
+    politica de «rendimiento estimado vigente a la fecha» escrita por su cuenta."""
+    return sorted(
+        nodo.lineno
+        for nodo in ast.walk(_arbol(archivo))
+        if isinstance(nodo, ast.BoolOp)
+        and isinstance(nodo.op, ast.And)
+        and any(isinstance(v, ast.Compare) and _es_estimado(v) for v in nodo.values)
+        and any(
+            isinstance(v, ast.Compare) and any(isinstance(op, ast.LtE) for op in v.ops)
+            for v in nodo.values
+        )
+    )
+
+
+def test_la_politica_de_vigencia_vive_en_un_solo_sitio():
+    sitios = {
+        ruta: lineas
+        for ruta in _lineas_de_produccion()
+        if (lineas := _politicas_de_vigencia(RAIZ / ruta))
+    }
+    assert list(sitios) == ["aplicacion/elaboracion.py"], sitios
+    assert len(sitios["aplicacion/elaboracion.py"]) == 1, "solo es_rendimiento_vigente la escribe"
+
+
+def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
+    fuentes = {
+        "x = r.tipo is TipoRendimiento.ESTIMADO and r.fecha <= fecha\n": [1],
+        "x = r.tipo == TipoRendimiento.ESTIMADO.value and r.fecha <= fecha\n": [1],
+        "x = r.tipo is TipoRendimiento.MEDIDO and r.fecha <= fecha\n": [],
+        "x = r.tipo is TipoRendimiento.ESTIMADO and r.fecha == fecha\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"vigencia_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _politicas_de_vigencia(archivo)
+    assert detectadas == fuentes
+
+
+#: La busqueda de obra por nombre escrita a mano; vive solo en `aplicacion/proyectos.py`.
+BUSQUEDA_DE_OBRA_POR_NOMBRE = "select(models.Proyecto).where(models.Proyecto.nombre =="
+
+#: Archivos que la repiten y no se pueden tocar (2026-11-17): `aplicacion/hoja.py` es un archivo
+#: del auditor del experimento congelado (`asistente/experimento/protocolo.json`, RS-9; Eugenio,
+#: 2026-10-18: el protocolo no se toca) y cambiarlo rompe
+#: `test_experimento_congelado_vigente.py`. Sale de aqui cuando se vuelva a congelar a proposito.
+BUSQUEDA_DE_OBRA_CONGELADA: frozenset[str] = frozenset({"aplicacion/hoja.py"})
+
+
+def test_una_sola_busqueda_de_obra_por_nombre():
+    """En `api/` y `aplicacion/` (lo que atiende al programa) la consulta vive en
+    `aplicacion.proyectos.proyecto_por_nombre`. Los sembradores de `scripts/` quedan fuera: corren
+    sobre una base nueva, antes del programa."""
+    sitios = sorted(
+        ruta
+        for paquete in ("api", "aplicacion")
+        for archivo in _archivos(paquete)
+        if BUSQUEDA_DE_OBRA_POR_NOMBRE in archivo.read_text(encoding="utf-8")
+        and (ruta := _ruta(archivo))
+    )
+    assert sorted(set(sitios) - BUSQUEDA_DE_OBRA_CONGELADA) == ["aplicacion/proyectos.py"]
+
+
+def test_una_sola_busqueda_de_obra_por_nombre_sin_sobrantes():
+    for ruta in BUSQUEDA_DE_OBRA_CONGELADA:
+        texto = (RAIZ / ruta).read_text(encoding="utf-8")
+        assert BUSQUEDA_DE_OBRA_POR_NOMBRE in texto, f"borrar {ruta} de BUSQUEDA_DE_OBRA_CONGELADA"

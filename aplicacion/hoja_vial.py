@@ -49,7 +49,7 @@ from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, hoja_pa
 from aplicacion.listas_para_armar import lista_para_armar
 from core import models
 from core.catalog import Catalogo, CatalogoIncompleto
-from core.contracts import ItemComputo, OrigenTipo, TipoRendimiento
+from core.contracts import ItemComputo, OrigenTipo
 from core.contracts.verificacion import ReglaVerificacion
 
 __all__ = [
@@ -230,7 +230,7 @@ def _por_que(sesion: Session, codigo: str, lista: models.ListaPrecios, fecha: da
     sin precio en `lista`; si no es nada de eso, el motivo del catálogo."""
     partida = sesion.scalars(select(models.Partida).where(models.Partida.codigo == codigo)).one()
     con_rendimiento = any(
-        r.tipo == TipoRendimiento.ESTIMADO.value and r.fecha <= fecha for r in partida.rendimientos
+        elaboracion.es_rendimiento_vigente(r.tipo, r.fecha, fecha) for r in partida.rendimientos
     )
     con_precio = set(
         sesion.scalars(

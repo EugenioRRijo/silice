@@ -9,12 +9,18 @@ import (`ui.elaboracion` y `ui.composicion` eran puentes de `aplicacion`). Datos
 from __future__ import annotations
 
 import dataclasses
+from datetime import date
 from decimal import Decimal
 
 import pytest
 
-from aplicacion.elaboracion import aceptar_propuesta, propuestas_de_pendientes
+from aplicacion.elaboracion import (
+    aceptar_propuesta,
+    es_rendimiento_vigente,
+    propuestas_de_pendientes,
+)
 from core.contracts import Dominio, ItemComputo, OrigenTipo
+from core.contracts.apu import TipoRendimiento
 from tests.fixtures.computo_auditado import items_auditados
 
 PENDIENTE_T99 = ItemComputo(
@@ -138,3 +144,18 @@ def test_las_fracciones_del_plan_salen_sin_exponente() -> None:
 
     filas = filas_desde_plan([("Dia 1", (("A", Decimal("1E-7")), ("B", Decimal("1.0"))))])
     assert [f["fraccion"] for f in filas] == ["0.0000001", "1.0"]
+
+
+def test_es_rendimiento_vigente():
+    """La politica de «rendimiento vigente» de UC-01 3b (tarea 2.5 del plan de desenredo): un
+    rendimiento ESTIMADO de fecha no posterior a la del presupuesto. Acepta el texto de la fila ORM
+    (`hoja_vial`, el valor «estimado») igual que el miembro del enum."""
+    dia = date(2026, 5, 4)
+    assert es_rendimiento_vigente(TipoRendimiento.ESTIMADO, dia, dia) is True
+    assert es_rendimiento_vigente(TipoRendimiento.ESTIMADO, date(2026, 5, 3), dia) is True
+    assert es_rendimiento_vigente(TipoRendimiento.ESTIMADO, date(2026, 5, 5), dia) is False
+    otros = [tipo for tipo in TipoRendimiento if tipo is not TipoRendimiento.ESTIMADO]
+    assert otros and not any(es_rendimiento_vigente(tipo, dia, dia) for tipo in otros)
+    assert es_rendimiento_vigente("estimado", dia, dia) is True
+    assert es_rendimiento_vigente("estimado", date(2026, 5, 5), dia) is False
+    assert not any(es_rendimiento_vigente(tipo.value, dia, dia) for tipo in otros)
