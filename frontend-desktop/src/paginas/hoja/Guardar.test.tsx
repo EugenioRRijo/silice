@@ -486,7 +486,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const dialogo = await abrirModal();
     expect(within(dialogo).getByRole("heading", { name: "Guardar versión" })).toBeInTheDocument();
     expect(campoFuente(dialogo)).toBeInTheDocument();
-    expect(within(dialogo).getByText(/Se registrarán 1 cambio en una versión nueva \(sale de la 002\)\./)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/Se registrará 1 cambio en una versión nueva \(sale de la 002\)\./)).toBeInTheDocument();
     expect(within(dialogo).getByText(/Con ella se guarda también el desglose del desperdicio de 1 línea\./)).toBeInTheDocument();
     expect(dialogo.textContent).not.toMatch(/2 cambios/);
     expect(confirmar(dialogo)).toBeDisabled(); // sin fuente no se guarda la versión

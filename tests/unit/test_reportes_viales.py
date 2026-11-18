@@ -556,7 +556,11 @@ def test_un_texto_con_caracter_de_control_no_rompe_el_libro():
 
 
 def test_nombre_de_archivo_seguro():
+    # Prueba en vivo del 2026-11-18: la letra con tilde pierde la tilde, no la letra («S_lice_…»).
     assert reportes.nombre_de_reporte("computos", "Vía / Ficticia", "V-001") == (
-        "computos_V_a_Ficticia_V-001.xlsx"
+        "computos_Via_Ficticia_V-001.xlsx"
+    )
+    assert reportes.nombre_de_reporte("apu", "Sílice Ñandú", "V-001") == (
+        "apu_Silice_Nandu_V-001.xlsx"
     )
     assert reportes.nombre_de_reporte("produccion", "2026-11") == "produccion_2026-11.xlsx"

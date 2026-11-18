@@ -195,7 +195,7 @@ describe("A.6: el desglose del desperdicio en plural (arbitraje de la revisión,
       "Se guardará el desglose del desperdicio de 2 líneas. La cantidad no cambia, así que la versión 002 sigue siendo la misma.",
     );
     expect(textoDeVersionAGuardar(3, 2, "002")).toBe(
-      "Se registrarán 1 cambio en una versión nueva (sale de la 002). Con ella se guarda también el desglose del desperdicio de 2 líneas.",
+      "Se registrará 1 cambio en una versión nueva (sale de la 002). Con ella se guarda también el desglose del desperdicio de 2 líneas.",
     );
     expect(textoDeExito({ ...r, version_nueva: false, desgloses: 2 }, "OF-001")).toBe(
       "Se guardó el desglose del desperdicio de 2 líneas. La cantidad no cambió, así que la versión 002 sigue siendo la misma.",
