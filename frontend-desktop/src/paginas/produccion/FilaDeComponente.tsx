@@ -11,6 +11,8 @@ interface Props {
   numero: number;
   base: string;
   fila: Fila;
+  // El producto de la receta: el código del componente no lo ofrece (un producto no es componente de sí mismo).
+  producto?: string;
   // Con una sola fila no hay nada que quitar.
   sePuedeQuitar: boolean;
   // Solo quien puede registrar recetas ve la marca del ligante.
@@ -22,7 +24,7 @@ interface Props {
 
 // Un componente de la receta. La unidad y el tipo no tienen valor por defecto: de ellos depende si el consumo sale del
 // inventario o se compra a precio de lista, y de ahí el costo de la mezcla.
-export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, puedeMarcarLigante, alCambiar, alQuitar, alExpirar }: Props): JSX.Element {
+export function FilaDeComponente({ numero, base, fila, producto = "", sePuedeQuitar, puedeMarcarLigante, alCambiar, alQuitar, alExpirar }: Props): JSX.Element {
   const nombre = `Componente ${numero}`;
   return (
     <fieldset className="receta-componente">
@@ -32,6 +34,7 @@ export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, puedeMarca
         etiqueta="Código"
         tabla="componentes_de_receta"
         tamano="md"
+        excluir={[producto]}
         texto={fila.codigo}
         alCambiarTexto={(codigo) => alCambiar({ codigo })}
         alExpirar={alExpirar}

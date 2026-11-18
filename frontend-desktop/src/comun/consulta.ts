@@ -148,3 +148,17 @@ export function buscadorDeComponentes() {
     return [...propios, ...delCatalogo];
   };
 }
+
+// `buscar` sin las opciones cuyo valor está en `excluir` (comparado sin blancos de los extremos); un grupo que se queda
+// vacío no se muestra. El código de un componente de receta no ofrece el propio producto (prueba en vivo 2026-11-18).
+export function sinCodigos(
+  buscar: (q: string, senal: AbortSignal, limite: number) => Promise<GrupoDeResultados<SugerenciaDeConsulta>[]>,
+  excluir: readonly string[],
+) {
+  const fuera = new Set(excluir.map((c) => c.trim()).filter(Boolean));
+  if (fuera.size === 0) return buscar;
+  return async (q: string, senal: AbortSignal, limite: number): Promise<GrupoDeResultados<SugerenciaDeConsulta>[]> =>
+    (await buscar(q, senal, limite))
+      .map((g) => ({ ...g, opciones: g.opciones.filter((o) => !fuera.has(o.valor.valor.trim())) }))
+      .filter((g) => g.opciones.length > 0);
+}

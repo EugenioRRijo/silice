@@ -163,6 +163,7 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
             numero={i + 1}
             base={`${base}-${f.id}`}
             fila={f}
+            producto={producto}
             sePuedeQuitar={filas.length > 1}
             puedeMarcarLigante={puedeMarcarLigante}
             alCambiar={(cambio) => cambiar(f.id, cambio)}
