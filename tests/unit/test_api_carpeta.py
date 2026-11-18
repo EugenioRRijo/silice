@@ -21,12 +21,14 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Iterator
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from api import caso_web, dependencias
 from api.main import app
@@ -567,3 +569,53 @@ def test_crear_desde_la_empresa_sin_decir_la_lista_es_422(_entorno: Path) -> Non
     )
     assert respuesta.status_code == 422
     assert respuesta.json() == {"detalle": MENSAJE_422}
+
+
+# --- la respuesta se arma antes del commit (tarea A.9, DS-58) -----------------------------------
+#
+# Las dos escrituras van sobre la sesión de escritura (`BEGIN IMMEDIATE` en la primera consulta).
+# Si la respuesta se arma tras el `commit`, sus consultas abren otra transacción inmediata, que
+# espera a otro que escribe y, pasado el `busy_timeout`, da 503 con lo suyo ya guardado. El oráculo
+# son los eventos de la sesión sobre el caso: tras su `commit` no hay otro `begin`.
+
+
+@contextmanager
+def _transacciones_del_caso(caso: Path) -> Iterator[dict[int, list[str]]]:
+    """Por sesión sobre `caso`, la secuencia de sus `begin` y `commit` mientras dura el bloque."""
+    por_sesion: dict[int, list[str]] = {}
+
+    def al_empezar(sesion, _transaccion, conexion) -> None:
+        if Path(conexion.engine.url.database).resolve() == caso.resolve():
+            por_sesion.setdefault(id(sesion), []).append("begin")
+
+    def al_confirmar(sesion) -> None:
+        if id(sesion) in por_sesion:
+            por_sesion[id(sesion)].append("commit")
+
+    event.listen(Session, "after_begin", al_empezar)
+    event.listen(Session, "after_commit", al_confirmar)
+    try:
+        yield por_sesion
+    finally:
+        event.remove(Session, "after_begin", al_empezar)
+        event.remove(Session, "after_commit", al_confirmar)
+
+
+@pytest.mark.parametrize(
+    ("escribir", "estado"),
+    [
+        (lambda navegador, ficha: _poner(navegador, ficha, "Bs"), 200),
+        (lambda navegador, ficha: _crear(navegador, ficha, "maprex"), 201),
+    ],
+    ids=["declarar-moneda", "crear-lista"],
+)
+def test_tras_confirmar_la_ruta_no_abre_otra_transaccion(_entorno: Path, escribir, estado) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    with _transacciones_del_caso(_entorno) as por_sesion:
+        respuesta = escribir(navegador, ficha)
+    assert respuesta.status_code == estado, respuesta.text
+    assert respuesta.json()["moneda"] == "Bs"
+    # Una sola sesión confirma sobre el caso (desde MaPreX, la carga de la referencia confirma
+    # antes por su cuenta: `aplicacion/listas_para_armar.py`) y lo último que hace es confirmar.
+    confirmadas = [eventos for eventos in por_sesion.values() if "commit" in eventos]
+    assert [eventos[-1] for eventos in confirmadas] == ["commit"], confirmadas
