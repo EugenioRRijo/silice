@@ -66,7 +66,7 @@ _BORRADOR = "/v1/hoja/borradores/{id}"
 _EDITA_EL_BORRADOR = "edita el borrador vivo, en memoria del proceso; el caso solo se lee"
 
 #: Rutas no-GET con la sesion comun que no confirman nada en el caso (revisadas una a una el
-#: 2026-11-18, anexo A.8, y medidas con una sonda de `after_commit` sobre la suite entera).
+#: 2026-11-18, anexo A.8; como se comprobo, en el acta DS-45).
 SOLO_LEEN_EL_CASO: dict[tuple[str, str], str] = {
     ("POST", "/listas-precios/vista-previa"): "UC-02 2a: los desconocidos del archivo",
     ("POST", "/presupuestos/calcular"): "calcula sin guardar; la lista convertida se deshace",
