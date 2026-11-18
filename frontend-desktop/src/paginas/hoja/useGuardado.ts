@@ -21,11 +21,14 @@ interface Opciones {
   alExpirar: () => void;
   // El servidor guardó la versión: la página abre la nueva. No debe lanzar.
   alGuardada: (respuesta: GuardadoRespuesta) => Promise<void>;
+  // El servidor no escribió nada pero vació la cuenta del borrador (422 «Ese desglose ya está guardado.»): la página lo vuelve a
+  // leer para que el contador y el botón de guardar digan lo mismo que el servidor.
+  alVaciarseLaCuenta?: () => Promise<void>;
 }
 
 // El estado del modal «Guardar versión»: si está abierto, la fuente escrita (que sobrevive a un cierre o a un error), la lista de
 // cambios (E9) y el guardado (S1). Hay una sola petición de guardado en vuelo a la vez.
-export function useGuardado({ id, rev, proyecto, alExpirar, alGuardada }: Opciones) {
+export function useGuardado({ id, rev, proyecto, alExpirar, alGuardada, alVaciarseLaCuenta }: Opciones) {
   const [abierto, setAbierto] = useState(false);
   const [escrita, setEscrita] = useState<{ proyecto: string; texto: string }>({ proyecto, texto: "" });
   const [enviando, setEnviando] = useState(false);
@@ -92,9 +95,11 @@ export function useGuardado({ id, rev, proyecto, alExpirar, alGuardada }: Opcion
         });
       } catch (e) {
         if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
-        setError(clasificarErrorDeGuardado(e));
+        const clasificado = clasificarErrorDeGuardado(e);
+        setError(clasificado);
         enVuelo.current = false;
         setEnviando(false);
+        if (clasificado.clase === "desglose-ya-guardado") await alVaciarseLaCuenta?.();
         return;
       }
       enVuelo.current = false;
@@ -104,7 +109,7 @@ export function useGuardado({ id, rev, proyecto, alExpirar, alGuardada }: Opcion
       setEscrita({ proyecto, texto: "" });
       await alGuardada(respuesta);
     },
-    [alExpirar, alGuardada, proyecto],
+    [alExpirar, alGuardada, alVaciarseLaCuenta, proyecto],
   );
 
   return { abierto: visible, abrir, cerrar, fuente, escribir, enviando, error, limpiarError, cambios, guardar };

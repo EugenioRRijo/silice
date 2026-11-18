@@ -28,6 +28,7 @@ const TITULO_DE_ERROR: Record<ErrorDeGuardado["clase"], string> = {
   rev: "El borrador cambió",
   "ya-guardado": "Este borrador ya se guardó",
   ausente: "El borrador ya no está",
+  "desglose-ya-guardado": "No había nada que guardar",
   permiso: "Sin permiso para guardar",
   rechazo: "No se guardó nada",
   base: "No se guardó nada",
@@ -186,7 +187,13 @@ export function DialogoDeGuardar(p: Props) {
         {e !== null && (
           <div className="silice-hoja__aviso-edicion">
             <InlineNotification
-              kind={e.clase === "mas-nueva" || e.clase === "rev" || e.clase === "ausente" ? "warning" : "error"}
+              kind={
+                e.clase === "desglose-ya-guardado"
+                  ? "info"
+                  : e.clase === "mas-nueva" || e.clase === "rev" || e.clase === "ausente"
+                    ? "warning"
+                    : "error"
+              }
               role="alert"
               lowContrast
               hideCloseButton

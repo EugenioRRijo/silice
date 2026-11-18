@@ -122,8 +122,21 @@ export function usuarioDeSesion(sesion: { nombre: string; login: string }): stri
 }
 
 // «mas-nueva»: otra persona guardó una versión después; «rev»: el borrador cambió en otra ventana; «ya-guardado»: este
-// borrador ya se guardó; «ausente»: el borrador ya no está (o el caso cambió); «permiso», «rechazo» (422), «base» (503), «otro».
-export type ClaseDeErrorDeGuardado = "mas-nueva" | "rev" | "ya-guardado" | "ausente" | "permiso" | "rechazo" | "base" | "otro";
+// borrador ya se guardó; «ausente»: el borrador ya no está (o el caso cambió); «desglose-ya-guardado» (422 del anexo A.6: otro ya
+// guardó ese desglose y el servidor vació la cuenta del borrador); «permiso», «rechazo» (422), «base» (503), «otro».
+export type ClaseDeErrorDeGuardado =
+  | "mas-nueva"
+  | "rev"
+  | "ya-guardado"
+  | "ausente"
+  | "desglose-ya-guardado"
+  | "permiso"
+  | "rechazo"
+  | "base"
+  | "otro";
+
+// El 422 de `aplicacion/hoja_guardado.py` (DESGLOSE_YA_GUARDADO): no se escribió nada, pero el borrador dejó de contar ese desglose.
+export const DESGLOSE_YA_GUARDADO = "Ese desglose ya está guardado.";
 
 export interface ErrorDeGuardado {
   clase: ClaseDeErrorDeGuardado;
@@ -163,7 +176,9 @@ export function clasificarErrorDeGuardado(error: unknown): ErrorDeGuardado {
     return { clase: "otro", mensaje, version: null };
   }
   if (error.estado === 403) return { clase: "permiso", mensaje, version: null };
-  if (error.estado === 422) return { clase: "rechazo", mensaje, version: null };
+  if (error.estado === 422) {
+    return { clase: d === DESGLOSE_YA_GUARDADO ? "desglose-ya-guardado" : "rechazo", mensaje, version: null };
+  }
   if (error.estado === 503) return { clase: "base", mensaje: d === "" ? MENSAJE_DE_BASE : mensaje, version: null };
   return { clase: "otro", mensaje, version: null };
 }
