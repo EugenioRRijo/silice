@@ -6,6 +6,7 @@ import type { ModuloRespuesta } from "../../api/modulos";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { useAplicacion } from "../../shell/contexto";
+import { formatearFecha } from "./logica";
 
 const primeraEnMayuscula = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1);
 
@@ -70,7 +71,7 @@ export default function Especialidades() {
             {modulos
               .filter((m) => m.cambiado_por !== null)
               .map((m) => (
-                <li key={m.clave}>{`${primeraEnMayuscula(m.nombre)}: cambiada por ${m.cambiado_por} el ${m.cambiado_el?.replace("T", " ").slice(0, 16)}`}</li>
+                <li key={m.clave}>{`${primeraEnMayuscula(m.nombre)}: cambiada por ${m.cambiado_por} el ${formatearFecha(m.cambiado_el ?? "")}`}</li>
               ))}
           </ul>
         )}

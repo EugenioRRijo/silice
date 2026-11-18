@@ -82,6 +82,20 @@ export function formatearFecha(iso: string): string {
   return `${Number(m[3])} ${mes} ${m[1]}, ${m[4]}:${m[5]}`;
 }
 
+// Por qué se hizo un respaldo (`operacion.respaldo.MOTIVO_*`), como lo lee la persona.
+const MOTIVOS_DE_RESPALDO: Record<string, string> = {
+  migracion: "migración",
+  subida: "subida",
+  manual: "manual",
+  antes_de_restaurar: "antes de restaurar",
+};
+
+// «20261118-172700 (migración, 1 base)»: el nombre del juego, su motivo con tilde y las bases en singular o plural.
+export function textoDelRespaldo(juego: { nombre: string; motivo: string; bases: number }): string {
+  const motivo = MOTIVOS_DE_RESPALDO[juego.motivo] ?? juego.motivo.replaceAll("_", " ");
+  return `${juego.nombre} (${motivo}, ${juego.bases} ${juego.bases === 1 ? "base" : "bases"})`;
+}
+
 export const AYUDA_CONTRASENA =
   "De 10 a 128 caracteres. Anótela y entréguela en persona; la persona la cambiará al entrar.";
 export const AYUDA_USUARIO =
