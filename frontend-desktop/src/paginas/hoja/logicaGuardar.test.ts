@@ -104,6 +104,11 @@ describe("qué le pasó al guardar", () => {
     expect(clasificarErrorDeGuardado(e(409, MAS_NUEVA, { detalle: MAS_NUEVA, version_mas_nueva: "007" })).version).toBe("007");
     expect(clasificarErrorDeGuardado(e(409, MAS_NUEVA, { detalle: MAS_NUEVA })).version).toBe("004");
   });
+  test("422 «Ese desglose ya está guardado.»: clase propia (el servidor ya vació la cuenta del borrador)", () => {
+    const d = "Ese desglose ya está guardado.";
+    expect(clasificarErrorDeGuardado(e(422, d))).toEqual({ clase: "desglose-ya-guardado", mensaje: d, version: null });
+    expect(clasificarErrorDeGuardado(e(422, "No hay cambios para guardar: edite alguna celda primero.")).clase).toBe("rechazo");
+  });
   test("409 rev viejo", () => {
     const d = "El borrador cambió en otra ventana: vuelva a cargarlo.";
     expect(clasificarErrorDeGuardado(e(409, d))).toEqual({ clase: "rev", mensaje: d, version: null });

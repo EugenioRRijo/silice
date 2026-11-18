@@ -442,6 +442,27 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(borrados()).toHaveLength(0);
   });
 
+  test("A.6 (prueba en vivo): si el desglose ya estaba guardado (422), el borrador se vuelve a leer y no queda «1 cambio sin guardar»", async () => {
+    const yaGuardado = "Ese desglose ya está guardado.";
+    alAbrir = () => borrador("002", { cambios: 1, desgloses: 1 });
+    alGuardar = () => json({ detalle: yaGuardado }, 422);
+    montar();
+    const region = await screen.findByRole("region", { name: "Estado del borrador" });
+    await within(region).findByText(/1 cambio sin guardar/);
+    const dialogo = await abrirModal();
+    // El servidor ya vació la cuenta: lo que se lee ahora es el borrador sin cambios.
+    alVivo = () => {
+      const b = borrador("002", { cambios: 0, desgloses: 0 });
+      return json({ id: ID, base: b.base, resumen: b.resumen });
+    };
+    fireEvent.click(confirmar(dialogo, "Guardar el desglose"));
+    expect(await within(dialogo).findByText(yaGuardado)).toBeInTheDocument();
+    expect(within(dialogo).getByText("No había nada que guardar")).toBeInTheDocument();
+    await within(region).findByText(/Versión 002 · Sin cambios sin guardar/);
+    expect(guardados()).toHaveLength(1);
+    expect(aperturas().map((a) => a.version)).toEqual(["002"]);
+  });
+
   test("A.6 (DS-48i): en la mezcla de una celda y un desglose pide fuente, habla de versión nueva y promete solo el cambio que se registra", async () => {
     alAbrir = () => borrador("002", { cambios: 2, desgloses: 1 });
     montar();
