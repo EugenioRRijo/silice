@@ -33,7 +33,6 @@ from __future__ import annotations
 import json
 import tempfile
 from datetime import date
-from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
@@ -48,6 +47,7 @@ from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.admin_acceso import administrar
 from api.archivos import nombre_seguro
 from api.dependencias import SesionDep
+from api.presentacion import cifra_presentada
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
 from aplicacion import indices as logica
@@ -347,10 +347,6 @@ class EnUsdRespuesta(BaseModel):
     ya_guardada: bool
 
 
-def _con(valor: Decimal, decimales: int) -> str:
-    return texto_de_cifra(valor.quantize(Decimal(1).scaleb(-decimales)))
-
-
 def _en_usd(funcion):
     """Los errores de `aplicacion.indices_usd` con su código: 404, 409 o 422; nunca el SQL."""
     try:
@@ -396,8 +392,8 @@ def ver_en_usd(sesion: SesionDep, peticion: EnUsdPeticion, response: Response) -
             MesMuestra(
                 mes=f"{m.mes:%m/%Y}",
                 indice_bs=texto_de_cifra(m.indice_bs.normalize()),
-                tasa_promedio=_con(m.tasa_promedio, 4),
-                valor=_con(m.valor, 6),
+                tasa_promedio=cifra_presentada(m.tasa_promedio, 4),
+                valor=cifra_presentada(m.valor, 6),
             )
             for m in extremos
         ],

@@ -37,6 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
+from api.presentacion import exacto_sin_ceros, monto
 from api.rutas.sesion import Detalle
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
@@ -46,7 +47,6 @@ from aplicacion import entrega as logica
 from aplicacion.equipo import operacion_sensible_permitida
 from core import models
 from core.budget import canonico
-from core.verification.texto import formatear_decimal
 from operacion.instalacion import sesion_de_instalacion
 from operacion.version import version as version_de_silice
 from paquete.formato import PaqueteRechazado
@@ -169,7 +169,7 @@ def resumen(sesion: SesionDep, response: Response, proyecto: str, version: str) 
         version=datos.codigo,
         moneda=elegida.moneda,
         total=canonico.texto_decimal(datos.total) or "0",
-        total_texto=formatear_decimal(datos.total.quantize(Decimal("0.01"))),
+        total_texto=exacto_sin_ceros(Decimal(monto(datos.total))),
         hallazgos_total=sum(datos.hallazgos_por_severidad.values()),
         hallazgos_por_severidad=dict(sorted(datos.hallazgos_por_severidad.items())),
         cadena_integra=datos.cadena_integra,
