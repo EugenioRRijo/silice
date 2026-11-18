@@ -270,6 +270,11 @@ def pendientes(sesion: Session) -> list[PesajeSospechoso]:
     )
 
 
+def sospechoso_por_id(sesion: Session, id_sospechoso: int) -> PesajeSospechoso | None:
+    """El pesaje sospechoso de ese `id`, en cualquier estado, o `None`. No escribe."""
+    return sesion.get(PesajeSospechoso, id_sospechoso)
+
+
 def _sospechoso_pendiente(sesion: Session, id_sospechoso: int) -> PesajeSospechoso:
     sospechoso = sesion.get(PesajeSospechoso, id_sospechoso)
     if sospechoso is None:

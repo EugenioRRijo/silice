@@ -200,6 +200,11 @@ def responsable_de(usuario: Usuario) -> str:
     return texto_responsable(usuario.nombre, usuario.login, usuario.restablecida_por_admin)
 
 
+def cuenta_por_id(session: Session, usuario_id: int) -> Usuario | None:
+    """La cuenta con ese `id`, o `None`. No escribe."""
+    return session.get(Usuario, usuario_id)
+
+
 def _usuario(session: Session, usuario_id: int) -> Usuario:
     usuario = session.get(Usuario, usuario_id)
     if usuario is None:

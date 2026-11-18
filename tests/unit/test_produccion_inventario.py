@@ -197,3 +197,13 @@ def test_entradas_del_periodo_una_por_entrada_en_toneladas(sesion: Session) -> N
         EntradaDelPeriodo("PIEDRA", date(2026, 11, 2), D("50")),
     ]
     assert entradas_del_periodo(sesion, "2026-10") == []
+
+
+def test_material_por_id_da_la_fila_o_nada(sesion: Session) -> None:
+    """Anexo A.7: la ruta que resuelve un sospechoso lee el material por aqui."""
+    from produccion.inventario import material_por_id
+
+    mid = _arena(sesion)
+
+    assert material_por_id(sesion, mid).codigo == "ARENA"
+    assert material_por_id(sesion, mid + 1) is None

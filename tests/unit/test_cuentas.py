@@ -519,3 +519,12 @@ def test_un_administrador_desactivado_en_vuelo_no_completa_otra_accion(
             else:
                 cuentas.cambiar_roles(bd_a, actor, id_b, ["arma"], AHORA)
     motor.dispose()
+
+
+def test_cuenta_por_id_da_la_cuenta_o_nada(tmp_path: Path) -> None:
+    """Anexo A.7: las rutas de Cuentas leen al que actua y a la cuenta tocada por aqui."""
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+
+        assert cuentas.cuenta_por_id(sesion, admin.id) is admin
+        assert cuentas.cuenta_por_id(sesion, admin.id + 100) is None

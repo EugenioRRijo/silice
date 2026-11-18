@@ -996,16 +996,37 @@ def _archivos_de_rutas(raiz: Path = RAIZ) -> list[Path]:
     return sorted((raiz / "api" / "rutas").rglob("*.py"))
 
 
+def _es_una_clase(nodo: ast.expr) -> bool:
+    """`Usuario` o `models.Proyecto`: un nombre en CamelCase. `VARIABLE_BASE` (una constante en
+    mayusculas) no lo es."""
+    nombre = (
+        nodo.id
+        if isinstance(nodo, ast.Name)
+        else nodo.attr
+        if isinstance(nodo, ast.Attribute)
+        else ""
+    )
+    return nombre[:1].isupper() and any(letra.islower() for letra in nombre)
+
+
+def _es_consulta(nodo: ast.Call) -> bool:
+    funcion = nodo.func
+    if isinstance(funcion, ast.Name):
+        return funcion.id == "select"
+    if not isinstance(funcion, ast.Attribute):
+        return False
+    if funcion.attr in {"select", "query", "execute"}:
+        return True
+    return funcion.attr == "get" and len(nodo.args) >= 2 and _es_una_clase(nodo.args[0])
+
+
 def _llamadas_select(archivo: Path) -> list[int]:
-    """Lineas de cada llamada `select(...)` o `x.select(...)`, por AST: un comentario no cuenta."""
+    """Lineas de cada consulta a la base, por AST (un comentario no cuenta): `select(...)` o
+    `x.select(...)`, `x.query(...)`, `x.execute(...)` y `x.get(<Modelo>, id)` (anexo A.7)."""
     return sorted(
         nodo.lineno
         for nodo in ast.walk(_arbol(archivo))
-        if isinstance(nodo, ast.Call)
-        and (
-            (isinstance(nodo.func, ast.Name) and nodo.func.id == "select")
-            or (isinstance(nodo.func, ast.Attribute) and nodo.func.attr == "select")
-        )
+        if isinstance(nodo, ast.Call) and _es_consulta(nodo)
     )
 
 
@@ -1098,6 +1119,26 @@ def test_las_rutas_no_consultan_la_base_ve_la_falta(tmp_path):
         encoding="utf-8",
     )
     assert _llamadas_select(archivo) == [5, 6]
+
+
+def test_las_rutas_no_consultan_la_base_ve_get_query_y_execute(tmp_path):
+    """Anexo A.7: `sesion.get(<Modelo>, id)`, `.query(` y `.execute(` tambien son consultas. Un
+    `dict.get("clave", x)` o un `os.environ.get(CONSTANTE, "")` no lo son."""
+    fuentes = {
+        "fila = sesion.get(Usuario, usuario_id)\n": [1],
+        "fila = bd.get(models.Proyecto, 3)\n": [1],
+        "filas = sesion.query(Usuario).all()\n": [1],
+        'sesion.execute(text("DELETE FROM x"))\n': [1],
+        'valor = datos.get("clave", 0)\n': [],
+        'base = os.environ.get(VARIABLE_BASE, "")\n': [],
+        "valor = cache.get(clave)\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"ruta_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _llamadas_select(archivo)
+    assert detectadas == fuentes
 
 
 def test_las_rutas_no_importan_los_modelos_del_nucleo():

@@ -88,7 +88,7 @@ def crear(datos: NuevaClave, activa: Annotated[SesionActiva, EN_EL_EQUIPO]) -> C
 def revocar(clave_id: int, activa: Annotated[SesionActiva, EN_EL_EQUIPO]) -> ClaveRespuesta:
     with sesion_de_instalacion() as bd:
         try:
-            claves_api.revocar(bd, clave_id, activa.login, ahora())
+            revocada = claves_api.revocar(bd, clave_id, activa.login, ahora())
         except LookupError as error:
             raise HTTPException(status_code=404, detail=str(error)) from None
-        return _fila(bd.get(ClaveApi, clave_id))  # type: ignore[arg-type]
+        return _fila(revocada)

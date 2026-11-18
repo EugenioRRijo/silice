@@ -51,6 +51,11 @@ def _material(sesion: Session, material_id: int) -> Material:
     return material
 
 
+def material_por_id(sesion: Session, material_id: int) -> Material | None:
+    """El material de ese `id`, o `None`."""
+    return sesion.get(Material, material_id)
+
+
 def material_por_codigo(sesion: Session, codigo: str) -> Material | None:
     """El material de ese codigo exacto (sin los blancos de los extremos), o `None`."""
     return sesion.scalar(select(Material).where(Material.codigo == codigo.strip()))

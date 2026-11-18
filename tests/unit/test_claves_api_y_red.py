@@ -223,3 +223,13 @@ def test_sin_entorno_explicito_lee_las_variables_del_proceso(monkeypatch) -> Non
 )
 def test_es_cliente_local(ip, direccion: str, local: bool) -> None:
     assert es_cliente_local(ip, direccion) is local
+
+
+def test_revocar_devuelve_la_clave_revocada(tmp_path: Path) -> None:
+    """Anexo A.7: la ruta responde con esta fila en vez de volver a buscarla."""
+    with instalacion(tmp_path) as sesion:
+        _, fila = claves_api.crear(sesion, "plugin de prueba", "admin", AHORA)
+
+        revocada = claves_api.revocar(sesion, fila.id, "admin", AHORA)
+
+        assert revocada is not None and revocada.id == fila.id and revocada.revocada is True
