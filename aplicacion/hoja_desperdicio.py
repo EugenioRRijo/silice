@@ -58,7 +58,9 @@ __all__ = [
     "CAMPO_DESGLOSE",
     "MENSAJE_DESPERDICIOS",
     "cambios_de_desglose",
+    "cambios_del_borrador",
     "con_desperdicio_en_materiales",
+    "cuantos_desgloses",
     "desgloses_visibles",
     "es_de_desglose",
     "guardar_con_la_version",
@@ -198,6 +200,25 @@ def _textos(visibles: Sequence[tuple[int, TrazaDesperdicio]]) -> dict[int, str]:
 def es_de_desglose(cambio: hoja.CambioEditado) -> bool:
     """Si `cambio` es el de un desglose (`cambios_de_desglose`) y no el de una celda."""
     return cambio.objeto == "apu" and cambio.campo == CAMPO_DESGLOSE
+
+
+def cuantos_desgloses(cambios: Sequence[hoja.CambioEditado]) -> int:
+    """Cuántos de `cambios` son de un desglose (`ResumenHoja.desgloses`)."""
+    return sum(1 for cambio in cambios if es_de_desglose(cambio))
+
+
+def cambios_del_borrador(vivo: BorradorVivo) -> list[hoja.CambioEditado]:
+    """Los cambios que cuenta la vista (`hoja_vista.calculo`): los de las celdas de la versión
+    abierta (o de un borrador en blanco) al borrador `vivo` (`hoja.cambios_entre`) y, detrás, los
+    de sus desgloses, contra las vigentes anotadas al editar (`cambios_de_desglose`)."""
+    if vivo.abierta is not None:
+        base = vivo.abierta.borrador
+    else:
+        base = hoja.Borrador(fecha=vivo.borrador.fecha, moneda=vivo.borrador.moneda)
+    return [
+        *hoja.cambios_entre(base, vivo.borrador),
+        *cambios_de_desglose(base, vivo.borrador, vivo.desperdicios, vivo.vigentes_del_desperdicio),
+    ]
 
 
 def trazas_del_borrador(vivo: BorradorVivo, codigo: str) -> tuple[TrazaDesperdicio, ...]:
