@@ -2322,7 +2322,12 @@ def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
 #: del auditor del experimento congelado (`asistente/experimento/protocolo.json`, RS-9; Eugenio,
 #: 2026-10-18: el protocolo no se toca) y cambiarlo rompe
 #: `test_experimento_congelado_vigente.py`. Sale de aqui cuando se vuelva a congelar a proposito.
-BUSQUEDA_DE_OBRA_CONGELADA: frozenset[str] = frozenset({"aplicacion/hoja.py"})
+#: 2026-11-18 (DS-50): `aplicacion/importaciones.py:168` (`select(Proyecto.id)`) y
+#: `aplicacion/mercado.py:475` (`exists()`) repiten la busqueda pidiendo una columna o la existencia
+#: de la obra; salen cuando llamen a `aplicacion.proyectos.proyecto_por_nombre`.
+BUSQUEDA_DE_OBRA_CONGELADA: frozenset[str] = frozenset(
+    {"aplicacion/hoja.py", "aplicacion/importaciones.py", "aplicacion/mercado.py"}
+)
 
 
 def _es_la_obra(nodo: ast.AST) -> bool:
@@ -2358,8 +2363,14 @@ def _raiz_de_la_cadena(llamada: ast.Call) -> ast.Call:
     return llamada
 
 
+def _es_la_obra_o_su_columna(nodo: ast.AST) -> bool:
+    """`Proyecto`, `models.Proyecto` o una columna suya (`Proyecto.id`)."""
+    return _es_la_obra(nodo) or (isinstance(nodo, ast.Attribute) and _es_la_obra(nodo.value))
+
+
 def _consulta_de_la_obra(llamada: ast.Call) -> bool:
-    """`select(Proyecto)` o `x.query(Proyecto)`: la obra entera es lo unico que se pide."""
+    """`select(Proyecto)` o `x.query(Proyecto)`: solo se pide la obra, entera o en columnas suyas
+    (`select(Proyecto.id)`, DS-50); o `exists()` sin argumentos, la existencia de lo filtrado."""
     funcion = llamada.func
     nombre = (
         funcion.id
@@ -2368,13 +2379,20 @@ def _consulta_de_la_obra(llamada: ast.Call) -> bool:
         if isinstance(funcion, ast.Attribute)
         else ""
     )
-    return nombre in {"select", "query"} and len(llamada.args) == 1 and _es_la_obra(llamada.args[0])
+    if nombre == "exists":
+        return not llamada.args and not llamada.keywords
+    return (
+        nombre in {"select", "query"}
+        and len(llamada.args) >= 1
+        and all(map(_es_la_obra_o_su_columna, llamada.args))
+    )
 
 
 def _busquedas_de_obra_por_nombre(archivo: Path) -> list[int]:
     """Lineas de cada `select(Proyecto)` (o `query(Proyecto)`) cuya cadena filtra por
     `Proyecto.nombre ==`, por AST: el `.where(` partido en varias lineas, el `==` al reves y el
-    nombre sin `models.` cuentan; un comentario no. Pedir otra entidad unida a la obra
+    nombre sin `models.` cuentan; un comentario no. Tambien `select(Proyecto.<columna>)` y
+    `exists().where(Proyecto.nombre == x)` (DS-50). Pedir otra entidad unida a la obra
     (`select(Presupuesto).join(Proyecto).where(...)`) no es buscar la obra."""
     return sorted(
         {
@@ -2390,7 +2408,11 @@ def _busquedas_de_obra_por_nombre(archivo: Path) -> list[int]:
 def test_una_sola_busqueda_de_obra_por_nombre():
     """En `api/` y `aplicacion/` (lo que atiende al programa) la consulta vive en
     `aplicacion.proyectos.proyecto_por_nombre`. Los sembradores de `scripts/` quedan fuera: corren
-    sobre una base nueva, antes del programa."""
+    sobre una base nueva, antes del programa.
+
+    No ve: la consulta partida en dos sentencias (`q = select(Proyecto)` y luego
+    `q = q.where(Proyecto.nombre == n)`), ni el filtro por `.in_(...)`, `.like(...)` u otro
+    operador que no sea `==` (DS-50)."""
     sitios = sorted(
         ruta
         for paquete in ("api", "aplicacion")
