@@ -12,18 +12,20 @@ import { usePendientes } from "../../marco/usePendientes";
 import { useAplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
 import "./Bandeja.scss";
-import { carpetaPorAbrir, claveDeObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
+import { carpetaPorAbrir, claveDeObra, contarUrgencias, destinoDelPendiente, esDeEspacio, indiceTrasTecla, paginaQueAbre } from "./logica";
 import { TEXTOS } from "./textos";
 
 interface Props {
   // Abre la sección del pendiente pasando por la confirmación de salida del marco (`irSeguro` de Marco.tsx): formularios
   // sin guardar y, si la obra está en otra carpeta, los borradores de la Hoja que el cambio de carpeta perdería (foco 3).
   // Con `antes`, el marco abre primero esa carpeta (con su pregunta y aviso) y solo si se abrió va a la ruta.
-  alAbrir: (ruta: string, antes?: { carpeta: string | null }) => void;
+  // Puede devolver una promesa: el botón queda deshabilitado hasta que termina (abrir una carpeta tarda).
+  alAbrir: (ruta: string, antes?: { carpeta: string | null }) => void | Promise<void>;
   // Las obras que el marco ya cargó: de ahí sale la carpeta de las obras que se llaman igual (D-F3-3). Una obra que no
   // esté en la lista no muestra carpeta.
   obras?: readonly ObraDeCarpeta[];
-  // La carpeta abierta en la sesión (null, la de la empresa); sin ella no se sabe y nunca se abre otra antes.
+  // La carpeta abierta en la sesión (null, la de la empresa). `undefined` = todavía no se sabe (las obras cargan o fallaron):
+  // una herramienta de espacio no se lanza a ciegas.
   carpetaActual?: string | null;
 }
 
@@ -168,9 +170,23 @@ function Detalle({
   // Una herramienta de un espacio trabaja con la carpeta abierta: la del pendiente se abre antes; si la cuenta no puede abrir
   // carpetas, no se ofrece el paso (abriría la herramienta de otra carpeta) y se dice cuál es.
   const antes = carpetaPorAbrir(p, carpetaActual);
+  const desconocida = carpetaActual === undefined && esDeEspacio(p);
+  const [abriendo, setAbriendo] = useState(false);
+  const idExplicacion = useId();
   const puedeAbrirCarpeta = sesion.acciones.includes("abrir_carpeta");
   const tituloDeLaCarpeta =
     obras.find((o) => o.carpeta === p.carpeta)?.carpeta_titulo ?? (p.carpeta === null ? "Carpeta de la empresa" : p.carpeta.replace(/\.db$/, ""));
+  const explicacion = desconocida ? TEXTOS.carpetaSinSaber : antes !== null ? TEXTOS.abreAntes(tituloDeLaCarpeta) : null;
+  // Mientras abre la carpeta el botón no admite otro clic: un doble clic haría dos cambios, y el segundo podría llevar a un
+  // destino viejo.
+  async function abrir() {
+    setAbriendo(true);
+    try {
+      await (antes === null ? alAbrir(destinoDelPendiente(p)) : alAbrir(destinoDelPendiente(p), antes));
+    } finally {
+      setAbriendo(false);
+    }
+  }
   return (
     <section className="silice-bandeja__detalle" aria-label={TEXTOS.detalle}>
       <h2 className="cds--type-heading-compact-02">{p.texto}</h2>
@@ -189,10 +205,20 @@ function Detalle({
           <p className="cds--type-body-compact-01">{TEXTOS.sinCambiarDeCarpeta(tituloDeLaCarpeta)}</p>
         ) : puede ? (
           <>
-            <Button kind="primary" size="md" onClick={() => (antes === null ? alAbrir(destinoDelPendiente(p)) : alAbrir(destinoDelPendiente(p), antes))}>
+            <Button
+              kind="primary"
+              size="md"
+              disabled={abriendo || desconocida}
+              aria-describedby={explicacion === null ? undefined : idExplicacion}
+              onClick={() => void abrir()}
+            >
               {p.accion.texto}
             </Button>
-            {antes !== null && <p className="cds--type-helper-text-01">{TEXTOS.abreAntes(tituloDeLaCarpeta)}</p>}
+            {explicacion !== null && (
+              <p id={idExplicacion} className="cds--type-helper-text-01">
+                {explicacion}
+              </p>
+            )}
           </>
         ) : (
           <p className="cds--type-body-compact-01">{TEXTOS.sinPermiso}</p>

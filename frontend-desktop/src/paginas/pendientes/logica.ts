@@ -39,12 +39,17 @@ export function paginaQueAbre(p: PendienteDeObra): string {
   return destino(p.carpeta, p.obra_id, p.accion.pagina).pagina;
 }
 
+// La acción del pendiente abre una herramienta de un espacio: su ruta no lleva carpeta y trabaja con la abierta.
+export function esDeEspacio(p: PendienteDeObra): boolean {
+  return destino(p.carpeta, p.obra_id, p.accion.pagina).deEspacio;
+}
+
 // La carpeta que hay que abrir antes de ir a lo que el pendiente pide: la herramienta de un espacio (el Catálogo, Auditoría…)
 // trabaja con la carpeta abierta, no con la de la obra del pendiente. null si no hace falta cambiar (la acción es de la
 // obra o de la Cuenta, el pendiente ya es de la carpeta abierta, o no se sabe cuál está abierta: `undefined`).
 export function carpetaPorAbrir(p: PendienteDeObra, carpetaAbierta: string | null | undefined): { carpeta: string | null } | null {
   if (carpetaAbierta === undefined || p.carpeta === carpetaAbierta) return null;
-  return destino(p.carpeta, p.obra_id, p.accion.pagina).deEspacio ? { carpeta: p.carpeta } : null;
+  return esDeEspacio(p) ? { carpeta: p.carpeta } : null;
 }
 
 // La misma clave que usa el marco para una obra: la carpeta (vacía la de la empresa) y su número.
