@@ -1533,7 +1533,6 @@ MODULOS_GRANDES: dict[str, int] = {
     "aplicacion/control.py": 1584,
     "aplicacion/composicion.py": 1471,
     "adapters/hoja_empresa/pdf.py": 1389,
-    "api/rutas/hoja.py": 1348,
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
@@ -1658,6 +1657,132 @@ def test_rutas_presupuestos_reexporta_lo_mismo():
     )
     definidos = set().union(*(_definidos(RAIZ / "api" / "rutas" / f"{m}.py") for m in familia))
     assert definidos == PUBLICOS_DE_RUTAS_PRESUPUESTOS
+
+
+#: Tarea 4.2: lo que `api/rutas/hoja.py` definia antes de partirse (77 nombres).
+PUBLICOS_DE_RUTAS_HOJA = frozenset(
+    {
+        "CodigoDePartida",
+        "CuentaDeLaHoja",
+        "CuentaQueConvierte",
+        "CuentaQueVe",
+        "FORMA_ANTES",
+        "FORMA_APU",
+        "FORMA_BUSQUEDA",
+        "FORMA_CADENA",
+        "FORMA_CANTIDADES",
+        "FORMA_CONVERTIR",
+        "FORMA_COTIZAR",
+        "FORMA_GUARDAR",
+        "FORMA_INSUMO",
+        "FORMA_LINEA",
+        "FORMA_PARAMETROS",
+        "FORMA_PARTIDA",
+        "FORMA_PLAN",
+        "FORMA_QUITAR",
+        "FORMA_QUITAR_LINEA",
+        "FORMA_RENDIMIENTOS",
+        "FORMA_RESTAURAR",
+        "FORMA_RETIRAR",
+        "FORMA_REV",
+        "IdDeBorrador",
+        "MENSAJE_BASE",
+        "MENSAJE_CON_VERSIONES",
+        "MENSAJE_FALTA",
+        "MENSAJE_FORMA",
+        "MENSAJE_FORMA_ESPACIO",
+        "MENSAJE_OTRO_CASO",
+        "MENSAJE_PARTIDA",
+        "MENSAJE_REV",
+        "MENSAJE_SIN_PLAN",
+        "MENSAJE_SIN_PREPARAR",
+        "MENSAJE_SIN_VERSION",
+        "MENSAJE_SOLO_CUENTA",
+        "MENSAJE_YA_TIENE_PLAN",
+        "SIN_LINEA_BASE",
+        "VER",
+        "abrir_borrador",
+        "agregar_linea_apu",
+        "agregar_partida",
+        "antes_y_despues",
+        "buscar_insumos",
+        "cadena_de_sellos",
+        "cambiar_insumo",
+        "cambios_del_borrador",
+        "convertir_version",
+        "cotizar_insumo",
+        "crear_plan_secuencial",
+        "descartar_borrador",
+        "editar_apu",
+        "editar_cantidades",
+        "editar_espacio",
+        "editar_parametros",
+        "editar_plan",
+        "guardar_borrador",
+        "leer_borrador",
+        "listar_borradores",
+        "listar_importaciones",
+        "listar_versiones",
+        "plan_desde_rendimientos",
+        "precios",
+        "precios_atipicos",
+        "quitar_linea_apu",
+        "quitar_partida",
+        "restaurar_version",
+        "retirar_cotizacion",
+        "router",
+        "trazabilidad",
+        "vista_apu",
+        "vista_auditoria",
+        "vista_equilibrio",
+        "vista_espacio",
+        "vista_parametros",
+        "vista_plan",
+        "vista_presupuesto",
+    }
+)
+#: Las rutas que pasan a `hoja_lecturas` y a `hoja_cadena`, cada una con su `router`.
+EN_HOJA_LECTURAS = frozenset(
+    {
+        "antes_y_despues",
+        "buscar_insumos",
+        "cambios_del_borrador",
+        "precios",
+        "precios_atipicos",
+        "router",
+        "trazabilidad",
+        "vista_apu",
+        "vista_auditoria",
+        "vista_equilibrio",
+        "vista_espacio",
+        "vista_parametros",
+        "vista_plan",
+        "vista_presupuesto",
+    }
+)
+EN_HOJA_CADENA = frozenset(
+    {
+        "cadena_de_sellos",
+        "convertir_version",
+        "cotizar_insumo",
+        "restaurar_version",
+        "retirar_cotizacion",
+        "router",
+    }
+)
+
+
+def test_rutas_hoja_reparte_lo_mismo():
+    """`api/rutas/hoja.py` no es fachada: sus hermanos (`hoja_exportar`, `hoja_libro`, `hoja_plano`)
+    toman de el la clase de ruta y los ayudantes, y reexportarlos cerraria un ciclo. Lo que se
+    fija es el reparto: ningun nombre publico nace ni se pierde, y cada uno vive donde se dice."""
+    casas = ("hoja", "hoja_lecturas", "hoja_cadena")
+    definidos = {m: _definidos(RAIZ / "api" / "rutas" / f"{m}.py") for m in casas}
+    assert set().union(*definidos.values()) == PUBLICOS_DE_RUTAS_HOJA
+    assert definidos["hoja_lecturas"] == EN_HOJA_LECTURAS
+    assert definidos["hoja_cadena"] == EN_HOJA_CADENA
+    quedan = PUBLICOS_DE_RUTAS_HOJA - EN_HOJA_LECTURAS - EN_HOJA_CADENA
+    assert definidos["hoja"] == quedan | {"router"}
 
 
 # --- Tarea 1.6: toda tabla esta en el modelo de datos -------------------------------------------
