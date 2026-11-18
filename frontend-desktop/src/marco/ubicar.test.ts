@@ -23,6 +23,7 @@ describe("ubicar: la sección de una obra (como antes)", () => {
 describe("ubicar: la Cuenta (F6, T6)", () => {
   test.each([
     ["/cuenta/preferencias", "Pantalla y tamaño de letra"],
+    ["/cuenta/contrasena", "Contraseña"],
     ["/cuenta/cuentas", "Cuentas y permisos"],
     ["/cuenta/empresa", "Empresa y tema"],
     ["/cuenta/carpetas", "Carpetas"],

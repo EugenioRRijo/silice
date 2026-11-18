@@ -126,6 +126,31 @@ describe("App", () => {
     expect(await screen.findByRole("button", { name: "Salir de la sesión" })).toBeInTheDocument();
   });
 
+  // Prueba en vivo (2026-11-18): la contraseña solo se cambiaba si la cuenta la tenía provisional. Desde la Cuenta cualquiera
+  // la cambia; la API cierra las demás sesiones y abre otra, así que la persona sigue dentro, con la sesión releída.
+  test("desde la Cuenta se cambia la contraseña y la persona sigue dentro, con la sesión releída", async () => {
+    const usuario = userEvent.setup();
+    const base = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      if (String(entrada) === "/v1/sesion/contrasena" && init?.method === "POST") return json({ ...sesion, csrf: "tok-nuevo" });
+      return base(entrada, init);
+    });
+    window.location.hash = "#/cuenta/contrasena";
+    render(<App />);
+    await usuario.type(await screen.findByLabelText("Contraseña actual", {}, { timeout: 5000 }), "vieja-1");
+    await usuario.type(screen.getByLabelText("Contraseña nueva"), "nueva-segura-2");
+    await usuario.type(screen.getByLabelText("Confirme la contraseña nueva"), "nueva-segura-2");
+    const lecturasAntes = fetchFalso.mock.calls.filter((c) => String(c[0]) === "/v1/sesion" && (c[1]?.method ?? "GET") === "GET").length;
+    await usuario.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+    expect(await screen.findByText("Contraseña cambiada.")).toBeInTheDocument();
+    const envio = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/sesion/contrasena");
+    expect(JSON.parse(String(envio?.[1]?.body))).toEqual({ actual: "vieja-1", nueva: "nueva-segura-2" });
+    const lecturasDespues = fetchFalso.mock.calls.filter((c) => String(c[0]) === "/v1/sesion" && (c[1]?.method ?? "GET") === "GET").length;
+    expect(lecturasDespues).toBe(lecturasAntes + 1);
+    expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Contraseña" })).toBeInTheDocument();
+  });
+
   // Cierre de F3 (H4): el color de la empresa vale en TODA la aplicacion, tambien antes de entrar. GET /v1/tema es
   // publico (no pide sesion), asi que se carga al arrancar y no solo dentro del marco. Colores inventados.
   describe("tema de la empresa", () => {

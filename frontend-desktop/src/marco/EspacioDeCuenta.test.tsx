@@ -21,6 +21,7 @@ import { Marco } from "./Marco";
 const SUR = "Carpeta Sur.db";
 const TITULOS = {
   preferencias: "Pantalla y tamaño de letra",
+  contrasena: "Contraseña",
   cuentas: "Cuentas y permisos",
   empresa: "Empresa y tema",
   carpetas: "Carpetas",
@@ -29,7 +30,7 @@ const TITULOS = {
 } as const;
 const TODAS = Object.values(TITULOS);
 const RUTAS = Object.keys(TITULOS).map((id) => `/cuenta/${id}`);
-const SOLO_DOS = [TITULOS.preferencias, TITULOS.ayuda];
+const SOLO_DOS = [TITULOS.preferencias, TITULOS.contrasena, TITULOS.ayuda];
 const MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta pantalla o acción.";
 const CONTENIDO = "Contenido de administración";
 const JERGA = /módulo|área|página|carpeta de trabajo|streamlit/i;

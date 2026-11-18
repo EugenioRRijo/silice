@@ -157,6 +157,14 @@ describe("resultadosDe: las secciones de la Cuenta (F6, T6)", () => {
     expect(rutas("instalacion")).toContainEqual(["Especialidades, IA e instalación", "/cuenta/sistema"]);
   });
 
+  // Prueba en vivo (2026-11-18): nadie podía cambiar su propia contraseña cuando quería; ahora es una sección de la Cuenta
+  // de toda cuenta y Ctrl+K la encuentra.
+  it("«contraseña» lleva a la sección Contraseña, también a quien no administra", () => {
+    const rita = ofertaDe(["leer_proyecto", "revisar_paquete"], false);
+    expect(rutas("contrasena", rita)).toEqual([["Contraseña", "/cuenta/contrasena"]]);
+    expect(rutas("contraseña")).toEqual([["Contraseña", "/cuenta/contrasena"]]);
+  });
+
   it("«Carpetas» no se ofrece a quien administra pero no cambia de carpeta", () => {
     expect(rutas("carpetas", COMPLETA)).toEqual([]);
     expect(rutas("carpetas")).toEqual([["Carpetas", "/cuenta/carpetas"]]);
