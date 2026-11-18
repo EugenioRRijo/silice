@@ -44,7 +44,7 @@ import type { VigilanteDeObra } from "./otraPestana";
 import { PATRON_DE_OBRA, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
 import type { SeccionId } from "./secciones";
 import { useModulos } from "./useModulos";
-import { useObras } from "./useObras";
+import { ContextoObras, useCargaDeObras } from "./useObras";
 import { ContextoPendientes, useCargaDePendientes } from "./usePendientes";
 
 const CARPETA_CAMBIADA = "Carpeta cambiada";
@@ -103,8 +103,6 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // Cambia con la carpeta: las pantallas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
-  const obras = useObras(acciones);
-  const { recargar: recargarObras } = obras;
   // Lo que la instalación apagó (plan vial, Tarea 19): no se ofrece ni se abre.
   const { apagados: modulosApagados, recargar: recargarModulos } = useModulos();
 
@@ -126,6 +124,9 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     alExpirarDeApp();
   }, [olvidarLaSesion, alExpirarDeApp]);
   useEffect(() => () => olvidarLaSesion(), [olvidarLaSesion]);
+  // Las obras de todas las carpetas: las leen la barra lateral y el buscador sin volver a pedirlas.
+  const obras = useCargaDeObras(acciones, alExpirar);
+  const { recargar: recargarObras } = obras;
   // Los pendientes de todas las obras: los leen la bandeja y la barra lateral sin volver a pedirlos.
   const pendientes = useCargaDePendientes(acciones, alExpirar);
 
@@ -323,117 +324,119 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   return (
     <ContextoAplicacion.Provider value={aplicacion}>
       <ContextoPendientes.Provider value={pendientes}>
-        <div className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`} onClickCapture={alClicAntes}>
-          {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
-          <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => contenido.current?.focus()}>
-            Saltar al contenido
-          </button>
-          <BarraSuperior
-            alAbrirBuscador={() => setBuscadorAbierto(true)}
-            nombre={sesion.nombre}
-            carpeta={carpetaActiva}
-            extra={
-              <>
-                <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("abrir_carpeta")} alVolver={volver} />
-                <BotonRecorrido />
-              </>
-            }
-          />
-          <div className="silice-marco__cuerpo">
-            <BarraLateral obraAbierta={obraDeLaRuta(ubicacion.pathname)} />
-            <main id="contenido" ref={contenido} className="silice-contenido" tabIndex={-1}>
-              {(error !== null || aviso) && (
-                <div className="silice-avisos">
-                  <AvisoError error={error} titulo="No se pudo completar la acción" alCerrar={() => setError(null)} />
-                  {aviso && (
-                    <InlineNotification
-                      kind="info"
-                      title={aviso.titulo}
-                      subtitle={aviso.texto}
-                      lowContrast
-                      onClose={() => {
-                        setAviso(null);
-                        return false;
-                      }}
-                    />
-                  )}
-                </div>
-              )}
-              <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`} reinicio={ubicacion.pathname}>
-                <Suspense fallback={<EsqueletoPagina />}>
-                  <Routes>
-                    {/* Inicio (F6, T8): la app abre en la Vista general. `/pendientes`, el nombre de antes de F6, se retiró en F8. */}
-                    <Route index element={<ALaVistaGeneral />} />
-                    <Route path="/inicio" element={<RaizDeInicio />} />
-                    <Route
-                      path="/inicio/:vista"
-                      element={
-                        <EspacioDeInicio
-                          general={pantalla(paginaPorId("inicio", paginas))}
-                          pendientes={<Bandeja alAbrir={(ruta) => void irSeguro(ruta)} obras={obras.obras} />}
-                        />
-                      }
-                    />
-                    <Route
-                      path={PATRON_DE_OBRA}
-                      element={
-                        <EspacioDeObra
-                          obras={obras.obras}
-                          casos={casos}
-                          alEntrar={alEntrarEnObra}
-                          pantalla={(id) => pantalla(paginaPorId(id, paginas))}
-                          vigilante={vigilante}
-                        />
-                      }
-                    />
-                    {/* La Cuenta (F6, T6): `/cuenta` abre «Pantalla y tamaño de letra». */}
-                    <Route path="/cuenta" element={<RaizDeLaCuenta />} />
-                    <Route
-                      path="/cuenta/:seccion"
-                      element={<EspacioDeCuenta sesion={sesion} pantalla={(id) => pantalla(paginaPorId(id, paginas))} alSalir={alSalir} />}
-                    />
-                    {/* Producción, Auditoría y Precios (F6, T4): `/<espacio>` abre su primera herramienta usable (contrato 1). */}
-                    {ESPACIOS_DEL_MARCO.flatMap((espacio) => [
+        <ContextoObras.Provider value={obras}>
+          <div className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`} onClickCapture={alClicAntes}>
+            {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
+            <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => contenido.current?.focus()}>
+              Saltar al contenido
+            </button>
+            <BarraSuperior
+              alAbrirBuscador={() => setBuscadorAbierto(true)}
+              nombre={sesion.nombre}
+              carpeta={carpetaActiva}
+              extra={
+                <>
+                  <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("abrir_carpeta")} alVolver={volver} />
+                  <BotonRecorrido />
+                </>
+              }
+            />
+            <div className="silice-marco__cuerpo">
+              <BarraLateral obraAbierta={obraDeLaRuta(ubicacion.pathname)} />
+              <main id="contenido" ref={contenido} className="silice-contenido" tabIndex={-1}>
+                {(error !== null || aviso) && (
+                  <div className="silice-avisos">
+                    <AvisoError error={error} titulo="No se pudo completar la acción" alCerrar={() => setError(null)} />
+                    {aviso && (
+                      <InlineNotification
+                        kind="info"
+                        title={aviso.titulo}
+                        subtitle={aviso.texto}
+                        lowContrast
+                        onClose={() => {
+                          setAviso(null);
+                          return false;
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+                <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`} reinicio={ubicacion.pathname}>
+                  <Suspense fallback={<EsqueletoPagina />}>
+                    <Routes>
+                      {/* Inicio (F6, T8): la app abre en la Vista general. `/pendientes`, el nombre de antes de F6, se retiró en F8. */}
+                      <Route index element={<ALaVistaGeneral />} />
+                      <Route path="/inicio" element={<RaizDeInicio />} />
                       <Route
-                        key={`${espacio}-raiz`}
-                        path={`/${espacio}`}
-                        element={<RaizDelEspacio espacio={espacio} acciones={acciones} modoEntrega={modoEntrega} apagados={modulosApagados} />}
-                      />,
-                      <Route
-                        key={espacio}
-                        path={`/${espacio}/:herramienta`}
+                        path="/inicio/:vista"
                         element={
-                          <EspacioDeHerramientas
-                            espacio={espacio}
-                            pantalla={(id) => pantalla(paginaPorId(id, paginas))}
-                            acciones={acciones}
-                            modoEntrega={modoEntrega}
-                            apagados={modulosApagados}
+                          <EspacioDeInicio
+                            general={pantalla(paginaPorId("inicio", paginas))}
+                            pendientes={<Bandeja alAbrir={(ruta) => void irSeguro(ruta)} obras={obras.obras} />}
                           />
                         }
-                      />,
-                    ])}
-                    {/* Las direcciones cortas (`/hoja`, `/reajuste`…): la ruta canónica de una pantalla sin obra (`rutaCanonica`). */}
-                    {paginas
-                      .filter((p) => tieneDireccionCorta(p.id))
-                      .map((p) => (
+                      />
+                      <Route
+                        path={PATRON_DE_OBRA}
+                        element={
+                          <EspacioDeObra
+                            obras={obras.obras}
+                            casos={casos}
+                            alEntrar={alEntrarEnObra}
+                            pantalla={(id) => pantalla(paginaPorId(id, paginas))}
+                            vigilante={vigilante}
+                          />
+                        }
+                      />
+                      {/* La Cuenta (F6, T6): `/cuenta` abre «Pantalla y tamaño de letra». */}
+                      <Route path="/cuenta" element={<RaizDeLaCuenta />} />
+                      <Route
+                        path="/cuenta/:seccion"
+                        element={<EspacioDeCuenta sesion={sesion} pantalla={(id) => pantalla(paginaPorId(id, paginas))} alSalir={alSalir} />}
+                      />
+                      {/* Producción, Auditoría y Precios (F6, T4): `/<espacio>` abre su primera herramienta usable (contrato 1). */}
+                      {ESPACIOS_DEL_MARCO.flatMap((espacio) => [
                         <Route
-                          key={p.id}
-                          path={rutaDe(p)}
-                          element={<DireccionCorta pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
-                        />
-                      ))}
-                    <Route path="*" element={<ALaVistaGeneral />} />
-                  </Routes>
-                </Suspense>
-              </LimiteDeError>
-            </main>
+                          key={`${espacio}-raiz`}
+                          path={`/${espacio}`}
+                          element={<RaizDelEspacio espacio={espacio} acciones={acciones} modoEntrega={modoEntrega} apagados={modulosApagados} />}
+                        />,
+                        <Route
+                          key={espacio}
+                          path={`/${espacio}/:herramienta`}
+                          element={
+                            <EspacioDeHerramientas
+                              espacio={espacio}
+                              pantalla={(id) => pantalla(paginaPorId(id, paginas))}
+                              acciones={acciones}
+                              modoEntrega={modoEntrega}
+                              apagados={modulosApagados}
+                            />
+                          }
+                        />,
+                      ])}
+                      {/* Las direcciones cortas (`/hoja`, `/reajuste`…): la ruta canónica de una pantalla sin obra (`rutaCanonica`). */}
+                      {paginas
+                        .filter((p) => tieneDireccionCorta(p.id))
+                        .map((p) => (
+                          <Route
+                            key={p.id}
+                            path={rutaDe(p)}
+                            element={<DireccionCorta pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
+                          />
+                        ))}
+                      <Route path="*" element={<ALaVistaGeneral />} />
+                    </Routes>
+                  </Suspense>
+                </LimiteDeError>
+              </main>
+            </div>
+            <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
+            <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
+            {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
+            <DialogoSalida paginas={paginas} />
           </div>
-          <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
-          <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
-          {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
-          <DialogoSalida paginas={paginas} />
-        </div>
+        </ContextoObras.Provider>
       </ContextoPendientes.Provider>
     </ContextoAplicacion.Provider>
   );

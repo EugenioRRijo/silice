@@ -2,13 +2,15 @@
 // rediseño del marco). Responde como la API (`api/rutas/casos.py`, `proyectos.py`, `carpeta.py`, `sesion.py`, `hoja.py`) con datos
 // ficticios y anota cada llamada. Solo lo importan las pruebas.
 import { render } from "@testing-library/react";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import type { CasoRespuesta, ProyectoRespuesta, SesionRespuesta } from "../../api/tipos";
 import { PAGINAS } from "../rutas";
 import type { PaginaDef } from "../rutas";
 import { Marco } from "../../marco/Marco";
+import { ContextoObras, useCargaDeObras } from "../../marco/useObras";
+import { useAplicacion } from "../contexto";
 
 export function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -261,4 +263,12 @@ export function montarMarco(sesion: SesionRespuesta, ruta: string, paginas: read
     </MemoryRouter>,
   );
   return { ...vista, alSalir, alExpirar };
+}
+
+// Hace de marco para lo que lee las obras (barra lateral, buscador) cuando se prueba suelto: pide `GET /v1/obras/todas` una
+// vez y la reparte por el contexto, como el marco. Va dentro del contexto de la aplicación.
+export function ConObras({ children }: { children: ReactNode }) {
+  const { sesion, alExpirar } = useAplicacion();
+  const obras = useCargaDeObras(sesion.acciones, alExpirar);
+  return <ContextoObras.Provider value={obras}>{children}</ContextoObras.Provider>;
 }

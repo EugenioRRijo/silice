@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pedir } from "../api/cliente";
 import type { ObraDeCarpetaRespuesta, SesionRespuesta } from "../api/tipos";
 import { ContextoAplicacion } from "../shell/contexto";
-import { sesionDe } from "../shell/obras/datosDePrueba";
+import { ConObras, sesionDe } from "../shell/obras/datosDePrueba";
 import { Buscador } from "./Buscador";
 
 vi.mock("../api/cliente", async (importarOriginal) => ({
@@ -55,7 +55,9 @@ function pintar(sesion: SesionRespuesta = sesionDe("ana"), inicialAbierto = true
       <ContextoAplicacion.Provider
         value={{ sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}
       >
-        <Arnes inicialAbierto={inicialAbierto} />
+        <ConObras>
+          <Arnes inicialAbierto={inicialAbierto} />
+        </ConObras>
       </ContextoAplicacion.Provider>
     </MemoryRouter>,
   );
@@ -65,10 +67,13 @@ const opciones = () => screen.queryAllByRole("option").map((o) => o.textContent 
 const estado = () => screen.getByRole("status").textContent;
 
 describe("Buscador", () => {
-  it("cerrado no pinta nada y no pide obras", () => {
+  it("cerrado no pinta nada, y abrirlo no vuelve a pedir las obras: usa las que el marco ya leyó", async () => {
     pintar(sesionDe("ana"), false);
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(pedirFalso).not.toHaveBeenCalled();
+    await waitFor(() => expect(pedirFalso).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole("button", { name: "Abrir buscador" }));
+    await campo();
+    expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas")).toHaveLength(1);
   });
 
   it("abierto es un diálogo con un combobox enfocado y un listbox", async () => {
@@ -214,7 +219,9 @@ describe("Buscador con módulos apagados (plan vial, Tarea 19)", () => {
         <ContextoAplicacion.Provider
           value={{ sesion: sesionDe("ana"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados }}
         >
-          <Arnes inicialAbierto />
+          <ConObras>
+            <Arnes inicialAbierto />
+          </ConObras>
         </ContextoAplicacion.Provider>
       </MemoryRouter>,
     );

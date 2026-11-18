@@ -1098,7 +1098,8 @@ describe("Marco: lo que se monta con él", () => {
         </button>
       );
     }
-    montar({ en: "/cuenta/cuentas", paginas: ligeras({ administracion: AbrirSur }) });
+    const admin = sesionDe("ana", { acciones: [...ACCIONES.ana, "administrar_cuentas"] });
+    montar({ sesion: admin, en: "/cuenta/cuentas", paginas: ligeras({ administracion: AbrirSur }) });
     const lateral = await screen.findByRole("complementary", { name: "Barra lateral" });
     await waitFor(() => expect(servidor.de("GET", "/v1/obras/todas")).toHaveLength(1));
     await u.click(await screen.findByRole("button", { name: "Abrir Sur" }));

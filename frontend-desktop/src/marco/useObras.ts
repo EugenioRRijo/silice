@@ -1,7 +1,6 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { ObraDeCarpetaRespuesta, ObrasTodasRespuesta } from "../api/tipos";
-import { ContextoAplicacion } from "../shell/contexto";
 
 export type ObraDeCarpeta = ObraDeCarpetaRespuesta;
 
@@ -17,14 +16,12 @@ export interface ObrasCargadas {
 }
 
 // Las obras de todas las carpetas a las que la cuenta tiene acceso (`GET /v1/obras/todas`, Tarea 3 del plan del marco):
-// con `abrir_carpeta` son las de todas las carpetas; sin él, solo las de la abierta. La barra lateral y el buscador la
-// comparten. Mientras recarga conserva la lista anterior y el estado vuelve a «cargando». Sin `leer_proyecto` la API
-// contestaría 403: no se pide (VB-9). El marco, que la usa fuera de su propio contexto, da las acciones de la sesión.
-export function useObras(acciones?: readonly string[]): ObrasCargadas {
-  const aplicacion = useContext(ContextoAplicacion);
-  const alExpirar = aplicacion?.alExpirar;
-  const deLaCuenta = acciones ?? aplicacion?.sesion.acciones;
-  const puedeLeer = deLaCuenta === undefined || deLaCuenta.includes("leer_proyecto");
+// con `abrir_carpeta` son las de todas las carpetas; sin él, solo las de la abierta. Solo el marco la pide (una vez por
+// carga) y la reparte por `ContextoObras` a la barra lateral y al buscador (prueba en vivo, 2026-11-18: con una lectura
+// por cada uno, al abrir otra carpeta la barra seguía con la anterior). Mientras recarga conserva la lista anterior y el
+// estado vuelve a «cargando». Sin `leer_proyecto` la API contestaría 403: no se pide (VB-9).
+export function useCargaDeObras(acciones: readonly string[], alExpirar: () => void): ObrasCargadas {
+  const puedeLeer = acciones.includes("leer_proyecto");
   const [intento, setIntento] = useState(0);
   const [datos, setDatos] = useState<{ obras: ObraDeCarpeta[]; carpetaActual: string | null; tituloActual: string }>({
     obras: [],
@@ -60,5 +57,17 @@ export function useObras(acciones?: readonly string[]): ObrasCargadas {
     setEstado("cargando");
     setIntento((n) => n + 1);
   }, []);
-  return { obras: datos.obras, carpetaActual: datos.carpetaActual, tituloActual: datos.tituloActual, estado: puedeLeer ? estado : "sin_permiso", recargar };
+  return useMemo(
+    () => ({ obras: datos.obras, carpetaActual: datos.carpetaActual, tituloActual: datos.tituloActual, estado: puedeLeer ? estado : "sin_permiso", recargar }),
+    [datos, puedeLeer, estado, recargar],
+  );
+}
+
+export const ContextoObras = createContext<ObrasCargadas | null>(null);
+
+// Lo que leen la barra lateral y el buscador: lo que el marco ya pidió.
+export function useObras(): ObrasCargadas {
+  const valor = useContext(ContextoObras);
+  if (!valor) throw new Error("useObras se usa dentro del marco.");
+  return valor;
 }
