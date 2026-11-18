@@ -20,7 +20,7 @@ import tempfile
 from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
@@ -78,13 +78,8 @@ from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import actualizacion as aplicacion_actualizacion
 from aplicacion import elaboracion as aplicacion_elaboracion
 from aplicacion.impuestos import con_iva
-from aplicacion.listas_para_armar import (
-    SinListaParaArmar,
-    lista_para_el_proyecto,
-    lista_por_nombre,
-)
+from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto, lista_por_nombre
 from aplicacion.proyectos import proyecto_por_nombre, resolver_proyecto
-from core import models
 from core.budget import (
     Comparativo,
     DetectorAtipicos,
@@ -116,6 +111,9 @@ from core.verification.texto import formatear_decimal
 from ml.normalization import propuestas_para
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
+
+if TYPE_CHECKING:
+    from core import models
 
 router = APIRouter(tags=["presupuestos"])
 

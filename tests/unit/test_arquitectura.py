@@ -1045,11 +1045,7 @@ def _nucleo_profundo(archivo: Path, raiz: Path = RAIZ) -> dict[str, int]:
 SELECT_EN_RUTAS: dict[str, int] = {}
 
 #: Archivos de `api/rutas` que importan `core.models` (2026-11-17, a802d728).
-MODELOS_EN_RUTAS: frozenset[str] = frozenset(
-    {
-        "api/rutas/presupuestos.py",
-    }
-)
+MODELOS_EN_RUTAS: frozenset[str] = frozenset()
 
 #: Archivo de `api/rutas` -> modulos del nucleo que no son `core.contracts.*` ni
 #: `core.verification.texto` (2026-11-17, a802d728).
@@ -1559,7 +1555,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
-    "api/rutas/presupuestos.py": 1094,
+    "api/rutas/presupuestos.py": 1092,
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,
