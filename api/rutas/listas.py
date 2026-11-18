@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, UploadFile, status
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
@@ -20,7 +19,7 @@ from api.dependencias import SesionDep
 from api.esquemas import CambioRespuesta, CargaListaRespuesta, ListaRespuesta
 from api.esquemas_ola2 import InsumoDesconocidoRespuesta, VistaPreviaRespuesta
 from aplicacion.actualizacion import nombrar
-from core import models
+from aplicacion.listas_para_armar import listas_de_precios
 from core.catalog import (
     PrecioLeido,
     cambios_precio,
@@ -36,10 +35,7 @@ router = APIRouter(tags=["listas"])
 @router.get("/listas-precios", response_model=list[ListaRespuesta], dependencies=LEER)
 def listar_listas_precios(sesion: SesionDep) -> list[ListaRespuesta]:
     """Listas de precios registradas, de la mas antigua a la mas reciente."""
-    consulta = select(models.ListaPrecios).order_by(
-        models.ListaPrecios.fecha_vigencia, models.ListaPrecios.id
-    )
-    return [ListaRespuesta.model_validate(lista) for lista in sesion.scalars(consulta)]
+    return [ListaRespuesta.model_validate(lista) for lista in listas_de_precios(sesion)]
 
 
 @router.post(

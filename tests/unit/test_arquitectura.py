@@ -1046,19 +1046,14 @@ SELECT_EN_RUTAS: dict[str, int] = {
     "api/rutas/admin_claves_api.py": 1,
     "api/rutas/admin_empresas_registradas.py": 1,
     "api/rutas/cuentas.py": 1,
-    "api/rutas/listas.py": 1,
-    "api/rutas/presupuestos.py": 3,
     "api/rutas/produccion.py": 2,
-    "api/rutas/rendimientos.py": 1,
 }
 
 #: Archivos de `api/rutas` que importan `core.models` (2026-11-17, a802d728).
 MODELOS_EN_RUTAS: frozenset[str] = frozenset(
     {
         "api/rutas/entregas.py",
-        "api/rutas/listas.py",
         "api/rutas/presupuestos.py",
-        "api/rutas/rendimientos.py",
         "api/rutas/revision.py",
     }
 )
@@ -1571,7 +1566,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
-    "api/rutas/presupuestos.py": 1110,
+    "api/rutas/presupuestos.py": 1094,
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,

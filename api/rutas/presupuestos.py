@@ -24,7 +24,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
@@ -79,7 +78,11 @@ from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import actualizacion as aplicacion_actualizacion
 from aplicacion import elaboracion as aplicacion_elaboracion
 from aplicacion.impuestos import con_iva
-from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto
+from aplicacion.listas_para_armar import (
+    SinListaParaArmar,
+    lista_para_el_proyecto,
+    lista_por_nombre,
+)
 from aplicacion.proyectos import proyecto_por_nombre, resolver_proyecto
 from core import models
 from core.budget import (
@@ -295,8 +298,7 @@ def listar_presupuestos(sesion: SesionDep) -> list[PresupuestoConProyectoRespues
     """Códigos, totales y proyecto de todos los presupuestos guardados, ordenados por código."""
     catalogo = Catalogo(sesion)
     resumenes: list[PresupuestoConProyectoRespuesta] = []
-    consulta = select(models.Presupuesto).order_by(models.Presupuesto.codigo)
-    for modelo in sesion.scalars(consulta):
+    for modelo in aplicacion_elaboracion.presupuestos_guardados(sesion):
         presupuesto = cargar_presupuesto(sesion, modelo.proyecto.nombre, modelo.codigo, catalogo)
         resumenes.append(
             PresupuestoConProyectoRespuesta(
@@ -396,9 +398,7 @@ def actualizar_presupuesto(
     menos variaciones de las que el detector necesita, no hay atípicos que declarar.
     """
     modelo = _buscar_modelo(sesion, codigo, proyecto)
-    lista_nueva = sesion.scalars(
-        select(models.ListaPrecios).where(models.ListaPrecios.nombre == peticion.lista)
-    ).one_or_none()
+    lista_nueva = lista_por_nombre(sesion, peticion.lista)
     if lista_nueva is None:
         raise LookupError(f"no hay ninguna lista de precios {peticion.lista!r}")
 
@@ -1063,37 +1063,21 @@ def _filas_comparativo(comparativo: Comparativo) -> list[FilaComparativoRespuest
 
 
 def _buscar_modelo(sesion: Session, codigo: str, proyecto: str | None = None) -> models.Presupuesto:
-    """El renglón de `models.Presupuesto` de ese código, acotado por proyecto si se indica.
-
-    `codigo` solo es único **por proyecto** (`UniqueConstraint(proyecto_id, codigo)` en
-    `core.models.entidades.Presupuesto`, el mismo criterio con que `cargar_presupuesto` exige
-    `proyecto_nombre`): sin `proyecto`, dos proyectos con el mismo código son ambiguos y se
-    declaran con un 409 explícito en vez de dejar que `MultipleResultsFound` llegue sin manejador
-    registrado en `api/main.py` (hallazgo de la revisión de la Tarea 2). Ninguna coincidencia sigue
-    siendo `LookupError` (404), como antes.
+    """El renglón del presupuesto de ese código, acotado por proyecto si se indica
+    (`aplicacion.elaboracion.presupuesto_por_codigo`): ninguna coincidencia es `LookupError` (404);
+    un código que existe en dos obras sin `proyecto` se declara con un 409 explícito en vez de
+    dejar que `MultipleResultsFound` llegue sin manejador (hallazgo de la revisión de la Tarea 2).
     """
-    consulta = select(models.Presupuesto).where(models.Presupuesto.codigo == codigo)
-    if proyecto is not None:
-        consulta = consulta.join(models.Proyecto).where(models.Proyecto.nombre == proyecto)
-    encontrados = list(sesion.scalars(consulta))
-
-    if not encontrados:
-        detalle = f"no hay ningún presupuesto con código {codigo!r}"
-        if proyecto is not None:
-            detalle += f" en la obra {proyecto!r}"
-        raise LookupError(detalle)
-
-    if len(encontrados) > 1:
-        nombres = ", ".join(sorted({modelo.proyecto.nombre for modelo in encontrados}))
+    try:
+        return aplicacion_elaboracion.presupuesto_por_codigo(sesion, codigo, proyecto)
+    except aplicacion_elaboracion.PresupuestoAmbiguo as ambiguo:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                f"el código {codigo!r} existe en más de una obra ({nombres}): "
+                f"el código {codigo!r} existe en más de una obra ({', '.join(ambiguo.obras)}): "
                 "indique 'proyecto' en la consulta para desambiguar"
             ),
-        )
-
-    return encontrados[0]
+        ) from None
 
 
 def _cargar(

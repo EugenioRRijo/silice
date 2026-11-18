@@ -15,7 +15,6 @@ import importlib.util
 from decimal import Decimal
 
 from fastapi import APIRouter, status
-from sqlalchemy import select
 
 from api.acceso import EDITAR, LEER
 from api.dependencias import SesionDep
@@ -30,7 +29,7 @@ from api.esquemas import (
     RendimientosRespuesta,
     decimal_desde_texto,
 )
-from core import models
+from aplicacion.elaboracion import ejecuciones
 from core.catalog import (
     Catalogo,
     DispersionRendimiento,
@@ -69,8 +68,7 @@ def crear_ejecucion(sesion: SesionDep, peticion: EjecucionPeticion) -> Ejecucion
 @router.get("/ejecuciones", response_model=list[EjecucionRespuesta], dependencies=LEER)
 def listar_ejecuciones(sesion: SesionDep) -> list[EjecucionRespuesta]:
     """Obras ejecutadas registradas, de la mas antigua a la mas reciente."""
-    consulta = select(models.Ejecucion).order_by(models.Ejecucion.fecha_inicio, models.Ejecucion.id)
-    return [EjecucionRespuesta.model_validate(e) for e in sesion.scalars(consulta)]
+    return [EjecucionRespuesta.model_validate(e) for e in ejecuciones(sesion)]
 
 
 @router.get(
