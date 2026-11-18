@@ -104,13 +104,14 @@ def test_ejecuciones_salen_por_fecha_de_inicio_y_luego_por_id(sesion: Session) -
 
 
 def test_listas_de_precios_salen_por_vigencia_y_luego_por_id(sesion: Session) -> None:
-    _lista(sesion, "Junio", date(2026, 6, 1))
-    _lista(sesion, "Enero", date(2026, 1, 1))
+    # «Junio bis» entra primero: el desempate por id no coincide con el orden por nombre.
     _lista(sesion, "Junio bis", date(2026, 6, 1))
+    _lista(sesion, "Enero", date(2026, 1, 1))
+    _lista(sesion, "Junio", date(2026, 6, 1))
     assert [lista.nombre for lista in listas_para_armar.listas_de_precios(sesion)] == [
         "Enero",
-        "Junio",
         "Junio bis",
+        "Junio",
     ]
 
 

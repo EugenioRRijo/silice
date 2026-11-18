@@ -471,6 +471,48 @@ def test_importar_un_xlsx_muestra_el_informe_previo_y_luego_registra(
     assert len(navegador.get("/v1/control/valuaciones", params=P).json()["filas"]) == 2
 
 
+def test_importar_lee_el_libro_antes_de_tomar_el_bloqueo_de_escritura(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Revision de la ola 3, hallazgo 2: con `SesionDeEscrituraDep` la primera consulta abre
+    `BEGIN IMMEDIATE`. Si la ruta pregunta por la obra antes de leer el XLSX (hasta 20 MiB),
+    otra persona que guarda en el caso espera todo ese rato. Mientras se lee el libro, otra
+    conexion tiene que poder tomar el bloqueo de escritura sin esperar."""
+    import sqlite3
+
+    from api.rutas import control as rutas_control
+
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    base = tmp_path / "solo_linea_copia.db"
+    xlsx = ob.escribir_xlsx(tmp_path / "ob_s2.xlsx")
+    leer_de_verdad = rutas_control._leer
+    libre: list[bool] = []
+
+    def leer_y_mirar_el_bloqueo(archivo):
+        otra = sqlite3.connect(base, timeout=0)
+        try:
+            otra.execute("BEGIN IMMEDIATE")
+            otra.rollback()
+            libre.append(True)
+        except sqlite3.OperationalError:
+            libre.append(False)
+        finally:
+            otra.close()
+        return leer_de_verdad(archivo)
+
+    monkeypatch.setattr(rutas_control, "_leer", leer_y_mirar_el_bloqueo)
+    navegador, cabeceras = _arma()
+    tipo = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    hecho = navegador.post(
+        "/v1/control/importar",
+        data={**P, "fuente": ob.FUENTE},
+        files={"archivo": ("ob_s2.xlsx", xlsx.read_bytes(), tipo)},
+        headers=cabeceras,
+    )
+    assert hecho.status_code == 200, hecho.text
+    assert libre == [True], "la ruta tenia tomado el bloqueo de escritura mientras leia el libro"
+
+
 def test_un_archivo_que_no_es_un_libro_se_rechaza_entero_con_422() -> None:
     navegador, cabeceras = _arma()
     respuesta = navegador.post(

@@ -551,9 +551,10 @@ def importar(
     activa: Activa,
 ) -> ImportadasRespuesta:
     """Registra todas las valuaciones y costos del XLSX, o ninguno."""
+    datos = _leer(archivo)  # antes de la primera consulta: con ella se toma el bloqueo (DS-32)
     proyecto = _existe(sesion, proyecto)
     cuantas = logica.importar_excel(
-        sesion, proyecto, _leer(archivo), fuente=fuente, responsable=_responsable(activa)
+        sesion, proyecto, datos, fuente=fuente, responsable=_responsable(activa)
     )
     return ImportadasRespuesta(importadas=cuantas)
 

@@ -1,4 +1,6 @@
-"""Las rutas que escriben en el caso abren `BEGIN IMMEDIATE`.
+"""Las rutas de `QUE_ESCRIBEN` abren `BEGIN IMMEDIATE`.
+
+No son todas las que escriben en el caso: las que faltan son el anexo A.8 del plan de desenredo.
 
 Con la sesion comun (`sesion_api`, `BEGIN` diferido) la transaccion empieza leyendo: si entre esa
 lectura y la primera escritura otra peticion escribe y confirma, SQLite no puede ascender la
