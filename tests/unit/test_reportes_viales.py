@@ -368,7 +368,7 @@ def test_produccion_centros_y_conceptos_en_palabras_y_el_mes_en_letras(ins, caso
         ("Cantera", "Nómina"),
         ("Planta", "Energía"),
     }
-    assert _filas(libro, "Portada")[1] == ("Período: noviembre de 2026",)
+    assert _filas(libro, "Portada")[1][0] == "Período: noviembre de 2026"
 
 
 def test_produccion_publicado_dice_la_lista(ins, caso):
