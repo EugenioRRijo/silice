@@ -151,7 +151,7 @@ LLAMADORES = {
     # S1: la conversión de moneda; S2: la decisión de recuperación y la obra de control
     ("core/budget/moneda.py", "guardar_presupuesto"),
     ("core/budget/decision.py", "guardar_edicion"),
-    ("aplicacion/control.py", "aplicar_decision"),
+    ("aplicacion/control_calculo.py", "aplicar_decision"),  # salio de control.py (desenredo 4.3)
     # T10 (hoja en la interfaz nueva, Plan C): la hoja de `aplicacion/` (ya sin la copia de `ui/`)
     ("aplicacion/hoja.py", "guardar_edicion"),
     ("aplicacion/hoja.py", "guardar_presupuesto"),
