@@ -16,6 +16,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
 from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
+from api.presentacion import exacto_sin_ceros
 from aplicacion.entrega import EstadoDeLaCadena
 from aplicacion.hoja import CambioEditado, FilaInsumo, FilaVersion
 from aplicacion.hoja_borradores import BorradorVivo
@@ -763,12 +764,6 @@ class AntesYDespuesRespuesta(BaseModel):
     aviso: str | None
 
 
-def _decimal_fijo(valor: Decimal) -> str:
-    """Un decimal en notacion fija, sin ceros de relleno («17.5», «2»)."""
-    texto = format(valor.normalize(), "f")
-    return "0" if texto in {"-0", ""} else texto
-
-
 def _monto_o_nada(valor: Decimal | None) -> MontoHojaRespuesta | None:
     return None if valor is None else monto_a_respuesta(monto(valor))
 
@@ -790,11 +785,11 @@ def antes_y_despues_a_respuesta(
                 partida=f.partida,
                 descripcion=f.descripcion,
                 unidad=f.unidad,
-                cantidad=_decimal_fijo(f.cantidad),
+                cantidad=exacto_sin_ceros(f.cantidad),
                 costo_antes=monto_a_respuesta(monto(f.costo_antes)),
                 costo_despues=monto_a_respuesta(monto(f.costo_despues)),
-                duracion_antes=_decimal_fijo(f.duracion_antes),
-                duracion_despues=_decimal_fijo(f.duracion_despues),
+                duracion_antes=exacto_sin_ceros(f.duracion_antes),
+                duracion_despues=exacto_sin_ceros(f.duracion_despues),
                 termino_antes=f.termino_antes,
                 termino_despues=f.termino_despues,
                 equilibrio_antes=_monto_o_nada(f.equilibrio_antes),

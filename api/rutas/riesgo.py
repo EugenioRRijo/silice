@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -58,6 +58,7 @@ from pydantic import (
 
 from api.acceso_modulos import requiere_modulo
 from api.dependencias import SesionDep, SesionInstalacionDep
+from api.presentacion import exacto, monto
 from api.rutas.hoja_exportar import TIPO_XLSX
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
@@ -131,9 +132,9 @@ def informe_de_mejora(cuerpo: MejoraEntrada) -> MejoraRespuesta:
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
     return MejoraRespuesta(
-        error_original_pct=_texto(mejora.error_original_pct),
-        error_silice_pct=_texto(mejora.error_silice_pct),
-        mejora_pp=_texto(mejora.mejora_pp),
+        error_original_pct=exacto(mejora.error_original_pct),
+        error_silice_pct=exacto(mejora.error_silice_pct),
+        mejora_pp=exacto(mejora.mejora_pp),
     )
 
 
@@ -256,10 +257,6 @@ def hoy() -> date:
     return ahora().date()
 
 
-def _texto(valor: Decimal) -> str:
-    return format(valor, "f")
-
-
 def _mezclas(mezclas: dict[str, int]) -> list[MezclaRespuesta]:
     return [MezclaRespuesta(insumo=d, calculo=n) for d, n in sorted(mezclas.items())]
 
@@ -313,11 +310,11 @@ def proyeccion_de_la_obra(
         meses=r.parametros.meses,
         trayectorias=r.parametros.trayectorias,
         semilla=p.semilla,
-        total_base=_texto(p.total_base),
-        p50=_texto(p.percentiles[50]),
-        p80=_texto(p.percentiles[80]),
-        reserva=_texto(p.reserva),
-        contribucion=[ContribucionRespuesta(insumo=d, monto=_texto(m)) for d, m in p.contribucion],
+        total_base=exacto(p.total_base),
+        p50=exacto(p.percentiles[50]),
+        p80=exacto(p.percentiles[80]),
+        reserva=exacto(p.reserva),
+        contribucion=[ContribucionRespuesta(insumo=d, monto=exacto(m)) for d, m in p.contribucion],
         meses_usados=p.meses_usados,
         supuestos=list(p.supuestos),
         mezclas=_mezclas(r.mezclas),
@@ -352,15 +349,15 @@ def comprobacion_de_la_obra(
         cortes=[
             CorteRespuesta(
                 corte=x.corte,
-                p50=_texto(x.p50),
-                p80=_texto(x.p80),
-                real=_texto(x.real),
+                p50=exacto(x.p50),
+                p80=exacto(x.p80),
+                real=exacto(x.real),
                 dentro=x.dentro,
             )
             for x in c.cortes
         ],
-        cobertura=_texto(c.cobertura),
-        cobertura_pct=_texto((c.cobertura * 100).quantize(Decimal("0.01"), ROUND_HALF_UP)),
+        cobertura=exacto(c.cobertura),
+        cobertura_pct=monto(c.cobertura * 100),
         dentro=sum(1 for x in c.cortes if x.dentro),
         n_cortes=c.n_cortes,
         mezclas=_mezclas(r.mezclas),

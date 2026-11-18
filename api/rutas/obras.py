@@ -34,7 +34,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -45,6 +44,7 @@ from sqlalchemy.orm import Session
 
 from api.acceso import EDITAR, LEER
 from api.dependencias import SesionDep, ruta_de_url, url_de_la_peticion, url_del_proceso
+from api.presentacion import exacto, exacto_o_nada, monto_o_nada, porcentaje_o_nada
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
@@ -72,9 +72,6 @@ from seguridad.sesiones import SesionActiva
 
 MENSAJE_FORMA = "La consulta de la mesa de control no es válida."
 MENSAJE_BASE = "No se pudo leer la carpeta de trabajo. Intente de nuevo."
-_CENTESIMA = Decimal("0.01")
-_DECIMA = Decimal("0.1")
-_CIEN = Decimal(100)
 
 
 class _RutaObras(RutaSinCache, RutaSinEco):
@@ -154,18 +151,8 @@ class PendientesRespuesta(BaseModel):
     grupos: list[GrupoRespuesta]
 
 
-def _texto(valor: Decimal | None) -> str | None:
-    return None if valor is None else str(valor)
-
-
 def _siguiente(paso: Siguiente | None) -> SiguienteRespuesta | None:
     return None if paso is None else SiguienteRespuesta(texto=paso.texto, pagina=paso.pagina)
-
-
-def _porcentaje(parte: Decimal | None, bac: Decimal | None) -> str | None:
-    if parte is None or bac is None or bac == 0:
-        return None
-    return str((parte / bac * _CIEN).quantize(_DECIMA, rounding=ROUND_HALF_UP))
 
 
 def _cifra(cifra: Cifra) -> CifraRespuesta:
@@ -175,7 +162,7 @@ def _cifra(cifra: Cifra) -> CifraRespuesta:
         actual=str(cifra.actual),
         meta=str(cifra.meta),
         delta=str(cifra.delta),
-        delta_pct=_texto(cifra.delta_pct),
+        delta_pct=exacto_o_nada(cifra.delta_pct),
         sentido=cifra.sentido,
         detalle=cifra.detalle,
     )
@@ -190,12 +177,10 @@ def _obra(obra: ObraEnMesa) -> ObraRespuesta:
         etapa_texto=ETAPA_TEXTO[obra.etapa],
         version=obra.version,
         version_de_linea_base=obra.version_de_linea_base,
-        total=None
-        if obra.total is None
-        else str(obra.total.quantize(_CENTESIMA, rounding=ROUND_HALF_UP)),
+        total=monto_o_nada(obra.total),
         moneda=obra.moneda,
-        avance_real=_porcentaje(obra.ev, obra.bac),
-        avance_plan=_porcentaje(obra.pv, obra.bac),
+        avance_real=porcentaje_o_nada(obra.ev, obra.bac, 1),
+        avance_plan=porcentaje_o_nada(obra.pv, obra.bac, 1),
         que_pasa=obra.que_pasa,
         siguiente=_siguiente(obra.siguiente),
     )
@@ -480,7 +465,7 @@ def resumen_de_todas_las_carpetas(
             MonedaDeLaCarteraRespuesta(
                 moneda=m.moneda,
                 obras=m.obras,
-                total=format(m.total, "f"),
+                total=exacto(m.total),
                 en_ejecucion=m.en_ejecucion,
             )
             for m in cartera.por_moneda
@@ -494,9 +479,9 @@ def resumen_de_todas_las_carpetas(
                 moneda=o.obra.moneda,
                 etapa=o.obra.etapa,
                 etapa_texto=ETAPA_TEXTO[o.obra.etapa],
-                total=None if o.total is None else format(o.total, "f"),
-                avance_real=_porcentaje(o.obra.ev, o.obra.bac),
-                avance_plan=_porcentaje(o.obra.pv, o.obra.bac),
+                total=None if o.total is None else exacto(o.total),
+                avance_real=porcentaje_o_nada(o.obra.ev, o.obra.bac, 1),
+                avance_plan=porcentaje_o_nada(o.obra.pv, o.obra.bac, 1),
             )
             for o in cartera.obras
         ],

@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,7 @@ from sqlalchemy import select
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import reajuste as ruta_reajuste
+from aplicacion import indices_usd
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
@@ -139,6 +141,37 @@ def test_los_origenes_son_los_indices_mensuales_en_bolivares() -> None:
     assert [s["clave"] for s in cuerpo["series"]] == ["FIC-INPC"]
     assert cuerpo["series"][0]["nombre"] == "INPC ficticio"
     assert cuerpo["lados"] == ["venta", "compra"] and cuerpo["lado_por_omision"] == "venta"
+
+
+def test_indices_presenta_al_alza(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La tasa (4 decimales) y el valor (6) se presentan con la mitad al alza (decisión de Eugenio,
+    2026-11-17; antes `quantize` sin modo los llevaba al par): 40,00005 -> 40,0001 y
+    5,0000005 -> 5,000001. Mes ficticio, construido a mano."""
+    mes = indices_usd.MesEnUsd(
+        mes=date(2026, 1, 1),
+        indice_bs=Decimal("200.0002"),
+        tasa_promedio=Decimal("40.00005"),
+        dias=31,
+        valor=Decimal("5.0000005"),
+        provisional=False,
+    )
+    vista = indices_usd.VistaEnUsd(
+        origen="FIC-INPC",
+        lado="venta",
+        serie_nueva="FIC-INPC-USD",
+        nombre="INPC ficticio en USD",
+        meses=[mes],
+        omitidos=[],
+        huella="0" * 64,
+        ya_guardada=False,
+    )
+    monkeypatch.setattr(indices_usd, "ver", lambda *_a, **_k: vista)
+    navegador, ficha = con_cuenta(app, "admin")
+    respuesta = _ver(navegador, ficha)
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["muestra"] == [
+        {"mes": "01/2026", "indice_bs": "200,0002", "tasa_promedio": "40,0001", "valor": "5,000001"}
+    ]
 
 
 def test_ver_muestra_la_cuenta_con_coma_decimal_y_no_escribe(_entorno: Path) -> None:

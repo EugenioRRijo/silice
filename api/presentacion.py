@@ -52,6 +52,13 @@ def porcentaje(
         return None
 
 
+def porcentaje_o_nada(
+    parte: Decimal | None, total: Decimal | None, decimales: int = DECIMALES_PRESENTACION
+) -> str | None:
+    """`porcentaje`, o `None` si falta la parte o el total."""
+    return None if parte is None or total is None else porcentaje(parte, total, decimales)
+
+
 def exacto(valor: Decimal) -> str:
     """El texto decimal tal cual, sin redondear ni recortar ni notación científica."""
     return format(valor, "f")

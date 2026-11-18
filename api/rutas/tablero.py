@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep
+from api.presentacion import exacto, exacto_o_nada
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import tablero
 from aplicacion.estilo import indice, porcentaje
@@ -122,7 +123,7 @@ class TableroRespuesta(BaseModel):
 def _numero(valor: object) -> str:
     """Un numero de grafico (float de `aplicacion.tablero`) como texto decimal, sin notacion
     cientifica."""
-    return format(Decimal(repr(float(valor))), "f")  # type: ignore[arg-type]
+    return exacto(Decimal(repr(float(valor))))  # type: ignore[arg-type]
 
 
 def _tarjetas(tarjetas: list[tablero.Tarjeta]) -> list[TarjetaRespuesta]:
@@ -130,10 +131,6 @@ def _tarjetas(tarjetas: list[tablero.Tarjeta]) -> list[TarjetaRespuesta]:
         TarjetaRespuesta(rotulo=t.rotulo, valor=t.valor, detalle=t.detalle, exacto=t.exacto)
         for t in tarjetas
     ]
-
-
-def _fraccion(valor: Decimal | None) -> str | None:
-    return None if valor is None else format(valor, "f")
 
 
 def _favorable(valor: Decimal | None) -> bool:
@@ -149,17 +146,17 @@ def _control(datos: tablero.DatosTablero) -> ControlRespuesta:
         disponible=True,
         anillos=[
             AnilloRespuesta(
-                rotulo="Avance fisico", fraccion=_fraccion(avance), texto=porcentaje(avance)
+                rotulo="Avance fisico", fraccion=exacto_o_nada(avance), texto=porcentaje(avance)
             ),
             AnilloRespuesta(
                 rotulo="SPI (plazo)",
-                fraccion=_fraccion(indicadores.spi),
+                fraccion=exacto_o_nada(indicadores.spi),
                 texto=indice(indicadores.spi),
                 favorable=_favorable(indicadores.spi),
             ),
             AnilloRespuesta(
                 rotulo="CPI (costo)",
-                fraccion=_fraccion(indicadores.cpi),
+                fraccion=exacto_o_nada(indicadores.cpi),
                 texto=indice(indicadores.cpi),
                 favorable=_favorable(indicadores.cpi),
             ),

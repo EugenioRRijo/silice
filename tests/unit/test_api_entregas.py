@@ -29,7 +29,9 @@ import sqlite3
 import zipfile
 from collections.abc import Iterator
 from contextlib import closing
+from dataclasses import replace
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -203,6 +205,21 @@ def test_un_proyecto_o_una_version_que_no_existe_es_404() -> None:
     r = navegador.get("/v1/entregas/resumen", params={"proyecto": "MIN-001", "version": "009"})
     assert r.status_code == 404
     assert "009" in r.json()["detalle"]
+
+
+def test_el_total_del_resumen_se_presenta_al_alza(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`total_texto` lleva la mitad al alza (decisión de Eugenio, 2026-11-17; antes `quantize` sin
+    modo la llevaba al par): 836,805 -> 836,81 (al par sería 836,8). Total ficticio."""
+    original = ruta_entregas.logica.resumen_de_entrega
+    monkeypatch.setattr(
+        ruta_entregas.logica,
+        "resumen_de_entrega",
+        lambda *a, **k: replace(original(*a, **k), total=Decimal("836.805")),
+    )
+    navegador, _ = _ana()
+    r = navegador.get("/v1/entregas/resumen", params={"proyecto": "MIN-001", "version": "001"})
+    assert r.status_code == 200, r.text
+    assert r.json()["total_texto"] == "836.81"
 
 
 def test_el_resumen_sin_empresa_ni_clave() -> None:

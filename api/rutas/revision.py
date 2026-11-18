@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import tempfile
 from dataclasses import replace
-from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
@@ -45,6 +44,7 @@ from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado, verificar
 from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.archivos import nombre_seguro
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
+from api.presentacion import exacto
 from api.proteccion import LIMITE_CUERPO
 from api.redaccion import pulir
 from api.rutas.auditorias import ServiciosDep
@@ -229,10 +229,6 @@ def _leer(archivo: UploadFile, tope: int, mensaje: str) -> bytes:
     return datos
 
 
-def _exacto(valor: Decimal) -> str:
-    return format(valor, "f")
-
-
 def _hallazgo(h) -> HallazgoRevision:
     return HallazgoRevision(
         regla=h.regla, severidad=h.severidad.name, descripcion=pulir(h.descripcion)
@@ -242,26 +238,26 @@ def _hallazgo(h) -> HallazgoRevision:
 def _tabla(d: Diferencia, titulo: str) -> TablaDeDiferencia:
     return TablaDeDiferencia(
         titulo=titulo,
-        total_antes=_exacto(d.total_1),
+        total_antes=exacto(d.total_1),
         total_antes_texto=formatear_decimal(d.total_1, 2),
-        total_despues=_exacto(d.total_2),
+        total_despues=exacto(d.total_2),
         total_despues_texto=formatear_decimal(d.total_2, 2),
-        diferencia=_exacto(d.total_2 - d.total_1),
+        diferencia=exacto(d.total_2 - d.total_1),
         diferencia_texto=formatear_decimal(d.total_2 - d.total_1, 2),
-        desvio_cantidad=_exacto(d.desvio_cantidad),
+        desvio_cantidad=exacto(d.desvio_cantidad),
         desvio_cantidad_texto=formatear_decimal(d.desvio_cantidad, 2),
-        desvio_precio=_exacto(d.desvio_precio),
+        desvio_precio=exacto(d.desvio_precio),
         desvio_precio_texto=formatear_decimal(d.desvio_precio, 2),
         partidas=[
             PartidaDiferente(
                 codigo_partida=p.codigo_partida,
                 descripcion=p.descripcion,
                 estado=p.estado,
-                desvio_cantidad=_exacto(p.desvio_cantidad),
+                desvio_cantidad=exacto(p.desvio_cantidad),
                 desvio_cantidad_texto=formatear_decimal(p.desvio_cantidad, 2),
-                desvio_precio=_exacto(p.desvio_precio),
+                desvio_precio=exacto(p.desvio_precio),
                 desvio_precio_texto=formatear_decimal(p.desvio_precio, 2),
-                desvio_total=_exacto(p.desvio_total),
+                desvio_total=exacto(p.desvio_total),
                 desvio_total_texto=formatear_decimal(p.desvio_total, 2),
             )
             for p in d.partidas
@@ -286,7 +282,7 @@ def _reauditoria(r: logica.Reauditoria) -> ReauditoriaRevision:
     return ReauditoriaRevision(
         termino=True,
         avisos=list(r.avisos),
-        total_recalculado=_exacto(r.total_recalculado),
+        total_recalculado=exacto(r.total_recalculado),
         total_recalculado_texto=formatear_decimal(r.total_recalculado, 2),
         reglas=logica.texto_de_reglas(r, logica.fecha_es),
         precios_coinciden=not r.diferencias,
@@ -295,11 +291,11 @@ def _reauditoria(r: logica.Reauditoria) -> ReauditoriaRevision:
             DiferenciaDePrecio(
                 codigo_partida=d.codigo_partida,
                 campo=d.campo,
-                declarado=_exacto(d.declarado),
+                declarado=exacto(d.declarado),
                 declarado_texto=formatear_decimal(d.declarado, 4),
-                recalculado=_exacto(d.recalculado),
+                recalculado=exacto(d.recalculado),
                 recalculado_texto=formatear_decimal(d.recalculado, 4),
-                monto=_exacto(d.monto),
+                monto=exacto(d.monto),
                 monto_texto=formatear_decimal(d.monto, 2),
             )
             for d in r.diferencias
@@ -595,7 +591,7 @@ def excel_externo(
     total = importado.presupuesto.total
     return ExcelExternoRespuesta(
         aviso=logica.EXCEL_NO_VERIFICADO,
-        total=_exacto(total),
+        total=exacto(total),
         total_texto=formatear_decimal(total, 2),
         hallazgos=[_hallazgo(h) for h in informe.hallazgos],
     )

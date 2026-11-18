@@ -55,6 +55,7 @@ from starlette.concurrency import run_in_threadpool
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from api.acceso_modulos import requiere_modulo
 from api.dependencias import USUARIO_API, SesionInstalacionDep
+from api.presentacion import exacto, exacto_o_nada
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
@@ -257,18 +258,14 @@ def _conflictos() -> Iterator[None]:
 # --- Salida --------------------------------------------------------------------------------------
 
 
-def _texto(valor: Decimal | None) -> str | None:
-    return None if valor is None else format(valor, "f")
-
-
 def _material_respuesta(material: Material) -> MaterialRespuesta:
     return MaterialRespuesta(
         id=material.id,
         codigo=material.codigo,
         nombre=material.nombre,
         unidad_venta=material.unidad_venta,
-        densidad_t_m3=_texto(material.densidad_t_m3),
-        existencia_minima=format(material.existencia_minima, "f"),
+        densidad_t_m3=exacto_o_nada(material.densidad_t_m3),
+        existencia_minima=exacto(material.existencia_minima),
         activo=material.activo,
     )
 
@@ -279,7 +276,7 @@ def _movimiento_respuesta(movimiento: Movimiento, material_codigo: str) -> Movim
         material_codigo=material_codigo,
         fecha=movimiento.fecha.isoformat(),
         tipo=movimiento.tipo,
-        cantidad=format(movimiento.cantidad, "f"),
+        cantidad=exacto(movimiento.cantidad),
         ticket=movimiento.ticket,
         placa=movimiento.placa,
         cliente=movimiento.cliente,
@@ -396,8 +393,8 @@ def ver_existencias(
             codigo=fila.material.codigo,
             nombre=fila.material.nombre,
             unidad_venta=fila.material.unidad_venta,
-            existencia=format(fila.existencia, "f"),
-            minima=format(fila.minima, "f"),
+            existencia=exacto(fila.existencia),
+            minima=exacto(fila.minima),
             queda_poco=fila.queda_poco,
             negativa=fila.negativa,
         )

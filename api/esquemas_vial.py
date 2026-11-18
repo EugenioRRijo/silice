@@ -15,6 +15,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
 from adapters.vial.modelo import Capa, Demarcacion, Tramo
+from api.presentacion import exacto, exacto_o_nada
 from aplicacion.vial import (
     MAX_CAPAS,
     MAX_LINEAS_DE_DEMARCACION,
@@ -225,26 +226,22 @@ class TramosLlevados(BaseModel):
     version: str
 
 
-def _texto(valor: Decimal | None) -> str | None:
-    return None if valor is None else format(valor, "f")
-
-
 def tramo_a_respuesta(t: Tramo) -> TramoRespuesta:
     return TramoRespuesta(
         id=t.id,
-        progresiva_ini_km=format(t.progresiva_ini_km, "f"),
-        progresiva_fin_km=format(t.progresiva_fin_km, "f"),
-        ancho_m=format(t.ancho_m, "f"),
-        distancia_planta_km=_texto(t.distancia_planta_km),
+        progresiva_ini_km=exacto(t.progresiva_ini_km),
+        progresiva_fin_km=exacto(t.progresiva_fin_km),
+        ancho_m=exacto(t.ancho_m),
+        distancia_planta_km=exacto_o_nada(t.distancia_planta_km),
         transporte=t.transporte,
         capas=[
             CapaRespuesta(
                 tipo=c.tipo,
-                espesor_m=_texto(c.espesor_m),
-                densidad_t_m3=_texto(c.densidad_t_m3),
-                dosis_l_m2=_texto(c.dosis_l_m2),
-                asfalto_pct=_texto(c.asfalto_pct),
-                esponjamiento=_texto(c.esponjamiento),
+                espesor_m=exacto_o_nada(c.espesor_m),
+                densidad_t_m3=exacto_o_nada(c.densidad_t_m3),
+                dosis_l_m2=exacto_o_nada(c.dosis_l_m2),
+                asfalto_pct=exacto_o_nada(c.asfalto_pct),
+                esponjamiento=exacto_o_nada(c.esponjamiento),
                 limpieza=c.limpieza,
                 medicion=c.medicion,
                 suministro=c.suministro,
@@ -253,7 +250,10 @@ def tramo_a_respuesta(t: Tramo) -> TramoRespuesta:
         ],
         demarcacion=[
             DemarcacionRespuesta(
-                tipo=d.tipo, lineas=d.lineas, area_m2=_texto(d.area_m2), captafaros=d.captafaros
+                tipo=d.tipo,
+                lineas=d.lineas,
+                area_m2=exacto_o_nada(d.area_m2),
+                captafaros=d.captafaros,
             )
             for d in t.demarcacion
         ],

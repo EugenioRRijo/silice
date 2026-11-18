@@ -18,6 +18,7 @@ from api.presentacion import (
     monto,
     monto_o_nada,
     porcentaje,
+    porcentaje_o_nada,
     redondeado,
 )
 
@@ -61,6 +62,13 @@ def test_porcentaje():
     assert porcentaje(Decimal("-0.00001"), Decimal("1000")) == "0.00"
     assert porcentaje(Decimal("1"), Decimal("8"), 1) == "12.5"
     assert porcentaje(Decimal("1" + "0" * 30), Decimal("1")) is None  # no cabe: sin porcentaje
+
+
+def test_porcentaje_o_nada():
+    assert porcentaje_o_nada(None, Decimal("10")) is None
+    assert porcentaje_o_nada(Decimal("1"), None) is None
+    assert porcentaje_o_nada(Decimal("1"), Decimal("0"), 1) is None
+    assert porcentaje_o_nada(Decimal("1"), Decimal("16"), 1) == "6.3"  # 6,25 -> 6,3 al alza
 
 
 def test_cifra_presentada_y_redondeado():

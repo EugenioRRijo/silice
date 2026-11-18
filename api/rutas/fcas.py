@@ -20,11 +20,12 @@ valor imposible es 422 con `{"detalle": ...}`."""
 from __future__ import annotations
 
 import re
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, StrictStr
 
+from api.presentacion import redondeado
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from aplicacion.fcas import (
@@ -120,10 +121,6 @@ def _decimal(nombre: str, texto: str) -> Decimal:
     return Decimal(texto.strip())
 
 
-def _redondeado(valor: Decimal, lugares: int) -> str:
-    return str(valor.quantize(Decimal(1).scaleb(-lugares), rounding=ROUND_HALF_UP))
-
-
 def _de_la_version(texto: str) -> VersionFcas:
     fcas = _decimal("fcas_version", texto)
     if fcas < 0:
@@ -134,8 +131,8 @@ def _de_la_version(texto: str) -> VersionFcas:
     )  # el multiplicador conserva los decimales escritos
     return VersionFcas(
         fcas=escrito,
-        porcentaje=_redondeado(fcas * 100, 2),
-        multiplicador=_redondeado(1 + fcas, lugares),
+        porcentaje=redondeado(fcas * 100, 2),
+        multiplicador=redondeado(1 + fcas, lugares),
     )
 
 
@@ -175,13 +172,13 @@ def calcular(cuerpo: CalculoFcasEntrada) -> CalculoFcasRespuesta:
         DESGLOSE_DIAS_NO_TRABAJADOS: _NOMBRE_DEL_PRIMER_RENGLON
     }
     return CalculoFcasRespuesta(
-        fcas=_redondeado(resultado.fcas, 4),
-        fcas_por_dias=_redondeado(resultado.fcas_por_dias, 4),
+        fcas=redondeado(resultado.fcas, 4),
+        fcas_por_dias=redondeado(resultado.fcas_por_dias, 4),
         dias_pagados=str(resultado.dias_pagados),
-        porcentaje=_redondeado(resultado.fcas * 100, 2),
-        multiplicador=_redondeado(1 + resultado.fcas, 4),
+        porcentaje=redondeado(resultado.fcas * 100, 2),
+        multiplicador=redondeado(1 + resultado.fcas, 4),
         desglose=[
-            RenglonFcas(id=i, nombre=nombres[i], aporte=_redondeado(aporte, 4))
+            RenglonFcas(id=i, nombre=nombres[i], aporte=redondeado(aporte, 4))
             for i, aporte in resultado.desglose
         ],
         a_cotejar=[AvisoFcas(id=i, nombre=nombres[i]) for i in resultado.a_cotejar],
