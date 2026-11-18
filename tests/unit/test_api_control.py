@@ -349,6 +349,29 @@ def _url() -> str:
     return os.environ[dependencias.VARIABLE_BASE]
 
 
+def test_una_valuacion_del_futuro_se_rechaza_con_422_y_un_mensaje_claro() -> None:
+    # Prueba en vivo del 2026-11-18, hallazgo 1: un «hasta» posterior a hoy se rechaza.
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-09",
+        "desde": "2099-01-05",
+        "hasta": "2099-01-09",
+        "fecha": "2099-01-12",
+        "inspector": ob.INSPECTOR,
+        "lineas": [{"partida": "OB-A", "cantidad": "1"}],
+        "fuente": "x",
+    }
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"].startswith(
+        "El «Período hasta» (09/01/2099) es posterior a hoy ("
+    )
+    assert [
+        f["Numero"] for f in navegador.get("/v1/control/valuaciones", params=P).json()["filas"]
+    ] == ["V-01", "V-02"]
+
+
 def test_una_valuacion_sin_lineas_se_rechaza_con_422_y_no_se_guarda() -> None:
     navegador, cabeceras = _arma()
     cuerpo = {
