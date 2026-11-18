@@ -604,3 +604,43 @@ def test_si_otro_ya_guardo_ese_mismo_desglose_es_422_propio_y_la_cuenta_se_vacia
     assert _volcado(_caso) == antes
     despues = _resumen(navegador, id_)
     assert (despues["rev"], despues["cambios"], despues["desgloses"]) == (1, 0, 0)
+
+
+def _editar_rendimiento(navegador, ficha, id_, cantidades, rev, rendimiento):
+    """Una edición del APU de la llave sin `desperdicios`: solo el rendimiento."""
+    return navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/AF-LLAVE",
+        json={
+            "rev": rev,
+            "rendimiento": rendimiento,
+            "materiales": cantidades["materiales"],
+            "equipos": cantidades["equipos"],
+            "mano_obra": cantidades["mano de obra"],
+        },
+        headers=protegida(ficha),
+    )
+
+
+def test_el_desglose_guardado_sale_del_borrador_y_no_pisa_otro_guardado_despues(
+    _caso: Path,
+) -> None:
+    """Tras guardar solo el desglose (0,625 + 60 %), Componer vuelve a guardar la partida con
+    0,8 + 25 %. La Hoja muestra lo de la base, sin contar ningún cambio, y la versión que se guarda
+    después por otra celda no reescribe la traza vieja del borrador sobre la de Componer."""
+    componer = TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000"))
+    _con_traza(_caso, componer)
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"]).status_code == 200
+    guardado = _guardar(navegador, ficha, id_, 1)
+    assert guardado.status_code == 200, guardado.text
+    _con_traza(_caso, componer)  # Componer guarda otra vez la partida
+    vista = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "AF-LLAVE"})
+    assert vista.json()["detalle"]["desperdicios"] == [LLAVE_0_8]
+    assert _resumen(navegador, id_)["cambios"] == 0
+    editado = _editar_rendimiento(navegador, ficha, id_, cantidades, 1, "25")
+    assert editado.status_code == 200, editado.text
+    version = _guardar(navegador, ficha, id_, editado.json()["rev"], "Acta ficticia de obra")
+    assert version.status_code == 200, version.text
+    assert (version.json()["codigo"], version.json()["desgloses"]) == ("002", 0)
+    assert _trazas(_caso) == [componer]
