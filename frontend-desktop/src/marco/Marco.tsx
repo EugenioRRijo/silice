@@ -54,6 +54,8 @@ export interface PropsDelMarco {
   alSalir: () => void;
   // La API contestó 401 en medio del trabajo: la sesión venció.
   alExpirar: () => void;
+  // Cuenta › Contraseña: cambia la propia (la sesión la da `useSesion`, que relee la ficha nueva).
+  alCambiarContrasena?: (actual: string, nueva: string) => Promise<void>;
   // Solo en pruebas: el registro de pantallas, el visor de hojas y el vigilante de pestañas.
   paginas?: readonly PaginaDef[];
   // Lo abierto en «Libro de la empresa», guardado por encima de la puerta de sesión (UC-26).
@@ -86,7 +88,7 @@ type ObraDeLaSesion = { carpeta: string | null; obraId: number } | "cargando" | 
 // límite de error, «Cambios sin guardar», la marca de la demostración, los avisos, el recorrido guiado y la sesión
 // vencida. Pasa de 250 líneas porque reúne el estado que comparten todas las pantallas (sesión, carpeta, obra elegida,
 // moneda pendiente) con las rutas; las piezas con lógica propia viven aparte (ubicar.ts, EspacioDeObra, useObraDeLaRuta).
-export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, paginas = PAGINAS, almacen, crearHoja, vigilante }: PropsDelMarco) {
+export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, alCambiarContrasena, paginas = PAGINAS, almacen, crearHoja, vigilante }: PropsDelMarco) {
   const ubicacion = useLocation();
   const navegar = useNavigate();
   const { acciones, modo_entrega: modoEntrega } = sesion;
@@ -316,10 +318,11 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       declararMoneda,
       declarandoMoneda,
       alExpirar,
+      cambiarContrasena: alCambiarContrasena,
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, nombreProyecto, casos, modulosApagados, recargarModulos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, almacen, crearHoja],
+    [sesion, proyecto, nombreProyecto, casos, modulosApagados, recargarModulos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, alCambiarContrasena, almacen, crearHoja],
   );
 
   let obraDeLaSesion: ObraDeLaSesion = null;

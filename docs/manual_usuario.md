@@ -109,6 +109,7 @@ pestañas; cada quien ve solo las pestañas que puede usar:
 | Sección de la Cuenta | Arma | Revisa | Administra |
 |---|---|---|---|
 | «Pantalla y tamaño de letra» | Sí | Sí | Sí |
+| «Contraseña» | Sí | Sí | Sí |
 | «Cuentas y permisos» | No | No | Sí |
 | «Empresa y tema» | No | No | Sí |
 | «Carpetas» | No | No | Sí |
@@ -217,8 +218,10 @@ Si el administrador le dio una contraseña temporal, al entrar verá «Cambie su
 2. «Contraseña nueva» y «Confirme la contraseña nueva»: la suya, con las reglas de la sección 2.1.
 3. Pulse «Cambiar contraseña».
 
-Hasta que la cambie, Sílice no deja hacer nada más. Hoy no hay un botón para cambiar la contraseña por
-gusto: si quiere otra, pídale al administrador que la restablezca.
+Hasta que la cambie, Sílice no deja hacer nada más. Cuando quiera cambiarla después, hágalo usted: en su
+Cuenta, sección «Contraseña» (sección 3.9), o escriba «contraseña» en el buscador (Ctrl+K). Al cambiarla
+se cierran las sesiones de su cuenta abiertas en otros navegadores o pestañas; en el que usa seguirá con
+la sesión abierta.
 
 ### 2.5 Si el administrador perdió el acceso
 
@@ -424,6 +427,10 @@ puede usar:
   de letra: «Normal», «Grande» o «Muy grande» (100 %, 125 % y 150 %). Una frase de muestra deja ver al
   instante cómo queda. Sílice recuerda su elección en ese navegador. Debajo, «Datos de la cuenta»:
   «Nombre», «Usuario» y «Rol».
+- **«Contraseña»**, para todas las cuentas. Escriba la «Contraseña actual», la «Contraseña nueva» y
+  «Confirme la contraseña nueva», con las reglas de la sección 2.1, y pulse «Cambiar contraseña». Arriba
+  del formulario se lee qué pasa con las otras sesiones de su cuenta (se cierran; la de este navegador
+  sigue abierta). Al terminar verá «Contraseña cambiada.».
 - **«Cuentas y permisos»**, **«Empresa y tema»**, **«Carpetas»** y **«Especialidades, IA e
   instalación»**, solo para quien administra (sección 2.7). «Carpetas» pide además poder crear y subir
   carpetas.

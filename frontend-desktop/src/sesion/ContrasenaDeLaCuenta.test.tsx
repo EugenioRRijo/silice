@@ -45,7 +45,7 @@ describe("ContrasenaDeLaCuenta", () => {
     pintar(alCambiar);
     await llenar(usuario, "vieja-1", "nueva-segura-2", "nueva-segura-2");
     expect(alCambiar).toHaveBeenCalledWith("vieja-1", "nueva-segura-2");
-    expect(await screen.findByRole("status")).toHaveTextContent("Contraseña cambiada.");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Contraseña cambiada."));
     expect(screen.getByLabelText("Contraseña actual")).toHaveValue("");
     expect(screen.getByLabelText("Contraseña nueva")).toHaveValue("");
     expect(screen.getByLabelText("Confirme la contraseña nueva")).toHaveValue("");
@@ -67,15 +67,15 @@ describe("ContrasenaDeLaCuenta", () => {
     await llenar(usuario, "vieja-1", "corta", "corta");
     expect(await alertaConTexto()).toHaveTextContent("La contraseña nueva debe tener al menos 12 caracteres.");
     await waitFor(() => expect(screen.getByRole("button", { name: "Cambiar contraseña" })).toBeEnabled());
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByText("Contraseña cambiada.")).toBeNull();
   });
 
   test("al volver a escribir se quita el aviso de «Contraseña cambiada»", async () => {
     const usuario = userEvent.setup();
     pintar(vi.fn().mockResolvedValue(undefined));
     await llenar(usuario, "vieja-1", "nueva-segura-2", "nueva-segura-2");
-    await screen.findByRole("status");
+    await screen.findByText("Contraseña cambiada.");
     await usuario.type(screen.getByLabelText("Contraseña actual"), "x");
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByText("Contraseña cambiada.")).toBeNull();
   });
 });

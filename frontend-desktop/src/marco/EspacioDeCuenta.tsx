@@ -7,6 +7,7 @@ import type { SesionRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { TamanoLetra } from "../comun/TamanoLetra";
 import { rolesConEtiqueta } from "../paginas/administracion/logica";
+import { ContrasenaDeLaCuenta } from "../sesion/ContrasenaDeLaCuenta";
 import { iniciales } from "../shell/iniciales";
 import { LimiteDeError } from "../shell/LimiteDeError";
 import { AvisoSinPermiso } from "./avisos";
@@ -91,6 +92,7 @@ function Preferencias({ sesion }: { sesion: SesionRespuesta }) {
 // pantalla (carga a demanda); «Pantalla y tamaño de letra» no tiene pantalla en el registro.
 function Contenido({ def, sesion, pantalla }: { def: CuentaDef; sesion: SesionRespuesta; pantalla: Props["pantalla"] }) {
   if (def.id === "preferencias") return <Preferencias sesion={sesion} />;
+  if (def.id === "contrasena") return <ContrasenaDeLaCuenta />;
   const montada = def.pagina === null ? null : pantalla(def.pagina);
   if (def.id !== "ayuda") return <>{montada}</>;
   return (
