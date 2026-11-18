@@ -769,3 +769,8 @@ def cambiar_contrasena(
     eventos.registrar(session, "cambio de clave", ahora, login=usuario.login, usuario_id=usuario.id)
     session.commit()
     return sesiones.abrir(session, usuario, ahora)
+
+
+def usuarios(session: Session) -> list[Usuario]:
+    """Todas las cuentas, activas o no, por `login` (la tabla de la pestaña Cuentas)."""
+    return list(session.scalars(select(Usuario).order_by(Usuario.login)))

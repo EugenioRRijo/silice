@@ -309,3 +309,8 @@ def _ajena(session: Session, empresa_id: int) -> EmpresaRegistrada:
     if fila is None:
         raise ClaveError("No hay una empresa registrada con ese número.")
     return fila
+
+
+def registradas(session: Session) -> list[EmpresaRegistrada]:
+    """Las empresas ajenas registradas, en cualquier estado, por `id`."""
+    return list(session.scalars(select(EmpresaRegistrada).order_by(EmpresaRegistrada.id)))

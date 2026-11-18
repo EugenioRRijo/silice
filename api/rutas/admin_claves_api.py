@@ -17,7 +17,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
-from sqlalchemy import select
 
 from api.admin_acceso import RutaDeAdministracion, administrar, administrar_en_el_equipo
 from api.sesion_web import ahora
@@ -70,7 +69,7 @@ def _fila(clave: ClaveApi) -> ClaveRespuesta:
 @router.get("", response_model=list[ClaveRespuesta], dependencies=[ADMIN])
 def listar() -> list[ClaveRespuesta]:
     with sesion_de_instalacion() as bd:
-        return [_fila(c) for c in bd.scalars(select(ClaveApi).order_by(ClaveApi.id))]
+        return [_fila(c) for c in claves_api.claves(bd)]
 
 
 @router.post("", response_model=ClaveCreada)

@@ -1043,9 +1043,6 @@ def _nucleo_profundo(archivo: Path, raiz: Path = RAIZ) -> dict[str, int]:
 #: Llamadas `select(` por archivo de `api/rutas` (2026-11-17, a802d728): la ola 3 las muda a
 #: `aplicacion`, `seguridad` y `produccion`.
 SELECT_EN_RUTAS: dict[str, int] = {
-    "api/rutas/admin_claves_api.py": 1,
-    "api/rutas/admin_empresas_registradas.py": 1,
-    "api/rutas/cuentas.py": 1,
     "api/rutas/produccion.py": 2,
 }
 

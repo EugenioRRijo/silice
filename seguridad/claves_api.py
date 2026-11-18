@@ -85,3 +85,8 @@ def revocar(session: Session, clave_id: int, actor: str, ahora: datetime) -> Non
 def etiqueta(fila: ClaveApi) -> str:
     """Lo que la API pone como `usuario` de lo que cree: `api:<identificador>` (S3 §6.2)."""
     return f"api:{fila.identificador}"
+
+
+def claves(session: Session) -> list[ClaveApi]:
+    """Todas las claves de API, vigentes y revocadas, por `id` (la tabla de Administracion)."""
+    return list(session.scalars(select(ClaveApi).order_by(ClaveApi.id)))
