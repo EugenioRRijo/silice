@@ -503,9 +503,8 @@ describe("Control de obra", () => {
     await u.click(screen.getByRole("button", { name: "Agregar línea" }));
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
     await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
-    expect(
-      await screen.findByText("Valuación registrada: corte 20/11/2026, 2 hallazgo(s) en la revisión de la valuación (1 con severidad Error)."),
-    ).toBeInTheDocument();
+    // con un error en la revisión el aviso no es de éxito (prueba en vivo del 2026-11-18, hallazgo 2)
+    expect(await screen.findByText("Valuación registrada (corte 20/11/2026), pero la revisión encontró 1 error.")).toBeInTheDocument();
     const cuerpo = cuerpoDe("/v1/control/valuaciones");
     expect(cuerpo).toMatchObject({ proyecto: "OB-S2", numero: "V-03", fuente: "acta 3" });
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "", causa: null }]);

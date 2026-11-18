@@ -55,6 +55,8 @@ describe("Pestaña de valuaciones", () => {
   let anulables: Valuaciones["anulables"];
   let informe: (cuerpo: FormData) => Response | Promise<Response>;
   let importar: () => Response | Promise<Response>;
+  let registro: unknown;
+  let hallazgosDeLaLista: Valuaciones["hallazgos"];
 
   function montar() {
     render(
@@ -78,10 +80,13 @@ describe("Pestaña de valuaciones", () => {
     anulables = [V01, V02];
     informe = () => json({ informe: ["sin novedades"] });
     importar = () => json({ importadas: 1 });
+    registro = { corte: "2026-11-13", hallazgos: 0, errores: 0, detalle: [] };
+    hallazgosDeLaLista = [];
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       const metodo = init?.method ?? "GET";
-      if (url.startsWith("/v1/control/valuaciones?") && metodo === "GET") return json(valuaciones(anulables));
+      if (url.startsWith("/v1/control/valuaciones?") && metodo === "GET") return json({ ...valuaciones(anulables), hallazgos: hallazgosDeLaLista });
+      if (url === "/v1/control/valuaciones" && metodo === "POST") return json(registro);
       const anular = /^\/v1\/control\/valuaciones\/(\d+)\/anular$/.exec(url);
       if (anular && metodo === "POST") {
         anulables = anulables.filter((a) => String(a.id) !== anular[1]);
@@ -156,5 +161,47 @@ describe("Pestaña de valuaciones", () => {
     soltar(json({ importadas: 1 }));
     expect(await screen.findByText("1 valuación(es) importada(s).")).toBeInTheDocument();
     expect(campoArchivo()).toBeEnabled();
+  });
+
+  // Prueba en vivo del 2026-11-18, hallazgo 2: con errores el aviso no es verde de éxito y dice cuáles son.
+  test("registrar con errores avisa en ámbar y lista cada hallazgo con su mensaje", async () => {
+    registro = {
+      corte: "2026-11-13",
+      hallazgos: 2,
+      errores: 1,
+      detalle: [
+        { valuacion: "V-03", regla: "R14", severidad: "Error", mensaje: "La valuación V-03 no tiene inspector." },
+        { valuacion: "V-03", regla: "R14", severidad: "Información", mensaje: "Entre las valuaciones V-02 y V-03 hay 1 día(s) hábil(es) sin cubrir (16/11/2026 a 16/11/2026)." },
+      ],
+    };
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.type(screen.getByLabelText("Número"), "V-03");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    const aviso = await screen.findByText(/la revisión encontró 1 error/);
+    expect(aviso.textContent).toBe("Valuación registrada (corte 13/11/2026), pero la revisión encontró 1 error.");
+    const notificacion = aviso.closest(".cds--inline-notification");
+    expect(notificacion).toHaveClass("cds--inline-notification--warning");
+    expect(within(notificacion as HTMLElement).getByText("Error (R14): La valuación V-03 no tiene inspector.")).toBeInTheDocument();
+    expect(within(notificacion as HTMLElement).getByText(/^Información \(R14\): Entre las valuaciones/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Valuación registrada: corte/)).toBeNull();
+  });
+
+  test("registrar sin hallazgos dice el corte en verde", async () => {
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(await screen.findByText("Valuación registrada: corte 13/11/2026, sin hallazgos en la revisión.")).toBeInTheDocument();
+  });
+
+  test("los hallazgos de las valuaciones guardadas se leen junto a la tabla", async () => {
+    hallazgosDeLaLista = [{ valuacion: "V-02", regla: "R14", severidad: "Error", mensaje: "La valuación V-02 no tiene inspector." }];
+    montar();
+    const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de las valuaciones" });
+    expect(within(lista).getByText("V-02 · Error (R14): La valuación V-02 no tiene inspector.")).toBeInTheDocument();
   });
 });

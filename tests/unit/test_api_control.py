@@ -349,6 +349,38 @@ def _url() -> str:
     return os.environ[dependencias.VARIABLE_BASE]
 
 
+def test_registrar_devuelve_cada_hallazgo_legible_y_la_lista_los_repite(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Prueba en vivo del 2026-11-18, hallazgo 2: antes solo volvían los conteos.
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-01",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "inspector": "",
+        "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+        "fuente": ob.FUENTE,
+    }
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    esperado = [
+        {
+            "valuacion": "V-01",
+            "regla": "R14",
+            "severidad": "Error",
+            "mensaje": "La valuación V-01 no tiene inspector.",
+        }
+    ]
+    datos = respuesta.json()
+    assert (datos["hallazgos"], datos["errores"], datos["detalle"]) == (1, 1, esperado)
+    lista = navegador.get("/v1/control/valuaciones", params=P).json()
+    assert lista["hallazgos"] == esperado
+
+
 def test_una_valuacion_del_futuro_se_rechaza_con_422_y_un_mensaje_claro() -> None:
     # Prueba en vivo del 2026-11-18, hallazgo 1: un «hasta» posterior a hoy se rechaza.
     navegador, cabeceras = _arma()
