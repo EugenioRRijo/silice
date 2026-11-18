@@ -418,35 +418,37 @@ def test_al_guardar_sin_porcentaje_la_traza_vigente_de_esa_linea_deja_de_valer(
     assert detalle["desperdicios"] == []
 
 
-# --- Depuración del 2026-11-15, L3 (acta DS-3, opción A): solo el desglose no entra ---------
-
-SOLO_DESGLOSE = (
-    "Ese cambio deja la misma cantidad y solo reparte distinto el desperdicio. Sílice guarda el "
-    "desglose junto con un cambio de cantidad: cambie la cantidad o deje el desglose como estaba."
-)
+# --- Anexo A.6 del desenredo (acta DS-3, opción B): solo el desglose es un cambio ---------------
 
 
 @pytest.mark.parametrize(
-    ("materiales", "desperdicios"),
-    [(["0,625"], ["60"]), (["1"], [""])],  # 0,625 × 1,60 = 1 y 1 sin desperdicio (a mano)
+    ("materiales", "desperdicios", "mostrado"),
+    [  # 0,625 × 1,60 = 1 y 1 sin desperdicio (a mano): la misma cantidad que 0,8 + 25 %
+        (
+            ["0,625"],
+            ["60"],
+            [{"fila": 1, "texto": "0,625 + 60 %", "neta": "0,625", "porcentaje": "60"}],
+        ),
+        (["1"], [""], []),
+    ],
 )
-def test_cambiar_solo_el_desglose_es_422_y_el_borrador_no_cambia(
-    _caso: Path, materiales: list[str], desperdicios: list[str]
+def test_cambiar_solo_el_desglose_sube_el_rev_y_cuenta_un_cambio(
+    _caso: Path, materiales: list[str], desperdicios: list[str], mostrado: list[dict]
 ) -> None:
     """Con 0,8 + 25 % (= 1) vigente, otro reparto de la misma cantidad o quitarle el porcentaje
-    deja la composición igual: es 422 con el texto del acta DS-3, sin caché, y el borrador sigue
-    en rev 0 con «0,8 + 25 %». Mandar lo que ya se muestra no es error ni sube el rev."""
+    deja la composición igual pero cambia lo que la Hoja muestra: 200, el rev sube a 1 y el resumen
+    cuenta un cambio (antes, acta DS-3 opción A, era 422). Editar no escribe en la base. Mandar lo
+    mismo otra vez no sube el rev."""
     _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
     navegador, ficha = con_cuenta(app, "ana")
     id_, cantidades = _abrir(navegador, ficha)
-    rechazada = _editar(navegador, ficha, id_, cantidades, 0, materiales, desperdicios)
-    assert rechazada.status_code == 422, rechazada.text
-    assert rechazada.json()["detalle"] == SOLO_DESGLOSE
-    assert rechazada.headers["cache-control"] == "no-store"
-    leida = navegador.get(
-        f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "AF-LLAVE"}
-    ).json()["detalle"]
-    assert leida["desperdicios"] == [LLAVE_0_8]
-    igual = _editar(navegador, ficha, id_, cantidades, 0, ["0,8"], ["25"])
+    antes = _volcado(_caso)
+    editado = _editar(navegador, ficha, id_, cantidades, 0, materiales, desperdicios)
+    assert editado.status_code == 200, editado.text
+    assert editado.json()["rev"] == 1
+    assert editado.json()["resumen"]["cambios"] == 1
+    assert editado.json()["apu"]["detalle"]["desperdicios"] == mostrado
+    assert _volcado(_caso) == antes
+    igual = _editar(navegador, ficha, id_, cantidades, 1, materiales, desperdicios)
     assert igual.status_code == 200, igual.text
-    assert igual.json()["rev"] == 0
+    assert igual.json()["rev"] == 1

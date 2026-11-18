@@ -50,7 +50,6 @@ from aplicacion.desperdicio import TrazaDesperdicio, trazas_vigentes
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
 from aplicacion.hoja_desperdicio import (
-    MENSAJE_SOLO_DESGLOSE,
     con_desperdicio_en_materiales,
     desgloses_visibles,
     trazas_del_borrador,
@@ -459,14 +458,18 @@ def editar_apu(
     partida quedan en el borrador hasta guardar la version (`aplicacion.hoja_desperdicio`). Sin
     `desperdicios`, las trazas que el borrador ya tenia no cambian (siguen casando por la linea).
     Una edicion que deja la composicion igual y solo cambia el desglose que la Hoja muestra (la
-    misma cantidad con otra neta y otro porcentaje, o sin ellos) es `HojaInvalida`
-    (`MENSAJE_SOLO_DESGLOSE`, acta DS-3 de la depuracion del 2026-11-15, L3): el borrador y su
-    `rev` no cambian. Mandar el desglose que ya se muestra no es error ni cambio.
+    misma cantidad con otra neta y otro porcentaje, o sin ellos) sube el `rev` y cuenta como
+    cambio (anexo A.6 del desenredo; acta DS-3, opcion B): guardar escribe sus trazas sin version
+    nueva (`hoja_guardado`). Mandar el desglose que ya se muestra no es cambio ni sube el `rev`.
+    Con `desperdicios` se anotan tambien las trazas vigentes de la partida
+    (`BorradorVivo.vigentes_del_desperdicio`), contra las que la vista cuenta el cambio.
     """
     trazas: tuple[TrazaDesperdicio, ...] | None = None
+    vigentes: tuple[TrazaDesperdicio, ...] = ()
+    otro_desglose = False
 
     def construir(vivo: BorradorVivo) -> hoja.Borrador | None:
-        nonlocal trazas
+        nonlocal trazas, vigentes, otro_desglose
         borrador = vivo.borrador
         actual = borrador.composiciones.get(partida)
         if actual is None:
@@ -480,9 +483,10 @@ def editar_apu(
         )
         if desperdicios is not None:
             nueva, trazas = con_desperdicio_en_materiales(nueva, desperdicios)
+            vigentes = tuple(trazas_vigentes(sesion, partida))
         if nueva == actual:
-            if trazas is not None and _otro_desglose(sesion, vivo, partida, actual, trazas):
-                raise HojaInvalida(MENSAJE_SOLO_DESGLOSE)
+            if trazas is not None:
+                otro_desglose = _otro_desglose(vivo, partida, actual, trazas, vigentes)
             return None
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
@@ -490,22 +494,27 @@ def editar_apu(
     vivo = hoja_borradores.obtener(huella, id)
     with vivo.cerrojo:
         editado = cambiar_borrador(sesion, huella, id, rev, construir)
-        if trazas is not None:
-            editado.desperdicios = {**editado.desperdicios, partida: trazas}
+        if trazas is None:
+            return editado
+        if otro_desglose:  # la composicion quedo igual: el reemplazo sube el rev y vacia la cache
+            editado = hoja_borradores.reemplazar(huella, id, editado.borrador, rev)
+        elif editado.vigentes_del_desperdicio.get(partida) != vigentes:
+            editado.calculo = None  # la cuenta de cambios se hace contra otras vigentes
+        editado.desperdicios = {**editado.desperdicios, partida: trazas}
+        editado.vigentes_del_desperdicio = {**editado.vigentes_del_desperdicio, partida: vigentes}
         return editado
 
 
 def _otro_desglose(
-    sesion: Session,
     vivo: BorradorVivo,
     codigo: str,
     composicion: ComposicionAPU,
     trazas: Sequence[TrazaDesperdicio],
+    vigentes: Sequence[TrazaDesperdicio],
 ) -> bool:
     """Si las `trazas` nuevas cambian el desglose que la Hoja muestra en `composicion`: las del
-    borrador antes que las vigentes de la partida (`hoja_desperdicio.desgloses_visibles`)."""
+    borrador antes que las `vigentes` de la partida (`hoja_desperdicio.desgloses_visibles`)."""
     filas = hoja.filas_de_apu(composicion)[0]
-    vigentes = trazas_vigentes(sesion, codigo)
     antes = trazas_del_borrador(vivo, codigo)
     return desgloses_visibles(filas, trazas, vigentes) != desgloses_visibles(filas, antes, vigentes)
 

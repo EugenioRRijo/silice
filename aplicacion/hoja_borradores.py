@@ -102,7 +102,8 @@ class BorradorVivo:
     cambios)` de la vista, que `reemplazar` invalida.
     `importaciones` son las que anota `aplicacion.importaciones` (F4, Tarea 10).
     `desperdicios` son las trazas que deja la Hoja al editar la neta y el porcentaje
-    (`aplicacion.hoja_desperdicio`).
+    (`aplicacion.hoja_desperdicio`), y `vigentes_del_desperdicio` las de la base contra las que se
+    cuenta su cambio.
     `guardado_como` se llena al guardar (3d).
     `vigente_al_abrir` es el codigo de la version vigente del proyecto al abrir (D-5): guardar
     pide confirmar solo si la vigente de AHORA es otra que esa, o sea, si alguien guardo despues
@@ -129,6 +130,10 @@ class BorradorVivo:
     #: Las trazas del desperdicio que la Hoja escribió en este borrador, por código de partida, y
     #: aún sin guardar: se escriben con la versión (`aplicacion.hoja_desperdicio`, 2026-11-13).
     desperdicios: dict[str, tuple[TrazaDesperdicio, ...]] = field(default_factory=dict)
+    #: Las trazas vigentes en la base de cada partida de `desperdicios`, leídas al editar su
+    #: desglose (y al guardarlo): lo que la versión abierta muestra, contra lo que la vista cuenta
+    #: el cambio del desglose sin volver a leer la base (anexo A.6 del desenredo, acta DS-48).
+    vigentes_del_desperdicio: dict[str, tuple[TrazaDesperdicio, ...]] = field(default_factory=dict)
     cerrojo: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
 
