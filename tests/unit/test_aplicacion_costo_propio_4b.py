@@ -148,7 +148,7 @@ def test_la_lista_sin_tasa_del_cierre_falla_y_la_nombra(ins, caso) -> None:
     cp.costos_usd(ins)
     cp.lista(caso, "Bs", cp.dia(1), cp.LISTA_BS, nombre="Lista Bs ficticia")
     cp.tasas(caso, {date(2026, 10, 31): cp.TASA})  # la de octubre no sirve para noviembre
-    with pytest.raises(FaltanTasas, match=r"«Lista Bs ficticia».*2026-11"):
+    with pytest.raises(FaltanTasas, match=r"«Lista Bs ficticia».*noviembre de 2026"):
         _calcular(ins, caso, NOV)
     assert _calculos(ins) == 0
 
@@ -415,7 +415,7 @@ def test_arrastre_en_otra_moneda_sin_tasa_del_cierre_de_origen_falla(ins, caso) 
     cp.tasas(caso, {date(2026, 11, 3): "50"})
     cp.entrada(ins, "AGR-12", "150", cp.dia(5))
     _costo(ins, NOV, "cantera", "500", "USD", cp.dia(3))
-    with pytest.raises(FaltanTasas, match="2026-10"):
+    with pytest.raises(FaltanTasas, match="lo que pasó de octubre de 2026"):
         _calcular(ins, caso, NOV)
     assert _calculos(ins) == 1
 

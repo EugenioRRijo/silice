@@ -370,7 +370,7 @@ def test_la_lista_en_otra_moneda_sin_tasa_del_cierre(ins, caso) -> None:
     cp.costos_usd(ins)
     cp.lista(caso, "Bs", cp.dia(1), cp.LISTA_BS, nombre="Lista Bs ficticia")
     cp.tasas(caso, {date(2026, 10, 30): cp.TASA})  # solo de octubre
-    with pytest.raises(FaltanTasas, match="Lista Bs ficticia.*2026-11"):
+    with pytest.raises(FaltanTasas, match="Lista Bs ficticia.*noviembre de 2026"):
         _calcular(ins, caso)
 
 
