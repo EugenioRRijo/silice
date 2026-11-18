@@ -644,3 +644,36 @@ def test_el_desglose_guardado_sale_del_borrador_y_no_pisa_otro_guardado_despues(
     assert version.status_code == 200, version.text
     assert (version.json()["codigo"], version.json()["desgloses"]) == ("002", 0)
     assert _trazas(_caso) == [componer]
+
+
+DESGLOSE_SOBRE_LA_002 = (
+    "Otra persona guardó la versión 002 después de que usted abrió la 001. Si guarda, el desglose "
+    "del desperdicio se guardará sobre lo de la 002: vale para la partida, no para una versión."
+)
+
+
+def test_con_una_version_posterior_guardar_el_desglose_pide_confirmar_como_la_version(
+    _caso: Path,
+) -> None:
+    """Como el guardado de una versión (D-5, acta DS-48h): si otra persona guardó la 002 después
+    de abrir la 001, guardar solo el desglose es 409 con `version_mas_nueva` y un texto que no
+    habla de versión nueva; la base no cambia. Con la confirmación, guarda la traza y no crea
+    otra versión."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"]).status_code == 200
+    otro, ficha_otro = con_cuenta(app, "ana")  # otra ficha: otro borrador de la misma 001
+    de_otro, _ = _abrir(otro, ficha_otro)
+    assert _editar_rendimiento(otro, ficha_otro, de_otro, cantidades, 0, "25").status_code == 200
+    assert _guardar(otro, ficha_otro, de_otro, 1, "Acta ficticia").json()["codigo"] == "002"
+    antes = _volcado(_caso)
+    respuesta = _guardar(navegador, ficha, id_, 1)
+    assert respuesta.status_code == 409, respuesta.text
+    assert respuesta.json() == {"detalle": DESGLOSE_SOBRE_LA_002, "version_mas_nueva": "002"}
+    assert _volcado(_caso) == antes
+    confirmado = _guardar(navegador, ficha, id_, 1, confirmar_version_mas_nueva=True)
+    assert confirmado.status_code == 200, confirmado.text
+    assert (confirmado.json()["version_nueva"], confirmado.json()["codigo"]) == (False, "001")
+    assert _trazas(_caso) == [TRAZA_0_625]
+    assert _codigos(navegador) == ["001", "002"]
