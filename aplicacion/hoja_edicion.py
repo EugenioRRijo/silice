@@ -88,6 +88,7 @@ __all__ = [
     "YaTienePlan",
     "agregar",
     "agregar_linea_apu",
+    "borradores_abiertos",
     "borradores_para_retomar",
     "cambiar_borrador",
     "cambiar_insumo_de_linea",
@@ -784,13 +785,22 @@ def cambios_del_borrador(vivo: BorradorVivo) -> tuple[int, list[hoja.CambioEdita
         return vivo.rev, list(cambios)
 
 
-def borradores_para_retomar(huella: str, caso: str) -> list[tuple[BorradorVivo, int]]:
+def borradores_abiertos(huella: str, caso: str) -> list[BorradorVivo]:
     """Los borradores de la ficha abiertos en `caso` (sin los ya guardados), el usado mas
-    recientemente primero, cada uno con su cuenta de cambios. Listar no renueva ningun plazo."""
+    recientemente primero. No toma el cerrojo de ninguno (tarea A.9, DS-54): quien elige un
+    borrador con una transaccion de escritura abierta no espera el cerrojo de otro. Listar no
+    renueva ningun plazo."""
     return [
-        (vivo, len(cambios_del_borrador(vivo)[1]))
+        vivo
         for vivo in hoja_borradores.listar(huella)
         if vivo.caso == caso and vivo.guardado_como is None
+    ]
+
+
+def borradores_para_retomar(huella: str, caso: str) -> list[tuple[BorradorVivo, int]]:
+    """Los de `borradores_abiertos`, cada uno con su cuenta de cambios (bajo su cerrojo)."""
+    return [
+        (vivo, len(cambios_del_borrador(vivo)[1])) for vivo in borradores_abiertos(huella, caso)
     ]
 
 

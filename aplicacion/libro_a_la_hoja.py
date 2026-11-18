@@ -393,6 +393,13 @@ def _exigir_moneda(
     return base
 
 
+def _con_versiones(obra: str, vigente: str) -> str:
+    return (
+        f"La obra «{obra}» ya tiene la versión {vigente}: el libro se lleva a una obra sin "
+        "versiones, para que sus precios sean los del libro. Cree una obra nueva para el libro."
+    )
+
+
 def llevar_libro_a_la_hoja(
     sesion: Session,
     huella: str,
@@ -404,7 +411,14 @@ def llevar_libro_a_la_hoja(
     hoy: date,
 ) -> LibroLlevado:
     """Lleva el libro auditado al borrador de la Hoja de `proyecto` (ver la cabecera del módulo) y
-    confirma el catálogo. No guarda versión: los renglones quedan como altas del borrador."""
+    confirma el catálogo. No guarda versión: los renglones quedan como altas del borrador.
+
+    `sesion` es la de escritura (`BEGIN IMMEDIATE` en la primera consulta; tarea A.9, DS-53). El
+    orden de los bloqueos es el del guardado (`hoja_guardado.guardar`): primero el cerrojo del
+    borrador y luego el bloqueo de escritura. Como el borrador se elige por la obra, que sale del
+    caso, la transacción que lo elige (solo lee) se deshace antes de pedir su cerrojo: nadie espera
+    el cerrojo con el bloqueo tomado. Bajo el cerrojo, en la transacción que escribe, se vuelve a
+    leer todo lo que decide (que la obra siga sin versiones, las monedas)."""
     llevar, sin_apu, sin_cantidad = _renglones(libro)
     if not llevar:
         raise LibroSinRenglones(
@@ -418,20 +432,25 @@ def llevar_libro_a_la_hoja(
         sesion, huella, caso, proyecto.nombre
     )
     if vigente is not None:
-        raise ObraConVersiones(
-            f"La obra «{proyecto.nombre}» ya tiene la versión {vigente}: el libro se lleva a una "
-            "obra sin versiones, para que sus precios sean los del libro. Cree una obra nueva para "
-            "el libro."
-        )
+        raise ObraConVersiones(_con_versiones(proyecto.nombre, vigente))
     fecha = existente.borrador.fecha if existente is not None else hoy
     _exigir_moneda(sesion, libro, proyecto, fecha)
     vivo, nuevo = elaboracion.borrador_de_la_obra(
         sesion, huella, caso, proyecto, responsable=responsable, hoy=hoy
     )
+    # La transacción que eligió el borrador no escribió nada: se suelta antes de pedir el cerrojo
+    # (DS-53). Si no, un guardado con el cerrojo tomado esperaría este bloqueo hasta el 503.
+    sesion.rollback()
     hojas = {_hoja_del_origen(f"{PREFIJO_LIBRO}{r.celda}") for r in llevar}
     with vivo.cerrojo:
         antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano, vivo.importaciones)
         try:
+            # Entre la elección y el cerrojo pudo guardarse la primera versión o cambiar una
+            # moneda: se vuelve a mirar, ya con el bloqueo de escritura (la primera consulta).
+            vigente = hoja.codigo_vigente(sesion, proyecto.nombre)
+            if vigente is not None:
+                raise ObraConVersiones(_con_versiones(proyecto.nombre, vigente))
+            _exigir_moneda(sesion, libro, proyecto, vivo.borrador.fecha)
             # Los renglones que no vienen de las hojas que se llevan: los propios del borrador y
             # también los que salen del espacio de la obra (`items_sin_escribir`).
             ajenos = [
@@ -445,6 +464,7 @@ def llevar_libro_a_la_hoja(
                     "libro a una obra nueva o quite esos renglones."
                 )
             lista = lista_de_hoy(sesion, vivo.borrador.fecha, nueva_si_usada=False)
+            nombre_de_la_lista = lista.nombre  # tras el commit, leerlo abriría otra transacción
             dominio = _dominio(proyecto)
             codigos: dict[int, tuple[str, bool]] = {}
             for apu in usados:
@@ -529,6 +549,6 @@ def llevar_libro_a_la_hoja(
         partidas=tuple(partidas),
         sin_apu=tuple(sin_apu),
         sin_cantidad=tuple(sin_cantidad),
-        lista=lista.nombre,
+        lista=nombre_de_la_lista,
         moneda=libro.moneda,
     )

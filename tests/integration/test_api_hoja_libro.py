@@ -793,3 +793,108 @@ def test_cada_renglon_del_presupuesto_dice_su_frente(ana) -> None:
         ("VF-001", "FRENTE A"),
         ("VF-001", "FRENTE B"),
     ]
+
+
+# --- el orden de los bloqueos (tarea A.9, DS-49 y DS-53) --------------------------------------
+#
+# El guardado (S1) toma el cerrojo del borrador y DESPUÉS el bloqueo de escritura (`BEGIN
+# IMMEDIATE`, `aplicacion/hoja_guardado.py`). Si llevar el libro esperara el cerrojo con el bloqueo
+# tomado, los dos se cruzarían: el guardado esperaría el bloqueo hasta el `busy_timeout` y daría
+# 503. El oráculo es determinista: en el instante en que la ruta pide el cerrojo, otra conexión
+# tiene que poder tomar el bloqueo sin esperar (`timeout=0`).
+
+
+def _bloqueo_libre() -> bool:
+    otra = sqlite3.connect(config.carpeta_casos() / "via.db", timeout=0)
+    try:
+        otra.execute("BEGIN IMMEDIATE")
+        otra.rollback()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        otra.close()
+
+
+class _CerrojoQueMira:
+    """El `RLock` del borrador, que anota si el bloqueo de escritura estaba libre cada vez que un
+    hilo lo pide desde fuera (las tomas reentrantes de dentro no cuentan)."""
+
+    def __init__(self, libre: list[bool]) -> None:
+        import threading
+
+        self._de_verdad = threading.RLock()
+        self._dentro = threading.local()
+        self._libre = libre
+
+    def __enter__(self):
+        if getattr(self._dentro, "n", 0) == 0:
+            self._libre.append(_bloqueo_libre())
+        self._de_verdad.acquire()
+        self._dentro.n = getattr(self._dentro, "n", 0) + 1
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self._dentro.n -= 1
+        self._de_verdad.release()
+
+
+def test_llevar_el_libro_pide_el_cerrojo_sin_el_bloqueo_de_escritura(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Con el borrador nuevo (primera vez) y con el que ya estaba (segunda)."""
+    libre: list[bool] = []
+    de_verdad = hoja_borradores.crear
+
+    def crear(*args, **kwargs):
+        vivo = de_verdad(*args, **kwargs)
+        vivo.cerrojo = _CerrojoQueMira(libre)
+        return vivo
+
+    monkeypatch.setattr(hoja_borradores, "crear", crear)
+
+    primero = _llevar(ana)
+    assert primero.status_code == 200, primero.text
+    segundo = _llevar(ana)
+    assert segundo.status_code == 200, segundo.text
+
+    assert len(libre) >= 2
+    assert all(libre), libre
+
+
+def test_llevar_el_libro_consulta_el_caso_fuera_del_bucle_de_eventos(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`llevar_libro` es `async`: lo que consulta el caso (y puede esperar el `busy_timeout`) va en
+    `run_in_threadpool`, o congelaría el bucle de eventos de todo el proceso."""
+    import asyncio
+
+    from api.rutas import hoja_libro
+
+    en_el_bucle: list[tuple[str, bool]] = []
+
+    def mirar(modulo, nombre: str) -> None:
+        de_verdad = getattr(modulo, nombre)
+
+        def envuelta(*args, **kwargs):
+            try:
+                asyncio.get_running_loop()
+                en_el_bucle.append((nombre, True))
+            except RuntimeError:
+                en_el_bucle.append((nombre, False))
+            return de_verdad(*args, **kwargs)
+
+        monkeypatch.setattr(modulo, nombre, envuelta)
+
+    mirar(hoja_libro, "con_anexos_de_cadena")
+    mirar(hoja_libro, "resolver_proyecto")
+    mirar(libro_a_la_hoja, "llevar_libro_a_la_hoja")
+
+    r = _llevar(ana)
+
+    assert r.status_code == 200, r.text
+    assert en_el_bucle == [
+        ("con_anexos_de_cadena", False),
+        ("resolver_proyecto", False),
+        ("llevar_libro_a_la_hoja", False),
+    ]
