@@ -35,6 +35,7 @@ from aplicacion.cifras import texto_de_cifra
 from aplicacion.control import (
     ControlInvalido,
     calcular_el_control,
+    corte_por_defecto,
     parametros_actuales,
 )
 from aplicacion.hoja_partidas import pendientes_sin_calculo
@@ -304,8 +305,8 @@ def _en_curso(sesion: Session, catalogo: Catalogo, nombre: str, hoy: date) -> _E
     partida dice «Atrasada …» con su SPI."""
     valuaciones = valuaciones_registradas(sesion, nombre)
     con_valuaciones = bool(valuaciones)
-    # el corte por defecto del control (`corte_por_defecto`), con `hoy` en vez del reloj
-    corte = max((v.hasta for v in valuaciones), default=hoy)
+    # el corte por defecto del control, con `hoy` en vez del reloj: nunca después de hoy
+    corte = corte_por_defecto(sesion, nombre, hoy)
     try:
         resultado = calcular_el_control(sesion, nombre, catalogo, corte=corte)
     except ControlInvalido:

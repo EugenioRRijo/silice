@@ -150,7 +150,9 @@ def _calcular(
     sesion: Session, proyecto: str, corte: str | None, datos: Precios
 ) -> tuple[Catalogo, ResultadoControl]:
     catalogo = Catalogo(sesion)
-    dia = _corte(corte)
+    # sin corte elegido, el de la última valuación, nunca después de hoy: el mismo para los
+    # precios y para el cálculo (prueba en vivo del 2026-11-18)
+    dia = _corte(corte) or logica.ultimo_corte(sesion, proyecto)
     precios = _precios(sesion, proyecto, catalogo, datos, dia)
     resultado = logica.calcular_el_control(sesion, proyecto, catalogo, corte=dia, precios=precios)
     return catalogo, resultado

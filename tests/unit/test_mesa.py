@@ -72,6 +72,9 @@ from tests.fixtures.canonico_minimo import FECHA, RELLENO, guardar_otra
 
 D = Decimal
 HOY = date(2026, 10, 25)
+#: «Hoy» para las obras con valuaciones de OB-S2 (V-02 termina el 2026-11-13 y se firma el 16): el
+#: corte nunca pasa de hoy (prueba en vivo del 2026-11-18), así que hoy va después de la última.
+HOY_EN_OBRA = date(2026, 11, 16)
 CORTE_A = date(2026, 10, 23)
 REGISTRAR = Siguiente("Registrar el avance", "control")
 ALERTAS = Siguiente("Ver las alertas", "control")
@@ -347,7 +350,7 @@ def test_ob_s2_con_v01_y_v02_esta_atrasada_con_sus_cifras_de_la_memoria(sesion) 
     crear_proyecto(sesion, "Casa Demo")  # sin versión ni línea base
     sesion.flush()
 
-    obras = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+    obras = obras_de_la_mesa(sesion, Catalogo(sesion), HOY_EN_OBRA)
 
     assert [obra.nombre for obra in obras] == ["Casa Demo", "OB-S2"]
     ob_s2 = _por_nombre(obras)["OB-S2"]
@@ -511,7 +514,7 @@ def test_una_obra_atrasada_dice_la_partida_atrasada_y_su_causa(sesion) -> None:
         responsable=obra_atrasada.RESPONSABLE,
     )
 
-    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY_EN_OBRA)
 
     assert obra.etapa == "atrasada"
     assert obra.spi == D("0.5")
@@ -541,7 +544,7 @@ def test_la_frontera_del_umbral_de_spi(sesion, umbral: str, etapa: str) -> None:
     )
     sesion.flush()
 
-    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY_EN_OBRA)
 
     assert obra.etapa == etapa
 

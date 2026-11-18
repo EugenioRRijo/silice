@@ -23,6 +23,7 @@ from aplicacion.control_comun import (
     NO_DISPONIBLE,
     _indice,
     _monto,
+    ultimo_corte,
 )
 from aplicacion.impuestos import ResumenImpuestos, con_iva
 from core.budget.control import (
@@ -601,7 +602,10 @@ def tablas_de_control(
     SF-E4). Sin línea base de control (o sin valuaciones) no agrega ninguna: el Excel de la hoja
     conserva sus hojas y sale igual que antes."""
     try:
-        resultado = calcular_control(sesion, proyecto, catalogo=catalogo, precios=precios)
+        corte = ultimo_corte(sesion, proyecto)  # nunca después de hoy
+        resultado = calcular_control(
+            sesion, proyecto, catalogo=catalogo, corte=corte, precios=precios
+        )
     except (ValueError, LineaBaseInvalidada):
         return []
     anuladas = [

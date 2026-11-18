@@ -61,6 +61,8 @@ from aplicacion.control_comun import (
     ControlInvalido,
     _decimal,
     _monto,
+    hoy_o_el_dado,
+    ultimo_corte,
 )
 from aplicacion.control_linea_base import (
     DIAS_POR_OMISION,
@@ -197,6 +199,7 @@ __all__ = [
     "tablas_de_control",
     "texto_monto",
     "tiene_linea_base",
+    "ultimo_corte",
     "valuaciones_para_anular",
     "versiones_para_la_linea_base",
     "versiones_revaloradas",
@@ -436,9 +439,10 @@ def hay_valuaciones(sesion: Session, proyecto: str) -> bool:
     return bool(valuaciones_registradas(sesion, proyecto, con_anuladas=True))
 
 
-def corte_por_defecto(sesion: Session, proyecto: str) -> date:
-    """El *hasta* de la última valuación no anulada; hoy si no hay ninguna."""
-    return max((v.hasta for v in valuaciones_registradas(sesion, proyecto)), default=date.today())
+def corte_por_defecto(sesion: Session, proyecto: str, hoy: date | None = None) -> date:
+    """El *hasta* de la última valuación no anulada, nunca después de hoy (`ultimo_corte`); hoy
+    si no hay ninguna. `hoy` lo fijan las pruebas."""
+    return ultimo_corte(sesion, proyecto, hoy) or hoy_o_el_dado(hoy)
 
 
 def valuaciones_para_anular(sesion: Session, proyecto: str) -> list[tuple[int, str]]:

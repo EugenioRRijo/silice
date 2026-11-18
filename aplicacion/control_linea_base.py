@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from sqlalchemy import select
@@ -26,6 +27,7 @@ from aplicacion.control_comun import (
     _decimal,
     _escribir,
     _fecha,
+    hoy_o_el_dado,
 )
 from aplicacion.tablas_causas import guardar_causas
 from core import models
@@ -220,13 +222,17 @@ def registrar_y_controlar(
     fuente: str,
     responsable: str,
     precios: PreciosDelCorte | None = None,
+    hoy: date | None = None,
 ) -> ResultadoControl:
     """UC-19 4 y 5: registra la valuación y calcula al corte (su fecha *hasta*) el informe de
     control, los indicadores, las alertas y la reproyección. Es lo que mide RNF-15.
 
     La causa de retraso de cada línea (clave «Causa» de la fila, MP-7) se guarda en la misma
-    transacción que la valuación; una causa desconocida la rechaza entera."""
+    transacción que la valuación; una causa desconocida la rechaza entera. Una valuación que
+    termina o se firma después de `hoy` (por defecto, el reloj) se rechaza sin guardar nada:
+    mide obra ya ejecutada (`exigir_que_no_sea_futura`)."""
     fin = _fecha(hasta, "hasta")
+    exigir_que_no_sea_futura(fin, _fecha(fecha, "fecha") if fecha.strip() else None, hoy)
 
     def accion():
         causas = causas_de_las_filas(filas)
@@ -246,6 +252,26 @@ def registrar_y_controlar(
 
     _escribir(sesion, accion)
     return calcular_el_control(sesion, proyecto, catalogo, corte=fin, precios=precios)
+
+
+def exigir_que_no_sea_futura(hasta: date, fecha: date | None, hoy: date | None = None) -> None:
+    """`ControlInvalido` si la valuación termina (`hasta`) o se firma (`fecha`) después de `hoy`.
+
+    Decisión de la prueba en vivo del 2026-11-18: rechazo, no aviso. Una valuación es la medición
+    de obra ya ejecutada (UC-19); con un *hasta* futuro, R14 la marca como error al corte y el
+    valor ganado no la cuenta, así que guardarla solo deja un error que hay que anular después.
+    La regla R14 del núcleo no cambia: esto es una compuerta de la entrada."""
+    dia = hoy_o_el_dado(hoy)
+    if hasta > dia:
+        raise ControlInvalido(
+            f"El «Período hasta» ({hasta:%d/%m/%Y}) es posterior a hoy ({dia:%d/%m/%Y}): una "
+            "valuación solo mide obra ya ejecutada. Regístrela cuando termine el período."
+        )
+    if fecha is not None and fecha > dia:
+        raise ControlInvalido(
+            f"La «Fecha de la valuación» ({fecha:%d/%m/%Y}) es posterior a hoy ({dia:%d/%m/%Y}): "
+            "use la fecha en que se firmó, que no puede ser futura."
+        )
 
 
 def anular(sesion: Session, valuacion_id: int, *, motivo: str, responsable: str) -> None:
@@ -293,9 +319,23 @@ def leer_excel(ruta: Path) -> LecturaControl:
 
 
 def importar_excel(
-    sesion: Session, proyecto: str, lectura: LecturaControl, *, fuente: str, responsable: str
+    sesion: Session,
+    proyecto: str,
+    lectura: LecturaControl,
+    *,
+    fuente: str,
+    responsable: str,
+    hoy: date | None = None,
 ) -> int:
-    """Registra lo leído (todas las valuaciones y costos, o ninguno) y devuelve cuántas son."""
+    """Registra lo leído (todas las valuaciones y costos, o ninguno) y devuelve cuántas son. Una
+    valuación del futuro (`exigir_que_no_sea_futura`) rechaza el archivo entero."""
+    for valuacion in lectura.valuaciones:
+        try:
+            exigir_que_no_sea_futura(valuacion.hasta, valuacion.fecha, hoy)
+        except ControlInvalido as error:
+            raise ControlInvalido(
+                f"Valuación {valuacion.numero}: {error} No se importó nada."
+            ) from None
     registradas, _ = _escribir(
         sesion,
         lambda: registrar_lectura(

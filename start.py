@@ -24,6 +24,7 @@ import time
 import urllib.error
 import urllib.request
 import webbrowser
+from datetime import date, timedelta
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
@@ -43,8 +44,21 @@ def carpeta_casos() -> Path:
     return de_la_configuracion()
 
 
-def sembrar_obra_control(destino: Path) -> None:
-    """Una obra pequeña con valuaciones y costos registrados, para la pantalla Control de obra."""
+#: Las valuaciones semanales de la obra de la demo de Control (`sembrar_obra_control`).
+VALUACIONES_DE_LA_DEMO = 5
+
+
+def inicio_de_la_demo(hoy: date) -> date:
+    """El lunes en que empieza la obra de la demo: tantas semanas antes del lunes de esta semana
+    como valuaciones lleva, así la última se firma este lunes y ninguna queda en el futuro (prueba
+    en vivo del 2026-11-18: la demo sembraba valuaciones hasta el 04/12)."""
+    lunes = hoy - timedelta(days=hoy.weekday())
+    return lunes - timedelta(weeks=VALUACIONES_DE_LA_DEMO)
+
+
+def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
+    """Una obra pequeña con valuaciones y costos registrados, para la pantalla Control de obra.
+    Sus fechas van hasta la semana de `hoy` (por defecto, el reloj), nunca después."""
     from core.catalog.sesion import abrir_sesion, crear_motor
     from operacion.base_datos import preparar_base
     from scripts.generar_obra_control import (
@@ -56,7 +70,10 @@ def sembrar_obra_control(destino: Path) -> None:
 
     destino.unlink(missing_ok=True)
     preparar_base(destino)
-    obra = generar(partidas=12, periodos=10, valuaciones=5, semilla=7)
+    inicio = inicio_de_la_demo(hoy or date.today())
+    obra = generar(
+        partidas=12, periodos=10, valuaciones=VALUACIONES_DE_LA_DEMO, semilla=7, inicio=inicio
+    )
     motor = crear_motor(f"sqlite:///{destino.resolve().as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
