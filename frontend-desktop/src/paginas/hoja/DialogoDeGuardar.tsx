@@ -11,8 +11,8 @@ import {
   FUENTE_DE_LA_MEDIDA,
   esSoloDesglose,
   motivoParaNoGuardar,
-  textoDeCambiosAGuardar,
   textoDeDesgloseAGuardar,
+  textoDeVersionAGuardar,
 } from "./logicaGuardar";
 import type { ErrorDeGuardado } from "./logicaGuardar";
 import type { CambiosDelModal } from "./useGuardado";
@@ -154,7 +154,7 @@ export function DialogoDeGuardar(p: Props) {
             ? `Es la primera versión de la obra ${p.proyecto}: registra su creación con la fuente y el responsable.`
             : soloDesglose
               ? textoDeDesgloseAGuardar(p.desgloses, p.version ?? "")
-              : `Se registrarán ${textoDeCambiosAGuardar(p.cambiosSinGuardar)} en una versión nueva (sale de la ${p.version}).`}
+              : textoDeVersionAGuardar(p.cambiosSinGuardar, p.desgloses, p.version ?? "")}
         </p>
         <p className="cds--type-body-compact-01">
           Total{" "}

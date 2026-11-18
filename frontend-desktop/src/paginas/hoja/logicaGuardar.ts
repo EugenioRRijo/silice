@@ -74,6 +74,12 @@ export function textoDeDesgloseAGuardar(n: number, version: string): string {
   return `Se guardará el desglose del desperdicio de ${lineas(n)}. La cantidad no cambia, así que la versión ${version} sigue siendo la misma.`;
 }
 
+// La mezcla (celdas y desgloses): la versión registra solo las celdas; los desgloses se dicen aparte (arbitraje de A.6, DS-48i).
+export function textoDeVersionAGuardar(cambios: number, desgloses: number, version: string): string {
+  const registrados = `Se registrarán ${textoDeCambiosAGuardar(cambios - desgloses)} en una versión nueva (sale de la ${version}).`;
+  return desgloses > 0 ? `${registrados} Con ella se guarda también el desglose del desperdicio de ${lineas(desgloses)}.` : registrados;
+}
+
 // Por qué una versión de solo lectura no se guarda (la dicen el diálogo de guardar y la nota de solo lectura, F4 2b).
 export const CAUSA_SOLO_LECTURA = "alguna partida ya no tiene composición vigente en el catálogo";
 
