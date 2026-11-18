@@ -28,3 +28,28 @@ describe("PanelArenera: las unidades se leen bien", () => {
     expect(celdas[2]!.textContent).toBe("10 m³");
   });
 });
+
+// Prueba en vivo 2026-11-18 (frente D): la existencia salía «32,00 t» junto a una mínima de «40 t». Las dos se leen como
+// en Existencias (`cantidadEsVe`): sin ceros de más, en la misma escala.
+describe("PanelArenera: la existencia y la mínima en la misma escala", () => {
+  test("«32.00» y «40» se leen «32 t» y «40 t»", () => {
+    const arena: ExistenciaRespuesta = {
+      codigo: "ARE-01",
+      nombre: "Arena lavada",
+      unidad_venta: "t",
+      existencia: "32.00",
+      minima: "40",
+      queda_poco: true,
+      negativa: false,
+    };
+    render(
+      <MemoryRouter>
+        <PanelArenera carga={{ estado: "listo", datos: [arena] }} />
+      </MemoryRouter>,
+    );
+    const fila = within(screen.getByRole("table")).getByRole("row", { name: /Arena lavada/ });
+    const celdas = within(fila).getAllByRole("cell");
+    expect(celdas[1]!.textContent).toBe("32 t");
+    expect(celdas[2]!.textContent).toBe("40 t");
+  });
+});
