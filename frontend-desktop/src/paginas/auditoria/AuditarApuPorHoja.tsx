@@ -245,7 +245,11 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
           labelText="Perfil del libro"
           helperText="Dice cómo leer las hojas de APU y qué hojas del presupuesto se marcan al elegirlo."
           value={perfil ?? ""}
-          onChange={(e) => setElegido(e.target.value)}
+          onChange={(e) => {
+            // P7: las hojas marcadas a mano eran del perfil anterior; valen las por omisión del perfil nuevo.
+            setElegido(e.target.value);
+            setMarcadas(null);
+          }}
           disabled={auditando}
         >
           {perfiles.map((p) => (
