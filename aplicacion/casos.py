@@ -229,6 +229,37 @@ def es_demostracion(nombre: str) -> bool:
     return _sin_tildes(base.strip()) == "demostracion"
 
 
+def carpetas_visibles(
+    empresa: Path | None, abierta: Path | None, *, ve_todas: bool
+) -> tuple[str | None, list[tuple[str | None, Path]]]:
+    """La carpeta abierta (`None` si es la de la empresa) y las que una cuenta puede listar en las
+    rutas `/v1/obras/*/todas`: todas con `ve_todas` (quien puede abrir carpetas, tambien quien
+    revisa: enmienda 2026-11-05); si no, solo la abierta (la clave de API ve el caso del proceso y
+    no elige otra). Nunca ofrece una obra que al abrirla diera 403.
+
+    `empresa` es la carpeta del proceso y `abierta` la de la peticion (`None`: la de la empresa).
+    Se comparan resueltas, como al listar las demas: `datos/x/../empresa.db` es la de la empresa.
+    La demostracion (`es_demostracion`) nunca se mezcla con las carpetas de la empresa, como en
+    todo sistema con modo de prueba: con ella abierta solo se lista ella; con otra, nunca entra."""
+    es_empresa = abierta is None or (empresa is not None and abierta.resolve() == empresa.resolve())
+    actual = None if es_empresa or abierta is None else abierta.name
+    en_uso = abierta if abierta is not None else empresa
+    if en_uso is not None and es_demostracion(en_uso.name):
+        return actual, [(actual, en_uso)]
+    if ve_todas:
+        propias = None if empresa is None else empresa.resolve()
+        todas: list[tuple[str | None, Path]] = [(None, empresa)] if empresa is not None else []
+        todas.extend(
+            (r.name, r)
+            for r in listar_casos()
+            if r.resolve() != propias and not es_demostracion(r.name)
+        )
+        return actual, todas
+    if es_empresa or abierta is None:
+        return actual, [] if empresa is None else [(None, empresa)]
+    return actual, [(actual, abierta)]
+
+
 def _no_reservado(final: str) -> str:
     if es_demostracion(final):
         raise NombreReservado(MENSAJE_RESERVADO)

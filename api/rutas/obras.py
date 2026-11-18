@@ -48,7 +48,7 @@ from api.presentacion import exacto, exacto_o_nada, monto_o_nada, porcentaje_o_n
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
-from aplicacion.casos import es_demostracion
+from aplicacion.casos import carpetas_visibles
 from aplicacion.listas_para_armar import moneda_de_la_carpeta
 from aplicacion.mesa import (
     ETAPA_TEXTO,
@@ -66,7 +66,6 @@ from aplicacion.proyectos import obras_de_las_carpetas
 from aplicacion.resumen_todas import cartera_de_las_carpetas
 from core.catalog import Catalogo
 from core.catalog.indices import TasaNoDisponible, tasa_aplicable
-from operacion.base_datos import listar_casos
 from seguridad.permisos import Accion, permitido
 from seguridad.sesiones import SesionActiva
 
@@ -291,34 +290,13 @@ def _titulo_de_carpeta(carpeta: str | None) -> str:
 def _carpetas_visibles(
     request: Request, activa: SesionActiva | None
 ) -> tuple[str | None, list[tuple[str | None, Path]]]:
-    """La carpeta abierta (`None` si es la de la empresa) y las que esta cuenta puede listar: todas
-    con `ABRIR_CARPETA` (también quien revisa: enmienda 2026-11-05); si no, solo la abierta (la
-    clave de API ve el caso del proceso y no elige otra). Nunca ofrece una obra que al abrirla
-    diera 403.
-
-    La demostración (`es_demostracion`) nunca se mezcla con las carpetas de la empresa, como en
-    todo sistema con modo de prueba: con ella abierta solo se lista ella; con otra, nunca entra en
-    la lista. Así lo cumplen a la vez `/todas`, `/pendientes/todas` y `/resumen/todas`."""
-    empresa = ruta_de_url(url_del_proceso())
-    abierta = ruta_de_url(url_de_la_peticion(request))
-    # resueltas las dos, como al listar las demas: `datos/x/../empresa.db` es la de la empresa
-    es_empresa = abierta is None or (empresa is not None and abierta.resolve() == empresa.resolve())
-    actual = None if es_empresa else abierta.name  # type: ignore[union-attr]
-    en_uso = abierta if abierta is not None else empresa
-    if en_uso is not None and es_demostracion(en_uso.name):
-        return actual, [(actual, en_uso)]
-    if activa is not None and permitido(activa.roles, Accion.ABRIR_CARPETA):
-        propias = None if empresa is None else empresa.resolve()
-        todas: list[tuple[str | None, Path]] = [(None, empresa)] if empresa is not None else []
-        todas.extend(
-            (r.name, r)
-            for r in listar_casos()
-            if r.resolve() != propias and not es_demostracion(r.name)
-        )
-        return actual, todas
-    if es_empresa:
-        return actual, [] if empresa is None else [(None, empresa)]
-    return actual, [(actual, abierta)]  # type: ignore[list-item]
+    """`aplicacion.casos.carpetas_visibles` con la carpeta del proceso, la de la petición y si la
+    cuenta puede abrir carpetas (`ABRIR_CARPETA`; la clave de API, sin cuenta, no)."""
+    return carpetas_visibles(
+        ruta_de_url(url_del_proceso()),
+        ruta_de_url(url_de_la_peticion(request)),
+        ve_todas=activa is not None and permitido(activa.roles, Accion.ABRIR_CARPETA),
+    )
 
 
 @router.get("/todas", response_model=ObrasTodasRespuesta)
