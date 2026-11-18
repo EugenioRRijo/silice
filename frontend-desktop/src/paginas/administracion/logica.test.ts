@@ -9,6 +9,7 @@ import {
   TEXTO_USUARIO_INVALIDO,
   formatearFecha,
   notaAccesos,
+  textoDelRespaldo,
   puedeCrear,
   PESTANAS,
   avisoDeRoles,
@@ -131,6 +132,17 @@ describe("logica de Administracion", () => {
     expect(TEXTO_USUARIO_INVALIDO).toBe(
       "El usuario debe tener de 3 a 40 caracteres: letras sin tilde, números, punto, guion o guion bajo, y empezar con letra o número.",
     );
+  });
+
+  // Prueba en vivo (2026-11-18): «(migracion, 1 bases)». Motivos con tilde y espacios; singular y plural de «base».
+  test.each([
+    [{ nombre: "20261118-172700", motivo: "migracion", bases: 1 }, "20261118-172700 (migración, 1 base)"],
+    [{ nombre: "20261118-172700", motivo: "manual", bases: 2 }, "20261118-172700 (manual, 2 bases)"],
+    [{ nombre: "20261118-172700", motivo: "subida", bases: 12 }, "20261118-172700 (subida, 12 bases)"],
+    [{ nombre: "20261118-172700", motivo: "antes_de_restaurar", bases: 3 }, "20261118-172700 (antes de restaurar, 3 bases)"],
+    [{ nombre: "20261118-172700", motivo: "otro_motivo", bases: 0 }, "20261118-172700 (otro motivo, 0 bases)"],
+  ])("el respaldo %# se lee como «%s»", (juego, texto) => {
+    expect(textoDelRespaldo(juego)).toBe(texto);
   });
 
   test("crear exige usuario, nombre y contrasena valida", () => {
