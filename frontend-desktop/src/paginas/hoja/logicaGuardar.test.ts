@@ -11,6 +11,7 @@ import {
   textoDeCambiosAGuardar,
   textoDeDesgloseAGuardar,
   textoDeExito,
+  textoDePendientesAlGuardar,
   textoDeVersionAGuardar,
   usuarioDeSesion,
 } from "./logicaGuardar";
@@ -91,6 +92,18 @@ describe("textos", () => {
   });
   test("el responsable es «Nombre <login>» (RF-82)", () => {
     expect(usuarioDeSesion({ nombre: "Ana Pérez", login: "ana" })).toBe("Ana Pérez <ana>");
+  });
+});
+
+describe("partidas sin precio al guardar (prueba en vivo del 18/11/2026)", () => {
+  test("singular y plural; sin pendientes, nada", () => {
+    expect(textoDePendientesAlGuardar(0)).toBeNull();
+    expect(textoDePendientesAlGuardar(1)).toBe(
+      "1 partida está sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarla. En Partidas, el estado de la fila dice por qué.",
+    );
+    expect(textoDePendientesAlGuardar(3)).toBe(
+      "3 partidas están sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarlas. En Partidas, el estado de cada fila dice por qué.",
+    );
   });
 });
 

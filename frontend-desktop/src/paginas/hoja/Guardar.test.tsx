@@ -463,6 +463,23 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(aperturas().map((a) => a.version)).toEqual(["002"]);
   });
 
+  test("prueba en vivo: con partidas sin precio el diálogo lo dice antes de guardar (la versión quedaría con ese error)", async () => {
+    alAbrir = () => borrador("002", { pendientes_catalogo: 2 });
+    montar();
+    const dialogo = await abrirModal();
+    expect(
+      within(dialogo).getByText(
+        "2 partidas están sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarlas. En Partidas, el estado de cada fila dice por qué.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("sin partidas pendientes el diálogo no avisa nada de precios", async () => {
+    montar();
+    const dialogo = await abrirModal();
+    expect(within(dialogo).queryByText(/sin precio/)).toBeNull();
+  });
+
   test("A.6 (DS-48i): en la mezcla de una celda y un desglose pide fuente, habla de versión nueva y promete solo el cambio que se registra", async () => {
     alAbrir = () => borrador("002", { cambios: 2, desgloses: 1 });
     montar();
