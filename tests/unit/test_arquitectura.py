@@ -1491,27 +1491,15 @@ def _presentacion_suelta_en_api() -> dict[str, list[int]]:
 #: los lleva a `api/presentacion.py`.
 PRESENTACION_SUELTA_EN_API: dict[str, int] = {
     "api/esquemas_corte.py": 3,
-    "api/esquemas_hoja.py": 1,
-    "api/esquemas_informe.py": 1,
-    "api/esquemas_vial.py": 4,
     "api/rutas/admin_asistente.py": 1,
-    "api/rutas/aprobaciones.py": 1,
     "api/rutas/auditorias.py": 2,
-    "api/rutas/auditorias_libro.py": 1,
     "api/rutas/computos.py": 2,
     "api/rutas/consulta.py": 1,
     "api/rutas/control.py": 1,
-    "api/rutas/fcas.py": 1,
-    "api/rutas/hoja_libro.py": 1,
-    "api/rutas/mercado.py": 4,
-    "api/rutas/obras.py": 5,
+    "api/rutas/mercado.py": 1,
     "api/rutas/procura.py": 1,
-    "api/rutas/produccion.py": 5,
     "api/rutas/produccion_planta.py": 5,
     "api/rutas/rendimientos.py": 1,
-    "api/rutas/revision.py": 1,
-    "api/rutas/riesgo.py": 2,
-    "api/rutas/tablero.py": 2,
 }
 
 
@@ -1588,7 +1576,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "scripts/anonimizar_libro.py": 1163,
     "api/rutas/presupuestos.py": 1132,
     "scripts/informe_ti001.py": 1102,
-    "api/esquemas_hoja.py": 1061,
+    "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,
 }
 

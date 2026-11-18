@@ -21,7 +21,6 @@ borrador cambió entretanto, 409; la base, 503.
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -33,6 +32,7 @@ from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.modelo import LibroNoInterpretable
 from adapters.hoja_empresa.perfil import PerfilInvalido
 from api.dependencias import SesionDep, url_de_la_peticion
+from api.presentacion import monto
 from api.rutas import hoja as rutas_hoja
 from api.rutas.hoja import MENSAJE_BASE, CuentaDeLaHoja
 from api.rutas.hoja_llevar import MENSAJE_CAMBIO
@@ -53,8 +53,6 @@ from aplicacion.hoja_borradores import BorradorInexistente, RevDesactualizado
 from aplicacion.proyectos import resolver_proyecto
 from fusion.apu_por_hoja import ResultadoApuPorHoja, auditar_apu_por_hoja
 from operacion.config import carpeta_perfiles_libros
-
-CENTESIMA = Decimal("0.01")
 
 
 class _RutaLibro(RutaSinCache, RutaSinEco):
@@ -89,10 +87,6 @@ class LibroLlevadoRespuesta(BaseModel):
     sin_cantidad: list[str]
     lista: str
     moneda: str
-
-
-def _dos(valor: Decimal) -> str:
-    return format(valor.quantize(CENTESIMA, ROUND_HALF_UP), "f")
 
 
 def para_llevar(
@@ -206,8 +200,8 @@ async def llevar_libro(
                 codigo_libro=p.codigo_libro,
                 hoja=p.hoja,
                 nueva=p.nueva,
-                precio_impreso=_dos(p.precio_impreso),
-                precio_hoja=None if p.precio_hoja is None else _dos(p.precio_hoja),
+                precio_impreso=monto(p.precio_impreso),
+                precio_hoja=None if p.precio_hoja is None else monto(p.precio_hoja),
                 casa=p.casa,
             )
             for p in llevado.partidas

@@ -66,6 +66,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import USUARIO_API, SesionDeEscrituraDep, SesionDep
 from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
+from api.presentacion import exacto, exacto_o_nada, monto, monto_o_nada
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
@@ -78,7 +79,6 @@ from aplicacion.mercado import (
     ReglaDeMercado,
     anular_observacion,
     apus_afectados,
-    centimos,
     convertir_o_sin_tasa,
     estadisticas,
     exigir_codigo,
@@ -115,7 +115,7 @@ MENSAJE_BASE = "No se pudo leer ni guardar el estudio de mercado de la carpeta d
 MENSAJE_INESPERADO = "No se pudo procesar el estudio de mercado con esos datos."
 _LARGO_CODIGO = 40
 _DIAS_MAXIMO = 3650
-#: Los precios unitarios de la Hoja: un decimal con punto, sin exponente (`format(x, "f")`).
+#: Los precios unitarios de la Hoja: un decimal con punto, sin exponente (`exacto(x)`).
 _DECIMAL_CON_PUNTO = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
 
 #: Los valores de `aplicacion.mercado.LADOS` y `FUENTES` (una prueba vigila que coincidan).
@@ -291,17 +291,6 @@ class ObjetivosRespuesta(BaseModel):
 # --- traducción de errores ----------------------------------------------------------------------
 
 
-def _texto(valor: Decimal | None) -> str | None:
-    return None if valor is None else format(valor, "f")
-
-
-def _en_centimos(valor: Decimal) -> str:
-    """Un monto que siempre existe, como se muestra (`centimos` de la lógica)."""
-    texto = _texto(centimos(valor))
-    assert texto is not None  # `centimos` de un monto nunca es None
-    return texto
-
-
 def _responsable(activa: SesionActiva | None) -> str:
     return USUARIO_API if activa is None else activa.usuario
 
@@ -370,7 +359,7 @@ def _margen(objetivo: Decimal, precio_unitario: Decimal | None) -> str | None:
         # 500 que tumbe la tanda entera de objetivos).
         return None
     # −0,0 (un margen que redondea a cero desde abajo) se dice 0,0: el signo no significa nada.
-    return format(abs(valor) if valor == 0 else valor, "f")
+    return exacto(abs(valor) if valor == 0 else valor)
 
 
 # --- rutas --------------------------------------------------------------------------------------
@@ -415,7 +404,7 @@ def leer_objetivos(
         respuesta.append(
             ObjetivoConMargen(
                 codigo=f.codigo_partida,
-                precio=_en_centimos(f.precio),
+                precio=monto(f.precio),
                 moneda=f.moneda,
                 margen=None if valor is None else _margen(valor, precios.get(f.codigo_partida)),
                 equivalencia=None
@@ -473,19 +462,19 @@ def leer_estudio(
             moneda=est.moneda,
             estadisticas=EstadisticasRespuesta(
                 n=est.n,
-                minimo=_texto(centimos(est.minimo)),
-                q1=_texto(centimos(est.q1)),
-                mediana=_texto(centimos(est.mediana)),
-                promedio=_texto(centimos(est.promedio)),
-                maximo=_texto(centimos(est.maximo)),
+                minimo=monto_o_nada(est.minimo),
+                q1=monto_o_nada(est.q1),
+                mediana=monto_o_nada(est.mediana),
+                promedio=monto_o_nada(est.promedio),
+                maximo=monto_o_nada(est.maximo),
                 ids=list(est.ids),
                 convertidas=est.convertidas,
                 sin_tasa=est.sin_tasa,
                 dias=est.dias,
             ),
-            propuesta=PropuestaRespuesta(precio=_texto(elegida.precio), razon=elegida.razon),
-            piso=_texto(centimos(piso)),
-            precio_unitario=_texto(centimos(precio_unitario)),
+            propuesta=PropuestaRespuesta(precio=exacto_o_nada(elegida.precio), razon=elegida.razon),
+            piso=monto_o_nada(piso),
+            precio_unitario=monto_o_nada(precio_unitario),
             observaciones=[
                 ObservacionRespuesta(
                     id=o.fila.id,
@@ -493,7 +482,7 @@ def leer_estudio(
                     fuente=o.fila.fuente,
                     fecha=o.fila.fecha.isoformat(),
                     moneda=o.fila.moneda,
-                    precio=format(o.fila.precio, "f"),
+                    precio=exacto(o.fila.precio),
                     nota=o.fila.nota,
                     responsable=o.fila.responsable,
                     cuenta=o.cuenta,
@@ -618,7 +607,7 @@ def usar_cobro(
         )
         respuesta = ObjetivoRespuesta(
             codigo=fila.codigo_partida,
-            precio=_en_centimos(fila.precio),
+            precio=monto(fila.precio),
             moneda=fila.moneda,
         )
         sesion.commit()

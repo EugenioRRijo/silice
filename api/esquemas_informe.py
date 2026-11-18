@@ -8,12 +8,10 @@ montos viajan con los dos decimales del sistema (`DECIMALES_PRESENTACION`), como
 
 from __future__ import annotations
 
-from decimal import Decimal
-
 from pydantic import BaseModel
 
-from core.verification.informe import DECIMALES_PRESENTACION, SIN_HALLAZGOS, InformeAuditoria
-from core.verification.texto import formatear_decimal
+from api.presentacion import monto_o_nada
+from core.verification.informe import SIN_HALLAZGOS, InformeAuditoria
 
 
 class HallazgoRespuesta(BaseModel):
@@ -51,10 +49,6 @@ class InformeAuditoriaRespuesta(BaseModel):
     sin_hallazgos: str | None
 
 
-def _monto(valor: Decimal | None) -> str | None:
-    return None if valor is None else formatear_decimal(valor, DECIMALES_PRESENTACION)
-
-
 def informe_a_respuesta(informe: InformeAuditoria) -> InformeAuditoriaRespuesta:
     return InformeAuditoriaRespuesta(
         codigo_presupuesto=informe.codigo_presupuesto,
@@ -76,9 +70,9 @@ def informe_a_respuesta(informe: InformeAuditoria) -> InformeAuditoriaRespuesta:
                 severidad=h.severidad.name,
                 partida=informe.partida_de(h),
                 descripcion=h.descripcion,
-                impacto=_monto(h.impacto),
-                observado=_monto(h.valor_observado),
-                esperado=_monto(h.valor_esperado),
+                impacto=monto_o_nada(h.impacto),
+                observado=monto_o_nada(h.valor_observado),
+                esperado=monto_o_nada(h.valor_esperado),
                 origen=list(h.origen_ids),
             )
             for numero, h in enumerate(informe.hallazgos, start=1)

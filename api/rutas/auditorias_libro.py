@@ -18,13 +18,13 @@ Toda respuesta, también las de error, lleva `Cache-Control: no-store` (`api.sin
 from __future__ import annotations
 
 from datetime import date, datetime
-from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from api.dependencias import SesionInstalacionDep
+from api.presentacion import exacto_o_nada
 from api.sin_cache import RutaSinCache
 from fusion.historial import (
     AuditoriaGuardada,
@@ -75,10 +75,6 @@ def _fecha(valor: datetime) -> str:
     return valor.isoformat(timespec="seconds")
 
 
-def _monto(valor: Decimal | None) -> str | None:
-    return None if valor is None else format(valor, "f")
-
-
 def _dia(valor: date | None) -> str | None:
     return None if valor is None else valor.isoformat()
 
@@ -105,8 +101,8 @@ def _detalle(a: AuditoriaGuardada) -> AuditoriaDetalleRespuesta:
         usuario=a.usuario,
         sha256=a.sha256,
         fecha_libro=_dia(a.fecha_libro),
-        total_libro=_monto(a.total_libro),
-        total_silice=_monto(a.total_silice),
+        total_libro=exacto_o_nada(a.total_libro),
+        total_silice=exacto_o_nada(a.total_silice),
         informativos=a.informativos,
         atipicos=a.atipicos,
         recortado=a.recortado,

@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -63,6 +62,7 @@ from api.dependencias import (
     url_de_ruta,
     url_del_proceso,
 )
+from api.presentacion import exacto
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
@@ -269,10 +269,6 @@ class AprobacionDetalleRespuesta(BaseModel):
 # --- ayudantes ------------------------------------------------------------------------------------
 
 
-def _texto(valor: Decimal) -> str:
-    return format(valor, "f")
-
-
 def _http(error: AprobacionInvalida) -> HTTPException:
     if isinstance(error, NoSeEncontro):
         return HTTPException(status.HTTP_404_NOT_FOUND, str(error))
@@ -322,7 +318,7 @@ def _fila(fila: FilaIndice) -> AprobacionFilaRespuesta:
         proyecto=fila.proyecto,
         obra=fila.obra,
         version=fila.version,
-        total=_texto(fila.total),
+        total=exacto(fila.total),
         moneda=fila.moneda,
         estado=fila.estado,
         enviado_por=fila.enviado_por,
@@ -544,15 +540,15 @@ def detalle(
         version=enviado.version,
         estado=enviado.estado,
         moneda=leido.moneda,
-        total=_texto(leido.total),
+        total=exacto(leido.total),
         partidas=[
             AprobacionPartidaRespuesta(
                 codigo=p.codigo,
                 descripcion=p.descripcion,
                 unidad=p.unidad,
-                cantidad=_texto(p.cantidad),
-                precio_unitario=None if p.precio_unitario is None else _texto(p.precio_unitario),
-                total=None if p.total is None else _texto(p.total),
+                cantidad=exacto(p.cantidad),
+                precio_unitario=None if p.precio_unitario is None else exacto(p.precio_unitario),
+                total=None if p.total is None else exacto(p.total),
                 pendiente=p.pendiente,
             )
             for p in leido.partidas
