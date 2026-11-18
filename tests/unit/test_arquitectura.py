@@ -1677,8 +1677,8 @@ def test_la_presentacion_ve_los_f_strings_y_el_str_de_un_decimal(tmp_path):
     (con notacion cientifica: `str(Decimal("1E+2")) == "1E+2"`). Un `Decimal` se reconoce por su
     anotacion: un parametro, o un campo de clase (del archivo o del programa)."""
     fuentes = {
-        't = f"{v:f}"\n': [1],
-        't = f"total {v:.2f} Bs"\n': [1],
+        'def f(v: Decimal) -> str:\n    return f"{v:f}"\n': [2],
+        'def f(v: Decimal) -> str:\n    return f"total {v:.2f} Bs"\n': [2],
         't = f"{n:d} {texto}"\n': [],
         "def f(v: Decimal) -> dict:\n    return {'x': str(v)}\n": [2],
         "def f(v: Decimal | None) -> dict:\n    return {'x': None if v is None else str(v)}\n": [2],
@@ -1687,6 +1687,45 @@ def test_la_presentacion_ve_los_f_strings_y_el_str_de_un_decimal(tmp_path):
         "    return str(c.cuenta_rara_de_prueba)\n": [6],
         "def f(e: ValueError) -> str:\n    return str(e)\n": [],
         "def f(c):\n    return str(c.nombre_raro_de_prueba)\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"modulo_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _sitios_de_presentacion(archivo)
+    assert detectadas == fuentes
+
+
+def test_la_presentacion_ve_el_f_string_sin_formato_de_un_decimal(tmp_path):
+    """DS-50 (3): `f"{v}"` y `f"{v!s}"` son `str(v)` cuando `v` es un `Decimal` (escriben `1E+2`
+    donde `exacto` escribe `100`); un `int` o un texto no cuentan."""
+    fuentes = {
+        'def f(v: Decimal) -> str:\n    return f"{v}"\n': [2],
+        'def f(v: Decimal) -> str:\n    return f"total {v!s} Bs"\n': [2],
+        "t = f\"{Decimal('1.5')}\"\n": [1],
+        "class C:\n    cuenta_rara_de_prueba: Decimal\n\n\ndef f(c):\n"
+        '    return f"{c.cuenta_rara_de_prueba} Bs"\n': [6],
+        'def f(v: int) -> str:\n    return f"{v}"\n': [],
+        'def f(e: ValueError) -> str:\n    return f"{e}"\n': [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"modulo_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _sitios_de_presentacion(archivo)
+    assert detectadas == fuentes
+
+
+def test_la_presentacion_no_cuenta_el_formato_fijo_de_un_float(tmp_path):
+    """DS-52: `f"{x:.Nf}"` presenta la cifra por su cuenta solo si `x` es un `Decimal` (por la
+    misma regla que `str(<Decimal>)`); un tamano en MB o un puntaje `float` no son cifras de la
+    obra."""
+    fuentes = {
+        't = f"pesa {tamano / 2**20:.1f} MB"\n': [],
+        'def f(p: float) -> str:\n    return f"{p:.2f}"\n': [],
+        'def f(s):\n    return f"{s.puntaje_raro_de_prueba:.2f}"\n': [],
+        'def f(v: Decimal) -> str:\n    return f"{v:.2f}"\n': [2],
+        "t = f\"{Decimal('1.5'):.1f}\"\n": [1],
     }
     detectadas = {}
     for numero, fuente in enumerate(fuentes):
