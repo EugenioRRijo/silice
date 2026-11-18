@@ -388,6 +388,60 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(await screen.findByText("Se guardó la versión 003 con 1 cambio registrado.")).toBeInTheDocument();
   });
 
+  test("A.6: con solo el desglose del desperdicio cambiado, Guardar se habilita sin fuente, no habla de versión nueva y el borrador sigue abierto", async () => {
+    alAbrir = () => borrador("002", { cambios: 1, desgloses: 1 });
+    alCambios = () =>
+      json({
+        rev: 3,
+        cambios: [{ objeto: "apu", clave: "AF-LLAVE|material|1", campo: "desperdicio", antes: "0,8 + 25 %", despues: "0,625 + 60 %" }],
+      });
+    alGuardar = () =>
+      json({
+        codigo: "002",
+        proyecto: "OF-001",
+        cambios: 0,
+        total: m("2703.86"),
+        primera: false,
+        mensaje: "x",
+        version_nueva: false,
+        desgloses: 1,
+      });
+    montar();
+    const dialogo = await abrirModal();
+    expect(within(dialogo).getByRole("heading", { name: "Guardar el desglose" })).toBeInTheDocument();
+    expect(within(dialogo).getByText(/Se guardará el desglose del desperdicio de 1 línea/)).toBeInTheDocument();
+    // La traza no tiene dónde guardar una fuente: no se pide.
+    expect(within(dialogo).queryByRole("textbox", { name: /^Fuente/ })).toBeNull();
+    const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
+    expect(within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual([
+      "APU",
+      "AF-LLAVE|material|1",
+      "Desperdicio",
+      "0,8 + 25 %",
+      "0,625 + 60 %",
+    ]);
+    expect(dialogo.textContent).not.toMatch(/versión nueva/);
+    const boton = confirmar(dialogo, "Guardar el desglose");
+    expect(boton).toBeEnabled();
+    alVivo = () => {
+      const b = borrador("002", { cambios: 0, desgloses: 0 });
+      return json({ id: ID, base: b.base, resumen: b.resumen });
+    };
+    fireEvent.click(boton);
+    const aviso = await screen.findByText(
+      "Se guardó el desglose del desperdicio de 1 línea. La cantidad no cambió, así que la versión 002 sigue siendo la misma.",
+    );
+    expect(aviso.closest("[role='status']")).not.toBeNull();
+    expect(screen.getByText("Desglose guardado")).toBeInTheDocument();
+    expect(screen.queryByText(/versión nueva/)).toBeNull();
+    expect(guardados()).toEqual([{ rev: 3, fuente: "" }]);
+    // El mismo borrador se vuelve a leer: no se abre otra versión ni se descarta nada.
+    const region = await screen.findByRole("region", { name: "Estado del borrador" });
+    await within(region).findByText(/Versión 002 · Sin cambios sin guardar/);
+    expect(aperturas().map((a) => a.version)).toEqual(["002"]);
+    expect(borrados()).toHaveLength(0);
+  });
+
   test("no hay más de una petición de guardado en vuelo: el botón se deshabilita y se anuncia «Guardando la versión…»", async () => {
     let contestar: (r: Response) => void = () => undefined;
     const respuesta = new Promise<Response>((resolver) => {
