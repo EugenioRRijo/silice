@@ -2330,6 +2330,11 @@ def _politicas_de_vigencia(archivo: Path) -> list[int]:
 
 
 def test_la_politica_de_vigencia_vive_en_un_solo_sitio():
+    """Solo `aplicacion.elaboracion.es_rendimiento_vigente` escribe «el estimado vigente a la
+    fecha».
+
+    No ve: el rango con `.between(a, b)`, `TipoRendimiento.ESTIMADO` leido por atributo de otro
+    modulo (`models.TipoRendimiento.ESTIMADO`) ni la politica partida en dos sentencias (DS-50)."""
     sitios = {
         ruta: lineas
         for ruta in _lineas_de_produccion()

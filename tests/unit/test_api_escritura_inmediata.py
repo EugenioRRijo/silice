@@ -214,7 +214,10 @@ def test_la_guardia_distingue_las_dos_sesiones() -> None:
 def test_toda_ruta_no_get_con_la_sesion_comun_esta_clasificada() -> None:
     """Anexo A.8: una ruta que confirma en el caso con `BEGIN` diferido puede perder la carrera
     contra otra que escribe (`database is locked` en el acto). La que no esta en ninguna lista
-    pasa a `SesionDeEscrituraDep` o se clasifica con su razon."""
+    pasa a `SesionDeEscrituraDep` o se clasifica con su razon.
+
+    No ve: si la ruta confirma de verdad (eso lo dice la clasificacion a mano, DS-45), ni la sesion
+    que se abre en el cuerpo de la ruta sin pasar por `Depends` (DS-50)."""
     sin_clasificar = (
         _no_get_con_la_sesion_comun(app.router)
         - set(SOLO_LEEN_EL_CASO)
