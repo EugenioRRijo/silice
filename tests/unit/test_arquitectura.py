@@ -1528,20 +1528,30 @@ def _es_un_decimal(nodo: ast.expr, parametros: set[str], campos: frozenset[str])
 
 
 def _str_de_un_decimal(arbol: ast.AST, campos: frozenset[str]) -> set[int]:
-    """Los `id` de cada `str(<Decimal>)` del arbol. Un parametro cuenta dentro de su funcion."""
+    """Los `id` de cada `str(<Decimal>)` del arbol y de cada valor de f-string `<Decimal>` sin
+    formato (`f"{v}"`, `f"{v!s}"`, que son `str(v)`: DS-50) o con formato fijo (`f"{v:.2f}"`: un
+    `float` con `.Nf` no cuenta, DS-52). Un parametro cuenta dentro de su funcion."""
 
-    def es_str(nodo: ast.AST) -> bool:
-        return (
+    def operando(nodo: ast.AST) -> ast.expr | None:
+        if (
             isinstance(nodo, ast.Call)
             and isinstance(nodo.func, ast.Name)
             and nodo.func.id == "str"
             and len(nodo.args) == 1
             and not nodo.keywords
-        )
+        ):
+            return nodo.args[0]
+        if isinstance(nodo, ast.FormattedValue):
+            como_str = nodo.format_spec is None and nodo.conversion in {-1, ord("s")}
+            if como_str or _es_formato_fijo(nodo):
+                return nodo.value
+        return None
 
-    hallados = {
-        id(n) for n in ast.walk(arbol) if es_str(n) and _es_un_decimal(n.args[0], set(), campos)
-    }
+    def es_str(nodo: ast.AST, parametros: set[str]) -> bool:
+        valor = operando(nodo)
+        return valor is not None and _es_un_decimal(valor, parametros, campos)
+
+    hallados = {id(n) for n in ast.walk(arbol) if es_str(n, set())}
     for funcion in ast.walk(arbol):
         if not isinstance(funcion, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
             continue
@@ -1551,11 +1561,7 @@ def _str_de_un_decimal(arbol: ast.AST, campos: frozenset[str]) -> set[int]:
             for p in (*argumentos.posonlyargs, *argumentos.args, *argumentos.kwonlyargs)
             if _menciona(p.annotation, "Decimal")
         }
-        hallados.update(
-            id(n)
-            for n in ast.walk(funcion)
-            if es_str(n) and _es_un_decimal(n.args[0], parametros, campos)
-        )
+        hallados.update(id(n) for n in ast.walk(funcion) if es_str(n, parametros))
     return hallados
 
 
@@ -1586,9 +1592,7 @@ def _sitios_de_presentacion(archivo: Path) -> list[int]:
     for nodo in ast.walk(arbol):
         if id(nodo) in dentro:
             continue
-        es_sitio = (
-            _es_sitio_de_presentacion(nodo) or _es_formato_fijo(nodo) or id(nodo) in str_decimales
-        )
+        es_sitio = _es_sitio_de_presentacion(nodo) or id(nodo) in str_decimales
         if not es_sitio:
             continue
         sitios.append(nodo.lineno)
@@ -1612,19 +1616,20 @@ PRESENTACION_SUELTA_EN_API: dict[str, int] = {
     "api/rutas/auditorias.py": 2,
     "api/rutas/computos.py": 2,
     "api/rutas/consulta.py": 1,
-    "api/rutas/control.py": 1,
+    # 1 de 2026-11-17 y 1 de 2026-11-18 (DS-50): `f"{c.monto}"` en `costos_sin_tasa` (:671).
+    "api/rutas/control.py": 2,
     "api/rutas/mercado.py": 1,
     "api/rutas/procura.py": 1,
     "api/rutas/produccion_planta.py": 5,
     # Anexo A.7 (2026-11-18, DS-42): lo que la guardia ve desde que cuenta `f"{x:.Nf}"` y
     # `str(<Decimal>)`. Los `f"{x:f}"` pasaron a `presentacion.exacto` (mismo texto); estos no:
     # `str` escribe `1E+2` donde `exacto` escribe `100`, y `.2f` redondea al par donde
-    # `redondeado` lo hace al alza, asi que moverlos cambia la salida.
+    # `redondeado` lo hace al alza, asi que moverlos cambia la salida. Desde DS-52 (2026-11-18) el
+    # `.Nf` solo cuenta sobre un `Decimal`: salieron `composicion.py:487` e `indices.py:175`
+    # (floats: un puntaje y un tamano en MB).
     "api/esquemas.py": 1,
     "api/rutas/catalogo.py": 1,
-    "api/rutas/composicion.py": 1,
     "api/rutas/fcas.py": 3,
-    "api/rutas/indices.py": 1,
     "api/rutas/listas.py": 4,
     "api/rutas/obras.py": 4,
     "api/rutas/precios_empresa.py": 1,
@@ -1635,6 +1640,11 @@ PRESENTACION_SUELTA_EN_API: dict[str, int] = {
 
 
 def test_la_api_presenta_cifras_en_un_solo_sitio():
+    """Ningun archivo de `api/` (fuera de `api/presentacion.py`) suma sitios que presenten cifras.
+
+    No ve: `"{}".format(v)` ni `"%s" % v`; un `Decimal` en una variable local
+    (`v = Decimal(a)`; `str(v)`); `str(x.total)`, `str(x.cantidad)` o `str(x.dias)`, cuyos campos
+    son `int` en alguna clase y la guardia no ve tipos (DS-43, DS-50)."""
     peores = sorted(
         f"{ruta}: {len(sitios)} sitios (congelado {PRESENTACION_SUELTA_EN_API.get(ruta, 0)}): "
         + ", ".join(f"{ruta}:{linea}" for linea in sitios)
