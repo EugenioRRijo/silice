@@ -26,6 +26,7 @@ decisión de ingeniería «Cómo se midió».
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -52,6 +53,7 @@ __all__ = [
     "CalculoInvalido",
     "PartidaElegida",
     "agregar_partida",
+    "calculo_de_regla",
     "calculo_tecleable",
     "cantidad_y_regla",
     "pendientes_sin_calculo",
@@ -342,6 +344,77 @@ def texto_llano(descripcion: str) -> str:
 #: La regla de un renglón agregado a mano: solo cifras con punto decimal y los signos.
 _REGLA_ARITMETICA = re.compile(r"[0-9.+\-*/() ]+")
 _CIFRA_DE_LA_REGLA = re.compile(r"[0-9.]+")
+
+
+#: Una pieza de la regla de un cómputo: una cifra, un parámetro, la potencia o un signo.
+_PIEZA_DE_REGLA = re.compile(
+    r"\s*(?:(?P<cifra>[0-9]+(?:\.[0-9]+)?)|(?P<nombre>[A-Za-z_][A-Za-z0-9_]*)|(?P<potencia>\*\*)"
+    r"|(?P<signo>[-+*/()]))"
+)
+#: La potencia más alta que se escribe como producto (a**3 es a*a*a).
+_POTENCIA_MAXIMA = 9
+
+
+def _operando_previo(piezas: list[str]) -> int | None:
+    """Dónde empieza el operando que termina `piezas`: la cifra o el paréntesis que cierra con su
+    pareja. `None` si lo último es un signo o los paréntesis no casan."""
+    if not piezas or piezas[-1] in "+-*/(":
+        return None
+    if piezas[-1] != ")":
+        return len(piezas) - 1
+    nivel = 0
+    for posicion in range(len(piezas) - 1, -1, -1):
+        nivel += {")": 1, "(": -1}.get(piezas[posicion], 0)
+        if nivel == 0:
+            return posicion
+    return None
+
+
+def calculo_de_regla(regla: str, parametros: Mapping[str, Decimal]) -> str | None:
+    """La regla de un cómputo («longitud * (1 + desperdicio)», `adapters/civil/reglas.py`) con
+    sus parámetros puestos, como la teclearía la persona: «48,5*(1+0,05)». Lo lee
+    `traducir_calculo` y da lo mismo que `core.verification.evaluar` (prueba en vivo del
+    18/11/2026: llevar un cómputo a la Hoja perdía su trazabilidad, «Sin cálculo»).
+
+    La potencia de exponente entero escrito (de 1 a 9) se escribe como producto entre paréntesis
+    («a**2» es «(a*a)»), porque el cálculo solo admite las cuatro operaciones; un parámetro
+    negativo va entre paréntesis. `None` si la regla no es eso (una función, una potencia no
+    entera, un parámetro que falta): no se inventa un cálculo."""
+    piezas: list[str] = []
+    resto = regla.strip()
+    posicion = 0
+    potencia = False
+    while posicion < len(resto):
+        encontrada = _PIEZA_DE_REGLA.match(resto, posicion)
+        if encontrada is None:
+            return None
+        posicion = encontrada.end()
+        cifra, nombre, signo = encontrada["cifra"], encontrada["nombre"], encontrada["signo"]
+        if potencia:  # lo que sigue a «**» es el exponente: un entero escrito
+            potencia = False
+            if cifra is None or not cifra.isdigit() or not 1 <= int(cifra) <= _POTENCIA_MAXIMA:
+                return None
+            inicio = _operando_previo(piezas)
+            if inicio is None:
+                return None
+            base = "".join(piezas[inicio:])
+            del piezas[inicio:]
+            piezas.append("(" + "*".join([base] * int(cifra)) + ")")
+        elif encontrada["potencia"]:
+            potencia = True
+        elif cifra is not None:
+            piezas.append(texto_de_cifra(Decimal(cifra)))
+        elif nombre is not None:
+            valor = parametros.get(nombre)
+            if valor is None or not valor.is_finite():
+                return None
+            texto = texto_de_cifra(valor)
+            piezas.append(f"({texto})" if valor < 0 else texto)
+        else:
+            piezas.append(signo)
+    if potencia or not piezas:
+        return None
+    return "".join(piezas)
 
 
 def calculo_tecleable(regla: str | None) -> str | None:

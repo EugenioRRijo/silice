@@ -180,13 +180,24 @@ export async function calcular(cuerpo: CuerpoCalculo, csrf: string | null): Prom
 
 // Los items del computo con que se elaboro, sin los pendientes (no tienen partida en el catalogo: la API los rechazaria
 // y no llevaria ninguno). La cantidad viaja tal cual salio de /computos: la pagina no la convierte ni la redondea.
+// Prueba en vivo del 18/11/2026: tambien viaja lo que el computo sabe del item (su unidad, su origen y su regla con sus
+// parametros), para que la Hoja no lo tome por escrito a mano: con la regla el renglon entra con su calculo, con el origen
+// lleva una nota, y una unidad que no es la del APU se dice antes de llevar (R3).
 export function partidasParaLlevar(
   items: ItemComputo[],
   pendientes: Pick<PendienteConPropuestas, "origen_id" | "codigo_partida">[],
 ): PartidaParaLlevar[] {
   const pendiente = (i: ItemComputo) =>
     pendientes.some((p) => p.origen_id === i.origen_id && p.codigo_partida === i.codigo_partida);
-  return items.filter((i) => !pendiente(i)).map((i) => ({ codigo: i.codigo_partida, cantidad: i.cantidad, calculo: "" }));
+  return items.filter((i) => !pendiente(i)).map((i) => ({
+    codigo: i.codigo_partida,
+    cantidad: i.cantidad,
+    calculo: "",
+    unidad: i.unidad,
+    origen: i.origen_id,
+    regla: i.regla ?? "",
+    parametros: i.parametros,
+  }));
 }
 
 // La moneda y la fecha con que se valora: las de la carpeta y su lista para armar (`GET /v1/carpeta`). Sin moneda o sin

@@ -27,7 +27,7 @@ import dataclasses
 import re
 import tempfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -43,7 +43,7 @@ from aplicacion.composicion import (
     texto_de_celda,
 )
 from aplicacion.errores import HojaInvalida
-from aplicacion.hoja_partidas import CalculoInvalido, cantidad_y_regla
+from aplicacion.hoja_partidas import CalculoInvalido, calculo_de_regla, cantidad_y_regla
 from aplicacion.listas_para_armar import valoracion_de_la_obra
 from core import models
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
@@ -51,6 +51,7 @@ from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, PropuestaRendimiento, proponer_rendimiento, registrar_rendimiento
 from core.contracts import Dominio, ItemComputo, ParametrosCosto
 from core.contracts.apu import Rendimiento, TipoRendimiento
+from core.contracts.unidades import unidades_equivalentes
 
 if TYPE_CHECKING:
     from decimal import Decimal
@@ -387,23 +388,75 @@ class VersionQueNoSeAbre(Exception):  # noqa: N818
 @dataclass(frozen=True, slots=True)
 class PartidaParaLlevar:
     """Un item de Elaborar que va a la Hoja: el codigo de su partida, su cantidad exacta (la del
-    computo) y, si la persona lo escribio, el calculo con coma decimal (Tarea 8)."""
+    computo) y, si la persona lo escribio, el calculo con coma decimal (Tarea 8).
+
+    Prueba en vivo del 18/11/2026: lo que el computo sabe del item viaja con el, para no perder su
+    trazabilidad: su `unidad` (si no equivale a la del APU, no se lleva: R3), su `origen` y su
+    `regla` con sus `parametros` (el calculo y la nota del renglon, `_calculo_y_nota`)."""
 
     codigo: str
     cantidad: Decimal
     calculo: str = ""
+    unidad: str = ""
+    origen: str = ""
+    regla: str = ""
+    parametros: Mapping[str, Decimal] = field(default_factory=dict)
+
+
+def _choque_de_unidades(computo: str, apu: str) -> str:
+    """Lo que dice el 422 de un item del computo cuya unidad no es la de su APU (R3, antes de
+    llevar)."""
+    return (
+        f"el cómputo la mide en «{computo}» y su APU está en «{apu}»: no son la misma unidad, así "
+        f"que su precio no aplicaría a esa cantidad. No se llevó nada: elija una partida que se "
+        f"mida en «{computo}» o corrija el cómputo."
+    )
+
+
+#: El largo maximo de la nota de un renglon (`POST /v1/hoja/borradores/{id}/partidas`).
+LARGO_DE_NOTA = 500
+
+
+def _cuadra(cantidad: Decimal, calculo: str) -> bool:
+    try:
+        cantidad_y_regla(texto_de_cifra(cantidad), calculo)
+    except (CalculoInvalido, CifraInvalida):
+        return False
+    return True
+
+
+def _calculo_y_nota(partida: PartidaParaLlevar) -> tuple[str, str]:
+    """El calculo y la nota con que el item entra a la Hoja. El calculo es el escrito o, si no, la
+    regla del computo con sus parametros (`calculo_de_regla`) cuando da su cantidad; la nota dice
+    de donde salio («Del cómputo: TQ-01.») y, si la regla no se pudo escribir como calculo, la
+    regla misma, para que la cantidad no quede sin explicar."""
+    calculo = partida.calculo
+    if not calculo and partida.regla:
+        derivado = calculo_de_regla(partida.regla, partida.parametros)
+        if derivado is not None and _cuadra(partida.cantidad, derivado):
+            calculo = derivado
+    if not partida.origen:
+        return calculo, ""
+    con_regla = f", con la regla {partida.regla}" if partida.regla and not calculo else ""
+    nota = f"Del cómputo: {partida.origen}{con_regla}."
+    return calculo, nota if len(nota) <= LARGO_DE_NOTA else nota[: LARGO_DE_NOTA - 1] + "…"
 
 
 def _validar(sesion: Session, partidas: Sequence[PartidaParaLlevar]) -> None:
     """Lo que `hoja_edicion.agregar` rechazaria de cada partida, antes de tocar ningun borrador:
     que este en el catalogo (`PartidaFueraDelCatalogo`) y su cantidad y su calculo (`HojaInvalida`
-    con el codigo delante), con las mismas reglas (`cantidad_y_regla`, Tarea 8)."""
+    con el codigo delante), con las mismas reglas (`cantidad_y_regla`, Tarea 8). Y, con la unidad
+    del computo, que equivalga a la del APU (R3, `HojaInvalida`): una tuberia en m sobre un APU
+    por pieza no se lleva (prueba en vivo del 18/11/2026)."""
     catalogo = Catalogo(sesion)
     for partida in partidas:
         try:
-            catalogo.partida(partida.codigo)
+            fila = catalogo.partida(partida.codigo)
         except KeyError:
             raise hoja_edicion.PartidaFueraDelCatalogo(partida.codigo) from None
+        if partida.unidad and not unidades_equivalentes(partida.unidad, fila.unidad):
+            choque = _choque_de_unidades(partida.unidad, fila.unidad)
+            raise HojaInvalida(f"{partida.codigo}: {choque}")
         try:
             cantidad_y_regla(texto_de_cifra(partida.cantidad), partida.calculo)
         except (CalculoInvalido, CifraInvalida) as error:
@@ -561,6 +614,7 @@ def llevar_a_la_hoja(
         antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano)
         try:
             for partida in partidas:
+                calculo, nota = _calculo_y_nota(partida)
                 try:
                     vivo, _clave = agregar(
                         sesion,
@@ -569,8 +623,8 @@ def llevar_a_la_hoja(
                         vivo.rev,
                         codigo=partida.codigo,
                         cantidad=texto_de_cifra(partida.cantidad),
-                        calculo=partida.calculo,
-                        nota="",
+                        calculo=calculo,
+                        nota=nota,
                         llevando=True,
                     )
                 except HojaInvalida as error:  # varias partidas: se dice cual

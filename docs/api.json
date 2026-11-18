@@ -24846,6 +24846,38 @@
             "maxLength": 500,
             "title": "Calculo",
             "default": ""
+          },
+          "unidad": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Unidad",
+            "default": ""
+          },
+          "origen": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Origen",
+            "default": ""
+          },
+          "regla": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Regla",
+            "default": ""
+          },
+          "parametros": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 100,
+              "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
+            },
+            "propertyNames": {
+              "maxLength": 100
+            },
+            "type": "object",
+            "maxProperties": 50,
+            "title": "Parametros",
+            "default": {}
           }
         },
         "additionalProperties": false,

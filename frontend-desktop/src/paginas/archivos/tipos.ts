@@ -39,6 +39,11 @@ export interface PartidaParaLlevar {
   codigo: string;
   cantidad: string;
   calculo: string;
+  // Lo que el cómputo sabe del ítem (`POST /v1/hoja/llevar`, prueba en vivo del 18/11/2026).
+  unidad: string;
+  origen: string;
+  regla: string;
+  parametros: Record<string, string>;
 }
 
 export interface PropuestaPartida {
