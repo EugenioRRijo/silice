@@ -70,8 +70,8 @@ def test_sin_desperdicio_la_fila_no_cambia_y_no_hay_traza(vacio: str):
 @pytest.mark.parametrize(
     ("texto", "mensaje"),
     [
-        ("-1", "entre 0 y 100"),
-        ("100", "entre 0 y 100"),
+        ("-1", "de 0 a menos de 100"),
+        ("100", "de 0 a menos de 100"),
         ("cuatro", "no se entiende como número"),
         ("4.5", "no se entiende como número"),
     ],

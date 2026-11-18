@@ -127,8 +127,8 @@ def aplicar_desperdicio(
     traen. Con desperdicio, la `cantidad` de la fila pasa a ser la neta × (1 + porcentaje / 100).
 
     Un porcentaje vacío o cero deja la fila como está. `ComposicionInvalida`, con la fila y la
-    descripción, si el porcentaje no es una cifra o no está entre 0 y 100. Si la cantidad neta no
-    es una cifra, la fila sigue sin multiplicar y la conversión de siempre da su aviso.
+    descripción, si el porcentaje no es una cifra o no va de 0 a menos de 100. Si la cantidad neta
+    no es una cifra, la fila sigue sin multiplicar y la conversión de siempre da su aviso.
     """
     por_fila = dict(trazas_por_fila(filas))
     salida: list[dict[str, str]] = []
