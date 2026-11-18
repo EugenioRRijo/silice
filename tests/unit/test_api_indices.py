@@ -721,3 +721,31 @@ def test_un_trimestre_entero_de_hojas_diarias_pasa_los_topes(_entorno: Path) -> 
         {"clave": "usd_venta", "valores": 92, "desde": "2026-07-02", "hasta": "2026-10-01"},
     ]
     assert cuerpo["filas_rechazadas"] == 0
+
+
+def test_confirmar_lee_el_archivo_antes_de_tomar_el_bloqueo_de_escritura(
+    _entorno: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Anexo A.8 (DS-32): con `SesionDeEscrituraDep` la primera consulta abre `BEGIN IMMEDIATE`.
+    Mientras se lee el archivo subido, otra conexion tiene que poder tomar el bloqueo."""
+    import sqlite3
+
+    leer_de_verdad = ruta_indices._leer_archivo
+    libre: list[bool] = []
+
+    def leer_y_mirar_el_bloqueo(*args, **kwargs):
+        otra = sqlite3.connect(_entorno, timeout=0)
+        try:
+            otra.execute("BEGIN IMMEDIATE")
+            otra.rollback()
+            libre.append(True)
+        except sqlite3.OperationalError:
+            libre.append(False)
+        finally:
+            otra.close()
+        return leer_de_verdad(*args, **kwargs)
+
+    monkeypatch.setattr(ruta_indices, "_leer_archivo", leer_y_mirar_el_bloqueo)
+
+    assert _confirmar().status_code == 200
+    assert libre == [True], "la ruta tenia tomado el bloqueo de escritura mientras leia el archivo"

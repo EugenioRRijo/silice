@@ -15,7 +15,7 @@ from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.acceso import EDITAR, LEER
 from api.archivos import guardar_subida
-from api.dependencias import SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep
 from api.esquemas import CambioRespuesta, CargaListaRespuesta, ListaRespuesta
 from api.esquemas_ola2 import InsumoDesconocidoRespuesta, VistaPreviaRespuesta
 from aplicacion.actualizacion import nombrar
@@ -45,7 +45,7 @@ def listar_listas_precios(sesion: SesionDep) -> list[ListaRespuesta]:
     dependencies=EDITAR,
 )
 def cargar_lista_precios(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     archivo: Annotated[UploadFile, File()],
     nombre: Annotated[str, Form()],
     moneda: Annotated[str, Form()],

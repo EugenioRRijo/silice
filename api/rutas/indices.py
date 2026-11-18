@@ -46,7 +46,7 @@ from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.admin_acceso import administrar
 from api.archivos import nombre_seguro
-from api.dependencias import SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep
 from api.presentacion import cifra_presentada
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
@@ -265,7 +265,7 @@ def leer(
 
 @router.post("/confirmar", response_model=ConfirmacionRespuesta)
 def confirmar(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     activa: Annotated[SesionActiva, SOLO_CUENTA],
     tipo: Annotated[str, Form(max_length=20)],
     archivo: Annotated[UploadFile, File()],
@@ -405,7 +405,7 @@ def ver_en_usd(sesion: SesionDep, peticion: EnUsdPeticion, response: Response) -
 
 @router.post("/en-usd/confirmar", response_model=ConfirmacionRespuesta)
 def confirmar_en_usd(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     peticion: EnUsdConfirmacion,
     activa: Annotated[SesionActiva, SOLO_CUENTA],
     response: Response,

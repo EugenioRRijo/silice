@@ -43,6 +43,7 @@ from api.acceso_modulos import requiere_modulo
 from api.admin_acceso import administrar
 from api.dependencias import (
     USUARIO_API,
+    SesionDeEscrituraDep,
     SesionDep,
     SesionInstalacionDep,
     ruta_de_url,
@@ -576,7 +577,7 @@ def publicar_costo_propio(
     calculo_id: int,
     request: Request,
     sesion: SesionInstalacionDep,
-    caso: SesionDep,
+    caso: SesionDeEscrituraDep,
     usuario: UsuarioPublicaDep,
 ) -> PublicacionCreada:
     """Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por

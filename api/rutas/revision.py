@@ -43,7 +43,7 @@ from sqlalchemy.orm import Session
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.archivos import nombre_seguro
-from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
+from api.dependencias import USUARIO_SIN_CLAVE, SesionDeEscrituraDep, SesionDep
 from api.presentacion import exacto
 from api.proteccion import LIMITE_CUERPO
 from api.redaccion import pulir
@@ -467,7 +467,7 @@ def contra_otra_lista(
 @router.post("/dictamen", response_model=DictamenGuardado, dependencies=[REVISAR])
 @sin_eco(MENSAJE_RESULTADO)
 def dictaminar(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     activa: Activa,
     paquete: Annotated[UploadFile, File()],
     resultado: Annotated[str, Form(max_length=40)],

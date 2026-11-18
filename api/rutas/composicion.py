@@ -39,7 +39,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from api.acceso import EDITAR
-from api.dependencias import SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep
 from api.presentacion import exacto
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion.componer_parametros import (
@@ -498,7 +498,7 @@ def similares(
 
 @router.post("/guardar", response_model=GuardadoRespuesta, dependencies=EDITAR)
 @sin_eco(MENSAJE_FORMA_PREVER)
-def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
+def guardar(sesion: SesionDeEscrituraDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
     """Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación
     (UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del
     desperdicio (F5 vial) se guarda en la misma transacción."""

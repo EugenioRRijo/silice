@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 
-from api.dependencias import SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep
 from api.esquemas_partidas import PartidasDelContratoRespuesta, partidas_a_respuesta
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
@@ -312,7 +312,7 @@ def _respuesta(sesion, p: EstudioPeticion, resultado) -> CalculoRespuesta:
 
 @router.post("/guardar", response_model=GuardadoRespuesta)
 def guardar(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     peticion: GuardarPeticion,
     response: Response,
     activa: Annotated[SesionActiva | None, REAJUSTAR],
