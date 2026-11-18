@@ -120,3 +120,11 @@ def test_lista_por_nombre_es_exacta(sesion: Session) -> None:
     assert listas_para_armar.lista_por_nombre(sesion, "Junio") is junio
     assert listas_para_armar.lista_por_nombre(sesion, "junio") is None
     assert listas_para_armar.lista_por_nombre(sesion, "Marzo") is None
+
+
+def test_lista_por_id_devuelve_la_lista_o_nada(sesion: Session) -> None:
+    """Tarea 3.4: `api/rutas/revision.py` pedia la lista con `caso.get(models.ListaPrecios, id)`."""
+    _lista(sesion, "Enero", date(2026, 1, 1))
+    junio = _lista(sesion, "Junio", date(2026, 6, 1))
+    assert listas_para_armar.lista_por_id(sesion, junio.id) is junio
+    assert listas_para_armar.lista_por_id(sesion, 999) is None

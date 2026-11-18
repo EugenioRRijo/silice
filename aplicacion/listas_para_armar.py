@@ -566,3 +566,8 @@ def lista_por_nombre(sesion: Session, nombre: str) -> models.ListaPrecios | None
     return sesion.scalars(
         select(models.ListaPrecios).where(models.ListaPrecios.nombre == nombre)
     ).one_or_none()
+
+
+def lista_por_id(sesion: Session, lista_id: int) -> models.ListaPrecios | None:
+    """La lista de ese `id`, o `None`."""
+    return sesion.get(models.ListaPrecios, lista_id)

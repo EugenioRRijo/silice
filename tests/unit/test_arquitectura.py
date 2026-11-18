@@ -1048,7 +1048,6 @@ SELECT_EN_RUTAS: dict[str, int] = {}
 MODELOS_EN_RUTAS: frozenset[str] = frozenset(
     {
         "api/rutas/presupuestos.py",
-        "api/rutas/revision.py",
     }
 )
 

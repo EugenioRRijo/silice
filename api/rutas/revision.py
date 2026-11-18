@@ -34,7 +34,7 @@ from __future__ import annotations
 import tempfile
 from dataclasses import replace
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel
@@ -52,7 +52,7 @@ from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import revision as logica
-from core import models
+from aplicacion.listas_para_armar import lista_por_id
 from core.budget.comparacion import Diferencia
 from core.verification.texto import formatear_decimal
 from operacion.config import carpeta_datos
@@ -63,6 +63,9 @@ from paquete.verificar import banner
 from seguridad.json_estricto import JsonRechazado
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
+
+if TYPE_CHECKING:
+    from core import models
 
 TOPE_PAQUETE = LIMITE_ARCHIVO  # 20 MiB: lo que `abrir_zip` admite
 TOPE_EXCEL = min(MAX_BYTES, LIMITE_CUERPO)  # 20 MiB: el cuerpo entero no pasa de ahí
@@ -321,7 +324,7 @@ def _dictamenes(caso: Session, sha256: str) -> list[DictamenAnterior]:
 
 
 def _lista(caso: Session, lista_id: int) -> models.ListaPrecios:
-    lista = caso.get(models.ListaPrecios, lista_id)
+    lista = lista_por_id(caso, lista_id)
     if lista is None:
         raise HTTPException(404, MENSAJE_LISTA.format(id=lista_id))
     return lista
