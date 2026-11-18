@@ -51,6 +51,15 @@ describe("ContrasenaDeLaCuenta", () => {
     expect(screen.getByLabelText("Confirme la contraseña nueva")).toHaveValue("");
   });
 
+  test("con la confirmación vacía al intentar se marca y no se llama a la API", async () => {
+    const usuario = userEvent.setup();
+    const alCambiar = vi.fn();
+    pintar(alCambiar);
+    await llenar(usuario, "vieja-1", "nueva-segura-2", "");
+    expect(screen.getByText("Confirme la contraseña nueva.")).toBeInTheDocument();
+    expect(alCambiar).not.toHaveBeenCalled();
+  });
+
   test("si la confirmación no coincide lo dice y no llama a la API", async () => {
     const usuario = userEvent.setup();
     const alCambiar = vi.fn();

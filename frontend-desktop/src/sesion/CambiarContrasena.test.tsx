@@ -42,6 +42,16 @@ describe("CambiarContrasena", () => {
     expect(alCambiar).not.toHaveBeenCalled();
   });
 
+  // Arbitraje (2026-11-18): con la confirmación vacía el botón no hacía nada y no marcaba nada.
+  test("con la confirmación vacía al intentar se marca y no se llama a la API", async () => {
+    const usuario = userEvent.setup();
+    const alCambiar = vi.fn();
+    render(<CambiarContrasena alCambiar={alCambiar} />);
+    await llenar(usuario, "vieja-1", "nueva-segura-2", "");
+    expect(screen.getByText("Confirme la contraseña nueva.")).toBeInTheDocument();
+    expect(alCambiar).not.toHaveBeenCalled();
+  });
+
   test("si la confirmacion no coincide lo dice y no llama a la API", async () => {
     const usuario = userEvent.setup();
     const alCambiar = vi.fn();
