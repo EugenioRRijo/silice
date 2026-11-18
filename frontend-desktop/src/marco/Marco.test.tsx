@@ -515,6 +515,20 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
     expect(within(barra).queryByRole("heading")).toBeNull();
   });
 
+  // Prueba en vivo (2026-11-18): una sección inexistente de una obra que SÍ existe decía «Esa obra ya no existe. La
+  // borraron…», que es falso. Como una subvista desconocida, lleva a la pantalla principal (el Resumen), con replace y la consulta.
+  test("una sección inexistente de una obra que existe lleva al Resumen de la obra, con replace y la consulta", async () => {
+    montar({ en: "/obra/empresa/7/no-existe?x=1" });
+    expect(await titulo("Resumen de la obra")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/resumen?x=1");
+    expect(screen.queryByText("Esa obra ya no existe")).toBeNull();
+  });
+
+  test("una sección inexistente de una obra que tampoco existe sigue diciendo que la obra no existe", async () => {
+    montar({ en: "/obra/empresa/99/no-existe" });
+    expect(await titulo("Esa obra ya no existe")).toBeInTheDocument();
+  });
+
   test("sin la obra lista (una que no existe) no hay cabecera ni barra de la obra", async () => {
     montar({ en: "/obra/empresa/99/resumen" });
     await titulo("Esa obra ya no existe");
