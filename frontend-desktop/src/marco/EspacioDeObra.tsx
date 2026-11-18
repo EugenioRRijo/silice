@@ -81,7 +81,7 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
 
   // Una sección que no existe (o sin pantalla) de una obra que se nombra bien lleva al Resumen de esa obra, con replace y la
   // consulta, como una subvista desconocida lleva a la principal. Si la obra tampoco existe, el Resumen lo dirá.
-  if (estado.tipo === "no_existe" && segmentoDeCarpeta !== undefined && /^[1-9]\d*$/.test(obraId ?? "") && seccion !== undefined && seccionPorId(seccion)?.pagina == null) {
+  if (estado.tipo === "no_existe" && segmentoDeCarpeta !== undefined && /^[1-9]\d*$/.test(obraId ?? "") && Number.isSafeInteger(Number(obraId)) && seccion !== undefined && seccionPorId(seccion)?.pagina == null) {
     return <Navigate to={`${rutaDeObra(carpetaDeLaRuta(segmentoDeCarpeta), Number(obraId), "resumen")}${search}`} replace />;
   }
 

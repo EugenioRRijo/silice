@@ -140,11 +140,17 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     [alExpirar],
   );
 
+  // Una sola recarga de la lista por obra mientras la carpeta de la lista no coincide con la de la obra: si la lista vuelve
+  // sin ella (no debería), no se insiste. Se reinicia al cambiar de carpeta y al coincidir, para que entrar otra vez en la
+  // misma obra de otra carpeta (tras pasar por la empresa) vuelva a poner al día la lista.
+  const recargadaPara = useRef<string | null>(null);
+
   // Abrir otra carpeta desde una pantalla (Cuenta › Carpetas, «Probar con datos de demostración», un envío por aprobar
   // de otra carpeta): se olvida la obra elegida, las pantallas se vuelven a montar y se avisa.
   const alCambiarCarpeta = useCallback(
     (carpeta: string) => {
       carpetaAbierta.current = carpeta;
+      recargadaPara.current = null;
       setError(null);
       setMonedaPendiente(null);
       setProyecto(null);
@@ -186,13 +192,12 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // pone al día la carpeta; si es de otra carpeta o no la conoce (recién creada), también la lista de obras.
   const carpetaActual = obras.carpetaActual;
   const listaDeObras = obras.obras;
-  // Una sola recarga por obra: si la lista vuelve sin ella (no debería), no se insiste.
-  const recargadaPara = useRef<string | null>(null);
   const alEntrarEnObra = useCallback(
     (carpeta: string | null, obraId: number) => {
       setProyecto(String(obraId));
       const clave = `${carpeta ?? ""}|${obraId}`;
       const conocida = listaDeObras.some((o) => o.carpeta === carpeta && o.obra_id === obraId);
+      if (carpeta === carpetaActual && conocida) recargadaPara.current = null;
       if (carpeta !== carpetaActual) recargarCasos();
       if ((carpeta !== carpetaActual || !conocida) && recargadaPara.current !== clave) {
         recargadaPara.current = clave;
