@@ -522,3 +522,44 @@ def test_guardar_solo_el_desglose_escribe_las_trazas_sin_version_nueva(_caso: Pa
         f"/v1/hoja/borradores/{abierto.json()['id']}/vistas/apu", params={"partida": "AF-LLAVE"}
     ).json()["detalle"]
     assert detalle["desperdicios"] == [LLAVE_0_625]
+
+
+def test_cambiar_el_desglose_y_el_rendimiento_crea_la_version_con_las_trazas(_caso: Path) -> None:
+    """La mezcla: el rendimiento pasa de 20 a 25 (una celda) y la llave pasa de 0,8 + 25 % a
+    0,625 + 60 % (misma cantidad, un desglose). El resumen cuenta dos cambios, uno de desglose;
+    guardar crea la 002 como siempre, registra la celda, escribe la traza y cierra el borrador."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/AF-LLAVE",
+        json={
+            "rev": 0,
+            "rendimiento": "25",
+            "materiales": ["0,625"],
+            "desperdicios": ["60"],
+            "equipos": cantidades["equipos"],
+            "mano_obra": cantidades["mano de obra"],
+        },
+        headers=protegida(ficha),
+    )
+    assert editado.status_code == 200, editado.text
+    resumen = editado.json()["resumen"]
+    assert (resumen["rev"], resumen["cambios"], resumen.get("desgloses")) == (1, 2, 1)
+    guardado = navegador.post(
+        f"/v1/hoja/borradores/{id_}/guardar",
+        json={"rev": 1, "fuente": "Acta ficticia de obra"},
+        headers=protegida(ficha),
+    )
+    assert guardado.status_code == 200, guardado.text
+    cuerpo = guardado.json()
+    assert {k: cuerpo.get(k) for k in ("codigo", "cambios", "version_nueva", "desgloses")} == {
+        "codigo": "002",
+        "cambios": 1,
+        "version_nueva": True,
+        "desgloses": 1,
+    }
+    assert cuerpo["mensaje"] == "Se guardó la versión 002 con 1 cambio registrado."
+    assert _trazas(_caso) == [TRAZA_0_625]
+    assert _codigos(navegador) == ["001", "002"]
+    assert navegador.get(f"/v1/hoja/borradores/{id_}").json()["resumen"]["guardado_como"] == "002"
