@@ -511,3 +511,81 @@ def test_llevar_exige_csrf_y_origen_propio() -> None:
     assert navegador.post(RUTA, json=CUERPO, headers=ajeno).status_code == 403
     assert navegador.post(RUTA, json=CUERPO, headers=protegida(ficha, None)).status_code == 403
     assert _borradores(navegador) == []
+
+
+# --- prueba en vivo del 2026-11-18 (frente B): el cómputo llega con su trazabilidad ------------
+
+#: La regla del concreto de una tanquilla (`adapters/civil/reglas.py`), con sus parámetros como
+#: los manda `/computos` (texto de máquina): 2 × (1,2² − (1,2 − 2 × 0,15)²) × 1,5 = 1,89 m3.
+TANQUILLA = {
+    "codigo": "OBRA-03",
+    "cantidad": "1.89",
+    "calculo": "",
+    "unidad": "m3",
+    "origen": "TQ-01",
+    "regla": "n * (a**2 - (a - 2*e)**2) * h",
+    "parametros": {"n": "2", "a": "1.2", "e": "0.15", "h": "1.5"},
+}
+CHOQUE_DE_UNIDADES = (
+    "OBRA-04: el cómputo la mide en «m» y su APU está en «m2»: no son la misma unidad, así que "
+    "su precio no aplicaría a esa cantidad. No se llevó nada: elija una partida que se mida en "
+    "«m» o corrija el cómputo."
+)
+
+
+def _fila_completa(navegador: TestClient, id_: str, clave: str) -> dict:
+    respuesta = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/presupuesto")
+    assert respuesta.status_code == 200, respuesta.text
+    return next(f for f in respuesta.json()["filas"] if f["clave"] == clave)
+
+
+def test_el_computo_llega_con_su_calculo_y_su_origen_no_como_escrito_a_mano() -> None:
+    """Antes la fila entraba «Sin cálculo» (R1 avisaba) y sin decir de dónde venía."""
+    navegador, ficha = _ana()
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [TANQUILLA])
+
+    assert respuesta.status_code == 200, respuesta.text
+    fila = _fila_completa(navegador, respuesta.json()["borrador_id"], "OBRA-03|a-mano:1")
+    assert (fila["cantidad"], fila["calculo"], fila["nota"]) == (
+        "1,89",
+        "2*((1,2*1,2)-((1,2-2*0,15)*(1,2-2*0,15)))*1,5",
+        "Del cómputo: TQ-01.",
+    )
+
+
+def test_una_regla_que_no_es_aritmetica_deja_la_regla_en_la_nota() -> None:
+    """Sin un cálculo de las cuatro operaciones no se inventa uno: la regla y su origen quedan
+    escritos en la nota, para que se sepa de dónde salió la cantidad."""
+    navegador, ficha = _ana()
+    partida = {**TANQUILLA, "regla": "n * a**e", "cantidad": "2.0547"}
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [partida])
+
+    assert respuesta.status_code == 200, respuesta.text
+    fila = _fila_completa(navegador, respuesta.json()["borrador_id"], "OBRA-03|a-mano:1")
+    assert (fila["calculo"], fila["nota"]) == (
+        None,
+        "Del cómputo: TQ-01, con la regla n * a**e.",
+    )
+
+
+def test_un_choque_de_unidades_se_dice_antes_de_llevar_y_no_lleva_nada() -> None:
+    """LB-02-TUB llegó en m y quedó «50,925 pieza» sin aviso: ahora es 422 con las dos unidades
+    y no se abre ningún borrador."""
+    navegador, ficha = _ana()
+    tuberia = {
+        "codigo": "OBRA-04",
+        "cantidad": "50.925",
+        "calculo": "",
+        "unidad": "m",
+        "origen": "LB-02",
+        "regla": "longitud * (1 + desperdicio)",
+        "parametros": {"longitud": "48.5", "desperdicio": "0.05"},
+    }
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [TANQUILLA, tuberia])
+
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": CHOQUE_DE_UNIDADES}
+    assert _borradores(navegador) == []
