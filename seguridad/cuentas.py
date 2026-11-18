@@ -206,7 +206,7 @@ def cuenta_por_id(session: Session, usuario_id: int) -> Usuario | None:
 
 
 def _usuario(session: Session, usuario_id: int) -> Usuario:
-    usuario = session.get(Usuario, usuario_id)
+    usuario = cuenta_por_id(session, usuario_id)
     if usuario is None:
         raise LookupError(f"no hay una cuenta con id {usuario_id}")
     return usuario

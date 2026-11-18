@@ -276,7 +276,7 @@ def sospechoso_por_id(sesion: Session, id_sospechoso: int) -> PesajeSospechoso |
 
 
 def _sospechoso_pendiente(sesion: Session, id_sospechoso: int) -> PesajeSospechoso:
-    sospechoso = sesion.get(PesajeSospechoso, id_sospechoso)
+    sospechoso = sospechoso_por_id(sesion, id_sospechoso)
     if sospechoso is None:
         raise ErrorDeInventario("No existe ese pesaje sospechoso. Actualice la bandeja.")
     if sospechoso.estado != "pendiente":
