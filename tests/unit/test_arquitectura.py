@@ -2543,11 +2543,27 @@ def _es_cabecera_de_cache(valor: object) -> bool:
 
 def _importados(arbol: ast.Module) -> dict[str, object]:
     """Nombre local -> objeto, de cada `from x import y` absoluto del modulo que se puede
-    resolver (`y` como atributo de `x` o como su submodulo). Lo que no se importa se ignora."""
+    resolver (`y` como atributo de `x` o como su submodulo), y de cada `import a.b.c` (como
+    `a`, `a.b` y `a.b.c`) o `import a.b.c as m` (como `m`) (DS-50). Lo que no se importa se
+    ignora."""
     import importlib
 
     hallados: dict[str, object] = {}
     for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Import):
+            for alias in nodo.names:
+                try:
+                    modulo = importlib.import_module(alias.name)
+                except ImportError:
+                    continue
+                if alias.asname:
+                    hallados[alias.asname] = modulo
+                    continue
+                partes = alias.name.split(".")
+                for cuantas in range(1, len(partes) + 1):
+                    prefijo = ".".join(partes[:cuantas])
+                    hallados[prefijo] = importlib.import_module(prefijo)
+            continue
         if not (isinstance(nodo, ast.ImportFrom) and nodo.module and not nodo.level):
             continue
         try:
@@ -2583,18 +2599,29 @@ def _cabecera_de_cache_a_mano(archivo: Path) -> list[int]:
                 lineas.add(nodo.lineno)
         elif (
             isinstance(nodo, ast.Attribute)
-            and isinstance(nodo.value, ast.Name)
-            and nodo.value.id in importados
-            and _es_cabecera_de_cache(getattr(importados[nodo.value.id], nodo.attr, None))
+            and (punteado := _punteado(nodo.value)) in importados
+            and _es_cabecera_de_cache(getattr(importados[punteado], nodo.attr, None))
         ):
             lineas.add(nodo.lineno)
     return sorted(lineas)
 
 
+def _punteado(nodo: ast.expr) -> str | None:
+    """`m` o `api.rutas.x` como texto; `None` si no es una cadena de nombres."""
+    if isinstance(nodo, ast.Name):
+        return nodo.id
+    if isinstance(nodo, ast.Attribute) and (base := _punteado(nodo.value)) is not None:
+        return f"{base}.{nodo.attr}"
+    return None
+
+
 def test_un_router_sin_cache_no_pone_la_cabecera_a_mano():
     """`RutaSinCache` ya pone `no-store` en toda respuesta, tambien en los errores; repetirlo a
     mano es una segunda fuente que puede desviarse (H11). Las pruebas de `no-store` de cada router
-    son el oraculo de conducta."""
+    son el oraculo de conducta.
+
+    No ve: el diccionario armado en la ruta con la clave en una variable (`clave = "Cache-" +
+    "Control"`), ni el que llega por una funcion o por `importlib.import_module` (DS-50)."""
     import importlib
 
     sitios = sorted(
