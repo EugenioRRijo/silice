@@ -192,7 +192,7 @@ def _actuar(
     sale tal cual (sin traza); la cuenta resultante se lee de la base (nunca de la petición)."""
     try:
         with _CANDADO, sesion_de_instalacion() as bd:
-            actor = bd.get(Usuario, activa.usuario_id)
+            actor = cuentas.cuenta_por_id(bd, activa.usuario_id)
             if actor is None:
                 raise HTTPException(status_code=409, detail=MENSAJE_SIN_CUENTA)
             try:
@@ -203,7 +203,7 @@ def _actuar(
                 raise HTTPException(status_code=_estado(error), detail=str(error)) from None
             destino = resultado
             if destino is None:
-                destino = bd.get(Usuario, usuario_id)
+                destino = cuentas.cuenta_por_id(bd, usuario_id)
             bd.refresh(destino)
             roles = [Rol(r) for r in destino.roles.split(",") if r]
             return ResultadoRespuesta(
@@ -309,7 +309,7 @@ def reactivar_cuenta(usuario_id: int, activa: Administrador) -> ResultadoRespues
 )
 def desbloquear_cuenta(usuario_id: int, activa: Administrador) -> ResultadoRespuesta:
     def desbloquear(bd: Session, actor: Usuario) -> None:
-        elegida = bd.get(Usuario, usuario_id)
+        elegida = cuentas.cuenta_por_id(bd, usuario_id)
         if elegida is None:
             raise LookupError(f"no hay una cuenta con id {usuario_id}")
         cuentas.desbloquear(bd, actor, elegida.login, ahora())

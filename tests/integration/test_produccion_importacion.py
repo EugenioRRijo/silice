@@ -558,3 +558,16 @@ def test_un_fallo_posterior_del_llamador_deshace_lo_importado(tmp_path: Any) -> 
         assert _cuantos(verificacion, Movimiento) == 0
         assert _cuantos(verificacion, PesajeSospechoso) == 0
     motor.dispose()
+
+
+def test_sospechoso_por_id_da_la_fila_o_nada_sin_escribir(sesion: Session) -> None:
+    """Anexo A.7: la ruta de la bandeja ya no consulta por su cuenta (`sesion.get`)."""
+    _catalogo(sesion)
+    importar(sesion, _basico(), usuario=USUARIO)
+    sesion.commit()
+    elegido = _sospechoso(sesion, "TCK-004")
+    antes = _cuantos(sesion, PesajeSospechoso)
+
+    assert importacion.sospechoso_por_id(sesion, elegido.id) is elegido
+    assert importacion.sospechoso_por_id(sesion, 99_999) is None
+    assert _cuantos(sesion, PesajeSospechoso) == antes and not sesion.new and not sesion.dirty

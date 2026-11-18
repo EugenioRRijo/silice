@@ -25,6 +25,7 @@ from api.esquemas_ola2 import (
     DeclararRendimientoRespuesta,
     FilaPlan,
 )
+from api.presentacion import exacto
 from api.rutas.presupuestos_ayudas import (
     _QUIEN_EDITA,
     _elaborar_sin_guardar,
@@ -80,7 +81,7 @@ def calcular_presupuesto(
         fecha=presupuesto.fecha,
         moneda=presupuesto.moneda,
         total=formatear_decimal(presupuesto.total, DECIMALES_PRESENTACION),
-        total_exacto=f"{presupuesto.total:f}",
+        total_exacto=exacto(presupuesto.total),
         partidas=_partidas_respuesta(presupuesto),
         por_severidad=informe_a_respuesta(resultado.informe).por_severidad,
         informe=informe_a_respuesta(resultado.informe),

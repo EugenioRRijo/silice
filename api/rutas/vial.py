@@ -47,7 +47,12 @@ from starlette.concurrency import run_in_threadpool
 
 from api.acceso_modulos import ModuloVial
 from api.admin_acceso import cuenta_con
-from api.dependencias import SesionDep, SesionInstalacionDep, url_de_la_peticion
+from api.dependencias import (
+    SesionDeEscrituraDep,
+    SesionDep,
+    SesionInstalacionDep,
+    url_de_la_peticion,
+)
 from api.esquemas_vial import (
     LlevarTramos,
     ObrasViales,
@@ -160,7 +165,7 @@ def leer_tramos(
 def guardar_los_tramos(
     activa: CuentaQueEdita,
     _modulo: ModuloVial,
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     entrada: TramosEntrada,
     proyecto: Proyecto,
     version: Version,
@@ -197,7 +202,7 @@ async def _leer_archivo(archivo: UploadFile) -> bytes:
 async def importar_tramos(
     activa: CuentaQueEdita,
     _modulo: ModuloVial,
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     proyecto: Proyecto,
     version: Version,
     archivo: Annotated[UploadFile, File(description="Tramos de la vía (.csv, UTF-8)")],

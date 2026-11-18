@@ -734,3 +734,13 @@ def test_las_listas_de_empresa_para_armar_son_las_de_la_moneda_de_la_carpeta(
     empresa = _lista_de_empresa(sesion)
     armar.declarar_moneda_de_la_carpeta(sesion, "USD", responsable="ana", ahora=AHORA)
     assert armar.listas_de_empresa_para_armar(sesion, HOY) == [(empresa.id, EMPRESA, "USD")]
+
+
+def test_la_carpeta_esta_declarada_solo_con_su_fila(sesion: Session) -> None:
+    """Anexo A.7: `GET /v1/carpeta` pregunta por aqui si hay fila, tenga o no moneda."""
+    assert armar.carpeta_declarada(sesion) is False
+    _lista(sesion, MAPREX)
+    assert armar.carpeta_declarada(sesion) is False
+    sesion.add(CarpetaDeTrabajo(id=1, moneda="USD", declarada_por="ana", declarada_el=AHORA))
+    sesion.flush()
+    assert armar.carpeta_declarada(sesion) is True

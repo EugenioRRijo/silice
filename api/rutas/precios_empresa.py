@@ -40,7 +40,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api.admin_acceso import administrar
 from api.archivos import guardar_subida, nombre_seguro
-from api.dependencias import SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.redaccion import pulir
 from api.rutas.listas import comprobar_libro_legible
@@ -166,7 +166,7 @@ def estado(sesion: SesionDep) -> EstadoRespuesta:
 
 @router.post("/referencia", response_model=MensajeRespuesta, dependencies=[SOLO_CUENTA])
 @sin_eco(MENSAJE_INVALIDO)
-def cargar_referencia(sesion: SesionDep) -> MensajeRespuesta:
+def cargar_referencia(sesion: SesionDeEscrituraDep) -> MensajeRespuesta:
     """Carga la referencia MaPreX en Bs; una ya cargada no se duplica."""
     with _caso_legible():
         try:
@@ -186,7 +186,7 @@ def cargar_referencia(sesion: SesionDep) -> MensajeRespuesta:
 )
 @sin_eco(MENSAJE_INVALIDO)
 def crear_lista(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     base_id: Annotated[int, Form()],
     fecha: Annotated[date, Form()],
     empresa: Annotated[str, Form(max_length=200)] = "",

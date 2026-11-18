@@ -60,12 +60,13 @@ from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from produccion.conectores.bascula import ReporteRechazado, leer
 from produccion.conectores.detector_columnas import MapeoNecesario
-from produccion.importacion import descartar, importar, pendientes, resolver
+from produccion.importacion import descartar, importar, pendientes, resolver, sospechoso_por_id
 from produccion.inventario import (
     Conflicto,
     ErrorDeInventario,
     crear_material,
     material_por_codigo,
+    material_por_id,
     materiales,
     registrar_ajuste_por_conteo,
     registrar_despacho,
@@ -544,7 +545,7 @@ def listar_sospechosos(sesion: SesionInstalacionDep) -> list[SospechosoRespuesta
 
 def _sospechoso_pendiente(sesion: Session, id_sospechoso: int) -> None:
     """404 si no existe y 409 si ya se resolvió o descartó."""
-    sospechoso = sesion.get(PesajeSospechoso, id_sospechoso)
+    sospechoso = sospechoso_por_id(sesion, id_sospechoso)
     if sospechoso is None:
         raise HTTPException(404, "No existe ese pesaje sospechoso. Actualice la bandeja.")
     if sospechoso.estado != "pendiente":
@@ -576,7 +577,7 @@ def resolver_sospechoso(
             usuario=usuario,
             ahora=ahora,
         )
-    material = sesion.get(Material, movimiento.material_id)
+    material = material_por_id(sesion, movimiento.material_id)
     return _movimiento_respuesta(movimiento, material.codigo if material else "")
 
 

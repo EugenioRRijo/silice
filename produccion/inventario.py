@@ -45,10 +45,15 @@ def _ahora() -> datetime:
 
 
 def _material(sesion: Session, material_id: int) -> Material:
-    material = sesion.get(Material, material_id)
+    material = material_por_id(sesion, material_id)
     if material is None:
         raise ErrorDeInventario("No existe ese material. Elija uno de la lista de materiales.")
     return material
+
+
+def material_por_id(sesion: Session, material_id: int) -> Material | None:
+    """El material de ese `id`, o `None`."""
+    return sesion.get(Material, material_id)
 
 
 def material_por_codigo(sesion: Session, codigo: str) -> Material | None:

@@ -43,6 +43,7 @@ from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion.listas_para_armar import (
     CarpetaConOtraMoneda,
     SinListaParaArmar,
+    carpeta_declarada,
     crear_lista_para_armar,
     declarar_moneda_de_la_carpeta,
     describir,
@@ -51,7 +52,6 @@ from aplicacion.listas_para_armar import (
     listas_de_empresa_para_armar,
     moneda_de_la_carpeta,
 )
-from aplicacion.tablas_carpeta import CarpetaDeTrabajo
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
@@ -123,7 +123,7 @@ def _estado(sesion: Session) -> CarpetaRespuesta:
     descrita = describir_vigente(sesion, hoy)
     return CarpetaRespuesta(
         moneda=moneda_de_la_carpeta(sesion, hoy),
-        declarada=sesion.get(CarpetaDeTrabajo, 1) is not None,
+        declarada=carpeta_declarada(sesion),
         lista=None
         if descrita is None
         else ListaDeLaCarpeta(

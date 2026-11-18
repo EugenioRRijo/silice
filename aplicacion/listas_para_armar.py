@@ -118,6 +118,11 @@ def _declarada(sesion: Session) -> str | None:
     return None if fila is None else fila.moneda
 
 
+def carpeta_declarada(sesion: Session) -> bool:
+    """Si la carpeta ya tiene su fila de moneda declarada. No escribe."""
+    return sesion.get(CarpetaDeTrabajo, _ID_CARPETA) is not None
+
+
 def _vigente(sesion: Session, fecha: date) -> models.ListaPrecios | None:
     try:
         return Catalogo(sesion).lista_vigente(fecha)

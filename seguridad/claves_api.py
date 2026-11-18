@@ -73,13 +73,15 @@ def verificar(session: Session, presentada: str | None, ahora: datetime) -> Clav
     return fila
 
 
-def revocar(session: Session, clave_id: int, actor: str, ahora: datetime) -> None:
+def revocar(session: Session, clave_id: int, actor: str, ahora: datetime) -> ClaveApi:
+    """Revoca la clave y la devuelve (la ruta responde con ella). `LookupError` si no existe."""
     fila = session.get(ClaveApi, clave_id)
     if fila is None:
         raise LookupError("No hay una clave de API con ese número.")
     fila.revocada = True
     eventos.registrar(session, "clave de api", ahora, detalle=f"revocada {fila.identificador}")
     session.commit()
+    return fila
 
 
 def etiqueta(fila: ClaveApi) -> str:

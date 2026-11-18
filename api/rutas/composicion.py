@@ -39,7 +39,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from api.acceso import EDITAR
-from api.dependencias import SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep
+from api.presentacion import exacto
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion.componer_parametros import (
     ParametrosInvalidos,
@@ -322,7 +323,7 @@ def _evaluacion(
         else Contraste(
             tecnica=contraste.tecnica,
             registros=contraste.registros,
-            pu_estimado=f"{contraste.pu_estimado:f}",
+            pu_estimado=exacto(contraste.pu_estimado),
             dentro_de_rango=contraste.dentro_de_rango,
         ),
     )
@@ -340,8 +341,8 @@ def _prevision(prevision: Prevision) -> PrevisionRespuesta:
             VariantePrevista(
                 descripcion=variante.descripcion,
                 unidad=variante.unidad,
-                precio_en_lista=f"{variante.precio_en_lista:f}",
-                precio_tecleado=f"{variante.precio_tecleado:f}",
+                precio_en_lista=exacto(variante.precio_en_lista),
+                precio_tecleado=exacto(variante.precio_tecleado),
                 codigo_variante=variante.codigo_variante,
             )
             for variante in prevision.variantes
@@ -484,7 +485,7 @@ def similares(
                 codigo=similar.codigo,
                 descripcion=similar.descripcion,
                 puntaje=f"{similar.puntaje:.2f}",
-                rendimiento=None if composicion is None else f"{composicion.rendimiento:f}",
+                rendimiento=None if composicion is None else exacto(composicion.rendimiento),
                 unidad=None if composicion is None else composicion.unidad,
                 tablas=None
                 if composicion is None
@@ -497,7 +498,7 @@ def similares(
 
 @router.post("/guardar", response_model=GuardadoRespuesta, dependencies=EDITAR)
 @sin_eco(MENSAJE_FORMA_PREVER)
-def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
+def guardar(sesion: SesionDeEscrituraDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
     """Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación
     (UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del
     desperdicio (F5 vial) se guarda en la misma transacción."""

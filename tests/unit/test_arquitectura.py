@@ -996,16 +996,43 @@ def _archivos_de_rutas(raiz: Path = RAIZ) -> list[Path]:
     return sorted((raiz / "api" / "rutas").rglob("*.py"))
 
 
+def _es_una_clase(nodo: ast.expr) -> bool:
+    """`Usuario` o `models.Proyecto`: un nombre en CamelCase. `VARIABLE_BASE` (una constante en
+    mayusculas) no lo es."""
+    nombre = (
+        nodo.id
+        if isinstance(nodo, ast.Name)
+        else nodo.attr
+        if isinstance(nodo, ast.Attribute)
+        else ""
+    )
+    return nombre[:1].isupper() and any(letra.islower() for letra in nombre)
+
+
+def _es_consulta(nodo: ast.Call) -> bool:
+    funcion = nodo.func
+    if isinstance(funcion, ast.Name):
+        return funcion.id == "select"
+    if not isinstance(funcion, ast.Attribute):
+        return False
+    if funcion.attr in {"select", "query", "execute"}:
+        return True
+    if funcion.attr != "get":
+        return False
+    nombrados = {k.arg: k.value for k in nodo.keywords if k.arg is not None}
+    entidad = nodo.args[0] if nodo.args else nombrados.get("entity")
+    tiene_ident = len(nodo.args) >= 2 or "ident" in nombrados
+    return entidad is not None and tiene_ident and _es_una_clase(entidad)
+
+
 def _llamadas_select(archivo: Path) -> list[int]:
-    """Lineas de cada llamada `select(...)` o `x.select(...)`, por AST: un comentario no cuenta."""
+    """Lineas de cada consulta a la base, por AST (un comentario no cuenta): `select(...)` o
+    `x.select(...)`, `x.query(...)`, `x.execute(...)` y `x.get(<Modelo>, id)` (anexo A.7), tambien
+    con `ident=` y `entity=` nombrados (DS-50)."""
     return sorted(
         nodo.lineno
         for nodo in ast.walk(_arbol(archivo))
-        if isinstance(nodo, ast.Call)
-        and (
-            (isinstance(nodo.func, ast.Name) and nodo.func.id == "select")
-            or (isinstance(nodo.func, ast.Attribute) and nodo.func.attr == "select")
-        )
+        if isinstance(nodo, ast.Call) and _es_consulta(nodo)
     )
 
 
@@ -1080,7 +1107,10 @@ NUCLEO_PROFUNDO_EN_RUTAS: dict[str, frozenset[str]] = {
 
 def test_las_rutas_no_consultan_la_base():
     """Prohibicion pura desde el cierre de la ola 3 (2026-11-17): la consulta va en `aplicacion/`,
-    `seguridad/` o `produccion/`, nunca en `api/rutas`."""
+    `seguridad/` o `produccion/`, nunca en `api/rutas`.
+
+    No ve: `bd.refresh(x)`, `bd.scalars(...)`/`bd.scalar(...)` sobre una sentencia hecha en otro
+    sitio ni `x.get(modelo, id)` con el modelo en una variable en minusculas (DS-50)."""
     sitios = sorted(
         f"{_ruta(archivo)}:{linea}"
         for archivo in _archivos_de_rutas()
@@ -1098,6 +1128,29 @@ def test_las_rutas_no_consultan_la_base_ve_la_falta(tmp_path):
         encoding="utf-8",
     )
     assert _llamadas_select(archivo) == [5, 6]
+
+
+def test_las_rutas_no_consultan_la_base_ve_get_query_y_execute(tmp_path):
+    """Anexo A.7: `sesion.get(<Modelo>, id)`, `.query(` y `.execute(` tambien son consultas. Un
+    `dict.get("clave", x)` o un `os.environ.get(CONSTANTE, "")` no lo son."""
+    fuentes = {
+        "fila = sesion.get(Usuario, usuario_id)\n": [1],
+        "fila = bd.get(models.Proyecto, 3)\n": [1],
+        "filas = sesion.query(Usuario).all()\n": [1],
+        "fila = sesion.get(Usuario, ident=usuario_id)\n": [1],
+        "fila = sesion.get(entity=Usuario, ident=usuario_id)\n": [1],
+        'valor = datos.get("clave", default=0)\n': [],
+        'sesion.execute(text("DELETE FROM x"))\n': [1],
+        'valor = datos.get("clave", 0)\n': [],
+        'base = os.environ.get(VARIABLE_BASE, "")\n': [],
+        "valor = cache.get(clave)\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"ruta_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _llamadas_select(archivo)
+    assert detectadas == fuentes
 
 
 def test_las_rutas_no_importan_los_modelos_del_nucleo():
@@ -1430,15 +1483,117 @@ def _es_sitio_de_presentacion(nodo: ast.AST) -> bool:
     return nombre.startswith("ROUND_HALF_")
 
 
+def _campos_decimales(arbol: ast.AST) -> tuple[set[str], set[str]]:
+    """Nombres de campo de clase anotados con `Decimal` (`Decimal | None` incluido) y los
+    anotados con otro numero (`int`, `float`). Los anotados `str` no cuentan como otra cosa: son
+    los esquemas de respuesta, que llevan el mismo nombre con la cifra ya en texto."""
+    decimales: set[str] = set()
+    otros: set[str] = set()
+    for clase in ast.walk(arbol):
+        if not isinstance(clase, ast.ClassDef):
+            continue
+        for campo in clase.body:
+            if isinstance(campo, ast.AnnAssign) and isinstance(campo.target, ast.Name):
+                if _menciona(campo.annotation, "Decimal"):
+                    decimales.add(campo.target.id)
+                elif _menciona(campo.annotation, "int") or _menciona(campo.annotation, "float"):
+                    otros.add(campo.target.id)
+    return decimales, otros
+
+
+@functools.cache
+def _campos_decimales_del_programa() -> frozenset[str]:
+    """Los campos de clase que en todo el programa (el nucleo incluido: la API lee sus contratos)
+    son `Decimal` y en ninguna clase son otro numero: `c.total` no se lee como `Decimal` porque
+    algun `total: int` lo vuelve ambiguo (limite conocido de la guardia: no ve tipos)."""
+    decimales: set[str] = set()
+    otros: set[str] = set()
+    for paquete in sorted(PAQUETES_DEL_PROGRAMA):
+        for archivo in _archivos(paquete):
+            de_aqui, otros_de_aqui = _campos_decimales(_arbol(archivo))
+            decimales |= de_aqui
+            otros |= otros_de_aqui
+    return frozenset(decimales - otros)
+
+
+def _es_un_decimal(nodo: ast.expr, parametros: set[str], campos: frozenset[str]) -> bool:
+    """`Decimal(...)`, un parametro anotado `Decimal` o `x.campo` con `campo` decimal."""
+    if isinstance(nodo, ast.Call):
+        return (isinstance(nodo.func, ast.Name) and nodo.func.id == "Decimal") or (
+            isinstance(nodo.func, ast.Attribute) and nodo.func.attr == "Decimal"
+        )
+    if isinstance(nodo, ast.Name):
+        return nodo.id in parametros
+    return isinstance(nodo, ast.Attribute) and nodo.attr in campos
+
+
+def _str_de_un_decimal(arbol: ast.AST, campos: frozenset[str]) -> set[int]:
+    """Los `id` de cada `str(<Decimal>)` del arbol y de cada valor de f-string `<Decimal>` sin
+    formato (`f"{v}"`, `f"{v!s}"`, que son `str(v)`: DS-50) o con formato fijo (`f"{v:.2f}"`: un
+    `float` con `.Nf` no cuenta, DS-52). Un parametro cuenta dentro de su funcion."""
+
+    def operando(nodo: ast.AST) -> ast.expr | None:
+        if (
+            isinstance(nodo, ast.Call)
+            and isinstance(nodo.func, ast.Name)
+            and nodo.func.id == "str"
+            and len(nodo.args) == 1
+            and not nodo.keywords
+        ):
+            return nodo.args[0]
+        if isinstance(nodo, ast.FormattedValue):
+            como_str = nodo.format_spec is None and nodo.conversion in {-1, ord("s")}
+            if como_str or _es_formato_fijo(nodo):
+                return nodo.value
+        return None
+
+    def es_str(nodo: ast.AST, parametros: set[str]) -> bool:
+        valor = operando(nodo)
+        return valor is not None and _es_un_decimal(valor, parametros, campos)
+
+    hallados = {id(n) for n in ast.walk(arbol) if es_str(n, set())}
+    for funcion in ast.walk(arbol):
+        if not isinstance(funcion, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            continue
+        argumentos = funcion.args
+        parametros = {
+            p.arg
+            for p in (*argumentos.posonlyargs, *argumentos.args, *argumentos.kwonlyargs)
+            if _menciona(p.annotation, "Decimal")
+        }
+        hallados.update(id(n) for n in ast.walk(funcion) if es_str(n, parametros))
+    return hallados
+
+
+def _es_formato_fijo(nodo: ast.AST) -> bool:
+    """`{v:f}` o `{v:.2f}` dentro de un f-string (lo mismo que `format(v, "f")`)."""
+    return (
+        isinstance(nodo, ast.FormattedValue)
+        and isinstance(nodo.format_spec, ast.JoinedStr)
+        and bool(nodo.format_spec.values)
+        and all(isinstance(v, ast.Constant) for v in nodo.format_spec.values)
+        and "".join(str(v.value) for v in nodo.format_spec.values).endswith("f")
+    )
+
+
 def _sitios_de_presentacion(archivo: Path) -> list[int]:
     """Lineas donde `archivo` presenta una cifra por su cuenta: `.quantize(`, un `ROUND_HALF_*`,
-    `format(x, "f")` (o `".2f"`) o una funcion privada `Decimal -> str`. Lo que va dentro de un
-    sitio no cuenta otra vez: `_x(v: Decimal) -> str: return format(v, "f")` es un sitio, y
+    `format(x, "f")` (o `".2f"`), su forma de f-string `f"{x:f}"`, un `str(<Decimal>)` o una
+    funcion privada `Decimal -> str`. Lo que va dentro de un sitio no cuenta otra vez:
+    `_x(v: Decimal) -> str: return format(v, "f")` es un sitio, y
     `v.quantize(q, rounding=ROUND_HALF_UP)` tambien. `texto_de_cifra` no es un sitio."""
+    arbol = _arbol(archivo)
+    campos_del_archivo, _ = _campos_decimales(arbol)
+    str_decimales = _str_de_un_decimal(
+        arbol, _campos_decimales_del_programa() | frozenset(campos_del_archivo)
+    )
     dentro: set[int] = set()
     sitios: list[int] = []
-    for nodo in ast.walk(_arbol(archivo)):
-        if id(nodo) in dentro or not _es_sitio_de_presentacion(nodo):
+    for nodo in ast.walk(arbol):
+        if id(nodo) in dentro:
+            continue
+        es_sitio = _es_sitio_de_presentacion(nodo) or id(nodo) in str_decimales
+        if not es_sitio:
             continue
         sitios.append(nodo.lineno)
         dentro.update(id(hijo) for hijo in ast.walk(nodo))
@@ -1461,15 +1616,35 @@ PRESENTACION_SUELTA_EN_API: dict[str, int] = {
     "api/rutas/auditorias.py": 2,
     "api/rutas/computos.py": 2,
     "api/rutas/consulta.py": 1,
-    "api/rutas/control.py": 1,
+    # 1 de 2026-11-17 y 1 de 2026-11-18 (DS-50): `f"{c.monto}"` en `costos_sin_tasa` (:671).
+    "api/rutas/control.py": 2,
     "api/rutas/mercado.py": 1,
     "api/rutas/procura.py": 1,
     "api/rutas/produccion_planta.py": 5,
-    "api/rutas/rendimientos.py": 1,
+    # Anexo A.7 (2026-11-18, DS-42): lo que la guardia ve desde que cuenta `f"{x:.Nf}"` y
+    # `str(<Decimal>)`. Los `f"{x:f}"` pasaron a `presentacion.exacto` (mismo texto); estos no:
+    # `str` escribe `1E+2` donde `exacto` escribe `100`, y `.2f` redondea al par donde
+    # `redondeado` lo hace al alza, asi que moverlos cambia la salida. Desde DS-52 (2026-11-18) el
+    # `.Nf` solo cuenta sobre un `Decimal`: salieron `composicion.py:487` e `indices.py:175`
+    # (floats: un puntaje y un tamano en MB).
+    "api/esquemas.py": 1,
+    "api/rutas/catalogo.py": 1,
+    "api/rutas/fcas.py": 3,
+    "api/rutas/listas.py": 4,
+    "api/rutas/obras.py": 4,
+    "api/rutas/precios_empresa.py": 1,
+    "api/rutas/presupuestos_calculo.py": 1,
+    # 1 de 2026-11-17 y 2 de A.7 (`str(rendimiento.valor)` y `str(dispersion.media)`).
+    "api/rutas/rendimientos.py": 3,
 }
 
 
 def test_la_api_presenta_cifras_en_un_solo_sitio():
+    """Ningun archivo de `api/` (fuera de `api/presentacion.py`) suma sitios que presenten cifras.
+
+    No ve: `"{}".format(v)` ni `"%s" % v`; un `Decimal` en una variable local
+    (`v = Decimal(a)`; `str(v)`); `str(x.total)`, `str(x.cantidad)` o `str(x.dias)`, cuyos campos
+    son `int` en alguna clase y la guardia no ve tipos (DS-43, DS-50)."""
     peores = sorted(
         f"{ruta}: {len(sitios)} sitios (congelado {PRESENTACION_SUELTA_EN_API.get(ruta, 0)}): "
         + ", ".join(f"{ruta}:{linea}" for linea in sitios)
@@ -1498,6 +1673,69 @@ def test_la_api_presenta_cifras_en_un_solo_sitio_ve_la_falta(tmp_path):
         'a = format(v, "f")\nb = format(v, ".2f")\nc = format(n, "d")\n': [1, 2],
         "def publica(v: Decimal) -> str:\n    return texto_de_cifra(v)\n": [],
         "def _z(v: int) -> str:\n    return str(v)\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"modulo_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _sitios_de_presentacion(archivo)
+    assert detectadas == fuentes
+
+
+def test_la_presentacion_ve_los_f_strings_y_el_str_de_un_decimal(tmp_path):
+    """Anexo A.7: `f"{v:f}"` es `format(v, "f")`, y `str(<Decimal>)` presenta la cifra a su manera
+    (con notacion cientifica: `str(Decimal("1E+2")) == "1E+2"`). Un `Decimal` se reconoce por su
+    anotacion: un parametro, o un campo de clase (del archivo o del programa)."""
+    fuentes = {
+        'def f(v: Decimal) -> str:\n    return f"{v:f}"\n': [2],
+        'def f(v: Decimal) -> str:\n    return f"total {v:.2f} Bs"\n': [2],
+        't = f"{n:d} {texto}"\n': [],
+        "def f(v: Decimal) -> dict:\n    return {'x': str(v)}\n": [2],
+        "def f(v: Decimal | None) -> dict:\n    return {'x': None if v is None else str(v)}\n": [2],
+        "t = str(Decimal('1.5'))\n": [1],
+        "class C:\n    cuenta_rara_de_prueba: Decimal\n\n\ndef f(c):\n"
+        "    return str(c.cuenta_rara_de_prueba)\n": [6],
+        "def f(e: ValueError) -> str:\n    return str(e)\n": [],
+        "def f(c):\n    return str(c.nombre_raro_de_prueba)\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"modulo_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _sitios_de_presentacion(archivo)
+    assert detectadas == fuentes
+
+
+def test_la_presentacion_ve_el_f_string_sin_formato_de_un_decimal(tmp_path):
+    """DS-50 (3): `f"{v}"` y `f"{v!s}"` son `str(v)` cuando `v` es un `Decimal` (escriben `1E+2`
+    donde `exacto` escribe `100`); un `int` o un texto no cuentan."""
+    fuentes = {
+        'def f(v: Decimal) -> str:\n    return f"{v}"\n': [2],
+        'def f(v: Decimal) -> str:\n    return f"total {v!s} Bs"\n': [2],
+        "t = f\"{Decimal('1.5')}\"\n": [1],
+        "class C:\n    cuenta_rara_de_prueba: Decimal\n\n\ndef f(c):\n"
+        '    return f"{c.cuenta_rara_de_prueba} Bs"\n': [6],
+        'def f(v: int) -> str:\n    return f"{v}"\n': [],
+        'def f(e: ValueError) -> str:\n    return f"{e}"\n': [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"modulo_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _sitios_de_presentacion(archivo)
+    assert detectadas == fuentes
+
+
+def test_la_presentacion_no_cuenta_el_formato_fijo_de_un_float(tmp_path):
+    """DS-52: `f"{x:.Nf}"` presenta la cifra por su cuenta solo si `x` es un `Decimal` (por la
+    misma regla que `str(<Decimal>)`); un tamano en MB o un puntaje `float` no son cifras de la
+    obra."""
+    fuentes = {
+        't = f"pesa {tamano / 2**20:.1f} MB"\n': [],
+        'def f(p: float) -> str:\n    return f"{p:.2f}"\n': [],
+        'def f(s):\n    return f"{s.puntaje_raro_de_prueba:.2f}"\n': [],
+        'def f(v: Decimal) -> str:\n    return f"{v:.2f}"\n': [2],
+        "t = f\"{Decimal('1.5'):.1f}\"\n": [1],
     }
     detectadas = {}
     for numero, fuente in enumerate(fuentes):
@@ -2036,23 +2274,67 @@ def _es_estimado(nodo: ast.AST) -> bool:
     )
 
 
-def _politicas_de_vigencia(archivo: Path) -> list[int]:
-    """Lineas de cada `a and b` que compara con `TipoRendimiento.ESTIMADO` y con un `<=`: la
-    politica de «rendimiento estimado vigente a la fecha» escrita por su cuenta."""
-    return sorted(
-        nodo.lineno
-        for nodo in ast.walk(_arbol(archivo))
-        if isinstance(nodo, ast.BoolOp)
-        and isinstance(nodo.op, ast.And)
-        and any(isinstance(v, ast.Compare) and _es_estimado(v) for v in nodo.values)
-        and any(
-            isinstance(v, ast.Compare) and any(isinstance(op, ast.LtE) for op in v.ops)
-            for v in nodo.values
-        )
+def _compara_con_estimado(nodo: ast.AST) -> bool:
+    """Una comparacion con `TipoRendimiento.ESTIMADO` (o su `.value`) o con el texto `"estimado"`
+    que guarda la base (sin mirar mayusculas). Un docstring que lo nombra no es comparacion."""
+    if not isinstance(nodo, ast.Compare):
+        return False
+    return _es_estimado(nodo) or any(
+        isinstance(p, ast.Constant) and isinstance(p.value, str) and p.value.lower() == "estimado"
+        for p in (nodo.left, *nodo.comparators)
     )
 
 
+def _ordena_con_igual(nodo: ast.AST) -> bool:
+    """`a <= b`, `a >= b`, `not a < b` o `not a > b`: «no posterior a», en cualquier sentido."""
+    if isinstance(nodo, ast.Compare):
+        return any(isinstance(op, ast.LtE | ast.GtE) for op in nodo.ops)
+    return (
+        isinstance(nodo, ast.UnaryOp)
+        and isinstance(nodo.op, ast.Not)
+        and isinstance(nodo.operand, ast.Compare)
+        and any(isinstance(op, ast.Lt | ast.Gt) for op in nodo.operand.ops)
+    )
+
+
+def _cabeceras(sentencia: ast.stmt) -> list[ast.AST]:
+    """Lo que una sentencia evalua sin entrar en su cuerpo: la condicion de un `if` o un `while`,
+    lo que recorre un `for`, los `with`; una sentencia simple entera. Las definiciones no cuentan
+    aqui (sus sentencias se miran una a una)."""
+    if isinstance(sentencia, ast.If | ast.While):
+        return [sentencia.test]
+    if isinstance(sentencia, ast.For | ast.AsyncFor):
+        return [sentencia.iter]
+    if isinstance(sentencia, ast.With | ast.AsyncWith):
+        return [item.context_expr for item in sentencia.items]
+    if isinstance(sentencia, ast.Match):
+        return [sentencia.subject]
+    compuestas = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Try, ast.TryStar)
+    return [] if isinstance(sentencia, compuestas) else [sentencia]
+
+
+def _politicas_de_vigencia(archivo: Path) -> list[int]:
+    """Lineas de cada sentencia que compara con lo «estimado» y, en la misma sentencia, ordena
+    fechas con igual (`<=`, `>=`, `not <`, `not >`): la politica de «rendimiento estimado vigente a
+    la fecha» escrita por su cuenta, sea en Python (`a and b`, un `any(...)`) o en un filtro SQL
+    (`.where(a, b)`, `and_(a, b)` o dos `.where` encadenados). Una politica partida en dos
+    sentencias (`if tipo != ESTIMADO: continue` y luego la fecha) no la ve."""
+    lineas = set()
+    for sentencia in ast.walk(_arbol(archivo)):
+        if not isinstance(sentencia, ast.stmt):
+            continue
+        nodos = [n for cabecera in _cabeceras(sentencia) for n in ast.walk(cabecera)]
+        if any(map(_compara_con_estimado, nodos)) and any(map(_ordena_con_igual, nodos)):
+            lineas.add(sentencia.lineno)
+    return sorted(lineas)
+
+
 def test_la_politica_de_vigencia_vive_en_un_solo_sitio():
+    """Solo `aplicacion.elaboracion.es_rendimiento_vigente` escribe «el estimado vigente a la
+    fecha».
+
+    No ve: el rango con `.between(a, b)`, `TipoRendimiento.ESTIMADO` leido por atributo de otro
+    modulo (`models.TipoRendimiento.ESTIMADO`) ni la politica partida en dos sentencias (DS-50)."""
     sitios = {
         ruta: lineas
         for ruta in _lineas_de_produccion()
@@ -2068,6 +2350,19 @@ def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
         "x = r.tipo == TipoRendimiento.ESTIMADO.value and r.fecha <= fecha\n": [1],
         "x = r.tipo is TipoRendimiento.MEDIDO and r.fecha <= fecha\n": [],
         "x = r.tipo is TipoRendimiento.ESTIMADO and r.fecha == fecha\n": [],
+        # Anexo A.7: el orden al reves, `not <`, el texto de la base y los filtros SQL.
+        'x = any(r.tipo == "estimado" and fecha >= r.fecha for r in rs)\n': [1],
+        "x = r.tipo is TipoRendimiento.ESTIMADO and not fecha < r.fecha\n": [1],
+        "x = r.tipo is TipoRendimiento.ESTIMADO and not (r.fecha > fecha)\n": [1],
+        "if r.tipo == TipoRendimiento.ESTIMADO.value and r.fecha <= fecha:\n    pass\n": [1],
+        "q = select(R).where(R.tipo == TipoRendimiento.ESTIMADO, R.fecha <= fecha)\n": [1],
+        'q = (\n    select(R)\n    .where(R.tipo == "estimado")\n    .where(R.fecha <= f)\n)\n': [
+            1
+        ],
+        'q = select(R).where(and_(R.tipo == "ESTIMADO", R.fecha <= f))\n': [1],
+        'x = r.tipo == "medido" and r.fecha <= fecha\n': [],
+        '"""Vigente es el "estimado" con fecha <= la del presupuesto."""\n': [],
+        'x = r.tipo == "estimado" and r.fecha < fecha\n': [],
     }
     detectadas = {}
     for numero, fuente in enumerate(fuentes):
@@ -2077,34 +2372,145 @@ def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
     assert detectadas == fuentes
 
 
-#: La busqueda de obra por nombre escrita a mano; vive solo en `aplicacion/proyectos.py`.
-BUSQUEDA_DE_OBRA_POR_NOMBRE = "select(models.Proyecto).where(models.Proyecto.nombre =="
-
 #: Archivos que la repiten y no se pueden tocar (2026-11-17): `aplicacion/hoja.py` es un archivo
 #: del auditor del experimento congelado (`asistente/experimento/protocolo.json`, RS-9; Eugenio,
 #: 2026-10-18: el protocolo no se toca) y cambiarlo rompe
 #: `test_experimento_congelado_vigente.py`. Sale de aqui cuando se vuelva a congelar a proposito.
-BUSQUEDA_DE_OBRA_CONGELADA: frozenset[str] = frozenset({"aplicacion/hoja.py"})
+#: 2026-11-18 (DS-50): `aplicacion/importaciones.py:168` (`select(Proyecto.id)`) y
+#: `aplicacion/mercado.py:475` (`exists()`) repiten la busqueda pidiendo una columna o la existencia
+#: de la obra; salen cuando llamen a `aplicacion.proyectos.proyecto_por_nombre`.
+BUSQUEDA_DE_OBRA_CONGELADA: frozenset[str] = frozenset(
+    {"aplicacion/hoja.py", "aplicacion/importaciones.py", "aplicacion/mercado.py"}
+)
+
+
+def _es_la_obra(nodo: ast.AST) -> bool:
+    """`Proyecto` o `models.Proyecto`: la entidad entera, no una columna suya."""
+    return (isinstance(nodo, ast.Name) and nodo.id == "Proyecto") or (
+        isinstance(nodo, ast.Attribute) and nodo.attr == "Proyecto"
+    )
+
+
+def _es_nombre_de_la_obra(nodo: ast.AST) -> bool:
+    return isinstance(nodo, ast.Attribute) and nodo.attr == "nombre" and _es_la_obra(nodo.value)
+
+
+def _filtra_por_nombre(llamada: ast.Call) -> bool:
+    """`.where(Proyecto.nombre == x)` (en cualquier lado del `==`), `.filter(...)` igual, o
+    `.filter_by(nombre=x)`."""
+    metodo = llamada.func.attr if isinstance(llamada.func, ast.Attribute) else ""
+    if metodo == "filter_by":
+        return any(clave.arg == "nombre" for clave in llamada.keywords)
+    return metodo in {"where", "filter"} and any(
+        isinstance(n, ast.Compare)
+        and any(isinstance(op, ast.Eq) for op in n.ops)
+        and any(map(_es_nombre_de_la_obra, (n.left, *n.comparators)))
+        for argumento in llamada.args
+        for n in ast.walk(argumento)
+    )
+
+
+def _raiz_de_la_cadena(llamada: ast.Call) -> ast.Call:
+    """La primera llamada de `a(...).b(...).c(...)` (la `a(...)`)."""
+    while isinstance(llamada.func, ast.Attribute) and isinstance(llamada.func.value, ast.Call):
+        llamada = llamada.func.value
+    return llamada
+
+
+def _es_la_obra_o_su_columna(nodo: ast.AST) -> bool:
+    """`Proyecto`, `models.Proyecto` o una columna suya (`Proyecto.id`)."""
+    return _es_la_obra(nodo) or (isinstance(nodo, ast.Attribute) and _es_la_obra(nodo.value))
+
+
+def _consulta_de_la_obra(llamada: ast.Call) -> bool:
+    """`select(Proyecto)` o `x.query(Proyecto)`: solo se pide la obra, entera o en columnas suyas
+    (`select(Proyecto.id)`, DS-50); o `exists()` sin argumentos, la existencia de lo filtrado."""
+    funcion = llamada.func
+    nombre = (
+        funcion.id
+        if isinstance(funcion, ast.Name)
+        else funcion.attr
+        if isinstance(funcion, ast.Attribute)
+        else ""
+    )
+    if nombre == "exists":
+        return not llamada.args and not llamada.keywords
+    return (
+        nombre in {"select", "query"}
+        and len(llamada.args) >= 1
+        and all(map(_es_la_obra_o_su_columna, llamada.args))
+    )
+
+
+def _busquedas_de_obra_por_nombre(archivo: Path) -> list[int]:
+    """Lineas de cada `select(Proyecto)` (o `query(Proyecto)`) cuya cadena filtra por
+    `Proyecto.nombre ==`, por AST: el `.where(` partido en varias lineas, el `==` al reves y el
+    nombre sin `models.` cuentan; un comentario no. Tambien `select(Proyecto.<columna>)` y
+    `exists().where(Proyecto.nombre == x)` (DS-50). Pedir otra entidad unida a la obra
+    (`select(Presupuesto).join(Proyecto).where(...)`) no es buscar la obra."""
+    return sorted(
+        {
+            raiz.lineno
+            for nodo in ast.walk(_arbol(archivo))
+            if isinstance(nodo, ast.Call)
+            and _filtra_por_nombre(nodo)
+            and _consulta_de_la_obra(raiz := _raiz_de_la_cadena(nodo))
+        }
+    )
 
 
 def test_una_sola_busqueda_de_obra_por_nombre():
     """En `api/` y `aplicacion/` (lo que atiende al programa) la consulta vive en
     `aplicacion.proyectos.proyecto_por_nombre`. Los sembradores de `scripts/` quedan fuera: corren
-    sobre una base nueva, antes del programa."""
+    sobre una base nueva, antes del programa.
+
+    No ve: la consulta partida en dos sentencias (`q = select(Proyecto)` y luego
+    `q = q.where(Proyecto.nombre == n)`), ni el filtro por `.in_(...)`, `.like(...)` u otro
+    operador que no sea `==` (DS-50)."""
     sitios = sorted(
         ruta
         for paquete in ("api", "aplicacion")
         for archivo in _archivos(paquete)
-        if BUSQUEDA_DE_OBRA_POR_NOMBRE in archivo.read_text(encoding="utf-8")
-        and (ruta := _ruta(archivo))
+        if _busquedas_de_obra_por_nombre(archivo) and (ruta := _ruta(archivo))
     )
     assert sorted(set(sitios) - BUSQUEDA_DE_OBRA_CONGELADA) == ["aplicacion/proyectos.py"]
 
 
 def test_una_sola_busqueda_de_obra_por_nombre_sin_sobrantes():
     for ruta in BUSQUEDA_DE_OBRA_CONGELADA:
-        texto = (RAIZ / ruta).read_text(encoding="utf-8")
-        assert BUSQUEDA_DE_OBRA_POR_NOMBRE in texto, f"borrar {ruta} de BUSQUEDA_DE_OBRA_CONGELADA"
+        assert _busquedas_de_obra_por_nombre(RAIZ / ruta), (
+            f"borrar {ruta} de BUSQUEDA_DE_OBRA_CONGELADA"
+        )
+
+
+def test_una_sola_busqueda_de_obra_por_nombre_ve_la_falta(tmp_path):
+    """Anexo A.7: por AST, no por una subcadena de una linea."""
+    fuentes = {
+        "q = select(models.Proyecto).where(models.Proyecto.nombre == n)\n": [1],
+        "q = select(models.Proyecto).where(\n    models.Proyecto.nombre == n\n)\n": [1],
+        "q = (\n    select(models.Proyecto)\n    .where(models.Proyecto.nombre == n)\n)\n": [2],
+        "q = select(Proyecto).where(Proyecto.nombre == n)\n": [1],
+        "q = select(models.Proyecto).where(n == models.Proyecto.nombre).limit(1)\n": [1],
+        "q = sesion.query(models.Proyecto).filter(models.Proyecto.nombre == n)\n": [1],
+        "q = sesion.query(models.Proyecto).filter_by(nombre=n)\n": [1],
+        # DS-50 (2): una columna de la obra o su existencia tambien es buscarla por nombre.
+        "q = select(models.Proyecto.id).where(models.Proyecto.nombre == n)\n": [1],
+        "q = select(Proyecto.id, Proyecto.moneda).where(Proyecto.nombre == n)\n": [1],
+        "q = select(exists().where(models.Proyecto.nombre == n))\n": [1],
+        "q = sa.exists().where(Proyecto.nombre == n)\n": [1],
+        "q = select(Presupuesto.id).join(Proyecto).where(Proyecto.nombre == n)\n": [],
+        # Lo que no es buscar la obra: otra entidad unida a la obra, otra columna, otro orden.
+        "q = select(Presupuesto).join(Proyecto).where(Proyecto.nombre == n)\n": [],
+        "q = select(models.Proyecto).where(models.Proyecto.id == n)\n": [],
+        "q = select(models.Proyecto).order_by(models.Proyecto.nombre)\n": [],
+        '# select(models.Proyecto).where(models.Proyecto.nombre == n)\nt = "x"\n': [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"obra_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _busquedas_de_obra_por_nombre(archivo)
+    assert detectadas == fuentes
 
 
 # --- Anexo A.2: un router con `RutaSinCache` no pone `Cache-Control` a mano --------------------
@@ -2131,22 +2537,96 @@ def _usa_ruta_sin_cache(modulo: object) -> bool:
     )
 
 
+def _es_cabecera_de_cache(valor: object) -> bool:
+    """Un diccionario de cabeceras con `Cache-Control` (sin mirar mayusculas)."""
+    from collections.abc import Mapping
+
+    return isinstance(valor, Mapping) and any(
+        isinstance(clave, str) and clave.lower() == "cache-control" for clave in valor
+    )
+
+
+def _importados(arbol: ast.Module) -> dict[str, object]:
+    """Nombre local -> objeto, de cada `from x import y` absoluto del modulo que se puede
+    resolver (`y` como atributo de `x` o como su submodulo), y de cada `import a.b.c` (como
+    `a`, `a.b` y `a.b.c`) o `import a.b.c as m` (como `m`) (DS-50). Lo que no se importa se
+    ignora."""
+    import importlib
+
+    hallados: dict[str, object] = {}
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Import):
+            for alias in nodo.names:
+                try:
+                    modulo = importlib.import_module(alias.name)
+                except ImportError:
+                    continue
+                if alias.asname:
+                    hallados[alias.asname] = modulo
+                    continue
+                partes = alias.name.split(".")
+                for cuantas in range(1, len(partes) + 1):
+                    prefijo = ".".join(partes[:cuantas])
+                    hallados[prefijo] = importlib.import_module(prefijo)
+            continue
+        if not (isinstance(nodo, ast.ImportFrom) and nodo.module and not nodo.level):
+            continue
+        try:
+            origen = importlib.import_module(nodo.module)
+        except ImportError:
+            continue
+        for alias in nodo.names:
+            nombre = alias.asname or alias.name
+            if hasattr(origen, alias.name):
+                hallados[nombre] = getattr(origen, alias.name)
+            else:
+                try:
+                    hallados[nombre] = importlib.import_module(f"{nodo.module}.{alias.name}")
+                except ImportError:
+                    continue
+    return hallados
+
+
 def _cabecera_de_cache_a_mano(archivo: Path) -> list[int]:
     """Lineas de cada texto `"Cache-Control"` del codigo (una clave de `headers=` o de
-    `response.headers[...]`); los docstrings que la nombran no cuentan."""
-    return sorted(
-        nodo.lineno
-        for nodo in ast.walk(_arbol(archivo))
-        if isinstance(nodo, ast.Constant)
-        and isinstance(nodo.value, str)
-        and nodo.value.lower() == "cache-control"
-    )
+    `response.headers[...]`) y de cada uso de un diccionario con esa cabecera importado de otro
+    modulo (`SIN_CACHE` por nombre, o `modulo.SIN_CACHE`). Los docstrings que la nombran no
+    cuentan; el texto `"no-store"` suelto tampoco (es el valor, no la cabecera)."""
+    arbol = _arbol(archivo)
+    importados = _importados(arbol)
+    lineas: set[int] = set()
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Constant):
+            if isinstance(nodo.value, str) and nodo.value.lower() == "cache-control":
+                lineas.add(nodo.lineno)
+        elif isinstance(nodo, ast.Name) and isinstance(nodo.ctx, ast.Load):
+            if _es_cabecera_de_cache(importados.get(nodo.id)):
+                lineas.add(nodo.lineno)
+        elif (
+            isinstance(nodo, ast.Attribute)
+            and (punteado := _punteado(nodo.value)) in importados
+            and _es_cabecera_de_cache(getattr(importados[punteado], nodo.attr, None))
+        ):
+            lineas.add(nodo.lineno)
+    return sorted(lineas)
+
+
+def _punteado(nodo: ast.expr) -> str | None:
+    """`m` o `api.rutas.x` como texto; `None` si no es una cadena de nombres."""
+    if isinstance(nodo, ast.Name):
+        return nodo.id
+    if isinstance(nodo, ast.Attribute) and (base := _punteado(nodo.value)) is not None:
+        return f"{base}.{nodo.attr}"
+    return None
 
 
 def test_un_router_sin_cache_no_pone_la_cabecera_a_mano():
     """`RutaSinCache` ya pone `no-store` en toda respuesta, tambien en los errores; repetirlo a
     mano es una segunda fuente que puede desviarse (H11). Las pruebas de `no-store` de cada router
-    son el oraculo de conducta."""
+    son el oraculo de conducta.
+
+    No ve: el diccionario armado en la ruta con la clave en una variable (`clave = "Cache-" +
+    "Control"`), ni el que llega por una funcion o por `importlib.import_module` (DS-50)."""
     import importlib
 
     sitios = sorted(
@@ -2167,6 +2647,39 @@ def test_la_cabecera_a_mano_ve_la_falta(tmp_path):
         encoding="utf-8",
     )
     assert _cabecera_de_cache_a_mano(archivo) == [2, 4]
+
+
+def test_la_cabecera_a_mano_ve_un_sin_cache_importado(tmp_path):
+    """Anexo A.7: el diccionario `{"Cache-Control": ...}` de otro modulo, importado por nombre o
+    leido como atributo del modulo, es la misma cabecera a mano. El texto `"no-store"` de
+    `api.sin_cache` no es la cabecera (solo su valor)."""
+    archivo = tmp_path / "ruta.py"
+    archivo.write_text(
+        "from api.rutas.indices import SIN_CACHE\n"
+        "from api.rutas import reajuste\n"
+        "from api.sin_cache import SIN_CACHE as VALOR\n"
+        'def f():\n    raise HTTPException(404, "x", headers=SIN_CACHE)\n'
+        "def g(response):\n    response.headers.update(reajuste.SIN_CACHE)\n"
+        "def h():\n    return VALOR\n",
+        encoding="utf-8",
+    )
+    assert _cabecera_de_cache_a_mano(archivo) == [5, 7]
+
+
+def test_la_cabecera_a_mano_ve_un_sin_cache_por_import_de_modulo(tmp_path):
+    """DS-50 (5): `import api.rutas.x as m` + `m.SIN_CACHE` y `import api.rutas.x` +
+    `api.rutas.x.SIN_CACHE` son el mismo diccionario importado."""
+    archivo = tmp_path / "ruta.py"
+    archivo.write_text(
+        "import api.rutas.indices as m\n"
+        "import api.rutas.reajuste\n"
+        "import api.sin_cache\n"
+        "def f(response):\n    response.headers.update(m.SIN_CACHE)\n"
+        "def g():\n    return api.rutas.reajuste.SIN_CACHE\n"
+        "def h():\n    return api.sin_cache.SIN_CACHE\n",
+        encoding="utf-8",
+    )
+    assert _cabecera_de_cache_a_mano(archivo) == [5, 7]
 
 
 def test_la_guardia_reconoce_los_routers_sin_cache():
