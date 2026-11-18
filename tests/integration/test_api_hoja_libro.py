@@ -996,3 +996,30 @@ def test_lo_que_cambio_antes_del_cerrojo_se_vuelve_a_mirar_bajo_el(
     assert r.json()["detalle"] == detalle
     assert _borradores(navegador) == []
     assert _partidas_del_libro() == []
+
+
+def test_si_falla_el_borrador_nuevo_que_otro_toco_antes_del_cerrojo_no_se_descarta(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """NOTA 3 de la revisión de A.9: el borrador lo creó esta petición, pero entre la elección y el
+    cerrojo otra (otra pestaña de la misma ficha) le cambió los porcentajes y subió su `rev`. Si
+    llevar el libro falla, se deshace lo suyo y queda lo de la otra: descartarlo la borraría."""
+    navegador, _ = ana
+    otros = ParametrosCosto(utilidad=Decimal("0.20"))
+
+    def otra_peticion(vivo) -> None:
+        nuevo = replace(vivo.borrador, parametros=otros)
+        hoja_borradores.reemplazar(vivo.huella, vivo.id, nuevo, vivo.rev)
+
+    creados = _con_cerrojo_que_cambia(monkeypatch, otra_peticion)
+    with monkeypatch.context() as m:
+        _que_falle(m)
+        r = _llevar(ana)
+    assert r.status_code == 500
+    assert len(creados) == 1
+    vivo = creados[0]
+    assert [b["id"] for b in _borradores(navegador)] == [vivo.id]
+    assert _rev(navegador, vivo.id) == 1
+    assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.parametros == otros
+    assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.items_base == ()
+    assert _partidas_del_libro() == []
