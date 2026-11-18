@@ -20,6 +20,7 @@ dónde sale cada cifra) y las celdas clave. Oráculos a mano:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from datetime import date, datetime
 from decimal import Decimal
@@ -110,6 +111,13 @@ def _con_portada(libro: Workbook) -> None:
     por_hoja = {f[0]: f for f in portada[cabecera + 1 :]}
     assert set(por_hoja) == set(libro.sheetnames[1:])
     assert all(f[2] and len(str(f[2])) > 20 for f in por_hoja.values())
+    # Prueba en vivo 2026-11-18: la portada es para una persona; nada de nombres internos (tablas,
+    # claves del JSON del cálculo, funciones) ni de código entre comillas invertidas.
+    for hoja, que, fuente in por_hoja.values():
+        for texto in (que, fuente):
+            assert "`" not in str(texto), (hoja, texto)
+            interno = re.search(r"\b[a-z]+_[a-z_]+\b|\b[a-z]+\.[a-z_]+\b", str(texto))
+            assert interno is None, (hoja, texto)
 
 
 # --- Cómputos por tramo ---------------------------------------------------------------------------
@@ -327,8 +335,8 @@ def test_produccion_costo_por_tonelada_de_la_mano(ins, caso):
     filas = _filas(libro, "Costo por tonelada")
     assert filas[0] == ("Cálculo n.º", "Período", "Producto", "Tipo", "Costo por t", "Moneda")
     por_producto = {f[2]: (f[0], f[3], _d(f[4]), f[5]) for f in filas[1:]}
-    assert por_producto["AGR-12"] == (numero, "agregado", D(5), "USD")
-    assert por_producto["MZ-1"] == (numero, "mezcla", D("50.70"), "USD")
+    assert por_producto["AGR-12"] == (numero, "Agregado", D(5), "USD")
+    assert por_producto["MZ-1"] == (numero, "Mezcla", D("50.70"), "USD")
     hoja = _hoja(libro, "Costo por tonelada")
     assert hoja["E2"].number_format == FORMATO_DINERO
 
@@ -346,8 +354,21 @@ def test_produccion_los_totales_y_que_no_esta_publicado(ins, caso):
 def test_produccion_los_costos_registrados_dicen_su_fuente(ins, caso):
     libro, _ = _produccion(ins, caso)
     filas = _filas(libro, "Costos del período")
-    assert sum(1 for f in filas[1:] if f[1] == "cantera") == 2
+    assert sum(1 for f in filas[1:] if f[1] == "Cantera") == 2
     assert {f[7] for f in filas[1:]} == {"factura ficticia"}
+
+
+def test_produccion_centros_y_conceptos_en_palabras_y_el_mes_en_letras(ins, caso):
+    """Prueba en vivo 2026-11-18: las hojas decían los códigos crudos («cantera», «energia»,
+    «agregado») y la portada el mes en ISO."""
+    libro, _ = _produccion(ins, caso)
+    filas = _filas(libro, "Costos del período")
+    assert {(f[1], f[2]) for f in filas[1:]} == {
+        ("Cantera", "Gasoil"),
+        ("Cantera", "Nómina"),
+        ("Planta", "Energía"),
+    }
+    assert _filas(libro, "Portada")[1] == ("Período: noviembre de 2026",)
 
 
 def test_produccion_publicado_dice_la_lista(ins, caso):
