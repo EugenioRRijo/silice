@@ -150,10 +150,31 @@ describe("cuerpoDeValoracion", () => {
 describe("partidasParaLlevar", () => {
   test("lleva cada ítem con su código y su cantidad de máquina, sin los pendientes", () => {
     const items = [ITEM("fila-1", "FIC-C1"), { ...ITEM("fila-2", "FIC-X"), cantidad: "1.125" }, ITEM("fila-3", "FIC-C3")];
+    const sinRegla = { calculo: "", unidad: "m3", regla: "", parametros: {} };
     expect(partidasParaLlevar(items, [{ origen_id: "fila-2", codigo_partida: "FIC-X" }])).toEqual([
-      { codigo: "FIC-C1", cantidad: "12.5000", calculo: "" },
-      { codigo: "FIC-C3", cantidad: "12.5000", calculo: "" },
+      { codigo: "FIC-C1", cantidad: "12.5000", origen: "fila-1", ...sinRegla },
+      { codigo: "FIC-C3", cantidad: "12.5000", origen: "fila-3", ...sinRegla },
     ]);
     expect(partidasParaLlevar(items, [])).toHaveLength(3);
+  });
+  test("lleva la unidad, el origen y la regla con sus parámetros del cómputo (prueba en vivo del 18/11/2026)", () => {
+    const tuberia: ItemComputo = {
+      ...ITEM("LB-02", "LB-02-TUB"),
+      unidad: "m",
+      cantidad: "50.925",
+      regla: "longitud * (1 + desperdicio)",
+      parametros: { longitud: "48.5", desperdicio: "0.05" },
+    };
+    expect(partidasParaLlevar([tuberia], [])).toEqual([
+      {
+        codigo: "LB-02-TUB",
+        cantidad: "50.925",
+        calculo: "",
+        unidad: "m",
+        origen: "LB-02",
+        regla: "longitud * (1 + desperdicio)",
+        parametros: { longitud: "48.5", desperdicio: "0.05" },
+      },
+    ]);
   });
 });
