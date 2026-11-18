@@ -444,6 +444,9 @@ def llevar_libro_a_la_hoja(
     hojas = {_hoja_del_origen(f"{PREFIJO_LIBRO}{r.celda}") for r in llevar}
     with vivo.cerrojo:
         antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano, vivo.importaciones)
+        # Nuevo y sin tocar (`rev` nace en 0): si otra petición lo cambió entre la elección y el
+        # cerrojo, en un fallo se restaura `antes` (lo suyo) en vez de descartarlo (DS-58).
+        nuevo = nuevo and vivo.rev == 0
         try:
             # Entre la elección y el cerrojo pudo guardarse la primera versión o cambiar una
             # moneda: se vuelve a mirar, ya con el bloqueo de escritura (la primera consulta).
