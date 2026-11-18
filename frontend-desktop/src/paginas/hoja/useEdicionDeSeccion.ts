@@ -74,6 +74,8 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   // `enviarEdicion`, para mandar lo escrito mientras iba una acción (se fija en un efecto).
   const reenviar = useRef<((conservarError: boolean) => Promise<Resumen | null>) | null>(null);
   const actuales = useRef(opciones);
+  // Si la pestaña sigue abierta (lo apaga la limpieza al irse de ella).
+  const montado = useRef(true);
 
   useEffect(() => {
     // Solo cuando la página trae un `rev` nuevo (por ejemplo tras recargar): un render con el viejo no pisa el que acaba de contestar el servidor.
@@ -151,7 +153,12 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
         const pendiente = !repetir && m.volver && !perdido;
         if (!repetir) m.volver = false;
         setEnvio(m.temporizador !== null ? "pendiente" : "quieto");
-        if (pendiente) void reenviar.current?.(fallo);
+        if (pendiente) {
+          const reenvio = reenviar.current?.(fallo);
+          // Con la pestaña ya cerrada nadie más lo espera: se anota antes de que esta acción termine, para que quien
+          // descarte el borrador al irse espere también este PUT (anexo A.5 del plan de desenredo, H13).
+          if (reenvio !== undefined && !montado.current) registrarEnvio(actuales.current.borrador, reenvio);
+        }
       }
       return aceptado;
     })();
@@ -219,7 +226,9 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   // Al irse de la pestaña con una edición esperando la pausa, se manda en seguida para no perderla.
   useEffect(() => {
     const m = motor.current;
+    montado.current = true;
     return () => {
+      montado.current = false;
       if (m.temporizador !== null) {
         clearTimeout(m.temporizador);
         m.temporizador = null;
