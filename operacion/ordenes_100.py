@@ -155,12 +155,9 @@ def _eventos(argumentos: argparse.Namespace) -> int:
     try:
         eventos_perdidos.marcar_revisado(Path(argumentos.archivo), por="administrador")
     except eventos_perdidos.EventosIlegibles as error:
-        # SEG-12: un archivo ilegible no se da por revisado; lo sensible sigue bloqueado.
-        print(
-            f"{error} Las operaciones sensibles siguen bloqueadas: hay que restaurarlo de un "
-            "respaldo o retirarlo a mano después de revisar lo que se perdió (SEG-12).",
-            file=sys.stderr,
-        )
+        # SEG-12: un archivo ilegible no se da por revisado; lo sensible sigue bloqueado. El texto
+        # es `eventos_perdidos.MENSAJE_ILEGIBLE`, el mismo del 409 de la API.
+        print(error, file=sys.stderr)
         return 1
     print(f"Revisado: {argumentos.archivo}")
     return 0

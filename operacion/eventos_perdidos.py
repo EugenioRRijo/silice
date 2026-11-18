@@ -137,8 +137,18 @@ def resumen(archivo: Path) -> dict[str, Any]:
     }
 
 
+#: El unico texto de `EventosIlegibles`: lo citan el 409 de `POST /v1/admin/instalacion/eventos/
+#: {nombre}/revisar` y la orden `python -m operacion eventos revisar` (anexo A.4, H10).
+MENSAJE_ILEGIBLE = (
+    "El archivo de eventos perdidos falta o no se puede leer, así que no se marcó como revisado y "
+    "las operaciones sensibles siguen bloqueadas. Restáurelo de un respaldo o retírelo a mano "
+    "después de revisar lo que se perdió."
+)
+
+
 class EventosIlegibles(Exception):  # noqa: N818
-    """El archivo de eventos perdidos falta o no se puede leer: no se marca como revisado."""
+    """El archivo de eventos perdidos falta o no se puede leer: no se marca como revisado. Su
+    texto es `«<archivo>: MENSAJE_ILEGIBLE»`."""
 
 
 def marcar_revisado(archivo: Path, *, por: str | None = None) -> None:
@@ -147,9 +157,7 @@ def marcar_revisado(archivo: Path, *, por: str | None = None) -> None:
     las diferencias (SEG-12)."""
     datos = _leer(archivo)
     if datos is None:
-        raise EventosIlegibles(
-            f"{archivo.name} falta o no se puede leer: no se marcó como revisado."
-        )
+        raise EventosIlegibles(f"{archivo.name}: {MENSAJE_ILEGIBLE}")
     datos.update(
         revisado=True, revisado_por=por, revisado_en=datetime.now().isoformat(timespec="seconds")
     )

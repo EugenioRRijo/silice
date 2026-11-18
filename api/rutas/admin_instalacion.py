@@ -37,10 +37,6 @@ ADMIN = Depends(administrar(Accion.ADMINISTRAR_RED_Y_API))
 EN_EL_EQUIPO = Depends(administrar_en_el_equipo(Sensible.CLAVE_DE_API))
 MENSAJE_SIN_JUEGO = "No hay un respaldo con ese nombre."
 MENSAJE_SIN_EVENTO = "No hay un archivo de eventos perdidos pendiente con ese nombre."
-MENSAJE_EVENTO_ILEGIBLE = (
-    "El archivo de eventos perdidos no se puede leer, así que no se marcó como revisado. "
-    "Restáurelo de un respaldo o pida ayuda."
-)
 
 
 class Juego(BaseModel):
@@ -123,7 +119,7 @@ def revisar(nombre: str, activa: Annotated[SesionActiva, ADMIN]) -> list[Pendien
     try:
         eventos_perdidos.marcar_revisado(evento.archivo, por=activa.login)
     except eventos_perdidos.EventosIlegibles:
-        raise HTTPException(status_code=409, detail=MENSAJE_EVENTO_ILEGIBLE) from None
+        raise HTTPException(status_code=409, detail=eventos_perdidos.MENSAJE_ILEGIBLE) from None
     return [
         Pendiente(nombre=e.nombre, diferencias=list(e.diferencias), eventos=e.eventos)
         for e in logica.eventos_sin_revisar()
