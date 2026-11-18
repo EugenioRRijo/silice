@@ -19,6 +19,11 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
 - **Autocompletado, tanda del 12/11 y desperdicio en la Hoja** (PR #108, `ab867653`, 2026-11-13): lleva el PR #107
   (que queda fusionado), la tanda de detalles, F7, F8, F5 vial y ventana (V0 a V4), los topes del lector, la tanda del
   2026-11-12 y la prueba de punta a punta con sus correcciones (§3 y §4, punto 11).
+- **Depuración y desenredo** (PR #110 a #122, fusionados el 2026-11-18 por Claude con la autorización de Eugenio:
+  «te doy permiso de lo que queda pendiente de fusionar y ratificar»): la depuración unida, las olas 1 a 4 del
+  [plan de desenredo](planes/2026-11-17-plan-desenredo.md), los anexos A.1 a A.9, C9, P7 y A.6. Cada PR se llevó a
+  `main` antes de fusionarlo; el árbol de `main` (`e3419e40`) es idéntico al probado en la punta (13.169 pruebas de
+  Python, el front, lint, ruff, metas y guardia en verde; CI verde en Ubuntu y Windows).
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
@@ -29,17 +34,7 @@ instalador con huella SHA-256 firmada.
 
 | PR o rama | Qué trae | Estado |
 |---|---|---|
-| `feature/depuracion-unida` | La depuración del código espagueti (2026-11-15/17): las 13 ramas `feature/depurar-*` unidas sobre `feature/mejoras-ola2` (32 commits que aún no están en `main`: la PR los lleva), más las correcciones del arbitraje (H3, DS-2, DS-3) | Suite completa en verde; segunda opinión de Hydrogen verificada y [arbitraje xhigh](bitacora/arbitrajes/depuracion-unida-claude-xhigh.md) aprobado con una corrección, ya hecha; PR a `main` sin fusionar |
-| #112 `feature/desenredo-guardias` | Ola 1 del plan de desenredo: siete guardias de arquitectura con listas congeladas (dependencias entre paquetes, rutas sin `select()`, ciclos, presentación de cifras, tope de 1000 líneas, tablas y RF documentados). Solo pruebas; decisiones DS-6 a DS-12 | 13.018 pruebas en verde; PR apilada sobre #111, sin fusionar |
-| #113 a #115 `feature/desenredo-cifras`, `-presentacion`, `-politicas` | Ola 2 del plan de desenredo: un solo `decimal_desde_texto`, `api/presentacion.py` como único sitio que presenta cifras (al alza), los libros al alza (RS2-12) y una sola política de rendimiento vigente; decisiones DS-13 a DS-24 (ver §4, punto 13) | Revisión independiente aprobada con correcciones, ya hechas; PR apiladas, sin fusionar |
-| #116 `feature/desenredo-rutas` | Ola 3 del plan de desenredo: las rutas sin `select()` ni `core.models` (las consultas pasan a `aplicacion`, `seguridad` y `produccion`), `Cache-Control` solo por `RutaSinCache`, nueve escrituras más con `BEGIN IMMEDIATE`, un solo texto para `EventosIlegibles`; decisiones DS-25 a DS-33 | 13.084 pruebas en verde; revisión aprobada con correcciones, ya hechas; PR apilada sobre #115, sin fusionar |
-| #117 `feature/desenredo-modulos` | Ola 4 del plan de desenredo: `api/rutas/presupuestos.py`, `api/rutas/hoja.py` y `aplicacion/control.py` partidos sin cambiar conducta (`docs/api.json` idéntico), más A.5 en el front de la Hoja; la 4.4 (`aplicacion/hoja.py`) espera la decisión sobre el experimento congelado (DS-23). `api/rutas/hoja.py` queda en 998 líneas: si crece, sale S1 (guardado). Decisiones DS-34 a DS-41 | 13.104 pruebas de Python y 4.525 del front en verde; revisión independiente APROBADA; PR apilada sobre #116, sin fusionar |
-| #118 `feature/desenredo-anexos` | Anexos A.1 a A.8 del plan de desenredo: guardias endurecidas (`_es_consulta`, `_importados`, `str` de un `Decimal`), `SOLO_LEEN_EL_CASO` con su motivo por ruta y las rutas de los routers incluidos dentro de la guardia de escritura; decisiones DS-42 a DS-47 y arbitraje DS-49 a DS-52 | Revisión y segunda opinión de Hydrogen arbitradas; PR apilada sobre #117, sin fusionar |
-| #119 `feature/simulador-homonimos` | C9 (decisión de Eugenio del 2026-11-18): el Simulador casa por descripción **y unidad**; dos insumos con el mismo nombre y distinta unidad salen los dos. La serie sin homónimos no cambia (oráculo fijo) | PR apilada sobre #118, sin fusionar |
-| #120 `feature/auditar-perfil-reinicia` | P7 (decisión de Eugenio del 2026-11-18): en «Libro con un APU por hoja», cambiar de perfil reinicia las hojas marcadas a mano | PR apilada sobre #119, sin fusionar |
-| #121 `feature/desperdicio-guarda-trazas` | A.6 (decisión de Eugenio del 2026-11-18, deja sin efecto la DS-3): guardar solo el desglose del desperdicio escribe sus trazas sin crear versión; actas DS-48a a DS-48i | Revisión y segunda opinión de Hydrogen arbitradas; PR apilada sobre #120, sin fusionar |
-| #122 `feature/hoja-libro-escritura` | A.9: llevar un libro a la Hoja escribe con la sesión de escritura y nunca espera el cerrojo del borrador con el candado tomado; actas DS-53 a DS-58 | Suite completa en esta punta: 13.169 pruebas de Python, el front, lint, ruff, metas y guardia en verde; PR apilada sobre #121, sin fusionar |
-| #110 `docs/sincronizar-agentes` | Fichas de agentes y skills al día, manual de orquestación nuevo (`docs/manual_orquestacion.md`), auditoría de la interfaz con unslop y plan de desenredo (`docs/planes/2026-11-17-plan-desenredo.md`, 24 tareas en 5 olas); los documentos llegan con esa PR | Solo documentación; sin fusionar |
+| `feature/vivo-marco`, `-produccion`, `-control`, `-presupuesto` | Arreglos de la prueba en vivo del 2026-11-18 ([bitácora](bitacora/2026-11-18-prueba-en-vivo.md)): un frente por rama, con TDD | En construcción |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -190,14 +185,14 @@ subir nada.
    - **P7 sí** (PR #120): cambiar de perfil reinicia las hojas marcadas.
    - **C9, descripción + unidad** (PR #119).
 
-   Por ratificar: la **DS-48h**, que decidió el árbitro. Guardar solo el desglose, cuando otra persona guardó una versión
-   más nueva, pide confirmar igual que una versión (409). Para probar en el navegador:
-   - en la Hoja, cambiar solo el desglose del desperdicio y guardar; el diálogo dice «Guardar el desglose» y no nace
-     versión;
-   - el Simulador con dos insumos del mismo nombre y distinta unidad;
-   - en Auditoría → Libro con un APU por hoja, marcar hojas y cambiar de perfil.
+   **Ratificadas el 2026-11-18** por Eugenio («te doy permiso de lo que queda pendiente de fusionar y ratificar»):
+   todas las decisiones simuladas DS-1 a DS-58 del acta, con la DS-48h (guardar solo el desglose, cuando otra persona
+   guardó una versión más nueva, pide confirmar igual que una versión). La DS-3 quedó sustituida por A.6 y la DS-23
+   (4.4) espera al experimento. La pila #110 a #122 está fusionada (§1).
 
-   Orden de fusión de la pila: #110, #111, #112 … #122, de abajo hacia arriba.
+   **Probado en vivo el 2026-11-18** ([bitácora](bitacora/2026-11-18-prueba-en-vivo.md)): A.6, C9 y P7 funcionan en el
+   navegador. La prueba de todas las ventanas dejó hallazgos que se arreglan en las ramas `feature/vivo-*` (§2) y otros
+   que esperan una decisión (bitácora, §4).
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
