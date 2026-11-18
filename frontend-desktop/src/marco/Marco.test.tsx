@@ -1085,6 +1085,30 @@ describe("Marco: lo que se monta con él", () => {
     expect(await screen.findByText("Ahora trabaja con la carpeta «s2».")).toBeInTheDocument();
     expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: "s2.db" }]);
   });
+
+  // Prueba en vivo del 2026-11-18: la barra lateral tenía su propia lectura de las obras; al abrir otra carpeta el marco
+  // recargaba la suya y la barra seguía con la carpeta anterior («Se creará en…» decía la de antes).
+  test("al abrir otra carpeta, «Nueva obra» dice la nueva y la lista de obras se pide una sola vez por carga", async () => {
+    const u = userEvent.setup();
+    function AbrirSur() {
+      const { abrirCarpeta } = useAplicacion();
+      return (
+        <button type="button" onClick={() => void abrirCarpeta?.(SUR)}>
+          Abrir Sur
+        </button>
+      );
+    }
+    montar({ en: "/cuenta/cuentas", paginas: ligeras({ administracion: AbrirSur }) });
+    const lateral = await screen.findByRole("complementary", { name: "Barra lateral" });
+    await waitFor(() => expect(servidor.de("GET", "/v1/obras/todas")).toHaveLength(1));
+    await u.click(await screen.findByRole("button", { name: "Abrir Sur" }));
+    expect(await screen.findByText("Ahora trabaja con la carpeta «Carpeta Sur».")).toBeInTheDocument();
+    await waitFor(() => expect(servidor.de("GET", "/v1/obras/todas")).toHaveLength(2));
+    await u.click(within(lateral).getByRole("button", { name: "Nueva obra" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Nueva obra" });
+    expect(await within(dialogo).findByText("Se creará en Carpeta Sur")).toBeInTheDocument();
+    expect(servidor.de("GET", "/v1/obras/todas")).toHaveLength(2);
+  });
 });
 
 describe("Marco: cuentas sin obras que leer", () => {
