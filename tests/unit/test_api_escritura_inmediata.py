@@ -23,6 +23,7 @@ from typing import Any
 import pytest
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.dependencies.models import Dependant
+from fastapi.dependencies.utils import get_dependant
 from fastapi.routing import APIRoute
 
 from api.dependencias import SesionDeEscrituraDep, SesionDep, sesion_api, sesion_de_escritura_api
@@ -155,13 +156,19 @@ def _rutas_completas(
 ) -> Iterator[tuple[str, APIRoute, frozenset]]:
     """(camino completo, ruta, dependencias puestas al incluir) bajando por cada
     `_IncludedRouter` de FastAPI 0.141: su `include_context` lleva el prefijo y las dependencias
-    del `include_router`, que la ruta original no ve en su `path` ni en su `dependant`."""
+    del `include_router`, que la ruta original no ve en su `path` ni en su `dependant`. De cada
+    dependencia puesta al incluir se baja tambien a sus subdependencias (DS-50)."""
     for ruta in router.routes:
         if isinstance(ruta, APIRoute):
             yield prefijo + ruta.path, ruta, de_la_inclusion
         elif hasattr(ruta, "original_router"):
             contexto = ruta.include_context
-            puestas = frozenset(d.dependency for d in contexto.dependencies)
+            puestas = frozenset(
+                llamada
+                for d in contexto.dependencies
+                if d.dependency is not None
+                for llamada in (d.dependency, *_llamadas(get_dependant(path="", call=d.dependency)))
+            )
             yield from _rutas_completas(
                 ruta.original_router, prefijo + contexto.prefix, de_la_inclusion | puestas
             )
