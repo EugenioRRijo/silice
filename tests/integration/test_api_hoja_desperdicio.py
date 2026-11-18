@@ -563,3 +563,44 @@ def test_cambiar_el_desglose_y_el_rendimiento_crea_la_version_con_las_trazas(_ca
     assert _trazas(_caso) == [TRAZA_0_625]
     assert _codigos(navegador) == ["001", "002"]
     assert navegador.get(f"/v1/hoja/borradores/{id_}").json()["resumen"]["guardado_como"] == "002"
+
+
+# --- Arbitraje de la revisión de A.6 (acta DS-48h y DS-48i) -------------------------------------
+
+DESGLOSE_YA_GUARDADO = "Ese desglose ya está guardado."
+
+
+def _guardar(navegador, ficha, id_, rev, fuente="", **extra):
+    return navegador.post(
+        f"/v1/hoja/borradores/{id_}/guardar",
+        json={"rev": rev, "fuente": fuente, **extra},
+        headers=protegida(ficha),
+    )
+
+
+def _resumen(navegador, id_) -> dict:
+    leido = navegador.get(f"/v1/hoja/borradores/{id_}")
+    assert leido.status_code == 200, leido.text
+    return leido.json()["resumen"]
+
+
+def test_si_otro_ya_guardo_ese_mismo_desglose_es_422_propio_y_la_cuenta_se_vacia(
+    _caso: Path,
+) -> None:
+    """La Hoja deja 0,625 + 60 % sobre 0,8 + 25 %; antes de guardar, otro (Componer) escribe en la
+    base ese mismo desglose. Guardar no tiene nada que escribir: 422 con su texto, la base igual, y
+    el borrador deja de contar el desglose (antes seguía con un cambio y cada Guardar repetía el
+    422)."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"])
+    assert editado.status_code == 200, editado.text
+    _con_traza(_caso, TRAZA_0_625)
+    antes = _volcado(_caso)
+    respuesta = _guardar(navegador, ficha, id_, 1)
+    assert respuesta.status_code == 422, respuesta.text
+    assert respuesta.json()["detalle"] == DESGLOSE_YA_GUARDADO
+    assert _volcado(_caso) == antes
+    despues = _resumen(navegador, id_)
+    assert (despues["rev"], despues["cambios"], despues["desgloses"]) == (1, 0, 0)
