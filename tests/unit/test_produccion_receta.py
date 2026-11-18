@@ -351,3 +351,43 @@ def test_solo_un_ligante_y_en_toneladas(sesion) -> None:
     ]
     with pytest.raises(ErrorDeReceta, match="un solo ligante.*ARE-1, CA-30"):
         _registrar(sesion, dos)
+
+
+# Prueba en vivo 2026-11-18 (frente D): una receta de MEZ-A con MEZ-A como componente se aceptaba y
+# luego el costo por tonelada del mes fallaba con un texto contradictorio. Un producto no puede
+# contenerse a si mismo, ni directamente ni por una cadena de recetas.
+
+
+def test_una_receta_no_lleva_su_propio_producto(sesion) -> None:
+    for tipo in ("propio", "comprado"):
+        con_si_misma = [_c("AGR-12", "0.94"), _c(" MZ-1 ", "0.05", tipo=tipo)]
+        with pytest.raises(ErrorDeReceta, match=r"^La receta de MZ-1 no puede llevar MZ-1"):
+            _registrar(sesion, con_si_misma)
+    assert receta_vigente(sesion, "MZ-1", NOVIEMBRE) is None
+
+
+def test_una_cadena_de_recetas_no_vuelve_al_producto(sesion) -> None:
+    _registrar(sesion, [_c("MZ-2", "0.99")], producto="MZ-1")  # MZ-1 lleva MZ-2: se acepta
+    with pytest.raises(
+        ErrorDeReceta,
+        match=r"^La receta de MZ-2 no puede llevar MZ-1: MZ-1 lleva MZ-2 \(MZ-1 → MZ-2\)",
+    ):
+        _registrar(sesion, [_c("MZ-1", "0.99")], producto="MZ-2")
+    _registrar(sesion, [_c("MZ-3", "0.99")], producto="MZ-2")  # MZ-1 → MZ-2 → MZ-3
+    with pytest.raises(ErrorDeReceta, match=r"MZ-1 lleva MZ-3 \(MZ-1 → MZ-2 → MZ-3\)"):
+        _registrar(sesion, [_c("AGR-12", "0.50"), _c("MZ-1", "0.49")], producto="MZ-3")
+    assert receta_vigente(sesion, "MZ-3", NOVIEMBRE) is None
+
+
+def test_una_receta_vieja_tambien_cuenta_para_la_cadena(sesion) -> None:
+    # Las recetas solo se insertan y la vieja sigue rigiendo las producciones de su fecha: si una
+    # version anterior de MZ-1 llevaba MZ-2, MZ-2 no puede llevar MZ-1.
+    _registrar(sesion, [_c("MZ-2", "0.99")], producto="MZ-1", vigente_desde=OCTUBRE)
+    _registrar(sesion, [_c("AGR-12", "0.99")], producto="MZ-1", vigente_desde=NOVIEMBRE)
+    with pytest.raises(ErrorDeReceta, match="MZ-1 lleva MZ-2"):
+        _registrar(sesion, [_c("MZ-1", "0.99")], producto="MZ-2", vigente_desde=NOVIEMBRE)
+
+
+def test_una_mezcla_puede_llevar_otra_sin_ciclo(sesion) -> None:
+    _registrar(sesion, [_c("AGR-12", "0.99")], producto="MZ-2")
+    assert _registrar(sesion, [_c("MZ-2", "0.99")], producto="MZ-1") > 0
