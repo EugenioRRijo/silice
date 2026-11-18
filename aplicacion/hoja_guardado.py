@@ -57,8 +57,9 @@ desgloses del desperdicio (`hoja_desperdicio.cambios_de_desglose`, sin celdas: l
 con otra neta y otro porcentaje), guardar escribe solo sus trazas, en su propia transaccion de
 escritura, y **no crea version**: la version abierta no se toca (las trazas viven por partida y
 solo se insertan), el `rev` no sube y el borrador sigue abierto, ya sin cambios. No pide fuente
-(la traza no tiene donde guardarla) ni confirma una version mas nueva (el texto de ese aviso habla
-de una version que aqui no se crea).
+(la traza no tiene donde guardarla). Ante una version mas nueva pide confirmar como el guardado de
+una version (`DesgloseSobreVersionMasNueva`, acta DS-48h), con un texto que no habla de version
+nueva: el desglose se guardaria sobre lo de la posterior.
 
 Sin FastAPI ni Streamlit (RM-1).
 """
@@ -89,6 +90,7 @@ __all__ = [
     "Guardado",
     "RevDesactualizado",
     "SinListaDeLaObra",
+    "DesgloseSobreVersionMasNueva",
     "VersionMasNueva",
     "VersionSoloLectura",
     "guardar",
@@ -124,6 +126,19 @@ class VersionMasNueva(Exception):  # noqa: N818
             f"Otra persona guardó la versión {self.vigente} después de que usted abrió la "
             f"{self.abierta}. Si guarda, su versión saldrá de la {self.abierta} y quedará como "
             f"vigente sin lo de la {self.vigente}."
+        )
+
+
+class DesgloseSobreVersionMasNueva(VersionMasNueva):
+    """Lo mismo al guardar solo el desglose (anexo A.6, acta DS-48h): no nace ninguna version, asi
+    que el aviso dice que el desglose se guardaria sobre lo de la posterior. Empieza como el de
+    `VersionMasNueva`, que la pantalla reconoce para ofrecer «Guardar de todos modos»."""
+
+    def __str__(self) -> str:
+        return (
+            f"Otra persona guardó la versión {self.vigente} después de que usted abrió la "
+            f"{self.abierta}. Si guarda, el desglose del desperdicio se guardará sobre lo de la "
+            f"{self.vigente}: vale para la partida, no para una versión."
         )
 
 
@@ -198,7 +213,7 @@ def guardar(
         elif codigo is not None:
             raise HojaInvalida(CODIGO_SOLO_PRIMERA)
         elif _solo_desglose(vivo, borrador):
-            return _desglose(sesion, vivo, borrador)  # sigue abierto
+            return _desglose(sesion, vivo, borrador, confirmar_version_mas_nueva)  # sigue abierto
         else:
             guardado = _version(
                 sesion, vivo, borrador, fuente, responsable, confirmar_version_mas_nueva
@@ -282,19 +297,27 @@ def _cuantos_desgloses(
     )
 
 
-def _desglose(sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador) -> Guardado:
+def _desglose(
+    sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador, confirmar: bool
+) -> Guardado:
     """Escribe las trazas del borrador sin crear version (anexo A.6): la version abierta, el
     `rev` y el borrador quedan como estaban, salvo la cuenta de cambios, que se vacia. Si al
     releer la base ya no hay nada que escribir (otra persona o Componer guardaron ese mismo
     desglose), `HojaInvalida(DESGLOSE_YA_GUARDADO)` sin escribir, y el borrador se cuenta contra
-    la base de ahora: lo que ya coincide con ella deja de ser un cambio."""
+    la base de ahora: lo que ya coincide con ella deja de ser un cambio. Ante una version mas
+    nueva sin `confirmar`, `DesgloseSobreVersionMasNueva`, como `_version`."""
     abierta = vivo.abierta
     assert abierta is not None
     if abierta.solo_lectura:
         raise VersionSoloLectura(MENSAJE_SOLO_LECTURA)
     total = hoja_vista.monto(hoja_vista.calculo(vivo)[0].elaboracion.presupuesto.total)
     try:
-        # la primera lectura: antes, `BEGIN IMMEDIATE` (la sesion de escritura)
+        if not confirmar:  # la primera lectura: antes, `BEGIN IMMEDIATE` (la sesion de escritura)
+            mas_nueva = hoja_vista.version_mas_nueva(
+                vivo, hoja.codigo_vigente(sesion, vivo.proyecto)
+            )
+            if mas_nueva is not None:
+                raise DesgloseSobreVersionMasNueva(mas_nueva, abierta.codigo)
         de_la_base = hoja_desperdicio.vigentes_de_la_base(sesion, vivo)
         desgloses = _cuantos_desgloses(vivo, borrador, de_la_base)
         escritas = hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())

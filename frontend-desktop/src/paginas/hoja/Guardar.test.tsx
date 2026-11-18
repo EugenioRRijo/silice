@@ -442,6 +442,37 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(borrados()).toHaveLength(0);
   });
 
+  test("A.6 (DS-48h): con una versión posterior, guardar solo el desglose avisa con el texto del servidor y «Guardar de todos modos» lo reenvía con la confirmación", async () => {
+    const sobreLa004 =
+      "Otra persona guardó la versión 004 después de que usted abrió la 002. Si guarda, el desglose del desperdicio se guardará sobre lo de la 004: vale para la partida, no para una versión.";
+    alAbrir = () => borrador("002", { cambios: 1, desgloses: 1 });
+    alCambios = () =>
+      json({
+        rev: 3,
+        cambios: [{ objeto: "apu", clave: "AF-LLAVE|material|1", campo: "desperdicio", antes: "0,8 + 25 %", despues: "0,625 + 60 %" }],
+      });
+    alGuardar = (c) =>
+      c["confirmar_version_mas_nueva"] === true
+        ? json({ codigo: "002", proyecto: "OF-001", cambios: 0, total: m("2703.86"), primera: false, mensaje: "x", version_nueva: false, desgloses: 1 })
+        : json({ detalle: sobreLa004, version_mas_nueva: "004" }, 409);
+    montar();
+    const dialogo = await abrirModal();
+    fireEvent.click(confirmar(dialogo, "Guardar el desglose"));
+    expect(await within(dialogo).findByText(sobreLa004)).toBeInTheDocument();
+    expect(confirmar(dialogo, "Guardar el desglose")).toBeDisabled();
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar de todos modos" }));
+    expect(
+      await screen.findByText(
+        "Se guardó el desglose del desperdicio de 1 línea. La cantidad no cambió, así que la versión 002 sigue siendo la misma.",
+      ),
+    ).toBeInTheDocument();
+    expect(guardados()).toEqual([
+      { rev: 3, fuente: "" },
+      { rev: 3, fuente: "", confirmar_version_mas_nueva: true },
+    ]);
+    expect(aperturas().map((a) => a.version)).toEqual(["002"]);
+  });
+
   test("no hay más de una petición de guardado en vuelo: el botón se deshabilita y se anuncia «Guardando la versión…»", async () => {
     let contestar: (r: Response) => void = () => undefined;
     const respuesta = new Promise<Response>((resolver) => {
