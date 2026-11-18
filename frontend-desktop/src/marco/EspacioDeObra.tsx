@@ -16,7 +16,7 @@ import { enfocarElTitulo } from "./focoAlTitulo";
 import { ContextoDeLaObra } from "./obraAbierta";
 import type { ObraAbierta } from "./obraAbierta";
 import { seccionesDeLaObra, useOferta } from "./oferta";
-import { RUTA_DE_PENDIENTES, SECCIONES_CON_HOJA, rutaDeObra } from "./secciones";
+import { RUTA_DE_PENDIENTES, SECCIONES_CON_HOJA, carpetaDeLaRuta, rutaDeObra, seccionPorId } from "./secciones";
 import type { SeccionDef } from "./secciones";
 import { useFichaDeLaObra } from "./useFichaDeLaObra";
 import type { FichaDeLaObra } from "./useFichaDeLaObra";
@@ -55,7 +55,8 @@ function Aviso({ titulo, texto, alerta = false, children }: { titulo: string; te
 // monta: no hay escrituras en la obra equivocada.
 export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: Props) {
   const estado = useObraDeLaRuta({ vigilante });
-  const { subvista } = useParams();
+  const { carpeta: segmentoDeCarpeta, obraId, seccion, subvista } = useParams();
+  const { search } = useLocation();
   const lista = estado.tipo === "lista" ? estado : null;
   const clave = lista ? JSON.stringify([lista.carpeta, lista.obraId]) : null;
 
@@ -77,6 +78,12 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
     setEntradas((n) => n + 1);
     accion();
   };
+
+  // Una sección que no existe (o sin pantalla) de una obra que se nombra bien lleva al Resumen de esa obra, con replace y la
+  // consulta, como una subvista desconocida lleva a la principal. Si la obra tampoco existe, el Resumen lo dirá.
+  if (estado.tipo === "no_existe" && segmentoDeCarpeta !== undefined && /^[1-9]\d*$/.test(obraId ?? "") && seccion !== undefined && seccionPorId(seccion)?.pagina == null) {
+    return <Navigate to={`${rutaDeObra(carpetaDeLaRuta(segmentoDeCarpeta), Number(obraId), "resumen")}${search}`} replace />;
+  }
 
   switch (estado.tipo) {
     case "cargando":
