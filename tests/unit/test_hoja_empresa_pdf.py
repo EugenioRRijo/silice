@@ -979,3 +979,18 @@ def test_fmt_de_un_entero_de_29_digitos_o_mas_no_lanza(valor, signo, esperado):
 )
 def test_fmt_presenta_al_alza_y_sin_signo_en_cero(valor, signo, esperado):
     assert modulo_pdf._fmt(valor, signo) == esperado
+
+
+def test_fmt_deja_intacto_el_contexto_del_calculo():
+    """El redondeo al alza vive en un `localcontext`: el cálculo del hilo sigue al par, con 28."""
+    from decimal import ROUND_HALF_EVEN, getcontext
+
+    antes = (getcontext().rounding, getcontext().prec)
+    assert modulo_pdf._fmt(Decimal("1.00005")) == "1,0001"
+    assert (getcontext().rounding, getcontext().prec) == antes == (ROUND_HALF_EVEN, 28)
+
+
+@pytest.mark.parametrize("valor", ["Infinity", "-Infinity"])
+def test_fmt_de_un_infinito_no_lanza(valor):
+    """El `_fmt` anterior devolvía el texto del infinito; calcular los decimales antes lanzaba."""
+    assert modulo_pdf._fmt(Decimal(valor)) == valor

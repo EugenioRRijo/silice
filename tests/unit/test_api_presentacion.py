@@ -80,3 +80,44 @@ def test_cifra_presentada_y_redondeado():
 def test_presentacion_no_redondea_al_par():
     fuente = Path(presentacion.__file__).read_text(encoding="utf-8")
     assert "ROUND_HALF_EVEN" not in fuente
+
+
+# --- Bordes que cambiaron al unificar la presentación (revisión de la ola 2, hallazgo 1) -------
+# Antes de `api/presentacion.py`, las rutas daban «-0.00» para un monto que redondea a cero y un
+# 500 (`InvalidOperation`) para un monto de más de ~26 cifras enteras. Ahora: «0.00» y el exacto.
+
+
+def _obra_con(total: Decimal | None, ev: Decimal | None, bac: Decimal | None):
+    from aplicacion.mesa import ETAPA_TEXTO, ObraEnMesa
+
+    return ObraEnMesa(
+        codigo="OB-1",
+        nombre="Obra ficticia",
+        cliente="Cliente ficticio",
+        moneda="USD",
+        etapa=next(iter(ETAPA_TEXTO)),
+        version=None,
+        total=total,
+        corte=None,
+        ev=ev,
+        pv=None,
+        bac=bac,
+        spi=None,
+        retraso_dias=None,
+        que_pasa=None,
+        siguiente=None,
+    )
+
+
+def test_la_ruta_de_obras_presenta_el_cero_sin_signo():
+    from api.rutas.obras import _obra
+
+    r = _obra(_obra_con(Decimal("-0.001"), Decimal("-0.0001"), Decimal("1000")))
+    assert (r.total, r.avance_real) == ("0.00", "0.0")
+
+
+def test_la_ruta_de_obras_presenta_exacto_un_monto_que_no_cabe():
+    from api.rutas.obras import _obra
+
+    enorme = Decimal("1" + "0" * 30)
+    assert _obra(_obra_con(enorme, None, None)).total == "1" + "0" * 30

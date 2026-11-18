@@ -261,10 +261,10 @@ def _expresion(texto: str) -> tuple[Decimal, Decimal] | None:
 
 def _fmt(valor: Decimal, signo: bool = False) -> str:
     """Cifra del informe (1.446,65): de 2 a 4 decimales al alza y sin signo si sale cero."""
-    decimales = min(4, max(2, -int(valor.as_tuple().exponent)))
-    decimales = 0 if valor == valor.to_integral_value() else decimales
-    with localcontext() as contexto:  # el formato redondea con el modo del contexto; `quantize`,
-        contexto.rounding = ROUND_HALF_UP  # con 29 dígitos o más, pide más de 28 de precisión
+    decimales = (  # el entero va primero: un infinito no tiene exponente entero y sale tal cual
+        0 if valor == valor.to_integral_value() else min(4, max(2, -int(valor.as_tuple().exponent)))
+    )
+    with localcontext(rounding=ROUND_HALF_UP):  # el formato redondea con el modo del contexto
         texto = f"{valor:{'+' if signo else ''},.{decimales}f}"
     texto = texto.lstrip("+-") if Decimal(texto.replace(",", "")).is_zero() else texto
     return texto.replace(",", "\x00").replace(".", ",").replace("\x00", ".")

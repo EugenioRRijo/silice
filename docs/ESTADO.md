@@ -165,6 +165,15 @@ subir nada.
    `delta` y `delta_pct` salen ahora de `api/presentacion.py`. Solo cambia la mitad exacta: un Δ% de 0,125 se ve
    0,13 (antes 0,12) y un total de 1.000,125 se ve 1.000,13 (antes 1.000,12). El cálculo y los exactos de
    `totales_libro` y `totales_silice` no cambian. Para probar en el navegador: la franja de indicadores de un libro.
+   La ola 2 cambia también otras salidas (`feature/desenredo-presentacion`, acta DS-14 a DS-19):
+   - `/v1/indices/en-usd/ver` pasa al alza (tasa a 4 decimales y valor a 6); se ve en Índices → En USD.
+   - `total_texto` de `/v1/entregas/resumen` pasa al alza; la pantalla Entregar no lo muestra.
+   - Las cifras de los hallazgos del PDF (`_fmt`) redondean la mitad al alza y no muestran «-0» ni «+0».
+   - El aviso de porcentajes distintos (`_pct`) lleva punto de miles desde 1.000 %.
+   - En toda la API, un monto que redondea a cero sale «0.00», no «-0.00». Uno de más de unas 26 cifras sale exacto
+     en vez de dar 500 (revisión de la ola 2, hallazgo 1, fijado en `tests/unit/test_api_presentacion.py`).
+
+   Para probar en el navegador: la franja de indicadores de un libro y Índices → En USD.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
