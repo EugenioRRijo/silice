@@ -105,6 +105,48 @@ def _coma(valor: Decimal) -> str:
     return format(valor, "f").replace(".", ",")
 
 
+def _camino(lleva: dict[str, set[str]], desde: str, hasta: str) -> list[str] | None:
+    """El camino de recetas de `desde` a `hasta` (`[desde, ..., hasta]`, el mas corto), o `None`
+    si no lo hay. `lleva` es producto -> codigos de sus componentes."""
+    previo: dict[str, str | None] = {desde: None}
+    pendientes = [desde]
+    while pendientes:
+        actual = pendientes.pop(0)
+        if actual == hasta:
+            camino: list[str] = []
+            paso: str | None = actual
+            while paso is not None:
+                camino.append(paso)
+                paso = previo[paso]
+            return camino[::-1]
+        for siguiente in sorted(lleva.get(actual, ())):
+            if siguiente not in previo:
+                previo[siguiente] = actual
+                pendientes.append(siguiente)
+    return None
+
+
+def _exigir_sin_ciclo(sesion: Session, producto: str, codigos: Sequence[str]) -> None:
+    """Ningun componente puede llevar ya, por sus recetas, al `producto`: la mezcla se contendria a
+    si misma y su costo por tonelada no tendria de donde salir. Cuenta TODAS las versiones
+    registradas de cada receta: solo se insertan y una vieja sigue rigiendo las producciones de su
+    fecha (prueba en vivo 2026-11-18)."""
+    lleva: dict[str, set[str]] = {}
+    for prod, codigo in sesion.execute(
+        select(RecetaRegistrada.producto, RecetaComponente.codigo).join(
+            RecetaComponente, RecetaComponente.receta_id == RecetaRegistrada.id
+        )
+    ):
+        lleva.setdefault(prod, set()).add(codigo)
+    for codigo in codigos:
+        camino = _camino(lleva, codigo, producto)
+        if camino is not None:
+            raise ErrorDeReceta(
+                f"La receta de {producto} no puede llevar {codigo}: {codigo} lleva {producto} "
+                f"({' → '.join(camino)}) y un producto no puede contenerse a sí mismo."
+            )
+
+
 def registrar_receta(
     sesion: Session,
     producto: str,
@@ -132,6 +174,12 @@ def registrar_receta(
     repetidos = sorted(c for c, veces in Counter(codigos).items() if veces > 1)
     if repetidos:
         raise ErrorDeReceta(f"Componente repetido en la receta: {', '.join(repetidos)}.")
+    if producto in codigos:
+        raise ErrorDeReceta(
+            f"La receta de {producto} no puede llevar {producto}: un producto no puede ser "
+            "componente de sí mismo. Quítelo de los componentes."
+        )
+    _exigir_sin_ciclo(sesion, producto, codigos)
     ligantes = [c.codigo for c in componentes if c.es_ligante]
     if len(ligantes) > 1:
         raise ErrorDeReceta(
