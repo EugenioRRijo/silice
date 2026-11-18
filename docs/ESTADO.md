@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-17 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-18 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -34,6 +34,11 @@ instalador con huella SHA-256 firmada.
 | #113 a #115 `feature/desenredo-cifras`, `-presentacion`, `-politicas` | Ola 2 del plan de desenredo: un solo `decimal_desde_texto`, `api/presentacion.py` como único sitio que presenta cifras (al alza), los libros al alza (RS2-12) y una sola política de rendimiento vigente; decisiones DS-13 a DS-24 (ver §4, punto 13) | Revisión independiente aprobada con correcciones, ya hechas; PR apiladas, sin fusionar |
 | #116 `feature/desenredo-rutas` | Ola 3 del plan de desenredo: las rutas sin `select()` ni `core.models` (las consultas pasan a `aplicacion`, `seguridad` y `produccion`), `Cache-Control` solo por `RutaSinCache`, nueve escrituras más con `BEGIN IMMEDIATE`, un solo texto para `EventosIlegibles`; decisiones DS-25 a DS-33 | 13.084 pruebas en verde; revisión aprobada con correcciones, ya hechas; PR apilada sobre #115, sin fusionar |
 | #117 `feature/desenredo-modulos` | Ola 4 del plan de desenredo: `api/rutas/presupuestos.py`, `api/rutas/hoja.py` y `aplicacion/control.py` partidos sin cambiar conducta (`docs/api.json` idéntico), más A.5 en el front de la Hoja; la 4.4 (`aplicacion/hoja.py`) espera la decisión sobre el experimento congelado (DS-23). `api/rutas/hoja.py` queda en 998 líneas: si crece, sale S1 (guardado). Decisiones DS-34 a DS-41 | 13.104 pruebas de Python y 4.525 del front en verde; revisión independiente APROBADA; PR apilada sobre #116, sin fusionar |
+| #118 `feature/desenredo-anexos` | Anexos A.1 a A.8 del plan de desenredo: guardias endurecidas (`_es_consulta`, `_importados`, `str` de un `Decimal`), `SOLO_LEEN_EL_CASO` con su motivo por ruta y las rutas de los routers incluidos dentro de la guardia de escritura; decisiones DS-42 a DS-47 y arbitraje DS-49 a DS-52 | Revisión y segunda opinión de Hydrogen arbitradas; PR apilada sobre #117, sin fusionar |
+| #119 `feature/simulador-homonimos` | C9 (decisión de Eugenio del 2026-11-18): el Simulador casa por descripción **y unidad**; dos insumos con el mismo nombre y distinta unidad salen los dos. La serie sin homónimos no cambia (oráculo fijo) | PR apilada sobre #118, sin fusionar |
+| #120 `feature/auditar-perfil-reinicia` | P7 (decisión de Eugenio del 2026-11-18): en «Libro con un APU por hoja», cambiar de perfil reinicia las hojas marcadas a mano | PR apilada sobre #119, sin fusionar |
+| #121 `feature/desperdicio-guarda-trazas` | A.6 (decisión de Eugenio del 2026-11-18, deja sin efecto la DS-3): guardar solo el desglose del desperdicio escribe sus trazas sin crear versión; actas DS-48a a DS-48i | Revisión y segunda opinión de Hydrogen arbitradas; PR apilada sobre #120, sin fusionar |
+| #122 `feature/hoja-libro-escritura` | A.9: llevar un libro a la Hoja escribe con la sesión de escritura y nunca espera el cerrojo del borrador con el candado tomado; actas DS-53 a DS-58 | Suite completa en esta punta: 13.169 pruebas de Python, el front, lint, ruff, metas y guardia en verde; PR apilada sobre #121, sin fusionar |
 | #110 `docs/sincronizar-agentes` | Fichas de agentes y skills al día, manual de orquestación nuevo (`docs/manual_orquestacion.md`), auditoría de la interfaz con unslop y plan de desenredo (`docs/planes/2026-11-17-plan-desenredo.md`, 24 tareas en 5 olas); los documentos llegan con esa PR | Solo documentación; sin fusionar |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
 
@@ -177,6 +182,22 @@ subir nada.
      en vez de dar 500 (revisión de la ola 2, hallazgo 1, fijado en `tests/unit/test_api_presentacion.py`).
 
    Para probar en el navegador: la franja de indicadores de un libro y Índices → En USD.
+14. Decisiones de Eugenio del 2026-11-18 ([acta](bitacora/2026-11-17-decisiones-simuladas.md)):
+   - **A.6 sí** (PR #121): deja sin efecto la DS-3. Guardar solo el desglose del desperdicio ya no se rechaza: escribe sus
+     trazas sin crear versión.
+   - **4.4 espera al experimento**: `aplicacion/hoja.py` sigue congelado (RS-9) y se parte en el próximo recongelado,
+     junto con L5 y L7.
+   - **P7 sí** (PR #120): cambiar de perfil reinicia las hojas marcadas.
+   - **C9, descripción + unidad** (PR #119).
+
+   Por ratificar: la **DS-48h**, que decidió el árbitro. Guardar solo el desglose, cuando otra persona guardó una versión
+   más nueva, pide confirmar igual que una versión (409). Para probar en el navegador:
+   - en la Hoja, cambiar solo el desglose del desperdicio y guardar; el diálogo dice «Guardar el desglose» y no nace
+     versión;
+   - el Simulador con dos insumos del mismo nombre y distinta unidad;
+   - en Auditoría → Libro con un APU por hoja, marcar hojas y cambiar de perfil.
+
+   Orden de fusión de la pila: #110, #111, #112 … #122, de abajo hacia arriba.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
@@ -229,6 +250,19 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
    renglón de las valuaciones (`origen_id` en `LineaValuacion` y `PartidaBase`, línea 1 §8). Mejoras anotadas: el
    botón «PDF de este APU» en la pestaña APU (la ruta ya lo admite), guardar `_codigo_libro` en el renglón llevado, y la
    defensa de `patron_banda` sigue siendo una heurística (lo peor que acepta es cúbico).
+8. **Lo que dejaron los anexos, A.6 y A.9** (2026-11-18, actas DS-52, DS-57 y DS-48):
+   - **DS-52:** hay sitios que pasan un `Decimal` a texto con `str` y pueden mostrar notación científica. Están en
+     `listas.py:124,204-206`, `catalogo.py:37`, `obras.py:161-163,211`, `precios_empresa.py:303`,
+     `rendimientos.py:208,219`, `presupuestos_calculo.py:142` y `fcas.py:149,177`. Deben pasar por `api/presentacion.py`.
+   - **DS-57:** hay rutas que vuelven a leer después del commit, en `vial.py:150`, `revision.py:511`,
+     `precios_empresa.py:228` y `aprobaciones.py:303`. Deben armar su respuesta antes, como ya hace la carpeta.
+   - **A.6, lo que quedó fuera:**
+     - el botón de la barra sigue diciendo «Guardar versión…»;
+     - una traza sin responsable necesita una migración de `casos/*.db`;
+     - el rótulo de la llave sale como «AF-LLAVE, material|1»;
+     - [manual_usuario.md](manual_usuario.md) (≈842 y 864) dice todavía que «nace una versión nueva».
+   - **4.4, L5 y L7:** entran en el próximo recongelado del experimento.
+   - **Ola 5:** salir de los ciclos, con `Catalogo.rendimiento_vigente` en `core/`. Espera el aval del tutor.
 
 ## 6. Auditorías en paralelo
 

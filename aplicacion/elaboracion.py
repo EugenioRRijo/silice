@@ -417,8 +417,9 @@ def version_del_borrador_de_la_obra(
     los tramos: el vivo mas reciente de esa ficha y esa obra en el caso, si lo hay, y el codigo de
     la version sobre la que esta o, sin vivo, sobre la que se abriria (la vigente); `None` si es
     (o seria) un borrador en blanco. Solo lee: no abre ni registra nada. Es la unica eleccion del
-    borrador de la obra: `borrador_de_la_obra` la usa para abrirlo."""
-    for vivo, _cambios in hoja_edicion.borradores_para_retomar(huella, caso):
+    borrador de la obra: `borrador_de_la_obra` la usa para abrirlo. No toma el cerrojo de ningun
+    borrador ni cuenta sus cambios (DS-54): llevar el libro elige con su transaccion abierta."""
+    for vivo in hoja_edicion.borradores_abiertos(huella, caso):
         if vivo.proyecto == proyecto:
             return vivo, vivo.version
     return None, hoja.codigo_vigente(sesion, proyecto)

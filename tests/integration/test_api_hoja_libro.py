@@ -32,11 +32,13 @@ from pathlib import Path
 import pdfplumber
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import hoja as rutas_hoja
 from aplicacion import hoja_borradores, libro_a_la_hoja
+from core import models
 from core.budget.moneda import declarar_moneda
 from core.budget.persistencia import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
@@ -44,7 +46,7 @@ from core.contracts import Dominio
 from core.contracts.apu import ParametrosCosto
 from operacion import config
 from operacion.base_datos import preparar_base
-from tests.fixtures.carpeta_aprobaciones import OBRA, sembrar_vivienda
+from tests.fixtures.carpeta_aprobaciones import OBRA, guardar_version, sembrar_vivienda
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.hoja_versiones_api import registrar_tasa_en
@@ -793,3 +795,231 @@ def test_cada_renglon_del_presupuesto_dice_su_frente(ana) -> None:
         ("VF-001", "FRENTE A"),
         ("VF-001", "FRENTE B"),
     ]
+
+
+# --- el orden de los bloqueos (tarea A.9, DS-49 y DS-53) --------------------------------------
+#
+# El guardado (S1) toma el cerrojo del borrador y DESPUÉS el bloqueo de escritura (`BEGIN
+# IMMEDIATE`, `aplicacion/hoja_guardado.py`). Si llevar el libro esperara el cerrojo con el bloqueo
+# tomado, los dos se cruzarían: el guardado esperaría el bloqueo hasta el `busy_timeout` y daría
+# 503. El oráculo es determinista: en el instante en que la ruta pide el cerrojo, otra conexión
+# tiene que poder tomar el bloqueo sin esperar (`timeout=0`).
+
+
+def _bloqueo_libre() -> bool:
+    otra = sqlite3.connect(config.carpeta_casos() / "via.db", timeout=0)
+    try:
+        otra.execute("BEGIN IMMEDIATE")
+        otra.rollback()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        otra.close()
+
+
+class _CerrojoQueMira:
+    """El `RLock` del borrador, que anota si el bloqueo de escritura estaba libre cada vez que un
+    hilo lo pide desde fuera (las tomas reentrantes de dentro no cuentan)."""
+
+    def __init__(self, libre: list[bool]) -> None:
+        import threading
+
+        self._de_verdad = threading.RLock()
+        self._dentro = threading.local()
+        self._libre = libre
+
+    def __enter__(self):
+        if getattr(self._dentro, "n", 0) == 0:
+            self._libre.append(_bloqueo_libre())
+        self._de_verdad.acquire()
+        self._dentro.n = getattr(self._dentro, "n", 0) + 1
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self._dentro.n -= 1
+        self._de_verdad.release()
+
+
+def test_llevar_el_libro_pide_el_cerrojo_sin_el_bloqueo_de_escritura(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Con el borrador nuevo (primera vez) y con el que ya estaba (segunda)."""
+    libre: list[bool] = []
+    de_verdad = hoja_borradores.crear
+
+    def crear(*args, **kwargs):
+        vivo = de_verdad(*args, **kwargs)
+        vivo.cerrojo = _CerrojoQueMira(libre)
+        return vivo
+
+    monkeypatch.setattr(hoja_borradores, "crear", crear)
+
+    primero = _llevar(ana)
+    assert primero.status_code == 200, primero.text
+    segundo = _llevar(ana)
+    assert segundo.status_code == 200, segundo.text
+
+    assert len(libre) >= 2
+    assert all(libre), libre
+
+
+def test_llevar_el_libro_consulta_el_caso_fuera_del_bucle_de_eventos(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`llevar_libro` es `async`: lo que consulta el caso (y puede esperar el `busy_timeout`) va en
+    `run_in_threadpool`, o congelaría el bucle de eventos de todo el proceso."""
+    import asyncio
+
+    from api.rutas import hoja_libro
+
+    en_el_bucle: list[tuple[str, bool]] = []
+
+    def mirar(modulo, nombre: str) -> None:
+        de_verdad = getattr(modulo, nombre)
+
+        def envuelta(*args, **kwargs):
+            try:
+                asyncio.get_running_loop()
+                en_el_bucle.append((nombre, True))
+            except RuntimeError:
+                en_el_bucle.append((nombre, False))
+            return de_verdad(*args, **kwargs)
+
+        monkeypatch.setattr(modulo, nombre, envuelta)
+
+    mirar(hoja_libro, "con_anexos_de_cadena")
+    mirar(hoja_libro, "resolver_proyecto")
+    mirar(libro_a_la_hoja, "llevar_libro_a_la_hoja")
+
+    r = _llevar(ana)
+
+    assert r.status_code == 200, r.text
+    assert en_el_bucle == [
+        ("con_anexos_de_cadena", False),
+        ("resolver_proyecto", False),
+        ("llevar_libro_a_la_hoja", False),
+    ]
+
+
+# --- lo que pasa entre la elección del borrador y su cerrojo (DS-53, DS-58) ---------------------
+#
+# La transacción que elige el borrador se deshace antes de pedir su cerrojo (DS-53): entre las dos,
+# otra petición puede guardar la primera versión de la obra, cambiar su moneda o tocar el borrador.
+# Determinista, sin esperas: el cerrojo del borrador se sustituye por uno que, la primera vez que
+# un hilo lo pide desde fuera y antes de tomarlo, hace lo que haría esa otra petición.
+
+
+class _CerrojoQueCambia:
+    """El `RLock` del borrador; la primera toma desde fuera corre antes `entretanto`."""
+
+    def __init__(self, entretanto) -> None:
+        import threading
+
+        self._de_verdad = threading.RLock()
+        self._entretanto = entretanto
+
+    def __enter__(self):
+        if self._entretanto is not None:
+            hacer, self._entretanto = self._entretanto, None
+            hacer()
+        self._de_verdad.acquire()
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self._de_verdad.release()
+
+
+def _con_cerrojo_que_cambia(monkeypatch: pytest.MonkeyPatch, entretanto) -> list:
+    """Los borradores que se crean llevan `_CerrojoQueCambia(entretanto(vivo))`; devuelve la lista
+    de los creados."""
+    creados: list = []
+    de_verdad = hoja_borradores.crear
+
+    def crear(*args, **kwargs):
+        vivo = de_verdad(*args, **kwargs)
+        vivo.cerrojo = _CerrojoQueCambia(lambda: entretanto(vivo))
+        creados.append(vivo)
+        return vivo
+
+    monkeypatch.setattr(hoja_borradores, "crear", crear)
+    return creados
+
+
+def _en_via(escribir) -> None:
+    """Escribe en la obra sin versiones con otra conexión y confirma (otra petición)."""
+    motor = crear_motor(f"sqlite:///{(config.carpeta_casos() / 'via.db').as_posix()}")
+    try:
+        with abrir_sesion(motor) as s:
+            via = s.scalars(select(models.Proyecto).where(models.Proyecto.nombre == VIA)).one()
+            escribir(s, via)
+            s.commit()
+    finally:
+        motor.dispose()
+
+
+def _primera_version(s, via) -> None:
+    guardar_version(s, via, "VIA-001")
+
+
+def _ahora_en_dolares(s, via) -> None:
+    declarar_moneda(s, via, "USD", responsable="Ana <ana>")
+
+
+@pytest.mark.parametrize(
+    ("entretanto", "detalle"),
+    [
+        (
+            _primera_version,
+            f"La obra «{VIA}» ya tiene la versión VIA-001: el libro se lleva a una obra sin "
+            "versiones, para que sus precios sean los del libro. Cree una obra nueva para el "
+            "libro.",
+        ),
+        (
+            _ahora_en_dolares,
+            f"La obra «{VIA}» está en USD y el libro en Bs: Sílice no convierte los precios del "
+            "libro. Lleve el libro a una obra en Bs.",
+        ),
+    ],
+    ids=["primera-version", "otra-moneda"],
+)
+def test_lo_que_cambio_antes_del_cerrojo_se_vuelve_a_mirar_bajo_el(
+    ana, monkeypatch: pytest.MonkeyPatch, entretanto, detalle: str
+) -> None:
+    """La elección vio la obra sin versiones y en Bs; bajo el cerrojo ya no lo está: 409, el
+    borrador nuevo se descarta y el catálogo no recibe ningún APU del libro."""
+    navegador, _ = ana
+    creados = _con_cerrojo_que_cambia(monkeypatch, lambda _vivo: _en_via(entretanto))
+    r = _llevar(ana)
+    assert len(creados) == 1
+    assert r.status_code == 409, r.text
+    assert r.json()["detalle"] == detalle
+    assert _borradores(navegador) == []
+    assert _partidas_del_libro() == []
+
+
+def test_si_falla_el_borrador_nuevo_que_otro_toco_antes_del_cerrojo_no_se_descarta(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """NOTA 3 de la revisión de A.9: el borrador lo creó esta petición, pero entre la elección y el
+    cerrojo otra (otra pestaña de la misma ficha) le cambió los porcentajes y subió su `rev`. Si
+    llevar el libro falla, se deshace lo suyo y queda lo de la otra: descartarlo la borraría."""
+    navegador, _ = ana
+    otros = ParametrosCosto(utilidad=Decimal("0.20"))
+
+    def otra_peticion(vivo) -> None:
+        nuevo = replace(vivo.borrador, parametros=otros)
+        hoja_borradores.reemplazar(vivo.huella, vivo.id, nuevo, vivo.rev)
+
+    creados = _con_cerrojo_que_cambia(monkeypatch, otra_peticion)
+    with monkeypatch.context() as m:
+        _que_falle(m)
+        r = _llevar(ana)
+    assert r.status_code == 500
+    assert len(creados) == 1
+    vivo = creados[0]
+    assert [b["id"] for b in _borradores(navegador)] == [vivo.id]
+    assert _rev(navegador, vivo.id) == 1
+    assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.parametros == otros
+    assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.items_base == ()
+    assert _partidas_del_libro() == []

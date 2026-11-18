@@ -12,6 +12,10 @@ guardar versión. Responde el borrador, cuántos renglones quedaron, cada partid
 impreso y el de la Hoja (a dos decimales, con punto: la pantalla los escribe en es-VE) y si casan,
 y lo que no se llevó.
 
+La sesión es la de escritura (`BEGIN IMMEDIATE`; tarea A.9, DS-53): confirma el catálogo en cada
+llamada. Lee el libro antes de la primera consulta al caso (DS-32), consulta fuera del bucle de
+eventos y pide el cerrojo del borrador sin el bloqueo de escritura tomado, como el guardado.
+
 Como el resto de la Hoja: solo con una cuenta con `editar_hoja` (la clave de API, 403), CSRF y
 `Origin` propios y `Cache-Control: no-store`. Errores: obra que no existe, 404; un libro que no se
 puede leer, un perfil que no existe, ningún renglón que llevar o porcentajes distintos, 422; una
@@ -31,7 +35,7 @@ from starlette.concurrency import run_in_threadpool
 from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.modelo import LibroNoInterpretable
 from adapters.hoja_empresa.perfil import PerfilInvalido
-from api.dependencias import SesionDep, url_de_la_peticion
+from api.dependencias import SesionDeEscrituraDep, url_de_la_peticion
 from api.presentacion import monto
 from api.rutas import hoja as rutas_hoja
 from api.rutas.hoja import MENSAJE_BASE, CuentaDeLaHoja
@@ -121,7 +125,7 @@ def para_llevar(
 async def llevar_libro(
     request: Request,
     activa: CuentaDeLaHoja,
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     libro: Annotated[UploadFile, File(description="Libro con un APU por hoja (.xlsx)")],
     proyecto: Annotated[str, Form(min_length=1, max_length=500)],
     moneda: Annotated[Literal["Bs", "USD"], Form(description="La moneda de los precios del libro")],
@@ -158,20 +162,21 @@ async def llevar_libro(
         raise HTTPException(status_code=422, detail=MENSAJE_LIBRO) from None
     sin_presupuesto = None if hay_presupuesto else (frente or "").strip() or None
     para = para_llevar(auditado, moneda, sin_presupuesto)
-    try:
+    caso, hoy = url_de_la_peticion(request), rutas_hoja._hoy()
+
+    def llevar() -> libro_a_la_hoja.LibroLlevado:
+        # La primera consulta abre `BEGIN IMMEDIATE` y puede esperar el `busy_timeout`: fuera del
+        # bucle de eventos (DS-53). El cerrojo del borrador, antes del bloqueo: `aplicacion`.
         con_anexos_de_cadena(sesion)
         obra = resolver_proyecto(sesion, proyecto)
         if obra is None:
             raise HTTPException(status_code=404, detail=elaboracion.MENSAJE_SIN_OBRA)
-        llevado = libro_a_la_hoja.llevar_libro_a_la_hoja(
-            sesion,
-            activa.huella_ficha,
-            url_de_la_peticion(request),
-            obra,
-            para,
-            responsable=activa.usuario,
-            hoy=rutas_hoja._hoy(),
+        return libro_a_la_hoja.llevar_libro_a_la_hoja(
+            sesion, activa.huella_ficha, caso, obra, para, responsable=activa.usuario, hoy=hoy
         )
+
+    try:
+        llevado = await run_in_threadpool(llevar)
     except (
         libro_a_la_hoja.LibroSinRenglones,
         libro_a_la_hoja.PorcentajesDistintos,

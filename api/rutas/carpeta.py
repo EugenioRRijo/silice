@@ -164,8 +164,9 @@ def declarar_moneda(
         )
     except CarpetaConOtraMoneda as error:
         raise HTTPException(409, str(error)) from None
+    respuesta = _estado(sesion)  # antes del commit: tras él, consultar abriría otra (DS-58)
     sesion.commit()
-    return _estado(sesion)
+    return respuesta
 
 
 @router.post(
@@ -200,5 +201,6 @@ def crear_la_lista_para_armar(
         )
     except SinListaParaArmar as error:
         raise HTTPException(409, str(error)) from None
+    respuesta = _estado(sesion)  # antes del commit: tras él, consultar abriría otra (DS-58)
     sesion.commit()
-    return _estado(sesion)
+    return respuesta

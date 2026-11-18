@@ -61,6 +61,8 @@ QUE_ESCRIBEN = [
     ("POST", "/v1/vial/tramos/importar"),
     ("POST", "/v1/produccion/calculos/{calculo_id}/publicar"),
     ("POST", "/v1/revision/dictamen"),
+    # Tarea A.9 (DS-49, DS-53): el cerrojo del borrador antes del bloqueo de escritura.
+    ("POST", "/v1/hoja/libro"),
 ]
 
 _BORRADOR = "/v1/hoja/borradores/{id}"
@@ -129,12 +131,6 @@ _RECIBIDO = (
 ESCRIBEN_CON_LA_SESION_COMUN: dict[tuple[str, str], str] = {
     ("POST", "/v1/hoja/borradores"): _INSTANTANEA + "; quien solo lee la abre `sin_escribir`",
     ("POST", "/v1/hoja/llevar"): _INSTANTANEA,
-    ("POST", "/v1/hoja/libro"): (
-        "no abre ninguna version (con versiones lanza `ObraConVersiones`): escribe el catalogo "
-        "(composicion, precios, referencias, trazas) y confirma en cada llamada "
-        "(`aplicacion/libro_a_la_hoja.py:451-497`); pasarla a la sesion de escritura pide tomar "
-        "`vivo.cerrojo` antes de la primera consulta y `run_in_threadpool` (tarea A.9, DS-49)"
-    ),
     ("POST", "/v1/vial/tramos/llevar"): _INSTANTANEA,
     ("POST", "/v1/revision/paquete"): _RECIBIDO,
     ("POST", "/v1/revision/contra-lista"): _RECIBIDO,

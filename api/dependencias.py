@@ -113,8 +113,14 @@ def sesion_de_escritura_api(request: Request) -> Iterator[Session]:
     `BEGIN IMMEDIATE` en la primera sentencia, asi que quien guarda toma el bloqueo de escritura
     antes de leer la version vigente y el ultimo codigo (el otro espera). No confirma por si
     misma: confirma o deshace la funcion de aplicacion que escribe (todo o nada), y al salir se
-    cierra (lo que quede sin confirmar se deshace). Quien la usa envuelve la cadena de anexos."""
+    cierra (lo que quede sin confirmar se deshace). Quien la usa envuelve la cadena de anexos.
+
+    Tarea A.9 (DS-56): `expire_on_commit=False`, como `hoja_guardado.guardar`: leer lo confirmado
+    para responder no reabre otro `BEGIN IMMEDIATE` (que esperaria a otro que escribe y podria dar
+    503 tras un guardado bueno). Lo que se consulta de nuevo tras el `commit` si lo abre; por eso
+    `SesionDeEscrituraDep` cierra la sesion con `scope="function"`, antes de enviar."""
     with abrir_sesion_de_escritura(obtener_motor(url_de_la_peticion(request))) as sesion:
+        sesion.expire_on_commit = False
         yield sesion
 
 
@@ -122,7 +128,11 @@ def sesion_de_escritura_api(request: Request) -> Iterator[Session]:
 #: como valor por defecto es una llamada en la firma; dentro de `Annotated` no lo es.
 SesionDep = Annotated[Session, Depends(sesion_api)]
 #: La de escritura (`BEGIN IMMEDIATE`): para las rutas que crean versiones o proyectos (BCP-3).
-SesionDeEscrituraDep = Annotated[Session, Depends(sesion_de_escritura_api)]
+#: `scope="function"` (tarea A.9, DS-56): se cierra al volver la ruta, con la respuesta ya
+#: serializada y ANTES de enviarla; con el alcance por omision el bloqueo de escritura que reabre
+#: una lectura tras el `commit` duraria hasta que el cliente recibe la respuesta. Ninguna ruta que
+#: la usa responde en flujo (`StreamingResponse`) leyendo el caso al enviar.
+SesionDeEscrituraDep = Annotated[Session, Depends(sesion_de_escritura_api, scope="function")]
 
 
 def sesion_instalacion_api() -> Iterator[Session]:
