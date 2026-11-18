@@ -32,11 +32,13 @@ from pathlib import Path
 import pdfplumber
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import hoja as rutas_hoja
 from aplicacion import hoja_borradores, libro_a_la_hoja
+from core import models
 from core.budget.moneda import declarar_moneda
 from core.budget.persistencia import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
@@ -44,7 +46,7 @@ from core.contracts import Dominio
 from core.contracts.apu import ParametrosCosto
 from operacion import config
 from operacion.base_datos import preparar_base
-from tests.fixtures.carpeta_aprobaciones import OBRA, sembrar_vivienda
+from tests.fixtures.carpeta_aprobaciones import OBRA, guardar_version, sembrar_vivienda
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.hoja_versiones_api import registrar_tasa_en
@@ -898,3 +900,99 @@ def test_llevar_el_libro_consulta_el_caso_fuera_del_bucle_de_eventos(
         ("resolver_proyecto", False),
         ("llevar_libro_a_la_hoja", False),
     ]
+
+
+# --- lo que pasa entre la elección del borrador y su cerrojo (DS-53, DS-58) ---------------------
+#
+# La transacción que elige el borrador se deshace antes de pedir su cerrojo (DS-53): entre las dos,
+# otra petición puede guardar la primera versión de la obra, cambiar su moneda o tocar el borrador.
+# Determinista, sin esperas: el cerrojo del borrador se sustituye por uno que, la primera vez que
+# un hilo lo pide desde fuera y antes de tomarlo, hace lo que haría esa otra petición.
+
+
+class _CerrojoQueCambia:
+    """El `RLock` del borrador; la primera toma desde fuera corre antes `entretanto`."""
+
+    def __init__(self, entretanto) -> None:
+        import threading
+
+        self._de_verdad = threading.RLock()
+        self._entretanto = entretanto
+
+    def __enter__(self):
+        if self._entretanto is not None:
+            hacer, self._entretanto = self._entretanto, None
+            hacer()
+        self._de_verdad.acquire()
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self._de_verdad.release()
+
+
+def _con_cerrojo_que_cambia(monkeypatch: pytest.MonkeyPatch, entretanto) -> list:
+    """Los borradores que se crean llevan `_CerrojoQueCambia(entretanto(vivo))`; devuelve la lista
+    de los creados."""
+    creados: list = []
+    de_verdad = hoja_borradores.crear
+
+    def crear(*args, **kwargs):
+        vivo = de_verdad(*args, **kwargs)
+        vivo.cerrojo = _CerrojoQueCambia(lambda: entretanto(vivo))
+        creados.append(vivo)
+        return vivo
+
+    monkeypatch.setattr(hoja_borradores, "crear", crear)
+    return creados
+
+
+def _en_via(escribir) -> None:
+    """Escribe en la obra sin versiones con otra conexión y confirma (otra petición)."""
+    motor = crear_motor(f"sqlite:///{(config.carpeta_casos() / 'via.db').as_posix()}")
+    try:
+        with abrir_sesion(motor) as s:
+            via = s.scalars(select(models.Proyecto).where(models.Proyecto.nombre == VIA)).one()
+            escribir(s, via)
+            s.commit()
+    finally:
+        motor.dispose()
+
+
+def _primera_version(s, via) -> None:
+    guardar_version(s, via, "VIA-001")
+
+
+def _ahora_en_dolares(s, via) -> None:
+    declarar_moneda(s, via, "USD", responsable="Ana <ana>")
+
+
+@pytest.mark.parametrize(
+    ("entretanto", "detalle"),
+    [
+        (
+            _primera_version,
+            f"La obra «{VIA}» ya tiene la versión VIA-001: el libro se lleva a una obra sin "
+            "versiones, para que sus precios sean los del libro. Cree una obra nueva para el "
+            "libro.",
+        ),
+        (
+            _ahora_en_dolares,
+            f"La obra «{VIA}» está en USD y el libro en Bs: Sílice no convierte los precios del "
+            "libro. Lleve el libro a una obra en Bs.",
+        ),
+    ],
+    ids=["primera-version", "otra-moneda"],
+)
+def test_lo_que_cambio_antes_del_cerrojo_se_vuelve_a_mirar_bajo_el(
+    ana, monkeypatch: pytest.MonkeyPatch, entretanto, detalle: str
+) -> None:
+    """La elección vio la obra sin versiones y en Bs; bajo el cerrojo ya no lo está: 409, el
+    borrador nuevo se descarta y el catálogo no recibe ningún APU del libro."""
+    navegador, _ = ana
+    creados = _con_cerrojo_que_cambia(monkeypatch, lambda _vivo: _en_via(entretanto))
+    r = _llevar(ana)
+    assert len(creados) == 1
+    assert r.status_code == 409, r.text
+    assert r.json()["detalle"] == detalle
+    assert _borradores(navegador) == []
+    assert _partidas_del_libro() == []
