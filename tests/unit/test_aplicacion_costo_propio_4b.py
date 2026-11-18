@@ -48,7 +48,7 @@ from core import models
 from core.catalog import Catalogo
 from produccion.costo import ErrorDeCalculo
 from produccion.costos import CostoDelPeriodo, registrar_costo
-from produccion.modelo import Calculo
+from produccion.modelo import Calculo, RecetaComponente, RecetaRegistrada
 from produccion.receta import Componente
 from tests.fixtures import costo_propio as cp
 
@@ -244,7 +244,8 @@ def test_agregado_no_producido_de_otra_moneda_no_sirve(ins, caso) -> None:
     with pytest.raises(ErrorDeCalculo) as error:
         _calcular(ins, caso, NOV)
     assert str(error.value) == (
-        "La mezcla MZ-1 usa AGR-12, que no se produjo en 2026-11 ni tiene un costo calculado "
+        "La mezcla MZ-1 usa AGR-12, que no se produjo en noviembre de 2026 ni tiene un costo "
+        "calculado "
         "antes en USD."
     )
     assert _calculos(ins) == 1
@@ -256,7 +257,7 @@ def test_agregado_no_producido_nunca_de_un_mes_posterior(ins, caso) -> None:
     cp.entrada(ins, "AGR-12", "100", date(2026, 12, 5))
     _costo(ins, DIC, "cantera", "900", "USD", date(2026, 12, 3))
     assert _calcular(ins, caso, DIC).por_tonelada == {"AGR-12": D("9")}
-    with pytest.raises(ErrorDeCalculo, match="AGR-12, que no se produjo en 2026-11"):
+    with pytest.raises(ErrorDeCalculo, match="AGR-12, que no se produjo en noviembre de 2026"):
         _calcular(ins, caso, NOV)
     _costo(ins, OCT, "cantera", "500", "USD", date(2026, 10, 3))
     octubre = _calcular(ins, caso, OCT)
@@ -552,7 +553,10 @@ def test_instantanea_v1_se_sigue_leyendo(ins, caso) -> None:
 # noviembre: 300 / 100 t = 3. Con un hueco de dos meses (diciembre deja, enero y febrero sin
 # calculo), marzo pide enero, el primero que falta, aunque el ano cambie.
 
-FALTA_NOVIEMBRE = "Calcule primero 2026-11: el cálculo de 2026-10 dejó costos que pasan a ese mes."
+FALTA_NOVIEMBRE = (
+    "Calcule primero noviembre de 2026: el cálculo de octubre de 2026 dejó costos que pasan a "
+    "ese mes."
+)
 
 
 def test_sin_calculo_de_m_lo_que_dejo_m_menos_1_niega_m_mas_1(ins, caso) -> None:
@@ -584,6 +588,50 @@ def test_con_un_hueco_mas_largo_pide_el_primer_mes_que_falta(ins, caso) -> None:
     with pytest.raises(ErrorDeCalculo) as error:
         _calcular(ins, caso, "2027-03")
     assert str(error.value) == (
-        "Calcule primero 2027-01: el cálculo de 2026-12 dejó costos que pasan a ese mes."
+        "Calcule primero enero de 2027: el cálculo de diciembre de 2026 dejó costos que pasan "
+        "a ese mes."
     )
     assert _calculos(ins) == 1
+
+
+# Prueba en vivo 2026-11-18 (frente D): una receta de MZ-1 con MZ-1 como componente (aceptada antes
+# de que registrar_receta la rechazara) bloqueaba el mes con «MZ-1, que no se produjo en 2026-11»,
+# aunque MZ-1 si se produjo. El texto dice ahora que la receta es imposible y como salir de ella.
+
+
+def test_una_receta_vieja_que_se_lleva_a_si_misma_lo_dice_y_dice_como_corregirla(ins, caso) -> None:
+    cp.materiales(ins)
+    vieja = RecetaRegistrada(
+        producto="MZ-1",
+        fuente="dosificacion ficticia",
+        vigente_desde=date(2026, 10, 1),
+        usuario="ana",
+        registrado=cp.AHORA,
+    )
+    ins.add(vieja)
+    ins.flush()
+    for orden, (codigo, cantidad, tipo) in enumerate(
+        [("MZ-1", "0.94", "propio"), ("CA-30", "0.05", "comprado")]
+    ):
+        ins.add(
+            RecetaComponente(
+                receta_id=vieja.id,
+                orden=orden,
+                codigo=codigo,
+                cantidad_por_t=D(cantidad),
+                unidad="t",
+                tipo=tipo,
+            )
+        )
+    ins.flush()
+    cp.entrada(ins, "MZ-1", "100", cp.dia(10))
+    _costo(ins, NOV, "planta", "1200", "USD", cp.dia(12))
+    cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
+    with pytest.raises(ErrorDeCalculo) as error:
+        _calcular(ins, caso, NOV)
+    assert str(error.value) == (
+        "La receta de MZ-1 lleva MZ-1 entre sus componentes y un producto no puede contenerse a "
+        "sí mismo. Registre de nuevo la receta de MZ-1 con la misma fecha de vigencia y sin MZ-1 "
+        "entre sus componentes."
+    )
+    assert _calculos(ins) == 0
