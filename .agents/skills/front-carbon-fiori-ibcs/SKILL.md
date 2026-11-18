@@ -1,89 +1,79 @@
 ---
 name: front-carbon-fiori-ibcs
 description: >-
-  Estándares de Frontend Desktop para Sílice: integración de diseño de alta densidad
-  IBM Carbon, métricas analíticas SAP Fiori y semántica de variación de negocio IBCS
-  sobre React 19, TypeScript, Tailwind CSS y lienzo Canvas Univer.
+  Estándares de Frontend Desktop para Sílice: IBM Carbon oficial (@carbon/react y
+  @carbon/styles, sin Tailwind), métricas analíticas SAP Fiori y semántica de variación
+  de negocio IBCS sobre React 19, TypeScript y el lienzo de Univer (@univerjs/presets).
 ---
 
 # Skill: Frontend Desktop Sílice (Carbon + Fiori + IBCS)
 
-> **Vigente al 2026-11-04 (manda sobre lo que sigue):** Sin Tailwind (RT-8): los estilos son `@carbon/styles` y SCSS propio. No hay Tauri: la interfaz se sirve desde FastAPI en `/app`; la ventana de escritorio está solo diseñada (recomendación pywebview en la rama `feature/disenos-f5`). Estado del proyecto: [docs/ESTADO.md](../../../docs/ESTADO.md).
+> **Vigente al 2026-11-17.** La fuente única del aspecto es
+> [frontend-desktop/DESIGN.md](../../../frontend-desktop/DESIGN.md) (y sus valores exactos,
+> [src/estilos/tokens.scss](../../../frontend-desktop/src/estilos/tokens.scss)): si esta guía lo contradice, manda
+> DESIGN.md. Sin Tailwind (RT-8). La interfaz la sirve el mismo Uvicorn de la API en `/app/` y la ventana de
+> escritorio es `operacion/ventana.py` (pywebview); no hay Tauri. Estado del proyecto:
+> [docs/ESTADO.md](../../../docs/ESTADO.md).
 
-Esta guía define las especificaciones obligatorias para la interfaz de usuario de escritorio en Sílice (Tauri v2 + React 19 + TypeScript + Vite).
+Esta guía resume las reglas de la interfaz de `frontend-desktop/` (React 19 + TypeScript + Vite) y enlaza el código que
+ya las cumple. **Reutiliza ese código: no lo copies ni escribas otra versión** (la CI corre jscpd con umbral de 1 % y
+knip).
+
+**Comandos (AGENTS.md), en `frontend-desktop/`:** `npm run lint; npx vitest run --maxWorkers=3`; antes de entregar,
+`npm run build`.
 
 ---
 
 ## 1. IBM Carbon Design System (Densidad y Severidad)
 
-Las aplicaciones de presupuestos y obras manejan cientos de filas y columnas. Se adopta **IBM Carbon** para maximizar la cantidad de información visible sin fatiga visual:
+Las aplicaciones de presupuestos y obras manejan cientos de filas y columnas. Se adopta **IBM Carbon** (tema g10,
+paquetes oficiales) para maximizar la información visible sin fatiga visual.
 
 ### 1.1. Densidades de Tabla
-* **Ultra-Compacta (`compact` - 24px):** Utilizada en el Visor Réplica de Excel (Univer Canvas Grid) y matrices de APU detalladas.
-* **Estándar de Inspección (`short` - 32px):** Utilizada en tablas de hallazgos de auditoría y catálogos de partidas.
-* **Espaciado Táctil (`tall` - 48px):** Reservada exclusivamente para las **Tarjetas de Maquinaria** y formularios rápidos de campo.
+* **Ultra-Compacta (`compact` - 24px):** la hoja de Univer replica la altura de fila del libro.
+* **Estándar de Inspección (`sm` - 32px):** tablas de hallazgos de auditoría y catálogos de partidas.
+* **Espaciado Táctil (48px):** solo donde la especificación lo pide (controles de campo).
 
-### 1.2. Paleta de Severidad y Estados de Auditoría
-* 🟢 **Verificado / Cumple:** `Green-50` (`#24a148`) — Valor matemáticamente exacto y dentro del tabulador normativo.
-* 🟡 **Advertencia Menor:** `Yellow-30` (`#f1c21b`) — Desviación de rendimiento leve o datos incompletos no bloqueantes.
-* 🔴 **Error Crítico / Falla:** `Red-60` (`#da1e28`) — Fórmula alterada, omisión de celdas intermedias o violación de normativa.
-* 🔵 **Informativo / Metadato:** `Blue-60` (`#0f62fe`) — Celdas con fórmulas externas no resueltas o notas de usuario.
-* 🟣 **Precios y Rendimientos Atípicos (ML Outliers):** **`Purple-60` (`#8a3ffc`)**
-  * **Regla estricta:** Todo insumo, precio unitario o rendimiento detectado como valor atípico por el modelo *Isolation Forest* de `ml/anomaly/` se resalta con **borde o halo morado Carbon** (`#8a3ffc`), acompañado del tooltip: *"[ML] Variación atípica: puntaje {puntaje} (corte −0,05; más negativo = más atípico)"*. La convención es la de `ml/anomaly/detector.py` (`UMBRAL_ATIPICO = -0.05`, `decision_function` sin reinterpretar); el detector **se abstiene** con menos de 8 observaciones y entonces no hay halo.
+### 1.2. Severidad: cuatro niveles
+La fuente es [src/severidad/severidad.ts](../../../frontend-desktop/src/severidad/severidad.ts) (`SEVERIDADES`,
+`estiloDeSeveridad`, `normalizarSeveridad`); cada nivel trae su token, su ícono de Carbon y su texto:
+
+| Nivel | Token | Color Carbon | Ícono |
+|---|---|---|---|
+| `CRITICO` | `--silice-sev-critico` | Red 60 | `ErrorFilled` |
+| `ERROR` | `--silice-sev-error` | Orange 50 (naranja) | `WarningFilled` |
+| `ADVERTENCIA` | `--silice-sev-advertencia` (ícono: `--silice-sev-advertencia-icono`) | Yellow 30 (ícono Yellow 50) | `WarningAltFilled` |
+| `INFO` | `--silice-sev-info` | Blue 60 | `InformationFilled` |
+
+* **Atípicos del detector:** `--silice-atipico` (Purple 60), exclusivo de lo que marca *Isolation Forest* en
+  `ml/anomaly/detector.py` (`UMBRAL_ATIPICO = -0.05`, más negativo = más atípico; se abstiene con menos de
+  `MINIMO_OBSERVACIONES = 8` y entonces no hay halo). El hallazgo es ADVERTENCIA, nunca ERROR.
+* **Verificado:** `--silice-verificado` (Green 50).
 
 ### 1.3. Dos semánticas que no se mezclan
-* **Halos de la hoja = severidad** (verde, amarillo, rojo, azul, morado), siempre con **ícono** y texto accesible: el color nunca va solo (WCAG 2.1 AA).
-* **Rojo/verde IBCS = variación favorable/desfavorable**, solo en cifras de variación (tarjetas Fiori y gráficos). Una celda con fórmula rota (severidad) y un precio caro (variación) no se pintan con el mismo significado.
+* **Halos de la hoja = severidad**, siempre con **ícono** y texto accesible: el color nunca va solo (WCAG 2.1 AA).
+* **Rojo/verde IBCS = variación favorable/desfavorable**, solo en cifras de variación (tarjetas Fiori y gráficos),
+  con los tokens `--silice-ibcs-favorable-texto`, `--silice-ibcs-desfavorable` y `--silice-ibcs-neutro`. Una celda con
+  fórmula rota (severidad) y un precio caro (variación) no se pintan con el mismo significado.
 
 ---
 
 ## 2. SAP Fiori (Métricas Analíticas y Tarjetas KPI)
 
-Para las cabeceras de presupuesto, resúmenes de auditoría y tableros de control de planta de áridos, cada indicador clave de desempeño (KPI Card) debe seguir el patrón de **SAP Fiori**:
+Cada indicador clave sigue el patrón de **SAP Fiori**: valor actual, meta o referencia, y desviación
+($\Delta = \text{Actual} - \text{Meta}$, $\Delta\% = \Delta / \text{Meta} \times 100$). Los montos y las
+variaciones **los calcula la API** (`Decimal` como texto); la interfaz no recalcula dinero, solo formatea.
 
-### Estructura Mandatoria de Cada Indicador:
-1. **Valor Actual (Actual Value):** Cifra real medida o presupuesto evaluado en tipografía grande (`text-2xl font-semibold`).
-2. **Meta / Benchmark (Target):** Valor de referencia (Línea base, costo de cantera o tabulador oficial) en tipografía secundaria (`text-sm text-muted-foreground`).
-3. **Desviación ($\Delta$ y $\Delta\%$):** Variación numérica y porcentual calculada:
-   $$\Delta = \text{Valor Actual} - \text{Valor Meta}, \quad \Delta\% = \frac{\Delta}{\text{Valor Meta}} \times 100$$
-
-```tsx
-// Ejemplo de Tarjeta Fiori: colores solo por tokens Carbon (variables CSS del proyecto).
-// Los montos llegan de la API ya calculados (Decimal como texto): la interfaz no recalcula dinero.
-type Props = {
-  titulo: string;
-  actual: string;    // "1586.61"
-  meta: string;      // "1500.00"
-  delta: string;     // calculado por la API
-  deltaPct: string | null; // null si la meta es 0
-  unidad: string;
-  sentido: "costo" | "rendimiento"; // costo: subir es desfavorable; rendimiento: subir es favorable
-};
-
-export function IndicadorFiori({ titulo, actual, meta, delta, deltaPct, unidad, sentido }: Props) {
-  const sube = !delta.startsWith("-") && Number(delta) !== 0;
-  const baja = delta.startsWith("-");
-  const favorable = sentido === "costo" ? baja : sube;
-  const desfavorable = sentido === "costo" ? sube : baja;
-  const clase = favorable ? "ibcs-favorable" : desfavorable ? "ibcs-desfavorable" : "ibcs-neutro";
-  const icono = favorable ? "▲ favorable" : desfavorable ? "▼ desfavorable" : "sin variación";
-
-  return (
-    <section className="fiori-kpi" aria-label={titulo}>
-      <h3 className="fiori-kpi__titulo">{titulo}</h3>
-      <p className="fiori-kpi__actual">{actual} {unidad}</p>
-      <p className="fiori-kpi__meta">Meta: {meta} {unidad}</p>
-      <p className={`fiori-kpi__delta ${clase}`}>
-        <span aria-hidden="true">{favorable ? "▲" : desfavorable ? "▼" : "•"}</span>
-        <span className="visually-hidden">{icono}</span>
-        Δ {delta} {unidad}{deltaPct !== null ? ` (${deltaPct} %)` : ""}
-      </p>
-    </section>
-  );
-}
-// .ibcs-favorable { color: var(--silice-green-50); }   /* #24a148 */
-// .ibcs-desfavorable { color: var(--silice-red-60); }  /* #da1e28 */
-```
+Código que ya lo hace (úsalo):
+* [src/indicadores/IndicadorFiori.tsx](../../../frontend-desktop/src/indicadores/IndicadorFiori.tsx): la tarjeta
+  (valor, meta, Δ y Δ %, flecha e ícono con texto accesible). Su franja: `FranjaIndicadores.tsx`.
+* [src/indicadores/ibcs.ts](../../../frontend-desktop/src/indicadores/ibcs.ts): `semanticaIbcs(delta, sentido)`
+  decide favorable, desfavorable o neutro leyendo el signo del texto, sin `Number()`.
+* [src/indicadores/formatoEsVe.ts](../../../frontend-desktop/src/indicadores/formatoEsVe.ts): coma decimal y punto
+  de miles (`formatoEsVe`, `formatoMontoEsVe`, `cantidadEsVe`, `fechaEsVe`). Ninguna cifra se muestra sin pasar por
+  aquí.
+* [src/estilos/tokens.scss](../../../frontend-desktop/src/estilos/tokens.scss): los colores; nada de hexadecimales
+  sueltos en un componente.
 
 ---
 
@@ -98,11 +88,11 @@ En Sílice se aplica rigurosamente la regla semántica de color de **IBCS** para
 
 | Métrica | Comportamiento | Signo Matemático | Semántica IBCS | Color IBCS |
 |---|---|---|---|---|
-| **Costo de Partida / Insumo** | El costo subió frente a la cantera/tabulador | $+$ Positivo | **Desfavorable** (Sobrecosto) | 🔴 **Rojo** (`#da1e28`) |
-| **Costo de Partida / Insumo** | El costo bajó frente al tabulador | $-$ Negativo | **Favorable** (Ahorro) | 🟢 **Verde** (`#24a148`) |
-| **Rendimiento de Cuadrilla** | Cuadrilla produce más m³/día | $+$ Positivo | **Favorable** (Mayor avance) | 🟢 **Verde** (`#24a148`) |
-| **Tiempo de Ciclo de Camiones** | Camión tarda menos minutos en acarreo | $-$ Negativo | **Favorable** (Mayor eficiencia) | 🟢 **Verde** (`#24a148`) |
-| **Producción de Arena en Zaranda** | Menor volumen al esperado | $-$ Negativo | **Desfavorable** (Pérdida en planta) | 🔴 **Rojo** (`#da1e28`) |
+| **Costo de Partida / Insumo** | El costo subió frente a la cantera/tabulador | $+$ Positivo | **Desfavorable** (Sobrecosto) | 🔴 **Rojo** (`--silice-ibcs-desfavorable`) |
+| **Costo de Partida / Insumo** | El costo bajó frente al tabulador | $-$ Negativo | **Favorable** (Ahorro) | 🟢 **Verde** (`--silice-ibcs-favorable-texto`) |
+| **Rendimiento de Cuadrilla** | Cuadrilla produce más m³/día | $+$ Positivo | **Favorable** (Mayor avance) | 🟢 **Verde** (`--silice-ibcs-favorable-texto`) |
+| **Tiempo de Ciclo de Camiones** | Camión tarda menos minutos en acarreo | $-$ Negativo | **Favorable** (Mayor eficiencia) | 🟢 **Verde** (`--silice-ibcs-favorable-texto`) |
+| **Producción de Arena en Zaranda** | Menor volumen al esperado | $-$ Negativo | **Desfavorable** (Pérdida en planta) | 🔴 **Rojo** (`--silice-ibcs-desfavorable`) |
 
 ### 3.2. Representación Visual de Datos
 * **Valores Reales / Actuales (AC):** Barras o números con relleno **sólido**.
