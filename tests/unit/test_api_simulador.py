@@ -301,6 +301,57 @@ def test_el_texto_separado_por_comas_sigue_partiendo_por_la_coma(motor) -> None:
     assert (r.status_code, r.json()) == (200, {"filas": []})
 
 
+def _con_homonimo(motor) -> None:
+    """Segundo insumo «Arena lavada» con distinta unidad (saco frente a m3)."""
+    with abrir_sesion(motor) as sesion:
+        lista = sesion.scalars(select(models.ListaPrecios)).one()
+        homonimo = models.Insumo(
+            codigo="MAT-904", tipo="material", descripcion="Arena lavada", unidad="saco"
+        )
+        sesion.add(homonimo)
+        sesion.flush()
+        sesion.add(
+            models.PrecioInsumo(lista_id=lista.id, insumo_id=homonimo.id, precio=Decimal("4.50"))
+        )
+        sesion.commit()
+
+
+@pytest.mark.parametrize("ruta", [RUTA, RUTA_CSV])
+def test_homonimos_con_distinta_unidad_devuelven_ambas_filas(motor, ruta) -> None:
+    _con_homonimo(motor)
+    _usar(motor)
+    r = _con_clave().post(ruta, json=_cuerpo(variacion_max="0"))
+    assert r.status_code == 200, r.text
+    filas = [
+        {"tipo": "material", "insumo": "Arena lavada", "unidad": "m3", "precio": "30.00"},
+        {"tipo": "material", "insumo": "Arena lavada", "unidad": "saco", "precio": "4.50"},
+        {"tipo": "material", "insumo": "Cemento ficticio", "unidad": "saco", "precio": "15.00"},
+        {"tipo": "mano_obra", "insumo": "Peon ficticio", "unidad": "jornal", "precio": "12.50"},
+    ]
+    if ruta == RUTA:
+        assert r.json() == {"filas": filas}
+    else:
+        assert r.text.splitlines()[1:] == [
+            "material,Arena lavada,m3,30.00",
+            "material,Arena lavada,saco,4.50",
+            "material,Cemento ficticio,saco,15.00",
+            "mano_obra,Peon ficticio,jornal,12.50",
+        ]
+
+
+def test_filtro_por_descripcion_en_la_api_trae_los_homonimos(motor) -> None:
+    _con_homonimo(motor)
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(insumos="Arena lavada"))
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "filas": [
+            {"tipo": "material", "insumo": "Arena lavada", "unidad": "m3", "precio": "30.47"},
+            {"tipo": "material", "insumo": "Arena lavada", "unidad": "saco", "precio": "4.33"},
+        ]
+    }
+
+
 def test_sin_el_campo_insumos_son_todos(motor) -> None:
     _usar(motor)
     r = _con_clave().post(RUTA, json={"semilla": 42, "variacion_max": "5"})
