@@ -1574,7 +1574,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
-    "api/rutas/presupuestos.py": 1132,
+    "api/rutas/presupuestos.py": 1112,
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,
@@ -1764,3 +1764,59 @@ def test_una_sola_lectura_de_decimal_de_maquina():
     definiciones = _definiciones("decimal_desde_texto")
     assert len(definiciones) == 1, f"una sola lectura en aplicacion/composicion.py: {definiciones}"
     assert definiciones[0].startswith("aplicacion/composicion.py:")
+
+
+# --- Tarea 2.5: una sola politica de «rendimiento vigente» y una sola busqueda de obra ----------
+
+
+def _es_estimado(nodo: ast.AST) -> bool:
+    """`TipoRendimiento.ESTIMADO` (o su `.value`) dentro de una comparacion."""
+    return any(
+        isinstance(n, ast.Attribute)
+        and n.attr == "ESTIMADO"
+        and isinstance(n.value, ast.Name)
+        and n.value.id == "TipoRendimiento"
+        for n in ast.walk(nodo)
+    )
+
+
+def _politicas_de_vigencia(archivo: Path) -> list[int]:
+    """Lineas de cada `a and b` que compara con `TipoRendimiento.ESTIMADO` y con un `<=`: la
+    politica de «rendimiento estimado vigente a la fecha» escrita por su cuenta."""
+    return sorted(
+        nodo.lineno
+        for nodo in ast.walk(_arbol(archivo))
+        if isinstance(nodo, ast.BoolOp)
+        and isinstance(nodo.op, ast.And)
+        and any(isinstance(v, ast.Compare) and _es_estimado(v) for v in nodo.values)
+        and any(
+            isinstance(v, ast.Compare) and any(isinstance(op, ast.LtE) for op in v.ops)
+            for v in nodo.values
+        )
+    )
+
+
+def test_la_politica_de_vigencia_vive_en_un_solo_sitio():
+    sitios = {
+        ruta: lineas
+        for ruta in _lineas_de_produccion()
+        if (lineas := _politicas_de_vigencia(RAIZ / ruta))
+    }
+    assert list(sitios) == ["aplicacion/elaboracion.py"], sitios
+    assert len(sitios["aplicacion/elaboracion.py"]) == 1, "solo es_rendimiento_vigente la escribe"
+
+
+def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
+    fuentes = {
+        "x = r.tipo is TipoRendimiento.ESTIMADO and r.fecha <= fecha\n": [1],
+        "x = r.tipo == TipoRendimiento.ESTIMADO.value and r.fecha <= fecha\n": [1],
+        "x = r.tipo is TipoRendimiento.MEDIDO and r.fecha <= fecha\n": [],
+        "x = r.tipo is TipoRendimiento.ESTIMADO and r.fecha == fecha\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"vigencia_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _politicas_de_vigencia(archivo)
+    assert detectadas == fuentes
+

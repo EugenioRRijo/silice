@@ -104,7 +104,7 @@ from core.budget import (
     plan_secuencial,
 )
 from core.budget.instantanea import composiciones_de_presupuesto
-from core.catalog import Catalogo, CatalogoIncompleto, insumos_desconocidos, proponer_rendimiento
+from core.catalog import Catalogo, CatalogoIncompleto, insumos_desconocidos
 from core.contracts import Dominio, ItemComputo, OrigenTipo, ParametrosCosto
 from core.contracts.apu import TipoRendimiento
 from core.contracts.presupuesto import Presupuesto
@@ -183,7 +183,9 @@ def crear_presupuesto(
     try:
         composiciones = catalogo.composiciones(codigos, fecha=peticion.fecha)
     except CatalogoIncompleto:
-        por_declarar = _rendimientos_por_declarar(sesion, catalogo, codigos, peticion.fecha)
+        por_declarar = aplicacion_elaboracion.rendimientos_por_declarar(
+            sesion, items, peticion.fecha
+        )
         if not por_declarar:
             raise  # falta otra cosa (un precio de la lista vigente): el 409 de siempre
         sin_estimado = ", ".join(entrada.codigo_partida for entrada in por_declarar)
@@ -196,7 +198,13 @@ def crear_presupuesto(
                     "/partidas/{codigo}/rendimientos (tipo 'estimado', fecha no posterior a la "
                     "del presupuesto) y vuelva a enviar el presupuesto"
                 ),
-                rendimientos_por_declarar=por_declarar,
+                rendimientos_por_declarar=[
+                    RendimientoPorDeclararRespuesta(
+                        codigo_partida=entrada.codigo_partida,
+                        propuesta=propuesta_respuesta(entrada.propuesta),
+                    )
+                    for entrada in por_declarar
+                ],
             ).model_dump(mode="json"),
         )
     parametros = _parametros_costo(peticion)
@@ -1009,34 +1017,6 @@ def _plan(
             ),
         )
         for periodo in periodos
-    ]
-
-
-def _rendimientos_por_declarar(
-    sesion: Session, catalogo: Catalogo, codigos: Sequence[str], fecha: date
-) -> list[RendimientoPorDeclararRespuesta]:
-    """UC-01, flujo 3b (INV-088): las partidas sin rendimiento estimado vigente a `fecha`, cada una
-    con la propuesta de `proponer_rendimiento` (RF-26).
-
-    Vigente es lo que `Catalogo.composicion` exige para reconstruir un APU: un rendimiento ESTIMADO
-    de fecha no posterior a la del presupuesto; es el mismo criterio de
-    `ui.elaboracion.rendimientos_por_declarar`, que la API no puede importar.
-
-    `Catalogo.composiciones` resuelve la lista de precios antes que los rendimientos, asi que sin
-    lista vigente a `fecha` el `CatalogoIncompleto` es de la lista, no de 3b: se relanza aqui
-    (`Catalogo.lista_vigente`, 409 con solo `detalle`) antes de clasificar nada (U-1).
-    """
-    catalogo.lista_vigente(fecha)
-    return [
-        RendimientoPorDeclararRespuesta(
-            codigo_partida=codigo,
-            propuesta=propuesta_respuesta(proponer_rendimiento(sesion, codigo)),
-        )
-        for codigo in codigos
-        if not any(
-            rendimiento.tipo is TipoRendimiento.ESTIMADO and rendimiento.fecha <= fecha
-            for rendimiento in catalogo.rendimientos(codigo)
-        )
     ]
 
 
