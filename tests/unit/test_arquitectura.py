@@ -2402,16 +2402,63 @@ def _usa_ruta_sin_cache(modulo: object) -> bool:
     )
 
 
+def _es_cabecera_de_cache(valor: object) -> bool:
+    """Un diccionario de cabeceras con `Cache-Control` (sin mirar mayusculas)."""
+    from collections.abc import Mapping
+
+    return isinstance(valor, Mapping) and any(
+        isinstance(clave, str) and clave.lower() == "cache-control" for clave in valor
+    )
+
+
+def _importados(arbol: ast.Module) -> dict[str, object]:
+    """Nombre local -> objeto, de cada `from x import y` absoluto del modulo que se puede
+    resolver (`y` como atributo de `x` o como su submodulo). Lo que no se importa se ignora."""
+    import importlib
+
+    hallados: dict[str, object] = {}
+    for nodo in ast.walk(arbol):
+        if not (isinstance(nodo, ast.ImportFrom) and nodo.module and not nodo.level):
+            continue
+        try:
+            origen = importlib.import_module(nodo.module)
+        except ImportError:
+            continue
+        for alias in nodo.names:
+            nombre = alias.asname or alias.name
+            if hasattr(origen, alias.name):
+                hallados[nombre] = getattr(origen, alias.name)
+            else:
+                try:
+                    hallados[nombre] = importlib.import_module(f"{nodo.module}.{alias.name}")
+                except ImportError:
+                    continue
+    return hallados
+
+
 def _cabecera_de_cache_a_mano(archivo: Path) -> list[int]:
     """Lineas de cada texto `"Cache-Control"` del codigo (una clave de `headers=` o de
-    `response.headers[...]`); los docstrings que la nombran no cuentan."""
-    return sorted(
-        nodo.lineno
-        for nodo in ast.walk(_arbol(archivo))
-        if isinstance(nodo, ast.Constant)
-        and isinstance(nodo.value, str)
-        and nodo.value.lower() == "cache-control"
-    )
+    `response.headers[...]`) y de cada uso de un diccionario con esa cabecera importado de otro
+    modulo (`SIN_CACHE` por nombre, o `modulo.SIN_CACHE`). Los docstrings que la nombran no
+    cuentan; el texto `"no-store"` suelto tampoco (es el valor, no la cabecera)."""
+    arbol = _arbol(archivo)
+    importados = _importados(arbol)
+    lineas: set[int] = set()
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Constant):
+            if isinstance(nodo.value, str) and nodo.value.lower() == "cache-control":
+                lineas.add(nodo.lineno)
+        elif isinstance(nodo, ast.Name) and isinstance(nodo.ctx, ast.Load):
+            if _es_cabecera_de_cache(importados.get(nodo.id)):
+                lineas.add(nodo.lineno)
+        elif (
+            isinstance(nodo, ast.Attribute)
+            and isinstance(nodo.value, ast.Name)
+            and nodo.value.id in importados
+            and _es_cabecera_de_cache(getattr(importados[nodo.value.id], nodo.attr, None))
+        ):
+            lineas.add(nodo.lineno)
+    return sorted(lineas)
 
 
 def test_un_router_sin_cache_no_pone_la_cabecera_a_mano():
@@ -2439,6 +2486,22 @@ def test_la_cabecera_a_mano_ve_la_falta(tmp_path):
     )
     assert _cabecera_de_cache_a_mano(archivo) == [2, 4]
 
+
+def test_la_cabecera_a_mano_ve_un_sin_cache_importado(tmp_path):
+    """Anexo A.7: el diccionario `{"Cache-Control": ...}` de otro modulo, importado por nombre o
+    leido como atributo del modulo, es la misma cabecera a mano. El texto `"no-store"` de
+    `api.sin_cache` no es la cabecera (solo su valor)."""
+    archivo = tmp_path / "ruta.py"
+    archivo.write_text(
+        "from api.rutas.indices import SIN_CACHE\n"
+        "from api.rutas import reajuste\n"
+        "from api.sin_cache import SIN_CACHE as VALOR\n"
+        'def f():\n    raise HTTPException(404, "x", headers=SIN_CACHE)\n'
+        "def g(response):\n    response.headers.update(reajuste.SIN_CACHE)\n"
+        "def h():\n    return VALOR\n",
+        encoding="utf-8",
+    )
+    assert _cabecera_de_cache_a_mano(archivo) == [5, 7]
 
 
 def test_la_guardia_reconoce_los_routers_sin_cache():
