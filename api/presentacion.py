@@ -8,8 +8,8 @@ El contrato sigue con punto decimal: la coma y el punto de miles los pone el nav
 los campos que vuelven tal cual (`aplicacion.cifras.texto_de_cifra`).
 
 `tests/unit/test_arquitectura.py::test_la_api_presenta_cifras_en_un_solo_sitio` prohíbe presentar
-por su cuenta en el resto de `api/`: un `quantize`, un `ROUND_HALF_*`, un `format(x, "f")` o una
-función privada `Decimal -> str` van aquí.
+por su cuenta en el resto de `api/`: un `quantize`, un `ROUND_HALF_*`, un `format(x, "f")` (o su
+forma `f"{x:f}"`), un `str(<Decimal>)` o una función privada `Decimal -> str` van aquí.
 """
 
 from __future__ import annotations

@@ -1430,15 +1430,113 @@ def _es_sitio_de_presentacion(nodo: ast.AST) -> bool:
     return nombre.startswith("ROUND_HALF_")
 
 
+def _campos_decimales(arbol: ast.AST) -> tuple[set[str], set[str]]:
+    """Nombres de campo de clase anotados con `Decimal` (`Decimal | None` incluido) y los
+    anotados con otro numero (`int`, `float`). Los anotados `str` no cuentan como otra cosa: son
+    los esquemas de respuesta, que llevan el mismo nombre con la cifra ya en texto."""
+    decimales: set[str] = set()
+    otros: set[str] = set()
+    for clase in ast.walk(arbol):
+        if not isinstance(clase, ast.ClassDef):
+            continue
+        for campo in clase.body:
+            if isinstance(campo, ast.AnnAssign) and isinstance(campo.target, ast.Name):
+                if _menciona(campo.annotation, "Decimal"):
+                    decimales.add(campo.target.id)
+                elif _menciona(campo.annotation, "int") or _menciona(campo.annotation, "float"):
+                    otros.add(campo.target.id)
+    return decimales, otros
+
+
+@functools.cache
+def _campos_decimales_del_programa() -> frozenset[str]:
+    """Los campos de clase que en todo el programa (el nucleo incluido: la API lee sus contratos)
+    son `Decimal` y en ninguna clase son otro numero: `c.total` no se lee como `Decimal` porque
+    algun `total: int` lo vuelve ambiguo (limite conocido de la guardia: no ve tipos)."""
+    decimales: set[str] = set()
+    otros: set[str] = set()
+    for paquete in sorted(PAQUETES_DEL_PROGRAMA):
+        for archivo in _archivos(paquete):
+            de_aqui, otros_de_aqui = _campos_decimales(_arbol(archivo))
+            decimales |= de_aqui
+            otros |= otros_de_aqui
+    return frozenset(decimales - otros)
+
+
+def _es_un_decimal(nodo: ast.expr, parametros: set[str], campos: frozenset[str]) -> bool:
+    """`Decimal(...)`, un parametro anotado `Decimal` o `x.campo` con `campo` decimal."""
+    if isinstance(nodo, ast.Call):
+        return (isinstance(nodo.func, ast.Name) and nodo.func.id == "Decimal") or (
+            isinstance(nodo.func, ast.Attribute) and nodo.func.attr == "Decimal"
+        )
+    if isinstance(nodo, ast.Name):
+        return nodo.id in parametros
+    return isinstance(nodo, ast.Attribute) and nodo.attr in campos
+
+
+def _str_de_un_decimal(arbol: ast.AST, campos: frozenset[str]) -> set[int]:
+    """Los `id` de cada `str(<Decimal>)` del arbol. Un parametro cuenta dentro de su funcion."""
+
+    def es_str(nodo: ast.AST) -> bool:
+        return (
+            isinstance(nodo, ast.Call)
+            and isinstance(nodo.func, ast.Name)
+            and nodo.func.id == "str"
+            and len(nodo.args) == 1
+            and not nodo.keywords
+        )
+
+    hallados = {
+        id(n) for n in ast.walk(arbol) if es_str(n) and _es_un_decimal(n.args[0], set(), campos)
+    }
+    for funcion in ast.walk(arbol):
+        if not isinstance(funcion, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            continue
+        argumentos = funcion.args
+        parametros = {
+            p.arg
+            for p in (*argumentos.posonlyargs, *argumentos.args, *argumentos.kwonlyargs)
+            if _menciona(p.annotation, "Decimal")
+        }
+        hallados.update(
+            id(n)
+            for n in ast.walk(funcion)
+            if es_str(n) and _es_un_decimal(n.args[0], parametros, campos)
+        )
+    return hallados
+
+
+def _es_formato_fijo(nodo: ast.AST) -> bool:
+    """`{v:f}` o `{v:.2f}` dentro de un f-string (lo mismo que `format(v, "f")`)."""
+    return (
+        isinstance(nodo, ast.FormattedValue)
+        and isinstance(nodo.format_spec, ast.JoinedStr)
+        and bool(nodo.format_spec.values)
+        and all(isinstance(v, ast.Constant) for v in nodo.format_spec.values)
+        and "".join(str(v.value) for v in nodo.format_spec.values).endswith("f")
+    )
+
+
 def _sitios_de_presentacion(archivo: Path) -> list[int]:
     """Lineas donde `archivo` presenta una cifra por su cuenta: `.quantize(`, un `ROUND_HALF_*`,
-    `format(x, "f")` (o `".2f"`) o una funcion privada `Decimal -> str`. Lo que va dentro de un
-    sitio no cuenta otra vez: `_x(v: Decimal) -> str: return format(v, "f")` es un sitio, y
+    `format(x, "f")` (o `".2f"`), su forma de f-string `f"{x:f}"`, un `str(<Decimal>)` o una
+    funcion privada `Decimal -> str`. Lo que va dentro de un sitio no cuenta otra vez:
+    `_x(v: Decimal) -> str: return format(v, "f")` es un sitio, y
     `v.quantize(q, rounding=ROUND_HALF_UP)` tambien. `texto_de_cifra` no es un sitio."""
+    arbol = _arbol(archivo)
+    campos_del_archivo, _ = _campos_decimales(arbol)
+    str_decimales = _str_de_un_decimal(
+        arbol, _campos_decimales_del_programa() | frozenset(campos_del_archivo)
+    )
     dentro: set[int] = set()
     sitios: list[int] = []
-    for nodo in ast.walk(_arbol(archivo)):
-        if id(nodo) in dentro or not _es_sitio_de_presentacion(nodo):
+    for nodo in ast.walk(arbol):
+        if id(nodo) in dentro:
+            continue
+        es_sitio = (
+            _es_sitio_de_presentacion(nodo) or _es_formato_fijo(nodo) or id(nodo) in str_decimales
+        )
+        if not es_sitio:
             continue
         sitios.append(nodo.lineno)
         dentro.update(id(hijo) for hijo in ast.walk(nodo))
@@ -1465,7 +1563,21 @@ PRESENTACION_SUELTA_EN_API: dict[str, int] = {
     "api/rutas/mercado.py": 1,
     "api/rutas/procura.py": 1,
     "api/rutas/produccion_planta.py": 5,
-    "api/rutas/rendimientos.py": 1,
+    # Anexo A.7 (2026-11-18, DS-42): lo que la guardia ve desde que cuenta `f"{x:.Nf}"` y
+    # `str(<Decimal>)`. Los `f"{x:f}"` pasaron a `presentacion.exacto` (mismo texto); estos no:
+    # `str` escribe `1E+2` donde `exacto` escribe `100`, y `.2f` redondea al par donde
+    # `redondeado` lo hace al alza, asi que moverlos cambia la salida.
+    "api/esquemas.py": 1,
+    "api/rutas/catalogo.py": 1,
+    "api/rutas/composicion.py": 1,
+    "api/rutas/fcas.py": 3,
+    "api/rutas/indices.py": 1,
+    "api/rutas/listas.py": 4,
+    "api/rutas/obras.py": 4,
+    "api/rutas/precios_empresa.py": 1,
+    "api/rutas/presupuestos_calculo.py": 1,
+    # 1 de 2026-11-17 y 2 de A.7 (`str(rendimiento.valor)` y `str(dispersion.media)`).
+    "api/rutas/rendimientos.py": 3,
 }
 
 
@@ -1498,6 +1610,30 @@ def test_la_api_presenta_cifras_en_un_solo_sitio_ve_la_falta(tmp_path):
         'a = format(v, "f")\nb = format(v, ".2f")\nc = format(n, "d")\n': [1, 2],
         "def publica(v: Decimal) -> str:\n    return texto_de_cifra(v)\n": [],
         "def _z(v: int) -> str:\n    return str(v)\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"modulo_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _sitios_de_presentacion(archivo)
+    assert detectadas == fuentes
+
+
+def test_la_presentacion_ve_los_f_strings_y_el_str_de_un_decimal(tmp_path):
+    """Anexo A.7: `f"{v:f}"` es `format(v, "f")`, y `str(<Decimal>)` presenta la cifra a su manera
+    (con notacion cientifica: `str(Decimal("1E+2")) == "1E+2"`). Un `Decimal` se reconoce por su
+    anotacion: un parametro, o un campo de clase (del archivo o del programa)."""
+    fuentes = {
+        't = f"{v:f}"\n': [1],
+        't = f"total {v:.2f} Bs"\n': [1],
+        't = f"{n:d} {texto}"\n': [],
+        "def f(v: Decimal) -> dict:\n    return {'x': str(v)}\n": [2],
+        "def f(v: Decimal | None) -> dict:\n    return {'x': None if v is None else str(v)}\n": [2],
+        "t = str(Decimal('1.5'))\n": [1],
+        "class C:\n    cuenta_rara_de_prueba: Decimal\n\n\ndef f(c):\n"
+        "    return str(c.cuenta_rara_de_prueba)\n": [6],
+        "def f(e: ValueError) -> str:\n    return str(e)\n": [],
+        "def f(c):\n    return str(c.nombre_raro_de_prueba)\n": [],
     }
     detectadas = {}
     for numero, fuente in enumerate(fuentes):
@@ -2302,6 +2438,7 @@ def test_la_cabecera_a_mano_ve_la_falta(tmp_path):
         encoding="utf-8",
     )
     assert _cabecera_de_cache_a_mano(archivo) == [2, 4]
+
 
 
 def test_la_guardia_reconoce_los_routers_sin_cache():
