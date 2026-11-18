@@ -4,6 +4,11 @@ Las cantidades estan como texto en la base, asi que toda suma se hace en Python 
 La validacion de entradas es de este servicio (la DDL no la hace). El servicio hace `flush`;
 quien llama decide el `commit`. Un despacho nunca se bloquea por dejar la existencia negativa
 (RT-S4-2): se registra y el tablero lo marca.
+
+Un conteo fisico cierra el pasado de su material (prueba en vivo 2026-11-18): el ajuste guarda la
+diferencia con la existencia del dia en que se registra, asi que un movimiento con fecha anterior o
+igual registrado despues cambiaria la existencia posterior al conteo. Se niega, como en el cierre de
+inventario de un ERP; un reconteo el mismo dia si se admite (ve todo lo de esa fecha).
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from produccion.costos import validar_periodo
@@ -113,6 +118,27 @@ def crear_material(
     return material
 
 
+def ultimo_conteo(sesion: Session, material_id: int) -> date | None:
+    """La fecha del ultimo conteo fisico (ajuste) del material, o `None` si nunca se conto."""
+    return sesion.scalar(
+        select(func.max(Movimiento.fecha)).where(
+            Movimiento.material_id == material_id, Movimiento.tipo == "ajuste"
+        )
+    )
+
+
+def exigir_fecha_abierta(sesion: Session, material: Material, fecha: date) -> None:
+    """`ErrorDeInventario` si `fecha` no pasa del ultimo conteo fisico de `material`: ese conteo
+    cerro su pasado. Lo usan todos los movimientos menos el propio conteo."""
+    cerrado = ultimo_conteo(sesion, material.id)
+    if cerrado is not None and fecha <= cerrado:
+        raise ErrorDeInventario(
+            f"El material {material.codigo} tiene un conteo físico del {cerrado:%d/%m/%Y}, que "
+            f"cerró su existencia hasta ese día: registre el movimiento con una fecha posterior al "
+            f"{cerrado:%d/%m/%Y} o, si el conteo estaba mal, haga un conteo nuevo."
+        )
+
+
 def _registrar(
     sesion: Session,
     material_id: int,
@@ -128,7 +154,9 @@ def _registrar(
     nota: str = "",
     ahora: datetime | None = None,
 ) -> Movimiento:
-    _material(sesion, material_id)
+    material = _material(sesion, material_id)
+    if tipo != "ajuste":
+        exigir_fecha_abierta(sesion, material, fecha)
     movimiento = Movimiento(
         material_id=material_id,
         fecha=fecha,
@@ -229,6 +257,13 @@ def registrar_ajuste_por_conteo(
         or conteo_fisico < CERO
     ):
         raise ErrorDeInventario("El conteo físico debe ser un número de cero o más.")
+    material = _material(sesion, material_id)
+    anterior = ultimo_conteo(sesion, material_id)
+    if anterior is not None and fecha < anterior:
+        raise ErrorDeInventario(
+            f"El material {material.codigo} ya tiene un conteo físico del {anterior:%d/%m/%Y}: un "
+            f"conteo nuevo va en esa fecha o después."
+        )
     diferencia = conteo_fisico - existencia(sesion, material_id, fecha)
     if diferencia == CERO:
         return None

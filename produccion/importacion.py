@@ -29,7 +29,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from produccion.conectores.bascula import LecturaBascula, PesajeDudoso, PesajeLeido
-from produccion.inventario import ErrorDeInventario, de_toneladas, registrar_despacho
+from produccion.inventario import (
+    ErrorDeInventario,
+    de_toneladas,
+    registrar_despacho,
+    ultimo_conteo,
+)
 from produccion.modelo import Material, Movimiento, PesajeSospechoso
 
 __all__ = [
@@ -44,6 +49,7 @@ __all__ = [
 MOTIVO_MATERIAL_DESCONOCIDO = "material desconocido"
 MOTIVO_SIN_DENSIDAD = "material sin densidad"
 MOTIVO_CANTIDAD_EN_CERO = "peso neto en cero"
+MOTIVO_FECHA_CERRADA = "fecha cerrada por un conteo físico"
 
 _CERO = Decimal(0)
 _LOTE_DE_TICKETS = 500
@@ -234,6 +240,10 @@ def importar(sesion: Session, lectura: LecturaBascula, *, usuario: str) -> Resul
                 cantidad, motivo = None, MOTIVO_MATERIAL_DESCONOCIDO
             else:
                 cantidad, motivo = _cantidad_de_despacho(material, pesaje.neto_t)
+            if material is not None and cantidad is not None:
+                cerrado = ultimo_conteo(sesion, material.id)
+                if cerrado is not None and pesaje.fecha <= cerrado:
+                    cantidad, motivo = None, MOTIVO_FECHA_CERRADA
             if material is None or cantidad is None:
                 a_la_bandeja += a_bandeja(_sospechoso_de_pesaje(lectura.huella, pesaje, motivo))
                 continue

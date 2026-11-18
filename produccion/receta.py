@@ -26,6 +26,7 @@ from produccion.inventario import (
     CERO,
     ErrorDeInventario,
     de_toneladas,
+    exigir_fecha_abierta,
     producido_en_periodo,
     registrar_consumo,
     registrar_entrada,
@@ -295,6 +296,10 @@ def producir_con_receta(
         if c.tipo == "propio":
             material = _material(sesion, c.codigo)
             consumos.append((material, de_toneladas(material, c.cantidad_por_t * toneladas)))
+    # Un conteo fisico cierra el pasado de su material: se mira antes de escribir nada.
+    exigir_fecha_abierta(sesion, material_producto, fecha)
+    for material, _ in consumos:
+        exigir_fecha_abierta(sesion, material, fecha)
     nota = f"receta {receta.id}"
     entrada = registrar_entrada(
         sesion,
