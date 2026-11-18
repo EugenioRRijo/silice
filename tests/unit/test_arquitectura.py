@@ -1529,7 +1529,6 @@ MODULOS_GRANDES: dict[str, int] = {
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
-    "api/rutas/presupuestos.py": 1092,
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,
@@ -1578,6 +1577,74 @@ def test_el_tope_ve_la_falta(tmp_path):
     (tmp_path / "tests" / "test_x.py").write_text("x = 1\n" * 5000, encoding="utf-8")
     (tmp_path / "start.py").write_text("x = 1\n", encoding="utf-8")
     assert _lineas_de_produccion(tmp_path) == {"api/grande.py": TOPE_DE_LINEAS + 1, "start.py": 1}
+
+
+# --- Ola 4: partir un modulo grande sin perder nombres ------------------------------------------
+#
+# Mover sin cambiar conducta: el modulo partido sigue ofreciendo, y lista en `__all__`, los nombres
+# publicos que definia antes de partirse. Cada lista se midio ANTES de mover (dd468057) con las
+# definiciones de primer nivel que no empiezan por `_` (funciones, clases y asignaciones).
+
+
+def _definidos(archivo: Path) -> set[str]:
+    """Los nombres publicos que `archivo` define en su primer nivel, leidos del AST: un import no
+    cuenta (es de otro modulo)."""
+    nombres: set[str] = set()
+    for nodo in _arbol(archivo).body:
+        if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            nombres.add(nodo.name)
+        elif isinstance(nodo, ast.Assign):
+            nombres.update(t.id for t in nodo.targets if isinstance(t, ast.Name))
+        elif isinstance(nodo, ast.AnnAssign) and isinstance(nodo.target, ast.Name):
+            nombres.add(nodo.target.id)
+    return {nombre for nombre in nombres if not nombre.startswith("_")}
+
+
+def test_definidos_ve_funciones_clases_y_asignaciones_y_no_imports(tmp_path):
+    archivo = tmp_path / "modulo.py"
+    archivo.write_text(
+        "from x import importado\nA = 1\nB: int = 2\n_C = 3\n\n\nclass D: ...\n\n\n"
+        "def e(): ...\n\n\nasync def f(): ...\n\n\ndef _g(): ...\n",
+        encoding="utf-8",
+    )
+    assert _definidos(archivo) == {"A", "B", "D", "e", "f"}
+
+
+#: Tarea 4.1: lo que `api/rutas/presupuestos.py` definia antes de partirse en `presupuestos`,
+#: `presupuestos_escenarios` y `presupuestos_ayudas`.
+PUBLICOS_DE_RUTAS_PRESUPUESTOS = frozenset(
+    {
+        "MAX_PENDIENTES_CON_PROPUESTAS",
+        "actualizar_presupuesto",
+        "base_de_escenarios",
+        "calcular_presupuesto",
+        "calcular_presupuesto_excel",
+        "crear_presupuesto",
+        "crear_proyecto_de_presupuestos",
+        "declarar_rendimiento_propuesto",
+        "descartar_version_revalorada",
+        "escenarios_de_presupuesto",
+        "escenarios_en_csv",
+        "exportar_presupuesto_excel",
+        "importar_presupuesto_de_tercero",
+        "informe_de_auditoria",
+        "listar_presupuestos",
+        "obtener_presupuesto",
+        "revalorar_presupuesto",
+        "router",
+    }
+)
+
+
+def test_rutas_presupuestos_reexporta_lo_mismo():
+    from api.rutas import presupuestos
+
+    assert sorted(getattr(presupuestos, "__all__", ())) == sorted(PUBLICOS_DE_RUTAS_PRESUPUESTOS)
+    assert [n for n in sorted(PUBLICOS_DE_RUTAS_PRESUPUESTOS) if not hasattr(presupuestos, n)] == []
+    # Entre los tres no nace ni se pierde un nombre publico: solo cambian de casa.
+    familia = ("presupuestos", "presupuestos_escenarios", "presupuestos_ayudas")
+    definidos = set().union(*(_definidos(RAIZ / "api" / "rutas" / f"{m}.py") for m in familia))
+    assert definidos == PUBLICOS_DE_RUTAS_PRESUPUESTOS
 
 
 # --- Tarea 1.6: toda tabla esta en el modelo de datos -------------------------------------------
