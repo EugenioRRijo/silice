@@ -65,6 +65,7 @@ __all__ = [
     "es_de_desglose",
     "guardar_con_la_version",
     "por_guardar",
+    "sin_lo_de_la_base",
     "trazas_del_borrador",
     "unir",
     "vigentes_de_la_base",
@@ -263,6 +264,23 @@ def guardar_con_la_version(
     for codigo, trazas in pendientes.items():
         guardar_trazas(sesion, codigo, trazas, ahora=ahora)
     return pendientes
+
+
+def sin_lo_de_la_base(
+    base: hoja.Borrador,
+    actual: hoja.Borrador,
+    desperdicios: Mapping[str, Sequence[TrazaDesperdicio]],
+    vigentes: Mapping[str, Sequence[TrazaDesperdicio]],
+) -> dict[str, tuple[TrazaDesperdicio, ...]]:
+    """Las trazas de `desperdicios` de las partidas cuyo desglose todavía cambia contra las
+    `vigentes` (`cambios_de_desglose`). La de una partida que ya muestra lo de la base (otra
+    persona o Componer guardaron ese mismo desglose) sobra en el borrador: si se quedara, taparía
+    el próximo guardado de la partida en la base (arbitraje de A.6, acta DS-48i)."""
+    return {
+        codigo: tuple(trazas)
+        for codigo, trazas in desperdicios.items()
+        if cambios_de_desglose(base, actual, {codigo: trazas}, vigentes)
+    }
 
 
 def vigentes_de_la_base(

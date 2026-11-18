@@ -71,6 +71,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from aplicacion import hoja, hoja_borradores, hoja_desperdicio, hoja_vista, importaciones
+from aplicacion.desperdicio import TrazaDesperdicio
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
@@ -82,6 +83,7 @@ from core.catalog import Catalogo
 
 __all__ = [
     "CODIGO_SOLO_PRIMERA",
+    "DESGLOSE_YA_GUARDADO",
     "MENSAJE_SOLO_LECTURA",
     "BorradorYaGuardado",
     "Guardado",
@@ -100,6 +102,9 @@ MENSAJE_SOLO_LECTURA = (
 CODIGO_SOLO_PRIMERA = (
     "El código se elige solo al guardar la primera versión; las siguientes siguen su numeración."
 )
+#: Guardar solo el desglose y, al releer la base, encontrarlo ya guardado (otra persona o Componer
+#: lo guardaron después de editar): no hay nada que escribir (arbitraje de A.6, acta DS-48i).
+DESGLOSE_YA_GUARDADO = "Ese desglose ya está guardado."
 
 
 class VersionSoloLectura(Exception):  # noqa: N818
@@ -193,7 +198,7 @@ def guardar(
         elif codigo is not None:
             raise HojaInvalida(CODIGO_SOLO_PRIMERA)
         elif _solo_desglose(vivo, borrador):
-            return _desglose(sesion, vivo, borrador, fuente, responsable)  # sigue abierto
+            return _desglose(sesion, vivo, borrador)  # sigue abierto
         else:
             guardado = _version(
                 sesion, vivo, borrador, fuente, responsable, confirmar_version_mas_nueva
@@ -224,7 +229,9 @@ def _version(
             )
             if mas_nueva is not None:
                 raise VersionMasNueva(mas_nueva, abierta.codigo)
-        desgloses = _cuantos_desgloses(sesion, vivo, borrador)
+        desgloses = _cuantos_desgloses(
+            vivo, borrador, hoja_desperdicio.vigentes_de_la_base(sesion, vivo)
+        )
         # 2026-11-13: las trazas del desperdicio que dejo la Hoja, en esta misma transaccion
         hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
         with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
@@ -259,51 +266,58 @@ def _solo_desglose(vivo: BorradorVivo, borrador: hoja.Borrador) -> bool:
     )
 
 
-def _cuantos_desgloses(sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador) -> int:
-    """Las lineas cuyo desglose cambia contra las trazas vigentes de AHORA en la base."""
+def _cuantos_desgloses(
+    vivo: BorradorVivo,
+    borrador: hoja.Borrador,
+    de_la_base: dict[str, tuple[TrazaDesperdicio, ...]],
+) -> int:
+    """Las lineas cuyo desglose cambia contra las trazas vigentes de AHORA en la base
+    (`hoja_desperdicio.vigentes_de_la_base`, leidas una vez en la transaccion de escritura)."""
     abierta = vivo.abierta
     assert abierta is not None
     return len(
         hoja_desperdicio.cambios_de_desglose(
-            abierta.borrador,
-            borrador,
-            vivo.desperdicios,
-            hoja_desperdicio.vigentes_de_la_base(sesion, vivo),
+            abierta.borrador, borrador, vivo.desperdicios, de_la_base
         )
     )
 
 
-def _desglose(
-    sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador, fuente: str, responsable: str
-) -> Guardado:
+def _desglose(sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador) -> Guardado:
     """Escribe las trazas del borrador sin crear version (anexo A.6): la version abierta, el
     `rev` y el borrador quedan como estaban, salvo la cuenta de cambios, que se vacia. Si al
-    releer la base ya no hay nada que escribir (otra persona guardo ese mismo desglose), el
-    `HojaInvalida` de siempre («No hay cambios para guardar»)."""
+    releer la base ya no hay nada que escribir (otra persona o Componer guardaron ese mismo
+    desglose), `HojaInvalida(DESGLOSE_YA_GUARDADO)` sin escribir, y el borrador se cuenta contra
+    la base de ahora: lo que ya coincide con ella deja de ser un cambio."""
     abierta = vivo.abierta
     assert abierta is not None
     if abierta.solo_lectura:
         raise VersionSoloLectura(MENSAJE_SOLO_LECTURA)
     total = hoja_vista.monto(hoja_vista.calculo(vivo)[0].elaboracion.presupuesto.total)
     try:
-        desgloses = _cuantos_desgloses(sesion, vivo, borrador)  # antes, `BEGIN IMMEDIATE`
+        # la primera lectura: antes, `BEGIN IMMEDIATE` (la sesion de escritura)
+        de_la_base = hoja_desperdicio.vigentes_de_la_base(sesion, vivo)
+        desgloses = _cuantos_desgloses(vivo, borrador, de_la_base)
         escritas = hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
-        if desgloses and escritas:
+        guardo = bool(desgloses and escritas)
+        if guardo:
             sesion.commit()
         else:
             sesion.rollback()
     except BaseException:
         sesion.rollback()
         raise
+    vivo.calculo = None
+    if not guardo:
+        vivo.vigentes_del_desperdicio = {**vivo.vigentes_del_desperdicio, **de_la_base}
+        vivo.desperdicios = hoja_desperdicio.sin_lo_de_la_base(
+            abierta.borrador, borrador, vivo.desperdicios, de_la_base
+        )
+        raise HojaInvalida(DESGLOSE_YA_GUARDADO)
     # lo que la version abierta muestra ahora: contra eso se cuenta lo que quede por guardar
     vivo.vigentes_del_desperdicio = {
         **vivo.vigentes_del_desperdicio,
         **{codigo: tuple(trazas) for codigo, trazas in escritas.items()},
     }
-    vivo.calculo = None
-    if not (desgloses and escritas):
-        motivo = hoja.motivo_para_no_guardar(abierta.borrador, borrador, fuente, responsable)
-        raise HojaInvalida(motivo or "No hay cambios para guardar.")
     lineas = plural(desgloses, "línea", "líneas")
     return Guardado(
         codigo=abierta.codigo,
