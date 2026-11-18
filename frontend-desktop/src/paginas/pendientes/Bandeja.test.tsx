@@ -381,6 +381,60 @@ describe("Pendientes: foco 1, quien revisa", () => {
   });
 });
 
+// Prueba en vivo (2026-11-18): «Ver el catálogo» de un pendiente de OTRA carpeta abría el catálogo de la carpeta activa,
+// porque la herramienta de un espacio no lleva carpeta en su ruta. Ahora se abre antes la carpeta del pendiente (con la
+// misma pregunta y aviso de siempre) o, si la cuenta no puede cambiar de carpeta, no se ofrece el paso y se dice por qué.
+describe("Pendientes: una herramienta de un espacio para un pendiente de otra carpeta", () => {
+  const DELA_EMPRESA: PendienteDeObra = { ...SIN_APU, carpeta: null, obra_id: 7, obra: "Casa Demo" };
+
+  test("abre antes la carpeta del pendiente y luego la herramienta", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([SIN_APU]);
+    montar();
+    await lista();
+    await u.click(within(detalle()).getByRole("button", { name: "Ver el catálogo" }));
+    await waitFor(() => expect(ruta()).toBe("/precios/catalogo"), { timeout: 3000 });
+    expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: SUR }]);
+  });
+
+  test("si el pendiente es de la carpeta de la empresa, vuelve a ella antes de abrir la herramienta", async () => {
+    const u = userEvent.setup();
+    instalar((estado) => {
+      estado.actual = caso(SUR);
+    });
+    bandeja = responder([DELA_EMPRESA]);
+    montar();
+    await lista();
+    await u.click(within(detalle()).getByRole("button", { name: "Ver el catálogo" }));
+    await waitFor(() => expect(ruta()).toBe("/precios/catalogo"), { timeout: 3000 });
+    expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1);
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+  });
+
+  test("si el pendiente es de la carpeta abierta, no cambia de carpeta", async () => {
+    const u = userEvent.setup();
+    instalar((estado) => {
+      estado.actual = caso(SUR);
+    });
+    bandeja = responder([SIN_APU]);
+    montar();
+    await lista();
+    await u.click(within(detalle()).getByRole("button", { name: "Ver el catálogo" }));
+    await waitFor(() => expect(ruta()).toBe("/precios/catalogo"), { timeout: 3000 });
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+    expect(servidor.de("DELETE", "/v1/casos/actual")).toEqual([]);
+  });
+
+  test("una cuenta que no puede abrir otra carpeta no recibe el botón: se le dice la carpeta del pendiente", async () => {
+    const ana = sesionDe("ana");
+    bandeja = responder([SIN_APU]);
+    montar({ sesion: { ...ana, acciones: ana.acciones.filter((a) => a !== "abrir_carpeta") } });
+    await lista();
+    expect(within(detalle()).queryByRole("button")).toBeNull();
+    expect(detalle()).toHaveTextContent("Esta herramienta trabaja con la carpeta abierta y este pendiente es de la carpeta «Carpeta Sur». Su cuenta no puede abrir otra carpeta.");
+  });
+});
+
 // Contrato de rutas 2.4: el pendiente de «entregar» o de «actualizar precios» abre su subvista, y el botón se ofrece según
 // el permiso de ESA pantalla (no el de la sección que antes las absorbía).
 describe("Pendientes: las subvistas que abren los pendientes (F6, T5)", () => {
