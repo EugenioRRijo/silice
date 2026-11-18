@@ -117,6 +117,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
       const metodo = init?.method ?? "GET";
       if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return json(LINEA_BASE);
       if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return json(VALUACIONES);
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-13", hallazgos: 0, errores: 0 });
       if (url.startsWith("/v1/procura?") && metodo === "GET") return procura();
       if (url === "/v1/procura/compras" && metodo === "POST") return compra();
@@ -499,6 +500,7 @@ describe("Valuaciones: la causa que sugiere la procura (Tarea 24)", () => {
       const metodo = init?.method ?? "GET";
       if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return json(LINEA_BASE);
       if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return json(VALUACIONES);
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-13", hallazgos: 0, errores: 0 });
       if (url.startsWith("/v1/procura?") && metodo === "GET") return json(PROCURA);
       return json({ detalle: `ruta inesperada ${metodo} ${url}` }, 500);

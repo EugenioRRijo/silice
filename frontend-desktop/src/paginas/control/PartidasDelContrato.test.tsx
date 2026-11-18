@@ -66,6 +66,7 @@ describe("Control: autocompletado de la partida (AC2)", () => {
       if (url.pathname === "/v1/control/linea-base" && metodo === "GET") return json(LINEA_BASE);
       if (url.pathname === "/v1/control/valuaciones" && metodo === "GET") return json(VALUACIONES);
       if (url.pathname === "/v1/control/partidas" && metodo === "GET") return partidas();
+      if (url.pathname === "/v1/control/costos") return json({ filas: [] });
       if (url.pathname === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 0, errores: 0 });
       if (url.pathname === "/v1/control/costos") return json({});
       return json({ detalle: `ruta inesperada ${metodo} ${url.pathname}` }, 500);
@@ -292,6 +293,7 @@ describe("Control: un código repetido en dos renglones se ofrece una vez por re
       if (url.pathname === "/v1/control/linea-base" && metodo === "GET") return json(LINEA_BASE);
       if (url.pathname === "/v1/control/valuaciones" && metodo === "GET") return json(VALUACIONES);
       if (url.pathname === "/v1/control/partidas" && metodo === "GET") return json(POR_RENGLON);
+      if (url.pathname === "/v1/control/costos") return json({ filas: [] });
       if (url.pathname === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 0, errores: 0 });
       return json({ detalle: `ruta inesperada ${metodo} ${url.pathname}` }, 500);
     });

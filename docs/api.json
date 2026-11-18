@@ -4226,14 +4226,14 @@
         "description": "Anota un costo incurrido; se convierte con la tasa de su fecha al calcular.",
         "operationId": "anotar_costo_v1_control_costos_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AnotarCosto"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -4242,6 +4242,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Costos",
+        "description": "Los costos incurridos de la obra (solo lectura).",
+        "operationId": "costos_v1_control_costos_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostosRespuesta"
                 }
               }
             }
@@ -17696,6 +17737,26 @@
           "motivo"
         ],
         "title": "CostoRespuesta"
+      },
+      "CostosRespuesta": {
+        "properties": {
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filas"
+        ],
+        "title": "CostosRespuesta",
+        "description": "Los costos incurridos anotados, en el orden en que se anotaron (prueba en vivo\n2026-11-18). Anularlos necesita expediente de `core/` (`aplicacion/control_costos.py`)."
       },
       "CotizarVersion": {
         "properties": {

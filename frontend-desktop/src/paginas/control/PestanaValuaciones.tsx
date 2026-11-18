@@ -28,7 +28,7 @@ import {
   useAccion,
   useCargaSuave,
 } from "./logica";
-import type { CausaDeRetraso, LineaEditable, RegistroDeValuacion, Valuaciones } from "./logica";
+import type { CausaDeRetraso, Fila, LineaEditable, RegistroDeValuacion, Valuaciones } from "./logica";
 import { fechaDeRanura, periodoCompacto } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { MONEDAS } from "../../comun/monedas";
@@ -453,6 +453,30 @@ function Costo({ proyecto, partidas, alCambiar }: { proyecto: string; partidas: 
   );
 }
 
+// Prueba en vivo del 2026-11-18, hallazgo 3: los costos anotados se ven. Anularlos necesita un cambio del núcleo
+// (aplicacion/control_costos.py): mientras tanto la nota lo dice para que se revise antes de anotar.
+const COLUMNAS_COSTOS = columnasDe(["Fecha", "Monto", "Moneda", "Partida", "Fuente", "Responsable"], ["Monto"]);
+
+function CostosAnotados({ proyecto, clave }: { proyecto: string; clave: number }) {
+  const { alExpirar } = useAplicacion();
+  const carga = useCargaSuave<{ filas: Fila[] }>(rutaDe("/v1/control/costos", proyecto, { n: String(clave) }), alExpirar);
+  if (carga.estado === "cargando") return null;
+  if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudieron cargar los costos anotados" />;
+  return (
+    <div>
+      <h3 className="cds--type-heading-compact-01">Costos incurridos anotados</h3>
+      {carga.datos.filas.length === 0 ? (
+        <p className="cds--type-body-compact-01">Aún no hay costos anotados.</p>
+      ) : (
+        <TablaDensa etiqueta="Costos incurridos anotados" columnas={COLUMNAS_COSTOS} filas={conId(carga.datos.filas)} />
+      )}
+      <p className="silice-control__nota cds--type-helper-text-01">
+        Un costo anotado todavía no se puede anular: revise el monto, la moneda y la fecha antes de anotarlo.
+      </p>
+    </div>
+  );
+}
+
 // A 1366 px las nueve columnas no caben con el período en dos fechas completas: se lee «02/11 a 06/11/2026» y el texto
 // completo queda en el title. Es solo presentación; el orden y el valor de la fila no cambian.
 const COLUMNAS_DE_VALUACIONES = columnasDe(COLUMNAS_VALUACIONES, NUMERICAS_VALUACIONES).map((c) =>
@@ -525,6 +549,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         <Importar proyecto={proyecto} alCambiar={alCambiar} />
         <Anular proyecto={proyecto} datos={datos} alCambiar={alCambiar} />
         <Costo proyecto={proyecto} partidas={partidas} alCambiar={alCambiar} />
+        <CostosAnotados proyecto={proyecto} clave={clave} />
       </section>
     </>
   );

@@ -131,6 +131,7 @@ describe("Control de obra", () => {
       if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return lineaBase();
       if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return valuaciones();
       if (url.startsWith("/v1/control/calculo")) return calculo();
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 2, errores: 1 });
       if (url === "/v1/control/recuperacion/opciones") return json({ opciones: OPCIONES });
       if (url === "/v1/control/recuperacion/elegir") return json({ version: "OB-002" });
@@ -558,6 +559,7 @@ describe("Control de obra", () => {
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       if ((init?.method ?? "GET") === "POST") return json({ detalle: "falta la partida" }, 422);
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url.startsWith("/v1/control/valuaciones")) return json(VALUACIONES);
       return json(LINEA_BASE);
     });
@@ -573,6 +575,7 @@ describe("Control de obra", () => {
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       if ((init?.method ?? "GET") === "POST") return json({ detalle: "falta la partida" }, 422);
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url.startsWith("/v1/control/valuaciones")) return json(VALUACIONES);
       return json(LINEA_BASE);
     });
@@ -815,6 +818,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
       if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return json(LINEA_BASE);
       if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return json(VALUACIONES);
       if (url.startsWith("/v1/control/calculo")) return json(CALCULO);
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 0, errores: 0 });
       if (url === "/v1/control/costos") return json({});
       if (url === "/v1/control/parametros") return json({ cambiados: 1 });

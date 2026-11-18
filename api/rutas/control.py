@@ -5,9 +5,10 @@ propia:
 
 - `GET /linea-base` y `POST /linea-base`, `POST /parametros`: la línea base vigente, su
   declaración y los parámetros de control con su naturaleza;
-- `GET /valuaciones`, `POST /valuaciones`, `POST /valuaciones/{id}/anular`, `POST /costos`, `POST
-  /importar/informe` y `POST /importar`: las valuaciones (con la causa de retraso de cada línea y la
-  lista de causas que se pueden elegir, MP-7), su anulación, los costos y el XLSX;
+- `GET /valuaciones`, `POST /valuaciones`, `POST /valuaciones/{id}/anular`, `GET /costos`, `POST
+  /costos`, `POST /importar/informe` y `POST /importar`: las valuaciones (con la causa de retraso
+  de cada línea y la lista de causas que se pueden elegir, MP-7), su anulación, los costos y el
+  XLSX;
 - `GET /calculo`: el valor ganado, las alertas, la reproyección y el atraso por partida con su
   causa (MP-7), que se calculan siempre (UC-20 1 a 3);
 - `POST /recuperacion/opciones` y `POST /recuperacion/elegir`: las opciones a pedido y la
@@ -55,6 +56,7 @@ from api.sin_eco import RutaSinEco
 from aplicacion import control as logica
 from aplicacion.causas import CAUSAS, atrasos
 from aplicacion.control_corte import ultimo_corte
+from aplicacion.control_costos import filas_de_costos
 from aplicacion.control_hallazgos import hallazgos_de_valuaciones
 from aplicacion.precios_declarados import precios_convertidos
 from aplicacion.proyectos import resolver_proyecto
@@ -538,6 +540,19 @@ def anotar_costo(
         partida=peticion.partida,
     )
     return ListoRespuesta()
+
+
+class CostosRespuesta(BaseModel):
+    """Los costos incurridos anotados, en el orden en que se anotaron (prueba en vivo
+    2026-11-18). Anularlos necesita expediente de `core/` (`aplicacion/control_costos.py`)."""
+
+    filas: list[Fila]
+
+
+@router.get("/costos", response_model=CostosRespuesta)
+def costos(sesion: SesionDep, proyecto: str) -> CostosRespuesta:
+    """Los costos incurridos de la obra (solo lectura)."""
+    return CostosRespuesta(filas=filas_de_costos(sesion, _existe(sesion, proyecto)))
 
 
 class InformeRespuesta(BaseModel):
