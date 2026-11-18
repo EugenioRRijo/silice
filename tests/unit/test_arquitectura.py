@@ -1533,7 +1533,6 @@ MODULOS_GRANDES: dict[str, int] = {
     "scripts/recorrido_ux_playwright.py": 2321,
     "scripts/fusion_verificar.py": 2124,
     "adapters/hoja_empresa/reglas.py": 1707,
-    "aplicacion/control.py": 1584,
     "aplicacion/composicion.py": 1471,
     "adapters/hoja_empresa/pdf.py": 1389,
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
@@ -1786,6 +1785,100 @@ def test_rutas_hoja_reparte_lo_mismo():
     assert definidos["hoja_cadena"] == EN_HOJA_CADENA
     quedan = PUBLICOS_DE_RUTAS_HOJA - EN_HOJA_LECTURAS - EN_HOJA_CADENA
     assert definidos["hoja"] == quedan | {"router"}
+
+
+#: Tarea 4.3: lo que `aplicacion/control.py` definia antes de partirse (75 nombres; su `__all__`
+#: de entonces listaba 56, y `aplicacion.reajuste` ya importaba tres de los que faltaban).
+PUBLICOS_DE_CONTROL = frozenset(
+    {
+        "COLUMNAS_ALERTAS",
+        "COLUMNAS_DECISIONES",
+        "COLUMNAS_INDICADORES",
+        "COLUMNAS_LINEAS",
+        "COLUMNAS_OPCIONES",
+        "COLUMNAS_PARAMETROS",
+        "COLUMNAS_REPROYECCION",
+        "COLUMNAS_VALUACIONES",
+        "ControlInvalido",
+        "DIAS_POR_OMISION",
+        "DiasDelPlan",
+        "Hueco",
+        "LARGO_MAXIMO_A_CORREGIR",
+        "MAXIMO_DE_PARTIDAS_DEL_CONTRATO",
+        "MENSAJE_SIN_DECLARADOS",
+        "METODOS_DE_PRECIOS",
+        "METODO_COMPROBACION",
+        "METODO_DECLARADOS",
+        "METODO_ESCALATORIA",
+        "METODO_NINGUNO",
+        "NATURALEZA_DATO",
+        "NATURALEZA_SUPUESTO",
+        "NO_APLICA",
+        "NO_DISPONIBLE",
+        "PARAMETROS_EDITABLES",
+        "PLANTILLAS_DEL_NUCLEO",
+        "PartidaDelContrato",
+        "PartidasDeUnaVersion",
+        "PrecioElegido",
+        "alertas_en_filas",
+        "anular",
+        "calcular_el_control",
+        "calcular_las_opciones",
+        "catalogo_de_frases",
+        "con_tildes",
+        "corte_por_defecto",
+        "curva_pv_ev_ac",
+        "declarar_linea_base",
+        "describir_linea_base",
+        "dia_con_fecha",
+        "dias_de_las_etiquetas",
+        "dias_por_periodo_del_plan",
+        "elegir_opcion",
+        "estado_de_valuaciones",
+        "estudios_que_suma",
+        "filas_de_decisiones",
+        "filas_de_indicadores",
+        "filas_de_opciones",
+        "filas_de_parametros",
+        "filas_de_reproyeccion",
+        "filas_de_valuaciones",
+        "filas_del_plan_reproyectado",
+        "guardar_los_parametros",
+        "hay_valuaciones",
+        "importar_excel",
+        "impuestos_de_valuaciones",
+        "leer_excel",
+        "lineas_desde_filas",
+        "parametros_actuales",
+        "parametros_desde_filas",
+        "partidas_de_la_linea_base",
+        "partidas_de_la_version",
+        "perspectiva_de_la_linea_base",
+        "precios_del_corte",
+        "registrar_costo_real",
+        "registrar_y_controlar",
+        "renglones_de_la_version",
+        "subtotales_de_valuaciones",
+        "supuestos_de_opcion",
+        "tablas_de_control",
+        "texto_monto",
+        "tiene_linea_base",
+        "valuaciones_para_anular",
+        "versiones_para_la_linea_base",
+        "versiones_revaloradas",
+    }
+)
+
+
+def test_control_reexporta_lo_mismo():
+    from aplicacion import control
+
+    assert sorted(control.__all__) == sorted(PUBLICOS_DE_CONTROL)
+    assert [n for n in sorted(PUBLICOS_DE_CONTROL) if not hasattr(control, n)] == []
+    # Entre los seis no nace ni se pierde un nombre publico: solo cambian de casa.
+    familia = ("", "_comun", "_linea_base", "_calculo", "_tablas", "_parametros")
+    definidos = set().union(*(_definidos(RAIZ / "aplicacion" / f"control{m}.py") for m in familia))
+    assert definidos == PUBLICOS_DE_CONTROL
 
 
 # --- Tarea 1.6: toda tabla esta en el modelo de datos -------------------------------------------
