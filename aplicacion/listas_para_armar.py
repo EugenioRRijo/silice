@@ -34,6 +34,7 @@ from sqlalchemy.orm import Session
 
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.precios_empresa import cargar_referencia_maprex
+from aplicacion.proyectos import proyecto_por_nombre
 from aplicacion.tablas_carpeta import CarpetaDeTrabajo
 from core import models
 from core.budget.moneda import moneda_del_proyecto
@@ -357,9 +358,7 @@ def valoracion_de_la_obra(sesion: Session, proyecto: str, fecha: date) -> Valora
     La Hoja valora a la fecha del borrador: si la carpeta tiene listas pero todas rigen después,
     el mensaje dice esa fecha y desde cuándo rige la primera (no es que falte la lista: todavía no
     rige). Componer, que arma a hoy, conserva el mensaje de `lista_para_armar`."""
-    fila = sesion.scalars(
-        select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
-    ).one_or_none()
+    fila = proyecto_por_nombre(sesion, proyecto)
     if fila is None:
         raise ValueError(f"No hay ninguna obra «{proyecto}» en esta carpeta de trabajo.")
     if _vigente(sesion, fecha) is None and (primera := _primera_posterior(sesion, fecha)):

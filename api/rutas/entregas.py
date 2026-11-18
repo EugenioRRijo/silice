@@ -32,7 +32,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -45,6 +44,7 @@ from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import aprobaciones
 from aplicacion import entrega as logica
 from aplicacion.equipo import operacion_sensible_permitida
+from aplicacion.proyectos import proyecto_por_nombre
 from core import models
 from core.budget import canonico
 from operacion.instalacion import sesion_de_instalacion
@@ -122,9 +122,7 @@ class EntregaPeticion(BaseModel):
 
 
 def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:
-    proyecto = sesion.scalars(
-        select(models.Proyecto).where(models.Proyecto.nombre == nombre)
-    ).first()
+    proyecto = proyecto_por_nombre(sesion, nombre)
     if proyecto is None:
         raise HTTPException(404, f"La obra «{nombre}» no existe en esta carpeta.")
     return proyecto

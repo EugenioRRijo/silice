@@ -1046,11 +1046,9 @@ SELECT_EN_RUTAS: dict[str, int] = {
     "api/rutas/admin_claves_api.py": 1,
     "api/rutas/admin_empresas_registradas.py": 1,
     "api/rutas/cuentas.py": 1,
-    "api/rutas/entregas.py": 1,
     "api/rutas/listas.py": 1,
-    "api/rutas/presupuestos.py": 4,
+    "api/rutas/presupuestos.py": 3,
     "api/rutas/produccion.py": 2,
-    "api/rutas/reajuste.py": 1,
     "api/rutas/rendimientos.py": 1,
 }
 
@@ -1060,7 +1058,6 @@ MODELOS_EN_RUTAS: frozenset[str] = frozenset(
         "api/rutas/entregas.py",
         "api/rutas/listas.py",
         "api/rutas/presupuestos.py",
-        "api/rutas/reajuste.py",
         "api/rutas/rendimientos.py",
         "api/rutas/revision.py",
     }
@@ -1563,7 +1560,7 @@ def _lineas_de_produccion(raiz: Path = RAIZ) -> dict[str, int]:
 #: Modulos que ya pasan del tope (2026-11-17, a802d728) -> sus lineas ese dia. Ninguno crece; la
 #: ola 4 los parte dejando una fachada que reexporta.
 MODULOS_GRANDES: dict[str, int] = {
-    "aplicacion/hoja.py": 3195,
+    "aplicacion/hoja.py": 3194,
     "scripts/recorrido_ux_playwright.py": 2321,
     "scripts/fusion_verificar.py": 2124,
     "adapters/hoja_empresa/reglas.py": 1707,
@@ -1574,7 +1571,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
-    "api/rutas/presupuestos.py": 1112,
+    "api/rutas/presupuestos.py": 1110,
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,
@@ -1820,3 +1817,20 @@ def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
         detectadas[fuente] = _politicas_de_vigencia(archivo)
     assert detectadas == fuentes
 
+
+#: La busqueda de obra por nombre escrita a mano; vive solo en `aplicacion/proyectos.py`.
+BUSQUEDA_DE_OBRA_POR_NOMBRE = "select(models.Proyecto).where(models.Proyecto.nombre =="
+
+
+def test_una_sola_busqueda_de_obra_por_nombre():
+    """En `api/` y `aplicacion/` (lo que atiende al programa) la consulta vive en
+    `aplicacion.proyectos.proyecto_por_nombre`. Los sembradores de `scripts/` quedan fuera: corren
+    sobre una base nueva, antes del programa."""
+    sitios = sorted(
+        ruta
+        for paquete in ("api", "aplicacion")
+        for archivo in _archivos(paquete)
+        if BUSQUEDA_DE_OBRA_POR_NOMBRE in archivo.read_text(encoding="utf-8")
+        and (ruta := _ruta(archivo))
+    )
+    assert sitios == ["aplicacion/proyectos.py"]

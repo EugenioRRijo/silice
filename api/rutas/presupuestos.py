@@ -80,7 +80,7 @@ from aplicacion import actualizacion as aplicacion_actualizacion
 from aplicacion import elaboracion as aplicacion_elaboracion
 from aplicacion.impuestos import con_iva
 from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto
-from aplicacion.proyectos import resolver_proyecto
+from aplicacion.proyectos import proyecto_por_nombre, resolver_proyecto
 from core import models
 from core.budget import (
     Comparativo,
@@ -930,9 +930,7 @@ def _detector_de_atipicos() -> DetectorAtipicos | None:
 
 def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:
     """El proyecto de ese nombre; `LookupError` (404) si no existe (`POST /proyectos` lo crea)."""
-    proyecto = sesion.scalars(
-        select(models.Proyecto).where(models.Proyecto.nombre == nombre)
-    ).one_or_none()
+    proyecto = proyecto_por_nombre(sesion, nombre)
     if proyecto is None:
         raise LookupError(f"no hay ninguna obra {nombre!r} en el catálogo")
     return proyecto

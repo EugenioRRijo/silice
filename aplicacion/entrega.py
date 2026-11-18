@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from adapters.espacio import cargar_espacio
 from adapters.espacio.serie import espacio_a_objeto
+from aplicacion.proyectos import proyecto_por_nombre
 from aplicacion.texto_cadena import mensaje_legible
 from asistente import registro as registro_ia
 from core import models
@@ -203,9 +204,7 @@ class EstadoDeLaCadena:
 
 def estado_de_la_cadena(session: Session, proyecto_nombre: str) -> EstadoDeLaCadena | None:
     """Verifica la cadena del proyecto recalculando cada huella; `None` si el proyecto no existe."""
-    proyecto = session.scalars(
-        select(models.Proyecto).where(models.Proyecto.nombre == proyecto_nombre)
-    ).first()
+    proyecto = proyecto_por_nombre(session, proyecto_nombre)
     if proyecto is None:
         return None
     resultado = cadena.verificar_cadena(session, proyecto, anexos_de=anexos_de_cadena)

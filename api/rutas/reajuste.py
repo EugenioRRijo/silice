@@ -26,7 +26,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep
@@ -35,7 +34,7 @@ from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
 from aplicacion import reajuste as logica
 from aplicacion.errores import HojaInvalida
-from core import models
+from aplicacion.proyectos import proyecto_por_nombre
 from core.budget.reajuste import COMPONENTES, EstadoEstudio, Estructura, Mecanismo
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
@@ -143,10 +142,7 @@ class GuardadoRespuesta(BaseModel):
 
 
 def _hay_proyecto(sesion, nombre: str) -> bool:
-    return (
-        sesion.scalars(select(models.Proyecto).where(models.Proyecto.nombre == nombre)).first()
-        is not None
-    )
+    return proyecto_por_nombre(sesion, nombre) is not None
 
 
 def _proyecto_existente(sesion, nombre: str) -> None:

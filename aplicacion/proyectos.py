@@ -184,6 +184,15 @@ def crear_proyecto_nuevo(
     return limpio
 
 
+def proyecto_por_nombre(sesion: Session, nombre: str) -> models.Proyecto | None:
+    """La obra cuyo nombre es **exactamente** `nombre`, o `None`. Nunca lee los digitos como el
+    `id` (eso es `resolver_proyecto`): es la unica busqueda de obra por nombre fuera del nucleo
+    (plan de desenredo, tarea 2.5). El nombre es unico (`proyectos.nombre`). No escribe."""
+    return sesion.scalars(
+        select(models.Proyecto).where(models.Proyecto.nombre == nombre)
+    ).one_or_none()
+
+
 def resolver_proyecto(sesion: Session, referencia: str) -> models.Proyecto | None:
     """El proyecto al que apunta `referencia`, o `None` si no existe (V-11).
 
@@ -201,9 +210,7 @@ def resolver_proyecto(sesion: Session, referencia: str) -> models.Proyecto | Non
         porcodigo = sesion.get(models.Proyecto, int(referencia))
         if porcodigo is not None:
             return porcodigo
-    return sesion.scalars(
-        select(models.Proyecto).where(models.Proyecto.nombre == referencia)
-    ).first()
+    return proyecto_por_nombre(sesion, referencia)
 
 
 def _vigente(sesion, nombre: str) -> models.Presupuesto | None:
