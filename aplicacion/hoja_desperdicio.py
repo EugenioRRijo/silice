@@ -14,6 +14,10 @@ edita la neta y el porcentaje, nunca el producto (riesgo del diseño §12), como
   traza del borrador que sigue casando con su línea se escribe como un guardado nuevo de la
   partida, **unida a las vigentes** (`por_guardar`): la traza vive por código de partida, así que
   sin la unión el catálogo y las otras versiones perderían la suya.
+- **El desglose es un cambio** (anexo A.6 del desenredo; acta DS-3, opción B, y DS-48): una línea
+  de material que sigue igual en la versión abierta y en el borrador pero muestra otro desglose
+  cuenta como un cambio (`cambios_de_desglose`, campo `desperdicio`). Si es lo único que cambió,
+  guardar escribe solo las trazas, sin versión nueva (`hoja_guardado`).
 
 Límite conocido (en la bitácora): si después Componer vuelve a guardar la partida, su guardado
 manda y la versión de la Hoja deja de mostrar el desglose; la cantidad sigue siendo la correcta y
@@ -39,6 +43,7 @@ from aplicacion.desperdicio import (
     TrazaDesperdicio,
     cantidad_con_desperdicio,
     guardar_trazas,
+    neta_y_porcentaje,
     porcentaje_escrito,
     trazas_de_las_filas,
     trazas_vigentes,
@@ -50,14 +55,20 @@ if TYPE_CHECKING:
     from aplicacion.hoja_borradores import BorradorVivo
 
 __all__ = [
+    "CAMPO_DESGLOSE",
     "MENSAJE_DESPERDICIOS",
-    "MENSAJE_SOLO_DESGLOSE",
+    "cambios_de_desglose",
+    "cambios_del_borrador",
     "con_desperdicio_en_materiales",
+    "cuantos_desgloses",
     "desgloses_visibles",
+    "es_de_desglose",
     "guardar_con_la_version",
     "por_guardar",
+    "sin_lo_de_la_base",
     "trazas_del_borrador",
     "unir",
+    "vigentes_de_la_base",
 ]
 
 #: El navegador manda un porcentaje por material, en el orden del APU; otra cuenta solo llega de
@@ -66,12 +77,9 @@ MENSAJE_DESPERDICIOS = (
     "materiales: los desperdicios enviados no corresponden a las líneas de materiales del APU: "
     "vuelva a cargarlo."
 )
-#: Acta DS-3 (depuración del 2026-11-15, L3, opción A): la traza se guarda con la versión, y una
-#: edición que deja la misma composición no la cambia; por eso no entra.
-MENSAJE_SOLO_DESGLOSE = (
-    "Ese cambio deja la misma cantidad y solo reparte distinto el desperdicio. Sílice guarda el "
-    "desglose junto con un cambio de cantidad: cambie la cantidad o deje el desglose como estaba."
-)
+#: El campo del `CambioEditado` de un desglose que cambió (la clave es la de la línea del APU,
+#: `{partida}|material|{n}`, como las de `hoja.cambios_entre`).
+CAMPO_DESGLOSE = "desperdicio"
 
 _CERO = Decimal(0)
 
@@ -149,6 +157,71 @@ def desgloses_visibles(
     return trazas_de_las_filas(filas, unir(propias, vigentes))
 
 
+def cambios_de_desglose(
+    base: hoja.Borrador,
+    actual: hoja.Borrador,
+    desperdicios: Mapping[str, Sequence[TrazaDesperdicio]],
+    vigentes: Mapping[str, Sequence[TrazaDesperdicio]],
+) -> list[hoja.CambioEditado]:
+    """Un `CambioEditado("apu", "{partida}|material|{n}", "desperdicio", antes, después)` por
+    línea de material cuyo desglose («0,8 + 25 %», o «» sin él) cambia de la versión abierta
+    `base` al borrador `actual`: en `base` con las `vigentes` de la partida y en `actual` con las
+    trazas del borrador (`desperdicios`) delante (`desgloses_visibles`).
+
+    Solo cuenta la línea que es la misma en las dos (misma posición, insumo y cantidad): si su
+    cantidad cambió, ese cambio ya lo registra `hoja.cambios_entre` y el desglose viaja con él.
+    Una partida que no está en `base` (borrador en blanco, partida nueva) no cuenta."""
+    cambios: list[hoja.CambioEditado] = []
+    for codigo, propias in desperdicios.items():
+        antes, ahora = base.composiciones.get(codigo), actual.composiciones.get(codigo)
+        if antes is None or ahora is None:
+            continue
+        de_la_base = vigentes.get(codigo, ())
+        mostradas_antes = _textos(desgloses_visibles(hoja.filas_de_apu(antes)[0], (), de_la_base))
+        mostradas_ahora = _textos(
+            desgloses_visibles(hoja.filas_de_apu(ahora)[0], propias, de_la_base)
+        )
+        for fila, (linea_antes, linea_ahora) in enumerate(
+            zip(antes.materiales, ahora.materiales, strict=False), start=1
+        ):
+            texto_antes, texto_ahora = mostradas_antes.get(fila, ""), mostradas_ahora.get(fila, "")
+            if linea_antes == linea_ahora and texto_antes != texto_ahora:
+                cambios.append(
+                    hoja.CambioEditado(
+                        "apu", f"{codigo}|material|{fila}", CAMPO_DESGLOSE, texto_antes, texto_ahora
+                    )
+                )
+    return cambios
+
+
+def _textos(visibles: Sequence[tuple[int, TrazaDesperdicio]]) -> dict[int, str]:
+    return {fila: neta_y_porcentaje(traza) for fila, traza in visibles}
+
+
+def es_de_desglose(cambio: hoja.CambioEditado) -> bool:
+    """Si `cambio` es el de un desglose (`cambios_de_desglose`) y no el de una celda."""
+    return cambio.objeto == "apu" and cambio.campo == CAMPO_DESGLOSE
+
+
+def cuantos_desgloses(cambios: Sequence[hoja.CambioEditado]) -> int:
+    """Cuántos de `cambios` son de un desglose (`ResumenHoja.desgloses`)."""
+    return sum(1 for cambio in cambios if es_de_desglose(cambio))
+
+
+def cambios_del_borrador(vivo: BorradorVivo) -> list[hoja.CambioEditado]:
+    """Los cambios que cuenta la vista (`hoja_vista.calculo`): los de las celdas de la versión
+    abierta (o de un borrador en blanco) al borrador `vivo` (`hoja.cambios_entre`) y, detrás, los
+    de sus desgloses, contra las vigentes anotadas al editar (`cambios_de_desglose`)."""
+    if vivo.abierta is not None:
+        base = vivo.abierta.borrador
+    else:
+        base = hoja.Borrador(fecha=vivo.borrador.fecha, moneda=vivo.borrador.moneda)
+    return [
+        *hoja.cambios_entre(base, vivo.borrador),
+        *cambios_de_desglose(base, vivo.borrador, vivo.desperdicios, vivo.vigentes_del_desperdicio),
+    ]
+
+
 def trazas_del_borrador(vivo: BorradorVivo, codigo: str) -> tuple[TrazaDesperdicio, ...]:
     """Las trazas que la Hoja dejó en el borrador `vivo` para la partida `codigo` (aún sin
     guardar)."""
@@ -181,11 +254,37 @@ def por_guardar(
 
 def guardar_con_la_version(
     sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador, *, ahora: datetime
-) -> None:
-    """Escribe en `sesion` las trazas del borrador que `por_guardar` pide. **Sin `commit`**: va en
-    la transacción de la versión (`hoja_guardado`), que confirma o deshace todo junto."""
+) -> dict[str, list[TrazaDesperdicio]]:
+    """Escribe en `sesion` las trazas del borrador que `por_guardar` pide y las devuelve por
+    partida. **Sin `commit`**: va en la transacción de la versión (`hoja_guardado`), o sola si
+    solo cambió el desglose (anexo A.6), y quien guarda confirma o deshace todo junto."""
     pendientes = por_guardar(
         borrador, vivo.desperdicios, lambda codigo: trazas_vigentes(sesion, codigo)
     )
     for codigo, trazas in pendientes.items():
         guardar_trazas(sesion, codigo, trazas, ahora=ahora)
+    return pendientes
+
+
+def sin_lo_de_la_base(
+    base: hoja.Borrador,
+    actual: hoja.Borrador,
+    desperdicios: Mapping[str, Sequence[TrazaDesperdicio]],
+    vigentes: Mapping[str, Sequence[TrazaDesperdicio]],
+) -> dict[str, tuple[TrazaDesperdicio, ...]]:
+    """Las trazas de `desperdicios` de las partidas cuyo desglose todavía cambia contra las
+    `vigentes` (`cambios_de_desglose`). La de una partida que ya muestra lo de la base (otra
+    persona o Componer guardaron ese mismo desglose) sobra en el borrador: si se quedara, taparía
+    el próximo guardado de la partida en la base (arbitraje de A.6, acta DS-48i)."""
+    return {
+        codigo: tuple(trazas)
+        for codigo, trazas in desperdicios.items()
+        if cambios_de_desglose(base, actual, {codigo: trazas}, vigentes)
+    }
+
+
+def vigentes_de_la_base(
+    sesion: Session, vivo: BorradorVivo
+) -> dict[str, tuple[TrazaDesperdicio, ...]]:
+    """Las trazas vigentes en la base de cada partida cuyo desglose editó la Hoja en `vivo`."""
+    return {codigo: tuple(trazas_vigentes(sesion, codigo)) for codigo in vivo.desperdicios}

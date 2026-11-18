@@ -21,6 +21,9 @@ export interface GuardadoRespuesta {
   total: Monto;
   primera: boolean;
   mensaje: string;
+  // Anexo A.6: falso si solo se guardó el desglose del desperdicio (`codigo` es la versión abierta, que sigue igual).
+  version_nueva?: boolean;
+  desgloses?: number;
 }
 
 export const rutaDeGuardar = (id: string) => `/v1/hoja/borradores/${id}/guardar`;
@@ -56,17 +59,37 @@ export interface DatosParaGuardar {
   primera: boolean;
   cambios: number;
   soloLectura: boolean;
+  // Anexo A.6: lo único que cambió es el desglose del desperdicio (no se pide fuente: la traza no tiene dónde guardarla).
+  soloDesglose?: boolean;
+}
+
+// Si lo único que cambió en el borrador son desgloses del desperdicio: guardar no crea versión (anexo A.6).
+export function esSoloDesglose(primera: boolean, cambios: number, desgloses: number): boolean {
+  return !primera && cambios > 0 && desgloses === cambios;
+}
+
+const lineas = (n: number) => (n === 1 ? "1 línea" : `${n} líneas`);
+
+export function textoDeDesgloseAGuardar(n: number, version: string): string {
+  return `Se guardará el desglose del desperdicio de ${lineas(n)}. La cantidad no cambia, así que la versión ${version} sigue siendo la misma.`;
+}
+
+// La mezcla (celdas y desgloses): la versión registra solo las celdas; los desgloses se dicen aparte (arbitraje de A.6, DS-48i).
+export function textoDeVersionAGuardar(cambios: number, desgloses: number, version: string): string {
+  const registrados = `Se registrarán ${textoDeCambiosAGuardar(cambios - desgloses)} en una versión nueva (sale de la ${version}).`;
+  return desgloses > 0 ? `${registrados} Con ella se guarda también el desglose del desperdicio de ${lineas(desgloses)}.` : registrados;
 }
 
 // Por qué una versión de solo lectura no se guarda (la dicen el diálogo de guardar y la nota de solo lectura, F4 2b).
 export const CAUSA_SOLO_LECTURA = "alguna partida ya no tiene composición vigente en el catálogo";
 
 // Por qué no se puede guardar todavía, o null si se puede (ui/hoja.py:1786 y 1882; el servidor vuelve a validar).
-export function motivoParaNoGuardar({ fuente, primera, cambios, soloLectura }: DatosParaGuardar): string | null {
+export function motivoParaNoGuardar({ fuente, primera, cambios, soloLectura, soloDesglose = false }: DatosParaGuardar): string | null {
   if (soloLectura) {
     return `Esta versión está en solo lectura: ${CAUSA_SOLO_LECTURA}.`;
   }
   if (!primera && cambios === 0) return "No hay cambios para guardar: edite alguna celda primero.";
+  if (soloDesglose) return null;
   if (fuente.trim() === "") {
     return primera
       ? "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
@@ -81,6 +104,9 @@ export function textoDeCambiosAGuardar(n: number): string {
 
 // Lo que se le dice a la persona al guardar (P:497-500 y 539-544, con tildes; el `mensaje` del servidor no se usa).
 export function textoDeExito(r: GuardadoRespuesta, proyecto: string): string {
+  if (r.version_nueva === false) {
+    return `Se guardó el desglose del desperdicio de ${lineas(r.desgloses ?? 0)}. La cantidad no cambió, así que la versión ${r.codigo} sigue siendo la misma.`;
+  }
   if (r.primera) {
     return (
       `Se guardó la primera versión ${r.codigo} de la obra ${proyecto} (total ${formatoEsVe(r.total.texto)}). ` +

@@ -73,7 +73,7 @@ export interface HojaDeLaObra extends PestanaDeLaHoja {
   abrirGuardado: () => void;
   alCrearVersion: AlCrearVersion;
   // El aviso «Versión guardada», que la sección pinta.
-  exito: { proyecto: string; texto: string } | null;
+  exito: { proyecto: string; texto: string; titulo?: string } | null;
   quitarExito: () => void;
   // Hay un diálogo de la Hoja abierto: el contenido de la sección queda `inert`.
   inerte: boolean;
@@ -193,6 +193,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     rev: estado.estado === "listo" ? estado.borrador.resumen.rev : 0,
     alExpirar,
     cerrarGuardado,
+    refrescarBorrador: refrescar,
     recargarVersiones,
     olvidarOfertas,
     elegirVersion,
@@ -319,6 +320,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
             version={estado.borrador.base.version}
             soloLectura={estado.borrador.base.solo_lectura}
             cambiosSinGuardar={estado.borrador.resumen.cambios}
+            desgloses={estado.borrador.resumen.desgloses ?? 0}
             total={estado.borrador.resumen.total}
             moneda={estado.borrador.resumen.moneda}
             usuario={usuarioDeSesion(sesion)}

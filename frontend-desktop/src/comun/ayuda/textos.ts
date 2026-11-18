@@ -253,7 +253,7 @@ export const GUIAS: readonly Guia[] = [
       {
         titulo: "Guardar y descargar",
         pasos: [
-          "Lo que cambia queda en el borrador. Cuando esté listo, pulse «Guardar versión…» (la primera vez, «Guardar primera versión…») en la franja de arriba, escriba de dónde salen los datos y confirme: nace una versión.",
+          "Lo que cambia queda en el borrador. Cuando esté listo, pulse «Guardar versión…» (la primera vez, «Guardar primera versión…») en la franja de arriba, escriba de dónde salen los datos y confirme: nace una versión. Si lo único que cambió es el desglose del desperdicio de un material (la misma cantidad, con otra neta y otro porcentaje), el botón del diálogo dice «Guardar el desglose»: guarda ese desglose, no pide la fuente y no crea versión; la versión abierta sigue siendo la misma.",
           "«Descargar Excel», al lado de la franja, baja el presupuesto en Excel; «Descargar PDF», en un PDF listo para imprimir o enviar, con el APU de cada partida después del presupuesto.",
           "Si las cantidades vienen de un archivo, en «Archivos y planos» pulse «Subir plano o cómputo»: un plano .dxf o .ifc, o un cómputo .csv que se lleva con «Llevar al presupuesto». Después guarde la versión igual.",
         ],

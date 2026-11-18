@@ -9,7 +9,9 @@ import {
   rutaDeCambios,
   rutaDeGuardar,
   textoDeCambiosAGuardar,
+  textoDeDesgloseAGuardar,
   textoDeExito,
+  textoDeVersionAGuardar,
   usuarioDeSesion,
 } from "./logicaGuardar";
 
@@ -164,5 +166,26 @@ describe("la lista de versiones cuando no se pudo volver a leer tras guardar", (
   });
   test("si ya estaba, no se repite", () => {
     expect(conVersionGuardada(lista, "002").versiones.map((x) => x.codigo)).toEqual(["002", "001"]);
+  });
+});
+
+describe("A.6: el desglose del desperdicio en plural (arbitraje de la revisión, DS-48i)", () => {
+  const r = { codigo: "002", proyecto: "OF-001", cambios: 0, total: { texto: "1", exacto: "1" }, primera: false, mensaje: "x" };
+
+  test("dos líneas con desglose dicen «2 líneas» al pedir guardar, en la mezcla y al guardar", () => {
+    expect(textoDeDesgloseAGuardar(2, "002")).toBe(
+      "Se guardará el desglose del desperdicio de 2 líneas. La cantidad no cambia, así que la versión 002 sigue siendo la misma.",
+    );
+    expect(textoDeVersionAGuardar(3, 2, "002")).toBe(
+      "Se registrarán 1 cambio en una versión nueva (sale de la 002). Con ella se guarda también el desglose del desperdicio de 2 líneas.",
+    );
+    expect(textoDeExito({ ...r, version_nueva: false, desgloses: 2 }, "OF-001")).toBe(
+      "Se guardó el desglose del desperdicio de 2 líneas. La cantidad no cambió, así que la versión 002 sigue siendo la misma.",
+    );
+  });
+
+  test("con una línea, en singular; sin desgloses, la versión no los menciona", () => {
+    expect(textoDeDesgloseAGuardar(1, "002")).toMatch(/de 1 línea\./);
+    expect(textoDeVersionAGuardar(2, 0, "002")).toBe("Se registrarán 2 cambios en una versión nueva (sale de la 002).");
   });
 });

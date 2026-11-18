@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_lineas_apu
+from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_lineas_apu, hoja_vista
 from aplicacion.control import declarar_linea_base
 from aplicacion.errores import HojaInvalida
 from aplicacion.listas_para_armar import declarar_moneda_de_la_carpeta
@@ -572,29 +572,29 @@ def test_una_version_en_otra_moneda_que_la_linea_base_no_se_compara(base):
     )
 
 
-# --- Depuración del 2026-11-15, L3 (acta DS-3, opción A): solo el desglose no entra ------------
-
-SOLO_DESGLOSE = (
-    "Ese cambio deja la misma cantidad y solo reparte distinto el desperdicio. Sílice guarda el "
-    "desglose junto con un cambio de cantidad: cambie la cantidad o deje el desglose como estaba."
-)
+# --- Anexo A.6 del desenredo (acta DS-3, opción B): el desglose cuenta como cambio -------------
 
 
-def test_una_edicion_que_solo_cambia_el_desglose_se_rechaza_y_el_borrador_no_cambia(base):
-    """El Cemento gris de OBRA-02 lleva 1; 0,8 + 25 % da 0,8 × 1,25 = 1 (a mano), la misma
-    cantidad: la composición no cambia y solo el desglose sería otro. Se rechaza; el borrador, el
-    `rev` y las trazas quedan como estaban. Mandar lo que ya hay no es error ni cambio."""
+def test_editar_solo_el_desglose_cuenta_como_cambio_y_sube_el_rev(base):
+    """El Cemento gris de OBRA-02 lleva 1 y no tiene traza; 0,8 + 25 % da 0,8 × 1,25 = 1 (a mano):
+    la composición no cambia, pero la Hoja mostrará «0,8 + 25 %» y guardar escribirá la traza. La
+    vista lo cuenta como un cambio de la fila 1 de materiales, el `rev` sube y repetir la edición
+    no lo vuelve a subir; quitar el porcentaje deja el borrador sin cambios."""
     vivo = _abierto(base)
-    antes = vivo.borrador
 
-    def editar(materiales, desperdicios):
+    def editar(rev, materiales, desperdicios):
         return hoja_edicion.editar_apu(
-            base, "ficha", vivo.id, 0, "OBRA-02", "6", materiales, ["1"], ["2"], desperdicios
+            base, "ficha", vivo.id, rev, "OBRA-02", "6", materiales, ["1"], ["2"], desperdicios
         )
 
-    with pytest.raises(HojaInvalida) as error:
-        editar(["0,8"], ["25"])
-    assert str(error.value) == SOLO_DESGLOSE
-    assert vivo.rev == 0 and vivo.borrador is antes and vivo.desperdicios == {}
-    igual = editar(["1"], [""])
-    assert igual.rev == 0 and igual.borrador is antes
+    editado = editar(0, ["0,8"], ["25"])
+    assert editado.rev == 1
+    desglose = CambioEditado("apu", "OBRA-02|material|1", "desperdicio", "", "0,8 + 25 %")
+    assert hoja_edicion.cambios_del_borrador(editado) == (1, [desglose])
+    resumen = hoja_vista.resumen(editado)
+    assert (resumen.cambios, resumen.desgloses) == (1, 1)
+    assert editar(1, ["0,8"], ["25"]).rev == 1
+    sin_desglose = editar(1, ["1"], [""])
+    assert sin_desglose.rev == 2
+    assert hoja_edicion.cambios_del_borrador(sin_desglose) == (2, [])
+    assert hoja_vista.resumen(sin_desglose).desgloses == 0

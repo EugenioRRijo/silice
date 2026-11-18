@@ -27944,6 +27944,10 @@
           "espacio_vacio": {
             "type": "boolean",
             "title": "Espacio Vacio"
+          },
+          "desgloses": {
+            "type": "integer",
+            "title": "Desgloses"
           }
         },
         "type": "object",
@@ -27957,7 +27961,8 @@
           "hay_plan",
           "version_mas_nueva",
           "guardado_como",
-          "espacio_vacio"
+          "espacio_vacio",
+          "desgloses"
         ],
         "title": "ResumenHojaRespuesta"
       },
@@ -30595,6 +30600,14 @@
           "mensaje": {
             "type": "string",
             "title": "Mensaje"
+          },
+          "version_nueva": {
+            "type": "boolean",
+            "title": "Version Nueva"
+          },
+          "desgloses": {
+            "type": "integer",
+            "title": "Desgloses"
           }
         },
         "type": "object",
@@ -30604,7 +30617,9 @@
           "cambios",
           "total",
           "primera",
-          "mensaje"
+          "mensaje",
+          "version_nueva",
+          "desgloses"
         ],
         "title": "GuardadoRespuesta"
       },

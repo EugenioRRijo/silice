@@ -9,6 +9,7 @@ espacio (E1).
 from __future__ import annotations
 
 import re
+from dataclasses import asdict
 from datetime import date
 from decimal import Decimal
 from typing import Annotated, Literal
@@ -76,6 +77,7 @@ class ResumenHojaRespuesta(BaseModel):
     guardado_como: str | None
     #: El borrador no tiene espacio (una obra civil): la Hoja abre en Presupuesto (Tarea 9, O-7).
     espacio_vacio: bool
+    desgloses: int  # de los `cambios`, los de un desglose del desperdicio (anexo A.6)
 
 
 class VersionHojaRespuesta(BaseModel):
@@ -199,6 +201,7 @@ def resumen_a_respuesta(resumen: ResumenHoja) -> ResumenHojaRespuesta:
         version_mas_nueva=resumen.version_mas_nueva,
         guardado_como=resumen.guardado_como,
         espacio_vacio=resumen.espacio_vacio,
+        desgloses=resumen.desgloses,
     )
 
 
@@ -915,17 +918,13 @@ class GuardadoRespuesta(BaseModel):
     total: MontoHojaRespuesta
     primera: bool
     mensaje: str
+    #: A.6: falso si solo se guardó el desglose (`codigo` es la abierta, que sigue igual).
+    version_nueva: bool
+    desgloses: int
 
 
 def guardado_a_respuesta(guardado: Guardado) -> GuardadoRespuesta:
-    return GuardadoRespuesta(
-        codigo=guardado.codigo,
-        proyecto=guardado.proyecto,
-        cambios=guardado.cambios,
-        total=monto_a_respuesta(guardado.total),
-        primera=guardado.primera,
-        mensaje=guardado.mensaje,
-    )
+    return GuardadoRespuesta(**asdict(guardado))  # `total` (Monto) llega como {texto, exacto}
 
 
 # --- S2 a S6 (3d-2): versiones nuevas desde una guardada y la cadena -----------------------------

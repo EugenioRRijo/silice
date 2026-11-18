@@ -6,7 +6,14 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { presentarClave, presentarValor } from "../../comun/presentarCambio";
 import { rotuloDeCampo, rotuloDeObjeto } from "../../comun/rotulos";
 import type { Monto } from "./logica";
-import { FUENTE_DEL_CAMBIO, FUENTE_DE_LA_MEDIDA, motivoParaNoGuardar, textoDeCambiosAGuardar } from "./logicaGuardar";
+import {
+  FUENTE_DEL_CAMBIO,
+  FUENTE_DE_LA_MEDIDA,
+  esSoloDesglose,
+  motivoParaNoGuardar,
+  textoDeDesgloseAGuardar,
+  textoDeVersionAGuardar,
+} from "./logicaGuardar";
 import type { ErrorDeGuardado } from "./logicaGuardar";
 import type { CambiosDelModal } from "./useGuardado";
 import { useDialogo } from "./useDialogo";
@@ -33,6 +40,8 @@ interface Props {
   version: string | null;
   soloLectura: boolean;
   cambiosSinGuardar: number;
+  // Anexo A.6: cuántos de esos cambios son de un desglose del desperdicio.
+  desgloses: number;
   total: Monto;
   moneda: string;
   // «Nombre <login>»: el responsable es la persona de la sesión, de solo lectura (RF-82).
@@ -111,8 +120,16 @@ export function DialogoDeGuardar(p: Props) {
   }, [alCancelar, enviando]);
   const { atrapar } = useDialogo(caja, cancelar, () => document.getElementById(idFuente));
   const primera = p.version === null;
-  const titulo = primera ? "Guardar primera versión" : "Guardar versión";
-  const motivo = motivoParaNoGuardar({ fuente: p.fuente, primera, cambios: p.cambiosSinGuardar, soloLectura: p.soloLectura });
+  // Anexo A.6: si solo cambió el desglose del desperdicio, se guardan sus trazas sin versión nueva y sin pedir fuente.
+  const soloDesglose = esSoloDesglose(primera, p.cambiosSinGuardar, p.desgloses);
+  const titulo = primera ? "Guardar primera versión" : soloDesglose ? "Guardar el desglose" : "Guardar versión";
+  const motivo = motivoParaNoGuardar({
+    fuente: p.fuente,
+    primera,
+    cambios: p.cambiosSinGuardar,
+    soloLectura: p.soloLectura,
+    soloDesglose,
+  });
   // Con un fallo que pide decidir (versión más nueva, ya guardado, borrador ausente) no hay nada que reintentar tal cual.
   const sinReintento = p.error?.clase === "mas-nueva" || p.error?.clase === "ya-guardado" || p.error?.clase === "ausente";
   const e = p.error;
@@ -135,7 +152,9 @@ export function DialogoDeGuardar(p: Props) {
         <p id={idResumen} className="cds--type-body-compact-01">
           {primera
             ? `Es la primera versión de la obra ${p.proyecto}: registra su creación con la fuente y el responsable.`
-            : `Se registrarán ${textoDeCambiosAGuardar(p.cambiosSinGuardar)} en una versión nueva (sale de la ${p.version}).`}
+            : soloDesglose
+              ? textoDeDesgloseAGuardar(p.desgloses, p.version ?? "")
+              : textoDeVersionAGuardar(p.cambiosSinGuardar, p.desgloses, p.version ?? "")}
         </p>
         <p className="cds--type-body-compact-01">
           Total{" "}
@@ -144,14 +163,16 @@ export function DialogoDeGuardar(p: Props) {
           </span>
           <span className="cds--visually-hidden"> Valor exacto {formatoEsVe(p.total.exacto)}</span>
         </p>
-        <CampoTexto
-          id={idFuente}
-          labelText={primera ? FUENTE_DE_LA_MEDIDA : FUENTE_DEL_CAMBIO}
-          value={p.fuente}
-          maxLength={LARGO_DE_FUENTE}
-          onChange={(ev) => p.alCambiarFuente(ev.target.value)}
-          aria-describedby={motivo !== null ? idMotivo : undefined}
-        />
+        {!soloDesglose && (
+          <CampoTexto
+            id={idFuente}
+            labelText={primera ? FUENTE_DE_LA_MEDIDA : FUENTE_DEL_CAMBIO}
+            value={p.fuente}
+            maxLength={LARGO_DE_FUENTE}
+            onChange={(ev) => p.alCambiarFuente(ev.target.value)}
+            aria-describedby={motivo !== null ? idMotivo : undefined}
+          />
+        )}
         {motivo !== null && (
           <p id={idMotivo} className="cds--type-helper-text-01">
             {motivo}
@@ -160,7 +181,7 @@ export function DialogoDeGuardar(p: Props) {
         <p className="cds--type-body-compact-01">Responsable: {p.usuario}</p>
         <ListaDeCambios cambios={p.cambios} primera={primera} />
         <p className="cds--type-helper-text-01" aria-live="polite">
-          {p.enviando ? "Guardando la versión…" : ""}
+          {p.enviando ? (soloDesglose ? "Guardando el desglose…" : "Guardando la versión…") : ""}
         </p>
         {e !== null && (
           <div className="silice-hoja__aviso-edicion">

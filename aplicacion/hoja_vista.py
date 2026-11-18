@@ -33,12 +33,11 @@ from adapters.espacio.modelo import (
     TipoPunto,
 )
 from adapters.espacio.origen import TipoOrigen
-from aplicacion import hoja
+from aplicacion import hoja, hoja_desperdicio
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje
 from aplicacion.frentes import frente_de
 from aplicacion.hoja_borradores import BorradorVivo
-from aplicacion.hoja_desperdicio import desgloses_visibles, trazas_del_borrador
 from aplicacion.hoja_partidas import (
     PREFIJO_A_MANO,
     PREFIJO_TRAMO,
@@ -96,6 +95,7 @@ class ResumenHoja:
     version_mas_nueva: str | None
     guardado_como: str | None
     espacio_vacio: bool
+    desgloses: int = 0  # de los `cambios`, los de un desglose del desperdicio (anexo A.6)
 
 
 def monto(valor: Decimal) -> Monto:
@@ -138,12 +138,6 @@ def elaborar(borrador: hoja.Borrador) -> hoja.ResultadoHoja:
     return hoja.elaborar_borrador(con_r17(borrador))
 
 
-def _base_de_comparacion(vivo: BorradorVivo) -> hoja.Borrador:
-    if vivo.abierta is not None:
-        return vivo.abierta.borrador
-    return hoja.Borrador(fecha=vivo.borrador.fecha, moneda=vivo.borrador.moneda)
-
-
 def _con_el_cerrojo[**P, T](
     vista: Callable[Concatenate[BorradorVivo, P], T],
 ) -> Callable[Concatenate[BorradorVivo, P], T]:
@@ -162,11 +156,11 @@ def _con_el_cerrojo[**P, T](
 
 
 def calculo(vivo: BorradorVivo) -> tuple[hoja.ResultadoHoja, list]:
-    """El resultado y los cambios del borrador vivo; se calculan una vez por `rev`."""
+    """El resultado y los cambios (celdas y desgloses, anexo A.6) del borrador vivo, por `rev`."""
     with vivo.cerrojo:
         if vivo.calculo is None or vivo.calculo[0] != vivo.rev:
             resultado = elaborar(vivo.borrador)
-            cambios = hoja.cambios_entre(_base_de_comparacion(vivo), vivo.borrador)
+            cambios = hoja_desperdicio.cambios_del_borrador(vivo)
             vivo.calculo = (vivo.rev, resultado, cambios)
         return vivo.calculo[1], vivo.calculo[2]
 
@@ -203,6 +197,7 @@ def resumen(vivo: BorradorVivo, version_mas_nueva: str | None = None) -> Resumen
         version_mas_nueva=version_mas_nueva,
         guardado_como=vivo.guardado_como,
         espacio_vacio=vivo.borrador.espacio == Espacio(),
+        desgloses=hoja_desperdicio.cuantos_desgloses(cambios),
     )
 
 
@@ -645,9 +640,9 @@ def _detalle_de_apu(
                 texto_de_cifra(traza.cantidad_neta),
                 texto_de_cifra(traza.desperdicio_pct),
             )
-            for fila, traza in desgloses_visibles(
+            for fila, traza in hoja_desperdicio.desgloses_visibles(
                 tablas[0],
-                trazas_del_borrador(vivo, codigo),
+                hoja_desperdicio.trazas_del_borrador(vivo, codigo),
                 trazas(codigo) if trazas is not None else (),
             )
         ),
