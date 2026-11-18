@@ -186,6 +186,56 @@ def meses_completos(
     ]
 
 
+#: Dónde se carga cada serie que interviene (prueba en vivo del 2026-11-18, hallazgo 4). Las viales
+#: no tienen todavía una página: se importan desde su CSV canónico (`series.importar_serie_csv`).
+DONDE_SE_CARGA_LA_TASA = "que se carga en la página «Índices del BCV»"
+DONDE_SE_CARGA_UNA_VIAL = "que se importa desde su CSV canónico"
+
+
+def _nombre_de_serie(codigo: str) -> str:
+    if codigo == SERIE_TASA:
+        return f"«{definicion_tasa(LADO_POR_DEFECTO).nombre}» del BCV"
+    vial = next((s for s in SERIES_VIALES if s.codigo == codigo), None)
+    return f"«{vial.nombre}»" if vial is not None else f"«{codigo}»"
+
+
+def mensaje_de_pocos_meses(
+    historia: Mapping[str, Mapping[date, Decimal]],
+    series: Sequence[str],
+    p: ParametrosProyeccion,
+    completos: int,
+) -> str:
+    """Por qué no se proyecta: cuántos meses completos hay, cuántos se necesitan y, de cada serie
+    que se queda corta, su nombre, cuántos meses de la ventana tiene y dónde se carga. Si cada
+    serie tiene meses suficientes pero no los mismos, lo dice con la cuenta de cada una."""
+    minimo = int(MINIMO_DE_MESES.valor)
+    inicio = p.inicio.replace(day=1)
+    ventana = [_mes(inicio, -i) for i in range(p.ventana_meses, 0, -1)]
+    hay = "1 mes completo" if completos == 1 else f"{completos} meses completos"
+    cuenta = {
+        s: sum(
+            1 for m in ventana if m in historia.get(s, {}) and _mes(m, -1) in historia.get(s, {})
+        )
+        for s in series
+    }
+
+    def detalle(codigo: str) -> str:
+        donde = DONDE_SE_CARGA_LA_TASA if codigo == SERIE_TASA else DONDE_SE_CARGA_UNA_VIAL
+        return f"{_nombre_de_serie(codigo)} ({cuenta[codigo]} de {p.ventana_meses} meses), {donde}"
+
+    cortas = [s for s in series if cuenta[s] < minimo]
+    principio = (
+        f"Solo hay {hay} de historia en los {p.ventana_meses} meses anteriores al inicio "
+        f"({inicio:%m/%Y}); se necesitan {minimo}."
+    )
+    if cortas:
+        return f"{principio} Falta historia de: " + "; ".join(map(detalle, cortas)) + "."
+    return (
+        f"{principio} Las series no tienen dato en los mismos meses (un mes cuenta si todas "
+        "tienen valor en él y en el anterior): " + "; ".join(map(detalle, series)) + "."
+    )
+
+
 def _variaciones(
     historia: Mapping[str, Mapping[date, Decimal]], series: Sequence[str], p: ParametrosProyeccion
 ) -> tuple[list[date], dict[str, list[Decimal]]]:
@@ -193,8 +243,7 @@ def _variaciones(
     completos = meses_completos(historia, series, p)
     minimo = int(MINIMO_DE_MESES.valor)
     if len(completos) < minimo:
-        hay = "1 mes completo" if len(completos) == 1 else f"{len(completos)} meses completos"
-        raise ValueError(f"solo hay {hay}; se necesitan {minimo}")
+        raise ValueError(mensaje_de_pocos_meses(historia, series, p, len(completos)))
     variaciones: dict[str, list[Decimal]] = {}
     for s in series:
         valores = historia[s]

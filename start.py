@@ -56,6 +56,54 @@ def inicio_de_la_demo(hoy: date) -> date:
     return lunes - timedelta(weeks=VALUACIONES_DE_LA_DEMO)
 
 
+#: Meses de tasa ficticia que siembra la demo antes del inicio de la obra: con 24 variaciones Riesgo
+#: tiene más que los 12 meses completos que pide (prueba en vivo del 2026-11-18, hallazgo 4).
+MESES_DE_TASA_DE_LA_DEMO = 25
+FUENTE_DE_LA_TASA_DE_LA_DEMO = (
+    "tasa ficticia didáctica de la demo de Sílice: no es la publicada por el BCV (NORMAS.md §1)"
+)
+
+
+def sembrar_tasa_didactica(sesion, inicio: date, hoy: date) -> None:
+    """Una tasa Bs/USD **ficticia**, un valor el día 15 de cada mes, desde
+    `MESES_DE_TASA_DE_LA_DEMO` meses antes del mes de `inicio` hasta el mes anterior al de `hoy`:
+    la historia mensual que Riesgo necesita para proyectar la obra de la demo. Sube 2 % por mes;
+    su fuente dice que es didáctica. No confirma."""
+    import hashlib
+    from decimal import Decimal
+
+    from core.catalog.indices import (
+        LADO_POR_DEFECTO,
+        Observacion,
+        definicion_tasa,
+        registrar_importacion,
+    )
+
+    indice = inicio.year * 12 + inicio.month - 1 - MESES_DE_TASA_DE_LA_DEMO
+    ultimo = hoy.year * 12 + hoy.month - 2  # el mes anterior al de hoy
+    valor = Decimal("36.50")
+    observaciones = []
+    while indice <= ultimo:
+        observaciones.append(Observacion(date(indice // 12, indice % 12 + 1, 15), valor))
+        valor = (valor * Decimal("1.02")).quantize(Decimal("0.01"))
+        indice += 1
+    huella = hashlib.sha256(
+        "|".join(f"{o.fecha.isoformat()}:{o.valor}" for o in observaciones).encode()
+    ).hexdigest()
+    registrar_importacion(
+        sesion,
+        definicion_tasa(LADO_POR_DEFECTO),
+        observaciones,
+        archivo="tasa_didactica_de_la_demo.csv",
+        huella=huella,
+        fuente=FUENTE_DE_LA_TASA_DE_LA_DEMO,
+        fecha_descarga=hoy,
+        responsable="script:start",
+        filas_leidas=len(observaciones),
+        filas_rechazadas=0,
+    )
+
+
 def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
     """Una obra pequeña con valuaciones y costos registrados, para la pantalla Control de obra.
     Sus fechas van hasta la semana de `hoy` (por defecto, el reloj), nunca después."""
@@ -80,6 +128,7 @@ def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
             sembrar(sesion, obra, con_valuaciones=True)
             registrar_valuacion_de(sesion, obra.valuaciones[-1])
             registrar_costo_de(sesion, obra.costos[-1])
+            sembrar_tasa_didactica(sesion, inicio, hoy or date.today())
             sesion.commit()
     finally:
         motor.dispose()
