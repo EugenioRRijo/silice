@@ -83,7 +83,7 @@ def porcentaje_escrito(texto: str, lugar: str, separador: str = ", ") -> Decimal
         ) from error
     if not Decimal(0) <= valor < _CIEN:
         raise ComposicionInvalida(
-            f"{lugar}{separador}el desperdicio «{texto}» debe estar entre 0 y 100 (es un "
+            f"{lugar}{separador}el desperdicio «{texto}» debe ser de 0 a menos de 100 (es un "
             "porcentaje: 4 es 4 %)."
         )
     return valor
