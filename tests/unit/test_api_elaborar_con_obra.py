@@ -28,7 +28,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api import caso_web, dependencias
-from api.rutas import presupuestos as rutas_presupuestos
+from api.rutas import presupuestos_calculo as rutas_calculo
 from core.contracts.apu import (
     ComposicionAPU,
     LineaEquipo,
@@ -50,7 +50,7 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 
-APP = app_con(rutas_presupuestos.router)
+APP = app_con(rutas_calculo.router)  # el calculo de ensayo vive ahi desde la tarea 4.1
 RUTA = "/presupuestos/calcular"
 EXCEL = "/presupuestos/calcular/excel"
 D = Decimal

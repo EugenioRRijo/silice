@@ -32,17 +32,23 @@ SOLO_AGREGAR = (
     "core/budget/puente.py",
     "core/budget/decision.py",
 )
-PAGINAS_DE_S2 = ("aplicacion/control.py",)  # `ui/paginas/control.py` se fue con Streamlit (F4)
+#: `aplicacion/control.py` y los modulos en que se partio (tarea 4.3 del desenredo): la misma regla.
+CONTROL = tuple(
+    f"aplicacion/control{m}.py"
+    for m in ("", "_comun", "_linea_base", "_calculo", "_tablas", "_parametros")
+)
+PAGINAS_DE_S2 = CONTROL  # `ui/paginas/control.py` se fue con Streamlit (F4)
 
 
 def _coincide(modulo: str, prefijo: str) -> bool:
     return modulo == prefijo or modulo.startswith(prefijo + ".")
 
 
-def test_control_no_pinta_ni_lee_la_sesion_de_streamlit():
+@pytest.mark.parametrize("archivo", CONTROL)
+def test_control_no_pinta_ni_lee_la_sesion_de_streamlit(archivo):
     prohibidos = {
         modulo
-        for modulo in importaciones(RAIZ / "aplicacion" / "control.py")
+        for modulo in importaciones(RAIZ / archivo)
         for prefijo in PROHIBIDOS_EN_CONTROL
         if _coincide(modulo, prefijo)
     }

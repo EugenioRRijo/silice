@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from aplicacion import control
+from aplicacion import control, control_tablas
 from core.budget.recuperacion import Opcion, Supuesto
 
 
@@ -72,7 +72,8 @@ def _resultado_de_indicadores(no_ind: dict[str, str], no_sep: dict[str, str], fu
 
 
 def test_las_notas_de_los_indicadores_salen_con_tilde(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(control, "_otra_moneda", lambda sesion, resultado: ("Bs", None))
+    # `filas_de_indicadores` busca `_otra_moneda` en su modulo (tarea 4.3 del desenredo).
+    monkeypatch.setattr(control_tablas, "_otra_moneda", lambda sesion, resultado: ("Bs", None))
     resultado = _resultado_de_indicadores(
         {"AC": "sin costos reales declarados", "CPI": "AC = 0: aun no hay costos reales"},
         {"precio": "sin precios del corte (S1): la separacion no esta disponible"},
@@ -96,7 +97,8 @@ def test_los_nombres_de_los_indicadores_llevan_tilde_y_sin_codigos_de_la_spec(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # VB-5: los rótulos que arma aplicacion/ (no el núcleo). Oráculo escrito a mano.
-    monkeypatch.setattr(control, "_otra_moneda", lambda sesion, resultado: ("Bs", None))
+    # `filas_de_indicadores` busca `_otra_moneda` en su modulo (tarea 4.3 del desenredo).
+    monkeypatch.setattr(control_tablas, "_otra_moneda", lambda sesion, resultado: ("Bs", None))
     resultado = _resultado_de_indicadores({}, {}, fuente="f")
     filas = control.filas_de_indicadores(None, resultado)  # type: ignore[arg-type]
     assert [f["Indicador"] for f in filas] == [

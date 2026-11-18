@@ -39,8 +39,10 @@ from api.rutas import (
     entregas,
     fcas,
     hoja,
+    hoja_cadena,
     hoja_exportar,
     hoja_frentes,
+    hoja_lecturas,
     hoja_libro,
     hoja_llevar,
     hoja_plano,
@@ -52,6 +54,8 @@ from api.rutas import (
     obras,
     precios_empresa,
     presupuestos,
+    presupuestos_calculo,
+    presupuestos_escenarios,
     procura,
     produccion,
     produccion_planta,
@@ -129,6 +133,9 @@ app.include_router(catalogo.router)
 app.include_router(listas.router)
 app.include_router(computos.router)
 app.include_router(presupuestos.router)
+# 4.1 (desenredo): el calculo de ensayo y los escenarios, en su orden de siempre
+app.include_router(presupuestos_calculo.router)
+app.include_router(presupuestos_escenarios.router)
 app.include_router(rendimientos.router)
 app.include_router(auditorias.router)  # S3 §10: POST /v1/auditorias
 # 1.5: /v1/libros (auditoria, devolucion y pdf); 1.2.0: replica, y clave o sesión (RS2-5)
@@ -184,6 +191,9 @@ app.include_router(revision.router)
 # Migracion final (T10 · 3b): «Hoja del proyecto»; lecturas con clave o sesion, borradores
 # solo con sesion
 app.include_router(hoja.router)
+# 4.2 (desenredo): sus lecturas y S2 a S6, en su orden de siempre
+app.include_router(hoja_lecturas.router)
+app.include_router(hoja_cadena.router)
 # Montar un presupuesto (T12): Elaborar lleva sus items a la Hoja de la obra, solo con sesion
 app.include_router(hoja_llevar.router)
 # Libro por frentes (2026-11-13): el libro auditado va a la Hoja de la obra, solo con sesion

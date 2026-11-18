@@ -151,7 +151,7 @@ LLAMADORES = {
     # S1: la conversión de moneda; S2: la decisión de recuperación y la obra de control
     ("core/budget/moneda.py", "guardar_presupuesto"),
     ("core/budget/decision.py", "guardar_edicion"),
-    ("aplicacion/control.py", "aplicar_decision"),
+    ("aplicacion/control_calculo.py", "aplicar_decision"),  # salio de control.py (desenredo 4.3)
     # T10 (hoja en la interfaz nueva, Plan C): la hoja de `aplicacion/` (ya sin la copia de `ui/`)
     ("aplicacion/hoja.py", "guardar_edicion"),
     ("aplicacion/hoja.py", "guardar_presupuesto"),
@@ -169,9 +169,10 @@ LLAMADORES = {
     ("aplicacion/hoja_versiones.py", "restaurar"),
     ("aplicacion/hoja_versiones.py", "cotizar"),
     ("aplicacion/hoja_versiones.py", "retirar_cotizacion"),
-    ("api/rutas/hoja.py", "restaurar"),
-    ("api/rutas/hoja.py", "cotizar"),
-    ("api/rutas/hoja.py", "retirar_cotizacion"),
+    # Tarea 4.2 del desenredo: las rutas S2 a S4 salieron de api/rutas/hoja.py, sin cambios
+    ("api/rutas/hoja_cadena.py", "restaurar"),
+    ("api/rutas/hoja_cadena.py", "cotizar"),
+    ("api/rutas/hoja_cadena.py", "retirar_cotizacion"),
     ("scripts/generar_obra_control.py", "guardar_presupuesto"),
 }
 

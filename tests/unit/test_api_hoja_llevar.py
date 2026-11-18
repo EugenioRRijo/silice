@@ -32,6 +32,7 @@ from sqlalchemy.exc import OperationalError
 from api import caso_web, dependencias
 from api.rutas import computos as rutas_computos
 from api.rutas import hoja as rutas_hoja
+from api.rutas import hoja_lecturas as rutas_lecturas
 from api.rutas import hoja_llevar as rutas_llevar
 from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion
 from aplicacion.proyectos import resolver_proyecto
@@ -51,7 +52,8 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 
-APP = app_con(rutas_hoja.router, rutas_llevar.router)
+# Las vistas y los cambios viven en `hoja_lecturas` desde la tarea 4.2 del desenredo.
+APP = app_con(rutas_hoja.router, rutas_lecturas.router, rutas_llevar.router)
 RUTA = "/v1/hoja/llevar"
 HOY = date(2026, 10, 25)
 ORIGEN = "http://127.0.0.1:8000"

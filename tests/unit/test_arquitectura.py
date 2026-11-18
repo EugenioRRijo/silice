@@ -1050,13 +1050,24 @@ NUCLEO_PROFUNDO_EN_RUTAS: dict[str, frozenset[str]] = {
     "api/rutas/control.py": frozenset({"core.budget.control", "core.catalog"}),
     "api/rutas/entregas.py": frozenset({"core.budget.canonico"}),
     "api/rutas/hoja.py": frozenset({"core.budget.moneda", "core.catalog"}),
+    # Tarea 4.2: lo que salio de hoja.py con sus rutas (subconjuntos de la fila de hoja.py).
+    "api/rutas/hoja_cadena.py": frozenset({"core.catalog"}),
+    "api/rutas/hoja_lecturas.py": frozenset({"core.budget.moneda", "core.catalog"}),
     "api/rutas/listas.py": frozenset({"core.catalog", "core.catalog.precios"}),
     "api/rutas/mercado.py": frozenset(
         {"core.catalog", "core.catalog.errores", "core.catalog.moneda"}
     ),
     "api/rutas/obras.py": frozenset({"core.catalog", "core.catalog.indices"}),
+    # Tarea 4.1: la fila de siempre de presupuestos.py, repartida entre sus cuatro modulos.
     "api/rutas/presupuestos.py": frozenset(
+        {"core.budget", "core.catalog", "core.verification.informe"}
+    ),
+    "api/rutas/presupuestos_ayudas.py": frozenset(
         {"core.budget", "core.budget.instantanea", "core.catalog", "core.verification.informe"}
+    ),
+    "api/rutas/presupuestos_calculo.py": frozenset({"core.verification.informe"}),
+    "api/rutas/presupuestos_escenarios.py": frozenset(
+        {"core.budget", "core.catalog", "core.verification.informe"}
     ),
     "api/rutas/proyectos.py": frozenset({"core.catalog"}),
     "api/rutas/reajuste.py": frozenset({"core.budget.reajuste"}),
@@ -1522,14 +1533,11 @@ MODULOS_GRANDES: dict[str, int] = {
     "scripts/recorrido_ux_playwright.py": 2321,
     "scripts/fusion_verificar.py": 2124,
     "adapters/hoja_empresa/reglas.py": 1707,
-    "aplicacion/control.py": 1584,
     "aplicacion/composicion.py": 1471,
     "adapters/hoja_empresa/pdf.py": 1389,
-    "api/rutas/hoja.py": 1348,
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
-    "api/rutas/presupuestos.py": 1092,
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,
@@ -1578,6 +1586,299 @@ def test_el_tope_ve_la_falta(tmp_path):
     (tmp_path / "tests" / "test_x.py").write_text("x = 1\n" * 5000, encoding="utf-8")
     (tmp_path / "start.py").write_text("x = 1\n", encoding="utf-8")
     assert _lineas_de_produccion(tmp_path) == {"api/grande.py": TOPE_DE_LINEAS + 1, "start.py": 1}
+
+
+# --- Ola 4: partir un modulo grande sin perder nombres ------------------------------------------
+#
+# Mover sin cambiar conducta: el modulo partido sigue ofreciendo, y lista en `__all__`, los nombres
+# publicos que definia antes de partirse. Cada lista se midio ANTES de mover (dd468057) con las
+# definiciones de primer nivel que no empiezan por `_` (funciones, clases y asignaciones).
+
+
+def _definidos(archivo: Path) -> set[str]:
+    """Los nombres publicos que `archivo` define en su primer nivel, leidos del AST: un import no
+    cuenta (es de otro modulo)."""
+    nombres: set[str] = set()
+    for nodo in _arbol(archivo).body:
+        if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            nombres.add(nodo.name)
+        elif isinstance(nodo, ast.Assign):
+            nombres.update(t.id for t in nodo.targets if isinstance(t, ast.Name))
+        elif isinstance(nodo, ast.AnnAssign) and isinstance(nodo.target, ast.Name):
+            nombres.add(nodo.target.id)
+    return {nombre for nombre in nombres if not nombre.startswith("_")}
+
+
+def test_definidos_ve_funciones_clases_y_asignaciones_y_no_imports(tmp_path):
+    archivo = tmp_path / "modulo.py"
+    archivo.write_text(
+        "from x import importado\nA = 1\nB: int = 2\n_C = 3\n\n\nclass D: ...\n\n\n"
+        "def e(): ...\n\n\nasync def f(): ...\n\n\ndef _g(): ...\n",
+        encoding="utf-8",
+    )
+    assert _definidos(archivo) == {"A", "B", "D", "e", "f"}
+
+
+#: Tarea 4.1: lo que `api/rutas/presupuestos.py` definia antes de partirse en `presupuestos`,
+#: `presupuestos_calculo`, `presupuestos_escenarios` y `presupuestos_ayudas`.
+PUBLICOS_DE_RUTAS_PRESUPUESTOS = frozenset(
+    {
+        "MAX_PENDIENTES_CON_PROPUESTAS",
+        "actualizar_presupuesto",
+        "base_de_escenarios",
+        "calcular_presupuesto",
+        "calcular_presupuesto_excel",
+        "crear_presupuesto",
+        "crear_proyecto_de_presupuestos",
+        "declarar_rendimiento_propuesto",
+        "descartar_version_revalorada",
+        "escenarios_de_presupuesto",
+        "escenarios_en_csv",
+        "exportar_presupuesto_excel",
+        "importar_presupuesto_de_tercero",
+        "informe_de_auditoria",
+        "listar_presupuestos",
+        "obtener_presupuesto",
+        "revalorar_presupuesto",
+        "router",
+    }
+)
+
+
+def test_rutas_presupuestos_reexporta_lo_mismo():
+    from api.rutas import presupuestos
+
+    assert sorted(getattr(presupuestos, "__all__", ())) == sorted(PUBLICOS_DE_RUTAS_PRESUPUESTOS)
+    assert [n for n in sorted(PUBLICOS_DE_RUTAS_PRESUPUESTOS) if not hasattr(presupuestos, n)] == []
+    # Entre los cuatro no nace ni se pierde un nombre publico: solo cambian de casa.
+    familia = (
+        "presupuestos",
+        "presupuestos_calculo",
+        "presupuestos_escenarios",
+        "presupuestos_ayudas",
+    )
+    definidos = set().union(*(_definidos(RAIZ / "api" / "rutas" / f"{m}.py") for m in familia))
+    assert definidos == PUBLICOS_DE_RUTAS_PRESUPUESTOS
+
+
+#: Tarea 4.2: lo que `api/rutas/hoja.py` definia antes de partirse (77 nombres).
+PUBLICOS_DE_RUTAS_HOJA = frozenset(
+    {
+        "CodigoDePartida",
+        "CuentaDeLaHoja",
+        "CuentaQueConvierte",
+        "CuentaQueVe",
+        "FORMA_ANTES",
+        "FORMA_APU",
+        "FORMA_BUSQUEDA",
+        "FORMA_CADENA",
+        "FORMA_CANTIDADES",
+        "FORMA_CONVERTIR",
+        "FORMA_COTIZAR",
+        "FORMA_GUARDAR",
+        "FORMA_INSUMO",
+        "FORMA_LINEA",
+        "FORMA_PARAMETROS",
+        "FORMA_PARTIDA",
+        "FORMA_PLAN",
+        "FORMA_QUITAR",
+        "FORMA_QUITAR_LINEA",
+        "FORMA_RENDIMIENTOS",
+        "FORMA_RESTAURAR",
+        "FORMA_RETIRAR",
+        "FORMA_REV",
+        "IdDeBorrador",
+        "MENSAJE_BASE",
+        "MENSAJE_CON_VERSIONES",
+        "MENSAJE_FALTA",
+        "MENSAJE_FORMA",
+        "MENSAJE_FORMA_ESPACIO",
+        "MENSAJE_OTRO_CASO",
+        "MENSAJE_PARTIDA",
+        "MENSAJE_REV",
+        "MENSAJE_SIN_PLAN",
+        "MENSAJE_SIN_PREPARAR",
+        "MENSAJE_SIN_VERSION",
+        "MENSAJE_SOLO_CUENTA",
+        "MENSAJE_YA_TIENE_PLAN",
+        "SIN_LINEA_BASE",
+        "VER",
+        "abrir_borrador",
+        "agregar_linea_apu",
+        "agregar_partida",
+        "antes_y_despues",
+        "buscar_insumos",
+        "cadena_de_sellos",
+        "cambiar_insumo",
+        "cambios_del_borrador",
+        "convertir_version",
+        "cotizar_insumo",
+        "crear_plan_secuencial",
+        "descartar_borrador",
+        "editar_apu",
+        "editar_cantidades",
+        "editar_espacio",
+        "editar_parametros",
+        "editar_plan",
+        "guardar_borrador",
+        "leer_borrador",
+        "listar_borradores",
+        "listar_importaciones",
+        "listar_versiones",
+        "plan_desde_rendimientos",
+        "precios",
+        "precios_atipicos",
+        "quitar_linea_apu",
+        "quitar_partida",
+        "restaurar_version",
+        "retirar_cotizacion",
+        "router",
+        "trazabilidad",
+        "vista_apu",
+        "vista_auditoria",
+        "vista_equilibrio",
+        "vista_espacio",
+        "vista_parametros",
+        "vista_plan",
+        "vista_presupuesto",
+    }
+)
+#: Las rutas que pasan a `hoja_lecturas` y a `hoja_cadena`, cada una con su `router`.
+EN_HOJA_LECTURAS = frozenset(
+    {
+        "antes_y_despues",
+        "buscar_insumos",
+        "cambios_del_borrador",
+        "precios",
+        "precios_atipicos",
+        "router",
+        "trazabilidad",
+        "vista_apu",
+        "vista_auditoria",
+        "vista_equilibrio",
+        "vista_espacio",
+        "vista_parametros",
+        "vista_plan",
+        "vista_presupuesto",
+    }
+)
+EN_HOJA_CADENA = frozenset(
+    {
+        "cadena_de_sellos",
+        "convertir_version",
+        "cotizar_insumo",
+        "restaurar_version",
+        "retirar_cotizacion",
+        "router",
+    }
+)
+
+
+def test_rutas_hoja_reparte_lo_mismo():
+    """`api/rutas/hoja.py` no es fachada: sus hermanos (`hoja_exportar`, `hoja_libro`, `hoja_plano`)
+    toman de el la clase de ruta y los ayudantes, y reexportarlos cerraria un ciclo. Lo que se
+    fija es el reparto: ningun nombre publico nace ni se pierde, y cada uno vive donde se dice."""
+    casas = ("hoja", "hoja_lecturas", "hoja_cadena")
+    definidos = {m: _definidos(RAIZ / "api" / "rutas" / f"{m}.py") for m in casas}
+    assert set().union(*definidos.values()) == PUBLICOS_DE_RUTAS_HOJA
+    assert definidos["hoja_lecturas"] == EN_HOJA_LECTURAS
+    assert definidos["hoja_cadena"] == EN_HOJA_CADENA
+    quedan = PUBLICOS_DE_RUTAS_HOJA - EN_HOJA_LECTURAS - EN_HOJA_CADENA
+    assert definidos["hoja"] == quedan | {"router"}
+
+
+#: Tarea 4.3: lo que `aplicacion/control.py` definia antes de partirse (75 nombres; su `__all__`
+#: de entonces listaba 56, y `aplicacion.reajuste` ya importaba tres de los que faltaban).
+PUBLICOS_DE_CONTROL = frozenset(
+    {
+        "COLUMNAS_ALERTAS",
+        "COLUMNAS_DECISIONES",
+        "COLUMNAS_INDICADORES",
+        "COLUMNAS_LINEAS",
+        "COLUMNAS_OPCIONES",
+        "COLUMNAS_PARAMETROS",
+        "COLUMNAS_REPROYECCION",
+        "COLUMNAS_VALUACIONES",
+        "ControlInvalido",
+        "DIAS_POR_OMISION",
+        "DiasDelPlan",
+        "Hueco",
+        "LARGO_MAXIMO_A_CORREGIR",
+        "MAXIMO_DE_PARTIDAS_DEL_CONTRATO",
+        "MENSAJE_SIN_DECLARADOS",
+        "METODOS_DE_PRECIOS",
+        "METODO_COMPROBACION",
+        "METODO_DECLARADOS",
+        "METODO_ESCALATORIA",
+        "METODO_NINGUNO",
+        "NATURALEZA_DATO",
+        "NATURALEZA_SUPUESTO",
+        "NO_APLICA",
+        "NO_DISPONIBLE",
+        "PARAMETROS_EDITABLES",
+        "PLANTILLAS_DEL_NUCLEO",
+        "PartidaDelContrato",
+        "PartidasDeUnaVersion",
+        "PrecioElegido",
+        "alertas_en_filas",
+        "anular",
+        "calcular_el_control",
+        "calcular_las_opciones",
+        "catalogo_de_frases",
+        "con_tildes",
+        "corte_por_defecto",
+        "curva_pv_ev_ac",
+        "declarar_linea_base",
+        "describir_linea_base",
+        "dia_con_fecha",
+        "dias_de_las_etiquetas",
+        "dias_por_periodo_del_plan",
+        "elegir_opcion",
+        "estado_de_valuaciones",
+        "estudios_que_suma",
+        "filas_de_decisiones",
+        "filas_de_indicadores",
+        "filas_de_opciones",
+        "filas_de_parametros",
+        "filas_de_reproyeccion",
+        "filas_de_valuaciones",
+        "filas_del_plan_reproyectado",
+        "guardar_los_parametros",
+        "hay_valuaciones",
+        "importar_excel",
+        "impuestos_de_valuaciones",
+        "leer_excel",
+        "lineas_desde_filas",
+        "parametros_actuales",
+        "parametros_desde_filas",
+        "partidas_de_la_linea_base",
+        "partidas_de_la_version",
+        "perspectiva_de_la_linea_base",
+        "precios_del_corte",
+        "registrar_costo_real",
+        "registrar_y_controlar",
+        "renglones_de_la_version",
+        "subtotales_de_valuaciones",
+        "supuestos_de_opcion",
+        "tablas_de_control",
+        "texto_monto",
+        "tiene_linea_base",
+        "valuaciones_para_anular",
+        "versiones_para_la_linea_base",
+        "versiones_revaloradas",
+    }
+)
+
+
+def test_control_reexporta_lo_mismo():
+    from aplicacion import control
+
+    assert sorted(control.__all__) == sorted(PUBLICOS_DE_CONTROL)
+    assert [n for n in sorted(PUBLICOS_DE_CONTROL) if not hasattr(control, n)] == []
+    # Entre los seis no nace ni se pierde un nombre publico: solo cambian de casa.
+    familia = ("", "_comun", "_linea_base", "_calculo", "_tablas", "_parametros")
+    definidos = set().union(*(_definidos(RAIZ / "aplicacion" / f"control{m}.py") for m in familia))
+    assert definidos == PUBLICOS_DE_CONTROL
 
 
 # --- Tarea 1.6: toda tabla esta en el modelo de datos -------------------------------------------
