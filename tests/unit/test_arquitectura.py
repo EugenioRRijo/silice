@@ -2036,20 +2036,59 @@ def _es_estimado(nodo: ast.AST) -> bool:
     )
 
 
-def _politicas_de_vigencia(archivo: Path) -> list[int]:
-    """Lineas de cada `a and b` que compara con `TipoRendimiento.ESTIMADO` y con un `<=`: la
-    politica de «rendimiento estimado vigente a la fecha» escrita por su cuenta."""
-    return sorted(
-        nodo.lineno
-        for nodo in ast.walk(_arbol(archivo))
-        if isinstance(nodo, ast.BoolOp)
-        and isinstance(nodo.op, ast.And)
-        and any(isinstance(v, ast.Compare) and _es_estimado(v) for v in nodo.values)
-        and any(
-            isinstance(v, ast.Compare) and any(isinstance(op, ast.LtE) for op in v.ops)
-            for v in nodo.values
-        )
+def _compara_con_estimado(nodo: ast.AST) -> bool:
+    """Una comparacion con `TipoRendimiento.ESTIMADO` (o su `.value`) o con el texto `"estimado"`
+    que guarda la base (sin mirar mayusculas). Un docstring que lo nombra no es comparacion."""
+    if not isinstance(nodo, ast.Compare):
+        return False
+    return _es_estimado(nodo) or any(
+        isinstance(p, ast.Constant) and isinstance(p.value, str) and p.value.lower() == "estimado"
+        for p in (nodo.left, *nodo.comparators)
     )
+
+
+def _ordena_con_igual(nodo: ast.AST) -> bool:
+    """`a <= b`, `a >= b`, `not a < b` o `not a > b`: «no posterior a», en cualquier sentido."""
+    if isinstance(nodo, ast.Compare):
+        return any(isinstance(op, ast.LtE | ast.GtE) for op in nodo.ops)
+    return (
+        isinstance(nodo, ast.UnaryOp)
+        and isinstance(nodo.op, ast.Not)
+        and isinstance(nodo.operand, ast.Compare)
+        and any(isinstance(op, ast.Lt | ast.Gt) for op in nodo.operand.ops)
+    )
+
+
+def _cabeceras(sentencia: ast.stmt) -> list[ast.AST]:
+    """Lo que una sentencia evalua sin entrar en su cuerpo: la condicion de un `if` o un `while`,
+    lo que recorre un `for`, los `with`; una sentencia simple entera. Las definiciones no cuentan
+    aqui (sus sentencias se miran una a una)."""
+    if isinstance(sentencia, ast.If | ast.While):
+        return [sentencia.test]
+    if isinstance(sentencia, ast.For | ast.AsyncFor):
+        return [sentencia.iter]
+    if isinstance(sentencia, ast.With | ast.AsyncWith):
+        return [item.context_expr for item in sentencia.items]
+    if isinstance(sentencia, ast.Match):
+        return [sentencia.subject]
+    compuestas = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Try, ast.TryStar)
+    return [] if isinstance(sentencia, compuestas) else [sentencia]
+
+
+def _politicas_de_vigencia(archivo: Path) -> list[int]:
+    """Lineas de cada sentencia que compara con lo «estimado» y, en la misma sentencia, ordena
+    fechas con igual (`<=`, `>=`, `not <`, `not >`): la politica de «rendimiento estimado vigente a
+    la fecha» escrita por su cuenta, sea en Python (`a and b`, un `any(...)`) o en un filtro SQL
+    (`.where(a, b)`, `and_(a, b)` o dos `.where` encadenados). Una politica partida en dos
+    sentencias (`if tipo != ESTIMADO: continue` y luego la fecha) no la ve."""
+    lineas = set()
+    for sentencia in ast.walk(_arbol(archivo)):
+        if not isinstance(sentencia, ast.stmt):
+            continue
+        nodos = [n for cabecera in _cabeceras(sentencia) for n in ast.walk(cabecera)]
+        if any(map(_compara_con_estimado, nodos)) and any(map(_ordena_con_igual, nodos)):
+            lineas.add(sentencia.lineno)
+    return sorted(lineas)
 
 
 def test_la_politica_de_vigencia_vive_en_un_solo_sitio():
@@ -2068,6 +2107,19 @@ def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
         "x = r.tipo == TipoRendimiento.ESTIMADO.value and r.fecha <= fecha\n": [1],
         "x = r.tipo is TipoRendimiento.MEDIDO and r.fecha <= fecha\n": [],
         "x = r.tipo is TipoRendimiento.ESTIMADO and r.fecha == fecha\n": [],
+        # Anexo A.7: el orden al reves, `not <`, el texto de la base y los filtros SQL.
+        'x = any(r.tipo == "estimado" and fecha >= r.fecha for r in rs)\n': [1],
+        "x = r.tipo is TipoRendimiento.ESTIMADO and not fecha < r.fecha\n": [1],
+        "x = r.tipo is TipoRendimiento.ESTIMADO and not (r.fecha > fecha)\n": [1],
+        "if r.tipo == TipoRendimiento.ESTIMADO.value and r.fecha <= fecha:\n    pass\n": [1],
+        "q = select(R).where(R.tipo == TipoRendimiento.ESTIMADO, R.fecha <= fecha)\n": [1],
+        'q = (\n    select(R)\n    .where(R.tipo == "estimado")\n    .where(R.fecha <= f)\n)\n': [
+            1
+        ],
+        'q = select(R).where(and_(R.tipo == "ESTIMADO", R.fecha <= f))\n': [1],
+        'x = r.tipo == "medido" and r.fecha <= fecha\n': [],
+        '"""Vigente es el "estimado" con fecha <= la del presupuesto."""\n': [],
+        'x = r.tipo == "estimado" and r.fecha < fecha\n': [],
     }
     detectadas = {}
     for numero, fuente in enumerate(fuentes):
