@@ -30,6 +30,7 @@ instalador con huella SHA-256 firmada.
 | PR o rama | Qué trae | Estado |
 |---|---|---|
 | `feature/depuracion-unida` | La depuración del código espagueti (2026-11-15/17): las 13 ramas `feature/depurar-*` unidas sobre `feature/mejoras-ola2` (32 commits que aún no están en `main`: la PR los lleva), más las correcciones del arbitraje (H3, DS-2, DS-3) | Suite completa en verde; segunda opinión de Hydrogen verificada y [arbitraje xhigh](bitacora/arbitrajes/depuracion-unida-claude-xhigh.md) aprobado con una corrección, ya hecha; PR a `main` sin fusionar |
+| `feature/desenredo-guardias` | Ola 1 del plan de desenredo: siete guardias de arquitectura con listas congeladas (dependencias entre paquetes, rutas sin `select()`, ciclos, presentación de cifras, tope de 1000 líneas, tablas y RF documentados). Solo pruebas; decisiones DS-6 a DS-12 | 13.018 pruebas en verde; PR apilada sobre #111, sin fusionar |
 | #110 `docs/sincronizar-agentes` | Fichas de agentes y skills al día, manual de orquestación nuevo (`docs/manual_orquestacion.md`), auditoría de la interfaz con unslop y plan de desenredo (`docs/planes/2026-11-17-plan-desenredo.md`, 24 tareas en 5 olas); los documentos llegan con esa PR | Solo documentación; sin fusionar |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
 

@@ -9,6 +9,8 @@ Complementa a `git diff --stat core/` (Sesión I5): vigila la dependencia, no so
 """
 
 import ast
+import functools
+import re
 import sys
 from pathlib import Path
 
@@ -725,3 +727,1037 @@ def test_fusion_no_importa_la_configuracion_de_la_instalacion():
         if modulo == "operacion.config" or modulo.startswith("operacion.config.")
     )
     assert culpables == []
+
+
+# --- Plan de desenredo, ola 1 (2026-11-17): guardias con lista congelada ------------------------
+#
+# Cada guardia fotografia la deuda de capas medida sobre `feature/depuracion-unida` (a802d728) y
+# falla si empeora; su prueba `_sin_sobrantes` falla si mejora y nadie borra la fila: la lista solo
+# se achica (docs/planes/2026-11-17-plan-desenredo.md, ola 1). Las ayudas viven aqui porque ningun
+# modulo de prueba importa de otro
+# (`test_ningun_modulo_de_prueba_importa_de_otro_modulo_de_prueba`).
+
+#: Los paquetes de primer nivel del repositorio, nucleo incluido.
+PAQUETES_INTERNOS = frozenset(PAQUETES_FUERA_DEL_NUCLEO) | {"core"}
+_SOLO_TIPADO = frozenset({"TYPE_CHECKING", "typing.TYPE_CHECKING"})
+
+
+def _arbol(archivo: Path) -> ast.Module:
+    return ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+
+
+def _nodos_de_tipado(arbol: ast.AST) -> set[int]:
+    """`id` de cada nodo bajo un `if TYPE_CHECKING:` (solo el cuerpo; el `else` se ejecuta)."""
+    return {
+        id(nodo)
+        for bloque in ast.walk(arbol)
+        if isinstance(bloque, ast.If) and ast.unparse(bloque.test) in _SOLO_TIPADO
+        for sentencia in bloque.body
+        for nodo in ast.walk(sentencia)
+    }
+
+
+@functools.cache
+def _imports_con_linea(archivo: Path, raiz: Path = RAIZ) -> tuple[tuple[int, str], ...]:
+    """`(linea, modulo)` de cada import de ejecucion de `archivo`: fuera de `if TYPE_CHECKING:`,
+    con los perezosos (dentro de funciones) y los relativos resueltos a nombre absoluto.
+    `from a import b` registra `a` y `a.b`, porque `b` puede ser un submodulo. Se guarda en cache:
+    las guardias de la ola 1 leen cada archivo una sola vez."""
+    arbol = _arbol(archivo)
+    tipado = _nodos_de_tipado(arbol)
+    paquete = archivo.relative_to(raiz).with_suffix("").parts[:-1]
+    nombres: list[tuple[int, str]] = []
+    for nodo in ast.walk(arbol):
+        if id(nodo) in tipado:
+            continue
+        if isinstance(nodo, ast.Import):
+            nombres.extend((nodo.lineno, alias.name) for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom):
+            if nodo.level:
+                base = paquete[: len(paquete) - (nodo.level - 1)]
+                modulo = ".".join((*base, *([nodo.module] if nodo.module else [])))
+            else:
+                modulo = nodo.module or ""
+            nombres.append((nodo.lineno, modulo))
+            nombres.extend((nodo.lineno, f"{modulo}.{alias.name}") for alias in nodo.names)
+    return tuple(sorted(nombres))
+
+
+# --- Tarea 1.1: matriz de dependencias entre paquetes -------------------------------------------
+
+
+def _imports_de_ejecucion_de_paquete(paquete: str, raiz: Path = RAIZ) -> dict[str, set[str]]:
+    """Paquete interno de primer nivel importado por `paquete` -> `archivo:linea` que lo importan.
+
+    Incluye los imports locales dentro de funciones y excluye los de `if TYPE_CHECKING:`; el propio
+    paquete no cuenta (no es una dependencia entre paquetes)."""
+    aristas: dict[str, set[str]] = {}
+    for archivo in sorted((raiz / paquete).rglob("*.py")):
+        for linea, modulo in _imports_con_linea(archivo, raiz):
+            destino = modulo.split(".")[0]
+            if destino in PAQUETES_INTERNOS and destino != paquete:
+                sitio = f"{archivo.relative_to(raiz).as_posix()}:{linea}"
+                aristas.setdefault(destino, set()).add(sitio)
+    return aristas
+
+
+#: Lista blanca de cada paquete (2026-11-17, medida sobre a802d728). Es la fuente de las
+#: dependencias entre paquetes mientras `docs/arquitectura.md` §4 espera su enmienda (aval del
+#: tutor). Una arista nueva hace fallar la guardia; una que desaparece obliga a borrarla.
+DEPENDENCIAS_PERMITIDAS: dict[str, frozenset[str]] = {
+    "adapters": frozenset({"core"}),  # solo core.contracts: lo afina la guardia por adaptador
+    "api": frozenset(
+        {
+            "adapters",
+            "aplicacion",
+            "asistente",
+            "auditoria",
+            "core",
+            "fusion",
+            "ml",
+            "operacion",
+            "paquete",
+            "produccion",
+            "seguridad",
+        }
+    ),
+    "aplicacion": frozenset(
+        {
+            "adapters",
+            "asistente",
+            "auditoria",
+            "core",
+            "ml",
+            "operacion",
+            "paquete",
+            "produccion",
+            "seguridad",
+        }
+    ),
+    "asistente": frozenset(
+        {
+            "adapters",
+            "aplicacion",  # ciclo, ola 5
+            "core",
+            "operacion",
+            "seguridad",
+        }
+    ),
+    "auditoria": frozenset({"adapters", "core", "paquete", "seguridad"}),
+    "core": frozenset(),
+    "fusion": frozenset(
+        {
+            "adapters",
+            "aplicacion",  # ciclo, ola 5
+            "auditoria",
+            "core",
+            "operacion",
+        }
+    ),
+    "instalador": frozenset(
+        {
+            "ml",
+            "operacion",
+            "tests",  # cierra un ciclo con tests -> instalador; 1.3 no mira tests ni scripts
+        }
+    ),
+    "migraciones": frozenset(
+        {
+            "adapters",
+            "aplicacion",  # ciclo, ola 5
+            "asistente",  # ciclo, ola 5
+            "core",
+            "fusion",  # ciclo, ola 5
+            "paquete",
+            "produccion",
+            "seguridad",
+        }
+    ),
+    "ml": frozenset({"core"}),  # solo core.contracts (test_ml_solo_importa_core_contracts...)
+    "operacion": frozenset(
+        {
+            "migraciones",
+            "ml",
+            "scripts",  # cierra un ciclo con scripts -> operacion; 1.3 no mira tests ni scripts
+            "seguridad",
+        }
+    ),
+    "paquete": frozenset({"core", "seguridad"}),
+    "produccion": frozenset(),
+    "scripts": frozenset(
+        {
+            "adapters",
+            "api",
+            "aplicacion",
+            "asistente",
+            "core",
+            "fusion",
+            "instalador",
+            "ml",
+            "operacion",
+            "seguridad",
+            "tests",
+        }
+    ),
+    "seguridad": frozenset(
+        {
+            "operacion",  # ciclo, ola 5
+        }
+    ),
+    "tests": PAQUETES_INTERNOS - {"tests"},  # las pruebas recorren todos los paquetes
+}
+
+
+def test_cada_paquete_solo_importa_su_lista_blanca_de_la_matriz():
+    nuevas = sorted(
+        f"{paquete} -> {destino} ({min(sitios)}; {len(sitios)} sitios)"
+        for paquete in sorted(PAQUETES_INTERNOS)
+        for destino, sitios in _imports_de_ejecucion_de_paquete(paquete).items()
+        if destino not in DEPENDENCIAS_PERMITIDAS.get(paquete, frozenset())
+    )
+    assert nuevas == [], "aristas fuera de DEPENDENCIAS_PERMITIDAS:\n" + "\n".join(nuevas)
+
+
+def test_la_matriz_sin_sobrantes():
+    """Una arista permitida que ya nadie usa se borra de la matriz: la lista solo se achica."""
+    sobrantes = sorted(
+        f"{paquete} -> {destino}"
+        for paquete, destinos in DEPENDENCIAS_PERMITIDAS.items()
+        for destino in destinos - set(_imports_de_ejecucion_de_paquete(paquete))
+    )
+    assert sobrantes == [], "aristas que ya no existen; borrarlas de la matriz: " + ", ".join(
+        sobrantes
+    )
+
+
+def test_la_matriz_cubre_todo_paquete():
+    assert set(DEPENDENCIAS_PERMITIDAS) == set(PAQUETES_INTERNOS)
+
+
+def test_la_matriz_ve_un_import_local(tmp_path):
+    carpeta = tmp_path / "falso"
+    carpeta.mkdir()
+    (carpeta / "modulo.py").write_text(
+        "import decimal\n\n\ndef f():\n    from api import x\n    return x\n", encoding="utf-8"
+    )
+    assert _imports_de_ejecucion_de_paquete("falso", raiz=tmp_path) == {
+        "api": {"falso/modulo.py:5"}
+    }
+
+
+def test_la_matriz_ignora_type_checking(tmp_path):
+    carpeta = tmp_path / "falso"
+    carpeta.mkdir()
+    (carpeta / "modulo.py").write_text(
+        "from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from api import x\n"
+        "else:\n    from seguridad import y\n",
+        encoding="utf-8",
+    )
+    assert _imports_de_ejecucion_de_paquete("falso", raiz=tmp_path) == {
+        "seguridad": {"falso/modulo.py:6"}
+    }
+
+
+# --- Tarea 1.2: las rutas no consultan la base ni entran al nucleo por dentro -------------------
+
+
+@functools.cache
+def _es_modulo(nombre: str, raiz: Path = RAIZ) -> bool:
+    ruta = raiz.joinpath(*nombre.split("."))
+    return ruta.with_suffix(".py").is_file() or (ruta / "__init__.py").is_file()
+
+
+@functools.cache
+def _modulos_usados(archivo: Path, raiz: Path = RAIZ) -> tuple[tuple[int, str], ...]:
+    """`(linea, modulo)` que `archivo` carga en ejecucion: `from a import b` cuenta `a.b` si `b` es
+    un submodulo y `a` si no lo es (una funcion o una clase de `a`). Sin `if TYPE_CHECKING:`."""
+    arbol = _arbol(archivo)
+    tipado = _nodos_de_tipado(arbol)
+    paquete = archivo.relative_to(raiz).with_suffix("").parts[:-1]
+    usados: set[tuple[int, str]] = set()
+    for nodo in ast.walk(arbol):
+        if id(nodo) in tipado:
+            continue
+        if isinstance(nodo, ast.Import):
+            usados.update((nodo.lineno, alias.name) for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom):
+            if nodo.level:
+                base = paquete[: len(paquete) - (nodo.level - 1)]
+                modulo = ".".join((*base, *([nodo.module] if nodo.module else [])))
+            else:
+                modulo = nodo.module or ""
+            for alias in nodo.names:
+                hijo = f"{modulo}.{alias.name}"
+                usados.add((nodo.lineno, hijo if _es_modulo(hijo, raiz) else modulo))
+    return tuple(sorted(usados))
+
+
+def _archivos_de_rutas(raiz: Path = RAIZ) -> list[Path]:
+    return sorted((raiz / "api" / "rutas").rglob("*.py"))
+
+
+def _llamadas_select(archivo: Path) -> list[int]:
+    """Lineas de cada llamada `select(...)` o `x.select(...)`, por AST: un comentario no cuenta."""
+    return sorted(
+        nodo.lineno
+        for nodo in ast.walk(_arbol(archivo))
+        if isinstance(nodo, ast.Call)
+        and (
+            (isinstance(nodo.func, ast.Name) and nodo.func.id == "select")
+            or (isinstance(nodo.func, ast.Attribute) and nodo.func.attr == "select")
+        )
+    )
+
+
+def _importa_modelos_del_nucleo(archivo: Path, raiz: Path = RAIZ) -> list[int]:
+    """Lineas donde `archivo` importa `core.models` (`from core import models` incluido)."""
+    return sorted(
+        {
+            linea
+            for linea, modulo in _modulos_usados(archivo, raiz)
+            if modulo == "core.models" or modulo.startswith("core.models.")
+        }
+    )
+
+
+def _es_nucleo_de_superficie(modulo: str) -> bool:
+    """Lo unico del nucleo que una ruta puede importar: los contratos y la presentacion de texto."""
+    return (
+        modulo == "core.contracts"
+        or modulo.startswith("core.contracts.")
+        or modulo == "core.verification.texto"
+    )
+
+
+def _nucleo_profundo(archivo: Path, raiz: Path = RAIZ) -> dict[str, int]:
+    """Modulo del nucleo que no es de superficie -> primera linea que lo importa. `core.models`
+    queda fuera: lo vigila su propia lista (`MODELOS_EN_RUTAS`)."""
+    hallados: dict[str, int] = {}
+    for linea, modulo in _modulos_usados(archivo, raiz):
+        es_modelo = modulo == "core.models" or modulo.startswith("core.models.")
+        if modulo.startswith("core.") and not es_modelo and not _es_nucleo_de_superficie(modulo):
+            hallados.setdefault(modulo, linea)
+    return hallados
+
+
+#: Llamadas `select(` por archivo de `api/rutas` (2026-11-17, a802d728): la ola 3 las muda a
+#: `aplicacion`, `seguridad` y `produccion`.
+SELECT_EN_RUTAS: dict[str, int] = {
+    "api/rutas/admin_claves_api.py": 1,
+    "api/rutas/admin_empresas_registradas.py": 1,
+    "api/rutas/cuentas.py": 1,
+    "api/rutas/entregas.py": 1,
+    "api/rutas/listas.py": 1,
+    "api/rutas/presupuestos.py": 4,
+    "api/rutas/produccion.py": 2,
+    "api/rutas/reajuste.py": 1,
+    "api/rutas/rendimientos.py": 1,
+}
+
+#: Archivos de `api/rutas` que importan `core.models` (2026-11-17, a802d728).
+MODELOS_EN_RUTAS: frozenset[str] = frozenset(
+    {
+        "api/rutas/entregas.py",
+        "api/rutas/listas.py",
+        "api/rutas/presupuestos.py",
+        "api/rutas/reajuste.py",
+        "api/rutas/rendimientos.py",
+        "api/rutas/revision.py",
+    }
+)
+
+#: Archivo de `api/rutas` -> modulos del nucleo que no son `core.contracts.*` ni
+#: `core.verification.texto` (2026-11-17, a802d728).
+NUCLEO_PROFUNDO_EN_RUTAS: dict[str, frozenset[str]] = {
+    "api/rutas/aprobaciones.py": frozenset({"core.catalog"}),
+    "api/rutas/auditorias.py": frozenset({"core.budget.canonico"}),
+    "api/rutas/busqueda.py": frozenset({"core.catalog"}),
+    "api/rutas/catalogo.py": frozenset({"core.catalog"}),
+    "api/rutas/control.py": frozenset({"core.budget.control", "core.catalog"}),
+    "api/rutas/entregas.py": frozenset({"core.budget.canonico"}),
+    "api/rutas/hoja.py": frozenset({"core.budget.moneda", "core.catalog"}),
+    "api/rutas/listas.py": frozenset({"core.catalog", "core.catalog.precios"}),
+    "api/rutas/mercado.py": frozenset(
+        {"core.catalog", "core.catalog.errores", "core.catalog.moneda"}
+    ),
+    "api/rutas/obras.py": frozenset({"core.catalog", "core.catalog.indices"}),
+    "api/rutas/presupuestos.py": frozenset(
+        {"core.budget", "core.budget.instantanea", "core.catalog", "core.verification.informe"}
+    ),
+    "api/rutas/proyectos.py": frozenset({"core.catalog"}),
+    "api/rutas/reajuste.py": frozenset({"core.budget.reajuste"}),
+    "api/rutas/rendimientos.py": frozenset({"core.catalog"}),
+    "api/rutas/revision.py": frozenset({"core.budget.comparacion"}),
+    "api/rutas/sesion.py": frozenset({"core.catalog"}),
+    "api/rutas/tablero.py": frozenset({"core.catalog"}),
+}
+
+
+def test_las_rutas_no_consultan_la_base():
+    peores = []
+    for archivo in _archivos_de_rutas():
+        lineas = _llamadas_select(archivo)
+        congelado = SELECT_EN_RUTAS.get(_ruta(archivo), 0)
+        if len(lineas) > congelado:
+            sitios = ", ".join(f"{_ruta(archivo)}:{linea}" for linea in lineas)
+            peores.append(f"{len(lineas)} select() (congelado {congelado}): {sitios}")
+    assert peores == [], "la consulta va en aplicacion/, no en la ruta:\n" + "\n".join(peores)
+
+
+def test_las_rutas_no_consultan_la_base_sin_sobrantes():
+    sobrantes = []
+    for ruta, congelado in sorted(SELECT_EN_RUTAS.items()):
+        hoy = len(_llamadas_select(RAIZ / ruta)) if (RAIZ / ruta).is_file() else 0
+        if hoy < congelado:
+            sobrantes.append(f"{ruta}: {congelado} -> {hoy}" + ("" if hoy else " (borrar la fila)"))
+    assert sobrantes == [], "bajar SELECT_EN_RUTAS: " + "; ".join(sobrantes)
+
+
+def test_las_rutas_no_consultan_la_base_ve_la_falta(tmp_path):
+    archivo = tmp_path / "ruta.py"
+    archivo.write_text(
+        "import sqlalchemy as sa\nfrom sqlalchemy import select\n\n"
+        "# select(Partida) en un comentario no cuenta\n"
+        'consulta = select(1).where(True)\notra = sa.select(2)\ntexto = "select(3)"\n',
+        encoding="utf-8",
+    )
+    assert _llamadas_select(archivo) == [5, 6]
+
+
+def test_las_rutas_no_importan_los_modelos_del_nucleo():
+    nuevos = sorted(
+        f"{_ruta(archivo)}:{lineas[0]}"
+        for archivo in _archivos_de_rutas()
+        if (lineas := _importa_modelos_del_nucleo(archivo))
+        and _ruta(archivo) not in MODELOS_EN_RUTAS
+    )
+    assert nuevos == [], f"importan core.models fuera de MODELOS_EN_RUTAS: {nuevos}"
+
+
+def test_las_rutas_no_importan_los_modelos_del_nucleo_sin_sobrantes():
+    sobrantes = sorted(
+        ruta
+        for ruta in MODELOS_EN_RUTAS
+        if not (RAIZ / ruta).is_file() or not _importa_modelos_del_nucleo(RAIZ / ruta)
+    )
+    assert sobrantes == [], (
+        f"ya no importan core.models; borrarlas de MODELOS_EN_RUTAS: {sobrantes}"
+    )
+
+
+def test_las_rutas_no_importan_los_modelos_del_nucleo_ve_la_falta(tmp_path):
+    fuentes = {
+        "from core.models import Partida\n": [1],
+        "from core import models\n": [1],
+        "import core.models\n": [1],
+        "def f():\n    from core.models import Insumo\n": [2],
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from core.models import X\n": [],
+        "from core.contracts import Dominio\n": [],
+    }
+    for paquete in ("core", "core/models"):
+        (tmp_path / paquete).mkdir()
+        (tmp_path / paquete / "__init__.py").write_text("", encoding="utf-8")
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"ruta_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _importa_modelos_del_nucleo(archivo, raiz=tmp_path)
+    assert detectadas == fuentes
+
+
+def test_las_rutas_no_entran_al_nucleo_por_dentro():
+    nuevos = sorted(
+        f"{_ruta(archivo)}:{linea} {modulo}"
+        for archivo in _archivos_de_rutas()
+        for modulo, linea in _nucleo_profundo(archivo).items()
+        if modulo not in NUCLEO_PROFUNDO_EN_RUTAS.get(_ruta(archivo), frozenset())
+    )
+    assert nuevos == [], (
+        "del nucleo, una ruta solo importa los contratos y el texto:\n" + "\n".join(nuevos)
+    )
+
+
+def test_las_rutas_no_entran_al_nucleo_por_dentro_sin_sobrantes():
+    sobrantes = sorted(
+        f"{ruta}: {modulo}"
+        for ruta, modulos in NUCLEO_PROFUNDO_EN_RUTAS.items()
+        for modulo in modulos
+        - (set(_nucleo_profundo(RAIZ / ruta)) if (RAIZ / ruta).is_file() else set())
+    )
+    assert sobrantes == [], f"borrar de NUCLEO_PROFUNDO_EN_RUTAS: {sobrantes}"
+
+
+def test_las_rutas_no_entran_al_nucleo_por_dentro_ve_la_falta(tmp_path):
+    for paquete in ("core", "core/budget", "core/verification", "core/contracts"):
+        (tmp_path / paquete).mkdir(parents=True)
+        (tmp_path / paquete / "__init__.py").write_text("", encoding="utf-8")
+    for modulo in ("core/budget/cadena.py", "core/verification/texto.py"):
+        (tmp_path / modulo).write_text("", encoding="utf-8")
+    ruta = tmp_path / "api" / "rutas" / "obra.py"
+    ruta.parent.mkdir(parents=True)
+    ruta.write_text(
+        "from core.contracts import Dominio\nfrom core.verification import texto\n"
+        "from core.budget import cadena\n\n\ndef f():\n    from core.budget import elaborar\n",
+        encoding="utf-8",
+    )
+    assert _nucleo_profundo(ruta, raiz=tmp_path) == {"core.budget.cadena": 3, "core.budget": 7}
+
+
+# --- Tarea 1.3: cero ciclos nuevos --------------------------------------------------------------
+#
+# Los grafos de 1.3 miran el programa: `tests` y `scripts` quedan fuera porque importan todo por
+# oficio (con ellos, todo el programa seria un solo ciclo). Sus aristas hacia el programa las
+# congela la matriz de 1.1, que tambien ve `operacion -> scripts` e `instalador -> tests`.
+
+PAQUETES_DEL_PROGRAMA = PAQUETES_INTERNOS - {"tests", "scripts"}
+
+
+def _componentes_fuertes(grafo: dict[str, set[str]]) -> list[frozenset[str]]:
+    """Componentes fuertemente conexos de dos o mas nodos (Tarjan, iterativo: sin recursion)."""
+    indice: dict[str, int] = {}
+    enlace: dict[str, int] = {}
+    pila: list[str] = []
+    en_pila: set[str] = set()
+    componentes: list[frozenset[str]] = []
+    nodos = sorted(set(grafo) | {v for vecinos in grafo.values() for v in vecinos})
+    for raiz in nodos:
+        if raiz in indice:
+            continue
+        trabajo = [(raiz, iter(sorted(grafo.get(raiz, ()))))]
+        indice[raiz] = enlace[raiz] = len(indice)
+        pila.append(raiz)
+        en_pila.add(raiz)
+        while trabajo:
+            nodo, vecinos = trabajo[-1]
+            vecino = next(vecinos, None)
+            if vecino is None:
+                trabajo.pop()
+                if trabajo:
+                    padre = trabajo[-1][0]
+                    enlace[padre] = min(enlace[padre], enlace[nodo])
+                if enlace[nodo] == indice[nodo]:
+                    componente = set()
+                    while True:
+                        miembro = pila.pop()
+                        en_pila.discard(miembro)
+                        componente.add(miembro)
+                        if miembro == nodo:
+                            break
+                    if len(componente) > 1:
+                        componentes.append(frozenset(componente))
+            elif vecino not in indice:
+                indice[vecino] = enlace[vecino] = len(indice)
+                pila.append(vecino)
+                en_pila.add(vecino)
+                trabajo.append((vecino, iter(sorted(grafo.get(vecino, ())))))
+            elif vecino in en_pila:
+                enlace[nodo] = min(enlace[nodo], indice[vecino])
+    return sorted(componentes, key=sorted)
+
+
+def _aristas_de_modulos(paquetes: frozenset[str], raiz: Path = RAIZ) -> dict[tuple[str, str], str]:
+    """`(modulo, modulo importado)` -> primer `archivo:linea`, entre modulos de `paquetes`.
+
+    Imports de ejecucion (locales incluidos, sin `if TYPE_CHECKING:`); `from a import b` apunta a
+    `a.b` si es un submodulo y a `a` (su `__init__`) si no lo es."""
+    archivos = [a for paquete in sorted(paquetes) for a in sorted((raiz / paquete).rglob("*.py"))]
+    modulos = {}
+    for archivo in archivos:
+        partes = archivo.relative_to(raiz).with_suffix("").parts
+        modulos[archivo] = ".".join(partes[:-1] if partes[-1] == "__init__" else partes)
+    conocidos = set(modulos.values())
+    aristas: dict[tuple[str, str], str] = {}
+    for archivo, origen in modulos.items():
+        for linea, destino in _modulos_usados(archivo, raiz):
+            if destino in conocidos and destino != origen:
+                sitio = f"{archivo.relative_to(raiz).as_posix()}:{linea}"
+                aristas.setdefault((origen, destino), sitio)
+    return aristas
+
+
+def _grafo(aristas) -> dict[str, set[str]]:
+    grafo: dict[str, set[str]] = {}
+    for origen, destino in aristas:
+        grafo.setdefault(origen, set()).add(destino)
+    return grafo
+
+
+def _describir_componente(componente: frozenset[str], aristas: dict) -> str:
+    internas = sorted(
+        f"{origen} -> {destino} ({sitio})"
+        for (origen, destino), sitio in aristas.items()
+        if origen in componente and destino in componente
+    )
+    return f"{sorted(componente)}:\n    " + "\n    ".join(internas)
+
+
+#: Ciclos de importacion entre modulos del programa (2026-11-17, a802d728): componente -> motivo.
+#: Salir de ellos es la ola 5 (aval del tutor). Sin los imports locales no hay ninguno: todos
+#: estan esquivados dentro de funciones.
+CICLOS_CONOCIDOS: dict[frozenset[str], str] = {
+    frozenset(
+        {
+            "aplicacion.aprobaciones",
+            "aplicacion.control",
+            "aplicacion.entrega",
+            "aplicacion.frentes",
+            "aplicacion.hoja",
+            "aplicacion.hoja_partidas",
+            "aplicacion.mercado",
+            "aplicacion.mesa",
+            "aplicacion.precios_declarados",
+            "aplicacion.procura",
+            "aplicacion.vial",
+        }
+    ): "2026-11-17, la mesa reune los pendientes de todos y ellos le piden sus tipos (tarea 5.1)",
+    frozenset({"seguridad.cuentas", "seguridad.sesiones"}): (
+        "2026-11-17, sesiones toma texto_responsable de cuentas dentro de una funcion (tarea 5.2)"
+    ),
+}
+
+#: El unico ciclo entre paquetes del programa (2026-11-17, a802d728); lo rompen las seis aristas
+#: marcadas `# ciclo, ola 5` en `DEPENDENCIAS_PERMITIDAS`.
+CICLO_DE_PAQUETES_CONOCIDO: frozenset[str] = frozenset(
+    {
+        "aplicacion",
+        "asistente",
+        "auditoria",
+        "fusion",
+        "migraciones",
+        "operacion",
+        "paquete",
+        "seguridad",
+    }
+)
+
+
+def _ciclos_de_modulos():
+    aristas = _aristas_de_modulos(PAQUETES_DEL_PROGRAMA)
+    return _componentes_fuertes(_grafo(aristas)), aristas
+
+
+def test_el_detector_de_componentes_ve_dos_ciclos_separados():
+    grafo = {"a": {"b"}, "b": {"a", "c"}, "c": {"d"}, "d": {"c"}, "e": {"a"}}
+    assert _componentes_fuertes(grafo) == [frozenset({"a", "b"}), frozenset({"c", "d"})]
+    assert _componentes_fuertes({"a": {"b"}, "b": {"c"}, "c": set()}) == []
+    assert _componentes_fuertes({"a": {"b"}, "b": {"c"}, "c": {"a"}}) == [frozenset("abc")]
+
+
+def test_el_grafo_de_modulos_ve_un_ciclo_por_import_local(tmp_path):
+    """El rojo de verdad: dos modulos falsos que se importan, uno de ellos dentro de una funcion,
+    forman un ciclo; el import bajo `if TYPE_CHECKING:` no cierra otro."""
+    carpeta = tmp_path / "falso"
+    carpeta.mkdir()
+    (carpeta / "__init__.py").write_text("", encoding="utf-8")
+    (carpeta / "a.py").write_text("from falso import b\n", encoding="utf-8")
+    (carpeta / "b.py").write_text("def f():\n    from falso.a import g\n", encoding="utf-8")
+    (carpeta / "c.py").write_text(
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from falso import a\n",
+        encoding="utf-8",
+    )
+    (carpeta / "d.py").write_text("from falso import c\n", encoding="utf-8")
+    aristas = _aristas_de_modulos(frozenset({"falso"}), raiz=tmp_path)
+    assert aristas[("falso.b", "falso.a")] == "falso/b.py:2"
+    assert _componentes_fuertes(_grafo(aristas)) == [frozenset({"falso.a", "falso.b"})]
+
+
+def test_no_aparecen_ciclos_nuevos():
+    componentes, aristas = _ciclos_de_modulos()
+    nuevos = [
+        _describir_componente(c, aristas)
+        for c in componentes
+        if not any(c & conocido for conocido in CICLOS_CONOCIDOS)
+    ]
+    assert nuevos == [], "ciclos de importacion nuevos:\n" + "\n".join(nuevos)
+
+
+def test_un_ciclo_conocido_no_crece():
+    componentes, aristas = _ciclos_de_modulos()
+    crecidos = [
+        f"{_describir_componente(c, aristas)}\n  nuevos: {sorted(c - conocido)}"
+        for c in componentes
+        for conocido in CICLOS_CONOCIDOS
+        if c & conocido and not c <= conocido
+    ]
+    assert crecidos == [], "ciclos conocidos que crecieron:\n" + "\n".join(crecidos)
+
+
+def test_ciclos_conocidos_sin_sobrantes():
+    """Un ciclo conocido que se achico o desaparecio obliga a actualizar o borrar su fila."""
+    componentes, _ = _ciclos_de_modulos()
+    sobrantes = [sorted(c) for c in CICLOS_CONOCIDOS if c not in componentes]
+    assert sobrantes == [], f"actualizar o borrar de CICLOS_CONOCIDOS: {sobrantes}; hoy: " + str(
+        [sorted(c) for c in componentes]
+    )
+
+
+def _ciclos_de_paquetes():
+    grafo = {
+        paquete: set(_imports_de_ejecucion_de_paquete(paquete)) & PAQUETES_DEL_PROGRAMA
+        for paquete in PAQUETES_DEL_PROGRAMA
+    }
+    return _componentes_fuertes(grafo)
+
+
+def test_no_aparecen_ciclos_nuevos_de_paquetes():
+    """Ni un segundo ciclo entre paquetes ni un paquete mas en el conocido."""
+    fuera = [
+        f"{sorted(c)} (nuevos: {sorted(c - CICLO_DE_PAQUETES_CONOCIDO)})"
+        for c in _ciclos_de_paquetes()
+        if not c <= CICLO_DE_PAQUETES_CONOCIDO
+    ]
+    assert fuera == [], f"ciclos de paquetes fuera de CICLO_DE_PAQUETES_CONOCIDO: {fuera}"
+
+
+def test_ciclo_de_paquetes_sin_sobrantes():
+    hoy = _ciclos_de_paquetes()
+    esperado = [CICLO_DE_PAQUETES_CONOCIDO] if CICLO_DE_PAQUETES_CONOCIDO else []
+    assert hoy == esperado, f"actualizar CICLO_DE_PAQUETES_CONOCIDO a {[sorted(c) for c in hoy]}"
+
+
+# --- Tarea 1.4: una sola presentacion numerica en la API ----------------------------------------
+
+#: Donde vivira la presentacion unica de la API (tarea 2.2); aun no existe, se excluye por nombre.
+PRESENTACION_DE_LA_API = "api/presentacion.py"
+
+
+def _menciona(anotacion: ast.expr | None, nombre: str) -> bool:
+    return anotacion is not None and any(
+        (isinstance(n, ast.Name) and n.id == nombre)
+        or (isinstance(n, ast.Attribute) and n.attr == nombre)
+        for n in ast.walk(anotacion)
+    )
+
+
+def _es_presentadora(funcion: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Funcion privada con un parametro anotado `Decimal` que devuelve `str`."""
+    argumentos = funcion.args
+    parametros = [*argumentos.posonlyargs, *argumentos.args, *argumentos.kwonlyargs]
+    return (
+        funcion.name.startswith("_")
+        and any(_menciona(p.annotation, "Decimal") for p in parametros)
+        and _menciona(funcion.returns, "str")
+    )
+
+
+def _es_sitio_de_presentacion(nodo: ast.AST) -> bool:
+    if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef):
+        return _es_presentadora(nodo)
+    if isinstance(nodo, ast.Call):
+        if isinstance(nodo.func, ast.Attribute) and nodo.func.attr == "quantize":
+            return True
+        return (
+            isinstance(nodo.func, ast.Name)
+            and nodo.func.id == "format"
+            and len(nodo.args) == 2
+            and isinstance(nodo.args[1], ast.Constant)
+            and isinstance(nodo.args[1].value, str)
+            and nodo.args[1].value.endswith("f")
+        )
+    nombre = (
+        nodo.id
+        if isinstance(nodo, ast.Name)
+        else nodo.attr
+        if isinstance(nodo, ast.Attribute)
+        else ""
+    )
+    return nombre.startswith("ROUND_HALF_")
+
+
+def _sitios_de_presentacion(archivo: Path) -> list[int]:
+    """Lineas donde `archivo` presenta una cifra por su cuenta: `.quantize(`, un `ROUND_HALF_*`,
+    `format(x, "f")` (o `".2f"`) o una funcion privada `Decimal -> str`. Lo que va dentro de un
+    sitio no cuenta otra vez: `_x(v: Decimal) -> str: return format(v, "f")` es un sitio, y
+    `v.quantize(q, rounding=ROUND_HALF_UP)` tambien. `texto_de_cifra` no es un sitio."""
+    dentro: set[int] = set()
+    sitios: list[int] = []
+    for nodo in ast.walk(_arbol(archivo)):
+        if id(nodo) in dentro or not _es_sitio_de_presentacion(nodo):
+            continue
+        sitios.append(nodo.lineno)
+        dentro.update(id(hijo) for hijo in ast.walk(nodo))
+    return sorted(sitios)
+
+
+def _presentacion_suelta_en_api() -> dict[str, list[int]]:
+    return {
+        _ruta(archivo): sitios
+        for archivo in _archivos("api")
+        if _ruta(archivo) != PRESENTACION_DE_LA_API and (sitios := _sitios_de_presentacion(archivo))
+    }
+
+
+#: Archivo de `api/` -> sitios que presentan cifras por su cuenta (2026-11-17, a802d728). La ola 2
+#: los lleva a `api/presentacion.py`.
+PRESENTACION_SUELTA_EN_API: dict[str, int] = {
+    "api/esquemas_corte.py": 3,
+    "api/esquemas_hoja.py": 1,
+    "api/esquemas_informe.py": 1,
+    "api/esquemas_vial.py": 4,
+    "api/rutas/admin_asistente.py": 1,
+    "api/rutas/aprobaciones.py": 1,
+    "api/rutas/auditorias.py": 2,
+    "api/rutas/auditorias_libro.py": 1,
+    "api/rutas/computos.py": 2,
+    "api/rutas/consulta.py": 1,
+    "api/rutas/control.py": 1,
+    "api/rutas/entregas.py": 1,
+    "api/rutas/fcas.py": 1,
+    "api/rutas/hoja_libro.py": 1,
+    "api/rutas/indices.py": 1,
+    "api/rutas/libros.py": 7,
+    "api/rutas/mercado.py": 4,
+    "api/rutas/obras.py": 5,
+    "api/rutas/procura.py": 1,
+    "api/rutas/produccion.py": 5,
+    "api/rutas/produccion_planta.py": 5,
+    "api/rutas/rendimientos.py": 1,
+    "api/rutas/revision.py": 1,
+    "api/rutas/riesgo.py": 2,
+    "api/rutas/tablero.py": 2,
+}
+
+
+def test_la_api_presenta_cifras_en_un_solo_sitio():
+    peores = sorted(
+        f"{ruta}: {len(sitios)} sitios (congelado {PRESENTACION_SUELTA_EN_API.get(ruta, 0)}): "
+        + ", ".join(f"{ruta}:{linea}" for linea in sitios)
+        for ruta, sitios in _presentacion_suelta_en_api().items()
+        if len(sitios) > PRESENTACION_SUELTA_EN_API.get(ruta, 0)
+    )
+    assert peores == [], f"la cifra se presenta en {PRESENTACION_DE_LA_API}:\n" + "\n".join(peores)
+
+
+def test_la_api_presenta_cifras_en_un_solo_sitio_sin_sobrantes():
+    hoy = _presentacion_suelta_en_api()
+    sobrantes = sorted(
+        f"{ruta}: {congelado} -> {len(hoy.get(ruta, []))}"
+        for ruta, congelado in PRESENTACION_SUELTA_EN_API.items()
+        if len(hoy.get(ruta, [])) < congelado
+    )
+    assert sobrantes == [], "bajar o borrar en PRESENTACION_SUELTA_EN_API: " + "; ".join(sobrantes)
+
+
+def test_la_api_presenta_cifras_en_un_solo_sitio_ve_la_falta(tmp_path):
+    fuentes = {
+        'def _x(v: Decimal) -> str:\n    return format(v, "f")\n': [1],
+        "def _y(v: Decimal) -> str:\n    return str(v.quantize(Decimal('0.01')))\n": [1],
+        "t = v.quantize(Q, rounding=ROUND_HALF_UP)\n": [1],
+        "import decimal\nmodo = decimal.ROUND_HALF_EVEN\n": [2],
+        'a = format(v, "f")\nb = format(v, ".2f")\nc = format(n, "d")\n': [1, 2],
+        "def publica(v: Decimal) -> str:\n    return texto_de_cifra(v)\n": [],
+        "def _z(v: int) -> str:\n    return str(v)\n": [],
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"modulo_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = _sitios_de_presentacion(archivo)
+    assert detectadas == fuentes
+
+
+# --- Tarea 1.5: tope de tamano por modulo -------------------------------------------------------
+
+TOPE_DE_LINEAS = 1000
+
+
+def _lineas_de_produccion(raiz: Path = RAIZ) -> dict[str, int]:
+    """Lineas de cada `.py` de produccion: los paquetes fuera de `core/` y de `tests/`, y los
+    sueltos de la raiz (`start.py`)."""
+    archivos = [*raiz.glob("*.py")] + [
+        archivo
+        for paquete in sorted(set(PAQUETES_FUERA_DEL_NUCLEO) - {"tests"})
+        for archivo in (raiz / paquete).rglob("*.py")
+    ]
+    return {
+        archivo.relative_to(raiz).as_posix(): len(archivo.read_text(encoding="utf-8").splitlines())
+        for archivo in sorted(archivos)
+    }
+
+
+#: Modulos que ya pasan del tope (2026-11-17, a802d728) -> sus lineas ese dia. Ninguno crece; la
+#: ola 4 los parte dejando una fachada que reexporta.
+MODULOS_GRANDES: dict[str, int] = {
+    "aplicacion/hoja.py": 3195,
+    "scripts/recorrido_ux_playwright.py": 2321,
+    "scripts/fusion_verificar.py": 2124,
+    "adapters/hoja_empresa/reglas.py": 1707,
+    "aplicacion/control.py": 1584,
+    "aplicacion/composicion.py": 1471,
+    "adapters/hoja_empresa/pdf.py": 1389,
+    "api/rutas/hoja.py": 1348,
+    "adapters/hoja_empresa/escritor/calculos.py": 1317,
+    "scripts/probar_precios_maprex.py": 1222,
+    "scripts/anonimizar_libro.py": 1163,
+    "api/rutas/presupuestos.py": 1132,
+    "scripts/informe_ti001.py": 1102,
+    "api/esquemas_hoja.py": 1061,
+    "aplicacion/hoja_vista.py": 1055,
+    "api/rutas/libros.py": 1038,
+}
+
+
+def test_ningun_modulo_pasa_del_tope():
+    nuevos = sorted(
+        f"{ruta} ({lineas} lineas)"
+        for ruta, lineas in _lineas_de_produccion().items()
+        if lineas > TOPE_DE_LINEAS and ruta not in MODULOS_GRANDES
+    )
+    assert nuevos == [], f"modulos de mas de {TOPE_DE_LINEAS} lineas: {nuevos}"
+
+
+def test_un_modulo_grande_no_crece_sobre_su_tope():
+    hoy = _lineas_de_produccion()
+    crecidos = sorted(
+        f"{ruta}: {congelado} -> {hoy[ruta]}"
+        for ruta, congelado in MODULOS_GRANDES.items()
+        if hoy.get(ruta, 0) > congelado
+    )
+    assert crecidos == [], f"modulos grandes que crecieron: {crecidos}"
+
+
+def test_modulos_grandes_sin_sobrantes_bajo_el_tope():
+    """Si un modulo baja del tope se borra su fila; si baja de su valor, el valor se baja al
+    numero nuevo que muestra el mensaje."""
+    hoy = _lineas_de_produccion()
+    sobrantes = []
+    for ruta, congelado in sorted(MODULOS_GRANDES.items()):
+        lineas = hoy.get(ruta, 0)
+        if lineas <= TOPE_DE_LINEAS:
+            sobrantes.append(f"{ruta}: {lineas} lineas, ya cabe en el tope (borrar la fila)")
+        elif lineas < congelado:
+            sobrantes.append(f'"{ruta}": {lineas},  (era {congelado})')
+    assert sobrantes == [], "actualizar MODULOS_GRANDES:\n" + "\n".join(sobrantes)
+
+
+def test_el_tope_ve_la_falta(tmp_path):
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "grande.py").write_text("x = 1\n" * (TOPE_DE_LINEAS + 1), encoding="utf-8")
+    (tmp_path / "core").mkdir()
+    (tmp_path / "core" / "nucleo.py").write_text("x = 1\n" * 5000, encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_x.py").write_text("x = 1\n" * 5000, encoding="utf-8")
+    (tmp_path / "start.py").write_text("x = 1\n", encoding="utf-8")
+    assert _lineas_de_produccion(tmp_path) == {"api/grande.py": TOPE_DE_LINEAS + 1, "start.py": 1}
+
+
+# --- Tarea 1.6: toda tabla esta en el modelo de datos -------------------------------------------
+
+
+def _tablas_del_programa() -> set[str]:
+    """Las tablas de las dos bases (`migraciones/metadatos.py`); se importa aqui para no cargar
+    todos los modelos al recoger las pruebas de este archivo."""
+    from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
+
+    return {nombre for meta in (*METADATAS_CASO, *METADATAS_INSTALACION) for nombre in meta.tables}
+
+
+def _tablas_sin_documentar(tablas: set[str], texto: str) -> set[str]:
+    """Las tablas cuyo nombre no aparece, exacto y entre comillas invertidas, en `texto`."""
+    return {tabla for tabla in tablas if f"`{tabla}`" not in texto}
+
+
+def _texto_del_modelo_de_datos() -> str:
+    return (RAIZ / "docs" / "modelo_datos.md").read_text(encoding="utf-8")
+
+
+#: Tablas que `docs/modelo_datos.md` no nombra (2026-11-17, a802d728). Cada fila se borra cuando
+#: su tabla entra en el documento (trabajo de documentacion aparte).
+TABLAS_SIN_DOCUMENTAR: frozenset[str] = frozenset(
+    """
+    apu_desperdicio apu_desperdicio_guardado cambio_precio clave_api clave_empresa
+    codigo_instalacion composicion_apu descarte_version ejecucion empresa_propia
+    empresa_registrada eslabon_version esp_sobrescrituras evento_acceso ficha_obra hallazgo
+    hoja_importaciones incidencia_cambio insumo intento_acceso item_computo lista_precios
+    modulo_cambio mp_aprobacion_evento mp_carpeta mp_causa_retraso mp_compra mp_eleccion
+    mp_indice_aprobacion mp_nota_medicion mp_observacion mp_plazo_entrega mp_precio_corte
+    mp_precio_objetivo paq_dictamen paq_recibido partida partida_presupuestada presupuesto
+    prod_calculo prod_costo prod_publicacion prod_receta prod_receta_componente punto_curva
+    sesion vial_tramo vial_tramos_guardado
+    """.split()
+)
+
+
+def test_toda_tabla_esta_en_el_modelo_de_datos():
+    faltan = _tablas_sin_documentar(_tablas_del_programa(), _texto_del_modelo_de_datos())
+    nuevas = sorted(faltan - TABLAS_SIN_DOCUMENTAR)
+    assert nuevas == [], f"tablas que docs/modelo_datos.md no nombra entre `comillas`: {nuevas}"
+
+
+def test_toda_tabla_esta_en_el_modelo_de_datos_sin_sobrantes():
+    """Una tabla que ya esta documentada, o que ya no existe, se borra de la lista."""
+    faltan = _tablas_sin_documentar(_tablas_del_programa(), _texto_del_modelo_de_datos())
+    sobrantes = sorted(TABLAS_SIN_DOCUMENTAR - faltan)
+    assert sobrantes == [], f"borrar de TABLAS_SIN_DOCUMENTAR: {sobrantes}"
+
+
+def test_el_modelo_de_datos_ve_la_falta():
+    texto = "La tabla `partida` guarda ...; `presupuesto_version` no es `presupuesto`.\n"
+    tablas = {"partida", "presupuesto", "insumo", "clave_api"}
+    assert _tablas_sin_documentar(tablas, texto) == {"insumo", "clave_api"}
+    assert _tablas_sin_documentar({"precio"}, "`precio_unitario` y precio a secas") == {"precio"}
+
+
+# --- Tarea 1.7: todo RF del ERS esta en el plan de pruebas --------------------------------------
+
+#: `RF-N` con el guion normal o con el de no separacion (U+2011), que es el que usa el ERS.
+_RF = re.compile("(?<![A-Za-z0-9])RF[-‑]([0-9]+)")
+
+
+def _requisitos(texto: str) -> set[str]:
+    """Los `RF-N` que nombra `texto`, normalizados con el guion normal."""
+    return {f"RF-{numero}" for numero in _RF.findall(texto)}
+
+
+def _seccion_de_trazabilidad(plan: str) -> str:
+    """De `docs/plan_pruebas.md`, lo que va de `## 8.` (RF -> prueba) a `## 9.`."""
+    inicio = plan.index("\n## 8.")
+    return plan[inicio : plan.index("\n## 9.", inicio)]
+
+
+def _rf_sin_prueba() -> set[str]:
+    ers = (RAIZ / "docs" / "ERS.md").read_text(encoding="utf-8")
+    plan = (RAIZ / "docs" / "plan_pruebas.md").read_text(encoding="utf-8")
+    return _requisitos(ers) - _requisitos(_seccion_de_trazabilidad(plan))
+
+
+def _rangos_de_rf(*rangos: tuple[int, int]) -> frozenset[str]:
+    return frozenset(f"RF-{n}" for desde, hasta in rangos for n in range(desde, hasta + 1))
+
+
+#: RF del ERS sin fila en `docs/plan_pruebas.md` §8 (2026-11-17, a802d728): 80 de 191. Rangos
+#: cerrados en los dos extremos.
+RF_SIN_PRUEBA: frozenset[str] = _rangos_de_rf(
+    (80, 89),
+    (101, 110),
+    (119, 119),
+    (126, 126),
+    (128, 128),
+    (131, 132),
+    (137, 137),
+    (140, 140),
+    (147, 147),
+    (155, 156),
+    (159, 161),
+    (166, 168),
+    (170, 202),
+    (204, 214),
+)
+
+
+def test_todo_rf_tiene_fila_en_el_plan_de_pruebas():
+    nuevos = sorted(_rf_sin_prueba() - RF_SIN_PRUEBA, key=lambda rf: int(rf[3:]))
+    assert nuevos == [], f"RF del ERS sin fila en docs/plan_pruebas.md §8: {nuevos}"
+
+
+def test_todo_rf_tiene_fila_en_el_plan_de_pruebas_sin_sobrantes():
+    """Un RF que ya tiene su fila en §8, o que salio del ERS, se borra de la lista."""
+    sobrantes = sorted(RF_SIN_PRUEBA - _rf_sin_prueba(), key=lambda rf: int(rf[3:]))
+    assert sobrantes == [], f"borrar de RF_SIN_PRUEBA: {sobrantes}"
+
+
+def test_la_trazabilidad_del_plan_de_pruebas_lee_los_dos_guiones():
+    texto = "RF‑7 y RF-8 se piden; NRF-9 y RF10 no son requisitos; RF-12 vale.\n"
+    assert _requisitos(texto) == {"RF-7", "RF-8", "RF-12"}
+    plan = "## 7. Otra\nRF-1\n## 8. Trazabilidad\n| RF‑2 |\n## 9. RNF\nRF-3\n"
+    assert _requisitos(_seccion_de_trazabilidad(plan)) == {"RF-2"}

@@ -1402,6 +1402,11 @@ Interfaces provistas y requeridas:
 | `api` | las rutas HTTP de `api/rutas/` (§1; esquema en `docs/api.json`) | `core`, `adapters` (perezoso), `ml` |
 | `scripts` | siembra de las bases, simulación de listas, metas de cada sprint, `docs/resultados_ml.md` y `docs/api.json` | `core`, `adapters`, `ml`, `aplicacion`, `api` y `tests.fixtures` (solo los fixtures) |
 
+> **Nota (2026-11-17, plan de desenredo, tarea 1.1).** La columna «Requiere» de esta tabla se quedó
+> corta (p. ej. `api` importa hoy once paquetes, no tres). Mientras su enmienda espera el aval del
+> tutor, la fuente de las dependencias entre paquetes es la matriz `DEPENDENCIAS_PERMITIDAS` de
+> `tests/unit/test_arquitectura.py`, medida sobre el código y vigilada en cada ejecución de la suite.
+
 Regla de dependencia: ninguna flecha sale de `core/` hacia `adapters/`, `ml/`, `aplicacion/`, `api/`,
 `scripts/` ni `tests/` (`test_el_nucleo_no_conoce_a_los_demas_paquetes`, con la tupla
 `PAQUETES_FUERA_DEL_NUCLEO`), y las que entran desde `adapters/` y `ml/` llegan solo a
