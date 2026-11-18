@@ -2634,6 +2634,22 @@ def test_la_cabecera_a_mano_ve_un_sin_cache_importado(tmp_path):
     assert _cabecera_de_cache_a_mano(archivo) == [5, 7]
 
 
+def test_la_cabecera_a_mano_ve_un_sin_cache_por_import_de_modulo(tmp_path):
+    """DS-50 (5): `import api.rutas.x as m` + `m.SIN_CACHE` y `import api.rutas.x` +
+    `api.rutas.x.SIN_CACHE` son el mismo diccionario importado."""
+    archivo = tmp_path / "ruta.py"
+    archivo.write_text(
+        "import api.rutas.indices as m\n"
+        "import api.rutas.reajuste\n"
+        "import api.sin_cache\n"
+        "def f(response):\n    response.headers.update(m.SIN_CACHE)\n"
+        "def g():\n    return api.rutas.reajuste.SIN_CACHE\n"
+        "def h():\n    return api.sin_cache.SIN_CACHE\n",
+        encoding="utf-8",
+    )
+    assert _cabecera_de_cache_a_mano(archivo) == [5, 7]
+
+
 def test_la_guardia_reconoce_los_routers_sin_cache():
     """No pasa en vacio: ve la clase propia (`entregas`), la de Administracion (`admin_empresa`) y
     la que se pone ruta por ruta (`casos`); no ve un router que solo usa `RutaSinEco`."""
