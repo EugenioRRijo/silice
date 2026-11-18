@@ -1017,12 +1017,18 @@ def _es_consulta(nodo: ast.Call) -> bool:
         return False
     if funcion.attr in {"select", "query", "execute"}:
         return True
-    return funcion.attr == "get" and len(nodo.args) >= 2 and _es_una_clase(nodo.args[0])
+    if funcion.attr != "get":
+        return False
+    nombrados = {k.arg: k.value for k in nodo.keywords if k.arg is not None}
+    entidad = nodo.args[0] if nodo.args else nombrados.get("entity")
+    tiene_ident = len(nodo.args) >= 2 or "ident" in nombrados
+    return entidad is not None and tiene_ident and _es_una_clase(entidad)
 
 
 def _llamadas_select(archivo: Path) -> list[int]:
     """Lineas de cada consulta a la base, por AST (un comentario no cuenta): `select(...)` o
-    `x.select(...)`, `x.query(...)`, `x.execute(...)` y `x.get(<Modelo>, id)` (anexo A.7)."""
+    `x.select(...)`, `x.query(...)`, `x.execute(...)` y `x.get(<Modelo>, id)` (anexo A.7), tambien
+    con `ident=` y `entity=` nombrados (DS-50)."""
     return sorted(
         nodo.lineno
         for nodo in ast.walk(_arbol(archivo))
@@ -1101,7 +1107,10 @@ NUCLEO_PROFUNDO_EN_RUTAS: dict[str, frozenset[str]] = {
 
 def test_las_rutas_no_consultan_la_base():
     """Prohibicion pura desde el cierre de la ola 3 (2026-11-17): la consulta va en `aplicacion/`,
-    `seguridad/` o `produccion/`, nunca en `api/rutas`."""
+    `seguridad/` o `produccion/`, nunca en `api/rutas`.
+
+    No ve: `bd.refresh(x)`, `bd.scalars(...)`/`bd.scalar(...)` sobre una sentencia hecha en otro
+    sitio ni `x.get(modelo, id)` con el modelo en una variable en minusculas (DS-50)."""
     sitios = sorted(
         f"{_ruta(archivo)}:{linea}"
         for archivo in _archivos_de_rutas()
