@@ -2417,6 +2417,12 @@ def test_una_sola_busqueda_de_obra_por_nombre_ve_la_falta(tmp_path):
         "q = select(models.Proyecto).where(n == models.Proyecto.nombre).limit(1)\n": [1],
         "q = sesion.query(models.Proyecto).filter(models.Proyecto.nombre == n)\n": [1],
         "q = sesion.query(models.Proyecto).filter_by(nombre=n)\n": [1],
+        # DS-50 (2): una columna de la obra o su existencia tambien es buscarla por nombre.
+        "q = select(models.Proyecto.id).where(models.Proyecto.nombre == n)\n": [1],
+        "q = select(Proyecto.id, Proyecto.moneda).where(Proyecto.nombre == n)\n": [1],
+        "q = select(exists().where(models.Proyecto.nombre == n))\n": [1],
+        "q = sa.exists().where(Proyecto.nombre == n)\n": [1],
+        "q = select(Presupuesto.id).join(Proyecto).where(Proyecto.nombre == n)\n": [],
         # Lo que no es buscar la obra: otra entidad unida a la obra, otra columna, otro orden.
         "q = select(Presupuesto).join(Proyecto).where(Proyecto.nombre == n)\n": [],
         "q = select(models.Proyecto).where(models.Proyecto.id == n)\n": [],
