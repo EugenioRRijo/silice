@@ -39,6 +39,7 @@ from aplicacion.hoja_partidas import (
     CalculoInvalido,
     PartidaElegida,
     agregar_partida,
+    calculo_de_regla,
     cantidad_y_regla,
     quitar_partida,
     texto_llano,
@@ -461,3 +462,50 @@ def test_el_texto_llano_escribe_la_cantidad_con_coma_decimal_y_punto_de_miles(ca
 def test_texto_llano_deja_igual_cualquier_otra_descripcion():
     otra = "la cantidad de OBRA-04 es 15 m2, pero su regla '6*3-2' evaluada da 16 m2"
     assert texto_llano(otra) == otra
+
+
+# --- el cálculo de la regla de un cómputo (prueba en vivo del 2026-11-18, frente B) -------------
+
+
+@pytest.mark.parametrize(
+    ("regla", "parametros", "calculo"),
+    [
+        # la tubería: 48,5 × (1 + 0,05) = 50,925
+        (
+            "longitud * (1 + desperdicio)",
+            {"longitud": "48.5", "desperdicio": "0.05"},
+            "48,5*(1+0,05)",
+        ),
+        # el concreto de una tanquilla: la potencia entera se escribe como producto
+        (
+            "n * (a**2 - (a - 2*e)**2) * h",
+            {"n": "2", "a": "1.2", "e": "0.15", "h": "1.5"},
+            "2*((1,2*1,2)-((1,2-2*0,15)*(1,2-2*0,15)))*1,5",
+        ),
+        # las cifras de la regla también van con coma; los miles, con punto
+        ("longitud * 0.7854 * diametro**2", {"longitud": "1200", "diametro": "0.1"},
+         "1.200*0,7854*(0,1*0,1)"),
+        # un parámetro negativo va entre paréntesis
+        ("a + b", {"a": "3", "b": "-0.5"}, "3+(-0,5)"),
+    ],
+    ids=["tuberia", "tanquilla", "cifras_de_la_regla", "negativo"],
+)  # fmt: skip
+def test_la_regla_del_computo_se_escribe_como_calculo(regla, parametros, calculo) -> None:
+    valores = {nombre: Decimal(valor) for nombre, valor in parametros.items()}
+    assert calculo_de_regla(regla, valores) == calculo
+
+
+@pytest.mark.parametrize(
+    ("regla", "parametros"),
+    [
+        ("n * a**e", {"n": "2", "a": "1.2", "e": "0.15"}),  # la potencia no es un entero escrito
+        ("a * b", {"a": "2"}),  # falta un parámetro
+        ("max(a, b)", {"a": "2", "b": "3"}),  # una función
+        ("a ** 0", {"a": "2"}),  # potencia cero: no es un producto
+        ("", {}),
+    ],
+    ids=["potencia_no_entera", "falta_parametro", "funcion", "potencia_cero", "vacia"],
+)
+def test_una_regla_que_no_son_las_cuatro_operaciones_no_da_calculo(regla, parametros) -> None:
+    valores = {nombre: Decimal(valor) for nombre, valor in parametros.items()}
+    assert calculo_de_regla(regla, valores) is None
