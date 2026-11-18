@@ -529,6 +529,12 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
     expect(await titulo("Esa obra ya no existe")).toBeInTheDocument();
   });
 
+  test("una sección inexistente con un número de obra que no es entero seguro no redirige: la obra no existe", async () => {
+    montar({ en: "/obra/empresa/99999999999999999999/no-existe" });
+    expect(await titulo("Esa obra ya no existe")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/99999999999999999999/no-existe");
+  });
+
   test("sin la obra lista (una que no existe) no hay cabecera ni barra de la obra", async () => {
     montar({ en: "/obra/empresa/99/resumen" });
     await titulo("Esa obra ya no existe");
@@ -1123,6 +1129,46 @@ describe("Marco: lo que se monta con él", () => {
     const dialogo = await screen.findByRole("dialog", { name: "Nueva obra" });
     expect(await within(dialogo).findByText("Se creará en Carpeta Sur")).toBeInTheDocument();
     expect(servidor.de("GET", "/v1/obras/todas")).toHaveLength(2);
+  });
+});
+
+// Arbitraje (2026-11-18): `recargadaPara` recordaba la última obra que pidió recargar la lista y no se reiniciaba al cambiar de
+// carpeta: entrar en una obra de Sur, volver a la empresa y volver a entrar en la misma obra de Sur se saltaba la recarga y
+// el contexto se quedaba con la carpeta vieja («Se creará en» decía la de la empresa).
+describe("Marco: volver a entrar en la misma obra de otra carpeta tras pasar por la empresa", () => {
+  test("la lista de obras se pone al día y «Nueva obra» dice la carpeta de Sur", async () => {
+    const u = userEvent.setup();
+    function Mandos() {
+      const navegar = useNavigate();
+      const { abrirCarpeta } = useAplicacion();
+      return (
+        <>
+          <button type="button" onClick={() => navegar("/obra/Carpeta%20Sur.db/3/resumen")}>
+            Ir a la obra de Sur
+          </button>
+          <button type="button" onClick={() => void abrirCarpeta?.("silice.db")}>
+            Abrir la empresa
+          </button>
+          <button type="button" onClick={() => navegar("/cuenta/cuentas")}>
+            Ir a la Cuenta
+          </button>
+        </>
+      );
+    }
+    const admin = sesionDe("ana", { acciones: [...ACCIONES.ana, "administrar_cuentas"] });
+    montar({ sesion: admin, en: "/cuenta/cuentas", paginas: ligeras({ administracion: Mandos, obras: Mandos }) });
+    await u.click(await screen.findByRole("button", { name: "Ir a la obra de Sur" }));
+    await waitFor(() => expect(servidor.de("PUT", "/v1/sesion/proyecto")).toHaveLength(1));
+    await u.click(await screen.findByRole("button", { name: "Abrir la empresa" }));
+    expect(await screen.findByText("Ahora trabaja con la carpeta «silice».")).toBeInTheDocument();
+    await u.click(await screen.findByRole("button", { name: "Ir a la obra de Sur" }));
+    await waitFor(() => expect(servidor.de("PUT", "/v1/sesion/proyecto")).toHaveLength(2));
+    await u.click(await screen.findByRole("button", { name: "Ir a la Cuenta" }));
+    const lateral = await screen.findByRole("complementary", { name: "Barra lateral" });
+    await waitFor(() => expect(servidor.estado.actual.nombre).toBe(SUR));
+    await u.click(within(lateral).getByRole("button", { name: "Nueva obra" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Nueva obra" });
+    expect(await within(dialogo).findByText("Se creará en Carpeta Sur")).toBeInTheDocument();
   });
 });
 
