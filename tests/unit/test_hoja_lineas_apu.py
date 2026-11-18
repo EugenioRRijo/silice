@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_lineas_apu
+from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_lineas_apu, hoja_vista
 from aplicacion.control import declarar_linea_base
 from aplicacion.errores import HojaInvalida
 from aplicacion.listas_para_armar import declarar_moneda_de_la_carpeta
@@ -598,3 +598,31 @@ def test_una_edicion_que_solo_cambia_el_desglose_se_rechaza_y_el_borrador_no_cam
     assert vivo.rev == 0 and vivo.borrador is antes and vivo.desperdicios == {}
     igual = editar(["1"], [""])
     assert igual.rev == 0 and igual.borrador is antes
+
+
+# --- Anexo A.6 del desenredo (acta DS-3, opción B): el desglose cuenta como cambio -------------
+
+
+def test_editar_solo_el_desglose_cuenta_como_cambio_y_sube_el_rev(base):
+    """El Cemento gris de OBRA-02 lleva 1 y no tiene traza; 0,8 + 25 % da 0,8 × 1,25 = 1 (a mano):
+    la composición no cambia, pero la Hoja mostrará «0,8 + 25 %» y guardar escribirá la traza. La
+    vista lo cuenta como un cambio de la fila 1 de materiales, el `rev` sube y repetir la edición
+    no lo vuelve a subir; quitar el porcentaje deja el borrador sin cambios."""
+    vivo = _abierto(base)
+
+    def editar(rev, materiales, desperdicios):
+        return hoja_edicion.editar_apu(
+            base, "ficha", vivo.id, rev, "OBRA-02", "6", materiales, ["1"], ["2"], desperdicios
+        )
+
+    editado = editar(0, ["0,8"], ["25"])
+    assert editado.rev == 1
+    desglose = CambioEditado("apu", "OBRA-02|material|1", "desperdicio", "", "0,8 + 25 %")
+    assert hoja_edicion.cambios_del_borrador(editado) == (1, [desglose])
+    resumen = hoja_vista.resumen(editado)
+    assert (resumen.cambios, resumen.desgloses) == (1, 1)
+    assert editar(1, ["0,8"], ["25"]).rev == 1
+    sin_desglose = editar(1, ["1"], [""])
+    assert sin_desglose.rev == 2
+    assert hoja_edicion.cambios_del_borrador(sin_desglose) == (2, [])
+    assert hoja_vista.resumen(sin_desglose).desgloses == 0
