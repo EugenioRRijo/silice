@@ -2,8 +2,11 @@ import { describe, expect, test } from "vitest";
 import {
   AVISO_TEMPORAL,
   CONFIRMACIONES,
+  AYUDA_USUARIO,
   contrasenaValida,
   errorDeContrasena,
+  errorDeUsuario,
+  TEXTO_USUARIO_INVALIDO,
   formatearFecha,
   notaAccesos,
   puedeCrear,
@@ -101,6 +104,33 @@ describe("logica de Administracion", () => {
     expect(errorDeContrasena("")).toBeNull();
     expect(errorDeContrasena("corta")).toBe("La contraseña debe tener entre 10 y 128 caracteres.");
     expect(errorDeContrasena("a".repeat(10))).toBeNull();
+  });
+
+  // Prueba en vivo (2026-11-18): la pista decía «Minúsculas, sin espacios» y el servidor exige otra cosa
+  // (`seguridad.cuentas.PATRON_LOGIN`: 3 a 40 caracteres a-z, 0-9, punto, guion o guion bajo, empezando con letra o número,
+  // tras quitar espacios y pasar a minúsculas). La pista dice lo mismo y el navegador lo avisa al escribir.
+  test("la pista del usuario dice la regla del servidor", () => {
+    expect(AYUDA_USUARIO).toBe(
+      "De 3 a 40 caracteres: letras sin tilde, números, punto, guion o guion bajo. Empieza con letra o número, sin espacios. Se guarda en minúsculas.",
+    );
+  });
+
+  test.each(["rita", "ana.perez", "a-b", "a_b", "r2d2", "abc", "a".repeat(40), "  Rita  ", "RITA"])("«%s» es un usuario válido", (login) => {
+    expect(errorDeUsuario(login)).toBeNull();
+    expect(puedeCrear(login, "Nombre", "a".repeat(10))).toBe(true);
+  });
+
+  test.each(["ab", "a".repeat(41), "ana perez", "-ana", ".ana", "_ana", "añ", "ana@casa", "pérez"])("«%s» no es un usuario válido", (login) => {
+    expect(errorDeUsuario(login)).toBe(TEXTO_USUARIO_INVALIDO);
+    expect(puedeCrear(login, "Nombre", "a".repeat(10))).toBe(false);
+  });
+
+  test("sin escribir todavía no hay error de usuario", () => {
+    expect(errorDeUsuario("")).toBeNull();
+    expect(errorDeUsuario("   ")).toBeNull();
+    expect(TEXTO_USUARIO_INVALIDO).toBe(
+      "El usuario debe tener de 3 a 40 caracteres: letras sin tilde, números, punto, guion o guion bajo, y empezar con letra o número.",
+    );
   });
 
   test("crear exige usuario, nombre y contrasena valida", () => {
