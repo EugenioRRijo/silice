@@ -169,9 +169,10 @@ LLAMADORES = {
     ("aplicacion/hoja_versiones.py", "restaurar"),
     ("aplicacion/hoja_versiones.py", "cotizar"),
     ("aplicacion/hoja_versiones.py", "retirar_cotizacion"),
-    ("api/rutas/hoja.py", "restaurar"),
-    ("api/rutas/hoja.py", "cotizar"),
-    ("api/rutas/hoja.py", "retirar_cotizacion"),
+    # Tarea 4.2 del desenredo: las rutas S2 a S4 salieron de api/rutas/hoja.py, sin cambios
+    ("api/rutas/hoja_cadena.py", "restaurar"),
+    ("api/rutas/hoja_cadena.py", "cotizar"),
+    ("api/rutas/hoja_cadena.py", "retirar_cotizacion"),
     ("scripts/generar_obra_control.py", "guardar_presupuesto"),
 }
 

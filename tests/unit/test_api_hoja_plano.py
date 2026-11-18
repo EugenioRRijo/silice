@@ -39,6 +39,7 @@ from fastapi.testclient import TestClient
 from adapters.espacio.planos import EstadoImportacion
 from api import caso_web, dependencias
 from api.rutas import hoja as ruta_hoja
+from api.rutas import hoja_lecturas as ruta_lecturas
 from api.rutas import hoja_plano as ruta_plano
 from aplicacion import hoja as copia
 from aplicacion import hoja_borradores, hoja_plano
@@ -70,7 +71,8 @@ from tests.fixtures.sesion_web import (
 )
 
 D = Decimal
-APP = app_con(ruta_hoja.router, ruta_plano.router)
+# La vista del espacio vive en `hoja_lecturas` desde la tarea 4.2 del desenredo.
+APP = app_con(ruta_hoja.router, ruta_lecturas.router, ruta_plano.router)
 SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "

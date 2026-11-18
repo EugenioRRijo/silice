@@ -39,8 +39,10 @@ from api.rutas import (
     entregas,
     fcas,
     hoja,
+    hoja_cadena,
     hoja_exportar,
     hoja_frentes,
+    hoja_lecturas,
     hoja_libro,
     hoja_llevar,
     hoja_plano,
@@ -189,6 +191,9 @@ app.include_router(revision.router)
 # Migracion final (T10 · 3b): «Hoja del proyecto»; lecturas con clave o sesion, borradores
 # solo con sesion
 app.include_router(hoja.router)
+# 4.2 (desenredo): sus lecturas y S2 a S6, en su orden de siempre
+app.include_router(hoja_lecturas.router)
+app.include_router(hoja_cadena.router)
 # Montar un presupuesto (T12): Elaborar lleva sus items a la Hoja de la obra, solo con sesion
 app.include_router(hoja_llevar.router)
 # Libro por frentes (2026-11-13): el libro auditado va a la Hoja de la obra, solo con sesion

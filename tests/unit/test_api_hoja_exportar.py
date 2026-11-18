@@ -37,6 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api import caso_web, dependencias
 from api.rutas import hoja as hoja_ruta
+from api.rutas import hoja_lecturas
 from aplicacion import entrega, hoja, hoja_borradores
 from core.budget import crear_proyecto
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
@@ -174,7 +175,8 @@ def _entorno(_casos: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> Iterat
 def app() -> FastAPI:
     from api.rutas import hoja_exportar  # se importa aqui: sin la ruta, cada prueba falla sola
 
-    return app_con(hoja_ruta.router, hoja_exportar.router)
+    # La vista del espacio vive en `hoja_lecturas` desde la tarea 4.2 del desenredo.
+    return app_con(hoja_ruta.router, hoja_lecturas.router, hoja_exportar.router)
 
 
 def _poner(origen: Path) -> Path:

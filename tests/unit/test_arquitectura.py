@@ -1050,6 +1050,9 @@ NUCLEO_PROFUNDO_EN_RUTAS: dict[str, frozenset[str]] = {
     "api/rutas/control.py": frozenset({"core.budget.control", "core.catalog"}),
     "api/rutas/entregas.py": frozenset({"core.budget.canonico"}),
     "api/rutas/hoja.py": frozenset({"core.budget.moneda", "core.catalog"}),
+    # Tarea 4.2: lo que salio de hoja.py con sus rutas (subconjuntos de la fila de hoja.py).
+    "api/rutas/hoja_cadena.py": frozenset({"core.catalog"}),
+    "api/rutas/hoja_lecturas.py": frozenset({"core.budget.moneda", "core.catalog"}),
     "api/rutas/listas.py": frozenset({"core.catalog", "core.catalog.precios"}),
     "api/rutas/mercado.py": frozenset(
         {"core.catalog", "core.catalog.errores", "core.catalog.moneda"}
