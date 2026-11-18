@@ -318,6 +318,11 @@ def _desglose(sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador) -> G
         **vivo.vigentes_del_desperdicio,
         **{codigo: tuple(trazas) for codigo, trazas in escritas.items()},
     }
+    # lo escrito ya esta en la base: si se quedara en el borrador, taparia lo que Componer guarde
+    # despues de esa partida y la version siguiente lo reescribiria sin contarlo como cambio
+    vivo.desperdicios = {
+        codigo: trazas for codigo, trazas in vivo.desperdicios.items() if codigo not in escritas
+    }
     lineas = plural(desgloses, "línea", "líneas")
     return Guardado(
         codigo=abierta.codigo,
