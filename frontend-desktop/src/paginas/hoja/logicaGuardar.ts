@@ -98,6 +98,15 @@ export function motivoParaNoGuardar({ fuente, primera, cambios, soloLectura, sol
   return null;
 }
 
+// Prueba en vivo del 18/11/2026: guardar con partidas «Pendiente» se permite, pero la versión queda con ese error (ERROR del
+// informe) y no se puede enviar a aprobación; el diálogo lo dice antes. null si no hay ninguna.
+export function textoDePendientesAlGuardar(n: number): string | null {
+  if (n <= 0) return null;
+  return n === 1
+    ? "1 partida está sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarla. En Partidas, el estado de la fila dice por qué."
+    : `${n} partidas están sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarlas. En Partidas, el estado de cada fila dice por qué.`;
+}
+
 export function textoDeCambiosAGuardar(n: number): string {
   return n === 1 ? "1 cambio" : `${n} cambios`;
 }

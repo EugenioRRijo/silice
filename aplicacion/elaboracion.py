@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from aplicacion import hoja, hoja_borradores, hoja_edicion, importaciones
+from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_sin_valorar, importaciones
 from aplicacion.cifras import CifraInvalida, texto_de_cifra
 from aplicacion.composicion import (
     ComposicionInvalida,
@@ -410,6 +410,57 @@ def _validar(sesion: Session, partidas: Sequence[PartidaParaLlevar]) -> None:
             raise HojaInvalida(f"{partida.codigo}: {error}") from None
 
 
+def explicar_pendiente(
+    sesion: Session, error: hoja_edicion.PartidaQuedariaPendiente, *, llevando: bool = False
+) -> str:
+    """El mensaje del 409 de `hoja_edicion.PartidaQuedariaPendiente`: qué insumos de la partida no
+    tienen precio en la lista de la versión, en qué listas están, qué rendimiento falta y qué
+    hacer (`hoja_sin_valorar`, con la política de rendimiento vigente de este módulo). Con
+    `llevando`, el de llevar un cómputo (no se llevó nada)."""
+    codigo = error.codigo
+    inicio = (
+        f"No se llevó nada: la partida «{codigo}» quedaría pendiente en el Presupuesto"
+        if llevando
+        else f"No se agregó la partida «{codigo}»: quedaría pendiente en el Presupuesto"
+    )
+    return hoja_sin_valorar.explicar(
+        sesion,
+        [codigo],
+        error.lista,
+        error.version,
+        error.fecha,
+        vigente=es_rendimiento_vigente,
+        inicio=inicio,
+        se_valora="se puede valorar",
+        esas="esa partida",
+        cierre="Luego vuelva a llevar." if llevando else "Luego vuelva a agregarla.",
+    )
+
+
+def agregar(
+    sesion: Session,
+    huella: str,
+    id: str,
+    rev: int,
+    *,
+    codigo: str,
+    cantidad: str,
+    calculo: str,
+    nota: str,
+    llevando: bool = False,
+) -> tuple[BorradorVivo, str]:
+    """`hoja_edicion.agregar` con el mensaje de una partida que quedaría pendiente con la lista de
+    la versión: `hoja_sin_valorar.PartidasSinValorar` (409) con `explicar_pendiente` (prueba en
+    vivo del 18/11/2026). Lo usan agregar una partida en la Hoja y llevar un cómputo."""
+    try:
+        return hoja_edicion.agregar(
+            sesion, huella, id, rev, codigo=codigo, cantidad=cantidad, calculo=calculo, nota=nota
+        )
+    except hoja_edicion.PartidaQuedariaPendiente as error:
+        mensaje = explicar_pendiente(sesion, error, llevando=llevando)
+        raise hoja_sin_valorar.PartidasSinValorar(mensaje) from None
+
+
 def version_del_borrador_de_la_obra(
     sesion: Session, huella: str, caso: str, proyecto: str
 ) -> tuple[BorradorVivo | None, str | None]:
@@ -490,7 +541,8 @@ def llevar_a_la_hoja(
     la persona (`texto_de_cifra`: «1.125» del computo es uno coma ciento veinticinco). **Todo o
     nada:** con el cerrojo del borrador tomado de punta a punta, si una partida falla
     (`PartidaFueraDelCatalogo`, `HojaInvalida` con el codigo de la partida delante,
-    `SinListaDeLaObra`, la base) el borrador abierto aqui se descarta y uno que ya existia vuelve
+    `SinListaDeLaObra`, `hoja_sin_valorar.PartidasSinValorar` si quedaria pendiente con la lista
+    de la version, la base) el borrador abierto aqui se descarta y uno que ya existia vuelve
     exactamente a como estaba, con su `rev` (la ventana que lo esta editando no ve ningun cambio),
     y el error sube. `VersionQueNoSeAbre` si la vigente ya no se puede abrir.
 
@@ -510,7 +562,7 @@ def llevar_a_la_hoja(
         try:
             for partida in partidas:
                 try:
-                    vivo, _clave = hoja_edicion.agregar(
+                    vivo, _clave = agregar(
                         sesion,
                         huella,
                         vivo.id,
@@ -519,6 +571,7 @@ def llevar_a_la_hoja(
                         cantidad=texto_de_cifra(partida.cantidad),
                         calculo=partida.calculo,
                         nota="",
+                        llevando=True,
                     )
                 except HojaInvalida as error:  # varias partidas: se dice cual
                     raise HojaInvalida(f"{partida.codigo}: {error}") from None

@@ -321,6 +321,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
             soloLectura={estado.borrador.base.solo_lectura}
             cambiosSinGuardar={estado.borrador.resumen.cambios}
             desgloses={estado.borrador.resumen.desgloses ?? 0}
+            pendientes={estado.borrador.resumen.pendientes_catalogo}
             total={estado.borrador.resumen.total}
             moneda={estado.borrador.resumen.moneda}
             usuario={usuarioDeSesion(sesion)}

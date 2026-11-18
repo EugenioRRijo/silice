@@ -79,6 +79,7 @@ __all__ = [
     "LIMITE_INSUMOS",
     "BorradorYaGuardado",
     "PartidaFueraDelCatalogo",
+    "PartidaQuedariaPendiente",
     "PartidaSinApu",
     "RevDesactualizado",
     "SinListaDeLaObra",
@@ -187,6 +188,20 @@ class PartidaFueraDelCatalogo(Exception):  # noqa: N818
                 "compóngalas primero en Componer."
             )
         return " ".join((mensaje, *self.pistas))
+
+
+class PartidaQuedariaPendiente(Exception):  # noqa: N818
+    """`agregar` en una version: la Hoja no puede armar el APU de `codigo` con `lista` (la de la
+    version `version`) a `fecha`, y la partida quedaria PENDIENTE. Solo trae los datos: el mensaje
+    lo redacta `elaboracion.explicar_pendiente` (409), que conoce la politica de rendimiento
+    vigente sin crear un ciclo de importaciones."""
+
+    def __init__(self, codigo: str, lista: models.ListaPrecios, version: str, fecha: date) -> None:
+        super().__init__(codigo)
+        self.codigo = codigo
+        self.lista = lista
+        self.version = version
+        self.fecha = fecha
 
 
 class SinListaDeLaObra(Exception):  # noqa: N818
@@ -736,7 +751,14 @@ def agregar(
 
     Orden: ya guardado, `rev`, la partida en el catalogo (`PartidaFueraDelCatalogo`), la cantidad
     y el calculo (`HojaInvalida` con el texto de la regla de las cifras o de la Tarea 8) y la lista
-    de la obra (`SinListaDeLaObra`). Si algo falla, el borrador no cambia."""
+    de la obra (`SinListaDeLaObra`). Si algo falla, el borrador no cambia.
+
+    En una version abierta, si la Hoja no puede armar el APU de la partida con la lista de la
+    version y a la fecha del borrador (quedaria PENDIENTE), `PartidaQuedariaPendiente`: el mensaje
+    dice que insumos faltan en que lista, donde estan y que hacer (prueba en vivo del 18/11/2026:
+    la partida compuesta hoy en Componer deja sus precios en una lista nueva y la version sigue con
+    la suya; antes entraba como «Pendiente» sin decir por que). Es la misma regla que llevar los
+    tramos (`hoja_vial`). En blanco no aplica: la lista es la para armar, donde escribe Componer."""
     clave: list[str] = []
 
     def construir(vivo: BorradorVivo) -> hoja.Borrador:
@@ -748,7 +770,13 @@ def agregar(
         except (CalculoInvalido, CifraInvalida) as error:
             raise HojaInvalida(str(error)) from None
         clave.append(nueva)
-        return nuevo
+        if vivo.abierta is None or partida.codigo in vivo.borrador.composiciones:
+            return nuevo
+        completo = completar(sesion, vivo, nuevo)
+        if partida.codigo not in completo.composiciones:
+            lista, _valoracion = lista_para_completar(sesion, vivo, nuevo.fecha)
+            raise PartidaQuedariaPendiente(partida.codigo, lista, vivo.abierta.codigo, nuevo.fecha)
+        return completo
 
     return cambiar_borrador(sesion, huella, id, rev, construir), clave[0]
 

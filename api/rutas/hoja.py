@@ -108,6 +108,7 @@ from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from api.sin_escribir import EscrituraNegada, sin_escribir
 from aplicacion import (
+    elaboracion,
     hoja,
     hoja_borradores,
     hoja_edicion,
@@ -634,12 +635,13 @@ def agregar_partida(
     Solo cambia el borrador en memoria. La partida que no está en el catálogo, 404; la cifra o el
     cálculo, 422 con el texto de su regla; `rev` viejo, 409; sin lista para valorar la obra (en
     blanco: sin lista para armar o, en la otra moneda, sin tasa del BCV de los últimos 7 días),
-    409 con ese texto. Nada de esto deja el borrador a medias."""
+    409 con ese texto, como si quedaría pendiente con la lista de la versión (qué falta y qué
+    hacer, `elaboracion.agregar`). Nada de esto deja el borrador a medias."""
     vivo = _vivo(request, activa, id)
     clave: list[str] = []
 
     def editar() -> BorradorVivo:
-        editado, nueva = hoja_edicion.agregar(
+        editado, nueva = elaboracion.agregar(
             sesion,
             activa.huella_ficha,
             id,

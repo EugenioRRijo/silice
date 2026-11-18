@@ -12,6 +12,7 @@ import {
   esSoloDesglose,
   motivoParaNoGuardar,
   textoDeDesgloseAGuardar,
+  textoDePendientesAlGuardar,
   textoDeVersionAGuardar,
 } from "./logicaGuardar";
 import type { ErrorDeGuardado } from "./logicaGuardar";
@@ -43,6 +44,8 @@ interface Props {
   cambiosSinGuardar: number;
   // Anexo A.6: cuántos de esos cambios son de un desglose del desperdicio.
   desgloses: number;
+  // Cuántas partidas quedan sin precio («Pendiente»): se guardan, pero la versión queda con ese error.
+  pendientes?: number;
   total: Monto;
   moneda: string;
   // «Nombre <login>»: el responsable es la persona de la sesión, de solo lectura (RF-82).
@@ -134,6 +137,7 @@ export function DialogoDeGuardar(p: Props) {
   // Con un fallo que pide decidir (versión más nueva, ya guardado, borrador ausente) no hay nada que reintentar tal cual.
   const sinReintento = p.error?.clase === "mas-nueva" || p.error?.clase === "ya-guardado" || p.error?.clase === "ausente";
   const e = p.error;
+  const avisoDePendientes = textoDePendientesAlGuardar(p.pendientes ?? 0);
 
   return (
     <div className="silice-hoja__dialogo-fondo">
@@ -178,6 +182,15 @@ export function DialogoDeGuardar(p: Props) {
           <p id={idMotivo} className="cds--type-helper-text-01">
             {motivo}
           </p>
+        )}
+        {avisoDePendientes !== null && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title="Partidas sin precio"
+            subtitle={avisoDePendientes}
+          />
         )}
         <p className="cds--type-body-compact-01">Responsable: {p.usuario}</p>
         <ListaDeCambios cambios={p.cambios} primera={primera} />

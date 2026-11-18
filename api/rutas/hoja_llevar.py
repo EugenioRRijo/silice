@@ -21,8 +21,9 @@ uno coma ciento veinticinco. `calculo` (opcional) es el de la Tarea 8, con coma 
 Como el resto de la Hoja: solo con una cuenta con `editar_hoja` (la clave de API, 403), CSRF y
 `Origin` propios, `Cache-Control: no-store` también en los errores y un 422 de forma que no repite
 lo enviado. Errores: obra que no existe, 404 sin eco; partida fuera del catálogo, 404 (Tarea 9);
-cálculo o cifra, 422 con el código de la partida delante; sin lista para valorar la obra o versión
-vigente que ya no se abre, 409; la base, 503.
+cálculo o cifra, 422 con el código de la partida delante; sin lista para valorar la obra, versión
+vigente que ya no se abre o una partida que quedaría pendiente con la lista de la versión, 409; la
+base, 503.
 """
 
 from __future__ import annotations
