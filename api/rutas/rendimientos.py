@@ -17,7 +17,7 @@ from decimal import Decimal
 from fastapi import APIRouter, status
 
 from api.acceso import EDITAR, LEER
-from api.dependencias import SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep
 from api.esquemas import (
     DispersionRespuesta,
     EjecucionPeticion,
@@ -52,7 +52,9 @@ router = APIRouter(tags=["rendimientos"])
     status_code=status.HTTP_201_CREATED,
     dependencies=EDITAR,
 )
-def crear_ejecucion(sesion: SesionDep, peticion: EjecucionPeticion) -> EjecucionRespuesta:
+def crear_ejecucion(
+    sesion: SesionDeEscrituraDep, peticion: EjecucionPeticion
+) -> EjecucionRespuesta:
     """Registra una obra ejecutada (referencia unica) y confirma la transaccion."""
     ejecucion = registrar_ejecucion(
         sesion,
@@ -92,7 +94,7 @@ def obtener_rendimientos(sesion: SesionDep, codigo: str) -> RendimientosRespuest
     dependencies=EDITAR,
 )
 def crear_rendimiento(
-    sesion: SesionDep, codigo: str, peticion: RendimientoPeticion
+    sesion: SesionDeEscrituraDep, codigo: str, peticion: RendimientoPeticion
 ) -> RegistroRendimientoRespuesta:
     """RF-25 + RF-27: registra el rendimiento y advierte si se aparta de lo observado.
 

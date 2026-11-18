@@ -1,4 +1,4 @@
-"""Las rutas que crean una version, un proyecto o un presupuesto abren `BEGIN IMMEDIATE`.
+"""Las rutas que escriben en el caso abren `BEGIN IMMEDIATE`.
 
 Con la sesion comun (`sesion_api`, `BEGIN` diferido) la transaccion empieza leyendo: si entre esa
 lectura y la primera escritura otra peticion escribe y confirma, SQLite no puede ascender la
@@ -20,7 +20,8 @@ from fastapi.routing import APIRoute
 from api.dependencias import sesion_api, sesion_de_escritura_api
 from api.main import app
 
-#: (metodo, ruta) de cada ruta que guarda una version, un proyecto o un presupuesto.
+#: (metodo, ruta) de cada ruta que guarda una version, un proyecto, un presupuesto, un rendimiento,
+#: una ejecucion o un dato del control de obra.
 QUE_ESCRIBEN = [
     ("POST", "/proyectos"),
     ("POST", "/presupuestos"),
@@ -29,6 +30,16 @@ QUE_ESCRIBEN = [
     ("POST", "/presupuestos/revalorar"),
     ("POST", "/presupuestos/{codigo}/descartar"),
     ("POST", "/v1/control/recuperacion/elegir"),
+    # Anexo A.3 del plan de desenredo (H8, DS-2): las demas escrituras con BEGIN diferido.
+    ("POST", "/presupuestos/calcular/declarar-rendimiento"),
+    ("POST", "/ejecuciones"),
+    ("POST", "/partidas/{codigo}/rendimientos"),
+    ("POST", "/v1/control/linea-base"),
+    ("POST", "/v1/control/parametros"),
+    ("POST", "/v1/control/valuaciones"),
+    ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"),
+    ("POST", "/v1/control/costos"),
+    ("POST", "/v1/control/importar"),
 ]
 
 

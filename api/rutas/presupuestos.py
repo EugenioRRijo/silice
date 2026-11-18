@@ -605,7 +605,7 @@ def calcular_presupuesto_excel(
     dependencies=EDITAR,
 )
 def declarar_rendimiento_propuesto(
-    sesion: SesionDep, peticion: DeclararRendimientoPeticion
+    sesion: SesionDeEscrituraDep, peticion: DeclararRendimientoPeticion
 ) -> DeclararRendimientoRespuesta:
     """UC-01, flujo 3b: registra el rendimiento que propone el histórico para una partida sin
     rendimiento estimado vigente a `fecha`, con el tipo que declara el proyectista.

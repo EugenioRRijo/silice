@@ -276,7 +276,7 @@ class DescripcionRespuesta(BaseModel):
 
 @router.post("/linea-base", response_model=DescripcionRespuesta)
 def declarar_linea_base(
-    sesion: SesionDep, peticion: DeclararLineaBase, activa: Activa
+    sesion: SesionDeEscrituraDep, peticion: DeclararLineaBase, activa: Activa
 ) -> DescripcionRespuesta:
     """Declara la línea base de control (RF-72)."""
     peticion.proyecto = _existe(sesion, peticion.proyecto)
@@ -312,7 +312,7 @@ class CambiadosRespuesta(BaseModel):
 
 @router.post("/parametros", response_model=CambiadosRespuesta)
 def guardar_parametros(
-    sesion: SesionDep, peticion: GuardarParametros, activa: Activa
+    sesion: SesionDeEscrituraDep, peticion: GuardarParametros, activa: Activa
 ) -> CambiadosRespuesta:
     """Guarda los parámetros enviados (los demás quedan igual), con un registro por cada cambio."""
     peticion.proyecto = _existe(sesion, peticion.proyecto)
@@ -426,7 +426,7 @@ class RegistroRespuesta(BaseModel):
 
 @router.post("/valuaciones", response_model=RegistroRespuesta)
 def registrar_valuacion(
-    sesion: SesionDep, peticion: RegistrarValuacion, activa: Activa
+    sesion: SesionDeEscrituraDep, peticion: RegistrarValuacion, activa: Activa
 ) -> RegistroRespuesta:
     """UC-19 4 y 5: registra la valuación y controla al corte (su fecha *hasta*)."""
     peticion.proyecto = _existe(sesion, peticion.proyecto)
@@ -471,7 +471,7 @@ class ListoRespuesta(BaseModel):
 
 @router.post("/valuaciones/{valuacion_id}/anular", response_model=ListoRespuesta)
 def anular_valuacion(
-    sesion: SesionDep, valuacion_id: int, peticion: Anulacion, activa: Activa
+    sesion: SesionDeEscrituraDep, valuacion_id: int, peticion: Anulacion, activa: Activa
 ) -> ListoRespuesta:
     """Anula una valuación (UC-19 4c): se conserva y deja de contar."""
     logica.anular(sesion, valuacion_id, motivo=peticion.motivo, responsable=_responsable(activa))
@@ -488,7 +488,9 @@ class AnotarCosto(BaseModel):
 
 
 @router.post("/costos", response_model=ListoRespuesta)
-def anotar_costo(sesion: SesionDep, peticion: AnotarCosto, activa: Activa) -> ListoRespuesta:
+def anotar_costo(
+    sesion: SesionDeEscrituraDep, peticion: AnotarCosto, activa: Activa
+) -> ListoRespuesta:
     """Anota un costo incurrido; se convierte con la tasa de su fecha al calcular."""
     peticion.proyecto = _existe(sesion, peticion.proyecto)
     logica.registrar_costo_real(
@@ -542,7 +544,7 @@ class ImportadasRespuesta(BaseModel):
 
 @router.post("/importar", response_model=ImportadasRespuesta)
 def importar(
-    sesion: SesionDep,
+    sesion: SesionDeEscrituraDep,
     archivo: Annotated[UploadFile, File()],
     proyecto: Annotated[str, Form()],
     fuente: Annotated[str, Form()],
