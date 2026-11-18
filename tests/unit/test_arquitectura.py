@@ -1047,7 +1047,6 @@ SELECT_EN_RUTAS: dict[str, int] = {}
 #: Archivos de `api/rutas` que importan `core.models` (2026-11-17, a802d728).
 MODELOS_EN_RUTAS: frozenset[str] = frozenset(
     {
-        "api/rutas/entregas.py",
         "api/rutas/presupuestos.py",
         "api/rutas/revision.py",
     }

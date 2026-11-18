@@ -28,7 +28,7 @@ previa» si la carpeta no tiene la tabla de aprobaciones (D4, plan de decisiones
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -45,7 +45,6 @@ from aplicacion import aprobaciones
 from aplicacion import entrega as logica
 from aplicacion.equipo import operacion_sensible_permitida
 from aplicacion.proyectos import proyecto_por_nombre
-from core import models
 from core.budget import canonico
 from operacion.instalacion import sesion_de_instalacion
 from operacion.version import version as version_de_silice
@@ -54,6 +53,9 @@ from seguridad import cuentas, empresas, eventos
 from seguridad.empresas import ContrasenaDeClaveIncorrecta
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
+
+if TYPE_CHECKING:
+    from core import models
 
 MENSAJE_CUERPO_INVALIDO = (
     "Indique la obra y la versión como texto; el destinatario y la contraseña de la clave de "
