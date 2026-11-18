@@ -52,6 +52,8 @@ from api.rutas import (
     obras,
     precios_empresa,
     presupuestos,
+    presupuestos_calculo,
+    presupuestos_escenarios,
     procura,
     produccion,
     produccion_planta,
@@ -129,6 +131,9 @@ app.include_router(catalogo.router)
 app.include_router(listas.router)
 app.include_router(computos.router)
 app.include_router(presupuestos.router)
+# 4.1 (desenredo): el calculo de ensayo y los escenarios, en su orden de siempre
+app.include_router(presupuestos_calculo.router)
+app.include_router(presupuestos_escenarios.router)
 app.include_router(rendimientos.router)
 app.include_router(auditorias.router)  # S3 §10: POST /v1/auditorias
 # 1.5: /v1/libros (auditoria, devolucion y pdf); 1.2.0: replica, y clave o sesión (RS2-5)

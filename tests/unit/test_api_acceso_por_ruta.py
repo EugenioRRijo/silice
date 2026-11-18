@@ -45,7 +45,17 @@ from api.main import (
     manejar_value_error,
 )
 from api.proteccion import exigir_clave_api
-from api.rutas import auditorias, casos, catalogo, computos, listas, presupuestos, rendimientos
+from api.rutas import (
+    auditorias,
+    casos,
+    catalogo,
+    computos,
+    listas,
+    presupuestos,
+    presupuestos_calculo,
+    presupuestos_escenarios,
+    rendimientos,
+)
 from core.catalog import CatalogoIncompleto
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
@@ -519,7 +529,9 @@ def _referencia() -> FastAPI:
     referencia.add_exception_handler(HTTPException, manejar_http_exception)
     referencia.add_exception_handler(LookupError, manejar_lookup_error)
     referencia.add_exception_handler(ValueError, manejar_value_error)
-    for modulo in (catalogo, listas, computos, presupuestos, rendimientos, auditorias):
+    # 4.1 (desenredo): las rutas de presupuestos se repartieron en tres routers; son las mismas.
+    routers = (presupuestos, presupuestos_calculo, presupuestos_escenarios)
+    for modulo in (catalogo, listas, computos, *routers, rendimientos, auditorias):
         for ruta in _rutas(modulo.router):
             referencia.add_api_route(
                 ruta.path,

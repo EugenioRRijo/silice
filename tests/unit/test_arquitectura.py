@@ -1055,8 +1055,16 @@ NUCLEO_PROFUNDO_EN_RUTAS: dict[str, frozenset[str]] = {
         {"core.catalog", "core.catalog.errores", "core.catalog.moneda"}
     ),
     "api/rutas/obras.py": frozenset({"core.catalog", "core.catalog.indices"}),
+    # Tarea 4.1: la fila de siempre de presupuestos.py, repartida entre sus cuatro modulos.
     "api/rutas/presupuestos.py": frozenset(
+        {"core.budget", "core.catalog", "core.verification.informe"}
+    ),
+    "api/rutas/presupuestos_ayudas.py": frozenset(
         {"core.budget", "core.budget.instantanea", "core.catalog", "core.verification.informe"}
+    ),
+    "api/rutas/presupuestos_calculo.py": frozenset({"core.verification.informe"}),
+    "api/rutas/presupuestos_escenarios.py": frozenset(
+        {"core.budget", "core.catalog", "core.verification.informe"}
     ),
     "api/rutas/proyectos.py": frozenset({"core.catalog"}),
     "api/rutas/reajuste.py": frozenset({"core.budget.reajuste"}),
@@ -1611,7 +1619,7 @@ def test_definidos_ve_funciones_clases_y_asignaciones_y_no_imports(tmp_path):
 
 
 #: Tarea 4.1: lo que `api/rutas/presupuestos.py` definia antes de partirse en `presupuestos`,
-#: `presupuestos_escenarios` y `presupuestos_ayudas`.
+#: `presupuestos_calculo`, `presupuestos_escenarios` y `presupuestos_ayudas`.
 PUBLICOS_DE_RUTAS_PRESUPUESTOS = frozenset(
     {
         "MAX_PENDIENTES_CON_PROPUESTAS",
@@ -1641,8 +1649,13 @@ def test_rutas_presupuestos_reexporta_lo_mismo():
 
     assert sorted(getattr(presupuestos, "__all__", ())) == sorted(PUBLICOS_DE_RUTAS_PRESUPUESTOS)
     assert [n for n in sorted(PUBLICOS_DE_RUTAS_PRESUPUESTOS) if not hasattr(presupuestos, n)] == []
-    # Entre los tres no nace ni se pierde un nombre publico: solo cambian de casa.
-    familia = ("presupuestos", "presupuestos_escenarios", "presupuestos_ayudas")
+    # Entre los cuatro no nace ni se pierde un nombre publico: solo cambian de casa.
+    familia = (
+        "presupuestos",
+        "presupuestos_calculo",
+        "presupuestos_escenarios",
+        "presupuestos_ayudas",
+    )
     definidos = set().union(*(_definidos(RAIZ / "api" / "rutas" / f"{m}.py") for m in familia))
     assert definidos == PUBLICOS_DE_RUTAS_PRESUPUESTOS
 
