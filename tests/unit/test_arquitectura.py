@@ -1417,7 +1417,7 @@ def test_ciclo_de_paquetes_sin_sobrantes():
 
 # --- Tarea 1.4: una sola presentacion numerica en la API ----------------------------------------
 
-#: Donde vivira la presentacion unica de la API (tarea 2.2); aun no existe, se excluye por nombre.
+#: La presentacion unica de la API (tarea 2.2): se excluye por nombre.
 PRESENTACION_DE_LA_API = "api/presentacion.py"
 
 
@@ -1505,7 +1505,6 @@ PRESENTACION_SUELTA_EN_API: dict[str, int] = {
     "api/rutas/fcas.py": 1,
     "api/rutas/hoja_libro.py": 1,
     "api/rutas/indices.py": 1,
-    "api/rutas/libros.py": 7,
     "api/rutas/mercado.py": 4,
     "api/rutas/obras.py": 5,
     "api/rutas/procura.py": 1,
@@ -1593,7 +1592,6 @@ MODULOS_GRANDES: dict[str, int] = {
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1061,
     "aplicacion/hoja_vista.py": 1055,
-    "api/rutas/libros.py": 1038,
 }
 
 
@@ -1761,3 +1759,22 @@ def test_la_trazabilidad_del_plan_de_pruebas_lee_los_dos_guiones():
     assert _requisitos(texto) == {"RF-7", "RF-8", "RF-12"}
     plan = "## 7. Otra\nRF-1\n## 8. Trazabilidad\n| RF‑2 |\n## 9. RNF\nRF-3\n"
     assert _requisitos(_seccion_de_trazabilidad(plan)) == {"RF-2"}
+
+
+# --- Tarea 2.1: un solo `decimal_desde_texto` ---------------------------------------------------
+
+
+def _definiciones(nombre: str, raiz: Path = RAIZ) -> list[str]:
+    """`archivo:linea` de cada `def nombre` de produccion (fuera de `core/` y de `tests/`)."""
+    return sorted(
+        f"{ruta}:{nodo.lineno}"
+        for ruta in _lineas_de_produccion(raiz)
+        for nodo in ast.walk(_arbol(raiz / ruta))
+        if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef) and nodo.name == nombre
+    )
+
+
+def test_una_sola_lectura_de_decimal_de_maquina():
+    definiciones = _definiciones("decimal_desde_texto")
+    assert len(definiciones) == 1, f"una sola lectura en aplicacion/composicion.py: {definiciones}"
+    assert definiciones[0].startswith("aplicacion/composicion.py:")

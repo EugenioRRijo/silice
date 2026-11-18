@@ -456,7 +456,7 @@ def test_indicadores_del_libro_limpio_no_tienen_variacion(cliente, limpio) -> No
         ("TOTALGEN", "Total general", "exactitud"),
     ]
     # El libro guarda la memoria (4 358,20825; 697,31332; 5 055,52157) y Silice recalcula los
-    # mismos valores; la franja los presenta en centésimas al par (RS2-12): Δ = 0,00.
+    # mismos valores; la franja los presenta en centésimas al alza (RS2-12): Δ = 0,00.
     assert _indicadores(d) == {
         "SUBSINIVA": ("4358.21", "4358.21", "0.00", "0.00"),
         "IVATOT": ("697.31", "697.31", "0.00", "0.00"),

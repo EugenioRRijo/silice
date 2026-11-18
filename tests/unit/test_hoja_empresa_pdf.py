@@ -961,3 +961,21 @@ def test_procesar_libro_rechaza_un_pdf_cifrado():
 )
 def test_fmt_de_un_entero_de_29_digitos_o_mas_no_lanza(valor, signo, esperado):
     assert modulo_pdf._fmt(valor, signo) == esperado
+
+
+@pytest.mark.parametrize(
+    ("valor", "signo", "esperado"),
+    [
+        # Cuatro decimales como mucho, la mitad al alza (decision de Eugenio, 2026-11-17).
+        (Decimal("1.00005"), False, "1,0001"),
+        (Decimal("-1.00005"), False, "-1,0001"),
+        (Decimal("2.675"), False, "2,675"),
+        # El cero no lleva signo, ni el entero ni el que sale de redondear.
+        (Decimal("-0"), False, "0"),
+        (Decimal("-0.00001"), False, "0,0000"),
+        (Decimal("-0.00001"), True, "0,0000"),
+        (Decimal("0"), True, "0"),
+    ],
+)
+def test_fmt_presenta_al_alza_y_sin_signo_en_cero(valor, signo, esperado):
+    assert modulo_pdf._fmt(valor, signo) == esperado

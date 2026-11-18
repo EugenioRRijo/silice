@@ -64,3 +64,17 @@ def test_si_ningun_campo_rotulado_difiere_el_mensaje_no_se_rompe(
         "Las hojas del libro no usan los mismos porcentajes y la Hoja lleva uno solo por obra: "
         "APU 2 usa otros parámetros de costo que las demás."
     )
+
+
+@pytest.mark.parametrize(
+    ("fraccion", "esperado"),
+    [
+        (Decimal("0.05"), "5"),
+        (Decimal("0.125"), "12,5"),
+        # Con punto de miles, como toda cifra que ve la persona (`texto_de_cifra`).
+        (Decimal("12.5"), "1.250"),
+        (Decimal("-0"), "0"),
+    ],
+)
+def test_pct_escribe_la_cifra_con_coma_y_punto_de_miles(fraccion, esperado):
+    assert libro_a_la_hoja._pct(fraccion) == esperado
