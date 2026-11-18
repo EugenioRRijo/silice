@@ -208,6 +208,32 @@ describe("Auditar un libro con un APU por hoja", () => {
     expect(screen.getByText("El perfil lee la hoja PRESUPUESTO, que este libro no tiene: marque las hojas que quiere comparar.")).toBeInTheDocument();
   });
 
+  // P7 (decisión del 2026-11-18): las hojas que la persona marcó a mano valen para el perfil con que las marcó; al cambiar
+  // de perfil se reinician y valen las hojas por omisión del perfil nuevo.
+  test("P7: cambiar de perfil reinicia las hojas marcadas a mano y se mandan las del perfil nuevo", async () => {
+    conHojas(["PRESUPUESTO", "FRENTE A", "FRENTE B"]);
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    const selector = await screen.findByRole("combobox", { name: "Perfil del libro" });
+    await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(2));
+    await usuario.upload(campos()[0], new File(["x"], "obra.xlsx"));
+    await usuario.upload(campos()[1], new File(["y"], "frentes.xlsx"));
+    const grupo = await screen.findByRole("group", { name: "Hojas del presupuesto que se comparan" });
+    const marcadas = () => within(grupo).getAllByRole("checkbox").map((c) => [(c as HTMLInputElement).labels?.[0]?.textContent, (c as HTMLInputElement).checked]);
+    // Con el perfil de siempre solo está marcada PRESUPUESTO; la persona marca además FRENTE A a mano.
+    expect(marcadas()).toEqual([["PRESUPUESTO", true], ["FRENTE A", false], ["FRENTE B", false]]);
+    await usuario.click(within(grupo).getByRole("checkbox", { name: "FRENTE A" }));
+    expect(marcadas()).toEqual([["PRESUPUESTO", true], ["FRENTE A", true], ["FRENTE B", false]]);
+
+    await usuario.selectOptions(selector, "por_frentes");
+    // Valen las hojas por omisión del perfil nuevo (FRENTE A y FRENTE B), no las del anterior.
+    expect(marcadas()).toEqual([["PRESUPUESTO", false], ["FRENTE A", true], ["FRENTE B", true]]);
+    await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
+    await waitFor(() => expect(auditorias()).toHaveLength(1));
+    const cuerpo = auditorias()[0]![1]?.body as FormData;
+    expect(cuerpo.get("perfil")).toBe("por_frentes");
+    expect([...cuerpo.getAll("hoja_presupuesto")].sort()).toEqual(["FRENTE A", "FRENTE B"]);
+  });
+
   // Dos presupuestos seguidos: la lectura de las hojas del primero puede llegar después de elegir el segundo. Las hojas
   // que se ofrecen tienen que ser las del presupuesto que se nombra, nunca las de uno anterior.
   function hojasEnVuelo() {
