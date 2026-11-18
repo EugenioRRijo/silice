@@ -16,8 +16,14 @@ import pytest
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
-from produccion.inventario import crear_material, existencia, registrar_entrada
-from produccion.modelo import METADATA_PRODUCCION, Movimiento
+from produccion.inventario import (
+    ErrorDeInventario,
+    crear_material,
+    existencia,
+    registrar_ajuste_por_conteo,
+    registrar_entrada,
+)
+from produccion.modelo import METADATA_PRODUCCION, Material, Movimiento
 from produccion.receta import (
     TOLERANCIA_MASA,
     Componente,
@@ -391,3 +397,20 @@ def test_una_receta_vieja_tambien_cuenta_para_la_cadena(sesion) -> None:
 def test_una_mezcla_puede_llevar_otra_sin_ciclo(sesion) -> None:
     _registrar(sesion, [_c("AGR-12", "0.99")], producto="MZ-2")
     assert _registrar(sesion, [_c("MZ-2", "0.99")], producto="MZ-1") > 0
+
+
+def test_producir_antes_de_un_conteo_no_escribe_nada(sesion) -> None:
+    """Prueba en vivo 2026-11-18: un conteo físico cierra el pasado del material contado. Producir
+    con fecha anterior o igual al conteo de un componente propio (o del producto) se niega antes
+    de escribir la entrada."""
+    _planta(sesion)
+    _registrar(sesion, _mezcla())
+    agregado = sesion.scalar(select(Material.id).where(Material.codigo == "AGR-12"))
+    registrar_entrada(sesion, agregado, date(2026, 11, 1), D("500"), usuario="ana")
+    registrar_ajuste_por_conteo(sesion, agregado, date(2026, 11, 6), D("480"), usuario="ana")
+    antes = _movimientos(sesion)
+    with pytest.raises(ErrorDeInventario, match="AGR-12.*conteo físico del 06/11/2026"):
+        producir_con_receta(sesion, "MZ-1", D("100"), date(2026, 11, 5), usuario="ana", ahora=AHORA)
+    assert _movimientos(sesion) == antes
+    producir_con_receta(sesion, "MZ-1", D("100"), date(2026, 11, 7), usuario="ana", ahora=AHORA)
+    assert existencia(sesion, agregado) == D("386")  # 480 - 0,94 x 100
