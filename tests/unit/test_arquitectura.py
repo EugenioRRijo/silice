@@ -1560,7 +1560,7 @@ def _lineas_de_produccion(raiz: Path = RAIZ) -> dict[str, int]:
 #: Modulos que ya pasan del tope (2026-11-17, a802d728) -> sus lineas ese dia. Ninguno crece; la
 #: ola 4 los parte dejando una fachada que reexporta.
 MODULOS_GRANDES: dict[str, int] = {
-    "aplicacion/hoja.py": 3194,
+    "aplicacion/hoja.py": 3195,
     "scripts/recorrido_ux_playwright.py": 2321,
     "scripts/fusion_verificar.py": 2124,
     "adapters/hoja_empresa/reglas.py": 1707,
@@ -1821,6 +1821,12 @@ def test_la_politica_de_vigencia_ve_la_falta(tmp_path):
 #: La busqueda de obra por nombre escrita a mano; vive solo en `aplicacion/proyectos.py`.
 BUSQUEDA_DE_OBRA_POR_NOMBRE = "select(models.Proyecto).where(models.Proyecto.nombre =="
 
+#: Archivos que la repiten y no se pueden tocar (2026-11-17): `aplicacion/hoja.py` es un archivo
+#: del auditor del experimento congelado (`asistente/experimento/protocolo.json`, RS-9; Eugenio,
+#: 2026-10-18: el protocolo no se toca) y cambiarlo rompe
+#: `test_experimento_congelado_vigente.py`. Sale de aqui cuando se vuelva a congelar a proposito.
+BUSQUEDA_DE_OBRA_CONGELADA: frozenset[str] = frozenset({"aplicacion/hoja.py"})
+
 
 def test_una_sola_busqueda_de_obra_por_nombre():
     """En `api/` y `aplicacion/` (lo que atiende al programa) la consulta vive en
@@ -1833,4 +1839,10 @@ def test_una_sola_busqueda_de_obra_por_nombre():
         if BUSQUEDA_DE_OBRA_POR_NOMBRE in archivo.read_text(encoding="utf-8")
         and (ruta := _ruta(archivo))
     )
-    assert sitios == ["aplicacion/proyectos.py"]
+    assert sorted(set(sitios) - BUSQUEDA_DE_OBRA_CONGELADA) == ["aplicacion/proyectos.py"]
+
+
+def test_una_sola_busqueda_de_obra_por_nombre_sin_sobrantes():
+    for ruta in BUSQUEDA_DE_OBRA_CONGELADA:
+        texto = (RAIZ / ruta).read_text(encoding="utf-8")
+        assert BUSQUEDA_DE_OBRA_POR_NOMBRE in texto, f"borrar {ruta} de BUSQUEDA_DE_OBRA_CONGELADA"

@@ -103,7 +103,6 @@ from aplicacion.estilo import porcentaje
 from aplicacion.parametros_de_costo import parametros_de_version
 from aplicacion.plan_rendimientos import PlanDemasiadoLargo, plan_que_cabe
 from aplicacion.plural import plural
-from aplicacion.proyectos import proyecto_por_nombre
 from aplicacion.subidas import Subida, guardar_subida
 from aplicacion.tablas_medicion import guardar_notas, notas_de_version
 from aplicacion.vial import reglas_viales
@@ -2270,7 +2269,9 @@ def crear_primera_version(
         )
     if not responsable:
         raise HojaInvalida("Escriba el responsable: quién crea esta primera versión.")
-    modelo_proyecto = proyecto_por_nombre(sesion, proyecto)
+    modelo_proyecto = sesion.scalars(
+        select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
+    ).one_or_none()
     if modelo_proyecto is None:
         raise HojaInvalida(
             f"La obra {proyecto!r} no existe: créela desde la barra lateral (Nueva obra)."
