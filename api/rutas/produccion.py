@@ -48,7 +48,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
@@ -66,6 +65,8 @@ from produccion.inventario import (
     Conflicto,
     ErrorDeInventario,
     crear_material,
+    material_por_codigo,
+    materiales,
     registrar_ajuste_por_conteo,
     registrar_despacho,
     registrar_entrada,
@@ -236,7 +237,7 @@ def _instante(texto: str, campo: str) -> datetime:
 
 
 def _material_por_codigo(sesion: Session, codigo: str) -> Material:
-    material = sesion.scalar(select(Material).where(Material.codigo == codigo.strip()))
+    material = material_por_codigo(sesion, codigo)
     if material is None:
         raise ErrorDeInventario(
             f"No existe un material con el código «{codigo.strip()[:40]}». "
@@ -310,8 +311,7 @@ def _sospechoso_respuesta(s: PesajeSospechoso) -> SospechosoRespuesta:
 @router.get("/materiales", response_model=list[MaterialRespuesta])
 def listar_materiales(sesion: SesionInstalacionDep) -> list[MaterialRespuesta]:
     """Los materiales de la arenera, por código."""
-    materiales = sesion.scalars(select(Material).order_by(Material.codigo))
-    return [_material_respuesta(m) for m in materiales]
+    return [_material_respuesta(m) for m in materiales(sesion)]
 
 
 @router.post("/materiales", response_model=MaterialRespuesta, status_code=201)

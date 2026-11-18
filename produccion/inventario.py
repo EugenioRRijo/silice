@@ -51,6 +51,16 @@ def _material(sesion: Session, material_id: int) -> Material:
     return material
 
 
+def material_por_codigo(sesion: Session, codigo: str) -> Material | None:
+    """El material de ese codigo exacto (sin los blancos de los extremos), o `None`."""
+    return sesion.scalar(select(Material).where(Material.codigo == codigo.strip()))
+
+
+def materiales(sesion: Session) -> list[Material]:
+    """Los materiales de la arenera, activos o no, por codigo."""
+    return list(sesion.scalars(select(Material).order_by(Material.codigo)))
+
+
 def _exigir_positiva(cantidad: Decimal, que: str) -> None:
     if not isinstance(cantidad, Decimal) or not cantidad.is_finite() or cantidad <= CERO:
         raise ErrorDeInventario(f"La cantidad de {que} debe ser un número mayor que cero.")

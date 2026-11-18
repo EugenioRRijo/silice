@@ -1042,9 +1042,7 @@ def _nucleo_profundo(archivo: Path, raiz: Path = RAIZ) -> dict[str, int]:
 
 #: Llamadas `select(` por archivo de `api/rutas` (2026-11-17, a802d728): la ola 3 las muda a
 #: `aplicacion`, `seguridad` y `produccion`.
-SELECT_EN_RUTAS: dict[str, int] = {
-    "api/rutas/produccion.py": 2,
-}
+SELECT_EN_RUTAS: dict[str, int] = {}
 
 #: Archivos de `api/rutas` que importan `core.models` (2026-11-17, a802d728).
 MODELOS_EN_RUTAS: frozenset[str] = frozenset(
