@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { PendienteDeObra } from "../../api/tipos";
-import { claveDeObra, contarPorObra, contarUrgencias, destinoDeLaAccion, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
+import { carpetaPorAbrir, claveDeObra, contarPorObra, contarUrgencias, destinoDeLaAccion, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
 
 // Rediseño F3, Tarea 2 (D-F3-2): la acción de un pendiente abre la sección de su obra que monta la pantalla que la
 // fuente nombra (`accion.pagina`, el id de `shell/rutas.ts`). Oráculo escrito a mano desde la tabla de D-F3-2 y las
@@ -18,6 +18,33 @@ function pendiente(pagina: string, carpeta: string | null = "Carpeta Norte.db", 
     accion: { texto: "Abrir", pagina },
   };
 }
+
+// Prueba en vivo (2026-11-18): una herramienta de espacio (el Catálogo, Auditoría…) trabaja con la carpeta abierta, no con la
+// de la obra del pendiente. `undefined` = no se sabe cuál está abierta; `null` = la de la empresa.
+describe("carpetaPorAbrir", () => {
+  test("sin saber la carpeta abierta (undefined) nunca pide abrir otra", () => {
+    expect(carpetaPorAbrir(pendiente("catalogo"), undefined)).toBeNull();
+  });
+
+  test("una herramienta de espacio de otra carpeta pide abrir la del pendiente", () => {
+    expect(carpetaPorAbrir(pendiente("catalogo"), "Carpeta Sur.db")).toEqual({ carpeta: "Carpeta Norte.db" });
+    expect(carpetaPorAbrir(pendiente("catalogo"), null)).toEqual({ carpeta: "Carpeta Norte.db" });
+    expect(carpetaPorAbrir(pendiente("catalogo", null), "Carpeta Sur.db")).toEqual({ carpeta: null });
+  });
+
+  test("la de la empresa contra la de la empresa (null contra null) no cambia nada", () => {
+    expect(carpetaPorAbrir(pendiente("catalogo", null), null)).toBeNull();
+  });
+
+  test("la misma carpeta no cambia nada", () => {
+    expect(carpetaPorAbrir(pendiente("catalogo"), "Carpeta Norte.db")).toBeNull();
+  });
+
+  test("una acción de la obra no pide abrir carpeta: su ruta ya la lleva", () => {
+    expect(carpetaPorAbrir(pendiente("hoja"), "Carpeta Sur.db")).toBeNull();
+    expect(carpetaPorAbrir(pendiente("aprobar"), null)).toBeNull();
+  });
+});
 
 describe("destinoDelPendiente (D-F3-2)", () => {
   test.each([

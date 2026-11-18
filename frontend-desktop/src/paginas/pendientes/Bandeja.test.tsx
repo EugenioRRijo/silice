@@ -425,6 +425,119 @@ describe("Pendientes: una herramienta de un espacio para un pendiente de otra ca
     expect(servidor.de("DELETE", "/v1/casos/actual")).toEqual([]);
   });
 
+  // Correcciones del arbitraje (2026-11-18). Cambios al servidor falso: una respuesta lenta o fallida de una ruta.
+  function responderRuta(metodo: string, ruta: string, respuesta: () => Promise<Response>) {
+    const base = servidor.fetchFalso;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+        if (String(entrada) === ruta && (init?.method ?? "GET") === metodo) return respuesta();
+        return base(entrada, init);
+      }),
+    );
+  }
+  let aperturas = 0;
+  const lentaYBuena = (ms: number) => () => {
+    aperturas += 1;
+    return new Promise<Response>((r) => setTimeout(() => r(json(caso(SUR))), ms));
+  };
+  const boton = () => within(detalle()).getByRole("button", { name: "Ver el catálogo" });
+
+  test.each([
+    ["cargando", () => new Promise<Response>(() => {})],
+    ["con error", async () => json({ detalle: "Se cayó." }, 500)],
+  ])("con las obras %s no se sabe la carpeta abierta: la herramienta no se lanza a ciegas", async (_nombre, respuesta) => {
+    bandeja = responder([SIN_APU, CEMENTO]);
+    responderRuta("GET", "/v1/obras/todas", respuesta);
+    montar();
+    await lista();
+    expect(boton()).toBeDisabled();
+    expect(boton()).toHaveAccessibleDescription("Todavía no se sabe qué carpeta está abierta; este paso estará disponible en cuanto se sepa.");
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+    // La acción de una obra lleva su carpeta en la ruta: no depende de saberla.
+    const u = userEvent.setup();
+    await u.click((await opciones())[1]);
+    expect(within(detalle()).getByRole("button", { name: "Abrir el presupuesto" })).toBeEnabled();
+  });
+
+  test("el botón queda unido a lo que dice que hará antes (aria-describedby)", async () => {
+    bandeja = responder([SIN_APU]);
+    montar();
+    await lista();
+    await waitFor(() => expect(boton()).toBeEnabled());
+    expect(boton()).toHaveAccessibleDescription("Abre antes la carpeta «Carpeta Sur».");
+  });
+
+  test("el aviso «Ahora trabaja con la carpeta…» sobrevive a la navegación a la herramienta", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([SIN_APU]);
+    montar();
+    await lista();
+    await waitFor(() => expect(boton()).toBeEnabled());
+    await u.click(boton());
+    await waitFor(() => expect(ruta()).toBe("/precios/catalogo"), { timeout: 3000 });
+    expect(await screen.findByText("Ahora trabaja con la carpeta «Carpeta Sur».")).toBeInTheDocument();
+  });
+
+  test("un doble clic mientras se abre la carpeta hace un solo cambio y el botón queda deshabilitado", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([SIN_APU]);
+    montar();
+    await lista();
+    await waitFor(() => expect(boton()).toBeEnabled());
+    responderRuta("POST", "/v1/casos/actual", lentaYBuena(150));
+    aperturas = 0;
+    await u.dblClick(boton());
+    expect(boton()).toBeDisabled();
+    await waitFor(() => expect(ruta()).toBe("/precios/catalogo"), { timeout: 3000 });
+    expect(aperturas).toBe(1);
+  });
+
+  test("si la API rechaza abrir la carpeta no navega y muestra el error", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([SIN_APU]);
+    montar();
+    await lista();
+    await waitFor(() => expect(boton()).toBeEnabled());
+    responderRuta("POST", "/v1/casos/actual", async () => json({ detalle: "No se pudo abrir esa carpeta." }, 500));
+    await u.click(boton());
+    expect(await screen.findByText("No se pudo abrir esa carpeta.")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/pendientes");
+    expect(boton()).toBeEnabled();
+  });
+
+  test("«Quedarme» en «Cambios sin guardar» no abre ninguna carpeta y la ruta no cambia", async () => {
+    const u = userEvent.setup();
+    instalar((estado) => {
+      estado.borradores = [{ id: "b-1", proyecto: "7", version: "001", cambios: 2, rev: 3, tocado: "2026-10-27T10:00:00" }];
+    });
+    bandeja = responder([SIN_APU]);
+    montar();
+    await lista();
+    await waitFor(() => expect(boton()).toBeEnabled());
+    await u.click(boton());
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+    expect(ruta()).toBe("/inicio/pendientes");
+    expect(boton()).toBeEnabled();
+  });
+
+  test("si la persona navega a otra parte mientras se abre la carpeta, la herramienta vieja no la arrastra de vuelta", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([SIN_APU]);
+    montar({ ir: "/inicio/general" });
+    await lista();
+    await waitFor(() => expect(boton()).toBeEnabled());
+    responderRuta("POST", "/v1/casos/actual", lentaYBuena(200));
+    await u.click(boton());
+    await u.click(screen.getByRole("button", { name: "Ir a /inicio/general" }));
+    await waitFor(() => expect(ruta()).toBe("/inicio/general"));
+    await new Promise((r) => setTimeout(r, 400));
+    expect(ruta()).toBe("/inicio/general");
+  });
+
   test("una cuenta que no puede abrir otra carpeta no recibe el botón: se le dice la carpeta del pendiente", async () => {
     const ana = sesionDe("ana");
     bandeja = responder([SIN_APU]);
