@@ -47,6 +47,9 @@ RESUMEN = "/v1/obras/resumen"
 PENDIENTES = "/v1/obras/pendientes"
 MENSAJE_BASE = "No se pudo leer la carpeta de trabajo. Intente de nuevo."
 HOY = datetime(2026, 10, 25, 9, 0)
+#: El «hoy» del resumen: después del «hasta» de V-02 (2026-11-13), porque el corte del control nunca
+#: pasa de hoy (prueba en vivo del 2026-11-18). La carpeta se declara el HOY de siempre.
+HOY_DEL_RESUMEN = datetime(2026, 11, 16, 9, 0)
 
 
 def _caso(ruta: Path, moneda: str = "USD") -> Path:
@@ -128,14 +131,15 @@ def _numeros(valor) -> list:
 # --- resumen ------------------------------------------------------------------------------------
 
 
-def test_resumen_de_ob_s2_en_una_carpeta_en_usd() -> None:
+def test_resumen_de_ob_s2_en_una_carpeta_en_usd(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(obras, "ahora", lambda: HOY_DEL_RESUMEN)
     respuesta = _entrar("ana").get(RESUMEN)
 
     assert respuesta.status_code == 200, respuesta.text
     _sin_cache(respuesta)
     cuerpo = respuesta.json()
     assert cuerpo["moneda"] == "USD"
-    assert cuerpo["hoy"] == "2026-10-25"
+    assert cuerpo["hoy"] == "2026-11-16"
     assert cuerpo["cifras"][0] == {
         "clave": "valor_ganado",
         "titulo": "Valor ganado",
@@ -187,6 +191,7 @@ def test_ob_s2_en_usd_se_convierte_con_la_tasa_del_bcv_y_declara_su_fecha(
     # corte de OB-S2: 2026-11-13; tasa del 2026-11-09 (4 días antes, dentro de los 7):
     # EV 1 200 × 40 = 48 000,00 Bs y PV 1 500 × 40 = 60 000,00 Bs
     _usar_carpeta_en_bs(_plantillas, tmp_path, monkeypatch, date(2026, 11, 9))
+    monkeypatch.setattr(obras, "ahora", lambda: HOY_DEL_RESUMEN)
 
     cuerpo = _entrar("ana").get(RESUMEN).json()
 
@@ -205,6 +210,7 @@ def test_sin_tasa_de_los_ultimos_7_dias_ob_s2_queda_fuera_de_la_suma(
 ) -> None:
     # tasa del 2026-11-05: 8 días antes del corte del 2026-11-13, más de 7 → no se convierte
     _usar_carpeta_en_bs(_plantillas, tmp_path, monkeypatch, date(2026, 11, 5))
+    monkeypatch.setattr(obras, "ahora", lambda: HOY_DEL_RESUMEN)
 
     cuerpo = _entrar("ana").get(RESUMEN).json()
 

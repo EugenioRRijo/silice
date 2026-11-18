@@ -17,8 +17,8 @@ from aplicacion.control_comun import (
     ControlInvalido,
     _decimal,
     _escribir,
-    ultimo_corte,
 )
+from aplicacion.control_corte import ultimo_corte
 from core import models
 from core.budget.control import (
     ResultadoControl,

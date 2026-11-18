@@ -110,6 +110,7 @@ def trabajo_de_registro(base: Path, obra, carpeta: Path) -> Callable[[int], obje
                     fuente=generador.FUENTE,
                     responsable=generador.RESPONSABLE,
                     precios=obra.precios,
+                    hoy=ultima.fecha,  # la obra generada vive en su propio calendario
                 )
         finally:
             motor.dispose()
@@ -128,7 +129,7 @@ def trabajo_de_opciones(base: Path, obra, carpeta: Path) -> Callable[[int], obje
             generador.registrar_costo_de(sesion, obra.costos[-1])
             sesion.commit()
             resultado = control.calcular_el_control(
-                sesion, generador.NOMBRE, Catalogo(sesion), precios=obra.precios
+                sesion, generador.NOMBRE, Catalogo(sesion), corte=obra.corte, precios=obra.precios
             )
     finally:
         motor.dispose()

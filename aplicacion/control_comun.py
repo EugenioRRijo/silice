@@ -15,7 +15,7 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from core.budget.valuaciones import LineaBaseInvalidada, valuaciones_registradas
+from core.budget.valuaciones import LineaBaseInvalidada
 from core.verification.texto import formatear_decimal
 
 METODO_NINGUNO = "Sin precios del corte"
@@ -67,24 +67,6 @@ NATURALEZA_DATO = "DATO_DEL_CONTRATO"
 
 class ControlInvalido(ValueError):  # noqa: N818
     """Algo del control no se pudo hacer; el mensaje dice qué pasó y cómo arreglarlo."""
-
-
-def hoy_o_el_dado(hoy: date | None) -> date:
-    """`hoy` si se da (las pruebas lo fijan); si no, la fecha del reloj."""
-    return date.today() if hoy is None else hoy
-
-
-def ultimo_corte(sesion: Session, proyecto: str, hoy: date | None = None) -> date | None:
-    """El corte que se usa cuando nadie elige uno: el *hasta* de la última valuación no anulada,
-    pero **nunca después de hoy** (prueba en vivo del 2026-11-18: una valuación con *hasta* futuro
-    medía el plan en el futuro). `None` si no hay valuaciones: quien llama decide qué hacer.
-
-    Una valuación que termina después de hoy no cuenta para el valor ganado (su *hasta* pasa del
-    corte) y R14 la señala; la regla es del núcleo y no se toca."""
-    hastas = [v.hasta for v in valuaciones_registradas(sesion, proyecto)]
-    if not hastas:
-        return None
-    return min(max(hastas), hoy_o_el_dado(hoy))
 
 
 def _monto(valor: Decimal | None) -> str:

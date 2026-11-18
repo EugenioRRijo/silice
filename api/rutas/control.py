@@ -54,6 +54,7 @@ from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion import control as logica
 from aplicacion.causas import CAUSAS, atrasos
+from aplicacion.control_corte import ultimo_corte
 from aplicacion.precios_declarados import precios_convertidos
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.control import ResultadoControl
@@ -152,7 +153,7 @@ def _calcular(
     catalogo = Catalogo(sesion)
     # sin corte elegido, el de la última valuación, nunca después de hoy: el mismo para los
     # precios y para el cálculo (prueba en vivo del 2026-11-18)
-    dia = _corte(corte) or logica.ultimo_corte(sesion, proyecto)
+    dia = _corte(corte) or ultimo_corte(sesion, proyecto)
     precios = _precios(sesion, proyecto, catalogo, datos, dia)
     resultado = logica.calcular_el_control(sesion, proyecto, catalogo, corte=dia, precios=precios)
     return catalogo, resultado

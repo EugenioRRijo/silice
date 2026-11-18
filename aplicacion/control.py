@@ -61,9 +61,8 @@ from aplicacion.control_comun import (
     ControlInvalido,
     _decimal,
     _monto,
-    hoy_o_el_dado,
-    ultimo_corte,
 )
+from aplicacion.control_corte import hoy_o_el_dado, ultimo_corte
 from aplicacion.control_linea_base import (
     DIAS_POR_OMISION,
     DiasDelPlan,
@@ -199,7 +198,6 @@ __all__ = [
     "tablas_de_control",
     "texto_monto",
     "tiene_linea_base",
-    "ultimo_corte",
     "valuaciones_para_anular",
     "versiones_para_la_linea_base",
     "versiones_revaloradas",

@@ -27,8 +27,8 @@ from aplicacion.control_comun import (
     _decimal,
     _escribir,
     _fecha,
-    hoy_o_el_dado,
 )
+from aplicacion.control_corte import exigir_que_no_sea_futura
 from aplicacion.tablas_causas import guardar_causas
 from core import models
 from core.budget.control import ResultadoControl
@@ -252,26 +252,6 @@ def registrar_y_controlar(
 
     _escribir(sesion, accion)
     return calcular_el_control(sesion, proyecto, catalogo, corte=fin, precios=precios)
-
-
-def exigir_que_no_sea_futura(hasta: date, fecha: date | None, hoy: date | None = None) -> None:
-    """`ControlInvalido` si la valuación termina (`hasta`) o se firma (`fecha`) después de `hoy`.
-
-    Decisión de la prueba en vivo del 2026-11-18: rechazo, no aviso. Una valuación es la medición
-    de obra ya ejecutada (UC-19); con un *hasta* futuro, R14 la marca como error al corte y el
-    valor ganado no la cuenta, así que guardarla solo deja un error que hay que anular después.
-    La regla R14 del núcleo no cambia: esto es una compuerta de la entrada."""
-    dia = hoy_o_el_dado(hoy)
-    if hasta > dia:
-        raise ControlInvalido(
-            f"El «Período hasta» ({hasta:%d/%m/%Y}) es posterior a hoy ({dia:%d/%m/%Y}): una "
-            "valuación solo mide obra ya ejecutada. Regístrela cuando termine el período."
-        )
-    if fecha is not None and fecha > dia:
-        raise ControlInvalido(
-            f"La «Fecha de la valuación» ({fecha:%d/%m/%Y}) es posterior a hoy ({dia:%d/%m/%Y}): "
-            "use la fecha en que se firmó, que no puede ser futura."
-        )
 
 
 def anular(sesion: Session, valuacion_id: int, *, motivo: str, responsable: str) -> None:

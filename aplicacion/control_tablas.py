@@ -23,8 +23,8 @@ from aplicacion.control_comun import (
     NO_DISPONIBLE,
     _indice,
     _monto,
-    ultimo_corte,
 )
+from aplicacion.control_corte import ultimo_corte
 from aplicacion.impuestos import ResumenImpuestos, con_iva
 from core.budget.control import (
     ResultadoControl,
