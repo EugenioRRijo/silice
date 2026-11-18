@@ -65,12 +65,19 @@ QUE_ESCRIBEN = [
 _BORRADOR = "/v1/hoja/borradores/{id}"
 _EDITA_EL_BORRADOR = "edita el borrador vivo, en memoria del proceso; el caso solo se lee"
 
+#: DS-51: no confirman, pero escriben y deshacen. Con el BEGIN diferido toman el bloqueo de
+#: escritura desde el primer flush hasta cerrar la sesion (cerrarla antes de responder va con A.9).
+_DESHACE = (
+    "escribe y deshace: con el BEGIN diferido toma el bloqueo de escritura desde el flush hasta "
+    "cerrar la sesion (DS-51)"
+)
+
 #: Rutas no-GET con la sesion comun que no confirman nada en el caso (revisadas una a una el
 #: 2026-11-18, anexo A.8; como se comprobo, en el acta DS-45).
 SOLO_LEEN_EL_CASO: dict[tuple[str, str], str] = {
     ("POST", "/listas-precios/vista-previa"): "UC-02 2a: los desconocidos del archivo",
-    ("POST", "/presupuestos/calcular"): "calcula sin guardar; la lista convertida se deshace",
-    ("POST", "/presupuestos/calcular/excel"): "el mismo calculo, en Excel",
+    ("POST", "/presupuestos/calcular"): "calcula sin guardar; la lista convertida " + _DESHACE,
+    ("POST", "/presupuestos/calcular/excel"): "el mismo calculo, en Excel; " + _DESHACE,
     ("POST", "/presupuestos/{codigo}/escenarios"): "escenarios en memoria",
     ("POST", "/presupuestos/{codigo}/escenarios/csv"): "los mismos escenarios, en CSV",
     ("POST", "/v1/auditorias"): "audita el documento enviado",
@@ -80,10 +87,10 @@ SOLO_LEEN_EL_CASO: dict[tuple[str, str], str] = {
     ("POST", "/v1/simulador/csv"): "la misma simulacion, en CSV",
     ("POST", "/v1/similares"): "propone partidas parecidas",
     ("POST", "/v1/composicion/evaluar"): "el desglose en vivo",
-    ("POST", "/v1/composicion/prever"): "lo que haria el guardado; se deshace",
+    ("POST", "/v1/composicion/prever"): "lo que haria el guardado; " + _DESHACE,
     ("POST", "/v1/control/recuperacion/opciones"): "las opciones de recuperacion (DS-29)",
     ("POST", "/v1/entregas"): "el paquete sale en memoria; el rastro va a instalacion.db",
-    ("POST", "/v1/reajuste/calcular"): "calcula el reajuste sin guardarlo",
+    ("POST", "/v1/reajuste/calcular"): "calcula el reajuste sin guardarlo; " + _DESHACE,
     ("POST", "/v1/reajuste/excel"): "el mismo reajuste, en Excel",
     ("POST", "/v1/indices/en-usd/ver"): "la serie en USD antes de confirmarla",
     ("POST", "/v1/precios-empresa/listas/revision"): "revisa el archivo antes de crear la lista",
@@ -121,7 +128,12 @@ _RECIBIDO = (
 ESCRIBEN_CON_LA_SESION_COMUN: dict[tuple[str, str], str] = {
     ("POST", "/v1/hoja/borradores"): _INSTANTANEA + "; quien solo lee la abre `sin_escribir`",
     ("POST", "/v1/hoja/llevar"): _INSTANTANEA,
-    ("POST", "/v1/hoja/libro"): _INSTANTANEA,
+    ("POST", "/v1/hoja/libro"): (
+        "no abre ninguna version (con versiones lanza `ObraConVersiones`): escribe el catalogo "
+        "(composicion, precios, referencias, trazas) y confirma en cada llamada "
+        "(`aplicacion/libro_a_la_hoja.py:451-497`); pasarla a la sesion de escritura pide tomar "
+        "`vivo.cerrojo` antes de la primera consulta y `run_in_threadpool` (tarea A.9, DS-49)"
+    ),
     ("POST", "/v1/vial/tramos/llevar"): _INSTANTANEA,
     ("POST", "/v1/revision/paquete"): _RECIBIDO,
     ("POST", "/v1/revision/contra-lista"): _RECIBIDO,
