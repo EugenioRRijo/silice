@@ -461,13 +461,22 @@ def test_importar_se_declara_antes_de_las_rutas_con_codigo():
     """`importar` no debe poder leerse como un `{codigo}`. Hoy ninguna ruta POST lleva solo
     `/presupuestos/{codigo}`, asi que por HTTP el orden no se nota (Starlette sigue buscando tras
     una coincidencia parcial de otro metodo); la prueba fija la convencion del plan de C6 (§2.4)
-    para que una ruta futura con ese patron no la tape."""
-    from api.rutas.presupuestos import router
+    para que una ruta futura con ese patron no la tape.
 
-    rutas = [ruta.path for ruta in router.routes]
+    Desde la tarea 4.1 del plan de desenredo las rutas de `/presupuestos` viven en cuatro routers
+    (revision de la ola 4, nota 2): se mira el orden de la app entera, el de `docs/api.json`, y no
+    el de un router suelto."""
+    from api.main import app
+
+    assert _importar_va_antes(list(app.openapi()["paths"]))
+    # la comprobacion ve la falta: un `{codigo}` registrado antes que `importar`
+    assert not _importar_va_antes(["/presupuestos/{codigo}/escenarios", "/presupuestos/importar"])
+
+
+def _importar_va_antes(rutas: list[str]) -> bool:
     importar = rutas.index("/presupuestos/importar")
     con_codigo = [i for i, ruta in enumerate(rutas) if ruta.startswith("/presupuestos/{codigo}")]
-    assert con_codigo and importar < min(con_codigo)
+    return bool(con_codigo) and importar < min(con_codigo)
 
 
 def test_importar_sobre_un_proyecto_inexistente_es_404(cliente, tmp_path):

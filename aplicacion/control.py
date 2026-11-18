@@ -19,6 +19,10 @@ Desde la tarea 4.3 del plan de desenredo este módulo es la fachada del control:
 guarda las consultas cortas, las partidas del contrato y los precios del corte: estos dos leen
 `aplicacion.frentes` y `aplicacion.precios_declarados`, que están en el ciclo de la mesa, y
 fuera de aquí ese ciclo crecería (ola 5).
+
+Para las pruebas: un `monkeypatch` va al módulo donde se **busca** el nombre al llamarlo (DS-39).
+`registrar_y_controlar` busca `calcular_el_control` en `control_calculo`: parchearlo en esta
+fachada no lo alcanza.
 """
 
 from __future__ import annotations
