@@ -36,7 +36,6 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.rutas.sesion import Detalle
@@ -229,7 +228,7 @@ def listar_cuentas(_: Administrador) -> CuentasRespuesta:
     """Las cuentas por usuario (la tabla de la pestaña Cuentas)."""
     try:
         with sesion_de_instalacion() as bd:
-            filas = bd.scalars(select(Usuario).order_by(Usuario.login)).all()
+            filas = cuentas.usuarios(bd)
             return CuentasRespuesta(
                 cuentas=[_cuenta(u) for u in filas],
                 aviso_arma_y_revisa=aviso_de_roles([Rol.ARMA, Rol.REVISA]) or "",

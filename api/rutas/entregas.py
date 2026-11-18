@@ -28,7 +28,7 @@ previa» si la carpeta no tiene la tabla de aprobaciones (D4, plan de decisiones
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -45,7 +45,6 @@ from aplicacion import aprobaciones
 from aplicacion import entrega as logica
 from aplicacion.equipo import operacion_sensible_permitida
 from aplicacion.proyectos import proyecto_por_nombre
-from core import models
 from core.budget import canonico
 from operacion.instalacion import sesion_de_instalacion
 from operacion.version import version as version_de_silice
@@ -54,6 +53,9 @@ from seguridad import cuentas, empresas, eventos
 from seguridad.empresas import ContrasenaDeClaveIncorrecta
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
+
+if TYPE_CHECKING:
+    from core import models
 
 MENSAJE_CUERPO_INVALIDO = (
     "Indique la obra y la versión como texto; el destinatario y la contraseña de la clave de "
@@ -67,7 +69,6 @@ MENSAJE_FRENO = (
 )
 #: Espera progresiva por fallos de la contraseña de la clave (del proceso, como la de las cuentas).
 FRENO_FIRMA = cuentas.FrenoGlobal()
-SIN_CACHE = {"Cache-Control": "no-store"}  # un paquete y su resumen no se guardan en el navegador
 
 
 class _RutaEntregas(RutaSinCache, RutaSinEco):
@@ -136,9 +137,8 @@ def _version(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
 
 
 @router.get("/versiones", response_model=list[VersionEntregable], dependencies=[ENTREGAR])
-def versiones(sesion: SesionDep, response: Response, proyecto: str) -> list[VersionEntregable]:
+def versiones(sesion: SesionDep, proyecto: str) -> list[VersionEntregable]:
     """Las versiones del proyecto, la más nueva primero (como el selector de la pantalla)."""
-    response.headers.update(SIN_CACHE)
     obra = _proyecto(sesion, proyecto)
     ordenadas = sorted(obra.presupuestos, key=lambda v: v.id, reverse=True)
     estados = aprobaciones.estados(sesion, str(obra.id))
@@ -155,9 +155,8 @@ def versiones(sesion: SesionDep, response: Response, proyecto: str) -> list[Vers
 
 
 @router.get("/resumen", response_model=ResumenRespuesta, dependencies=[ENTREGAR])
-def resumen(sesion: SesionDep, response: Response, proyecto: str, version: str) -> ResumenRespuesta:
+def resumen(sesion: SesionDep, proyecto: str, version: str) -> ResumenRespuesta:
     """Total, hallazgos, cadena, anexos, empresa y si hay clave de firma (UC-22 paso 2)."""
-    response.headers.update(SIN_CACHE)
     elegida = _version(sesion, proyecto, version)
     with sesion_de_instalacion() as bd:
         datos = logica.resumen_de_entrega(sesion, bd, elegida)
@@ -245,7 +244,6 @@ def entregar(
         content=generada.datos,
         media_type="application/zip",
         headers={
-            **SIN_CACHE,
             "Content-Disposition": f'attachment; filename="{generada.nombre}"',
             "X-Silice-SHA256": generada.sha256,
             "X-Silice-Firmado": "1" if generada.firmado else "0",

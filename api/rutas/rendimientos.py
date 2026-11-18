@@ -15,10 +15,9 @@ import importlib.util
 from decimal import Decimal
 
 from fastapi import APIRouter, status
-from sqlalchemy import select
 
 from api.acceso import EDITAR, LEER
-from api.dependencias import SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep
 from api.esquemas import (
     DispersionRespuesta,
     EjecucionPeticion,
@@ -30,7 +29,7 @@ from api.esquemas import (
     RendimientosRespuesta,
     decimal_desde_texto,
 )
-from core import models
+from aplicacion.elaboracion import ejecuciones
 from core.catalog import (
     Catalogo,
     DispersionRendimiento,
@@ -53,7 +52,9 @@ router = APIRouter(tags=["rendimientos"])
     status_code=status.HTTP_201_CREATED,
     dependencies=EDITAR,
 )
-def crear_ejecucion(sesion: SesionDep, peticion: EjecucionPeticion) -> EjecucionRespuesta:
+def crear_ejecucion(
+    sesion: SesionDeEscrituraDep, peticion: EjecucionPeticion
+) -> EjecucionRespuesta:
     """Registra una obra ejecutada (referencia unica) y confirma la transaccion."""
     ejecucion = registrar_ejecucion(
         sesion,
@@ -69,8 +70,7 @@ def crear_ejecucion(sesion: SesionDep, peticion: EjecucionPeticion) -> Ejecucion
 @router.get("/ejecuciones", response_model=list[EjecucionRespuesta], dependencies=LEER)
 def listar_ejecuciones(sesion: SesionDep) -> list[EjecucionRespuesta]:
     """Obras ejecutadas registradas, de la mas antigua a la mas reciente."""
-    consulta = select(models.Ejecucion).order_by(models.Ejecucion.fecha_inicio, models.Ejecucion.id)
-    return [EjecucionRespuesta.model_validate(e) for e in sesion.scalars(consulta)]
+    return [EjecucionRespuesta.model_validate(e) for e in ejecuciones(sesion)]
 
 
 @router.get(
@@ -94,7 +94,7 @@ def obtener_rendimientos(sesion: SesionDep, codigo: str) -> RendimientosRespuest
     dependencies=EDITAR,
 )
 def crear_rendimiento(
-    sesion: SesionDep, codigo: str, peticion: RendimientoPeticion
+    sesion: SesionDeEscrituraDep, codigo: str, peticion: RendimientoPeticion
 ) -> RegistroRendimientoRespuesta:
     """RF-25 + RF-27: registra el rendimiento y advierte si se aparta de lo observado.
 

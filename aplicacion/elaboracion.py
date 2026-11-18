@@ -32,6 +32,8 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
+
 from aplicacion import hoja, hoja_borradores, hoja_edicion, importaciones
 from aplicacion.cifras import CifraInvalida, texto_de_cifra
 from aplicacion.composicion import (
@@ -43,6 +45,7 @@ from aplicacion.composicion import (
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_partidas import CalculoInvalido, cantidad_y_regla
 from aplicacion.listas_para_armar import valoracion_de_la_obra
+from core import models
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
 from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, PropuestaRendimiento, proponer_rendimiento, registrar_rendimiento
@@ -55,7 +58,6 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from aplicacion.hoja_borradores import BorradorVivo
-    from core import models
     from core.budget import GeneradorPlan, PeriodoPlan
     from core.contracts.apu import ComposicionAPU
     from core.contracts.presupuesto import Presupuesto
@@ -566,3 +568,50 @@ def precios_sin_efecto(
         sin_insumo=tuple(d for d in precios if d not in vigentes),
         sin_cambio=tuple(d for d, p in precios.items() if vigentes.get(d) == {p}),
     )
+
+
+# --- Consultas del caso que antes escribian las rutas (tarea 3.1 del plan de desenredo) --------
+
+
+def presupuestos_guardados(sesion: Session) -> list[models.Presupuesto]:
+    """Todos los presupuestos guardados del caso, ordenados por codigo (`GET /presupuestos`)."""
+    return list(sesion.scalars(select(models.Presupuesto).order_by(models.Presupuesto.codigo)))
+
+
+class PresupuestoAmbiguo(Exception):  # noqa: N818
+    """El codigo existe en mas de una obra y no se dijo cual: la ruta lo declara con un 409. No es
+    un `LookupError`, que seria un 404: el presupuesto si existe."""
+
+    def __init__(self, codigo: str, obras: tuple[str, ...]) -> None:
+        super().__init__(f"el código {codigo!r} existe en más de una obra ({', '.join(obras)})")
+        self.codigo = codigo
+        self.obras = obras
+
+
+def presupuesto_por_codigo(
+    sesion: Session, codigo: str, proyecto: str | None
+) -> models.Presupuesto:
+    """El renglon de `models.Presupuesto` de ese codigo, acotado por obra si se indica.
+
+    `codigo` solo es unico **por obra** (`UniqueConstraint(proyecto_id, codigo)`): sin `proyecto`,
+    dos obras con el mismo codigo lanzan `PresupuestoAmbiguo` (con las obras por nombre) en vez de
+    un `MultipleResultsFound`. Ninguna coincidencia es `LookupError` (404)."""
+    consulta = select(models.Presupuesto).where(models.Presupuesto.codigo == codigo)
+    if proyecto is not None:
+        consulta = consulta.join(models.Proyecto).where(models.Proyecto.nombre == proyecto)
+    encontrados = list(sesion.scalars(consulta))
+    if not encontrados:
+        detalle = f"no hay ningún presupuesto con código {codigo!r}"
+        if proyecto is not None:
+            detalle += f" en la obra {proyecto!r}"
+        raise LookupError(detalle)
+    if len(encontrados) > 1:
+        obras = tuple(sorted({modelo.proyecto.nombre for modelo in encontrados}))
+        raise PresupuestoAmbiguo(codigo, obras)
+    return encontrados[0]
+
+
+def ejecuciones(sesion: Session) -> list[models.Ejecucion]:
+    """Las obras ejecutadas registradas, de la mas antigua a la mas reciente (`id` si empatan)."""
+    consulta = select(models.Ejecucion).order_by(models.Ejecucion.fecha_inicio, models.Ejecucion.id)
+    return list(sesion.scalars(consulta))

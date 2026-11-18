@@ -1031,7 +1031,7 @@ def _es_nucleo_de_superficie(modulo: str) -> bool:
 
 def _nucleo_profundo(archivo: Path, raiz: Path = RAIZ) -> dict[str, int]:
     """Modulo del nucleo que no es de superficie -> primera linea que lo importa. `core.models`
-    queda fuera: lo vigila su propia lista (`MODELOS_EN_RUTAS`)."""
+    queda fuera: lo vigila `test_las_rutas_no_importan_los_modelos_del_nucleo`."""
     hallados: dict[str, int] = {}
     for linea, modulo in _modulos_usados(archivo, raiz):
         es_modelo = modulo == "core.models" or modulo.startswith("core.models.")
@@ -1039,29 +1039,6 @@ def _nucleo_profundo(archivo: Path, raiz: Path = RAIZ) -> dict[str, int]:
             hallados.setdefault(modulo, linea)
     return hallados
 
-
-#: Llamadas `select(` por archivo de `api/rutas` (2026-11-17, a802d728): la ola 3 las muda a
-#: `aplicacion`, `seguridad` y `produccion`.
-SELECT_EN_RUTAS: dict[str, int] = {
-    "api/rutas/admin_claves_api.py": 1,
-    "api/rutas/admin_empresas_registradas.py": 1,
-    "api/rutas/cuentas.py": 1,
-    "api/rutas/listas.py": 1,
-    "api/rutas/presupuestos.py": 3,
-    "api/rutas/produccion.py": 2,
-    "api/rutas/rendimientos.py": 1,
-}
-
-#: Archivos de `api/rutas` que importan `core.models` (2026-11-17, a802d728).
-MODELOS_EN_RUTAS: frozenset[str] = frozenset(
-    {
-        "api/rutas/entregas.py",
-        "api/rutas/listas.py",
-        "api/rutas/presupuestos.py",
-        "api/rutas/rendimientos.py",
-        "api/rutas/revision.py",
-    }
-)
 
 #: Archivo de `api/rutas` -> modulos del nucleo que no son `core.contracts.*` ni
 #: `core.verification.texto` (2026-11-17, a802d728).
@@ -1091,23 +1068,14 @@ NUCLEO_PROFUNDO_EN_RUTAS: dict[str, frozenset[str]] = {
 
 
 def test_las_rutas_no_consultan_la_base():
-    peores = []
-    for archivo in _archivos_de_rutas():
-        lineas = _llamadas_select(archivo)
-        congelado = SELECT_EN_RUTAS.get(_ruta(archivo), 0)
-        if len(lineas) > congelado:
-            sitios = ", ".join(f"{_ruta(archivo)}:{linea}" for linea in lineas)
-            peores.append(f"{len(lineas)} select() (congelado {congelado}): {sitios}")
-    assert peores == [], "la consulta va en aplicacion/, no en la ruta:\n" + "\n".join(peores)
-
-
-def test_las_rutas_no_consultan_la_base_sin_sobrantes():
-    sobrantes = []
-    for ruta, congelado in sorted(SELECT_EN_RUTAS.items()):
-        hoy = len(_llamadas_select(RAIZ / ruta)) if (RAIZ / ruta).is_file() else 0
-        if hoy < congelado:
-            sobrantes.append(f"{ruta}: {congelado} -> {hoy}" + ("" if hoy else " (borrar la fila)"))
-    assert sobrantes == [], "bajar SELECT_EN_RUTAS: " + "; ".join(sobrantes)
+    """Prohibicion pura desde el cierre de la ola 3 (2026-11-17): la consulta va en `aplicacion/`,
+    `seguridad/` o `produccion/`, nunca en `api/rutas`."""
+    sitios = sorted(
+        f"{_ruta(archivo)}:{linea}"
+        for archivo in _archivos_de_rutas()
+        for linea in _llamadas_select(archivo)
+    )
+    assert sitios == [], "la consulta va en aplicacion/, no en la ruta:\n" + "\n".join(sitios)
 
 
 def test_las_rutas_no_consultan_la_base_ve_la_falta(tmp_path):
@@ -1122,24 +1090,14 @@ def test_las_rutas_no_consultan_la_base_ve_la_falta(tmp_path):
 
 
 def test_las_rutas_no_importan_los_modelos_del_nucleo():
-    nuevos = sorted(
+    """Prohibicion pura desde el cierre de la ola 3 (2026-11-17): una ruta recibe las filas de
+    `aplicacion/`; el tipo de una firma, si hace falta, va bajo `if TYPE_CHECKING:`."""
+    sitios = sorted(
         f"{_ruta(archivo)}:{lineas[0]}"
         for archivo in _archivos_de_rutas()
         if (lineas := _importa_modelos_del_nucleo(archivo))
-        and _ruta(archivo) not in MODELOS_EN_RUTAS
     )
-    assert nuevos == [], f"importan core.models fuera de MODELOS_EN_RUTAS: {nuevos}"
-
-
-def test_las_rutas_no_importan_los_modelos_del_nucleo_sin_sobrantes():
-    sobrantes = sorted(
-        ruta
-        for ruta in MODELOS_EN_RUTAS
-        if not (RAIZ / ruta).is_file() or not _importa_modelos_del_nucleo(RAIZ / ruta)
-    )
-    assert sobrantes == [], (
-        f"ya no importan core.models; borrarlas de MODELOS_EN_RUTAS: {sobrantes}"
-    )
+    assert sitios == [], f"una ruta no importa core.models: {sitios}"
 
 
 def test_las_rutas_no_importan_los_modelos_del_nucleo_ve_la_falta(tmp_path):
@@ -1571,7 +1529,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "adapters/hoja_empresa/escritor/calculos.py": 1317,
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
-    "api/rutas/presupuestos.py": 1110,
+    "api/rutas/presupuestos.py": 1092,
     "scripts/informe_ti001.py": 1102,
     "api/esquemas_hoja.py": 1056,
     "aplicacion/hoja_vista.py": 1055,
@@ -1846,3 +1804,77 @@ def test_una_sola_busqueda_de_obra_por_nombre_sin_sobrantes():
     for ruta in BUSQUEDA_DE_OBRA_CONGELADA:
         texto = (RAIZ / ruta).read_text(encoding="utf-8")
         assert BUSQUEDA_DE_OBRA_POR_NOMBRE in texto, f"borrar {ruta} de BUSQUEDA_DE_OBRA_CONGELADA"
+
+
+# --- Anexo A.2: un router con `RutaSinCache` no pone `Cache-Control` a mano --------------------
+
+
+def _modulo_de(archivo: Path) -> str:
+    return ".".join(archivo.relative_to(RAIZ).with_suffix("").parts)
+
+
+def _usa_ruta_sin_cache(modulo: object) -> bool:
+    """Algun `APIRouter` del modulo con `route_class` derivada de `RutaSinCache`, o alguna de sus
+    rutas de esa clase (`route_class_override`, como en `casos.py`)."""
+    from fastapi import APIRouter
+
+    from api.sin_cache import RutaSinCache
+
+    return any(
+        isinstance(valor, APIRouter)
+        and (
+            issubclass(valor.route_class, RutaSinCache)
+            or any(isinstance(ruta, RutaSinCache) for ruta in valor.routes)
+        )
+        for valor in vars(modulo).values()
+    )
+
+
+def _cabecera_de_cache_a_mano(archivo: Path) -> list[int]:
+    """Lineas de cada texto `"Cache-Control"` del codigo (una clave de `headers=` o de
+    `response.headers[...]`); los docstrings que la nombran no cuentan."""
+    return sorted(
+        nodo.lineno
+        for nodo in ast.walk(_arbol(archivo))
+        if isinstance(nodo, ast.Constant)
+        and isinstance(nodo.value, str)
+        and nodo.value.lower() == "cache-control"
+    )
+
+
+def test_un_router_sin_cache_no_pone_la_cabecera_a_mano():
+    """`RutaSinCache` ya pone `no-store` en toda respuesta, tambien en los errores; repetirlo a
+    mano es una segunda fuente que puede desviarse (H11). Las pruebas de `no-store` de cada router
+    son el oraculo de conducta."""
+    import importlib
+
+    sitios = sorted(
+        f"{_ruta(archivo)}:{linea}"
+        for archivo in _archivos_de_rutas()
+        if _usa_ruta_sin_cache(importlib.import_module(_modulo_de(archivo)))
+        for linea in _cabecera_de_cache_a_mano(archivo)
+    )
+    assert sitios == [], "RutaSinCache ya pone la cabecera:\n" + "\n".join(sitios)
+
+
+def test_la_cabecera_a_mano_ve_la_falta(tmp_path):
+    archivo = tmp_path / "ruta.py"
+    archivo.write_text(
+        '"""Toda respuesta lleva `Cache-Control: no-store`."""\n'
+        'SIN_CACHE = {"Cache-Control": "no-store"}\n'
+        'def f(response):\n    response.headers["cache-control"] = "no-store"\n',
+        encoding="utf-8",
+    )
+    assert _cabecera_de_cache_a_mano(archivo) == [2, 4]
+
+
+def test_la_guardia_reconoce_los_routers_sin_cache():
+    """No pasa en vacio: ve la clase propia (`entregas`), la de Administracion (`admin_empresa`) y
+    la que se pone ruta por ruta (`casos`); no ve un router que solo usa `RutaSinEco`."""
+    import importlib
+
+    vistos = {
+        nombre: _usa_ruta_sin_cache(importlib.import_module(f"api.rutas.{nombre}"))
+        for nombre in ("entregas", "admin_empresa", "casos", "composicion")
+    }
+    assert vistos == {"entregas": True, "admin_empresa": True, "casos": True, "composicion": False}

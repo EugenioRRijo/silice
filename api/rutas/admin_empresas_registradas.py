@@ -26,14 +26,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
-from sqlalchemy import select
 
 from api.admin_acceso import RutaDeAdministracion, administrar
 from api.sesion_web import ahora
 from api.sin_eco import sin_eco as _sin_eco
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import empresas, firma
-from seguridad.modelo import EmpresaRegistrada
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
@@ -87,7 +85,7 @@ class Retiro(BaseModel):
 
 def _estado() -> RegistradasRespuesta:
     with sesion_de_instalacion() as bd:
-        filas = bd.scalars(select(EmpresaRegistrada).order_by(EmpresaRegistrada.id)).all()
+        filas = empresas.registradas(bd)
         return RegistradasRespuesta(
             registradas=[
                 Registrada(

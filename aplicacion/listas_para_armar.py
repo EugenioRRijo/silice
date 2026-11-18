@@ -548,3 +548,26 @@ def crear_lista_para_armar(
     if desde == "empresa":
         return _desde_empresa(sesion, lista_id, fecha, responsable)
     raise ValueError(f"desde {desde!r}; se espera maprex, convertir o empresa")
+
+
+# --- Consultas de las listas que antes escribian las rutas (tarea 3.1 del plan de desenredo) ---
+
+
+def listas_de_precios(sesion: Session) -> list[models.ListaPrecios]:
+    """Las listas de precios del caso, de la mas antigua a la mas reciente (por `id` si empatan)."""
+    consulta = select(models.ListaPrecios).order_by(
+        models.ListaPrecios.fecha_vigencia, models.ListaPrecios.id
+    )
+    return list(sesion.scalars(consulta))
+
+
+def lista_por_nombre(sesion: Session, nombre: str) -> models.ListaPrecios | None:
+    """La lista de ese nombre exacto, o `None`."""
+    return sesion.scalars(
+        select(models.ListaPrecios).where(models.ListaPrecios.nombre == nombre)
+    ).one_or_none()
+
+
+def lista_por_id(sesion: Session, lista_id: int) -> models.ListaPrecios | None:
+    """La lista de ese `id`, o `None`."""
+    return sesion.get(models.ListaPrecios, lista_id)

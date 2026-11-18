@@ -66,8 +66,10 @@ def test_revisar_un_archivo_ilegible_o_que_falta_dice_que_paso_y_sale_con_1(
     assert cli.main(["eventos", "revisar", str(archivo)]) == 1
     salida = capsys.readouterr()
     assert salida.out == ""
-    assert archivo.name in salida.err and "no se marcó como revisado" in salida.err
-    assert "restaurarlo de un respaldo o retirarlo a mano" in salida.err
+    # Anexo A.4 del plan de desenredo: el mismo texto que el 409 de la API (H10).
+    assert archivo.name in salida.err and eventos_perdidos.MENSAJE_ILEGIBLE in salida.err
+    # Un literal fijo: con la constante vacia la linea de arriba pasaria igual.
+    assert "no se marcó como revisado" in salida.err and "siguen bloqueadas" in salida.err
     assert "Traceback" not in salida.err
     if contenido is None:
         assert not archivo.exists()

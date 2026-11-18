@@ -36,7 +36,7 @@ from fastapi.testclient import TestClient
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import entregas as ruta_entregas
-from operacion import config
+from operacion import config, eventos_perdidos
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, empresas
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
@@ -665,13 +665,8 @@ def test_revisar_un_archivo_de_eventos_corrupto_da_409_y_no_lo_desbloquea() -> N
     archivo.write_text("{no es json", encoding="utf-8")
     navegador, cab = _admin()
     r = navegador.post(f"/v1/admin/instalacion/eventos/{archivo.name}/revisar", headers=cab)
-    assert (r.status_code, r.json()) == (
-        409,
-        {
-            "detalle": "El archivo de eventos perdidos no se puede leer, así que no se marcó "
-            "como revisado. Restáurelo de un respaldo o pida ayuda."
-        },
-    )
+    # Anexo A.4 del plan de desenredo: el mismo texto que la orden `eventos revisar` (H10).
+    assert (r.status_code, r.json()) == (409, {"detalle": eventos_perdidos.MENSAJE_ILEGIBLE})
     assert archivo.read_text(encoding="utf-8") == "{no es json"
     assert navegador.get("/v1/admin/instalacion").json()["sensible"]["permitida"] is False
 
