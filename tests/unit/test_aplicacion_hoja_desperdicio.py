@@ -80,8 +80,8 @@ def test_la_coma_decimal_del_porcentaje():
     [
         ("cuatro", "no se entiende como número."),
         ("4.5", "no se entiende como número."),
-        ("100", "debe estar entre 0 y 100 (es un porcentaje: 4 es 4 %)."),
-        ("-1", "debe estar entre 0 y 100 (es un porcentaje: 4 es 4 %)."),
+        ("100", "debe ser de 0 a menos de 100 (es un porcentaje: 4 es 4 %)."),
+        ("-1", "debe ser de 0 a menos de 100 (es un porcentaje: 4 es 4 %)."),
     ],
 )
 def test_un_porcentaje_mal_escrito_dice_la_fila_como_las_cantidades(texto: str, final: str):

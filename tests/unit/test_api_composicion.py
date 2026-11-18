@@ -550,7 +550,7 @@ def test_evaluar_un_desperdicio_mal_escrito_es_incompleto(api: TestClient) -> No
         "/v1/composicion/evaluar", json=_cuerpo_desp({**LIGANTE, "desperdicio": "-1"})
     ).json()
     assert cuerpo["estado"] == "incompleto"
-    assert "el desperdicio «-1» debe estar entre 0 y 100" in cuerpo["aviso"]
+    assert "el desperdicio «-1» debe ser de 0 a menos de 100" in cuerpo["aviso"]
 
 
 def test_guardar_y_precargar_devuelven_la_neta_y_el_porcentaje(api: TestClient) -> None:

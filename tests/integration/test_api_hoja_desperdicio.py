@@ -350,8 +350,8 @@ def test_si_falla_la_version_no_queda_ninguna_traza_y_el_reintento_la_guarda(
 @pytest.mark.parametrize(
     ("texto", "error"),
     [
-        ("1.000", "debe estar entre 0 y 100"),  # mil por ciento, con punto de miles
-        ("100", "debe estar entre 0 y 100"),
+        ("1.000", "debe ser de 0 a menos de 100"),  # mil por ciento, con punto de miles
+        ("100", "debe ser de 0 a menos de 100"),
         ("4.5", "no se entiende como número"),  # el punto no es decimal
     ],
 )
