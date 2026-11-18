@@ -35,7 +35,6 @@ router = APIRouter(
 )
 ADMIN = Depends(administrar(Accion.ADMINISTRAR_RED_Y_API))
 EN_EL_EQUIPO = Depends(administrar_en_el_equipo(Sensible.CLAVE_DE_API))
-SIN_CACHE = {"Cache-Control": "no-store"}
 MENSAJE_SIN_JUEGO = "No hay un respaldo con ese nombre."
 MENSAJE_SIN_EVENTO = "No hay un archivo de eventos perdidos pendiente con ese nombre."
 MENSAJE_EVENTO_ILEGIBLE = (
@@ -111,7 +110,7 @@ def bajar(nombre: str) -> Response:
     return Response(
         content=logica.zip_del_juego(juego.carpeta),
         media_type="application/zip",
-        headers={**SIN_CACHE, "Content-Disposition": f'attachment; filename="{juego.nombre}.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="{juego.nombre}.zip"'},
     )
 
 

@@ -83,7 +83,6 @@ MENSAJE_SOLO_PERSONA = (
 )
 MENSAJE_LISTA = "La lista {id} no existe en esta carpeta."
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-SIN_CACHE = {"Cache-Control": "no-store"}  # lo recibido y su análisis no se guardan en el navegador
 ERRORES_DEL_PAQUETE = (PaqueteRechazado, JsonRechazado, ValueError)  # la clásica: `st.error(str())`
 
 
@@ -392,14 +391,12 @@ def _legible(a: logica.Analisis) -> logica.Analisis:
 @router.post("/paquete", response_model=RevisionRespuesta, dependencies=[REVISAR])
 def revisar_paquete(
     sesion: SesionDep,
-    response: Response,
     activa: Activa,
     servicios: ServiciosDep,
     paquete: Annotated[UploadFile, File()],
     lista: Annotated[int | None, Form()] = None,
 ) -> RevisionRespuesta:
     """Verifica, registra y reaudita el paquete; todo lo que la pantalla clásica muestra."""
-    response.headers.update(SIN_CACHE)
     datos = _leer(paquete, TOPE_PAQUETE, MENSAJE_TOPE_PAQUETE)
     a = _analizar(sesion, activa, datos, paquete.filename, servicios)
     v = a.recibido.verificacion
@@ -452,14 +449,12 @@ def revisar_paquete(
 @router.post("/contra-lista", response_model=ContraLista, dependencies=[REVISAR])
 def contra_otra_lista(
     sesion: SesionDep,
-    response: Response,
     activa: Activa,
     servicios: ServiciosDep,
     paquete: Annotated[UploadFile, File()],
     lista: Annotated[int, Form()],
 ) -> ContraLista:
     """El paquete revalorado en memoria con otra lista del caso («Contrastar con mi lista»)."""
-    response.headers.update(SIN_CACHE)
     elegida = _lista(sesion, lista)
     datos = _leer(paquete, TOPE_PAQUETE, MENSAJE_TOPE_PAQUETE)
     a = _legible(_analizar(sesion, activa, datos, paquete.filename, servicios))
@@ -473,14 +468,12 @@ def contra_otra_lista(
 @sin_eco(MENSAJE_RESULTADO)
 def dictaminar(
     sesion: SesionDep,
-    response: Response,
     activa: Activa,
     paquete: Annotated[UploadFile, File()],
     resultado: Annotated[str, Form(max_length=40)],
     notas: Annotated[str, Form(max_length=20_000)] = "",
 ) -> DictamenGuardado:
     """Guarda el dictamen atado al SHA-256 del archivo (no hace falta reauditar para eso)."""
-    response.headers.update(SIN_CACHE)
     if activa is None:
         raise HTTPException(403, MENSAJE_SOLO_PERSONA)
     if resultado not in paq.RESULTADOS:
@@ -551,7 +544,7 @@ def excel(
     return Response(
         content=contenido,
         media_type=XLSX,
-        headers={**SIN_CACHE, "Content-Disposition": f'attachment; filename="{nombre}"'},
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
     )
 
 
@@ -567,18 +560,14 @@ def plantilla() -> Response:
         content=logica.plantilla_uc05(),
         media_type=XLSX,
         headers={
-            **SIN_CACHE,
             "Content-Disposition": 'attachment; filename="plantilla-presupuesto.xlsx"',
         },
     )
 
 
 @router.post("/excel-externo", response_model=ExcelExternoRespuesta, dependencies=[REVISAR])
-def excel_externo(
-    response: Response, presupuesto: Annotated[UploadFile, File()]
-) -> ExcelExternoRespuesta:
+def excel_externo(presupuesto: Annotated[UploadFile, File()]) -> ExcelExternoRespuesta:
     """Audita en memoria un presupuesto en Excel de otra herramienta: nada se guarda."""
-    response.headers.update(SIN_CACHE)
     datos = _leer(presupuesto, TOPE_EXCEL, MENSAJE_TOPE_EXCEL)
     nombre = presupuesto.filename or ""
     with tempfile.TemporaryDirectory() as carpeta:

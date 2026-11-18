@@ -53,7 +53,6 @@ from seguridad.sesiones import SesionActiva
 
 MENSAJE_CUERPO_INVALIDO = "Indique los datos como texto."
 MENSAJE_SIN_MOTIVO = "Escriba el motivo de la revocación."
-SIN_CACHE = {"Cache-Control": "no-store"}
 ERRORES_ESPERADOS = (empresas.ClaveError, cuentas.ContrasenaInvalida, LookupError, ValueError)
 
 router = APIRouter(
@@ -196,7 +195,7 @@ def _descarga(datos: bytes, nombre: str) -> Response:
     return Response(
         content=datos,
         media_type="application/octet-stream",
-        headers={**SIN_CACHE, "Content-Disposition": f'attachment; filename="{nombre}"'},
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
     )
 
 

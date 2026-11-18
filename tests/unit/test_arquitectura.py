@@ -1804,3 +1804,77 @@ def test_una_sola_busqueda_de_obra_por_nombre_sin_sobrantes():
     for ruta in BUSQUEDA_DE_OBRA_CONGELADA:
         texto = (RAIZ / ruta).read_text(encoding="utf-8")
         assert BUSQUEDA_DE_OBRA_POR_NOMBRE in texto, f"borrar {ruta} de BUSQUEDA_DE_OBRA_CONGELADA"
+
+
+# --- Anexo A.2: un router con `RutaSinCache` no pone `Cache-Control` a mano --------------------
+
+
+def _modulo_de(archivo: Path) -> str:
+    return ".".join(archivo.relative_to(RAIZ).with_suffix("").parts)
+
+
+def _usa_ruta_sin_cache(modulo: object) -> bool:
+    """Algun `APIRouter` del modulo con `route_class` derivada de `RutaSinCache`, o alguna de sus
+    rutas de esa clase (`route_class_override`, como en `casos.py`)."""
+    from fastapi import APIRouter
+
+    from api.sin_cache import RutaSinCache
+
+    return any(
+        isinstance(valor, APIRouter)
+        and (
+            issubclass(valor.route_class, RutaSinCache)
+            or any(isinstance(ruta, RutaSinCache) for ruta in valor.routes)
+        )
+        for valor in vars(modulo).values()
+    )
+
+
+def _cabecera_de_cache_a_mano(archivo: Path) -> list[int]:
+    """Lineas de cada texto `"Cache-Control"` del codigo (una clave de `headers=` o de
+    `response.headers[...]`); los docstrings que la nombran no cuentan."""
+    return sorted(
+        nodo.lineno
+        for nodo in ast.walk(_arbol(archivo))
+        if isinstance(nodo, ast.Constant)
+        and isinstance(nodo.value, str)
+        and nodo.value.lower() == "cache-control"
+    )
+
+
+def test_un_router_sin_cache_no_pone_la_cabecera_a_mano():
+    """`RutaSinCache` ya pone `no-store` en toda respuesta, tambien en los errores; repetirlo a
+    mano es una segunda fuente que puede desviarse (H11). Las pruebas de `no-store` de cada router
+    son el oraculo de conducta."""
+    import importlib
+
+    sitios = sorted(
+        f"{_ruta(archivo)}:{linea}"
+        for archivo in _archivos_de_rutas()
+        if _usa_ruta_sin_cache(importlib.import_module(_modulo_de(archivo)))
+        for linea in _cabecera_de_cache_a_mano(archivo)
+    )
+    assert sitios == [], "RutaSinCache ya pone la cabecera:\n" + "\n".join(sitios)
+
+
+def test_la_cabecera_a_mano_ve_la_falta(tmp_path):
+    archivo = tmp_path / "ruta.py"
+    archivo.write_text(
+        '"""Toda respuesta lleva `Cache-Control: no-store`."""\n'
+        'SIN_CACHE = {"Cache-Control": "no-store"}\n'
+        'def f(response):\n    response.headers["cache-control"] = "no-store"\n',
+        encoding="utf-8",
+    )
+    assert _cabecera_de_cache_a_mano(archivo) == [2, 4]
+
+
+def test_la_guardia_reconoce_los_routers_sin_cache():
+    """No pasa en vacio: ve la clase propia (`entregas`), la de Administracion (`admin_empresa`) y
+    la que se pone ruta por ruta (`casos`); no ve un router que solo usa `RutaSinEco`."""
+    import importlib
+
+    vistos = {
+        nombre: _usa_ruta_sin_cache(importlib.import_module(f"api.rutas.{nombre}"))
+        for nombre in ("entregas", "admin_empresa", "casos", "composicion")
+    }
+    assert vistos == {"entregas": True, "admin_empresa": True, "casos": True, "composicion": False}

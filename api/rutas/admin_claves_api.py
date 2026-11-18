@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.admin_acceso import RutaDeAdministracion, administrar, administrar_en_el_equipo
@@ -74,11 +74,8 @@ def listar() -> list[ClaveRespuesta]:
 
 @router.post("", response_model=ClaveCreada)
 @_sin_eco(MENSAJE_CUERPO_INVALIDO)
-def crear(
-    datos: NuevaClave, response: Response, activa: Annotated[SesionActiva, EN_EL_EQUIPO]
-) -> ClaveCreada:
+def crear(datos: NuevaClave, activa: Annotated[SesionActiva, EN_EL_EQUIPO]) -> ClaveCreada:
     """Crea la clave; el secreto sale aquí y no se vuelve a poder leer."""
-    response.headers["Cache-Control"] = "no-store"
     with sesion_de_instalacion() as bd:
         try:
             secreto, fila = claves_api.crear(bd, datos.nombre, activa.login, ahora())
