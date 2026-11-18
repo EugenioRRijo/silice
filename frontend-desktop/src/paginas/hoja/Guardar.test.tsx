@@ -442,6 +442,18 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(borrados()).toHaveLength(0);
   });
 
+  test("A.6 (DS-48i): en la mezcla de una celda y un desglose pide fuente, habla de versión nueva y promete solo el cambio que se registra", async () => {
+    alAbrir = () => borrador("002", { cambios: 2, desgloses: 1 });
+    montar();
+    const dialogo = await abrirModal();
+    expect(within(dialogo).getByRole("heading", { name: "Guardar versión" })).toBeInTheDocument();
+    expect(campoFuente(dialogo)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/Se registrarán 1 cambio en una versión nueva \(sale de la 002\)\./)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/Con ella se guarda también el desglose del desperdicio de 1 línea\./)).toBeInTheDocument();
+    expect(dialogo.textContent).not.toMatch(/2 cambios/);
+    expect(confirmar(dialogo)).toBeDisabled(); // sin fuente no se guarda la versión
+  });
+
   test("A.6 (DS-48h): con una versión posterior, guardar solo el desglose avisa con el texto del servidor y «Guardar de todos modos» lo reenvía con la confirmación", async () => {
     const sobreLa004 =
       "Otra persona guardó la versión 004 después de que usted abrió la 002. Si guarda, el desglose del desperdicio se guardará sobre lo de la 004: vale para la partida, no para una versión.";
