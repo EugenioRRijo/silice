@@ -286,6 +286,7 @@ def test_agregar_obra_04_con_su_nota_y_guardar_viv_001_conserva_la_nota(_entorno
     _sin_cache(respuesta)
     cuerpo = respuesta.json()
     assert cuerpo["rev"] == 1 and cuerpo["clave"] == "OBRA-04|a-mano:1"
+    assert cuerpo["aviso"] is None  # con su APU completo no hay nada que avisar
     assert cuerpo["resumen"]["rev"] == 1 and cuerpo["resumen"]["cambios"] == 1
     fila = _fila(navegador, id_, "OBRA-04|a-mano:1")
     assert (fila["cantidad"], fila["nota"], fila["quitable"], fila["calculo"]) == (
@@ -865,13 +866,13 @@ def test_abrir_y_guardar_en_una_base_sin_la_tabla_de_notas(tmp_path: Path) -> No
 #: La partida que se compone en Componer DESPUÉS de guardar VIV-001 (ficticia).
 PINTURA = ("OBRA-07", "Pintura de caucho en paredes", "m2", "Pintura de caucho")
 SIN_PRECIO_EN_LA_VERSION = (
-    "No se agregó la partida «OBRA-07»: quedaría pendiente en el Presupuesto, sin precio, porque "
-    "el Presupuesto arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, al "
-    "25/10/2026, y con ella no se puede valorar. Insumos sin precio en «Lista Bs de prueba»: "
-    "«OBRA-07» («Pintura de caucho»). Esos precios están en «Lista Bs de prueba al 25/10/2026». "
-    "Qué hacer: en Componer, guarde esa partida con fecha 01/10/2026: sus precios quedan en "
-    "«Lista Bs de prueba» y su rendimiento a esa fecha (si la partida ya existía, cambie también "
-    "las condiciones del rendimiento para que se registre de nuevo). Luego vuelva a agregarla."
+    "La partida «OBRA-07» queda pendiente en el Presupuesto, sin precio, porque el Presupuesto "
+    "arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, al 25/10/2026, y con "
+    "ella no se puede valorar. Insumos sin precio en «Lista Bs de prueba»: «OBRA-07» («Pintura "
+    "de caucho»). Esos precios están en «Lista Bs de prueba al 25/10/2026». Qué hacer: en "
+    "Componer, guarde esa partida con fecha 01/10/2026: solo se agregan a «Lista Bs de prueba» "
+    "los precios que le faltan; los que ya tiene no cambian. Mientras siga pendiente, la versión "
+    "no se podrá enviar a aprobación."
 )
 
 
@@ -895,12 +896,13 @@ def _componer_hoy(ruta: Path) -> None:
         motor.dispose()
 
 
-def test_una_partida_sin_precio_en_la_lista_de_la_version_no_se_agrega_y_dice_que_hacer(
+def test_una_partida_sin_precio_en_la_lista_de_la_version_entra_pendiente_y_dice_que_hacer(
     _entorno: Path,
 ) -> None:
-    """Antes entraba como «Pendiente» («PENDIENTE: sin APU en el catálogo»), la versión se
-    guardaba con ese error y luego no se podía enviar a aprobación. Ahora: 409 con qué insumos
-    faltan en qué lista de la versión, dónde están y qué hacer; el borrador no cambia."""
+    """Antes entraba como «Pendiente» sin decir por qué. Árbitro de la rama (2026-11-18): agregar
+    a mano no se bloquea (una partida puede esperar su cotización, UC-01 3a); entra «Pendiente» y
+    la respuesta trae el aviso: qué insumos faltan en qué lista de la versión, dónde están y qué
+    hacer. Un segundo renglón de la misma partida trae el mismo aviso."""
     navegador, ficha = _ana()
     blanco = _abierto(navegador, ficha)
     assert _agregar(navegador, ficha, blanco, cantidad="210").status_code == 200
@@ -910,7 +912,11 @@ def test_una_partida_sin_precio_en_la_lista_de_la_version_no_se_agrega_y_dice_qu
 
     respuesta = _agregar(navegador, ficha, id_, codigo="OBRA-07", cantidad="3")
 
-    assert respuesta.status_code == 409, respuesta.text
-    assert respuesta.json() == {"detalle": SIN_PRECIO_EN_LA_VERSION}
-    resumen = _resumen(navegador, id_)
-    assert (resumen["rev"], resumen["cambios"], resumen["pendientes_catalogo"]) == (0, 0, 0)
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert cuerpo["aviso"] == SIN_PRECIO_EN_LA_VERSION
+    resumen = cuerpo["resumen"]
+    assert (resumen["rev"], resumen["cambios"], resumen["pendientes_catalogo"]) == (1, 1, 1)
+    otro = _agregar(navegador, ficha, id_, rev=1, codigo="OBRA-07", cantidad="2")
+    assert otro.status_code == 200, otro.text
+    assert otro.json()["aviso"] == SIN_PRECIO_EN_LA_VERSION

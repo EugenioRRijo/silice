@@ -376,6 +376,23 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Agregar partida" })).toHaveFocus());
   });
 
+  test("una partida sin precio en la lista de la versión entra «Pendiente» y el aviso dice qué falta (árbitro, 2026-11-18)", async () => {
+    const aviso =
+      "La partida «OBRA-04» queda pendiente en el Presupuesto, sin precio, porque el Presupuesto arma cada APU con la lista «Lista ficticia» de la versión 002, al 25/10/2026, y con ella no se puede valorar.";
+    alAgregar = (cuerpo) => {
+      filas = [...filas, PARED];
+      return json({ rev: cuerpo.rev + 1, resumen: resumen({ rev: cuerpo.rev + 1, cambios: 1 }), clave: PARED.clave, aviso });
+    };
+    montar();
+    const dialogo = await abrirDialogo();
+    await elegirPared(dialogo);
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: /^Cantidad/ }), "210");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Agregar partida" })).toBeNull());
+    const estado = screen.getByText(`Se agregó OBRA-04 al presupuesto. ${aviso}`);
+    expect(estado.closest("[role='status']")).not.toBeNull();
+  });
+
   test("el cálculo y la nota viajan como se escribieron, con coma decimal", async () => {
     montar();
     const dialogo = await abrirDialogo();
