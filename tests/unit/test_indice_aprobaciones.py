@@ -250,3 +250,60 @@ def test_mias_trae_las_mas_recientes_hasta_el_limite(instalacion: Session, carpe
         "VIV-002",
     ]
     assert len(indice_aprobaciones.de_quien(instalacion, ANA)) == 3
+
+
+# --- frescura del reflejo (arbitraje de DS-57, DS-69) ---------------------------------------------
+#
+# Al enviar o dictaminar, el reflejo se lee con la carpeta en su transacción y se escribe en la
+# instalación DESPUÉS, en una transacción corta y propia. Dos peticiones pueden llegar a escribir
+# fuera de orden: el índice guarda cuántos eventos del rastro refleja (cada fila es un envío y su
+# cierre, si lo tiene) y un reflejo con menos no lo pisa. `reflejar` (la reposición de las
+# lecturas) escribe siempre: es la que arregla el índice tras restaurar una carpeta.
+
+
+def _leer(caso: str, motor: Engine) -> indice_aprobaciones.Reflejo:
+    with abrir_sesion(motor) as s:
+        return indice_aprobaciones.leer_reflejo(caso, s)
+
+
+def test_un_reflejo_viejo_que_llega_tarde_no_regresa_el_indice(
+    instalacion: Session, carpetas
+) -> None:
+    motor = carpetas["a.db"]
+    envio = _enviar(motor, "VIV-001", LUNES)
+    viejo = _leer("a.db", motor)
+    _dictaminar(motor, envio.id, "devuelta", "Falta el acero de la losa.", RITA, MARTES)
+    nuevo = _leer("a.db", motor)
+    assert (viejo.eventos, nuevo.eventos) == (1, 2)
+
+    assert indice_aprobaciones.escribir_reflejo(instalacion, nuevo) is True
+    assert indice_aprobaciones.escribir_reflejo(instalacion, viejo) is False
+    instalacion.commit()
+    devuelta = _fila(
+        motor,
+        "a.db",
+        envio.id,
+        estado="devuelta",
+        dictamen_por=RITA,
+        dictamen_el=MARTES,
+        notas="Falta el acero de la losa.",
+    )
+    assert indice_aprobaciones.de_quien(instalacion, ANA) == [devuelta]
+
+
+def test_en_orden_el_reflejo_nuevo_pisa_al_viejo_y_reflejar_fuerza(
+    instalacion: Session, carpetas
+) -> None:
+    motor = carpetas["a.db"]
+    envio = _enviar(motor, "VIV-001", LUNES)
+    viejo = _leer("a.db", motor)
+    _dictaminar(motor, envio.id, "aprobada", "", RITA, MARTES)
+    nuevo = _leer("a.db", motor)
+    assert indice_aprobaciones.escribir_reflejo(instalacion, viejo) is True
+    assert indice_aprobaciones.escribir_reflejo(instalacion, nuevo) is True
+    instalacion.commit()
+    assert [f.estado for f in indice_aprobaciones.de_quien(instalacion, ANA)] == ["aprobada"]
+    # una carpeta restaurada a un respaldo anterior: la reposición la refleja tal cual
+    assert indice_aprobaciones.escribir_reflejo(instalacion, viejo, forzar=True) is True
+    instalacion.commit()
+    assert [f.estado for f in indice_aprobaciones.de_quien(instalacion, ANA)] == ["en_aprobacion"]

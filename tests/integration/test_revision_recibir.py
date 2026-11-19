@@ -190,6 +190,30 @@ def test_el_dictamen_queda_atado_al_sha256_y_al_estado_de_ese_momento(mundo) -> 
     assert fila["paquete_id"] == r.paquete_id
 
 
+def test_si_algo_falla_antes_de_confirmar_el_dictamen_se_deshace_en_la_sesion(mundo) -> None:
+    """Arbitraje de DS-57: como `vial.guardar_tramos` y `precios_empresa.crear_lista`, un fallo
+    antes del `commit` deshace el dictamen en la misma sesión (no queda a medias para quien la
+    siga usando)."""
+    caso, _, _ = mundo
+    r = _recibir(mundo, _paquete(DESPUES, "005", ID_1))
+
+    def falla() -> None:
+        raise RuntimeError("fallo antes de confirmar")
+
+    with pytest.raises(RuntimeError, match="antes de confirmar"):
+        revision.dictaminar(
+            caso,
+            r,
+            resultado="conforme",
+            notas="",
+            revisor="Luis <luis>",
+            ahora=RECIBIDO,
+            armo=False,
+            antes_de_confirmar=falla,
+        )
+    assert paq.dictamenes_de(caso, r.verificacion.sha256) == []
+
+
 @pytest.mark.parametrize("resultado", ["con observaciones", "rechazado"])
 def test_un_dictamen_sin_notas_que_no_es_conforme_se_rechaza_y_no_se_guarda(
     mundo, resultado: str

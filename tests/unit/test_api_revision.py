@@ -68,6 +68,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
+from tests.fixtures.transacciones import transacciones_del_caso
 
 PAR = firma.generar_par()
 TOTAL = "836.7975"  # 20 m3 x 41,839875 USD/m3, la memoria del ejemplo mínimo
@@ -504,6 +505,37 @@ def test_el_dictamen_pide_notas_si_hay_observaciones_y_se_guarda_atado_al_archiv
     ) and anterior["texto"].endswith(" · verificación entonces: verificado")
     # y el próximo análisis del mismo archivo lo muestra
     assert _subir(navegador, ficha, datos).json()["dictamenes"] == r.json()["dictamenes"]
+
+
+def test_el_dictamen_no_abre_otra_transaccion_tras_confirmar() -> None:
+    """DS-57: los dictámenes del archivo (con el nuevo) se leen antes del `commit`; tras él,
+    consultar abriría otro `BEGIN IMMEDIATE` (`tests/fixtures/transacciones.py`)."""
+    navegador, ficha = _rita()
+    datos = _firmado()
+    _subir(navegador, ficha, datos)
+    with transacciones_del_caso(config.ruta_caso_por_defecto()) as por_sesion:
+        r = _subir(navegador, ficha, datos, "/v1/revision/dictamen", resultado="conforme")
+    assert r.status_code == 200, r.text
+    assert len(r.json()["dictamenes"]) == 1
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
+
+
+def test_si_armar_la_respuesta_falla_el_dictamen_no_queda_y_no_culpa_a_la_entrada(
+    monkeypatch,
+) -> None:
+    """Arbitraje de DS-57: un fallo al leer los dictámenes para la respuesta deshace el dictamen
+    y sale como error del servidor (500), no como un 422 que culpe al paquete."""
+    navegador, ficha = _rita()
+    datos = _firmado()
+    _subir(navegador, ficha, datos)
+
+    def falla(*_args):
+        raise ValueError("fallo al armar la respuesta")
+
+    monkeypatch.setattr(ruta_revision, "_dictamenes", falla)
+    r = _subir(navegador, ficha, datos, "/v1/revision/dictamen", resultado="conforme")
+    assert r.status_code == 500, r.text
+    assert _filas("paq_dictamen") == []
 
 
 def test_un_dictamen_desconocido_es_422_sin_repetir_lo_enviado() -> None:

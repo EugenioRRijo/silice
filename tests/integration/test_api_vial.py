@@ -42,6 +42,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
+from tests.fixtures.transacciones import transacciones_del_caso
 
 D = Decimal
 ANA = "Ana <ana>"
@@ -357,3 +358,49 @@ def test_rita_no_edita(ana) -> None:
     )
     assert r.status_code == 403
     assert r.json()["detalle"] == MENSAJE_PERMISO
+
+
+# --- la respuesta se arma antes del commit (DS-57) ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "guardar",
+    [
+        lambda ana: _guardar(ana, [TRAMO], fuente="plano 3 (ficticio)"),
+        lambda ana: _importar(ana, MUESTRA.read_bytes(), "via_ficticia.csv"),
+    ],
+    ids=["poner", "importar"],
+)
+def test_guardar_tramos_no_abre_otra_transaccion_tras_confirmar(ana, guardar) -> None:
+    """Los tramos guardados vuelven en la respuesta, leídos antes del `commit`: tras él, consultar
+    abriría otro `BEGIN IMMEDIATE`, que espera a quien escribe y, pasado el `busy_timeout`, daría
+    503 con los tramos ya guardados (`tests/fixtures/transacciones.py`)."""
+    with transacciones_del_caso(config.carpeta_casos() / "vivienda.db") as por_sesion:
+        r = guardar(ana)
+    assert r.status_code == 200, r.text
+    assert r.json()["tramos"]
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
+
+
+def _tramos_guardados() -> int:
+    """Las filas de tramos de la carpeta, leídas con `sqlite3` (0 si la tabla aún no existe)."""
+    with closing(sqlite3.connect(config.carpeta_casos() / "vivienda.db")) as conexion:
+        if not conexion.execute(
+            "SELECT 1 FROM sqlite_master WHERE name = 'vial_tramos_guardado'"
+        ).fetchone():
+            return 0
+        return conexion.execute("SELECT COUNT(*) FROM vial_tramos_guardado").fetchone()[0]
+
+
+def test_si_armar_la_respuesta_falla_no_queda_nada_y_no_culpa_a_la_entrada(ana, monkeypatch):
+    """Arbitraje de DS-57: un fallo al armar la respuesta (un `ValueError`, como el de una
+    validación de Pydantic) deshace el guardado y sale como error del servidor (500), no como un
+    422 que culpe a los tramos enviados."""
+
+    def falla(*_args):
+        raise ValueError("fallo al armar la respuesta")
+
+    monkeypatch.setattr(rutas, "_respuesta", falla)
+    r = _guardar(ana, [TRAMO], fuente="plano 3 (ficticio)")
+    assert r.status_code == 500, r.text
+    assert _tramos_guardados() == 0

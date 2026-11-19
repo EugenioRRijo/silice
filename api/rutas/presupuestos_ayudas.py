@@ -36,6 +36,7 @@ from api.esquemas_ola2 import (
     CalculoPeticion,
     PendienteConPropuestasRespuesta,
 )
+from api.presentacion import exacto
 from api.rutas.rendimientos import propuesta_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import actualizacion as aplicacion_actualizacion
@@ -324,12 +325,12 @@ def _pendientes(
 
 def _campos_pendiente(item: ItemComputo) -> dict[str, str]:
     """Los campos de un ítem pendiente, los mismos en UC-01 y en UC-08 (`PendienteRespuesta`).
-    La cantidad viaja exacta (`str` del `Decimal`), no redondeada."""
+    La cantidad viaja exacta (`exacto`, sin notación científica), no redondeada."""
     return {
         "codigo_partida": item.codigo_partida,
         "descripcion": item.descripcion,
         "unidad": item.unidad,
-        "cantidad": str(item.cantidad),
+        "cantidad": exacto(item.cantidad),
         "origen_id": item.origen_id,
     }
 

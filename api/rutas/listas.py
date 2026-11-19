@@ -18,6 +18,7 @@ from api.archivos import guardar_subida
 from api.dependencias import SesionDeEscrituraDep, SesionDep
 from api.esquemas import CambioRespuesta, CargaListaRespuesta, ListaRespuesta
 from api.esquemas_ola2 import InsumoDesconocidoRespuesta, VistaPreviaRespuesta
+from api.presentacion import exacto
 from aplicacion.actualizacion import nombrar
 from aplicacion.listas_para_armar import listas_de_precios
 from core.catalog import (
@@ -121,7 +122,7 @@ def vista_previa_de_lista(
                 descripcion=leido.descripcion,
                 tipo=leido.tipo.value,
                 unidad=leido.unidad,
-                precio=str(leido.precio),
+                precio=exacto(leido.precio),
                 etiqueta=nombrar(leido),
             )
             for leido in ofrecidos
@@ -201,9 +202,9 @@ def listar_cambios_precio(
     return [
         CambioRespuesta(
             insumo=cambio.insumo.descripcion,
-            precio_anterior=str(cambio.precio_anterior),
-            precio_nuevo=str(cambio.precio_nuevo),
-            variacion=str(cambio.variacion),
+            precio_anterior=exacto(cambio.precio_anterior),
+            precio_nuevo=exacto(cambio.precio_nuevo),
+            variacion=exacto(cambio.variacion),
             fecha=cambio.fecha,
         )
         for cambio in cambios_precio(sesion, insumo=insumo, desde=desde, hasta=hasta)

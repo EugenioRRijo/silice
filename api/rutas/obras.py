@@ -158,9 +158,9 @@ def _cifra(cifra: Cifra) -> CifraRespuesta:
     return CifraRespuesta(
         clave=cifra.clave,
         titulo=cifra.titulo,
-        actual=str(cifra.actual),
-        meta=str(cifra.meta),
-        delta=str(cifra.delta),
+        actual=exacto(cifra.actual),
+        meta=exacto(cifra.meta),
+        delta=exacto(cifra.delta),
         delta_pct=exacto_o_nada(cifra.delta_pct),
         sentido=cifra.sentido,
         detalle=cifra.detalle,
@@ -208,7 +208,7 @@ def _resumen(sesion: Session, hoy: date) -> ResumenRespuesta:
             ConversionRespuesta(
                 obra=c.obra,
                 moneda=c.moneda,
-                tasa=str(c.tasa),
+                tasa=exacto(c.tasa),
                 fecha=c.fecha.isoformat(),
                 fecha_tasa=c.fecha_tasa.isoformat(),
             )

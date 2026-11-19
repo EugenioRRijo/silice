@@ -139,7 +139,7 @@ def declarar_rendimiento_propuesto(
     sesion.commit()
     return DeclararRendimientoRespuesta(
         codigo_partida=rendimiento.codigo_partida,
-        valor=str(rendimiento.valor),
+        valor=exacto(rendimiento.valor),
         tipo=rendimiento.tipo.value,
         fecha=rendimiento.fecha,
         condiciones=rendimiento.condiciones,

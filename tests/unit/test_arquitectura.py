@@ -1626,16 +1626,12 @@ PRESENTACION_SUELTA_EN_API: dict[str, int] = {
     # `str` escribe `1E+2` donde `exacto` escribe `100`, y `.2f` redondea al par donde
     # `redondeado` lo hace al alza, asi que moverlos cambia la salida. Desde DS-52 (2026-11-18) el
     # `.Nf` solo cuenta sobre un `Decimal`: salieron `composicion.py:487` e `indices.py:175`
-    # (floats: un puntaje y un tamano en MB).
+    # (floats: un puntaje y un tamano en MB). Desde DS-52 (2026-11-19) los `str(<Decimal>)` de
+    # `api/rutas/` pasan por `presentacion.exacto` (el mismo texto sin notacion cientifica;
+    # `tests/unit/test_api_sin_notacion_cientifica.py`); queda la alicuota del IVA, una constante.
     "api/esquemas.py": 1,
-    "api/rutas/catalogo.py": 1,
-    "api/rutas/fcas.py": 3,
-    "api/rutas/listas.py": 4,
-    "api/rutas/obras.py": 4,
-    "api/rutas/precios_empresa.py": 1,
-    "api/rutas/presupuestos_calculo.py": 1,
-    # 1 de 2026-11-17 y 2 de A.7 (`str(rendimiento.valor)` y `str(dispersion.media)`).
-    "api/rutas/rendimientos.py": 3,
+    # El de 2026-11-17 (`_advertencia`); los dos de A.7 salieron con DS-52.
+    "api/rutas/rendimientos.py": 1,
 }
 
 

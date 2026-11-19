@@ -40,8 +40,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api.admin_acceso import administrar
 from api.archivos import guardar_subida, nombre_seguro
-from api.dependencias import SesionDeEscrituraDep, SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep, sin_culpar_a_la_entrada
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
+from api.presentacion import exacto
 from api.redaccion import pulir
 from api.rutas.listas import comprobar_libro_legible
 from api.sesion_web import exigir_clave_o_sesion
@@ -206,6 +207,14 @@ def crear_lista(
     """
     if not moneda or archivo is None:
         raise HTTPException(422, MENSAJE_FALTA)
+    # La moneda de la carpeta se lee con la lista escrita y antes del commit: tras él, consultar
+    # abriría otra transacción (DS-57).
+    de_la_carpeta: str | None = None
+
+    def leer_la_moneda() -> None:
+        nonlocal de_la_carpeta
+        de_la_carpeta = moneda_de_la_carpeta(sesion)
+
     with _caso_legible():
         try:
             with _archivo_subido(archivo) as ruta:
@@ -220,12 +229,11 @@ def crear_lista(
                     fuente=fuente,
                     nombre=nombre,
                     dar_de_alta=dar_de_alta,
+                    antes_de_confirmar=sin_culpar_a_la_entrada(leer_la_moneda),
                 )
         except ValueError as error:
             raise HTTPException(422, f"No se creó la lista: {_motivo(error)}") from None
     assert resumen.lista_id is not None  # `crear_lista` siempre la da
-    with _caso_legible():
-        de_la_carpeta = moneda_de_la_carpeta(sesion)
     return ListaCreadaRespuesta(
         id=resumen.lista_id,
         nombre=resumen.nombre,
@@ -300,7 +308,10 @@ def revisar_archivo(
         reconocidos=revision.reconocidos,
         nuevos=[
             InsumoNuevoRespuesta(
-                tipo=n.tipo.value, insumo=n.descripcion, unidad=n.unidad or "", precio=str(n.precio)
+                tipo=n.tipo.value,
+                insumo=n.descripcion,
+                unidad=n.unidad or "",
+                precio=exacto(n.precio),
             )
             for n in revision.nuevos
         ],
