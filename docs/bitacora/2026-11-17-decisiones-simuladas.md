@@ -116,3 +116,36 @@ de Claude (silice-rev-pruebas) y segunda opinión de Neon (Gemini 4, por `agy`, 
 | DS-74 | Gráficos de barras horizontales del Tablero (Pareto y versiones) | A: el orden que da Carbon (el primer dato abajo); B: el mismo orden de la tabla vecina | IBCS: el gráfico se lee como su tabla; el Pareto queda con la mayor arriba | **B** | Quitar el `.reverse()` de `paginas/tablero/logica.ts` |
 | DS-75 | El rótulo de la clave del desglose (`AF-LLAVE\|material\|1`) | A: mostrar la descripción del insumo (cambia el contrato de la API); B: «AF-LLAVE, material n.º 1» | B se hace en el front sin tocar `aplicacion/hoja.py` (congelado); A queda como mejora | **B** | `git revert` del verde |
 | DS-76 | Fechas en las tablas densas | A: `presentar` (deja la fecha ISO en el `title`, VD-5); B: `celda` | Guardia nueva `guardiaDeFechasEnTablas.test.ts` para todo el front | **B** | `git revert` del verde |
+
+## Ola del 2026-11-19 (DS-77 a DS-89)
+
+Eugenio pidió «sigue con lo siguiente cuando terminen» (2026-11-19): la página para cargar las series viales, que Riesgo
+muestre algo en la demostración y el botón «Descargar PDF de hallazgos» (P2, opción A del Word). Tres ramas, con TDD
+rojo/verde, revisión de Claude (silice-rev-pruebas) y de Neon (Gemini 4 por `agy`, solo lectura), arbitradas por Claude:
+`feature/pdf-hallazgos`, `feature/riesgo-demo` y `feature/series-viales`. **Por ratificar.**
+
+**Corrección de una premisa del Word del 2026-11-19.** La pregunta P2 suponía que el PDF de hallazgos ya existía y que
+solo faltaba el botón. No existía: la rama lo construye completo (`aplicacion/hallazgos_pdf.py` y la ruta
+`POST /v1/libros/auditoria/pdf`).
+
+| # | Pregunta | Opciones simuladas | Resultado de la simulación | Elegida | Cómo se revierte |
+|---|---|---|---|---|---|
+| DS-77 | ¿De dónde salen los hallazgos del PDF? | A: de una fila del historial; B: re-auditar el libro subido (`POST /v1/libros/auditoria/pdf`) | El historial guarda el resumen, no cada hallazgo con su celda; B da el mismo resultado que la pantalla y no necesita migración | **B** | Quitar `api/rutas/libros_informe.py` |
+| DS-78 | ¿Descargar el PDF deja rastro en el historial? | A: sí, una fila más; B: no | A duplicaría la auditoría por cada descarga; el PDF lleva su huella SHA-256 y la fecha de emisión | **B** | `git revert` del verde |
+| DS-79 | ¿Dónde va el botón? | A: en la franja de indicadores; B: en el Visor, junto a los hallazgos | B queda al lado de lo que imprime; se desactiva mientras no hay auditoría | **B** | Quitar `DescargaArchivo` de `Visor.tsx` |
+| DS-80 | ¿Qué reloj pone «Emitido el»? | A: el del navegador; B: el del servidor | B es el mismo que firma el resto de documentos; el del navegador puede estar mal puesto | **B** | `git revert` del verde |
+| DS-81 | Riesgo: ¿se guarda qué serie mueve cada insumo? | A: guardarlo en el caso (migración); B: lo declara la persona en la pantalla, como hasta hoy | A necesita migración de `casos/*.db`; B no cambia el contrato | **B** | — (A queda como mejora) |
+| DS-82 | Fechas de las series de la demostración | A: fijas (2023-2025); B: corridas en meses enteros hasta el mes anterior a hoy | Con A la demo deja de proyectar cuando la ventana se aleja; B se probó en cambio de año, fin de mes y 29 de febrero | **B** | Quitar `series_viales_corridas` de `start.py` |
+| DS-83 | ¿Cuánto asfalto y gasoil lleva la obra de la demo? | A: cantidades de obra real; B: 0,01 t de asfalto y 1 l de gasoil por renglón | A desequilibra Control (avance, SPI y CPI de la demo cambian); B deja Control igual y la reserva es pequeña (74 USD hoy) | **B** | `insumos_viales=False` en `start.py` |
+| DS-84 | ¿Dónde se cargan las series viales? | A: una página nueva; B: una sección dentro de Índices del BCV | B junta todas las series de precios en un solo lugar | **B** | Quitar `paginas/indices/SeriesViales.tsx` |
+| DS-85 | ¿La carga revisa antes de guardar? | A: dos pasos (revisar y confirmar); B: un paso, todo o nada | `importar_serie_csv` ya rechaza el archivo entero con la fila culpable y es idempotente por huella | **B** | — |
+| DS-86 | ¿Cuántas series por archivo? | A: varias; B: una por importación | B deja una fuente y una fecha por archivo, como pide la trazabilidad | **B** | — |
+| DS-87 | ¿Qué permiso pide? | A: ninguno extra; B: el módulo Riesgo (`ModuloRiesgo`); la clave de la API lee pero no escribe (403) | Las series solo las usa Riesgo; con el módulo apagado no se ofrecen | **B** | Quitar `ModuloRiesgo` de `api/rutas/indices.py` |
+| DS-88 | ¿Fuente y fecha son obligatorias? | A: opcionales; B: obligatorias | Sin fuente no se puede citar la serie en el informe | **B** | `git revert` del verde |
+| DS-89 | ¿Cuándo ofrece Riesgo el enlace «Cargar las series en Índices del BCV»? | A: siempre; B: cuando el 422 dice que falta la serie | A ensucia la pantalla de quien ya las tiene; el texto del 422 está anclado por una prueba de Python | **B** | Quitar `faltaCargarSeries` de `paginas/riesgo/logica.ts` |
+
+Lo que se declaró sin arreglar: el botón desactivado del PDF pierde el foco (es el componente común `DescargaArchivo`, que
+no se tocó), y una mutación del pie del PDF sobrevive porque el ancho la protege. Lo que señaló Neon en Riesgo quedó
+corregido: el aviso de «obra en USD sin series» depende ahora de si la persona eligió alguna serie (`conSeries`), no de
+que `contribucion` venga vacía, y la prueba de la demo cubre enero, el 29 de febrero y fin de mes, y cuenta las
+importaciones.
