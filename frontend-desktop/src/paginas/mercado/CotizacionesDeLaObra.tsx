@@ -17,6 +17,7 @@ import { cotizadasDePrecios } from "../hoja/logicaVersiones";
 import { useOfertas } from "../hoja/useOfertas";
 import { useCarga } from "../../comun/useCarga";
 import { OperacionesDePrecios } from "./OperacionesDePrecios";
+import { cotizacionEsVe } from "./logica";
 
 // Por qué existe (Tarea 13 del plan F4; preguntas 4 y 8 del inventario): «Registrar / Retirar una cotización…» salieron de
 // Presupuesto › Precios y viven aquí, en la pestaña «Cotizaciones de la obra» de Mercado (`index.tsx`, la única que la usa).
@@ -28,7 +29,7 @@ import { OperacionesDePrecios } from "./OperacionesDePrecios";
 const COLUMNAS = [
   { clave: "codigo", titulo: "Código" },
   { clave: "insumo", titulo: "Insumo" },
-  { clave: "cotizacion", titulo: "Cotización" },
+  { clave: "cotizacion", titulo: "Cotización", presentar: cotizacionEsVe },
   { clave: "moneda_original", titulo: "Moneda original" },
   { clave: "precio_original", titulo: "Precio original", numerica: true, presentar: formatoEsVe },
   { clave: "tasa", titulo: "Tasa", numerica: true, presentar: formatoEsVe },
