@@ -37,6 +37,12 @@ describe("logica de Elaborar", () => {
     expect(filas.map((f) => f.unidad)).toEqual(["m³", "m²", "ml"]);
   });
 
+  test("la cantidad del cómputo se presenta sin ceros sobrantes (re-verificación del 18/11/2026)", () => {
+    const cantidades = ["1.89000", "25.200", "3.000", "12", "1200", "0.0500"];
+    const filas = filasDeItems(cantidades.map((cantidad, n) => ({ ...ITEM(`o${n}`, "X"), cantidad })));
+    expect(filas.map((f) => f.cantidad)).toEqual(["1.89", "25.2", "3", "12", "1200", "0.05"]);
+  });
+
   test("el mapeo de codigos civil lleva relleno solo si se pide", () => {
     const base = { concreto: "A", encofrado: "B", excavacion: "C", tuberia: "D" };
     expect(mapeoCodigos({ ...base, relleno: null })).toEqual(base);

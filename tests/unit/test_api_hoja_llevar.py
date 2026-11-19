@@ -528,8 +528,8 @@ TANQUILLA = {
 }
 CHOQUE_DE_UNIDADES = (
     "OBRA-04: el cómputo la mide en «m» y su APU está en «m2»: no son la misma unidad, así que "
-    "su precio no aplicaría a esa cantidad. No se llevó nada: elija una partida que se mida en "
-    "«m» o corrija el cómputo."
+    "su precio no aplicaría a esa cantidad. Elija una partida que se mida en «m» o corrija el "
+    "cómputo."
 )
 
 
