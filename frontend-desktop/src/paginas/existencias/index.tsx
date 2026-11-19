@@ -96,6 +96,8 @@ export default function PaginaExistencias() {
                 alCambiarFecha={setFecha}
                 alReintentar={recargarExistencias}
                 alCrearMaterial={() => setPestana(REGISTRAR)}
+                alAnularConteo={recargarExistencias}
+                reacciones={reacciones}
               />
             )}
           </TabPanel>
