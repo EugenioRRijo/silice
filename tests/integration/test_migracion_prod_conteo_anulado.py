@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 from contextlib import closing
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -38,7 +39,22 @@ ANTES = [
     "usuario",
     "registrado",
 ]
-FILAS = [("entrada", "150.5", "T-1"), ("ajuste", "-2.5", None)]
+#: Un movimiento de cada tipo (arbitraje 2026-11-19): entrada y despacho con ticket, ajuste y
+#: consumo.
+FILAS = [
+    ("entrada", "150.5", "T-1"),
+    ("despacho", "20", "T-2"),
+    ("ajuste", "-2.5", None),
+    ("consumo", "8", None),
+]
+#: entrada - despacho + ajuste - consumo = 150,5 - 20 - 2,5 - 8
+EXISTENCIA = "120.0"
+INDICE = "ix_prod_movimiento_anula_id"
+ANULACION = (
+    f"INSERT INTO {TABLA} (material_id, fecha, tipo, cantidad, placa, cliente, nota, origen, "
+    "usuario, registrado, anula_id, motivo) VALUES (1, '2026-11-06', 'ajuste', '2.5', '', '', "
+    "'', 'manual', 'ana', '2026-11-07 08:00:00', ?, 'mal contado')"
+)
 
 
 def _columnas(conexion: sqlite3.Connection) -> list[str]:
@@ -46,6 +62,7 @@ def _columnas(conexion: sqlite3.Connection) -> list[str]:
 
 
 def _con_movimientos(conexion: sqlite3.Connection) -> None:
+    conexion.execute("PRAGMA foreign_keys = ON")
     conexion.execute(
         "INSERT INTO prod_material (codigo, nombre, unidad_venta, existencia_minima, activo) "
         "VALUES ('PIEDRA', 'Piedra', 't', '0', 1)"
@@ -57,6 +74,18 @@ def _con_movimientos(conexion: sqlite3.Connection) -> None:
             "'manual', 'ana', '2026-11-06 08:00:00')",
             (tipo, cantidad, ticket),
         )
+
+
+def _existencia(conexion: sqlite3.Connection) -> str:
+    """La suma con el signo de cada tipo, en texto exacto (como `produccion.inventario`)."""
+    total = Decimal(0)
+    for tipo, cantidad in conexion.execute(f"SELECT tipo, cantidad FROM {TABLA}"):
+        total += -Decimal(cantidad) if tipo in ("despacho", "consumo") else Decimal(cantidad)
+    return str(total)
+
+
+def _indices(conexion: sqlite3.Connection) -> set[str]:
+    return {f[1] for f in conexion.execute(f"PRAGMA index_list({TABLA})")}
 
 
 def test_es_la_cabeza_de_la_instalacion() -> None:
@@ -89,14 +118,11 @@ def test_anula_id_apunta_a_un_movimiento_y_es_unico(tmp_path: Path) -> None:
             ("prod_material", "material_id", "id"),
             (TABLA, "anula_id", "id"),
         }
-        anular = (
-            f"INSERT INTO {TABLA} (material_id, fecha, tipo, cantidad, placa, cliente, nota, "
-            "origen, usuario, registrado, anula_id, motivo) VALUES (1, '2026-11-06', 'ajuste', "
-            "'2.5', '', '', '', 'manual', 'ana', '2026-11-07 08:00:00', 2, 'mal contado')"
-        )
-        conexion.execute(anular)
+        conexion.execute(ANULACION, (3,))
         with pytest.raises(sqlite3.IntegrityError, match="UNIQUE"):
-            conexion.execute(anular)
+            conexion.execute(ANULACION, (3,))
+        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY"):
+            conexion.execute(ANULACION, (999,))
         # los CHECK y el ticket unico siguen en pie tras recrear la tabla
         with pytest.raises(sqlite3.IntegrityError, match="UNIQUE"):
             conexion.execute(
@@ -145,3 +171,46 @@ def test_una_base_que_ya_trae_las_columnas_se_adopta(tmp_path: Path) -> None:
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
             (REVISION,)
         ]
+
+
+def test_bajar_con_una_anulacion_presente_conserva_filas_y_existencia(tmp_path: Path) -> None:
+    """Las filas de anulacion quedan como ajustes: la existencia no cambia al bajar."""
+    base = tmp_path / "instalacion.db"
+    aplicar_revisiones(base, Destino.INSTALACION)
+    with closing(sqlite3.connect(base)) as conexion:
+        _con_movimientos(conexion)
+        conexion.execute(ANULACION, (3,))
+        conexion.commit()
+        antes = _existencia(conexion)
+    assert antes == "122.5"  # 120 + 2,5 de la anulacion
+    deshacer_revisiones(base, Destino.INSTALACION, ANTERIOR)
+    with closing(sqlite3.connect(base)) as conexion:
+        assert _columnas(conexion) == ANTES
+        assert conexion.execute(f"SELECT count(*) FROM {TABLA}").fetchone() == (5,)
+        assert _existencia(conexion) == antes
+        assert INDICE not in _indices(conexion)
+
+
+def test_una_base_adoptada_sin_el_indice_lo_recibe(tmp_path: Path) -> None:
+    """Las columnas ya estaban, pero no el indice unico: la subida lo crea sin duplicar nada."""
+    base = tmp_path / "instalacion.db"
+    aplicar_revisiones(base, Destino.INSTALACION, ANTERIOR)
+    with closing(sqlite3.connect(base)) as conexion:
+        conexion.execute(f"ALTER TABLE {TABLA} ADD COLUMN anula_id INTEGER REFERENCES {TABLA} (id)")
+        conexion.execute(f"ALTER TABLE {TABLA} ADD COLUMN motivo VARCHAR(300) DEFAULT '' NOT NULL")
+        conexion.commit()
+    aplicar_revisiones(base, Destino.INSTALACION)
+    with closing(sqlite3.connect(base)) as conexion:
+        assert INDICE in _indices(conexion)
+        assert _columnas(conexion).count("anula_id") == 1
+
+
+def test_bajar_una_base_sin_el_indice_no_falla(tmp_path: Path) -> None:
+    base = tmp_path / "instalacion.db"
+    aplicar_revisiones(base, Destino.INSTALACION)
+    with closing(sqlite3.connect(base)) as conexion:
+        conexion.execute(f"DROP INDEX {INDICE}")
+        conexion.commit()
+    deshacer_revisiones(base, Destino.INSTALACION, ANTERIOR)
+    with closing(sqlite3.connect(base)) as conexion:
+        assert _columnas(conexion) == ANTES
