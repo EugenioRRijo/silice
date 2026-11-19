@@ -295,6 +295,7 @@ TABLA = {
     ("GET", "/v1/produccion/materiales"): OPERAR,  # sesion 4: arenera (UC-28, UC-29)
     ("POST", "/v1/produccion/materiales"): OPERAR,
     ("POST", "/v1/produccion/movimientos"): OPERAR,
+    ("POST", "/v1/produccion/conteos/{movimiento_id}/anular"): OPERAR,  # tanda 2026-11-19
     ("GET", "/v1/produccion/existencias"): OPERAR,
     ("POST", "/v1/produccion/bascula/importar"): OPERAR,
     ("GET", "/v1/produccion/pesajes-sospechosos"): OPERAR,

@@ -22,9 +22,18 @@ export const MATERIALES: MaterialRespuesta[] = [
 ];
 
 export const EXISTENCIAS: ExistenciaRespuesta[] = [
-  { codigo: "ARE-01", nombre: "Arena lavada", unidad_venta: "m3", existencia: "120.5000", minima: "50", queda_poco: false, negativa: false },
-  { codigo: "PIE-01", nombre: "Piedra picada", unidad_venta: "t", existencia: "15", minima: "20.000", queda_poco: true, negativa: false },
-  { codigo: "GRA-01", nombre: "Granzón", unidad_venta: "m3", existencia: "-4.25", minima: "10", queda_poco: true, negativa: true },
+  {
+    codigo: "ARE-01",
+    nombre: "Arena lavada",
+    unidad_venta: "m3",
+    existencia: "120.5000",
+    minima: "50",
+    queda_poco: false,
+    negativa: false,
+    ultimo_conteo: { id: 41, fecha: "2026-10-10", diferencia: "-2.5", usuario: "Ana Pérez <ana>" },
+  },
+  { codigo: "PIE-01", nombre: "Piedra picada", unidad_venta: "t", existencia: "15", minima: "20.000", queda_poco: true, negativa: false, ultimo_conteo: null },
+  { codigo: "GRA-01", nombre: "Granzón", unidad_venta: "m3", existencia: "-4.25", minima: "10", queda_poco: true, negativa: true, ultimo_conteo: null },
 ];
 
 export const SOSPECHOSOS: SospechosoRespuesta[] = [

@@ -19,6 +19,15 @@ export interface ExistenciaRespuesta {
   minima: string;
   queda_poco: boolean;
   negativa: boolean;
+  // El ultimo conteo fisico no anulado: el unico que se puede anular (tanda 2026-11-19). `null` si no hay ninguno.
+  ultimo_conteo: ConteoVigente | null;
+}
+
+export interface ConteoVigente {
+  id: number;
+  fecha: string; // ISO
+  diferencia: string; // el ajuste que dejo, con signo
+  usuario: string;
 }
 
 export interface MovimientoRespuesta {
@@ -34,6 +43,8 @@ export interface MovimientoRespuesta {
   origen: string;
   usuario: string;
   registrado: string;
+  anula_id: number | null; // la anulacion de un conteo: el conteo que anula
+  motivo: string; // de la anulacion; vacio en el resto
 }
 
 export interface ImportacionRespuesta {
