@@ -511,3 +511,150 @@ def test_llevar_exige_csrf_y_origen_propio() -> None:
     assert navegador.post(RUTA, json=CUERPO, headers=ajeno).status_code == 403
     assert navegador.post(RUTA, json=CUERPO, headers=protegida(ficha, None)).status_code == 403
     assert _borradores(navegador) == []
+
+
+# --- prueba en vivo del 2026-11-18 (frente B): el cómputo llega con su trazabilidad ------------
+
+#: La regla del concreto de una tanquilla (`adapters/civil/reglas.py`), con sus parámetros como
+#: los manda `/computos` (texto de máquina): 2 × (1,2² − (1,2 − 2 × 0,15)²) × 1,5 = 1,89 m3.
+TANQUILLA = {
+    "codigo": "OBRA-03",
+    "cantidad": "1.89",
+    "calculo": "",
+    "unidad": "m3",
+    "origen": "TQ-01",
+    "regla": "n * (a**2 - (a - 2*e)**2) * h",
+    "parametros": {"n": "2", "a": "1.2", "e": "0.15", "h": "1.5"},
+}
+CHOQUE_DE_UNIDADES = (
+    "OBRA-04: el cómputo la mide en «m» y su APU está en «m2»: no son la misma unidad, así que "
+    "su precio no aplicaría a esa cantidad. Elija una partida que se mida en «m» o corrija el "
+    "cómputo."
+)
+
+
+def _fila_completa(navegador: TestClient, id_: str, clave: str) -> dict:
+    respuesta = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/presupuesto")
+    assert respuesta.status_code == 200, respuesta.text
+    return next(f for f in respuesta.json()["filas"] if f["clave"] == clave)
+
+
+def test_el_computo_llega_con_su_calculo_y_su_origen_no_como_escrito_a_mano() -> None:
+    """Antes la fila entraba «Sin cálculo» (R1 avisaba) y sin decir de dónde venía."""
+    navegador, ficha = _ana()
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [TANQUILLA])
+
+    assert respuesta.status_code == 200, respuesta.text
+    fila = _fila_completa(navegador, respuesta.json()["borrador_id"], "OBRA-03|a-mano:1")
+    assert (fila["cantidad"], fila["calculo"], fila["nota"]) == (
+        "1,89",
+        "2*((1,2*1,2)-((1,2-2*0,15)*(1,2-2*0,15)))*1,5",
+        "Del cómputo: TQ-01.",
+    )
+
+
+def test_una_regla_que_no_es_aritmetica_deja_la_regla_en_la_nota() -> None:
+    """Sin un cálculo de las cuatro operaciones no se inventa uno: la regla y su origen quedan
+    escritos en la nota, para que se sepa de dónde salió la cantidad."""
+    navegador, ficha = _ana()
+    partida = {**TANQUILLA, "regla": "n * a**e", "cantidad": "2.0547"}
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [partida])
+
+    assert respuesta.status_code == 200, respuesta.text
+    fila = _fila_completa(navegador, respuesta.json()["borrador_id"], "OBRA-03|a-mano:1")
+    assert (fila["calculo"], fila["nota"]) == (
+        None,
+        "Del cómputo: TQ-01, con la regla n * a**e.",
+    )
+
+
+def test_un_choque_de_unidades_se_dice_antes_de_llevar_y_no_lleva_nada() -> None:
+    """LB-02-TUB llegó en m y quedó «50,925 pieza» sin aviso: ahora es 422 con las dos unidades
+    y no se abre ningún borrador."""
+    navegador, ficha = _ana()
+    tuberia = {
+        "codigo": "OBRA-04",
+        "cantidad": "50.925",
+        "calculo": "",
+        "unidad": "m",
+        "origen": "LB-02",
+        "regla": "longitud * (1 + desperdicio)",
+        "parametros": {"longitud": "48.5", "desperdicio": "0.05"},
+    }
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [TANQUILLA, tuberia])
+
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": CHOQUE_DE_UNIDADES}
+    assert _borradores(navegador) == []
+
+
+#: Dos partidas compuestas en Componer hoy, después de guardar VIV-001 (ficticias).
+NUEVAS = (
+    ("OBRA-07", "Pintura de caucho en paredes", "m2", "Pintura de caucho"),
+    ("OBRA-08", "Sellador de juntas", "m", "Sellador acrílico"),
+)
+LLEVAR_SIN_PRECIO = (
+    "No se llevó nada: 2 partidas quedarían pendientes en el Presupuesto, sin precio, porque el "
+    "Presupuesto arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, al "
+    "25/10/2026, y con ella no se pueden valorar. Insumos sin precio en «Lista Bs de prueba»: "
+    "«OBRA-07» («Pintura de caucho»); «OBRA-08» («Sellador acrílico»). Esos precios están en "
+    "«Lista Bs de prueba al 25/10/2026». Qué hacer: en Componer, guarde esas partidas con fecha "
+    "01/10/2026: solo se agregan a «Lista Bs de prueba» los precios que le faltan; los que ya "
+    "tiene no cambian. Luego vuelva a llevar."
+)
+
+
+def _componer_hoy(ruta: Path) -> None:
+    """Componer guarda OBRA-07 y OBRA-08 hoy: sus precios van a «… al 25/10/2026»."""
+    from aplicacion.composicion import guardar_composicion
+    from core.contracts.apu import ComposicionAPU, LineaMaterial
+
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            for codigo, descripcion, unidad, material in NUEVAS:
+                linea = LineaMaterial(material, "gal", Decimal("0.05"), Decimal("30"))
+                apu = ComposicionAPU(
+                    codigo, descripcion, unidad, Decimal("40"), materiales=(linea,)
+                )
+                guardado = guardar_composicion(sesion, apu, Dominio.CIVIL, HOY, "prueba")
+                assert guardado.motivo is None
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+
+def test_llevar_partidas_sin_precio_en_la_version_es_409_con_todas_y_no_lleva_nada(
+    _entorno: Path,
+) -> None:
+    """Árbitro de la rama (2026-11-18): llevar sigue siendo todo o nada, y el 409 nombra TODAS
+    las partidas que quedarían pendientes, no solo la primera. El borrador que ya estaba abierto
+    sobre VIV-001 queda exactamente igual."""
+    navegador, ficha = _ana()
+    blanco = _abierto(navegador, ficha)
+    assert _agregar(navegador, ficha, blanco, 0, "OBRA-04", "140").status_code == 200
+    guardado = navegador.post(
+        f"/v1/hoja/borradores/{blanco}/guardar",
+        json={"rev": 1, "fuente": "Medición del 24/10/2026", "codigo": "VIV-001"},
+        headers=protegida(ficha),
+    )
+    assert guardado.status_code == 200, guardado.text
+    _componer_hoy(_entorno)
+    id_ = _abierto(navegador, ficha, "VIV-001")
+    assert _agregar(navegador, ficha, id_, 0, "OBRA-06", "280").status_code == 200
+    antes = (_resumen(navegador, id_), _filas(navegador, id_))
+
+    respuesta = _llevar(
+        navegador,
+        ficha,
+        VIVIENDA,
+        [_partida("OBRA-07", "3"), _partida("OBRA-04", "10"), _partida("OBRA-08", "12")],
+    )
+
+    assert respuesta.status_code == 409, respuesta.text
+    assert respuesta.json() == {"detalle": LLEVAR_SIN_PRECIO}
+    assert (_resumen(navegador, id_), _filas(navegador, id_)) == antes
+    assert [b["id"] for b in _borradores(navegador)] == [id_]

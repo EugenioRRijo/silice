@@ -6821,7 +6821,7 @@
           "hoja"
         ],
         "summary": "Agregar Partida",
-        "description": "Tarea 9: agrega al borrador una partida del catálogo (`codigo`) con su cantidad, su cálculo\n(«cómo se midió», con coma decimal) y su nota; responde la clave del renglón nuevo.\n\nSolo cambia el borrador en memoria. La partida que no está en el catálogo, 404; la cifra o el\ncálculo, 422 con el texto de su regla; `rev` viejo, 409; sin lista para valorar la obra (en\nblanco: sin lista para armar o, en la otra moneda, sin tasa del BCV de los últimos 7 días),\n409 con ese texto. Nada de esto deja el borrador a medias.",
+        "description": "Tarea 9: agrega al borrador una partida del catálogo (`codigo`) con su cantidad, su cálculo\n(«cómo se midió», con coma decimal) y su nota; responde la clave del renglón nuevo.\n\nSolo cambia el borrador en memoria. La partida que no está en el catálogo, 404; la cifra o el\ncálculo, 422 con el texto de su regla; `rev` viejo, 409; sin lista para valorar la obra (en\nblanco: sin lista para armar o, en la otra moneda, sin tasa del BCV de los últimos 7 días),\n409 con ese texto. Si queda pendiente con la lista de la versión, entra y `aviso` dice qué\nfalta y qué hacer (`elaboracion.agregar`). Nada de esto deja el borrador a medias.",
         "operationId": "agregar_partida_v1_hoja_borradores__id__partidas_post",
         "parameters": [
           {
@@ -21024,6 +21024,12 @@
           "mensaje": {
             "type": "string",
             "title": "Mensaje"
+          },
+          "entro": {
+            "type": "boolean",
+            "title": "Entro",
+            "description": "Falso si no entró ninguna fila: el borrador no cambió, nada que guardar",
+            "default": true
           }
         },
         "type": "object",
@@ -24528,6 +24534,18 @@
           "clave": {
             "type": "string",
             "title": "Clave"
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso",
+            "description": "Si la partida quedó pendiente con la lista de la versión: qué insumos faltan, en qué lista están y qué hacer; null si se valoró."
           }
         },
         "type": "object",
@@ -24835,6 +24853,38 @@
             "maxLength": 500,
             "title": "Calculo",
             "default": ""
+          },
+          "unidad": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Unidad",
+            "default": ""
+          },
+          "origen": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Origen",
+            "default": ""
+          },
+          "regla": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Regla",
+            "default": ""
+          },
+          "parametros": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 100,
+              "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
+            },
+            "propertyNames": {
+              "maxLength": 100
+            },
+            "type": "object",
+            "maxProperties": 50,
+            "title": "Parametros",
+            "default": {}
           }
         },
         "additionalProperties": false,

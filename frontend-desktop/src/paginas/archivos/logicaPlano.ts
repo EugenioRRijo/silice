@@ -3,6 +3,7 @@
 // son los de la interfaz anterior, con sus tildes. Lo que escribe la persona (alturas, circuitos) viaja como TEXTO, tal cual: la coma decimal la decide el
 // servidor. Aquí nada se convierte a número.
 import type { FilaDensa } from "../../comun/TablaDensa";
+import { cifrasEnTextoEsVe } from "../../indicadores/formatoEsVe";
 import type { Resumen } from "../hoja/logica";
 
 export const ROTULO_LEER_PLANO = "Leer plano";
@@ -91,6 +92,8 @@ export interface RespuestaDeFusion {
   fusion: ResumenDeFusionRespuesta;
   informe: FilaDeInforme[];
   mensaje: string;
+  // Falso si no entró ninguna fila (todas omitidas o ya iguales): no es un éxito (re-verificación del 18/11/2026).
+  entro?: boolean;
 }
 
 export type ValoresDeCircuito = [string, string, string, string];
@@ -158,8 +161,16 @@ export function etiquetaDeCampoDeCircuito(rotulo: string, id: string): string {
 
 // --- el informe ---
 
+// El mensaje lo escribe el lector del plano con punto decimal («2.5 m provisionales», «(6.0000 x 4.0000 m)»): se lee en
+// es-VE (prueba en vivo del 18/11/2026). Los ids y las capas no se tocan (`cifrasEnTextoEsVe` deja los códigos).
 export function filasDelInforme(informe: FilaDeInforme[]): FilaDensa[] {
-  return informe.map((f, i) => ({ id: `informe-${i}`, tipo: f.tipo, referencia: f.referencia, fila: f.fila, mensaje: f.mensaje }));
+  return informe.map((f, i) => ({
+    id: `informe-${i}`,
+    tipo: f.tipo,
+    referencia: f.referencia,
+    fila: f.fila,
+    mensaje: cifrasEnTextoEsVe(f.mensaje),
+  }));
 }
 
 // --- textos de resultado ---

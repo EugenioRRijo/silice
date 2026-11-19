@@ -25,7 +25,9 @@ decisión de ingeniería «Cómo se midió».
 
 from __future__ import annotations
 
+import ast
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -52,6 +54,7 @@ __all__ = [
     "CalculoInvalido",
     "PartidaElegida",
     "agregar_partida",
+    "calculo_de_regla",
     "calculo_tecleable",
     "cantidad_y_regla",
     "pendientes_sin_calculo",
@@ -342,6 +345,117 @@ def texto_llano(descripcion: str) -> str:
 #: La regla de un renglón agregado a mano: solo cifras con punto decimal y los signos.
 _REGLA_ARITMETICA = re.compile(r"[0-9.+\-*/() ]+")
 _CIFRA_DE_LA_REGLA = re.compile(r"[0-9.]+")
+
+
+#: Las operaciones de una regla de cómputo que el cálculo sabe escribir, con su precedencia (la de
+#: Python, que es la de `core.verification.evaluar`).
+_OPERACIONES: dict[type, tuple[str, int]] = {
+    ast.Add: ("+", 1),
+    ast.Sub: ("-", 1),
+    ast.Mult: ("*", 2),
+    ast.Div: ("/", 2),
+}
+#: Un número, un paréntesis o un producto de potencia ya escrito: no se vuelve a envolver.
+_ATOMO = 9
+#: La potencia más alta que se escribe como producto (a**3 es a*a*a).
+_POTENCIA_MAXIMA = 9
+
+
+class _NoEsCalculo(Exception):  # noqa: N818
+    """La regla no se escribe como cálculo de las cuatro operaciones (o pasaría del tope)."""
+
+
+def _escrito(texto: str, precedencia: int) -> tuple[str, int]:
+    if len(texto) > LARGO_MAXIMO:  # el tope del cálculo, mientras se construye: sin explosión
+        raise _NoEsCalculo
+    return texto, precedencia
+
+
+def _entre_parentesis(texto: str, precedencia: int, minima: int) -> str:
+    return f"({texto})" if precedencia < minima else texto
+
+
+def _cifra_de_regla(nodo: ast.expr, regla: str) -> Decimal:
+    """La cifra tal cual está escrita en la regla («0.7854» sin pasar por `float`)."""
+    escrita = ast.get_source_segment(regla, nodo)
+    if escrita is None:
+        raise _NoEsCalculo
+    try:
+        return Decimal(escrita)
+    except InvalidOperation:
+        raise _NoEsCalculo from None
+
+
+def _nodo(nodo: ast.expr, regla: str, parametros: Mapping[str, Decimal]) -> tuple[str, int]:
+    """El cálculo de `nodo` y su precedencia, o `_NoEsCalculo`."""
+    if isinstance(nodo, ast.Constant):
+        if isinstance(nodo.value, bool) or not isinstance(nodo.value, int | float):
+            raise _NoEsCalculo
+        return _escrito(texto_de_cifra(_cifra_de_regla(nodo, regla)), _ATOMO)
+    if isinstance(nodo, ast.Name):
+        valor = parametros.get(nodo.id)
+        if valor is None or not valor.is_finite():
+            raise _NoEsCalculo
+        texto = texto_de_cifra(valor)
+        return _escrito(f"({texto})" if valor < 0 else texto, _ATOMO)
+    if isinstance(nodo, ast.UnaryOp) and isinstance(nodo.op, ast.UAdd | ast.USub):
+        texto, precedencia = _nodo(nodo.operand, regla, parametros)
+        if isinstance(nodo.op, ast.UAdd):
+            return texto, precedencia
+        return _escrito(f"(-{_entre_parentesis(texto, precedencia, _ATOMO)})", _ATOMO)
+    if not isinstance(nodo, ast.BinOp):
+        raise _NoEsCalculo
+    if isinstance(nodo.op, ast.Pow):
+        exponente = nodo.right
+        if not (
+            isinstance(exponente, ast.Constant)
+            and type(exponente.value) is int
+            and 0 <= exponente.value <= _POTENCIA_MAXIMA
+        ):
+            raise _NoEsCalculo
+        if exponente.value == 0:
+            return "1", _ATOMO
+        texto, precedencia = _nodo(nodo.left, regla, parametros)
+        base = _entre_parentesis(texto, precedencia, _ATOMO)
+        if exponente.value == 1:
+            return _escrito(f"({texto})" if precedencia < _ATOMO else base, _ATOMO)
+        return _escrito("(" + "*".join([base] * exponente.value) + ")", _ATOMO)
+    operacion = _OPERACIONES.get(type(nodo.op))
+    if operacion is None:
+        raise _NoEsCalculo
+    signo, precedencia = operacion
+    izquierda, p_izquierda = _nodo(nodo.left, regla, parametros)
+    derecha, p_derecha = _nodo(nodo.right, regla, parametros)
+    # la izquierda se agrupa sola (a-b-c es (a-b)-c); la derecha de igual precedencia necesita
+    # su paréntesis (a-(b-c), a/(b/c)), y se le pone siempre para conservar la forma de la regla
+    texto = (
+        _entre_parentesis(izquierda, p_izquierda, precedencia)
+        + signo
+        + _entre_parentesis(derecha, p_derecha, precedencia + 1)
+    )
+    return _escrito(texto, precedencia)
+
+
+def calculo_de_regla(regla: str, parametros: Mapping[str, Decimal]) -> str | None:
+    """La regla de un cómputo («longitud * (1 + desperdicio)», `adapters/civil/reglas.py`) con
+    sus parámetros puestos, como la teclearía la persona: «48,5*(1+0,05)». Lo lee
+    `traducir_calculo` y da lo mismo que `core.verification.evaluar` (prueba en vivo del
+    18/11/2026: llevar un cómputo a la Hoja perdía su trazabilidad, «Sin cálculo»).
+
+    Se lee con `ast` (la precedencia y la asociatividad de Python, las de `evaluar`) y solo se
+    admiten las cuatro operaciones, el signo delante, los parámetros conocidos, las cifras y la
+    potencia de exponente entero escrito de 0 a 9, que se escribe como producto entre paréntesis
+    («a**2» es «(a*a)»; árbitro de la rama, 2026-11-18). Un parámetro negativo va entre
+    paréntesis. `None` si la regla no es eso, no se entiende o pasaría de `LARGO_MAXIMO`
+    caracteres: no se inventa un cálculo."""
+    if not regla.strip() or len(regla) > LARGO_MAXIMO:
+        return None
+    try:
+        arbol = ast.parse(regla.strip(), mode="eval")
+        texto, _precedencia = _nodo(arbol.body, regla.strip(), parametros)
+    except (SyntaxError, ValueError, RecursionError, _NoEsCalculo):
+        return None
+    return texto
 
 
 def calculo_tecleable(regla: str | None) -> str | None:

@@ -442,8 +442,25 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     expect(cuerpo.proyecto).toBe("7");
     expect(cuerpo.archivo).toBe("computo.csv");
     expect(cuerpo.partidas).toHaveLength(18);
-    expect(cuerpo.partidas[0]).toEqual({ codigo: "FIC-C1", cantidad: "1.125", calculo: "" });
-    expect(cuerpo.partidas[17]).toEqual({ codigo: "FIC-C1", cantidad: "12.5000", calculo: "" });
+    // Cada ítem lleva lo que el cómputo sabe de él (prueba en vivo del 18/11/2026): unidad, origen y regla.
+    expect(cuerpo.partidas[0]).toEqual({
+      codigo: "FIC-C1",
+      cantidad: "1.125",
+      calculo: "",
+      unidad: "m3",
+      origen: "fila-1",
+      regla: "",
+      parametros: {},
+    });
+    expect(cuerpo.partidas[17]).toEqual({
+      codigo: "FIC-C1",
+      cantidad: "12.5000",
+      calculo: "",
+      unidad: "m3",
+      origen: "fila-18",
+      regla: "",
+      parametros: {},
+    });
     expect(Object.keys(cuerpo).sort()).toEqual(["archivo", "partidas", "proyecto"]);
     await waitFor(() => expect(lecturas()).toBeGreaterThan(antes.borrador));
     await waitFor(() => expect(registros()).toBeGreaterThan(antes.registro));
@@ -647,7 +664,9 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
       expect(await within(dialogo).findByText("Se llevó 1 partida al presupuesto.")).toBeInTheDocument();
       expect(cuerpoDe("POST", "/v1/hoja/llevar")).toEqual({
         proyecto: "7",
-        partidas: [{ codigo: "FIC-C1", cantidad: "12.5000", calculo: "" }],
+        partidas: [
+          { codigo: "FIC-C1", cantidad: "12.5000", calculo: "", unidad: "m3", origen: "fila-1", regla: "", parametros: {} },
+        ],
         archivo: "computo.csv",
       });
     });

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
@@ -101,9 +102,17 @@ class SinTramos(ValueError):  # noqa: N818
     """La versión no tiene tramos guardados: no hay cómputos que reportar."""
 
 
+def _sin_tildes(texto: str) -> str:
+    """«Vía Sílice Ñandú» → «Via Silice Nandu»: la letra con tilde (o eñe) pierde la marca, no la
+    letra (prueba en vivo del 18/11/2026: el Excel de Tramos salía «S_lice_…»)."""
+    descompuesto = unicodedata.normalize("NFKD", texto)
+    return "".join(c for c in descompuesto if not unicodedata.combining(c))
+
+
 def nombre_de_reporte(tipo: str, *partes: str) -> str:
-    """`{tipo}_{partes}.xlsx` con cada parte ya segura para un `Content-Disposition`."""
-    seguras = [_NO_SEGURO.sub("_", p[:40]).strip("_") for p in partes]
+    """`{tipo}_{partes}.xlsx` con cada parte ya segura para un `Content-Disposition` (ASCII: las
+    tildes se quitan antes de cambiar por «_» lo que no es letra, cifra, punto ni guion)."""
+    seguras = [_NO_SEGURO.sub("_", _sin_tildes(p[:40])).strip("_") for p in partes]
     return "_".join([tipo, *[s for s in seguras if s]]) + ".xlsx"
 
 

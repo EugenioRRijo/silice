@@ -364,7 +364,14 @@ export function ImportarPlano({ id, rev, archivo, alAusente, alAceptar, alRecarg
         {importacion === null && fusion !== null && (
           <section className="silice-hoja__seccion">
             <Resultado activo={marca("fusion")}>
-              <InlineNotification kind="success" role="status" lowContrast hideCloseButton title="Importación fusionada" subtitle={fusion.mensaje} />
+              <InlineNotification
+                kind={fusion.entro !== false ? "success" : "warning"}
+                role="status"
+                lowContrast
+                hideCloseButton
+                title={fusion.entro !== false ? "Importación fusionada" : "No entró ninguna fila"}
+                subtitle={fusion.mensaje}
+              />
             </Resultado>
             <h3 className="cds--type-heading-compact-02">Informe de la última fusión</h3>
             <Conteos conteos={fusion.fusion.por_tipo} />

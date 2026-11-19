@@ -538,6 +538,19 @@ describe("Importar plano (3e-2)", () => {
       expect(within(screen.getByRole("table", { name: "Informe de la fusión" })).getAllByRole("row")).toHaveLength(1 + 48);
     });
 
+    test("si no entró ninguna fila, el aviso no es de éxito y lo dice en el título (re-verificación del 18/11/2026)", async () => {
+      const nada = "No entró ninguna fila de «of001.dxf»: las 33 filas del plano se omitieron. El borrador no cambió: no hay nada que guardar.";
+      alFusionar = (c) => json({ ...respuestaDeFusion(c.rev), mensaje: nada, entro: false });
+      const usuario = userEvent.setup();
+      montar();
+      await leer(usuario);
+      await usuario.click(await screen.findByRole("button", { name: "Fusionar con el espacio del borrador" }));
+      const aviso = (await screen.findByText(nada)).closest(".cds--inline-notification")!;
+      expect(aviso).toHaveTextContent("No entró ninguna fila");
+      expect(aviso).not.toHaveTextContent("Importación fusionada");
+      expect(aviso.className).toMatch(/cds--inline-notification--warning/);
+    });
+
     test("leer otro plano quita el informe de la última fusión", async () => {
       const usuario = userEvent.setup();
       montar();

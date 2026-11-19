@@ -27,14 +27,14 @@ import dataclasses
 import re
 import tempfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from aplicacion import hoja, hoja_borradores, hoja_edicion, importaciones
+from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_sin_valorar, importaciones
 from aplicacion.cifras import CifraInvalida, texto_de_cifra
 from aplicacion.composicion import (
     ComposicionInvalida,
@@ -43,7 +43,7 @@ from aplicacion.composicion import (
     texto_de_celda,
 )
 from aplicacion.errores import HojaInvalida
-from aplicacion.hoja_partidas import CalculoInvalido, cantidad_y_regla
+from aplicacion.hoja_partidas import CalculoInvalido, calculo_de_regla, cantidad_y_regla
 from aplicacion.listas_para_armar import valoracion_de_la_obra
 from core import models
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
@@ -51,6 +51,7 @@ from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, PropuestaRendimiento, proponer_rendimiento, registrar_rendimiento
 from core.contracts import Dominio, ItemComputo, ParametrosCosto
 from core.contracts.apu import Rendimiento, TipoRendimiento
+from core.contracts.unidades import unidades_equivalentes
 
 if TYPE_CHECKING:
     from decimal import Decimal
@@ -387,27 +388,158 @@ class VersionQueNoSeAbre(Exception):  # noqa: N818
 @dataclass(frozen=True, slots=True)
 class PartidaParaLlevar:
     """Un item de Elaborar que va a la Hoja: el codigo de su partida, su cantidad exacta (la del
-    computo) y, si la persona lo escribio, el calculo con coma decimal (Tarea 8)."""
+    computo) y, si la persona lo escribio, el calculo con coma decimal (Tarea 8).
+
+    Prueba en vivo del 18/11/2026: lo que el computo sabe del item viaja con el, para no perder su
+    trazabilidad: su `unidad` (si no equivale a la del APU, no se lleva: R3), su `origen` y su
+    `regla` con sus `parametros` (el calculo y la nota del renglon, `_calculo_y_nota`)."""
 
     codigo: str
     cantidad: Decimal
     calculo: str = ""
+    unidad: str = ""
+    origen: str = ""
+    regla: str = ""
+    parametros: Mapping[str, Decimal] = field(default_factory=dict)
+
+
+def _choque_de_unidades(computo: str, apu: str) -> str:
+    """Lo que dice el 422 de un item del computo cuya unidad no es la de su APU (R3, antes de
+    llevar)."""
+    return (
+        f"el cómputo la mide en «{computo}» y su APU está en «{apu}»: no son la misma unidad, así "
+        f"que su precio no aplicaría a esa cantidad. Elija una partida que se mida en «{computo}» "
+        "o corrija el cómputo."
+    )
+
+
+#: El largo maximo de la nota de un renglon (`POST /v1/hoja/borradores/{id}/partidas`).
+LARGO_DE_NOTA = 500
+
+
+def _cuadra(cantidad: Decimal, calculo: str) -> bool:
+    try:
+        cantidad_y_regla(texto_de_cifra(cantidad), calculo)
+    except (CalculoInvalido, CifraInvalida):
+        return False
+    return True
+
+
+def _calculo_y_nota(partida: PartidaParaLlevar) -> tuple[str, str]:
+    """El calculo y la nota con que el item entra a la Hoja. El calculo es el escrito o, si no, la
+    regla del computo con sus parametros (`calculo_de_regla`) cuando da su cantidad; la nota dice
+    de donde salio («Del cómputo: TQ-01.») y, si la regla no se pudo escribir como calculo, la
+    regla misma, para que la cantidad no quede sin explicar."""
+    calculo = partida.calculo
+    if not calculo and partida.regla:
+        derivado = calculo_de_regla(partida.regla, partida.parametros)
+        if derivado is not None and _cuadra(partida.cantidad, derivado):
+            calculo = derivado
+    if not partida.origen:
+        return calculo, ""
+    con_regla = f", con la regla {partida.regla}" if partida.regla and not calculo else ""
+    nota = f"Del cómputo: {partida.origen}{con_regla}."
+    return calculo, nota if len(nota) <= LARGO_DE_NOTA else nota[: LARGO_DE_NOTA - 1] + "…"
 
 
 def _validar(sesion: Session, partidas: Sequence[PartidaParaLlevar]) -> None:
     """Lo que `hoja_edicion.agregar` rechazaria de cada partida, antes de tocar ningun borrador:
     que este en el catalogo (`PartidaFueraDelCatalogo`) y su cantidad y su calculo (`HojaInvalida`
-    con el codigo delante), con las mismas reglas (`cantidad_y_regla`, Tarea 8)."""
+    con el codigo delante), con las mismas reglas (`cantidad_y_regla`, Tarea 8). Y, con la unidad
+    del computo, que equivalga a la del APU (R3, `HojaInvalida`): una tuberia en m sobre un APU
+    por pieza no se lleva (prueba en vivo del 18/11/2026)."""
     catalogo = Catalogo(sesion)
     for partida in partidas:
         try:
-            catalogo.partida(partida.codigo)
+            fila = catalogo.partida(partida.codigo)
         except KeyError:
             raise hoja_edicion.PartidaFueraDelCatalogo(partida.codigo) from None
+        if partida.unidad and not unidades_equivalentes(partida.unidad, fila.unidad):
+            choque = _choque_de_unidades(partida.unidad, fila.unidad)
+            raise HojaInvalida(f"{partida.codigo}: {choque}")
         try:
             cantidad_y_regla(texto_de_cifra(partida.cantidad), partida.calculo)
         except (CalculoInvalido, CifraInvalida) as error:
             raise HojaInvalida(f"{partida.codigo}: {error}") from None
+
+
+def _sin_valorar(
+    sesion: Session, vivo: BorradorVivo, codigos: Sequence[str], **textos: str
+) -> str | None:
+    """Qué dice la Hoja de las partidas `codigos` que quedaron sin APU (PENDIENTE) en la versión
+    abierta de `vivo`: qué insumos no tienen precio en su lista, en qué listas están, qué
+    rendimiento falta y qué hacer (`hoja_sin_valorar`, con la política de rendimiento vigente de
+    este módulo). `None` si todas se valoran o el borrador está en blanco (se valora con la lista
+    para armar, donde escribe Componer)."""
+    if vivo.abierta is None:
+        return None
+    faltan = sorted(set(codigos) - set(vivo.borrador.composiciones))
+    if not faltan:
+        return None
+    lista, _valoracion = hoja_edicion.lista_para_completar(sesion, vivo, vivo.borrador.fecha)
+    return hoja_sin_valorar.explicar(
+        sesion,
+        faltan,
+        lista,
+        vivo.abierta.codigo,
+        vivo.borrador.fecha,
+        vigente=es_rendimiento_vigente,
+        **textos,
+    )
+
+
+def agregar(
+    sesion: Session,
+    huella: str,
+    id: str,
+    rev: int,
+    *,
+    codigo: str,
+    cantidad: str,
+    calculo: str,
+    nota: str,
+) -> tuple[BorradorVivo, str, str | None]:
+    """`hoja_edicion.agregar` desde la Hoja, con el aviso de una partida que queda PENDIENTE con
+    la lista de la versión (prueba en vivo del 18/11/2026): el borrador, la clave del renglón y el
+    aviso, o `None`. Árbitro de la rama (2026-11-18): agregar a mano no se bloquea, porque una
+    partida puede esperar su cotización (UC-01 3a), otro renglón de una partida ya pendiente es
+    legítimo y una lista de la obra o convertida no la escribe Componer; el diálogo de guardar
+    vuelve a avisarlo."""
+    vivo, clave = hoja_edicion.agregar(
+        sesion, huella, id, rev, codigo=codigo, cantidad=cantidad, calculo=calculo, nota=nota
+    )
+    aviso = _sin_valorar(
+        sesion,
+        vivo,
+        [codigo],
+        inicio=f"La partida «{codigo}» queda pendiente en el Presupuesto",
+        se_valora="se puede valorar",
+        esas="esa partida",
+        # la fila que ya está no se revalora sola: el borrador completa solo las partidas nuevas
+        # (re-verificación del 18/11/2026; revalorarla haría falta una ruta nueva en la Hoja)
+        cierre=(
+            "Después, quite la fila y agréguela de nuevo: la fila que ya está no se vuelve a "
+            "valorar sola. Mientras siga pendiente, la versión no se podrá enviar a aprobación."
+        ),
+    )
+    return vivo, clave, aviso
+
+
+def _exigir_valoradas(sesion: Session, vivo: BorradorVivo, codigos: Sequence[str]) -> None:
+    """Llevar es todo o nada (como los tramos, `hoja_vial._valorado`): si alguna partida queda
+    PENDIENTE con la lista de la versión, `hoja_sin_valorar.PartidasSinValorar` (409) con TODAS
+    las que faltan a la vez (árbitro de la rama, 2026-11-18)."""
+    faltan = sorted(set(codigos) - set(vivo.borrador.composiciones))
+    cuantas = (
+        "1 partida quedaría pendiente"
+        if len(faltan) == 1
+        else f"{len(faltan)} partidas quedarían pendientes"
+    )
+    mensaje = _sin_valorar(
+        sesion, vivo, codigos, inicio=f"No se llevó nada: {cuantas} en el Presupuesto"
+    )
+    if mensaje is not None:
+        raise hoja_sin_valorar.PartidasSinValorar(mensaje)
 
 
 def version_del_borrador_de_la_obra(
@@ -490,7 +622,8 @@ def llevar_a_la_hoja(
     la persona (`texto_de_cifra`: «1.125» del computo es uno coma ciento veinticinco). **Todo o
     nada:** con el cerrojo del borrador tomado de punta a punta, si una partida falla
     (`PartidaFueraDelCatalogo`, `HojaInvalida` con el codigo de la partida delante,
-    `SinListaDeLaObra`, la base) el borrador abierto aqui se descarta y uno que ya existia vuelve
+    `SinListaDeLaObra`, `hoja_sin_valorar.PartidasSinValorar` si quedaria pendiente con la lista
+    de la version, la base) el borrador abierto aqui se descarta y uno que ya existia vuelve
     exactamente a como estaba, con su `rev` (la ventana que lo esta editando no ve ningun cambio),
     y el error sube. `VersionQueNoSeAbre` si la vigente ya no se puede abrir.
 
@@ -509,6 +642,7 @@ def llevar_a_la_hoja(
         antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano)
         try:
             for partida in partidas:
+                calculo, nota = _calculo_y_nota(partida)
                 try:
                     vivo, _clave = hoja_edicion.agregar(
                         sesion,
@@ -517,11 +651,12 @@ def llevar_a_la_hoja(
                         vivo.rev,
                         codigo=partida.codigo,
                         cantidad=texto_de_cifra(partida.cantidad),
-                        calculo=partida.calculo,
-                        nota="",
+                        calculo=calculo,
+                        nota=nota,
                     )
                 except HojaInvalida as error:  # varias partidas: se dice cual
                     raise HojaInvalida(f"{partida.codigo}: {error}") from None
+            _exigir_valoradas(sesion, vivo, [partida.codigo for partida in partidas])
             if archivo is not None:
                 texto = importaciones.resumen_de_computo(len(partidas))
                 importaciones.anotar(

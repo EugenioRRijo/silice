@@ -3,7 +3,11 @@ montar un presupuesto, `docs/planes/PLAN_MONTAR_PRESUPUESTO.md`; diseño §5.3: 
 del proyecto», que mete sus ítems en el borrador como renglones agregados, sin guardar por su
 cuenta).
 
-Cuerpo `{proyecto, partidas: [{codigo, cantidad, calculo}], archivo?}` → 200 `{borrador_id}`.
+Cuerpo `{proyecto, partidas: [{codigo, cantidad, calculo, unidad?, origen?, regla?, parametros?}],
+archivo?}` → 200 `{borrador_id}`. Los cuatro opcionales son lo que el cómputo sabe del ítem (prueba
+en vivo del 18/11/2026): con la regla y sus parámetros el renglón entra con su cálculo (si da la
+cantidad), con el origen lleva una nota que dice de dónde salió, y una unidad que no equivale a la
+del APU es 422 con las dos unidades (R3), sin llevar nada.
 Usa el borrador vivo de esa ficha y obra o abre uno sobre la versión vigente (o en blanco) y agrega
 cada partida con `hoja_edicion.agregar` (Tarea 9), todo o nada
 (`aplicacion.elaboracion.llevar_a_la_hoja`); no guarda versión. `proyecto` es el código de
@@ -21,8 +25,9 @@ uno coma ciento veinticinco. `calculo` (opcional) es el de la Tarea 8, con coma 
 Como el resto de la Hoja: solo con una cuenta con `editar_hoja` (la clave de API, 403), CSRF y
 `Origin` propios, `Cache-Control: no-store` también en los errores y un 422 de forma que no repite
 lo enviado. Errores: obra que no existe, 404 sin eco; partida fuera del catálogo, 404 (Tarea 9);
-cálculo o cifra, 422 con el código de la partida delante; sin lista para valorar la obra o versión
-vigente que ya no se abre, 409; la base, 503.
+cálculo o cifra, 422 con el código de la partida delante; sin lista para valorar la obra, versión
+vigente que ya no se abre o una partida que quedaría pendiente con la lista de la versión, 409; la
+base, 503.
 """
 
 from __future__ import annotations
@@ -73,6 +78,20 @@ class PartidaLlevada(BaseModel):
     #: Decimal con punto y sin miles, sin signo ni exponente: el texto del cómputo.
     cantidad: Annotated[str, Field(strict=True, max_length=500, pattern=r"^[0-9]+(\.[0-9]+)?$")]
     calculo: Annotated[str, Field(strict=True, max_length=500)] = ""
+    #: Prueba en vivo del 18/11/2026: lo que el cómputo sabe del ítem, tal como sale de
+    #: `/computos` (su unidad, su origen y su regla con sus parámetros, cifras con punto decimal).
+    #: Con la unidad, una que no equivalga a la del APU es 422 (R3); con la regla, el renglón entra
+    #: con su cálculo, y con el origen, con una nota que dice de dónde salió.
+    unidad: Annotated[str, Field(strict=True, max_length=50)] = ""
+    origen: Annotated[str, Field(strict=True, max_length=500)] = ""
+    regla: Annotated[str, Field(strict=True, max_length=500)] = ""
+    parametros: Annotated[
+        dict[
+            Annotated[str, Field(strict=True, max_length=100)],
+            Annotated[str, Field(strict=True, max_length=100, pattern=r"^-?[0-9]+(\.[0-9]+)?$")],
+        ],
+        Field(max_length=50),
+    ] = {}
 
 
 class LlevarALaHoja(BaseModel):
@@ -113,7 +132,15 @@ def llevar_a_la_hoja(
     `activa` va antes que `sesion`: el acceso (401, 403) responde antes de abrir la base del caso.
     Abrir la versión vigente escribe su instantánea si faltaba (UC-15e), como abrir la Hoja."""
     partidas = [
-        elaboracion.PartidaParaLlevar(p.codigo.strip(), Decimal(p.cantidad), p.calculo)
+        elaboracion.PartidaParaLlevar(
+            p.codigo.strip(),
+            Decimal(p.cantidad),
+            p.calculo,
+            unidad=p.unidad.strip(),
+            origen=p.origen.strip(),
+            regla=p.regla.strip(),
+            parametros={nombre: Decimal(valor) for nombre, valor in p.parametros.items()},
+        )
         for p in datos.partidas
     ]
     try:

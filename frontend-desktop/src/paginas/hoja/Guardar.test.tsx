@@ -442,13 +442,57 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(borrados()).toHaveLength(0);
   });
 
+  test("A.6 (prueba en vivo): si el desglose ya estaba guardado (422), el borrador se vuelve a leer y no queda «1 cambio sin guardar»", async () => {
+    const yaGuardado = "Ese desglose ya está guardado.";
+    alAbrir = () => borrador("002", { cambios: 1, desgloses: 1 });
+    alGuardar = () => json({ detalle: yaGuardado }, 422);
+    montar();
+    const region = await screen.findByRole("region", { name: "Estado del borrador" });
+    await within(region).findByText(/1 cambio sin guardar/);
+    const dialogo = await abrirModal();
+    // El servidor ya vació la cuenta: lo que se lee ahora es el borrador sin cambios.
+    alVivo = () => {
+      const b = borrador("002", { cambios: 0, desgloses: 0 });
+      return json({ id: ID, base: b.base, resumen: b.resumen });
+    };
+    fireEvent.click(confirmar(dialogo, "Guardar el desglose"));
+    expect(await within(dialogo).findByText(yaGuardado)).toBeInTheDocument();
+    expect(within(dialogo).getByText("No había nada que guardar")).toBeInTheDocument();
+    await within(region).findByText(/Versión 002 · Sin cambios sin guardar/);
+    expect(guardados()).toHaveLength(1);
+    expect(aperturas().map((a) => a.version)).toEqual(["002"]);
+    // Re-verificación del 18/11/2026: el diálogo queda coherente con el borrador releído: solo el aviso y «Cerrar».
+    expect(dialogo.textContent).not.toMatch(/Se registrarán|No hay cambios para guardar|Cambios \(/);
+    expect(within(dialogo).queryByRole("textbox", { name: /^Fuente/ })).toBeNull();
+    expect(within(dialogo).queryByRole("button", { name: /^Guardar/ })).toBeNull();
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  test("prueba en vivo: con partidas sin precio el diálogo lo dice antes de guardar (la versión quedaría con ese error)", async () => {
+    alAbrir = () => borrador("002", { pendientes_catalogo: 2 });
+    montar();
+    const dialogo = await abrirModal();
+    expect(
+      within(dialogo).getByText(
+        "2 partidas están sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarlas. En Partidas, el estado de cada fila dice por qué.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("sin partidas pendientes el diálogo no avisa nada de precios", async () => {
+    montar();
+    const dialogo = await abrirModal();
+    expect(within(dialogo).queryByText(/sin precio/)).toBeNull();
+  });
+
   test("A.6 (DS-48i): en la mezcla de una celda y un desglose pide fuente, habla de versión nueva y promete solo el cambio que se registra", async () => {
     alAbrir = () => borrador("002", { cambios: 2, desgloses: 1 });
     montar();
     const dialogo = await abrirModal();
     expect(within(dialogo).getByRole("heading", { name: "Guardar versión" })).toBeInTheDocument();
     expect(campoFuente(dialogo)).toBeInTheDocument();
-    expect(within(dialogo).getByText(/Se registrarán 1 cambio en una versión nueva \(sale de la 002\)\./)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/Se registrará 1 cambio en una versión nueva \(sale de la 002\)\./)).toBeInTheDocument();
     expect(within(dialogo).getByText(/Con ella se guarda también el desglose del desperdicio de 1 línea\./)).toBeInTheDocument();
     expect(dialogo.textContent).not.toMatch(/2 cambios/);
     expect(confirmar(dialogo)).toBeDisabled(); // sin fuente no se guarda la versión

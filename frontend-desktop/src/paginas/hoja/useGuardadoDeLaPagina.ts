@@ -92,7 +92,7 @@ export function useGuardadoDeLaPagina({
     },
     [alCrearVersion, proyecto, refrescarBorrador],
   );
-  const guardado = useGuardado({ id, rev, proyecto, alExpirar, alGuardada });
+  const guardado = useGuardado({ id, rev, proyecto, alExpirar, alGuardada, alVaciarseLaCuenta: refrescarBorrador });
   const cancelarGuardado = guardado.cerrar;
   const cancelarYDevolverFoco = useCallback(() => {
     devolverFoco.current = "guardar";

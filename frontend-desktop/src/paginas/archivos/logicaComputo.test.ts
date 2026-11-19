@@ -37,6 +37,12 @@ describe("logica de Elaborar", () => {
     expect(filas.map((f) => f.unidad)).toEqual(["m³", "m²", "ml"]);
   });
 
+  test("la cantidad del cómputo se presenta sin ceros sobrantes (re-verificación del 18/11/2026)", () => {
+    const cantidades = ["1.89000", "25.200", "3.000", "12", "1200", "0.0500"];
+    const filas = filasDeItems(cantidades.map((cantidad, n) => ({ ...ITEM(`o${n}`, "X"), cantidad })));
+    expect(filas.map((f) => f.cantidad)).toEqual(["1.89", "25.2", "3", "12", "1200", "0.05"]);
+  });
+
   test("el mapeo de codigos civil lleva relleno solo si se pide", () => {
     const base = { concreto: "A", encofrado: "B", excavacion: "C", tuberia: "D" };
     expect(mapeoCodigos({ ...base, relleno: null })).toEqual(base);
@@ -150,10 +156,31 @@ describe("cuerpoDeValoracion", () => {
 describe("partidasParaLlevar", () => {
   test("lleva cada ítem con su código y su cantidad de máquina, sin los pendientes", () => {
     const items = [ITEM("fila-1", "FIC-C1"), { ...ITEM("fila-2", "FIC-X"), cantidad: "1.125" }, ITEM("fila-3", "FIC-C3")];
+    const sinRegla = { calculo: "", unidad: "m3", regla: "", parametros: {} };
     expect(partidasParaLlevar(items, [{ origen_id: "fila-2", codigo_partida: "FIC-X" }])).toEqual([
-      { codigo: "FIC-C1", cantidad: "12.5000", calculo: "" },
-      { codigo: "FIC-C3", cantidad: "12.5000", calculo: "" },
+      { codigo: "FIC-C1", cantidad: "12.5000", origen: "fila-1", ...sinRegla },
+      { codigo: "FIC-C3", cantidad: "12.5000", origen: "fila-3", ...sinRegla },
     ]);
     expect(partidasParaLlevar(items, [])).toHaveLength(3);
+  });
+  test("lleva la unidad, el origen y la regla con sus parámetros del cómputo (prueba en vivo del 18/11/2026)", () => {
+    const tuberia: ItemComputo = {
+      ...ITEM("LB-02", "LB-02-TUB"),
+      unidad: "m",
+      cantidad: "50.925",
+      regla: "longitud * (1 + desperdicio)",
+      parametros: { longitud: "48.5", desperdicio: "0.05" },
+    };
+    expect(partidasParaLlevar([tuberia], [])).toEqual([
+      {
+        codigo: "LB-02-TUB",
+        cantidad: "50.925",
+        calculo: "",
+        unidad: "m",
+        origen: "LB-02",
+        regla: "longitud * (1 + desperdicio)",
+        parametros: { longitud: "48.5", desperdicio: "0.05" },
+      },
+    ]);
   });
 });

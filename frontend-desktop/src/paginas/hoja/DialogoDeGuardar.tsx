@@ -12,6 +12,7 @@ import {
   esSoloDesglose,
   motivoParaNoGuardar,
   textoDeDesgloseAGuardar,
+  textoDePendientesAlGuardar,
   textoDeVersionAGuardar,
 } from "./logicaGuardar";
 import type { ErrorDeGuardado } from "./logicaGuardar";
@@ -28,6 +29,7 @@ const TITULO_DE_ERROR: Record<ErrorDeGuardado["clase"], string> = {
   rev: "El borrador cambió",
   "ya-guardado": "Este borrador ya se guardó",
   ausente: "El borrador ya no está",
+  "desglose-ya-guardado": "No había nada que guardar",
   permiso: "Sin permiso para guardar",
   rechazo: "No se guardó nada",
   base: "No se guardó nada",
@@ -42,6 +44,8 @@ interface Props {
   cambiosSinGuardar: number;
   // Anexo A.6: cuántos de esos cambios son de un desglose del desperdicio.
   desgloses: number;
+  // Cuántas partidas quedan sin precio («Pendiente»): se guardan, pero la versión queda con ese error.
+  pendientes?: number;
   total: Monto;
   moneda: string;
   // «Nombre <login>»: el responsable es la persona de la sesión, de solo lectura (RF-82).
@@ -122,7 +126,16 @@ export function DialogoDeGuardar(p: Props) {
   const primera = p.version === null;
   // Anexo A.6: si solo cambió el desglose del desperdicio, se guardan sus trazas sin versión nueva y sin pedir fuente.
   const soloDesglose = esSoloDesglose(primera, p.cambiosSinGuardar, p.desgloses);
-  const titulo = primera ? "Guardar primera versión" : soloDesglose ? "Guardar el desglose" : "Guardar versión";
+  // 422 «Ese desglose ya está guardado.»: el borrador ya se releyó sin cambios; queda solo el aviso y «Cerrar» (re-verificación
+  // del 18/11/2026: decía a la vez «Se registrarán 0 cambios» y «No hay cambios para guardar», con la lista vieja).
+  const resuelto = p.error?.clase === "desglose-ya-guardado";
+  const titulo = resuelto
+    ? "Desglose ya guardado"
+    : primera
+      ? "Guardar primera versión"
+      : soloDesglose
+        ? "Guardar el desglose"
+        : "Guardar versión";
   const motivo = motivoParaNoGuardar({
     fuente: p.fuente,
     primera,
@@ -133,6 +146,7 @@ export function DialogoDeGuardar(p: Props) {
   // Con un fallo que pide decidir (versión más nueva, ya guardado, borrador ausente) no hay nada que reintentar tal cual.
   const sinReintento = p.error?.clase === "mas-nueva" || p.error?.clase === "ya-guardado" || p.error?.clase === "ausente";
   const e = p.error;
+  const avisoDePendientes = textoDePendientesAlGuardar(p.pendientes ?? 0);
 
   return (
     <div className="silice-hoja__dialogo-fondo">
@@ -141,7 +155,7 @@ export function DialogoDeGuardar(p: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
-        aria-describedby={idResumen}
+        aria-describedby={resuelto ? undefined : idResumen}
         tabIndex={-1}
         onKeyDown={atrapar}
         className="silice-hoja__dialogo silice-hoja__dialogo--guardar"
@@ -149,44 +163,63 @@ export function DialogoDeGuardar(p: Props) {
         <h2 id={idTitulo} className="cds--type-heading-compact-02">
           {titulo}
         </h2>
-        <p id={idResumen} className="cds--type-body-compact-01">
-          {primera
-            ? `Es la primera versión de la obra ${p.proyecto}: registra su creación con la fuente y el responsable.`
-            : soloDesglose
-              ? textoDeDesgloseAGuardar(p.desgloses, p.version ?? "")
-              : textoDeVersionAGuardar(p.cambiosSinGuardar, p.desgloses, p.version ?? "")}
-        </p>
-        <p className="cds--type-body-compact-01">
-          Total{" "}
-          <span title={formatoEsVe(p.total.exacto)}>
-            {formatoEsVe(p.total.texto)} {p.moneda}
-          </span>
-          <span className="cds--visually-hidden"> Valor exacto {formatoEsVe(p.total.exacto)}</span>
-        </p>
-        {!soloDesglose && (
-          <CampoTexto
-            id={idFuente}
-            labelText={primera ? FUENTE_DE_LA_MEDIDA : FUENTE_DEL_CAMBIO}
-            value={p.fuente}
-            maxLength={LARGO_DE_FUENTE}
-            onChange={(ev) => p.alCambiarFuente(ev.target.value)}
-            aria-describedby={motivo !== null ? idMotivo : undefined}
-          />
-        )}
-        {motivo !== null && (
-          <p id={idMotivo} className="cds--type-helper-text-01">
-            {motivo}
+        {!resuelto && (
+          <>
+          <p id={idResumen} className="cds--type-body-compact-01">
+            {primera
+              ? `Es la primera versión de la obra ${p.proyecto}: registra su creación con la fuente y el responsable.`
+              : soloDesglose
+                ? textoDeDesgloseAGuardar(p.desgloses, p.version ?? "")
+                : textoDeVersionAGuardar(p.cambiosSinGuardar, p.desgloses, p.version ?? "")}
           </p>
+          <p className="cds--type-body-compact-01">
+            Total{" "}
+            <span title={formatoEsVe(p.total.exacto)}>
+              {formatoEsVe(p.total.texto)} {p.moneda}
+            </span>
+            <span className="cds--visually-hidden"> Valor exacto {formatoEsVe(p.total.exacto)}</span>
+          </p>
+          {!soloDesglose && (
+            <CampoTexto
+              id={idFuente}
+              labelText={primera ? FUENTE_DE_LA_MEDIDA : FUENTE_DEL_CAMBIO}
+              value={p.fuente}
+              maxLength={LARGO_DE_FUENTE}
+              onChange={(ev) => p.alCambiarFuente(ev.target.value)}
+              aria-describedby={motivo !== null ? idMotivo : undefined}
+            />
+          )}
+          {motivo !== null && (
+            <p id={idMotivo} className="cds--type-helper-text-01">
+              {motivo}
+            </p>
+          )}
+          {avisoDePendientes !== null && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title="Partidas sin precio"
+              subtitle={avisoDePendientes}
+            />
+          )}
+          <p className="cds--type-body-compact-01">Responsable: {p.usuario}</p>
+          <ListaDeCambios cambios={p.cambios} primera={primera} />
+          </>
         )}
-        <p className="cds--type-body-compact-01">Responsable: {p.usuario}</p>
-        <ListaDeCambios cambios={p.cambios} primera={primera} />
         <p className="cds--type-helper-text-01" aria-live="polite">
           {p.enviando ? (soloDesglose ? "Guardando el desglose…" : "Guardando la versión…") : ""}
         </p>
         {e !== null && (
           <div className="silice-hoja__aviso-edicion">
             <InlineNotification
-              kind={e.clase === "mas-nueva" || e.clase === "rev" || e.clase === "ausente" ? "warning" : "error"}
+              kind={
+                e.clase === "desglose-ya-guardado"
+                  ? "info"
+                  : e.clase === "mas-nueva" || e.clase === "rev" || e.clase === "ausente"
+                    ? "warning"
+                    : "error"
+              }
               role="alert"
               lowContrast
               hideCloseButton
@@ -217,20 +250,28 @@ export function DialogoDeGuardar(p: Props) {
             </div>
           </div>
         )}
-        <div className="silice-hoja__acciones">
-          <Button kind="secondary" size="md" disabled={p.enviando} onClick={cancelar}>
-            Cancelar
-          </Button>
-          <Button
-            kind="primary"
-            size="md"
-            disabled={motivo !== null || p.enviando || sinReintento}
-            aria-describedby={motivo !== null ? idMotivo : undefined}
-            onClick={() => p.alGuardar(false)}
-          >
-            {titulo}
-          </Button>
-        </div>
+        {resuelto ? (
+          <div className="silice-hoja__acciones">
+            <Button kind="primary" size="md" onClick={cancelar}>
+              Cerrar
+            </Button>
+          </div>
+        ) : (
+          <div className="silice-hoja__acciones">
+            <Button kind="secondary" size="md" disabled={p.enviando} onClick={cancelar}>
+              Cancelar
+            </Button>
+            <Button
+              kind="primary"
+              size="md"
+              disabled={motivo !== null || p.enviando || sinReintento}
+              aria-describedby={motivo !== null ? idMotivo : undefined}
+              onClick={() => p.alGuardar(false)}
+            >
+              {titulo}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

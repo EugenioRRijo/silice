@@ -70,8 +70,8 @@ def test_sin_desperdicio_la_fila_no_cambia_y_no_hay_traza(vacio: str):
 @pytest.mark.parametrize(
     ("texto", "mensaje"),
     [
-        ("-1", "entre 0 y 100"),
-        ("100", "entre 0 y 100"),
+        ("-1", "de 0 a menos de 100"),
+        ("100", "de 0 a menos de 100"),
         ("cuatro", "no se entiende como número"),
         ("4.5", "no se entiende como número"),
     ],
@@ -165,3 +165,13 @@ def test_una_descripcion_con_espacios_en_los_bordes_casa_con_su_traza():
     fila = {"descripcion": "Ligante ficticio ", "unidad": "l ", "cantidad": "0,52"}
     assert _por_fila([fila], [traza]) == [(1, "0,50 + 4 %")]
     assert con_desperdicio([fila], [traza])[0]["desperdicio"] == "4"
+
+
+@pytest.mark.parametrize(("texto", "valor"), [("0", "0"), ("99,99", "99.99"), ("4", "4")])
+def test_los_bordes_que_se_aceptan_son_0_y_menos_de_100(texto: str, valor: str):
+    """El rango es 0 <= v < 100 (árbitro de la rama, 2026-11-18): 0 y 99,99 entran."""
+    from decimal import Decimal
+
+    from aplicacion.desperdicio import porcentaje_escrito
+
+    assert porcentaje_escrito(texto, "En Materiales, fila 1") == Decimal(valor)

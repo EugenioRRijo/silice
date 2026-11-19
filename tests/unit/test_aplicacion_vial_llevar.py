@@ -380,8 +380,8 @@ def test_insumo_sin_precio_en_la_lista_de_la_version_da_409_y_no_lleva_nada(
             "al 01/10/2026, y con ella no se pueden valorar. Insumos sin precio en «Lista Bs de "
             "prueba»: «C-000.000.012» («Pintura de la otra lista»). Esos precios están en «Lista "
             "vieja de prueba». Qué hacer: en Componer, guarde esas partidas con fecha 01/10/2026: "
-            "sus precios quedan en «Lista Bs de prueba» y su rendimiento a esa fecha "
-            f"({DE_NUEVO}). Luego vuelva a llevar."
+            "solo se agregan a «Lista Bs de prueba» los precios que le faltan; los que ya tiene "
+            "no cambian. Luego vuelva a llevar."
         )
         assert hoja_edicion.borradores_para_retomar(HUELLA, CASO) == []
 
@@ -407,8 +407,8 @@ def test_sin_rendimiento_a_la_fecha_de_la_version_da_409_y_no_toca_el_borrador(
             "Presupuesto arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, "
             "al 01/10/2026, y con ella no se pueden valorar. Sin rendimiento registrado al "
             "01/10/2026 o antes: «C-000.000.013». Qué hacer: en Componer, guarde esas partidas "
-            "con fecha 01/10/2026: sus precios quedan en «Lista Bs de prueba» y su rendimiento a "
-            f"esa fecha ({DE_NUEVO}). Luego vuelva a llevar."
+            f"con fecha 01/10/2026 para registrar su rendimiento a esa fecha ({DE_NUEVO}). Luego "
+            "vuelva a llevar."
         )
         assert (vivo.borrador, vivo.rev) == antes
 

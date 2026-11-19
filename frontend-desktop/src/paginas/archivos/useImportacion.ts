@@ -31,6 +31,8 @@ import { claseDeConflicto } from "../hoja/logicaSecciones";
 // Lo que quedó de la última fusión: se muestra como «Informe de la última fusión».
 export interface FusionGuardada {
   mensaje: string;
+  // Falso si no entró ninguna fila (lo guardado antes de este campo no lo trae: cuenta como que entró).
+  entro?: boolean;
   fusion: ResumenDeFusionRespuesta;
   informe: FilaDeInforme[];
 }
@@ -227,7 +229,7 @@ export function useImportacion(opciones: Opciones) {
         async (r) => {
           aplicar({
             importacion: null,
-            fusion: { mensaje: r.mensaje, fusion: r.fusion, informe: r.informe },
+            fusion: { mensaje: r.mensaje, entro: r.entro ?? true, fusion: r.fusion, informe: r.informe },
             lectura: vigentes.current.lectura,
           });
           // La fusión cambió el borrador: la página toma su resumen y lo vuelve a leer.

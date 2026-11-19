@@ -736,7 +736,9 @@ def agregar(
 
     Orden: ya guardado, `rev`, la partida en el catalogo (`PartidaFueraDelCatalogo`), la cantidad
     y el calculo (`HojaInvalida` con el texto de la regla de las cifras o de la Tarea 8) y la lista
-    de la obra (`SinListaDeLaObra`). Si algo falla, el borrador no cambia."""
+    de la obra (`SinListaDeLaObra`). Si algo falla, el borrador no cambia. Una partida que la
+    Hoja no puede valorar entra PENDIENTE: lo que se hace con ella lo decide quien llama
+    (`elaboracion.agregar` avisa; `elaboracion.llevar_a_la_hoja` no lleva nada)."""
     clave: list[str] = []
 
     def construir(vivo: BorradorVivo) -> hoja.Borrador:

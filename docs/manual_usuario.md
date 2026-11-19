@@ -762,7 +762,7 @@ se riega). En Componer se declara así, sin hacer la cuenta a mano:
 
 1. En la tabla «Materiales», escriba en «Consumo por unidad» la cantidad **neta**, la que queda en la
    obra. Por ejemplo `0,50`.
-2. En «Desperdicio (%)» escriba el porcentaje: `4` es 4 %. Debe estar entre 0 y 100. Vacío o `0`, el
+2. En «Desperdicio (%)» escriba el porcentaje: `4` es 4 %. Debe ser de 0 a menos de 100. Vacío o `0`, el
    material no lleva desperdicio.
 3. En «Desglose en vivo» aparece la lista «Materiales con desperdicio», una línea por material, por
    ejemplo «Emulsión asfáltica (fila 1): consume 0,52 (0,50 + 4 %)». La cantidad con desperdicio la
@@ -771,7 +771,7 @@ se riega). En Componer se declara así, sin hacer la cuenta a mano:
    Componer vuelven tal como los escribió.
 
 Si el porcentaje está mal escrito, el desglose muestra un «Aviso», por ejemplo «En Materiales, fila 1
-(«Emulsión asfáltica»), el desperdicio «150» debe estar entre 0 y 100 (es un porcentaje: 4 es 4 %).».
+(«Emulsión asfáltica»), el desperdicio «150» debe ser de 0 a menos de 100 (es un porcentaje: 4 es 4 %).».
 Por ahora la Hoja no muestra la neta ni el porcentaje: para verlos o cambiarlos, abra la partida en
 Componer.
 

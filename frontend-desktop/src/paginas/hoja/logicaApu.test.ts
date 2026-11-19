@@ -137,7 +137,7 @@ describe("dónde está el error de un 422", () => {
       { campo: "desperdicio", fila: 2 },
     ],
     [
-      "materiales, fila 1: el desperdicio «150» debe estar entre 0 y 100 (es un porcentaje: 4 es 4 %).",
+      "materiales, fila 1: el desperdicio «150» debe ser de 0 a menos de 100 (es un porcentaje: 4 es 4 %).",
       { campo: "desperdicio", fila: 1 },
     ],
     ["materiales, fila 2: la cantidad no puede ser negativa", { campo: "linea", grupo: "materiales", fila: 2 }],

@@ -11,6 +11,7 @@ import {
   textoDeCambiosAGuardar,
   textoDeDesgloseAGuardar,
   textoDeExito,
+  textoDePendientesAlGuardar,
   textoDeVersionAGuardar,
   usuarioDeSesion,
 } from "./logicaGuardar";
@@ -94,6 +95,18 @@ describe("textos", () => {
   });
 });
 
+describe("partidas sin precio al guardar (prueba en vivo del 18/11/2026)", () => {
+  test("singular y plural; sin pendientes, nada", () => {
+    expect(textoDePendientesAlGuardar(0)).toBeNull();
+    expect(textoDePendientesAlGuardar(1)).toBe(
+      "1 partida está sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarla. En Partidas, el estado de la fila dice por qué.",
+    );
+    expect(textoDePendientesAlGuardar(3)).toBe(
+      "3 partidas están sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarlas. En Partidas, el estado de cada fila dice por qué.",
+    );
+  });
+});
+
 describe("qué le pasó al guardar", () => {
   const e = (estado: number, detalle: string, cuerpo: unknown = null) => new ErrorDeApi(estado, detalle, null, cuerpo);
 
@@ -103,6 +116,11 @@ describe("qué le pasó al guardar", () => {
   test("409 versión más nueva: la versión sale del campo `version_mas_nueva` del contrato (3d-1) y, sin él, del texto", () => {
     expect(clasificarErrorDeGuardado(e(409, MAS_NUEVA, { detalle: MAS_NUEVA, version_mas_nueva: "007" })).version).toBe("007");
     expect(clasificarErrorDeGuardado(e(409, MAS_NUEVA, { detalle: MAS_NUEVA })).version).toBe("004");
+  });
+  test("422 «Ese desglose ya está guardado.»: clase propia (el servidor ya vació la cuenta del borrador)", () => {
+    const d = "Ese desglose ya está guardado.";
+    expect(clasificarErrorDeGuardado(e(422, d))).toEqual({ clase: "desglose-ya-guardado", mensaje: d, version: null });
+    expect(clasificarErrorDeGuardado(e(422, "No hay cambios para guardar: edite alguna celda primero.")).clase).toBe("rechazo");
   });
   test("409 rev viejo", () => {
     const d = "El borrador cambió en otra ventana: vuelva a cargarlo.";
@@ -177,7 +195,7 @@ describe("A.6: el desglose del desperdicio en plural (arbitraje de la revisión,
       "Se guardará el desglose del desperdicio de 2 líneas. La cantidad no cambia, así que la versión 002 sigue siendo la misma.",
     );
     expect(textoDeVersionAGuardar(3, 2, "002")).toBe(
-      "Se registrarán 1 cambio en una versión nueva (sale de la 002). Con ella se guarda también el desglose del desperdicio de 2 líneas.",
+      "Se registrará 1 cambio en una versión nueva (sale de la 002). Con ella se guarda también el desglose del desperdicio de 2 líneas.",
     );
     expect(textoDeExito({ ...r, version_nueva: false, desgloses: 2 }, "OF-001")).toBe(
       "Se guardó el desglose del desperdicio de 2 líneas. La cantidad no cambió, así que la versión 002 sigue siendo la misma.",

@@ -127,6 +127,21 @@ describe("el informe como filas de tabla", () => {
       { id: "informe-1", tipo: "Pendiente", referencia: "Capa AMB", fila: "A2", mensaje: "Sin altura" },
     ]);
   });
+  test("las cifras del lector se leen con coma decimal (prueba en vivo del 18/11/2026: «2.5 m provisionales»)", () => {
+    const filas = filasDelInforme([
+      {
+        tipo: "Pendiente",
+        referencia: "3F",
+        fila: "BAN-01",
+        mensaje: "ambiente BAN-01: altura pendiente; entra con 2.5 m provisionales hasta cargar la real",
+      },
+      { tipo: "Aproximado", referencia: "4A", fila: "SALON-L", mensaje: "SALON-L: no es rectangular; se importa su caja envolvente (6.0000 x 4.0000 m)" },
+    ]);
+    expect(filas.map((f) => f.mensaje)).toEqual([
+      "ambiente BAN-01: altura pendiente; entra con 2,5 m provisionales hasta cargar la real",
+      "SALON-L: no es rectangular; se importa su caja envolvente (6,0000 x 4,0000 m)",
+    ]);
+  });
 });
 
 describe("textos de resultado", () => {

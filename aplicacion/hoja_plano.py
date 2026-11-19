@@ -203,12 +203,14 @@ class Importacion:
 
 @dataclass(frozen=True, slots=True)
 class Fusion:
-    """Lo que deja fusionar: el borrador vivo (con su `rev` nuevo) y lo que se muestra."""
+    """Lo que deja fusionar: el borrador vivo (con su `rev` nuevo) y lo que se muestra. `entro`:
+    si el borrador cambió (falso si toda fila se omitió o ya estaba igual en el espacio)."""
 
     vivo: BorradorVivo
     resultado: ResultadoImportacion
     informe: tuple[ItemInforme, ...]
     resumen: hoja.ResumenDeFusion
+    entro: bool = True
 
 
 def _borrar(carpeta: Path) -> None:
@@ -475,7 +477,8 @@ def fusionar(sesion: Session, vivo: BorradorVivo, rev: int, *, usuario: str = ""
     de la clasica) o un espacio que no vale (`HojaInvalida`/`ValueError`); y, si cambia,
     `completar_composiciones` y `reemplazar` (sube `rev`). Luego anota la importacion en el
     registro de la obra (`aplicacion.importaciones`, sin guardar, a nombre de `usuario`) y la
-    descarta."""
+    descarta. Si no entró ninguna fila (el borrador no cambió) no se anota: no hay nada que guardar,
+    y la fila quedaría «sin guardar» para siempre (prueba en vivo del 18/11/2026)."""
     hechas: dict[str, object] = {}
 
     def construir(actual: BorradorVivo) -> hoja.Borrador:
@@ -497,8 +500,10 @@ def fusionar(sesion: Session, vivo: BorradorVivo, rev: int, *, usuario: str = ""
         resultado: ResultadoImportacion = hechas["resultado"]  # type: ignore[assignment]
         informe: tuple[ItemInforme, ...] = hechas["informe"]  # type: ignore[assignment]
         resumen = hoja.resumen_de_la_fusion(resultado, informe)
-        _anotar_en_el_registro(fundido, str(hechas["archivo"]), usuario, resumen)
-    return Fusion(fundido, resultado, informe, resumen)
+        entro = fundido.rev != rev
+        if entro:
+            _anotar_en_el_registro(fundido, str(hechas["archivo"]), usuario, resumen)
+    return Fusion(fundido, resultado, informe, resumen, entro)
 
 
 def _anotar_en_el_registro(
@@ -591,19 +596,55 @@ def vista_de_importacion(resultado: ResultadoImportacion) -> dict:
     }
 
 
+def _mensaje_sin_filas(fusion: Fusion) -> str:
+    """Lo que se dice cuando no entró ninguna fila: cuántas se omitieron y un motivo de ejemplo (el
+    del informe, «A-01: su id ya lo usa otra fila de la hoja»), o que ya estaban igual."""
+    archivo = fusion.resultado.archivo
+    omitidas = [i for i in fusion.informe if i.tipo is TipoItem.OMITIDO]
+    if omitidas:
+        cuantas = (
+            "la fila del plano se omitió"
+            if len(omitidas) == 1
+            else (f"las {len(omitidas)} filas del plano se omitieron")
+        )
+        motivo = f"{cuantas}. Por ejemplo, {_sin_referencias(omitidas[0].mensaje)}."
+    else:
+        motivo = "lo que trae el plano ya está igual en el espacio."
+    return (
+        f"No entró ninguna fila de «{archivo}»: {motivo} El borrador no cambió: no hay nada que "
+        "guardar."
+    )
+
+
+def _por_tipo(por_tipo: Sequence[tuple[str, int]]) -> list[dict]:
+    """Los conteos de la fusión con «Importado» contando lo que de verdad entró: lo que leyó el
+    plano menos lo omitido, que el lector contó como importado (re-verificación del 18/11/2026:
+    «Importado 33» junto a «Omitido 33» cuando no entró nada)."""
+    cuentas = dict(por_tipo)
+    importado = hoja.ROTULOS_DEL_INFORME[TipoItem.IMPORTADO]
+    omitido = cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.OMITIDO], 0)
+    return [
+        {"rotulo": r, "cantidad": max(n - omitido, 0) if r == importado else n} for r, n in por_tipo
+    ]
+
+
 def vista_de_fusion(fusion: Fusion) -> dict:
-    """El informe de la ultima fusion (P:1480-1485) y el mensaje de exito (P:1367-1373)."""
+    """El informe de la ultima fusion (P:1480-1485) y el mensaje de exito (P:1367-1373) o, si no
+    entró ninguna fila, el que lo dice (`_mensaje_sin_filas`)."""
     filas = fusion.resultado.filas
     return {
+        "entro": fusion.entro,
         "fusion": {
-            "por_tipo": [{"rotulo": r, "cantidad": n} for r, n in fusion.resumen.por_tipo],
+            "por_tipo": _por_tipo(fusion.resumen.por_tipo),
             "filas_por_tabla": [
                 {"rotulo": r, "cantidad": n} for r, n in fusion.resumen.filas_por_tabla
             ],
             "origenes": fusion.resumen.origenes,
         },
         "informe": filas_del_informe(fusion.informe),
-        "mensaje": (
+        "mensaje": _mensaje_sin_filas(fusion)
+        if not fusion.entro
+        else (
             f"Se fusionó «{fusion.resultado.archivo}» con el borrador de la hoja: "
             f"{filas['esp_ambientes']} ambientes, {filas['esp_fuentes']} fuentes y "
             f"{filas['esp_puntos']} puntos. Revise las filas en las tablas de abajo; la auditoría "

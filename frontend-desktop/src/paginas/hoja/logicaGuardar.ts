@@ -76,7 +76,8 @@ export function textoDeDesgloseAGuardar(n: number, version: string): string {
 
 // La mezcla (celdas y desgloses): la versión registra solo las celdas; los desgloses se dicen aparte (arbitraje de A.6, DS-48i).
 export function textoDeVersionAGuardar(cambios: number, desgloses: number, version: string): string {
-  const registrados = `Se registrarán ${textoDeCambiosAGuardar(cambios - desgloses)} en una versión nueva (sale de la ${version}).`;
+  const celdas = cambios - desgloses;
+  const registrados = `Se ${celdas === 1 ? "registrará" : "registrarán"} ${textoDeCambiosAGuardar(celdas)} en una versión nueva (sale de la ${version}).`;
   return desgloses > 0 ? `${registrados} Con ella se guarda también el desglose del desperdicio de ${lineas(desgloses)}.` : registrados;
 }
 
@@ -96,6 +97,15 @@ export function motivoParaNoGuardar({ fuente, primera, cambios, soloLectura, sol
       : "Escriba la fuente del cambio: por qué se cambia y con qué respaldo.";
   }
   return null;
+}
+
+// Prueba en vivo del 18/11/2026: guardar con partidas «Pendiente» se permite, pero la versión queda con ese error (ERROR del
+// informe) y no se puede enviar a aprobación; el diálogo lo dice antes. null si no hay ninguna.
+export function textoDePendientesAlGuardar(n: number): string | null {
+  if (n <= 0) return null;
+  return n === 1
+    ? "1 partida está sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarla. En Partidas, el estado de la fila dice por qué."
+    : `${n} partidas están sin precio («Pendiente»): la versión se guardará con ese error y no se podrá enviar a aprobación hasta valorarlas. En Partidas, el estado de cada fila dice por qué.`;
 }
 
 export function textoDeCambiosAGuardar(n: number): string {
@@ -122,8 +132,21 @@ export function usuarioDeSesion(sesion: { nombre: string; login: string }): stri
 }
 
 // «mas-nueva»: otra persona guardó una versión después; «rev»: el borrador cambió en otra ventana; «ya-guardado»: este
-// borrador ya se guardó; «ausente»: el borrador ya no está (o el caso cambió); «permiso», «rechazo» (422), «base» (503), «otro».
-export type ClaseDeErrorDeGuardado = "mas-nueva" | "rev" | "ya-guardado" | "ausente" | "permiso" | "rechazo" | "base" | "otro";
+// borrador ya se guardó; «ausente»: el borrador ya no está (o el caso cambió); «desglose-ya-guardado» (422 del anexo A.6: otro ya
+// guardó ese desglose y el servidor vació la cuenta del borrador); «permiso», «rechazo» (422), «base» (503), «otro».
+export type ClaseDeErrorDeGuardado =
+  | "mas-nueva"
+  | "rev"
+  | "ya-guardado"
+  | "ausente"
+  | "desglose-ya-guardado"
+  | "permiso"
+  | "rechazo"
+  | "base"
+  | "otro";
+
+// El 422 de `aplicacion/hoja_guardado.py` (DESGLOSE_YA_GUARDADO): no se escribió nada, pero el borrador dejó de contar ese desglose.
+export const DESGLOSE_YA_GUARDADO = "Ese desglose ya está guardado.";
 
 export interface ErrorDeGuardado {
   clase: ClaseDeErrorDeGuardado;
@@ -163,7 +186,9 @@ export function clasificarErrorDeGuardado(error: unknown): ErrorDeGuardado {
     return { clase: "otro", mensaje, version: null };
   }
   if (error.estado === 403) return { clase: "permiso", mensaje, version: null };
-  if (error.estado === 422) return { clase: "rechazo", mensaje, version: null };
+  if (error.estado === 422) {
+    return { clase: d === DESGLOSE_YA_GUARDADO ? "desglose-ya-guardado" : "rechazo", mensaje, version: null };
+  }
   if (error.estado === 503) return { clase: "base", mensaje: d === "" ? MENSAJE_DE_BASE : mensaje, version: null };
   return { clase: "otro", mensaje, version: null };
 }

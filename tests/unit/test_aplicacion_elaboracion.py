@@ -159,3 +159,21 @@ def test_es_rendimiento_vigente():
     assert es_rendimiento_vigente("estimado", dia, dia) is True
     assert es_rendimiento_vigente("estimado", date(2026, 5, 5), dia) is False
     assert not any(es_rendimiento_vigente(tipo.value, dia, dia) for tipo in otros)
+
+
+# --- el cálculo y la nota de un ítem del cómputo (prueba en vivo del 2026-11-18) ---------------
+
+
+def test_un_calculo_de_la_regla_que_no_da_la_cantidad_no_se_usa_y_la_nota_cita_la_regla():
+    """`_cuadra` en negativo: la regla da 4 y el cómputo dice 5; no se inventa un cálculo que no
+    cuadra (R1 lo marcaría como error): la fila entra sin cálculo y la nota cita la regla."""
+    from aplicacion.elaboracion import PartidaParaLlevar, _calculo_y_nota
+
+    no_cuadra = PartidaParaLlevar(
+        "OBRA-04", Decimal("5"), origen="F-1", regla="a * 2", parametros={"a": Decimal("2")}
+    )
+    assert _calculo_y_nota(no_cuadra) == ("", "Del cómputo: F-1, con la regla a * 2.")
+    cuadra = PartidaParaLlevar(
+        "OBRA-04", Decimal("4"), origen="F-1", regla="a * 2", parametros={"a": Decimal("2")}
+    )
+    assert _calculo_y_nota(cuadra) == ("2*2", "Del cómputo: F-1.")

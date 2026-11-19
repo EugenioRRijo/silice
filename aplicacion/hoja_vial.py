@@ -35,20 +35,26 @@ Vive aparte de `aplicacion/vial.py` porque la Hoja importa aquel módulo (`regla
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from datetime import date
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from adapters.vial.constantes import PARTIDAS_VIALES
 from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Tramo
 from adapters.vial.reglas import ReglasViales
-from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, hoja_partidas, vial
-from aplicacion.listas_para_armar import lista_para_armar
+from aplicacion import (
+    elaboracion,
+    hoja,
+    hoja_borradores,
+    hoja_edicion,
+    hoja_partidas,
+    hoja_sin_valorar,
+    vial,
+)
 from core import models
-from core.catalog import Catalogo, CatalogoIncompleto
+from core.catalog import Catalogo
 from core.contracts import ItemComputo, OrigenTipo
 from core.contracts.verificacion import ReglaVerificacion
 
@@ -76,10 +82,9 @@ class BorradorDeOtraVersion(Exception):  # noqa: N818
     quieren llevar (la API responde 409); el mensaje dice las dos y qué hacer."""
 
 
-class PartidasSinValorar(Exception):  # noqa: N818
-    """Alguna partida de los tramos está en el catálogo, pero la Hoja no puede armar su APU con la
-    lista de la versión y a su fecha: quedaría PENDIENTE (la API responde 409). El mensaje dice
-    qué partidas, qué insumos faltan en qué lista, qué rendimiento falta y qué hacer."""
+#: El 409 de las partidas que la Hoja no puede valorar vive con su mensaje (`hoja_sin_valorar`).
+PartidasSinValorar = hoja_sin_valorar.PartidasSinValorar
+INSUMOS_POR_PARTIDA = hoja_sin_valorar.INSUMOS_POR_PARTIDA
 
 
 _LIGANTES = {PARTIDAS_VIALES[c][0] for c in ("imprimacion_ligante", "riego_adherencia_ligante")}
@@ -209,139 +214,6 @@ def _sin_apu(sesion: Session, items: Sequence[ItemComputo]) -> list[str]:
     return faltan
 
 
-#: Cuántos insumos sin precio se nombran por partida (el resto solo se cuenta).
-INSUMOS_POR_PARTIDA = 3
-
-
-@dataclass(frozen=True, slots=True)
-class _SinValorar:
-    """Por qué la Hoja no puede armar el APU de una partida con su lista y a su fecha."""
-
-    codigo: str
-    sin_rendimiento: bool
-    sin_precio: tuple[str, ...]  # las descripciones de los insumos sin precio en la lista
-    insumos_sin_precio: tuple[int, ...]
-    otro: str | None  # el motivo del catálogo cuando no es ninguno de los dos
-
-
-def _por_que(sesion: Session, codigo: str, lista: models.ListaPrecios, fecha: date) -> _SinValorar:
-    """Por qué la Hoja no armó la partida `codigo` (solo para redactar el mensaje; quien decide es
-    `hoja_edicion.completar`): rendimiento estimado al `fecha` o antes, y los insumos de su APU
-    sin precio en `lista`; si no es nada de eso, el motivo del catálogo."""
-    partida = sesion.scalars(select(models.Partida).where(models.Partida.codigo == codigo)).one()
-    con_rendimiento = any(
-        elaboracion.es_rendimiento_vigente(r.tipo, r.fecha, fecha) for r in partida.rendimientos
-    )
-    con_precio = set(
-        sesion.scalars(
-            select(models.PrecioInsumo.insumo_id).where(models.PrecioInsumo.lista_id == lista.id)
-        )
-    )
-    faltan = [linea.insumo for linea in partida.composicion if linea.insumo_id not in con_precio]
-    otro = (
-        None
-        if faltan or not con_rendimiento
-        else _motivo_del_catalogo(sesion, codigo, lista, fecha)
-    )
-    return _SinValorar(
-        codigo,
-        not con_rendimiento,
-        tuple(dict.fromkeys(insumo.descripcion for insumo in faltan)),
-        tuple(insumo.id for insumo in faltan),
-        otro,
-    )
-
-
-def _motivo_del_catalogo(
-    sesion: Session, codigo: str, lista: models.ListaPrecios, fecha: date
-) -> str:
-    try:
-        Catalogo(sesion).composicion(codigo, fecha=fecha, lista=lista)
-    except (KeyError, ValueError, CatalogoIncompleto) as error:
-        return str(error)
-    return "la Hoja no pudo armar su APU con esa lista"
-
-
-def _listas_con_precio(sesion: Session, insumos: set[int], fuera: int) -> list[str]:
-    """Las listas (salvo `fuera`) con precio de alguno de esos insumos, la más nueva primero: donde
-    los dejó Componer."""
-    if not insumos:
-        return []
-    filas = sesion.execute(
-        select(models.ListaPrecios.nombre)
-        .join(models.PrecioInsumo, models.PrecioInsumo.lista_id == models.ListaPrecios.id)
-        .where(models.PrecioInsumo.insumo_id.in_(insumos), models.ListaPrecios.id != fuera)
-        .group_by(models.ListaPrecios.id, models.ListaPrecios.nombre)
-        .order_by(models.ListaPrecios.fecha_vigencia.desc(), models.ListaPrecios.id.desc())
-    )
-    return [nombre for (nombre,) in filas]
-
-
-def _citadas(textos: Sequence[str]) -> str:
-    return ", ".join(f"«{texto}»" for texto in textos)
-
-
-def _insumos(descripciones: Sequence[str]) -> str:
-    resto = len(descripciones) - INSUMOS_POR_PARTIDA
-    nombradas = _citadas(descripciones[:INSUMOS_POR_PARTIDA])
-    return nombradas if resto <= 0 else f"{nombradas} y {resto} más"
-
-
-def _mensaje_sin_valorar(
-    faltas: Sequence[_SinValorar],
-    lista: models.ListaPrecios,
-    version: str,
-    fecha: date,
-    otras_listas: Sequence[str],
-    *,
-    componer_sirve: bool,
-) -> str:
-    """El 409 de `PartidasSinValorar`: qué partidas, por qué y qué hacer, en un solo párrafo.
-    `componer_sirve`: guardar en Componer con la fecha del borrador deja los precios en `lista`
-    (es la lista para armar de esa misma fecha, `listas_para_armar.lista_de_hoy`)."""
-    dia = f"{fecha:%d/%m/%Y}"
-    cuantas = (
-        "1 partida quedaría pendiente"
-        if len(faltas) == 1
-        else f"{len(faltas)} partidas quedarían pendientes"
-    )
-    sin_precio = [f for f in faltas if f.sin_precio]
-    como = ", sin precio," if sin_precio else ""
-    partes = [
-        f"No se llevó nada: {cuantas} en el Presupuesto{como} porque el Presupuesto arma cada APU "
-        f"con la lista «{lista.nombre}» de la versión {version}, al {dia}, y con ella no se pueden "
-        "valorar."
-    ]
-    if sin_precio:
-        detalle = "; ".join(f"«{f.codigo}» ({_insumos(f.sin_precio)})" for f in sin_precio)
-        partes.append(f"Insumos sin precio en «{lista.nombre}»: {detalle}.")
-        if otras_listas:
-            partes.append(f"Esos precios están en {_citadas(otras_listas)}.")
-    sin_rendimiento = [f.codigo for f in faltas if f.sin_rendimiento]
-    if sin_rendimiento:
-        partes.append(f"Sin rendimiento registrado al {dia} o antes: {_citadas(sin_rendimiento)}.")
-    otros = [f for f in faltas if f.otro is not None]
-    if otros:
-        partes.append("; ".join(f"«{f.codigo}»: {f.otro}" for f in otros) + ".")
-    de_nuevo = (
-        "si la partida ya existía, cambie también las condiciones del rendimiento para que se "
-        "registre de nuevo"
-    )
-    if componer_sirve:
-        partes.append(
-            f"Qué hacer: en Componer, guarde esas partidas con fecha {dia}: sus precios quedan en "
-            f"«{lista.nombre}» y su rendimiento a esa fecha ({de_nuevo}). Luego vuelva a llevar."
-        )
-    else:
-        pasos = [f"cargue esos precios en «{lista.nombre}»"] if sin_precio else []
-        if sin_rendimiento:
-            pasos.append(
-                f"en Componer, guarde esas partidas con fecha {dia} o anterior ({de_nuevo})"
-            )
-        partes.append(f"Qué hacer: {'; '.join(pasos)}. Luego vuelva a llevar.")
-    return " ".join(partes)
-
-
 def _valorado(
     sesion: Session,
     vivo: hoja_borradores.BorradorVivo,
@@ -355,7 +227,7 @@ def _valorado(
     Quien decide es la Hoja misma: `hoja_edicion.completar` (la lista de `lista_para_completar`,
     la fecha del borrador, `hoja.completar_composiciones`), lo mismo que corre
     `hoja_edicion.cambiar_borrador`; una partida de `items` que no sale compuesta quedaría
-    pendiente. `_por_que` solo redacta el motivo. Si todas salen, se devuelve ese borrador
+    pendiente. `hoja_sin_valorar` solo redacta el motivo. Si todas salen, se devuelve ese borrador
     completo: así llevar otra vez compone una partida que había quedado pendiente aunque los
     renglones no cambien."""
     nuevas = sorted({item.codigo_partida for item in items} - set(borrador.composiciones))
@@ -366,29 +238,22 @@ def _valorado(
     if not faltan:
         return completo
     lista, _valoracion = hoja_edicion.lista_para_completar(sesion, vivo, borrador.fecha)
-    faltas = [_por_que(sesion, codigo, lista, borrador.fecha) for codigo in faltan]
-    insumos = {insumo for falta in faltas for insumo in falta.insumos_sin_precio}
-    otras = _listas_con_precio(sesion, insumos, lista.id)
+    cuantas = (
+        "1 partida quedaría pendiente"
+        if len(faltan) == 1
+        else f"{len(faltan)} partidas quedarían pendientes"
+    )
     raise PartidasSinValorar(
-        _mensaje_sin_valorar(
-            faltas,
+        hoja_sin_valorar.explicar(
+            sesion,
+            faltan,
             lista,
             version,
             borrador.fecha,
-            otras,
-            componer_sirve=_componer_escribe_en(sesion, lista, borrador.fecha),
+            vigente=elaboracion.es_rendimiento_vigente,
+            inicio=f"No se llevó nada: {cuantas} en el Presupuesto",
         )
     )
-
-
-def _componer_escribe_en(sesion: Session, lista: models.ListaPrecios, fecha: date) -> bool:
-    """Si Componer, guardando con `fecha`, deja sus precios en `lista`: cuando es la lista para
-    armar a esa fecha y rige desde ese mismo día (`listas_para_armar.lista_de_hoy`). Solo lee."""
-    try:
-        para_armar = lista_para_armar(sesion, fecha)
-    except ValueError:  # SinListaParaArmar
-        return False
-    return para_armar.id == lista.id and lista.fecha_vigencia == fecha
 
 
 def llevar_tramos_a_la_hoja(
