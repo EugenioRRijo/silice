@@ -1,5 +1,6 @@
 // Lo que la pantalla «Riesgo de la obra» lee de lo tecleado y cómo escribe lo que llega. No calcula ningún monto: los
 // percentiles, la reserva y la cobertura los manda el servidor, exactos; aquí solo se redondean a centésimas para leerlos.
+import { ErrorDeApi } from "../../api/cliente";
 import type { PedidoDeProyeccion } from "../../api/riesgo";
 import { leerCifra } from "../../indicadores/cifraEscrita";
 import { centesimasEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
@@ -64,6 +65,14 @@ export const SIN_INICIO = "Indique la fecha de inicio de la obra: la versión no
 
 export function pideLaFechaDeInicio(detalle: string): boolean {
   return detalle.startsWith("Indique la fecha de inicio");
+}
+
+// Cuando a una serie le falta historia, el 422 de la API (aplicacion/riesgo/proyeccion.py, `mensaje_de_pocos_meses`) dice dónde se
+// carga: en la página «Índices del BCV». Con ese texto se ofrece el enlace a esa página; es la misma frase que escribe el servidor.
+export const PAGINA_DE_LAS_SERIES = "Índices del BCV";
+
+export function faltaCargarSeries(error: unknown): boolean {
+  return error instanceof ErrorDeApi && error.estado === 422 && error.detalle.includes(`«${PAGINA_DE_LAS_SERIES}»`);
 }
 
 // La ayuda del campo de la fecha de inicio: de dónde sale si se deja vacía.
