@@ -197,7 +197,12 @@ subir nada.
 
    **Por ratificar:** las decisiones del árbitro DS-59 a DS-66 (prueba en vivo: el conteo físico cierra el pasado, ciclos de
    recetas con todas las versiones, valuación futura rechazada, CSV para Excel en español, partida pendiente con aviso en vez
-   de 409, `calculo_de_regla` sobre `ast`, pendiente de otra carpeta, sección «Contraseña»).
+   de 409, `calculo_de_regla` sobre `ast`, pendiente de otra carpeta, sección «Contraseña»), y las de la tanda técnica del
+   2026-11-19, DS-67 a DS-76 (escrituras de la instalación con `BEGIN IMMEDIATE` solo en las rutas que deciden, cifras
+   exactas sin notación científica, respuestas armadas antes del `commit`, índice de aprobaciones sin retener la carpeta,
+   anular el último conteo físico, mezcla de mezclas en orden topológico, gráficos en el orden de su tabla, rótulo del
+   desglose y fechas de las tablas). El Word «Decisiones pendientes de Eugenio - 2026-11-19.docx» de su Escritorio
+   reúne todo lo que espera su respuesta.
 
    **Probado en vivo el 2026-11-18** ([bitácora](bitacora/2026-11-18-prueba-en-vivo.md)): A.6, C9 y P7 funcionan en el
    navegador. La prueba de todas las ventanas dejó hallazgos que se arreglan en las ramas `feature/vivo-*` (§2) y otros
@@ -255,16 +260,11 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
    botón «PDF de este APU» en la pestaña APU (la ruta ya lo admite), guardar `_codigo_libro` en el renglón llevado, y la
    defensa de `patron_banda` sigue siendo una heurística (lo peor que acepta es cúbico).
 8. **Lo que dejaron los anexos, A.6 y A.9** (2026-11-18, actas DS-52, DS-57 y DS-48):
-   - **DS-52:** hay sitios que pasan un `Decimal` a texto con `str` y pueden mostrar notación científica. Están en
-     `listas.py:124,204-206`, `catalogo.py:37`, `obras.py:161-163,211`, `precios_empresa.py:303`,
-     `rendimientos.py:208,219`, `presupuestos_calculo.py:142` y `fcas.py:149,177`. Deben pasar por `api/presentacion.py`.
-   - **DS-57:** hay rutas que vuelven a leer después del commit, en `vial.py:150`, `revision.py:511`,
-     `precios_empresa.py:228` y `aprobaciones.py:303`. Deben armar su respuesta antes, como ya hace la carpeta.
-   - **A.6, lo que quedó fuera:**
-     - el botón de la barra sigue diciendo «Guardar versión…»;
-     - una traza sin responsable necesita una migración de `casos/*.db`;
-     - el rótulo de la llave sale como «AF-LLAVE, material|1»;
-     - [manual_usuario.md](manual_usuario.md) (≈842 y 864) dice todavía que «nace una versión nueva».
+   - **Hecho el 2026-11-19** (tanda técnica, acta DS-67 a DS-76): DS-52 (los `Decimal` de `api/rutas/` pasan por
+     `exacto`), DS-57 (las rutas arman su respuesta antes del `commit`; aprobaciones escribe su índice después, sin
+     retener la carpeta), el botón «Guardar el desglose…» de la franja y de Versiones, el rótulo «AF-LLAVE, material
+     n.º 1» y el manual. Queda de A.6: una traza sin responsable necesita una migración de `casos/*.db`, y mostrar la
+     descripción del insumo en el rótulo cambia el contrato de la API (DS-75).
    - **4.4, L5 y L7:** entran en el próximo recongelado del experimento.
    - **Ola 5:** salir de los ciclos, con `Catalogo.rendimiento_vigente` en `core/`. Espera el aval del tutor.
 
