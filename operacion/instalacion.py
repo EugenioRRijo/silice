@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from operacion.base_datos import Destino, preparar_base
 from operacion.config import ruta_instalacion
-from seguridad.base import abrir_sesion, crear_motor
+from seguridad.base import abrir_sesion, abrir_sesion_de_escritura, crear_motor
 
 __all__ = ["cerrar_motores", "motor_de_instalacion", "sesion_de_instalacion"]
 
@@ -38,8 +38,13 @@ def motor_de_instalacion(entorno: Mapping[str, str] | None = None) -> Engine:
 
 
 @contextmanager
-def sesion_de_instalacion(entorno: Mapping[str, str] | None = None) -> Iterator[Session]:
-    sesion = abrir_sesion(motor_de_instalacion(entorno))
+def sesion_de_instalacion(
+    entorno: Mapping[str, str] | None = None, *, escritura: bool = False
+) -> Iterator[Session]:
+    """La sesión de la instalación. Con `escritura=True` su transacción empieza con
+    `BEGIN IMMEDIATE` (la segunda escritura espera en vez de leer un estado que ya cambió)."""
+    abrir = abrir_sesion_de_escritura if escritura else abrir_sesion
+    sesion = abrir(motor_de_instalacion(entorno))
     try:
         yield sesion
     finally:
