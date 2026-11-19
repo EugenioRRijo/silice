@@ -286,3 +286,18 @@ def test_un_conteo_con_fecha_futura_se_niega(sesion: Session) -> None:
     assert existencia(sesion, mid) == D("0")
     hecho = registrar_ajuste_por_conteo(sesion, mid, hoy, D("5"), usuario=USUARIO, hoy=hoy)
     assert hecho.cantidad == D("5")
+
+
+def test_un_dia_antes_del_conteo_tambien_esta_cerrado(sesion: Session) -> None:
+    """Arbitraje 2026-11-18: frontera del cierre, el dia anterior al conteo (06/11)."""
+    mid = _con_conteo(sesion)
+    cerrado = "conteo físico del 06/11/2026"
+    with pytest.raises(ErrorDeInventario, match=cerrado):
+        registrar_entrada(sesion, mid, date(2026, 11, 5), D("1"), usuario=USUARIO)
+    with pytest.raises(ErrorDeInventario, match=cerrado):
+        registrar_consumo(
+            sesion, mid, date(2026, 11, 5), D("1"), usuario=USUARIO, ahora=datetime(2026, 11, 7)
+        )
+    with pytest.raises(ErrorDeInventario, match=cerrado):
+        registrar_despacho(sesion, mid, date(2026, 11, 5), D("1"), usuario=USUARIO)
+    assert existencia(sesion, mid) == D("148")

@@ -661,3 +661,21 @@ def test_el_autociclo_se_ve_aunque_otra_mezcla_use_la_receta_rota(ins, caso) -> 
         _calcular(ins, caso, NOV)
     assert str(error.value) == AUTOCICLO_MZ1
     assert _calculos(ins) == 0
+
+
+def test_registrar_de_nuevo_la_receta_con_la_misma_fecha_desbloquea_el_mes(ins, caso) -> None:
+    """Arbitraje 2026-11-18: se sigue el consejo del mensaje. La receta corregida, registrada con
+    la misma fecha de vigencia, gana por ser posterior y el mes se calcula (MZ-1 a 50,70 USD/t,
+    como en `noviembre_usd`)."""
+    cp.materiales(ins)
+    _receta_vieja(ins, "MZ-1", [("MZ-1", "0.94", "propio"), ("CA-30", "0.05", "comprado")])
+    cp.entrada(ins, "AGR-12", "150", cp.dia(5))
+    cp.entrada(ins, "AGR-34", "50", cp.dia(5))
+    cp.entrada(ins, "MZ-1", "100", cp.dia(10))
+    cp.costos_usd(ins)
+    cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
+    with pytest.raises(ErrorDeCalculo, match="Registre de nuevo la receta de MZ-1"):
+        _calcular(ins, caso, NOV)
+    cp.receta(ins, desde=date(2026, 10, 1))  # RECETA_A, la misma fecha de vigencia
+    calculo = _calcular(ins, caso, NOV)
+    assert calculo.por_tonelada["MZ-1"] == D("50.70")
