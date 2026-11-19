@@ -2,6 +2,7 @@ import { CheckmarkOutline } from "@carbon/icons-react";
 import { Button } from "@carbon/react";
 import { useContext } from "react";
 import { Severidad } from "../../comun/Severidad";
+import { cifrasEnTextoEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoAuditoria } from "./ContextoAuditoria";
 import type { EstadoFila } from "./logica";
 
@@ -13,23 +14,25 @@ interface Props {
   rotulo?: string;
 }
 
-// El Estado de una fila: ícono y nombre de la severidad (el color nunca va solo) y el texto completo, que envuelve.
+// El Estado de una fila: ícono y nombre de la severidad (el color nunca va solo) y el texto completo, que envuelve. El
+// texto lo escriben las reglas del núcleo con punto decimal («(1.89 m3)»): se lee en es-VE (prueba en vivo del 18/11/2026).
 export function EstadoDeFila({ estado, claves, rotulo }: Props) {
   const verEnRevision = useContext(ContextoAuditoria);
+  const texto = cifrasEnTextoEsVe(estado.texto);
   if (estado.severidad === null) {
     return (
-      <span className="silice-hoja__estado-fila" title={estado.texto}>
+      <span className="silice-hoja__estado-fila" title={texto}>
         <span className="silice-sev--celda">
           <CheckmarkOutline size={16} aria-hidden="true" />
-          <span>{estado.texto}</span>
+          <span>{texto}</span>
         </span>
       </span>
     );
   }
   return (
-    <span className="silice-hoja__estado-fila" title={estado.texto}>
+    <span className="silice-hoja__estado-fila" title={texto}>
       <Severidad valor={estado.severidad} />
-      <span className="silice-hoja__estado-texto">{estado.texto}</span>
+      <span className="silice-hoja__estado-texto">{texto}</span>
       {verEnRevision !== null && claves !== undefined && rotulo !== undefined && (
         <Button
           kind="ghost"
