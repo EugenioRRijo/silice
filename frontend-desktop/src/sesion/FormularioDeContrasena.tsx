@@ -25,6 +25,7 @@ export function FormularioDeContrasena({ alCambiar, alCambiado, alEscribir }: Pr
   const [intentado, setIntentado] = useState(false);
 
   const noCoincide = confirmacion !== "" && confirmacion !== nueva;
+  const sinConfirmar = intentado && confirmacion === "";
   const escribir = (poner: (valor: string) => void) => (valor: string) => {
     poner(valor);
     alEscribir?.();
@@ -78,8 +79,8 @@ export function FormularioDeContrasena({ alCambiar, alCambiado, alEscribir }: Pr
         autoComplete="new-password"
         value={confirmacion}
         onChange={(e) => escribir(setConfirmacion)(e.target.value)}
-        invalid={(intentado || confirmacion !== "") && noCoincide}
-        invalidText="Las contraseñas nuevas no coinciden."
+        invalid={sinConfirmar || ((intentado || confirmacion !== "") && noCoincide)}
+        invalidText={sinConfirmar ? "Confirme la contraseña nueva." : "Las contraseñas nuevas no coinciden."}
       />
       <AvisoError error={error} titulo="No se pudo cambiar la contraseña" />
       <Button type="submit" disabled={enviando}>

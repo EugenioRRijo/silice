@@ -76,9 +76,23 @@ export function useSesion() {
 
   // Cambio obligatorio: la API acepta la clave nueva y la persona entra con la sesion ya completa, que se vuelve
   // a leer (acciones, modo entrega y un token anti-CSRF nuevo si la API lo rota).
+  // La respuesta del POST es la ficha nueva (mismo cuerpo que `POST /v1/sesion`, con otro token anti-CSRF): se usa tal cual. Una
+  // API que no la trae se relee con `GET /v1/sesion`. Un 401 es que la sesión ya no valía (venció o se cerró en otra pestaña).
   const cambiarContrasena = useCallback(async (actual: string, nueva: string) => {
-    await pedir("/v1/sesion/contrasena", { metodo: "POST", cuerpo: { actual, nueva } });
-    const sesion = normalizar(await pedir<SesionRespuesta>("/v1/sesion"));
+    let respuesta: unknown;
+    try {
+      respuesta = await pedir<unknown>("/v1/sesion/contrasena", { metodo: "POST", cuerpo: { actual, nueva } });
+    } catch (error) {
+      if (error instanceof ErrorDeApi && error.estado === 401) {
+        fijarCsrf(null);
+        terminada = true;
+        setEstado({ tipo: "sin_sesion", expirada: true });
+      }
+      throw error;
+    }
+    const trae = (r: unknown): r is Parameters<typeof normalizar>[0] =>
+      typeof r === "object" && r !== null && "login" in r && "csrf" in r;
+    const sesion = normalizar(trae(respuesta) ? respuesta : await pedir<SesionRespuesta>("/v1/sesion"));
     fijarCsrf(sesion.csrf);
     terminada = false;
     setEstado({ tipo: "activa", sesion });
