@@ -92,6 +92,7 @@ def _confirmar[T](
     try:
         resultado = accion()
         if antes_de_confirmar is not None:
+            sesion.flush()
             antes_de_confirmar()
         sesion.commit()
     except BaseException:

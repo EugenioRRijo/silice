@@ -51,6 +51,7 @@ from api.dependencias import (
     SesionDeEscrituraDep,
     SesionDep,
     SesionInstalacionDep,
+    sin_culpar_a_la_entrada,
     url_de_la_peticion,
 )
 from api.esquemas_vial import (
@@ -135,22 +136,24 @@ def _respuesta(sesion, proyecto: str, codigo: str) -> TramosRespuesta:
 
 def _guardar(sesion, proyecto: str, codigo: str, tramos, activa: SesionActiva, fuente: str):
     # La respuesta se arma antes del commit: tras él, consultar abriría otra transacción (DS-57).
-    armada: list[TramosRespuesta] = []
     try:
-        vial.guardar_tramos(
+        respuesta = vial.guardar_tramos(
             sesion,
             vial.version_de(sesion, proyecto, codigo),
             tramos,
             usuario=activa.usuario,
             ahora=ahora(),
             fuente=fuente,
-            antes_de_confirmar=lambda: armada.append(_respuesta(sesion, proyecto, codigo)),
+            antes_de_confirmar=sin_culpar_a_la_entrada(
+                lambda: _respuesta(sesion, proyecto, codigo)
+            ),
         )
     except vial.VersionBloqueada as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
-    return armada[-1]
+    assert respuesta is not None  # `guardar_tramos` devuelve lo que arma
+    return respuesta
 
 
 @router.get("/tramos", response_model=TramosRespuesta, dependencies=[LEER])

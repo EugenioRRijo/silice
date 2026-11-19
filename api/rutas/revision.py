@@ -43,7 +43,12 @@ from sqlalchemy.orm import Session
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.archivos import nombre_seguro
-from api.dependencias import USUARIO_SIN_CLAVE, SesionDeEscrituraDep, SesionDep
+from api.dependencias import (
+    USUARIO_SIN_CLAVE,
+    SesionDeEscrituraDep,
+    SesionDep,
+    sin_culpar_a_la_entrada,
+)
 from api.presentacion import exacto
 from api.proteccion import LIMITE_CUERPO
 from api.redaccion import pulir
@@ -498,7 +503,12 @@ def dictaminar(
             armo = logica.revisor_armo(v, login_revisor=activa.login, empresa_propia=mi_empresa)
             # Los dictámenes (con el nuevo) se leen antes del commit: tras él, consultar abriría
             # otra transacción (DS-57).
-            dictamenes: list[list[DictamenAnterior]] = []
+            dictamenes: list[DictamenAnterior] = []
+
+            def leer_los_dictamenes() -> None:
+                nonlocal dictamenes
+                dictamenes = _dictamenes(sesion, v.sha256)
+
             logica.dictaminar(
                 sesion,
                 recibido,
@@ -507,11 +517,11 @@ def dictaminar(
                 revisor=activa.usuario,
                 ahora=ahora(),
                 armo=bool(armo),
-                antes_de_confirmar=lambda: dictamenes.append(_dictamenes(sesion, v.sha256)),
+                antes_de_confirmar=sin_culpar_a_la_entrada(leer_los_dictamenes),
             )
         except ERRORES_DEL_PAQUETE as error:
             raise HTTPException(422, str(error)) from None
-    return DictamenGuardado(mensaje=logica.DICTAMEN_GUARDADO, dictamenes=dictamenes[-1])
+    return DictamenGuardado(mensaje=logica.DICTAMEN_GUARDADO, dictamenes=dictamenes)
 
 
 @router.post(

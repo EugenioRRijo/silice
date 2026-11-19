@@ -40,7 +40,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api.admin_acceso import administrar
 from api.archivos import guardar_subida, nombre_seguro
-from api.dependencias import SesionDeEscrituraDep, SesionDep
+from api.dependencias import SesionDeEscrituraDep, SesionDep, sin_culpar_a_la_entrada
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.presentacion import exacto
 from api.redaccion import pulir
@@ -209,7 +209,12 @@ def crear_lista(
         raise HTTPException(422, MENSAJE_FALTA)
     # La moneda de la carpeta se lee con la lista escrita y antes del commit: tras él, consultar
     # abriría otra transacción (DS-57).
-    de_la_carpeta: list[str | None] = []
+    de_la_carpeta: str | None = None
+
+    def leer_la_moneda() -> None:
+        nonlocal de_la_carpeta
+        de_la_carpeta = moneda_de_la_carpeta(sesion)
+
     with _caso_legible():
         try:
             with _archivo_subido(archivo) as ruta:
@@ -224,7 +229,7 @@ def crear_lista(
                     fuente=fuente,
                     nombre=nombre,
                     dar_de_alta=dar_de_alta,
-                    antes_de_confirmar=lambda: de_la_carpeta.append(moneda_de_la_carpeta(sesion)),
+                    antes_de_confirmar=sin_culpar_a_la_entrada(leer_la_moneda),
                 )
         except ValueError as error:
             raise HTTPException(422, f"No se creó la lista: {_motivo(error)}") from None
@@ -239,7 +244,7 @@ def crear_lista(
         dados_de_alta=list(resumen.dados_de_alta),
         otra_unidad=list(resumen.otra_unidad),
         moneda=moneda,
-        aviso_para_armar=_aviso_para_armar(moneda, de_la_carpeta[-1]),
+        aviso_para_armar=_aviso_para_armar(moneda, de_la_carpeta),
     )
 
 

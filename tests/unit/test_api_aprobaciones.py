@@ -748,7 +748,8 @@ def test_con_la_instalacion_ocupada_el_envio_vale_pronto_y_el_indice_se_repone_d
     sin esperarlo, la escritura del índice se rinde pronto (no los 5 s de `busy_timeout`) y la
     siguiente lectura lo repone."""
     real = indice_aprobaciones.leer_reflejo
-    otra = sqlite3.connect(config.ruta_instalacion(), timeout=0)
+    # la ruta corre en el hilo del servidor de pruebas
+    otra = sqlite3.connect(config.ruta_instalacion(), timeout=0, check_same_thread=False)
 
     def lee_y_otro_toma_la_instalacion(*args, **kwargs):
         leido = real(*args, **kwargs)
@@ -768,7 +769,7 @@ def test_con_la_instalacion_ocupada_el_envio_vale_pronto_y_el_indice_se_repone_d
     assert _eventos_en_la_carpeta() == 1
     with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
         assert conexion.execute("SELECT count(*) FROM mp_indice_aprobacion").fetchone() == (0,)
-    monkeypatch.undo()
+    monkeypatch.setattr(indice_aprobaciones, "leer_reflejo", real)
     assert ana[0].get(f"{RAIZ}/mias").json() == [_fila(1)]
 
 
