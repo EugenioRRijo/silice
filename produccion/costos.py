@@ -49,6 +49,29 @@ def validar_periodo(periodo: str) -> tuple[int, int]:
     return int(coincide.group(1)), int(coincide.group(2))
 
 
+_MESES = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
+
+def periodo_en_palabras(periodo: str) -> str:
+    """El periodo `AAAA-MM` como se le escribe a la persona: «noviembre de 2026»
+    (`validar_periodo`). Los mensajes no dicen el mes en ISO (prueba en vivo 2026-11-18)."""
+    anio, mes = validar_periodo(periodo)
+    return f"{_MESES[mes - 1]} de {anio}"
+
+
 def ultimo_dia_del_mes(periodo: str) -> date:
     """El ultimo dia del periodo `AAAA-MM` (`validar_periodo`); el unico calculo de esta fecha
     para el costo por tonelada y la tasa del cierre (plan vial, Tarea 4b)."""

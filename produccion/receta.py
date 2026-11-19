@@ -12,7 +12,7 @@ la unidad de venta de ese material. Lo comprado no toca el inventario de la aren
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, deque
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -26,6 +26,7 @@ from produccion.inventario import (
     CERO,
     ErrorDeInventario,
     de_toneladas,
+    exigir_fechas_abiertas,
     producido_en_periodo,
     registrar_consumo,
     registrar_entrada,
@@ -105,6 +106,49 @@ def _coma(valor: Decimal) -> str:
     return format(valor, "f").replace(".", ",")
 
 
+def _camino(lleva: dict[str, set[str]], desde: Sequence[str], hasta: str) -> list[str] | None:
+    """El camino de recetas mas corto de alguno de `desde` a `hasta` (`[origen, ..., hasta]`), o
+    `None` si no lo hay: una sola busqueda en anchura con todos los origenes a la vez. `lleva` es
+    producto -> codigos de sus componentes."""
+    previo: dict[str, str | None] = dict.fromkeys(desde)
+    pendientes = deque(previo)
+    while pendientes:
+        actual = pendientes.popleft()
+        if actual == hasta:
+            camino: list[str] = []
+            paso: str | None = actual
+            while paso is not None:
+                camino.append(paso)
+                paso = previo[paso]
+            return camino[::-1]
+        for siguiente in sorted(lleva.get(actual, ())):
+            if siguiente not in previo:
+                previo[siguiente] = actual
+                pendientes.append(siguiente)
+    return None
+
+
+def _exigir_sin_ciclo(sesion: Session, producto: str, codigos: Sequence[str]) -> None:
+    """Ningun componente puede llevar ya, por sus recetas, al `producto`: la mezcla se contendria a
+    si misma y su costo por tonelada no tendria de donde salir. Cuenta TODAS las versiones
+    registradas de cada receta: solo se insertan y una vieja sigue rigiendo las producciones de su
+    fecha (prueba en vivo 2026-11-18)."""
+    lleva: dict[str, set[str]] = {}
+    for prod, codigo in sesion.execute(
+        select(RecetaRegistrada.producto, RecetaComponente.codigo).join(
+            RecetaComponente, RecetaComponente.receta_id == RecetaRegistrada.id
+        )
+    ):
+        lleva.setdefault(prod, set()).add(codigo)
+    camino = _camino(lleva, codigos, producto)
+    if camino is not None:
+        codigo = camino[0]
+        raise ErrorDeReceta(
+            f"La receta de {producto} no puede llevar {codigo}: {codigo} lleva {producto} "
+            f"({' → '.join(camino)}) y un producto no puede contenerse a sí mismo."
+        )
+
+
 def registrar_receta(
     sesion: Session,
     producto: str,
@@ -132,6 +176,12 @@ def registrar_receta(
     repetidos = sorted(c for c, veces in Counter(codigos).items() if veces > 1)
     if repetidos:
         raise ErrorDeReceta(f"Componente repetido en la receta: {', '.join(repetidos)}.")
+    if producto in codigos:
+        raise ErrorDeReceta(
+            f"La receta de {producto} no puede llevar {producto}: un producto no puede ser "
+            "componente de sí mismo. Quítelo de los componentes."
+        )
+    _exigir_sin_ciclo(sesion, producto, codigos)
     ligantes = [c.codigo for c in componentes if c.es_ligante]
     if len(ligantes) > 1:
         raise ErrorDeReceta(
@@ -247,12 +297,23 @@ def producir_con_receta(
         if c.tipo == "propio":
             material = _material(sesion, c.codigo)
             consumos.append((material, de_toneladas(material, c.cantidad_por_t * toneladas)))
+    cantidad_producida = de_toneladas(material_producto, toneladas)
+    # Antes de escribir nada (arbitraje 2026-11-18): una cantidad en m3 que redondea a 0 a cuatro
+    # decimales, y un conteo fisico que cerro el pasado de algun material.
+    movidos = [(material_producto, cantidad_producida), *consumos]
+    for material, cantidad in movidos:
+        if cantidad <= CERO:
+            raise ErrorDeReceta(
+                f"Con {_coma(toneladas)} t de {producto}, {material.codigo} queda en 0 "
+                f"{material.unidad_venta} al redondear a cuatro decimales: indique más toneladas."
+            )
+    exigir_fechas_abiertas(sesion, [material for material, _ in movidos], fecha)
     nota = f"receta {receta.id}"
     entrada = registrar_entrada(
         sesion,
         material_producto.id,
         fecha,
-        de_toneladas(material_producto, toneladas),
+        cantidad_producida,
         usuario=usuario,
         nota=nota,
         ahora=ahora,

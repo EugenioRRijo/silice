@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import type { JSX } from "react";
 import { CampoConBusqueda } from "./CampoConBusqueda";
-import { buscadorDeComponentes, buscadorDeConsulta, buscadorDeMateriales } from "./consulta";
+import { buscadorDeComponentes, buscadorDeConsulta, buscadorDeMateriales, sinCodigos } from "./consulta";
 import type { TablaDeBusqueda } from "./consulta";
 
 interface Props {
@@ -15,6 +16,8 @@ interface Props {
   textoInvalido?: string;
   // «sm» por omisión; «md» cuando el campo va junto a campos de 40 px (la fila de un componente de receta).
   tamano?: "sm" | "md";
+  // Códigos que no se ofrecen (el propio producto, en el código de un componente de su receta).
+  excluir?: readonly string[];
 }
 
 const buscadores = new Map<TablaDeBusqueda, ReturnType<typeof buscadorDeConsulta>>();
@@ -48,7 +51,11 @@ export function CampoDeConsulta({
   invalido,
   textoInvalido,
   tamano,
+  excluir,
 }: Props): JSX.Element {
+  // `clave` resume `excluir`: un arreglo nuevo con los mismos códigos no cambia el buscador (ni repite la búsqueda).
+  const clave = (excluir ?? []).join("\n");
+  const buscar = useMemo(() => sinCodigos(buscadorDe(tabla), clave.split("\n")), [tabla, clave]);
   return (
     <CampoConBusqueda
       id={id}
@@ -56,7 +63,7 @@ export function CampoDeConsulta({
       ayuda={ayuda}
       texto={texto}
       alCambiarTexto={alCambiarTexto}
-      buscar={buscadorDe(tabla)}
+      buscar={buscar}
       alElegir={(opcion) => alCambiarTexto(opcion.valor.valor)}
       valorPropio={{ rotulo: (t) => `Usar «${t.trim()}» tal cual`, alUsar: (t) => alCambiarTexto(t.trim()) }}
       vacio={{

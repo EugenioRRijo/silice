@@ -340,21 +340,16 @@ def crear_un_material(entrada: MaterialEntrada, sesion: SesionInstalacionDep) ->
 
 @router.post(
     "/movimientos",
-    response_model=MovimientoRespuesta | None,
+    response_model=MovimientoRespuesta,
     status_code=201,
-    responses={
-        200: {
-            "description": "Ajuste sin diferencia: el conteo coincide con la existencia (`null`)."
-        }
-    },
 )
 def registrar_un_movimiento(
     entrada: MovimientoEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
-) -> MovimientoRespuesta | JSONResponse:
+) -> MovimientoRespuesta:
     """Registra una entrada (producción), un despacho o un ajuste por conteo. En el ajuste,
-    `cantidad` es el **conteo físico** y se guarda la diferencia con la existencia a esa fecha; si
-    no hay diferencia responde 200 con `null`. Un despacho nunca se bloquea por dejar la
-    existencia negativa (RT-S4-2)."""
+    `cantidad` es el **conteo físico** y se guarda la diferencia con la existencia a esa fecha,
+    también cuando es 0: el conteo cierra la existencia del material hasta su fecha. Un despacho
+    nunca se bloquea por dejar la existencia negativa (RT-S4-2)."""
     if entrada.tipo not in TIPOS_DE_MOVIMIENTO:
         raise HTTPException(422, "'tipo' debe ser entrada, despacho o ajuste.")
     fecha = _fecha(entrada.fecha, "fecha")
@@ -374,8 +369,6 @@ def registrar_un_movimiento(
             movimiento = registrar_ajuste_por_conteo(
                 sesion, material.id, fecha, cantidad, usuario=usuario, nota=nota
             )
-    if movimiento is None:
-        return JSONResponse(content=None, status_code=200)
     return _movimiento_respuesta(movimiento, material.codigo)
 
 

@@ -20,6 +20,7 @@ from produccion.costos import (
     CostoDelPeriodo,
     anular_costo,
     costos_del_periodo,
+    periodo_en_palabras,
     registrar_costo,
     totales_por_centro,
 )
@@ -233,3 +234,17 @@ def test_totales_de_un_periodo_vacio_o_invalido(sesion: Session) -> None:
     assert totales_por_centro(sesion, "2026-10") == []
     with pytest.raises(ValueError, match="periodo"):
         totales_por_centro(sesion, "noviembre")
+
+
+# Prueba en vivo 2026-11-18 (frente D): los mensajes decian el mes en ISO («no se produjo en
+# 2026-11»); a la persona se le escribe en palabras.
+@pytest.mark.parametrize(
+    ("periodo", "palabras"),
+    [
+        ("2026-11", "noviembre de 2026"),
+        ("2027-01", "enero de 2027"),
+        ("2026-09", "septiembre de 2026"),
+    ],
+)
+def test_el_periodo_en_palabras(periodo: str, palabras: str) -> None:
+    assert periodo_en_palabras(periodo) == palabras

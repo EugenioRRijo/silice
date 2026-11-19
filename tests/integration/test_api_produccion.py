@@ -199,12 +199,18 @@ def test_crear_material_y_registrar_el_flujo_de_la_serie_a_mano(http) -> None:
     assert Decimal(sin_fecha["minima"]) == Decimal("20")
 
 
-def test_un_ajuste_sin_diferencia_responde_200_con_null(http) -> None:
+def test_un_ajuste_sin_diferencia_se_guarda_en_cero_y_cierra_el_pasado(http) -> None:
+    """Arbitraje 2026-11-18: el contrato cambia por decision. Antes respondia 200 con null y no
+    dejaba fila; el conteo que coincide ahora es un ajuste en 0 (201) y cierra el pasado."""
     _material(http, "ARENA", "m3", "20", "1.60")
     _movimiento(http, "ARENA", "entrada", "2026-10-01", "40")
     r = _movimiento(http, "ARENA", "ajuste", "2026-10-02", "40")
-    assert (r.status_code, r.json()) == (200, None)
-    assert contar(Movimiento) == 1  # solo la entrada
+    assert r.status_code == 201
+    assert (r.json()["tipo"], Decimal(r.json()["cantidad"])) == ("ajuste", Decimal("0"))
+    assert contar(Movimiento) == 2
+    tarde = _movimiento(http, "ARENA", "entrada", "2026-10-02", "5")
+    assert tarde.status_code == 422 and "conteo físico del 02/10/2026" in tarde.json()["detalle"]
+    assert contar(Movimiento) == 2
 
 
 def test_el_ajuste_negativo_guarda_la_diferencia_con_signo(http) -> None:
@@ -763,7 +769,8 @@ def test_con_sesion_de_arma_o_administrador_se_opera_la_arenera(quien: str) -> N
     ajuste = _movimiento_web(web, "ARENA", "ajuste", "2026-10-03", "65")  # 70 -> 65: -5
     assert ajuste.status_code == 201 and Decimal(ajuste.json()["cantidad"]) == Decimal("-5")
     sin_diferencia = _movimiento_web(web, "ARENA", "ajuste", "2026-10-04", "65")
-    assert (sin_diferencia.status_code, sin_diferencia.json()) == (200, None)
+    assert sin_diferencia.status_code == 201
+    assert Decimal(sin_diferencia.json()["cantidad"]) == Decimal("0")
     existencias = web.get("/v1/produccion/existencias")
     assert existencias.status_code == 200
     por_codigo = {f["codigo"]: f for f in existencias.json()}
@@ -771,7 +778,7 @@ def test_con_sesion_de_arma_o_administrador_se_opera_la_arenera(quien: str) -> N
     por_fecha = web.get("/v1/produccion/existencias", params={"a_fecha": "2026-10-02"})
     assert por_fecha.status_code == 200
     assert web.get("/v1/produccion/pesajes-sospechosos").status_code == 200
-    assert contar(Movimiento) == 3
+    assert contar(Movimiento) == 4
 
 
 def test_con_sesion_se_importa_la_bascula_y_se_cierra_la_bandeja(ana) -> None:
@@ -1097,3 +1104,10 @@ def test_un_4xx_tras_una_escritura_parcial_no_deja_nada_y_va_sin_cache(http, mon
         assert r.status_code == estado, r.text
         assert r.headers["Cache-Control"] == "no-store"
         assert contar(Movimiento) == 0 and contar(PesajeSospechoso) == 0
+
+
+def test_un_conteo_con_fecha_futura_es_422_y_no_escribe(http) -> None:
+    _material(http, "ARENA", "m3", "20", "1.60")
+    r = _movimiento(http, "ARENA", "ajuste", "2999-01-01", "40")
+    assert r.status_code == 422 and "fecha futura" in r.json()["detalle"]
+    assert contar(Movimiento) == 0

@@ -123,12 +123,13 @@ describe("Inicio de producción", () => {
     expect(within(seccion).getByRole("link", { name: "Ver todas las existencias" })).toHaveAttribute("href", "/produccion/existencias");
   });
 
-  test("muestra el mínimo junto a la existencia, con las cifras tal como vienen", async () => {
+  // Prueba en vivo 2026-11-18: «tal como vienen» dejaba «32,00 t» junto a «40 t»; las dos se leen en la misma escala.
+  test("muestra el mínimo junto a la existencia, en la misma escala y sin ceros de más", async () => {
     existencias = () => json([existencia("PIEDRA", { existencia: "30.00", minima: "50.000", queda_poco: true })]);
     montar();
     const seccion = await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
-    expect(within(seccion).getByText("30,00 m³")).toBeInTheDocument();
-    expect(within(seccion).getByText("50,000 m³")).toBeInTheDocument();
+    expect(within(seccion).getByText("30 m³")).toBeInTheDocument();
+    expect(within(seccion).getByText("50 m³")).toBeInTheDocument();
   });
 
   test("sin materiales, enseña a registrarlos y enlaza a Existencias", async () => {

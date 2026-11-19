@@ -62,18 +62,27 @@
 
 .receta-componente {
   display: grid;
-  // Código, cantidad, unidad y tipo en una línea, y «Quitar» al final; en una caja angosta se reparten en filas.
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) repeat(2, minmax(11rem, 1.2fr)) auto;
+  // Código, cantidad, unidad y tipo en una línea; debajo, la casilla del ligante y «Quitar» al final. Cada pista tiene
+  // un mínimo: con `minmax(0, …)` y una pista `auto` para la casilla, su texto largo dejaba «Código» y «Cantidad por t»
+  // en ancho cero (prueba en vivo 2026-11-18, 1440x900). En una caja angosta se reparten en filas.
+  grid-template-columns: minmax(8rem, 1.2fr) minmax(7rem, 1fr) repeat(2, minmax(11rem, 1.2fr));
   gap: 0.75rem 1rem;
   align-items: start;
   margin: 0;
   padding: 0.75rem 0 0;
-
-  @media (max-width: 42rem) {
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  }
   border: 0;
   border-block-start: 1px solid var(--cds-border-subtle);
+
+  // Las cuatro pistas piden 40 rem con sus huecos: por debajo de 46 rem desbordaban el diálogo ancho (arbitraje
+  // 2026-11-18), así que ahí se reparten en filas.
+  @media (max-width: 46rem) {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+
+    .receta-componente__ligante,
+    .receta-componente__quitar {
+      grid-column: 1 / -1;
+    }
+  }
 
   legend {
     grid-column: 1 / -1;
@@ -81,10 +90,16 @@
   }
 }
 
-// Con la etiqueta de arriba (1,5 rem), el botón queda a la altura de los campos.
+// La casilla ocupa las tres primeras columnas de la segunda fila; su ayuda larga ya no le quita ancho a los campos.
+.receta-componente__ligante {
+  grid-column: 1 / -2;
+}
+
+// «Quitar» cierra la segunda fila, bajo «Tipo» (con o sin la casilla del ligante).
 .receta-componente__quitar {
+  grid-column: -2 / -1;
+  justify-self: end;
   align-self: start;
-  margin-block-start: 1.5rem;
 }
 
 .receta-masa {

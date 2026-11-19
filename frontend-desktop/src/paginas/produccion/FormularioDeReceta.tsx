@@ -41,6 +41,7 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
   const puedeMarcarLigante = sesion.acciones.includes("operar_arenera");
   const siguiente = useRef(2);
   const botonAgregar = useRef<HTMLButtonElement>(null);
+  const avisos = useRef<HTMLDivElement>(null);
   const [producto, setProducto] = useState("");
   const [vigente, setVigente] = useState("");
   const [fuente, setFuente] = useState("");
@@ -58,6 +59,14 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
   useEffect(() => {
     if (nueva !== null) document.getElementById(`${base}-${nueva}-codigo`)?.focus();
   }, [nueva, base]);
+
+  // Un error al registrar aparece al final del cuerpo del diálogo, muchas veces fuera de la vista: se lleva a la vista y
+  // recibe el foco, para que no parezca que «Registrar receta» no hizo nada (re-verificación en vivo 2026-11-18).
+  useEffect(() => {
+    if (error === null && errorDeFila === null) return;
+    avisos.current?.scrollIntoView?.({ block: "nearest" });
+    avisos.current?.focus({ preventScroll: true });
+  }, [error, errorDeFila]);
 
   function cambiar(id: number, cambio: Partial<Fila>) {
     // Un solo ligante por receta: marcar uno desmarca el otro.
@@ -163,6 +172,7 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
             numero={i + 1}
             base={`${base}-${f.id}`}
             fila={f}
+            producto={producto}
             sePuedeQuitar={filas.length > 1}
             puedeMarcarLigante={puedeMarcarLigante}
             alCambiar={(cambio) => cambiar(f.id, cambio)}
@@ -182,8 +192,12 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
         >
           Suma de masa: {suma.texto} t por t de mezcla, {estadoDeMasa} (debe estar entre {desde} y {hasta}). Los litros no cuentan.
         </p>
-        <AvisoError error={errorDeFila} titulo="Revise los componentes" />
-        <AvisoError error={error === null ? null : mensajeDePlanta(error)} titulo="No se pudo registrar la receta" />
+        {(errorDeFila !== null || error !== null) && (
+          <div ref={avisos} tabIndex={-1} className="silice-aviso-foco">
+            <AvisoError error={errorDeFila} titulo="Revise los componentes" />
+            <AvisoError error={error === null ? null : mensajeDePlanta(error)} titulo="No se pudo registrar la receta" />
+          </div>
+        )}
       </form>
     </MarcoDeDialogo>
   );

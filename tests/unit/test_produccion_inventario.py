@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
@@ -15,6 +15,7 @@ from produccion.inventario import (
     crear_material,
     existencia,
     registrar_ajuste_por_conteo,
+    registrar_consumo,
     registrar_despacho,
     registrar_entrada,
     tablero,
@@ -76,14 +77,29 @@ def test_el_ajuste_guarda_la_diferencia_con_signo(sesion: Session) -> None:
     assert existencia(sesion, mid) == D("20")
 
 
-def test_conteo_igual_a_lo_teorico_no_crea_ajuste(sesion: Session) -> None:
+def test_conteo_igual_a_lo_teorico_deja_un_ajuste_en_cero_y_cierra_el_pasado(
+    sesion: Session,
+) -> None:
+    """Arbitraje 2026-11-18: el conteo que coincide tambien se guarda (un ajuste en 0): sin fila no
+    cerraba el pasado y una entrada retroactiva cambiaba la existencia posterior al conteo."""
     mid = _arena(sesion)
     _serie(sesion, mid)
-    assert (
-        registrar_ajuste_por_conteo(sesion, mid, date(2026, 10, 5), D("34.5"), usuario=USUARIO)
-        is None
-    )
+    ajuste = registrar_ajuste_por_conteo(sesion, mid, date(2026, 10, 5), D("34.5"), usuario=USUARIO)
+    assert ajuste is not None and ajuste.tipo == "ajuste"
+    assert ajuste.cantidad == D("0") and str(ajuste.cantidad) == "0"
     assert existencia(sesion, mid) == D("34.5")
+    with pytest.raises(ErrorDeInventario, match="conteo físico del 05/10/2026"):
+        registrar_entrada(sesion, mid, date(2026, 10, 4), D("10"), usuario=USUARIO)
+    assert existencia(sesion, mid) == D("34.5")
+
+
+def test_un_material_sin_movimientos_contado_en_cero_tambien_cierra(sesion: Session) -> None:
+    mid = _arena(sesion)
+    ajuste = registrar_ajuste_por_conteo(sesion, mid, date(2026, 10, 5), D("0"), usuario=USUARIO)
+    assert ajuste is not None and ajuste.cantidad == D("0")
+    assert existencia(sesion, mid) == D("0")
+    with pytest.raises(ErrorDeInventario, match="conteo físico del 05/10/2026"):
+        registrar_despacho(sesion, mid, date(2026, 10, 1), D("3"), usuario=USUARIO)
 
 
 def test_queda_poco_incluye_el_minimo_exacto(sesion: Session) -> None:
@@ -207,3 +223,107 @@ def test_material_por_id_da_la_fila_o_nada(sesion: Session) -> None:
 
     assert material_por_id(sesion, mid).codigo == "ARENA"
     assert material_por_id(sesion, mid + 1) is None
+
+
+# Prueba en vivo 2026-11-18 (frente D): el conteo se guarda como un ajuste con la diferencia del
+# dia en que se registra, asi que un movimiento con fecha anterior registrado despues cambiaba la
+# existencia posterior al conteo. Ejemplo del hallazgo: entrada 150,5 (03/11), conteo 148 (06/11);
+# luego entrada 90 (06/10) y consumo 20 (20/10) dejaban 218 al 06/11 en vez de 148. Decision: el
+# conteo fisico cierra el pasado de ese material (practica de cierre de inventario de los ERP).
+
+
+def _con_conteo(sesion: Session) -> int:
+    mid = crear_material(
+        sesion, codigo="PIEDRA", nombre="Piedra", unidad_venta="t", existencia_minima=D("0")
+    ).id
+    registrar_entrada(sesion, mid, date(2026, 11, 3), D("150.5"), usuario=USUARIO)
+    registrar_ajuste_por_conteo(sesion, mid, date(2026, 11, 6), D("148"), usuario=USUARIO)
+    return mid
+
+
+def test_un_conteo_fisico_cierra_el_pasado_del_material(sesion: Session) -> None:
+    mid = _con_conteo(sesion)
+    cerrado = r"conteo físico del 06/11/2026.*posterior al 06/11/2026"
+    with pytest.raises(ErrorDeInventario, match=cerrado):
+        registrar_entrada(sesion, mid, date(2026, 10, 6), D("90"), usuario=USUARIO)
+    with pytest.raises(ErrorDeInventario, match=cerrado):
+        registrar_consumo(
+            sesion, mid, date(2026, 10, 20), D("20"), usuario=USUARIO, ahora=datetime(2026, 11, 7)
+        )
+    with pytest.raises(ErrorDeInventario, match=cerrado):  # el mismo dia del conteo, tambien
+        registrar_despacho(sesion, mid, date(2026, 11, 6), D("5"), usuario=USUARIO)
+    assert existencia(sesion, mid, date(2026, 11, 6)) == D("148")
+    registrar_despacho(sesion, mid, date(2026, 11, 7), D("8"), usuario=USUARIO)
+    assert existencia(sesion, mid) == D("140")
+
+
+def test_el_cierre_es_solo_del_material_contado(sesion: Session) -> None:
+    _con_conteo(sesion)
+    otro = _arena(sesion)
+    registrar_entrada(sesion, otro, date(2026, 10, 6), D("90"), usuario=USUARIO)
+    assert existencia(sesion, otro) == D("90")
+
+
+def test_un_conteo_no_va_antes_del_ultimo_y_el_mismo_dia_es_un_reconteo(sesion: Session) -> None:
+    mid = _con_conteo(sesion)
+    with pytest.raises(ErrorDeInventario, match="conteo físico del 06/11/2026"):
+        registrar_ajuste_por_conteo(sesion, mid, date(2026, 11, 5), D("100"), usuario=USUARIO)
+    reconteo = registrar_ajuste_por_conteo(
+        sesion, mid, date(2026, 11, 6), D("146.5"), usuario=USUARIO
+    )
+    assert reconteo is not None and reconteo.cantidad == D("-1.5")
+    assert existencia(sesion, mid) == D("146.5")
+
+
+def test_un_conteo_con_fecha_futura_se_niega(sesion: Session) -> None:
+    """Arbitraje 2026-11-18: un conteo futuro cerraria el material hasta esa fecha sin salida."""
+    mid = _arena(sesion)
+    hoy = date(2026, 11, 18)
+    with pytest.raises(ErrorDeInventario, match=r"fecha futura.*19/11/2026.*18/11/2026"):
+        registrar_ajuste_por_conteo(
+            sesion, mid, date(2026, 11, 19), D("5"), usuario=USUARIO, hoy=hoy
+        )
+    assert existencia(sesion, mid) == D("0")
+    hecho = registrar_ajuste_por_conteo(sesion, mid, hoy, D("5"), usuario=USUARIO, hoy=hoy)
+    assert hecho.cantidad == D("5")
+
+
+def test_un_dia_antes_del_conteo_tambien_esta_cerrado(sesion: Session) -> None:
+    """Arbitraje 2026-11-18: frontera del cierre, el dia anterior al conteo (06/11)."""
+    mid = _con_conteo(sesion)
+    cerrado = "conteo físico del 06/11/2026"
+    with pytest.raises(ErrorDeInventario, match=cerrado):
+        registrar_entrada(sesion, mid, date(2026, 11, 5), D("1"), usuario=USUARIO)
+    with pytest.raises(ErrorDeInventario, match=cerrado):
+        registrar_consumo(
+            sesion, mid, date(2026, 11, 5), D("1"), usuario=USUARIO, ahora=datetime(2026, 11, 7)
+        )
+    with pytest.raises(ErrorDeInventario, match=cerrado):
+        registrar_despacho(sesion, mid, date(2026, 11, 5), D("1"), usuario=USUARIO)
+    assert existencia(sesion, mid) == D("148")
+
+
+@pytest.mark.parametrize(
+    ("registrar", "texto"),
+    [
+        (
+            lambda s, m: registrar_entrada(s, m, date(2026, 10, 1), D("0"), usuario=USUARIO),
+            "de la entrada",
+        ),
+        (
+            lambda s, m: registrar_despacho(s, m, date(2026, 10, 1), D("0"), usuario=USUARIO),
+            "del despacho",
+        ),
+        (
+            lambda s, m: registrar_consumo(
+                s, m, date(2026, 10, 1), D("0"), usuario=USUARIO, ahora=datetime(2026, 10, 2)
+            ),
+            "del consumo",
+        ),
+    ],
+)
+def test_la_cantidad_en_cero_se_dice_con_buen_castellano(sesion: Session, registrar, texto) -> None:
+    """Arbitraje 2026-11-18: decia «La cantidad de el consumo» y «de el despacho»."""
+    mid = _arena(sesion)
+    with pytest.raises(ErrorDeInventario, match=rf"^La cantidad {texto} debe ser un número"):
+        registrar(sesion, mid)

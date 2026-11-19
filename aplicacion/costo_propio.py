@@ -91,6 +91,7 @@ from produccion.costos import (
     MONEDAS,
     CostoRegistrado,
     costos_del_periodo,
+    periodo_en_palabras,
     ultimo_dia_del_mes,
     validar_periodo,
 )
@@ -237,12 +238,12 @@ def _exigir_centros(periodo: str, hay: Mapping[str, bool], producido: _Producido
     siguiente (pregunta 16)."""
     if producido.agregados and not hay["cantera"]:
         raise ErrorDeCalculo(
-            f"No hay costos de cantera en {periodo} para los agregados "
+            f"No hay costos de cantera en {periodo_en_palabras(periodo)} para los agregados "
             f"{', '.join(sorted(producido.agregados))}: su costo por tonelada sería cero."
         )
     if producido.usos and not hay["planta"]:
         raise ErrorDeCalculo(
-            f"No hay costos de planta en {periodo} para las mezclas "
+            f"No hay costos de planta en {periodo_en_palabras(periodo)} para las mezclas "
             f"{', '.join(sorted(producido.usos))}: su costo por tonelada saldría sin la planta."
         )
 
@@ -258,6 +259,20 @@ def _de_otro_calculo(
     (pregunta 15; fila 26 de la bitacora: recalcular septiembre despues de octubre no gana a
     octubre). Nunca uno de un mes posterior. Sin ninguno, `ErrorDeCalculo` que nombra la mezcla y
     el agregado."""
+    # Una receta usada en el periodo que se lleva a si misma (registrada antes de que
+    # `registrar_receta` lo rechazara, prueba en vivo 2026-11-18): se mira en TODAS, no solo en la
+    # primera mezcla que pide cada componente (arbitraje 2026-11-18). Se corrige con otra receta de
+    # la misma fecha, que gana por ser posterior.
+    for mezcla, usos in sorted(producido.usos.items()):
+        for receta, _ in usos.values():
+            if any(c.codigo == mezcla for c in receta.componentes):
+                desde = f"{receta.vigente_desde:%d/%m/%Y}"
+                raise ErrorDeCalculo(
+                    f"La receta de {mezcla} vigente desde el {desde} lleva {mezcla} entre sus "
+                    "componentes y un producto no puede contenerse a sí mismo. Registre de nuevo "
+                    f"la receta de {mezcla} con fecha de vigencia {desde} y sin {mezcla} entre "
+                    "sus componentes."
+                )
     faltan: dict[str, str] = {}  # agregado -> la primera mezcla que lo usa
     for mezcla, usos in sorted(producido.usos.items()):
         for receta, _ in usos.values():
@@ -279,8 +294,8 @@ def _de_otro_calculo(
         hallado = next((c for c in anteriores if codigo in c.por_tonelada), None)
         if hallado is None:
             raise ErrorDeCalculo(
-                f"La mezcla {mezcla} usa {codigo}, que no se produjo en {periodo} ni tiene un "
-                f"costo calculado antes en {moneda}."
+                f"La mezcla {mezcla} usa {codigo}, que no se produjo en "
+                f"{periodo_en_palabras(periodo)} ni tiene un costo calculado antes en {moneda}."
             )
         hallados[codigo] = hallado
     return hallados
@@ -319,8 +334,8 @@ def _exigir_el_mes_que_recibe(sesion_ins: Session, periodo: str) -> None:
         return
     if _lo_que_pasa(_guardado(fila)):
         raise ErrorDeCalculo(
-            f"Calcule primero {_mes_siguiente(fila.periodo)}: el cálculo de {fila.periodo} dejó "
-            "costos que pasan a ese mes."
+            f"Calcule primero {periodo_en_palabras(_mes_siguiente(fila.periodo))}: el cálculo de "
+            f"{periodo_en_palabras(fila.periodo)} dejó costos que pasan a ese mes."
         )
 
 
@@ -363,8 +378,9 @@ def _convertir_lo_que_viene(
                 )
             except SinTasaDelDia:
                 faltan.append(
-                    f"lo que pasó de {anterior.periodo} ({centro}, cálculo n.º {anterior.id}) "
-                    f"sin tasa del BCV publicada en {anterior.periodo} (la del cierre del mes)"
+                    f"lo que pasó de {periodo_en_palabras(anterior.periodo)} ({centro}, "
+                    f"cálculo n.º {anterior.id}) sin tasa del BCV publicada en "
+                    f"{periodo_en_palabras(anterior.periodo)} (la del cierre del mes)"
                 )
                 continue
         valor = total if equivalencia is None else equivalencia.convertido
@@ -443,7 +459,8 @@ def _precios_comprados(
             except SinTasaDelDia:
                 faltan.append(
                     f"lista «{lista.nombre}» vigente desde el {lista.fecha_vigencia:%d/%m/%Y} "
-                    f"sin tasa del BCV publicada en {periodo} (la del cierre del mes)"
+                    f"sin tasa del BCV publicada en {periodo_en_palabras(periodo)} "
+                    "(la del cierre del mes)"
                 )
                 return {}, {}, None
             usada = equivalencia
@@ -533,11 +550,12 @@ def calcular_periodo(
         for centro in CENTROS
     }
     if not any(hay.values()):
-        raise ErrorDeCalculo(f"No hay costos registrados en {periodo}.")
+        raise ErrorDeCalculo(f"No hay costos registrados en {periodo_en_palabras(periodo)}.")
     _exigir_centros(periodo, hay, producido)
     if pesos is not None and not producido.agregados:
         raise ErrorDeCalculo(
-            f"Se pidió el reparto de la cantera por pesos, pero en {periodo} no se produjo "
+            "Se pidió el reparto de la cantera por pesos, pero en "
+            f"{periodo_en_palabras(periodo)} no se produjo "
             "ningún agregado."
         )
     de_otro = _de_otro_calculo(sesion_ins, periodo, moneda, producido)
@@ -572,8 +590,8 @@ def calcular_periodo(
     en_cero = sorted(c for c, v in por_tonelada.items() if not v > CERO)
     if en_cero:
         raise ErrorDeCalculo(
-            f"El costo por tonelada de {', '.join(en_cero)} en {periodo} da cero: revise los "
-            "costos y los precios; no se guardó nada."
+            f"El costo por tonelada de {', '.join(en_cero)} en {periodo_en_palabras(periodo)} da "
+            "cero: revise los costos y los precios; no se guardó nada."
         )
     sin_receptor = {"cantera": not producido.agregados, "planta": not producido.usos}
     pasa = {
@@ -778,9 +796,9 @@ def _tasa_de_la_base(
         return tasa_del_cierre(sesion_caso, calculo.periodo, calculo.moneda)
     except SinTasaDelDia:
         raise SinTasaDelDia(
-            f"No hay tasa del BCV publicada en {calculo.periodo} (hace falta la del cierre del "
-            f"mes) para llevar la lista «{base.nombre}» a {calculo.moneda}. Cárguela en Índices y "
-            "vuelva a publicar; no se publicó nada."
+            f"No hay tasa del BCV publicada en {periodo_en_palabras(calculo.periodo)} (hace falta "
+            f"la del cierre del mes) para llevar la lista «{base.nombre}» a {calculo.moneda}. "
+            "Cárguela en Índices y vuelva a publicar; no se publicó nada."
         ) from None
 
 

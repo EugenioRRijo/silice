@@ -284,12 +284,14 @@ MENSAJE_BASE = "No se pudo leer o guardar en la carpeta de trabajo. Intente de n
 
 
 @app.exception_handler(SQLAlchemyError)
-def manejar_error_de_base(request: Request, _exc: SQLAlchemyError) -> JSONResponse:
+def manejar_error_de_base(request: Request, exc: SQLAlchemyError) -> JSONResponse:
     """Un fallo de la base (ocupada, ilegible, una restriccion) en una ruta que no lo traduce: 503
     con un texto fijo en vez de un 500 con la traza. El detalle va al registro, no al cuerpo, y la
     respuesta no se guarda en el navegador (la arma este manejador, no la ruta: `RutaSinCache` no
-    la alcanza). Las rutas que ya capturan `SQLAlchemyError` conservan su propio mensaje."""
-    logging.getLogger("silice.api").exception("fallo de la base en %s", request.url.path)
+    la alcanza). Las rutas que ya capturan `SQLAlchemyError` conservan su propio mensaje.
+    `exc_info=exc` porque este manejador corre fuera del `except` (en el threadpool): sin ella el
+    registro decia «NoneType: None» en vez de la traza."""
+    logging.getLogger("silice.api").error("fallo de la base en %s", request.url.path, exc_info=exc)
     return JSONResponse(
         status_code=503,
         content={"detalle": MENSAJE_BASE},

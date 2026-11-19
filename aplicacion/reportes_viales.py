@@ -58,6 +58,7 @@ from core.budget import cargar_presupuesto, composiciones_de_presupuesto
 from core.catalog import Catalogo
 from core.contracts.apu import ComposicionAPU, ParametrosCosto
 from core.contracts.presupuesto import Presupuesto
+from produccion.costos import periodo_en_palabras
 
 __all__ = [
     "FORMATO_CANTIDAD",
@@ -244,8 +245,8 @@ def computos_por_tramo(
     libro.hoja(
         "Cómputos por tramo",
         "Una fila por cantidad de obra: partida, unidad, cantidad, regla y origen.",
-        "Derivadas de los tramos con `adapters.vial.derivar_tramos`; cada fila cita la regla que "
-        "la produce y su origen (tramo y capa o línea).",
+        "Derivadas de los tramos guardados de la versión; cada fila cita la regla que la produce "
+        "y su origen (tramo y capa o línea).",
         columnas=[
             ("Tramo", None),
             ("Código", None),
@@ -400,7 +401,7 @@ def apu_con_origen(
     libro.hoja(
         "APU con origen",
         "Cada línea de cada APU con el origen de su precio.",
-        "La fuente es la de la lista de precios de la versión (`precios_de_version`), cotejada por "
+        "La fuente es la de la lista de precios de la versión, cotejada por "
         "la descripción del insumo; «Cálculo n.º» sale de la fuente «Producción, período …, "
         "cálculo n.º …» de un costo propio publicado. Una línea sin fila en la lista dice «sin "
         "origen registrado».",
@@ -431,7 +432,7 @@ def apu_con_origen(
     libro.hoja(
         "Conciliación",
         "Los hallazgos CV1 (precio contra APU), CV2 (cantidad contra tramos) y CV3 (costo propio).",
-        "`aplicacion.conciliacion.conciliar`: CV1 recalcula el APU; CV2 suma las cantidades de los "
+        "La conciliación de Sílice: CV1 recalcula el APU; CV2 suma las cantidades de los "
         "tramos; CV3 compara con el último cálculo publicado y nombra el cálculo del que viene el "
         "precio usado.",
         columnas=[
@@ -500,6 +501,19 @@ def apu_de_la_version(
 
 # --- Costo de producción --------------------------------------------------------------------------
 
+#: Lo que lee la persona en lugar de los códigos guardados (prueba en vivo 2026-11-18). Un código
+#: que no esté aquí sale tal cual: el reporte no se niega por un concepto nuevo.
+_CENTRO = {"cantera": "Cantera", "planta": "Planta"}
+_CONCEPTO = {
+    "gasoil": "Gasoil",
+    "equipo": "Equipo",
+    "nomina": "Nómina",
+    "mantenimiento": "Mantenimiento",
+    "explosivos": "Explosivos",
+    "energia": "Energía",
+    "otro": "Otro",
+}
+
 
 def costo_de_produccion(
     calculos: Sequence[tuple[CalculoGuardado, Publicacion | None]], *, periodo: str
@@ -507,14 +521,17 @@ def costo_de_produccion(
     """Los cálculos del `periodo` (el más reciente primero) con sus costos, lo producido y el costo
     por tonelada. `SinCalculosDelPeriodo` si no hay ninguno."""
     if not calculos:
-        raise SinCalculosDelPeriodo(f"No hay cálculos de producción del período {periodo}.")
-    libro = _Libro("Costo de producción", f"Período: {periodo}")
+        raise SinCalculosDelPeriodo(
+            f"No hay cálculos de producción del período de {periodo_en_palabras(periodo)}."
+        )
+    libro = _Libro("Costo de producción", f"Período: {periodo_en_palabras(periodo)}")
     datos = [(c, p, json.loads(c.instantanea)) for c, p in calculos]
     libro.hoja(
         "Cálculos",
         "Cada cálculo del período: quién y cuándo, los totales por centro y si se publicó.",
         "Los cálculos guardados en la instalación, cada uno verificado contra su huella (uno "
-        "alterado no se lee); la publicación es la de `prod_publicacion`.",
+        "alterado no se lee); «Publicado» dice si el cálculo pasó a una lista de precios de "
+        "empresa, en qué carpeta y quién lo publicó.",
         columnas=[
             ("Cálculo n.º", None),
             ("Período", None),
@@ -554,8 +571,9 @@ def costo_de_produccion(
     libro.hoja(
         "Costo por tonelada",
         "El costo por tonelada de cada agregado y mezcla, en la moneda del cálculo.",
-        "El resultado del cálculo (`por_tonelada`): costos del período convertidos con la tasa BCV "
-        "del día, repartidos entre lo producido; el tipo sale de si el producto es agregado.",
+        "El costo por tonelada que dio el cálculo: los costos del período convertidos con la tasa "
+        "BCV del día y repartidos entre lo producido. Un producto con receta es una mezcla; el "
+        "resto, agregados.",
         columnas=[
             ("Cálculo n.º", None),
             ("Período", None),
@@ -569,7 +587,7 @@ def costo_de_produccion(
                 c.id,
                 c.periodo,
                 producto,
-                "agregado" if producto in r["entradas"]["agregados"] else "mezcla",
+                "Agregado" if producto in r["entradas"]["agregados"] else "Mezcla",
                 costo,
                 c.moneda,
             )
@@ -580,7 +598,7 @@ def costo_de_produccion(
     libro.hoja(
         "Costos del período",
         "Cada costo registrado que entró al cálculo, con su fuente y su conversión.",
-        "Los costos registrados en `prod_costo` tal como los copió el cálculo: monto y moneda "
+        "Los costos registrados del período tal como los copió el cálculo: monto y moneda "
         "originales, fuente, y el monto convertido con la tasa BCV de su día (y su fuente).",
         columnas=[
             ("Cálculo n.º", None),
@@ -597,8 +615,8 @@ def costo_de_produccion(
         filas=[
             (
                 c.id,
-                x["centro"],
-                x["concepto"],
+                _CENTRO.get(x["centro"], x["centro"]),
+                _CONCEPTO.get(x["concepto"], x["concepto"]),
                 Decimal(x["monto"]),
                 x["moneda"],
                 date.fromisoformat(x["fecha"]),
@@ -614,7 +632,8 @@ def costo_de_produccion(
     libro.hoja(
         "Producido",
         "Las toneladas producidas en el período, por producto.",
-        "Las salidas de producción del período (`entradas.producido` del cálculo).",
+        "Las toneladas que el cálculo tomó como producidas en el período: las entradas de "
+        "producción de cada producto.",
         columnas=[("Cálculo n.º", None), ("Producto", None), ("Toneladas", FORMATO_CANTIDAD)],
         filas=[
             (c.id, producto, Decimal(toneladas))
@@ -649,7 +668,7 @@ def informe_de_riesgo(
         "Proyección",
         "El total base, los percentiles 50 y 80 y la reserva (P80 menos el total base).",
         "Remuestreo de meses históricos completos de las series del mapa sobre el presupuesto "
-        "recalculado (`aplicacion.riesgo.proyeccion.proyectar`); la IA no calcula. Cifras exactas.",
+        "recalculado, hecho por Sílice; la IA no calcula. Cifras exactas.",
         datos=[
             ("Obra", r.proyecto, None),
             ("Versión", r.version, None),
@@ -676,7 +695,7 @@ def informe_de_riesgo(
     libro.hoja(
         "Supuestos",
         "Los supuestos declarados de la proyección.",
-        "Los supuestos que `proyectar` y la lectura de la obra declaran, en el orden en que "
+        "Los supuestos que declaran la proyección y la lectura de la obra, en el orden en que "
         "salieron.",
         columnas=[("N.º", None), ("Supuesto", None)],
         filas=[(i, s) for i, s in enumerate(p.supuestos, 1)]
@@ -693,7 +712,7 @@ def informe_de_riesgo(
         "Mezclas propias",
         "De qué cálculo publicado sale la receta de cada mezcla propia.",
         "El último cálculo publicado de la instalación para cada mezcla propia que usa el "
-        "presupuesto (`mezclas_publicadas`).",
+        "presupuesto.",
         columnas=[("Insumo de la mezcla propia", None), ("Cálculo n.º", None)],
         filas=sorted(r.mezclas.items()) or [("(ninguna)", None)],
     )
@@ -707,7 +726,7 @@ def _comprobacion(libro: _Libro, c: ComprobacionDeLaObra) -> None:
     libro.hoja(
         "Comprobación",
         "Si lo real cayó bajo el P80 en cada corte móvil de la historia.",
-        "`aplicacion.riesgo.comprobacion.comprobar_hacia_atras`: en cada corte se proyectó con "
+        "Comprobación hacia atrás: en cada corte se proyectó con "
         "la historia anterior y se comparó con lo que pasó; cobertura = cortes dentro ÷ cortes.",
         datos=[
             ("Cobertura (%)", _centimos(c.comprobacion.cobertura * 100), FORMATO_DINERO),
@@ -748,7 +767,7 @@ def informe_de_mejora(
     libro.hoja(
         "Mejora",
         "El error de cada estimación y cuánto mejoró (o empeoró) la de Sílice.",
-        "`aplicacion.riesgo.mejora.mejora_de_estimacion`: error = |estimado − real| ÷ real × 100 "
+        "Error = |estimado − real| ÷ real × 100 "
         "con dos decimales; mejora = error original − error de Sílice, ya redondeados. Las tres "
         "cifras las escribió quien pidió el informe y deben estar en la misma moneda y a la misma "
         "fecha de precios; el reporte no lo comprueba.",
@@ -777,7 +796,7 @@ def resumen_con_iva(presupuesto: Presupuesto, *, proyecto: str, version: str) ->
     libro.hoja(
         "Resumen",
         "El subtotal, el IVA y el total con IVA.",
-        f"`aplicacion.impuestos.con_iva` sobre el total del presupuesto recalculado; alícuota: "
+        f"El IVA va sobre el total del presupuesto recalculado; alícuota: "
         f"{ALICUOTA_IVA.fuente}. Montos a dos decimales; el total suma las cifras ya redondeadas.",
         datos=[
             ("Obra", proyecto, None),

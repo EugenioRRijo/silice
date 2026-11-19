@@ -264,7 +264,9 @@ def test_sin_tasa_del_cierre_para_la_base_no_se_escribe_nada(ins, caso) -> None:
     calculo = _calcular(ins, caso, "USD")
     otra = caso.get(models.ListaPrecios, cp.lista(caso, "Bs", cp.dia(5), cp.LISTA_BS, "Otra"))
     antes, insumos = _listas(caso), caso.scalar(select(func.count()).select_from(models.Insumo))
-    with pytest.raises(SinTasaDelDia, match=r"«Otra».*2026-11|2026-11.*«Otra»") as error:
+    with pytest.raises(
+        SinTasaDelDia, match=r"«Otra».*noviembre de 2026|noviembre de 2026.*«Otra»"
+    ) as error:
         _publicar(ins, caso, calculo, otra)
     assert "UC-17" not in str(error.value)
     assert _listas(caso) == antes

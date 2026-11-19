@@ -34,6 +34,7 @@ from produccion.inventario import (
     ErrorDeInventario,
     crear_material,
     existencia,
+    registrar_ajuste_por_conteo,
     registrar_despacho,
     registrar_entrada,
 )
@@ -571,3 +572,91 @@ def test_sospechoso_por_id_da_la_fila_o_nada_sin_escribir(sesion: Session) -> No
     assert importacion.sospechoso_por_id(sesion, elegido.id) is elegido
     assert importacion.sospechoso_por_id(sesion, 99_999) is None
     assert _cuantos(sesion, PesajeSospechoso) == antes and not sesion.new and not sesion.dirty
+
+
+def test_un_pesaje_con_fecha_cerrada_por_un_conteo_va_a_la_bandeja(sesion: Session) -> None:
+    """Prueba en vivo 2026-11-18: un conteo físico cierra el pasado del material. Un pesaje de la
+    báscula con fecha anterior o igual al conteo no aborta la importación: va a la bandeja con el
+    motivo, y los demás se registran."""
+    _catalogo(sesion)
+    piedra = _id_material(sesion, "PIEDRA34")
+    registrar_entrada(sesion, piedra, date(2026, 10, 1), D("100"), usuario=USUARIO)
+    registrar_ajuste_por_conteo(sesion, piedra, date(2026, 10, 16), D("90"), usuario=USUARIO)
+
+    def pesaje(fila: int, ticket: str, dia: int) -> PesajeLeido:
+        return PesajeLeido(
+            fila=fila,
+            ticket=ticket,
+            fecha=date(2026, 10, dia),
+            placa="EJ-1",
+            cliente="",
+            material="PIEDRA34",
+            bruto_t=D("20"),
+            tara_t=D("10"),
+            neto_t=D("10"),
+        )
+
+    lectura = LecturaBascula(
+        huella="c" * 64, pesajes=(pesaje(2, "TCK-1", 16), pesaje(3, "TCK-2", 17)), dudosos=()
+    )
+    resultado = importar(sesion, lectura, usuario=USUARIO)
+
+    assert (resultado.registrados, resultado.a_la_bandeja) == (1, 1)
+    assert _sospechoso(sesion, "TCK-1").motivo == "fecha cerrada por un conteo físico"
+    assert existencia(sesion, piedra) == D("80")
+
+
+def _cerrar_piedra_el_16(sesion: Session) -> int:
+    _catalogo(sesion)
+    piedra = _id_material(sesion, "PIEDRA34")
+    registrar_entrada(sesion, piedra, date(2026, 10, 1), D("100"), usuario=USUARIO)
+    registrar_ajuste_por_conteo(
+        sesion, piedra, date(2026, 10, 16), D("90"), usuario=USUARIO, hoy=HOY
+    )
+    return piedra
+
+
+def test_un_pesaje_anterior_al_conteo_va_a_la_bandeja(sesion: Session) -> None:
+    """Arbitraje 2026-11-18: frontera, un pesaje del dia anterior al conteo (16/10)."""
+    piedra = _cerrar_piedra_el_16(sesion)
+    pesaje = PesajeLeido(
+        fila=2,
+        ticket="TCK-15",
+        fecha=date(2026, 10, 15),
+        placa="EJ-1",
+        cliente="",
+        material="PIEDRA34",
+        bruto_t=D("20"),
+        tara_t=D("10"),
+        neto_t=D("10"),
+    )
+    resultado = importar(
+        sesion, LecturaBascula(huella="d" * 64, pesajes=(pesaje,), dudosos=()), usuario=USUARIO
+    )
+    assert (resultado.registrados, resultado.a_la_bandeja) == (0, 1)
+    assert _sospechoso(sesion, "TCK-15").motivo == "fecha cerrada por un conteo físico"
+    assert existencia(sesion, piedra) == D("90")
+
+
+def test_resolver_con_fecha_cerrada_por_un_conteo_deja_el_pesaje_pendiente(
+    sesion: Session,
+) -> None:
+    piedra = _cerrar_piedra_el_16(sesion)
+    importar(sesion, _basico(), usuario=USUARIO)
+    id_sospechoso = _id_de(sesion, "TCK-003")
+    movimientos = _cuantos(sesion, Movimiento)
+    with pytest.raises(ErrorDeInventario, match="conteo físico del 16/10/2026"):
+        resolver(
+            sesion,
+            id_sospechoso,
+            material_codigo="PIEDRA34",
+            fecha=date(2026, 10, 16),
+            neto_t=D("1"),
+            ticket="TCK-003",
+            usuario="ana",
+            ahora=AHORA,
+        )
+    assert _cuantos(sesion, Movimiento) == movimientos
+    sigue = sesion.get(PesajeSospechoso, id_sospechoso)
+    assert sigue is not None and sigue.estado == "pendiente"
+    assert existencia(sesion, piedra) == D("90")

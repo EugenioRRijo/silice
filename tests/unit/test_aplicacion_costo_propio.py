@@ -221,7 +221,7 @@ def test_periodo_sin_produccion_se_calcula_sin_costo_por_tonelada(ins, caso) -> 
 
 def test_periodo_sin_costos(ins, caso) -> None:
     cp.planta(ins)
-    with pytest.raises(ErrorDeCalculo, match=r"^No hay costos registrados en 2026-11\.$"):
+    with pytest.raises(ErrorDeCalculo, match=r"^No hay costos registrados en noviembre de 2026\.$"):
         _calcular(ins, caso)
     assert _calculos(ins) == 0
 
@@ -230,7 +230,7 @@ def test_solo_costos_en_cero(ins, caso) -> None:
     cp.planta(ins)
     cp.costo(ins, "cantera", "0", "USD", cp.dia(3))
     cp.costo(ins, "planta", "0", "Bs", cp.dia(7))
-    with pytest.raises(ErrorDeCalculo, match=r"^No hay costos registrados en 2026-11\.$"):
+    with pytest.raises(ErrorDeCalculo, match=r"^No hay costos registrados en noviembre de 2026\.$"):
         _calcular(ins, caso)
 
 
@@ -239,7 +239,7 @@ def test_todos_los_costos_anulados(ins, caso) -> None:
     for centro, monto in (("cantera", "1000"), ("planta", "1200")):
         i = cp.costo(ins, centro, monto, "USD", cp.dia(3))
         anular_costo(ins, i, motivo="duplicado", usuario="ana", ahora=cp.AHORA)
-    with pytest.raises(ErrorDeCalculo, match=r"^No hay costos registrados en 2026-11\.$"):
+    with pytest.raises(ErrorDeCalculo, match=r"^No hay costos registrados en noviembre de 2026\.$"):
         _calcular(ins, caso)
 
 
@@ -276,7 +276,7 @@ def test_mezcla_sin_costos_de_planta(ins, caso) -> None:
     cp.costo(ins, "cantera", "1000", "USD", cp.dia(3))
     cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
     with pytest.raises(
-        ErrorDeCalculo, match=r"^No hay costos de planta en 2026-11 para las mezclas MZ-1"
+        ErrorDeCalculo, match=r"^No hay costos de planta en noviembre de 2026 para las mezclas MZ-1"
     ):
         _calcular(ins, caso)
     assert _calculos(ins) == 0
@@ -370,7 +370,7 @@ def test_la_lista_en_otra_moneda_sin_tasa_del_cierre(ins, caso) -> None:
     cp.costos_usd(ins)
     cp.lista(caso, "Bs", cp.dia(1), cp.LISTA_BS, nombre="Lista Bs ficticia")
     cp.tasas(caso, {date(2026, 10, 30): cp.TASA})  # solo de octubre
-    with pytest.raises(FaltanTasas, match="Lista Bs ficticia.*2026-11"):
+    with pytest.raises(FaltanTasas, match="Lista Bs ficticia.*noviembre de 2026"):
         _calcular(ins, caso)
 
 

@@ -4,15 +4,21 @@ Las cantidades estan como texto en la base, asi que toda suma se hace en Python 
 La validacion de entradas es de este servicio (la DDL no la hace). El servicio hace `flush`;
 quien llama decide el `commit`. Un despacho nunca se bloquea por dejar la existencia negativa
 (RT-S4-2): se registra y el tablero lo marca.
+
+Un conteo fisico cierra el pasado de su material (prueba en vivo 2026-11-18): el ajuste guarda la
+diferencia con la existencia del dia en que se registra, asi que un movimiento con fecha anterior o
+igual registrado despues cambiaria la existencia posterior al conteo. Se niega, como en el cierre de
+inventario de un ERP; un reconteo el mismo dia si se admite (ve todo lo de esa fecha).
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from produccion.costos import validar_periodo
@@ -66,9 +72,10 @@ def materiales(sesion: Session) -> list[Material]:
     return list(sesion.scalars(select(Material).order_by(Material.codigo)))
 
 
-def _exigir_positiva(cantidad: Decimal, que: str) -> None:
+def _exigir_positiva(cantidad: Decimal, de_que: str) -> None:
+    """`de_que` es la frase que sigue a «La cantidad»: «de la entrada», «del consumo»."""
     if not isinstance(cantidad, Decimal) or not cantidad.is_finite() or cantidad <= CERO:
-        raise ErrorDeInventario(f"La cantidad de {que} debe ser un número mayor que cero.")
+        raise ErrorDeInventario(f"La cantidad {de_que} debe ser un número mayor que cero.")
 
 
 def crear_material(
@@ -113,6 +120,39 @@ def crear_material(
     return material
 
 
+def ultimo_conteo(sesion: Session, material_id: int) -> date | None:
+    """La fecha del ultimo conteo fisico (ajuste) del material, o `None` si nunca se conto."""
+    return sesion.scalar(
+        select(func.max(Movimiento.fecha)).where(
+            Movimiento.material_id == material_id, Movimiento.tipo == "ajuste"
+        )
+    )
+
+
+def exigir_fecha_abierta(sesion: Session, material: Material, fecha: date) -> None:
+    """`ErrorDeInventario` si `fecha` no pasa del ultimo conteo fisico de `material`: ese conteo
+    cerro su pasado. Lo usan todos los movimientos menos el propio conteo."""
+    exigir_fechas_abiertas(sesion, [material], fecha)
+
+
+def exigir_fechas_abiertas(sesion: Session, materiales: Sequence[Material], fecha: date) -> None:
+    """`exigir_fecha_abierta` para varios materiales a la vez (producir): si mas de uno esta
+    cerrado en `fecha`, nombra el cierre mas tardio, que es el que obliga a mover la fecha
+    (arbitraje 2026-11-18)."""
+    cierres = [
+        (cerrado, material)
+        for material in materiales
+        if (cerrado := ultimo_conteo(sesion, material.id)) is not None and fecha <= cerrado
+    ]
+    if cierres:
+        cerrado, material = max(cierres, key=lambda par: par[0])
+        raise ErrorDeInventario(
+            f"El material {material.codigo} tiene un conteo físico del {cerrado:%d/%m/%Y}, que "
+            f"cerró su existencia hasta ese día: registre el movimiento con una fecha posterior al "
+            f"{cerrado:%d/%m/%Y} o, si el conteo estaba mal, haga un conteo nuevo."
+        )
+
+
 def _registrar(
     sesion: Session,
     material_id: int,
@@ -128,7 +168,9 @@ def _registrar(
     nota: str = "",
     ahora: datetime | None = None,
 ) -> Movimiento:
-    _material(sesion, material_id)
+    material = _material(sesion, material_id)
+    if tipo != "ajuste":
+        exigir_fecha_abierta(sesion, material, fecha)
     movimiento = Movimiento(
         material_id=material_id,
         fecha=fecha,
@@ -157,7 +199,7 @@ def registrar_entrada(
     nota: str = "",
     ahora: datetime | None = None,
 ) -> Movimiento:
-    _exigir_positiva(cantidad, "la entrada")
+    _exigir_positiva(cantidad, "de la entrada")
     return _registrar(
         sesion, material_id, fecha, "entrada", cantidad, usuario=usuario, nota=nota, ahora=ahora
     )
@@ -175,7 +217,7 @@ def registrar_consumo(
 ) -> Movimiento:
     """Lo que la planta gasta de un material propio al producir (plan vial, Tarea 3). Se guarda en
     positivo, como el despacho, y resta de la existencia."""
-    _exigir_positiva(cantidad, "el consumo")
+    _exigir_positiva(cantidad, "del consumo")
     return _registrar(
         sesion, material_id, fecha, "consumo", cantidad, usuario=usuario, nota=nota, ahora=ahora
     )
@@ -194,7 +236,7 @@ def registrar_despacho(
     origen: str = "manual",
     nota: str = "",
 ) -> Movimiento:
-    _exigir_positiva(cantidad, "el despacho")
+    _exigir_positiva(cantidad, "del despacho")
     if ticket is not None and (
         sesion.scalar(select(Movimiento.id).where(Movimiento.ticket == ticket)) is not None
     ):
@@ -222,16 +264,34 @@ def registrar_ajuste_por_conteo(
     *,
     usuario: str,
     nota: str = "",
-) -> Movimiento | None:
+    hoy: date | None = None,
+) -> Movimiento:
+    """Guarda el conteo como un ajuste con la diferencia contra la existencia a `fecha`. Un conteo
+    que coincide tambien se guarda (ajuste en 0, arbitraje 2026-11-18): es el que cierra el pasado
+    del material. Un conteo con fecha posterior a `hoy` (la del equipo si no se da) se niega:
+    cerraria el material hasta esa fecha sin salida."""
     if (
         not isinstance(conteo_fisico, Decimal)
         or not conteo_fisico.is_finite()
         or conteo_fisico < CERO
     ):
         raise ErrorDeInventario("El conteo físico debe ser un número de cero o más.")
+    material = _material(sesion, material_id)
+    hoy = date.today() if hoy is None else hoy
+    if fecha > hoy:
+        raise ErrorDeInventario(
+            f"El conteo físico no puede tener fecha futura: el {fecha:%d/%m/%Y} es posterior a hoy "
+            f"({hoy:%d/%m/%Y}). Registre el conteo el día en que se hizo."
+        )
+    anterior = ultimo_conteo(sesion, material_id)
+    if anterior is not None and fecha < anterior:
+        raise ErrorDeInventario(
+            f"El material {material.codigo} ya tiene un conteo físico del {anterior:%d/%m/%Y}: un "
+            f"conteo nuevo va en esa fecha o después."
+        )
     diferencia = conteo_fisico - existencia(sesion, material_id, fecha)
     if diferencia == CERO:
-        return None
+        diferencia = CERO  # «0», no «0.0» ni «-0»
     return _registrar(sesion, material_id, fecha, "ajuste", diferencia, usuario=usuario, nota=nota)
 
 

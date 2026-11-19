@@ -38,8 +38,12 @@ describe("el cuerpo de un diálogo se desplaza y lo dice", () => {
 describe("el componente de la receta", () => {
   const scss = leer("paginas/produccion/planta.scss");
 
-  test("su fila reparte los campos en una sola línea y alinea «Quitar» con ellos", () => {
-    expect(reglaDe(scss, ".receta-componente")).toMatch(/grid-template-columns:[^;]*auto\s*;/);
+  // Prueba en vivo 2026-11-18: la pista `auto` de la casilla del ligante dejaba «Código» y «Cantidad por t» en ancho
+  // cero; ahora la casilla baja a la segunda fila y ninguna pista de la rejilla ancha es `auto` ni `minmax(0, …)`.
+  test("sus campos tienen un ancho mínimo (sin pista auto) y «Quitar» se alinea con ellos", () => {
+    const columnas = /grid-template-columns:\s*([^;]+);/.exec(reglaDe(scss, ".receta-componente"))?.[1] ?? "";
+    expect(columnas).toMatch(/minmax\(\d/);
+    expect(columnas).not.toMatch(/\bauto\b|minmax\(0,/);
     expect(scss).toMatch(/\.receta-componente[^}]*\.receta-componente__quitar|\.receta-componente__quitar\s*\{[^}]*align-self/s);
   });
 });

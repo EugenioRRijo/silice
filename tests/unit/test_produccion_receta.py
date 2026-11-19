@@ -16,8 +16,14 @@ import pytest
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
-from produccion.inventario import crear_material, existencia, registrar_entrada
-from produccion.modelo import METADATA_PRODUCCION, Movimiento
+from produccion.inventario import (
+    ErrorDeInventario,
+    crear_material,
+    existencia,
+    registrar_ajuste_por_conteo,
+    registrar_entrada,
+)
+from produccion.modelo import METADATA_PRODUCCION, Material, Movimiento
 from produccion.receta import (
     TOLERANCIA_MASA,
     Componente,
@@ -351,3 +357,116 @@ def test_solo_un_ligante_y_en_toneladas(sesion) -> None:
     ]
     with pytest.raises(ErrorDeReceta, match="un solo ligante.*ARE-1, CA-30"):
         _registrar(sesion, dos)
+
+
+# Prueba en vivo 2026-11-18 (frente D): una receta de MEZ-A con MEZ-A como componente se aceptaba y
+# luego el costo por tonelada del mes fallaba con un texto contradictorio. Un producto no puede
+# contenerse a si mismo, ni directamente ni por una cadena de recetas.
+
+
+def test_una_receta_no_lleva_su_propio_producto(sesion) -> None:
+    for tipo in ("propio", "comprado"):
+        con_si_misma = [_c("AGR-12", "0.94"), _c(" MZ-1 ", "0.05", tipo=tipo)]
+        with pytest.raises(ErrorDeReceta, match=r"^La receta de MZ-1 no puede llevar MZ-1"):
+            _registrar(sesion, con_si_misma)
+    assert receta_vigente(sesion, "MZ-1", NOVIEMBRE) is None
+
+
+def test_una_cadena_de_recetas_no_vuelve_al_producto(sesion) -> None:
+    _registrar(sesion, [_c("MZ-2", "0.99")], producto="MZ-1")  # MZ-1 lleva MZ-2: se acepta
+    with pytest.raises(
+        ErrorDeReceta,
+        match=r"^La receta de MZ-2 no puede llevar MZ-1: MZ-1 lleva MZ-2 \(MZ-1 → MZ-2\)",
+    ):
+        _registrar(sesion, [_c("MZ-1", "0.99")], producto="MZ-2")
+    _registrar(sesion, [_c("MZ-3", "0.99")], producto="MZ-2")  # MZ-1 → MZ-2 → MZ-3
+    with pytest.raises(ErrorDeReceta, match=r"MZ-1 lleva MZ-3 \(MZ-1 → MZ-2 → MZ-3\)"):
+        _registrar(sesion, [_c("AGR-12", "0.50"), _c("MZ-1", "0.49")], producto="MZ-3")
+    assert receta_vigente(sesion, "MZ-3", NOVIEMBRE) is None
+
+
+def test_una_receta_vieja_tambien_cuenta_para_la_cadena(sesion) -> None:
+    # Las recetas solo se insertan y la vieja sigue rigiendo las producciones de su fecha: si una
+    # version anterior de MZ-1 llevaba MZ-2, MZ-2 no puede llevar MZ-1.
+    _registrar(sesion, [_c("MZ-2", "0.99")], producto="MZ-1", vigente_desde=OCTUBRE)
+    _registrar(sesion, [_c("AGR-12", "0.99")], producto="MZ-1", vigente_desde=NOVIEMBRE)
+    with pytest.raises(ErrorDeReceta, match="MZ-1 lleva MZ-2"):
+        _registrar(sesion, [_c("MZ-1", "0.99")], producto="MZ-2", vigente_desde=NOVIEMBRE)
+
+
+def test_una_mezcla_puede_llevar_otra_sin_ciclo(sesion) -> None:
+    _registrar(sesion, [_c("AGR-12", "0.99")], producto="MZ-2")
+    assert _registrar(sesion, [_c("MZ-2", "0.99")], producto="MZ-1") > 0
+
+
+def test_producir_antes_de_un_conteo_no_escribe_nada(sesion) -> None:
+    """Prueba en vivo 2026-11-18: un conteo físico cierra el pasado del material contado. Producir
+    con fecha anterior o igual al conteo de un componente propio (o del producto) se niega antes
+    de escribir la entrada."""
+    _planta(sesion)
+    _registrar(sesion, _mezcla())
+    agregado = sesion.scalar(select(Material.id).where(Material.codigo == "AGR-12"))
+    registrar_entrada(sesion, agregado, date(2026, 11, 1), D("500"), usuario="ana")
+    registrar_ajuste_por_conteo(sesion, agregado, date(2026, 11, 6), D("480"), usuario="ana")
+    antes = _movimientos(sesion)
+    with pytest.raises(ErrorDeInventario, match="AGR-12.*conteo físico del 06/11/2026"):
+        producir_con_receta(sesion, "MZ-1", D("100"), date(2026, 11, 5), usuario="ana", ahora=AHORA)
+    assert _movimientos(sesion) == antes
+    producir_con_receta(sesion, "MZ-1", D("100"), date(2026, 11, 7), usuario="ana", ahora=AHORA)
+    assert existencia(sesion, agregado) == D("386")  # 480 - 0,94 x 100
+
+
+def test_un_consumo_que_redondea_a_cero_se_niega_antes_de_escribir(sesion) -> None:
+    """Arbitraje 2026-11-18: 0,00005 t de MZ-1 consumen 0,8 x 0,00005 / 1,6 = 0,000025 m3 de
+    AGR-12, que a cuatro decimales es 0. Antes la entrada ya estaba escrita cuando el consumo
+    fallaba."""
+    crear_material(
+        sesion,
+        codigo="AGR-12",
+        nombre="Agregado",
+        unidad_venta="m3",
+        existencia_minima=D(0),
+        densidad_t_m3=D("1.6"),
+    )
+    crear_material(sesion, codigo="MZ-1", nombre="Mezcla", unidad_venta="t", existencia_minima=D(0))
+    _registrar(sesion, [_c("AGR-12", "0.8"), _c("CA-30", "0.2", tipo="comprado")])
+    antes = _movimientos(sesion)
+    with pytest.raises(ErrorDeReceta, match=r"AGR-12.*0 m3.*cuatro decimales"):
+        producir_con_receta(
+            sesion, "MZ-1", D("0.00005"), date(2026, 10, 15), usuario="ana", ahora=AHORA
+        )
+    assert _movimientos(sesion) == antes
+
+
+def test_una_entrada_en_m3_que_redondea_a_cero_se_niega_antes_de_escribir(sesion) -> None:
+    crear_material(
+        sesion, codigo="AGR-12", nombre="Agregado", unidad_venta="t", existencia_minima=D(0)
+    )
+    crear_material(
+        sesion,
+        codigo="MZ-1",
+        nombre="Mezcla",
+        unidad_venta="m3",
+        existencia_minima=D(0),
+        densidad_t_m3=D("2.4"),
+    )
+    _registrar(sesion, [_c("AGR-12", "0.8"), _c("CA-30", "0.2", tipo="comprado")])
+    antes = _movimientos(sesion)
+    with pytest.raises(ErrorDeReceta, match=r"MZ-1.*0 m3.*cuatro decimales"):
+        producir_con_receta(
+            sesion, "MZ-1", D("0.0001"), date(2026, 10, 15), usuario="ana", ahora=AHORA
+        )
+    assert _movimientos(sesion) == antes
+
+
+def test_con_varios_materiales_cerrados_se_nombra_el_cierre_mas_tardio(sesion) -> None:
+    """Arbitraje 2026-11-18: MZ-1 contado el 04/11 y AGR-12 el 06/11; producir el 03/11 debe
+    nombrar el cierre del 06/11, que es el que de verdad obliga a mover la fecha."""
+    _planta(sesion)
+    _registrar(sesion, _mezcla())
+    ids = {m.codigo: m.id for m in sesion.scalars(select(Material).where(Material.codigo != ""))}
+    registrar_entrada(sesion, ids["AGR-12"], date(2026, 11, 1), D("500"), usuario="ana")
+    registrar_ajuste_por_conteo(sesion, ids["MZ-1"], date(2026, 11, 4), D("0"), usuario="ana")
+    registrar_ajuste_por_conteo(sesion, ids["AGR-12"], date(2026, 11, 6), D("480"), usuario="ana")
+    with pytest.raises(ErrorDeInventario, match=r"AGR-12 tiene un conteo físico del 06/11/2026"):
+        producir_con_receta(sesion, "MZ-1", D("10"), date(2026, 11, 3), usuario="ana", ahora=AHORA)
