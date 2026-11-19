@@ -239,7 +239,11 @@ export default function RiesgoDeLaObra() {
             </div>
           )}
           {proyeccion.estado === "listo" && (
-            <ResultadoDeLaProyeccion datos={proyeccion.datos} region={regionProyeccion}>
+            <ResultadoDeLaProyeccion
+              datos={proyeccion.datos}
+              region={regionProyeccion}
+              conSeries={proyectado !== null && Object.keys(proyectado.mapa).length > 0}
+            >
               {proyectado !== null && (
                 <DescargaArchivo
                   ruta={rutaDelInformeDeRiesgo(proyectado)}

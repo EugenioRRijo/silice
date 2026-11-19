@@ -155,6 +155,50 @@ describe("Riesgo de la obra", () => {
     expect(cuerpo.mapa).toEqual({ "Cemento asfáltico": "CEMENTO_ASFALTICO_PPI" });
   });
 
+  // Prueba en vivo del 2026-11-18: en la demo (obra en USD) se proyectó sin elegir series y todo salió igual al total
+  // base, sin decir por qué. En USD un insumo sin serie queda fijo: el resultado lo dice y lleva a elegir la serie.
+  test("si nada se movió en una obra en USD sin series elegidas, dice que solo se mueven los insumos con serie", async () => {
+    const plana = { ...PROYECCION, moneda: "USD", p50: "1000", p80: "1000", reserva: "0", contribucion: [] };
+    proyeccion = () => json(plana);
+    montar();
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    const region = await screen.findByRole("region", { name: "Resultado de la proyección" });
+    expect(cuerpoDe("/v1/riesgo/proyeccion").mapa).toEqual({});
+    expect(
+      within(region).getByText(
+        "Ningún insumo se movió con la historia usada. En una obra en USD solo se mueven los insumos que siguen una serie: elíjala en «Serie que mueve cada insumo».",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // Con series elegidas no se pide elegirlas otra vez: no variaron en la ventana (si hubieran bajado, la contribución
+  // traería montos negativos y se verían en la tabla).
+  test("si nada se movió en una obra en USD con series elegidas, dice que esas series no variaron", async () => {
+    const plana = { ...PROYECCION, moneda: "USD", p50: "1000", p80: "1000", reserva: "0", contribucion: [] };
+    proyeccion = () => json(plana);
+    montar();
+    await usuario.selectOptions(await screen.findByLabelText("Gasoil"), "GASOIL_USD");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    const region = await screen.findByRole("region", { name: "Resultado de la proyección" });
+    expect(
+      within(region).getByText(
+        "Ningún insumo se movió con la historia usada: las series elegidas no variaron en los meses de historia usados.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(region).queryByText(/elíjala en «Serie que mueve cada insumo»/)).toBeNull();
+  });
+
+  test("si nada se movió en una obra en Bs, no pide elegir una serie (sin serie sigue a la tasa)", async () => {
+    const plana = { ...PROYECCION, moneda: "Bs", p50: "1000", p80: "1000", reserva: "0", contribucion: [] };
+    proyeccion = () => json(plana);
+    montar();
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    const region = await screen.findByRole("region", { name: "Resultado de la proyección" });
+    expect(within(region).getByText("Ningún insumo se movió con la historia usada.")).toBeInTheDocument();
+  });
+
   // Tarea 22: el informe de riesgo de la Tarea 21 (`GET /v1/riesgo/reportes/riesgo`) se baja con lo mismo que se proyectó:
   // el servidor vuelve a calcular con la misma semilla y el libro dice de dónde sale cada cifra.
   test("después de proyectar baja el informe de riesgo con lo mismo que se proyectó", async () => {

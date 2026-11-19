@@ -127,3 +127,9 @@ Formato: el CSV canónico de series (`serie,fecha,valor,provisional,fuente`; pun
 primer día del mes). El PPI se declara **índice** (proxy internacional, solo se usa su variación mensual); el gasoil
 es una serie en **escalones** (precio administrado, «a cotejar en la Gaceta»). Las series reales se importan solo
 en local, nunca al repositorio.
+
+La demostración (`start.py`, carpeta `obra_control`) importa esta muestra en Riesgo **corrida en meses enteros**
+para que su último mes sea el anterior al del día en que se siembra (`start.series_viales_corridas`): los valores no
+cambian, solo las fechas, así desde el día de la siembra cubren de sobra el mínimo de historia para proyectar. El
+archivo importado se llama `series_viales_FICTICIAS_didacticas_de_la_demo.csv` y su fuente dice que es ficticia. Si
+ya tenía la demo, ejecute `uv run start.py --reiniciar-demo`.
