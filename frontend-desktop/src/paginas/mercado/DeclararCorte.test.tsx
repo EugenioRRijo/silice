@@ -2,7 +2,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
-import type { SesionRespuesta } from "../../api/tipos";
+import type { ObraFilaRespuesta, SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import type { ObraAbierta } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { UsarPrecio } from "./UsarPrecio";
@@ -60,7 +62,7 @@ function cuerpos(): unknown[] {
     .map(([, init]) => JSON.parse(String(init?.body)));
 }
 
-function montar(estudio: Estudio, extra: Partial<Aplicacion> = {}) {
+function montar(estudio: Estudio, extra: Partial<Aplicacion> = {}, deLaObra: ObraAbierta | null = null) {
   const valor: Aplicacion = {
     sesion: SESION,
     proyecto: "VIV-001",
@@ -72,7 +74,9 @@ function montar(estudio: Estudio, extra: Partial<Aplicacion> = {}) {
   };
   render(
     <ContextoAplicacion.Provider value={valor}>
-      <UsarPrecio estudio={estudio} />
+      <ContextoDeLaObra.Provider value={deLaObra}>
+        <UsarPrecio estudio={estudio} />
+      </ContextoDeLaObra.Provider>
     </ContextoAplicacion.Provider>,
   );
   return userEvent.setup();
@@ -193,5 +197,26 @@ describe("Declararlo precio del corte", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Precio guardado/)).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: CASILLA })).toBeChecked();
+  });
+
+  // Prueba en vivo del 2026-11-18, hallazgo 7: en una obra sin línea base la casilla se ofrecía y al confirmar daba 409.
+  function obraConFicha(conLineaBase: boolean): ObraAbierta {
+    const fila = { codigo: "1", nombre: "Vivienda demo", etapa_texto: "En elaboración", version_de_linea_base: conLineaBase };
+    return { carpeta: null, obraId: 1, ficha: { estado: "lista", obra: fila as unknown as ObraFilaRespuesta }, recargarFicha: vi.fn() };
+  }
+
+  test("en una obra sin línea base no se ofrece declarar el precio del corte y se dice por qué", async () => {
+    const u = montar(COMPRA, {}, obraConFicha(false));
+    expect(screen.queryByRole("checkbox", { name: CASILLA })).toBeNull();
+    expect(
+      screen.getByText("La obra Vivienda demo aún no tiene línea base de control: sin ella no hay precio del corte que declarar."),
+    ).toBeInTheDocument();
+    await usarYConfirmar(u);
+    await waitFor(() => expect(cuerpos()).toEqual([{ precio: "20,00", observacion_id: null }]));
+  });
+
+  test("en una obra con línea base la casilla se ofrece", () => {
+    montar(COMPRA, {}, obraConFicha(true));
+    expect(screen.getByRole("checkbox", { name: CASILLA })).toBeInTheDocument();
   });
 });
