@@ -79,20 +79,21 @@ function AvisoDeRegistro({ registro }: { registro: RegistroDeValuacion }) {
         hideCloseButton
         role="alert"
         title={`Valuación registrada (corte ${corte}), pero la revisión encontró ${errores}.`}
-        subtitle={
-          <>
-            <span>Revise cada hallazgo; si la valuación está mal, anúlela y regístrela de nuevo.</span>
-            {lista}
-          </>
-        }
-      />
+        subtitle="Revise cada hallazgo; si la valuación está mal, anúlela y regístrela de nuevo."
+      >
+        {lista}
+      </InlineNotification>
     );
   }
   const titulo =
     registro.hallazgos === 0
       ? `Valuación registrada: corte ${corte}, sin hallazgos en la revisión.`
       : `Valuación registrada: corte ${corte}, ${registro.hallazgos} hallazgo(s) en la revisión, ninguno con severidad Error.`;
-  return <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={titulo} subtitle={lista} />;
+  return (
+    <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={titulo}>
+      {lista}
+    </InlineNotification>
+  );
 }
 
 interface PartidasDeLaObra {
