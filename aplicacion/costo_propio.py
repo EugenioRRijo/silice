@@ -64,7 +64,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from graphlib import TopologicalSorter
+from graphlib import CycleError, TopologicalSorter
 from typing import Any
 
 from sqlalchemy import select
@@ -237,7 +237,8 @@ def _producido(sesion_ins: Session, periodo: str) -> _Producido:
 def _mezclas_en_orden(producido: _Producido) -> list[str]:
     """Las mezclas del periodo con cada mezcla del mismo mes que otra lleva como componente antes
     que ella (orden topologico; tanda 2026-11-19): su costo por tonelada ya esta cuando se usa. Sin
-    dependencias, por codigo (`registrar_receta` niega los ciclos)."""
+    dependencias, por codigo. `registrar_receta` niega los ciclos; uno de antes de esa regla se
+    niega aqui, sin calcular."""
     grafo = {
         mezcla: sorted(
             {
@@ -249,7 +250,15 @@ def _mezclas_en_orden(producido: _Producido) -> list[str]:
         )
         for mezcla, usos in sorted(producido.usos.items())
     }
-    return list(TopologicalSorter(grafo).static_order())
+    try:
+        return list(TopologicalSorter(grafo).static_order())
+    except CycleError as error:
+        ciclo = list(error.args[1])
+        raise ErrorDeCalculo(
+            f"Las recetas de {', '.join(sorted(set(ciclo)))} se llevan unas a otras "
+            f"({' → '.join(ciclo)}) y un producto no puede contenerse a sí mismo. Registre de "
+            "nuevo una de ellas, con la misma fecha de vigencia, sin la otra entre sus componentes."
+        ) from None
 
 
 def _exigir_centros(periodo: str, hay: Mapping[str, bool], producido: _Producido) -> None:
