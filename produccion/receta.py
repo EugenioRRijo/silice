@@ -296,16 +296,22 @@ def producir_con_receta(
         if c.tipo == "propio":
             material = _material(sesion, c.codigo)
             consumos.append((material, de_toneladas(material, c.cantidad_por_t * toneladas)))
-    # Un conteo fisico cierra el pasado de su material: se mira antes de escribir nada.
-    exigir_fecha_abierta(sesion, material_producto, fecha)
-    for material, _ in consumos:
+    cantidad_producida = de_toneladas(material_producto, toneladas)
+    # Antes de escribir nada (arbitraje 2026-11-18): una cantidad en m3 que redondea a 0 a cuatro
+    # decimales, y un conteo fisico que cerro el pasado de algun material.
+    for material, cantidad in [(material_producto, cantidad_producida), *consumos]:
+        if cantidad <= CERO:
+            raise ErrorDeReceta(
+                f"Con {_coma(toneladas)} t de {producto}, {material.codigo} queda en 0 "
+                f"{material.unidad_venta} al redondear a cuatro decimales: indique más toneladas."
+            )
         exigir_fecha_abierta(sesion, material, fecha)
     nota = f"receta {receta.id}"
     entrada = registrar_entrada(
         sesion,
         material_producto.id,
         fecha,
-        de_toneladas(material_producto, toneladas),
+        cantidad_producida,
         usuario=usuario,
         nota=nota,
         ahora=ahora,
