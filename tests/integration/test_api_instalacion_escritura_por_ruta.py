@@ -18,11 +18,15 @@ from api import caso_web, dependencias
 from api.main import app
 from api.rutas import entregas as ruta_entregas
 from operacion import config
+from operacion.base_datos import preparar_base
+from operacion.config import ruta_caso_por_defecto
 from operacion.instalacion import sesion_de_instalacion
 from produccion import inventario
 from produccion.modelo import Movimiento
 from seguridad import cuentas, empresas, firma
+from tests.fixtures import costo_propio as cp
 from tests.fixtures.carrera import begins_de_escritura, dos_a_la_vez
+from tests.fixtures.hoja_versiones_api import base
 from tests.fixtures.instalacion import AHORA
 from tests.fixtures.produccion_api import cliente_con_clave
 from tests.fixtures.sesion_web import (
@@ -31,10 +35,32 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
-from tests.integration.test_api_produccion_publicar import CALCULOS, _calcular, _noviembre
 
 MATERIAL = {"codigo": "ARENA", "nombre": "Arena", "unidad_venta": "m3", "existencia_minima": "0"}
 FRASE = "frase de firma larga y propia"
+CALCULOS = "/v1/produccion/calculos"
+EMPRESA = ("Constructora Ejemplo, C.A.", "J-00000000-0")
+
+
+def _noviembre() -> None:
+    """La planta, los costos y la empresa en la instalacion; la lista en USD en el caso."""
+    with sesion_de_instalacion() as ins:
+        cp.planta(ins)
+        cp.costos_usd(ins)
+        ins.commit()
+        empresas.guardar_empresa_propia(ins, *EMPRESA, "Ciudad ficticia", "admin", cp.AHORA)
+    ruta = ruta_caso_por_defecto()
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    preparar_base(ruta)
+    with base(ruta) as caso:
+        cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
+        caso.commit()
+
+
+def _calcular(http: TestClient) -> int:
+    r = http.post(CALCULOS, json={"periodo": "2026-11", "moneda": "USD"})
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
 
 
 @pytest.fixture(scope="module")
