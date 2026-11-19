@@ -1196,6 +1196,24 @@ bien, pulse «Guardar la serie en USD»: queda como una serie más (por ejemplo,
 cita en la cláusula del reajuste (sección 9.5). Si después se importa una revisión del índice o más tasas,
 revise y guarde otra vez.
 
+**Series del riesgo vial** (para «Riesgo de la obra», sección 10.6; solo con el módulo de riesgo encendido).
+Al final de la página, «Series del riesgo vial» carga las dos series con las que Sílice proyecta los precios de
+una obra vial: el índice de precios del asfalto («CEMENTO_ASFALTICO_PPI», un índice que se usa solo por su
+variación mensual) y el gasoil en USD por litro («GASOIL_USD»).
+
+1. En «Serie», elija una de las dos. La «Fuente de la serie» propone de dónde suele venir (FRED/BLS o la Gaceta
+   Oficial); cámbiela si la bajó de otro lado, por ejemplo con el número de la Gaceta.
+2. Confirme la «Fecha de descarga» (hoy, salvo que el archivo se haya bajado antes: no puede traer datos
+   posteriores a esa fecha).
+3. Suelte el archivo `.csv` con las columnas `serie`, `fecha`, `valor`, `provisional` y `fuente` (fecha
+   aaaa-mm-dd, valor con punto decimal y `si` o `no` en «provisional»).
+4. Pulse «Importar». Sílice guarda solo la serie elegida, todo o nada: si una fila no sirve, no se importa nada y
+   el aviso dice cuál fila y por qué. Si va bien, dice cuántos valores entraron y de qué fecha a qué fecha; si el
+   mismo archivo ya se había cargado para esa serie, dice «Ya estaba importado» y no escribe nada.
+5. Debajo de cada serie queda su historia cargada (fecha, valor y si es provisional). Un archivo que trae las
+   dos series se importa una vez por cada una. Para corregir un valor, importe un archivo con la corrección: la
+   revisión más reciente manda y la anterior queda en el historial.
+
 ### 9.5 Reajuste de precios (quien arma)
 
 Abra la obra y, en «Control de obra», elija la vista «Reajuste» (o busque «Reajuste de precios» con
@@ -1391,7 +1409,10 @@ precios se mueven como en los meses pasados.
 1. Elija la «Versión».
 2. En «Plazo y simulación», revise «Fecha de inicio», «Meses del plazo» (6), «Trayectorias» (2.000),
    «Semilla» (1) y «Meses de historia» (36).
-3. En «Serie que mueve cada insumo», elija la serie de los insumos que la necesiten.
+3. En «Serie que mueve cada insumo», elija la serie de los insumos que la necesiten. Si una serie no tiene
+   historia suficiente (hacen falta al menos 12 meses completos), «Proyectar» lo dice, nombra la serie y cuántos
+   meses tiene; quien administra los precios encuentra ahí el enlace «Cargar las series en Índices del BCV»
+   (sección 9.4, «Series del riesgo vial»; la tasa del BCV se carga en la misma página).
 4. Pulse «Proyectar». Verá «Total base», «P50», «P80» y «Reserva para cubrir el P80», y los tres insumos
    que más empujan. «Descargar el informe de riesgo» lo baja en Excel.
 5. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado (tarda cerca de medio

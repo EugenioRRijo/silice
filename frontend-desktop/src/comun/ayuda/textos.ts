@@ -466,6 +466,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
     titulo: "Riesgo de la obra",
     parrafos: [
       "Cuánto puede subir el presupuesto si los precios se mueven como en los meses pasados: «Proyectar» simula muchas trayectorias y da el P50, el P80 y la reserva para cubrir el P80. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado.",
+      "Si a una serie le falta historia, el aviso la nombra; quien administra los precios la carga en «Índices del BCV» (sección «Series del riesgo vial»).",
     ],
     terminos: ["p50-p80", "indices-bcv"],
   },
@@ -555,6 +556,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
     titulo: "Índices del BCV",
     parrafos: [
       "Importa la tasa de referencia del BCV, el INPC o una serie en .csv. «Leer» muestra un informe previo sin guardar nada y «Confirmar la importación» guarda los valores; el mismo archivo dos veces no escribe nada.",
+      "Al final, «Series del riesgo vial» carga el índice del asfalto y el gasoil con los que «Riesgo de la obra» proyecta los precios de una obra vial: se elige la serie, se sube su .csv y «Importar» la guarda, todo o nada, y muestra lo que ya está cargado.",
     ],
     guia: "precios",
     terminos: ["indices-bcv"],
