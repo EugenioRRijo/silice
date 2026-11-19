@@ -135,7 +135,10 @@ SesionDep = Annotated[Session, Depends(sesion_api)]
 SesionDeEscrituraDep = Annotated[Session, Depends(sesion_de_escritura_api, scope="function")]
 
 
-def sesion_instalacion_api() -> Iterator[Session]:
+_METODOS_DE_LECTURA = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+def sesion_instalacion_api(request: Request) -> Iterator[Session]:
     """Sesión de `instalacion.db` por petición (arenera, RT-S4-1). Cada petición es una transacción:
     al terminar bien hace `commit`; si la ruta lanza cualquier excepción (un 4xx incluido), hace
     `rollback` y la vuelve a lanzar. Los servicios de `produccion/` solo hacen `flush`.
@@ -144,6 +147,11 @@ def sesion_instalacion_api() -> Iterator[Session]:
     `SAVEPOINT` (solo antes de un `INSERT`/`UPDATE`/`DELETE`) y, sin él, el `RELEASE` del primer
     `begin_nested()` de un servicio confirmaría todo y el `rollback` posterior no deshace nada.
 
+    Una petición que escribe (todo método salvo GET/HEAD/OPTIONS) abre `BEGIN IMMEDIATE`: toma el
+    bloqueo de escritura ANTES de leer el último conteo o contador, y la otra espera (hasta
+    `busy_timeout`) y lo ve ya confirmado, en vez de leer el mismo estado y pisarlo. Las lecturas
+    siguen con `BEGIN` diferido (en WAL no esperan a nadie).
+
     Las rutas bajo esta dependencia no deben convertir una `HTTPException` en respuesta
     (`RutaSinCache` la relanza): si lo hacen, la sesión ve una salida normal y confirma lo
     escrito a medias."""
@@ -151,8 +159,12 @@ def sesion_instalacion_api() -> Iterator[Session]:
         motor_de_instalacion()  # la prepara y migra una vez por proceso; una base mala es un 503
     except ErrorDeBase as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
-    with sesion_de_instalacion() as sesion:
-        sesion.connection().exec_driver_sql("BEGIN")
+    escribe = request.method not in _METODOS_DE_LECTURA
+    with sesion_de_instalacion(escritura=escribe) as sesion:
+        if escribe:
+            sesion.connection()  # `BEGIN IMMEDIATE`: puede esperar el `busy_timeout`
+        else:
+            sesion.connection().exec_driver_sql("BEGIN")
         try:
             yield sesion
             sesion.commit()

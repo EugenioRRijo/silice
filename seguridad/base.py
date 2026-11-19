@@ -13,6 +13,8 @@ from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session
 
 ESPERA_OCUPADA_MS = 5000  # SUPUESTO_DECLARADO: igual que SL-E12
+#: Opción de ejecución que pide `BEGIN IMMEDIATE`: la lleva `abrir_sesion_de_escritura`.
+OPCION_INMEDIATA = "silice_inmediata"
 
 
 def crear_motor(ruta: Path | str) -> Engine:
@@ -26,6 +28,13 @@ def crear_motor(ruta: Path | str) -> Engine:
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.close()
 
+    @event.listens_for(motor, "begin")
+    def _comenzar(conexion) -> None:
+        # Solo la sesión de escritura emite el BEGIN: las demás siguen con el lazy de pysqlite (un
+        # SELECT no abre transacción). Con `BEGIN IMMEDIATE` ya emitido, pysqlite no abre otro.
+        if conexion.get_execution_options().get(OPCION_INMEDIATA, False):
+            conexion.exec_driver_sql("BEGIN IMMEDIATE")
+
     return motor
 
 
@@ -34,4 +43,8 @@ def abrir_sesion(motor: Engine) -> Session:
 
 
 def abrir_sesion_de_escritura(motor: Engine) -> Session:
-    return Session(motor, expire_on_commit=False)
+    """Una sesión cuya transacción empieza con `BEGIN IMMEDIATE`: toma el bloqueo de escritura
+    ANTES de leer lo que va a comprobar (un conteo, un contador) y la otra escritura espera hasta
+    `ESPERA_OCUPADA_MS` y ve lo que ésta confirme. Los lectores (`abrir_sesion`) no esperan (WAL).
+    """
+    return Session(motor.execution_options(**{OPCION_INMEDIATA: True}), expire_on_commit=False)
