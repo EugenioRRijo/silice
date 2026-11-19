@@ -70,8 +70,12 @@
   align-items: start;
   margin: 0;
   padding: 0.75rem 0 0;
+  border: 0;
+  border-block-start: 1px solid var(--cds-border-subtle);
 
-  @media (max-width: 42rem) {
+  // Las cuatro pistas piden 40 rem con sus huecos: por debajo de 46 rem desbordaban el diálogo ancho (arbitraje
+  // 2026-11-18), así que ahí se reparten en filas.
+  @media (max-width: 46rem) {
     grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
 
     .receta-componente__ligante,
@@ -79,8 +83,6 @@
       grid-column: 1 / -1;
     }
   }
-  border: 0;
-  border-block-start: 1px solid var(--cds-border-subtle);
 
   legend {
     grid-column: 1 / -1;
