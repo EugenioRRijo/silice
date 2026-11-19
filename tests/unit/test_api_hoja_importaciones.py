@@ -30,6 +30,8 @@ from api.rutas import hoja as rutas_hoja
 from api.rutas import hoja_llevar as rutas_llevar
 from api.rutas import hoja_plano as rutas_plano
 from aplicacion import hoja_borradores, hoja_plano
+from core.budget import crear_proyecto
+from core.catalog import abrir_sesion, crear_motor
 from operacion import config
 from tests.fixtures.app_de_prueba import app_con
 from tests.fixtures.carpeta_bs_con_obras import VIVIENDA, carpeta_en_bs
@@ -281,10 +283,26 @@ def test_un_borrador_descartado_no_deja_registro(_entorno: Path) -> None:
 # --- el plano ---
 
 
-def _abrir(navegador: TestClient, ficha: str) -> str:
+#: Una obra sin versiones en la carpeta de OF-001: el plano de la memoria entra entero en su
+#: borrador en blanco (sobre la 001 de OF-001 sus 33 filas ya están y se omiten: no se anota nada).
+OBRA_EN_BLANCO = "Obra ficticia en blanco"
+
+
+def _con_obra_en_blanco(ruta: Path) -> None:
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    with abrir_sesion(motor) as sesion:
+        crear_proyecto(sesion, OBRA_EN_BLANCO)
+        sesion.commit()
+    motor.dispose()
+    dependencias.cerrar_motores()
+
+
+def _abrir(
+    navegador: TestClient, ficha: str, proyecto: str = NOMBRE_OF001, version: str | None = "001"
+) -> str:
     respuesta = navegador.post(
         "/v1/hoja/borradores",
-        json={"proyecto": NOMBRE_OF001, "version": "001"},
+        json={"proyecto": proyecto, "version": version},
         headers=protegida(ficha),
     )
     assert respuesta.status_code == 201, respuesta.text
@@ -316,14 +334,15 @@ def _plano_fusionado(navegador: TestClient, ficha: str, id_: str) -> dict:
 
 
 def test_fusionar_un_plano_lo_anota_en_el_borrador(con_of001: Path) -> None:
+    _con_obra_en_blanco(con_of001)
     navegador, ficha = _ana()
-    id_ = _abrir(navegador, ficha)
+    id_ = _abrir(navegador, ficha, OBRA_EN_BLANCO, None)
     fusion = _plano_fusionado(navegador, ficha, id_)
 
     # a mano: el plano de la memoria trae 6 ambientes, 6 fuentes y 21 puntos (33 importados)
     por_tipo = {f["rotulo"]: f["cantidad"] for f in fusion["fusion"]["por_tipo"]}
     assert (por_tipo["Importado"], por_tipo["No reconocido"]) == (33, 0)
-    ((fila,),) = [[f] for f in _registro(navegador, NOMBRE_OF001)]
+    ((fila,),) = [[f] for f in _registro(navegador, OBRA_EN_BLANCO)]
     assert set(fila) == CLAVES
     assert (fila["tipo"], fila["archivo"], fila["usuario"]) == ("plano", "planta.dxf", "Ana <ana>")
     assert fila["resumen"] == "33 filas en el espacio"
