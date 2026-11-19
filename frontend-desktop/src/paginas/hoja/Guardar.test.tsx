@@ -407,7 +407,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
         desgloses: 1,
       });
     montar();
-    const dialogo = await abrirModal();
+    const dialogo = await abrirModal("Guardar el desglose…");
     expect(within(dialogo).getByRole("heading", { name: "Guardar el desglose" })).toBeInTheDocument();
     expect(within(dialogo).getByText(/Se guardará el desglose del desperdicio de 1 línea/)).toBeInTheDocument();
     // La traza no tiene dónde guardar una fuente: no se pide.
@@ -415,7 +415,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
     expect(within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual([
       "APU",
-      "AF-LLAVE, material|1", // la clave de toda línea del APU se presenta así (rotuloDeOrigen)
+      "AF-LLAVE, material n.º 1", // la clave de una línea del APU se presenta así (rotuloDeOrigen), sin la barra interna
       "Desperdicio",
       "0,8 + 25 %",
       "0,625 + 60 %",
@@ -449,7 +449,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     montar();
     const region = await screen.findByRole("region", { name: "Estado del borrador" });
     await within(region).findByText(/1 cambio sin guardar/);
-    const dialogo = await abrirModal();
+    const dialogo = await abrirModal("Guardar el desglose…");
     // El servidor ya vació la cuenta: lo que se lee ahora es el borrador sin cambios.
     alVivo = () => {
       const b = borrador("002", { cambios: 0, desgloses: 0 });
@@ -512,7 +512,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
         ? json({ codigo: "002", proyecto: "OF-001", cambios: 0, total: m("2703.86"), primera: false, mensaje: "x", version_nueva: false, desgloses: 1 })
         : json({ detalle: sobreLa004, version_mas_nueva: "004" }, 409);
     montar();
-    const dialogo = await abrirModal();
+    const dialogo = await abrirModal("Guardar el desglose…");
     fireEvent.click(confirmar(dialogo, "Guardar el desglose"));
     expect(await within(dialogo).findByText(sobreLa004)).toBeInTheDocument();
     expect(confirmar(dialogo, "Guardar el desglose")).toBeDisabled();

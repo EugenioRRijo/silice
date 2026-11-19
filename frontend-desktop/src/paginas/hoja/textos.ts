@@ -71,12 +71,14 @@ export const TEXTOS_DEL_PASO = {
 
 // El botón de la franja. «Agregar la primera partida» no repite el nombre de «Agregar partida» de encima de la tabla: dos
 // botones con el mismo nombre en la misma pantalla no se distinguen con un lector de pantalla.
-export function textoDelBoton(accion: AccionDelPresupuesto, enBlanco: boolean): string {
+// `soloDesglose` (anexo A.6): lo único pendiente es el desglose del desperdicio, que se guarda sin crear versión.
+export function textoDelBoton(accion: AccionDelPresupuesto, enBlanco: boolean, soloDesglose = false): string {
   switch (accion) {
     case "agregar_partida":
       return "Agregar la primera partida";
     case "guardar":
-      return enBlanco ? "Guardar primera versión…" : "Guardar versión…";
+      if (enBlanco) return "Guardar primera versión…";
+      return soloDesglose ? "Guardar el desglose…" : "Guardar versión…";
     case "ver_revision":
       return "Ir a Revisión";
     case "version_nueva":

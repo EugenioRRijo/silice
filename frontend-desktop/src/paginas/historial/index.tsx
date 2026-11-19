@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
+import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { fechaValida } from "../../comun/porcentaje";
@@ -124,10 +125,10 @@ export default function PaginaHistorial() {
   );
 }
 
-const COLUMNAS = [
+const COLUMNAS: ColumnaDensa[] = [
   { clave: "archivo", titulo: "Archivo" },
   { clave: "tipo", titulo: "Tipo" },
-  { clave: "fecha", titulo: "Fecha y hora", presentar: fechaEsVe },
+  { clave: "fecha", titulo: "Fecha y hora", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
   { clave: "resultado", titulo: "Resultado", ordenable: false },
   { clave: "ver", titulo: "Detalle", ordenable: false },
 ];

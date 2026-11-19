@@ -232,3 +232,22 @@ def test_los_manuales_no_tienen_retornos_de_carro_sueltos_ni_rutas_partidas() ->
         assert not re.search(r"%[A-Z]+%\\[A-Za-z\\]*\n[a-z]", texto), ruta.name
     instalacion = _leer("docs/manual_instalacion.md")
     assert "%LOCALAPPDATA%\\Silice\\registros" in instalacion
+
+
+def _trozo(texto: str, desde: str, hasta: str) -> str:
+    """El trozo de `texto` entre el título `desde` y el título `hasta` (que no se incluye)."""
+    return texto.split(desde, 1)[1].split(hasta, 1)[0]
+
+
+def test_el_manual_de_usuario_no_dice_que_guardar_el_desglose_crea_version() -> None:
+    """Anexo A.6: solo el desglose del desperdicio se guarda sin versión; el manual lo dice en las
+    secciones que hablan de guardar (4.8, 6 y 6.2), no en cualquier parte."""
+    manual = _leer("docs/manual_usuario.md")
+    assert "Cada vez que guarda, nace una versión nueva." not in manual
+    assert "y, si la edita y guarda, nace una versión nueva" not in manual
+    guardar = _trozo(manual, "### 4.8 Guardar la versión", "### 4.9 ")
+    assert "«Guardar el desglose…»" in guardar and "no crea versión" in guardar
+    versiones = _trozo(manual, "## 6. Versiones y aprobación", "### 6.1 ")
+    assert "sin crear versión" in versiones
+    abrir = _trozo(manual, "### 6.2 ", "### 6.3 ")
+    assert "sin versión nueva" in abrir

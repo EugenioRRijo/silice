@@ -42,7 +42,7 @@ export default function CostosDelPeriodo() {
 
   const columnas = useMemo<ColumnaDensa[]>(
     () => [
-      { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
+      { clave: "fecha", titulo: "Fecha", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
       { clave: "centro", titulo: "Centro" },
       { clave: "concepto", titulo: "Concepto" },
       { clave: "monto", titulo: "Monto", numerica: true, presentar: mostrarMonto },

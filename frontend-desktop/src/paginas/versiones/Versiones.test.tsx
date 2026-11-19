@@ -67,6 +67,7 @@ let aprobaciones: () => Response;
 let cadena: () => Response;
 let trazabilidad: (version: string) => Response;
 let cambiosAlAbrir: number;
+let desglosesAlAbrir: number;
 let soloLectura: boolean;
 let alRestaurar: (cuerpo: Record<string, unknown>) => Response;
 const fetchFalso = vi.fn<typeof fetch>();
@@ -80,6 +81,7 @@ function borrador(version: string | null): BorradorAbierto {
       moneda: "Bs",
       total: { texto: "1234.50", exacto: "1234.5" },
       cambios: cambiosAlAbrir,
+      desgloses: desglosesAlAbrir,
       pendientes_catalogo: 0,
       hallazgos: [],
       hay_plan: true,
@@ -107,6 +109,7 @@ beforeEach(() => {
   cadena = () => json(CADENA_INTEGRA);
   trazabilidad = () => json(trazabilidadRespuesta());
   cambiosAlAbrir = 0;
+  desglosesAlAbrir = 0;
   soloLectura = false;
   alRestaurar = () => json({ codigo: "VIV-003", proyecto: "3", mensaje: "La versión VIV-001 se restauró como la versión VIV-003 (la vigente)." });
   fetchFalso.mockImplementation(async (entrada, init) => {
@@ -370,6 +373,26 @@ describe("Versiones: la franja del paso", () => {
     await u.click(boton);
     const dialogo = await screen.findByRole("dialog");
     expect(within(dialogo).getByRole("heading", { name: "Guardar versión" })).toBeInTheDocument();
+  });
+
+  // Anexo A.6: la franja de Versiones usa el mismo rótulo que la de Presupuesto, según lo pendiente.
+  test("con solo el desglose del desperdicio pendiente, el botón dice «Guardar el desglose…» y abre el diálogo de ese nombre", async () => {
+    cambiosAlAbrir = 1;
+    desglosesAlAbrir = 1;
+    const u = montar();
+    const franja = await screen.findByRole("region", { name: "Siguiente paso" });
+    expect(within(franja).queryByRole("button", { name: "Guardar versión…" })).toBeNull();
+    await u.click(within(franja).getByRole("button", { name: "Guardar el desglose…" }));
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByRole("heading", { name: "Guardar el desglose" })).toBeInTheDocument();
+  });
+
+  test("con una celda y un desglose pendientes el botón sigue diciendo «Guardar versión…»", async () => {
+    cambiosAlAbrir = 2;
+    desglosesAlAbrir = 1;
+    montar();
+    const franja = await screen.findByRole("region", { name: "Siguiente paso" });
+    expect(within(franja).getByRole("button", { name: "Guardar versión…" })).toBeInTheDocument();
   });
 
   test("con la vigente en aprobación dice que espera dictamen, sin botón", async () => {

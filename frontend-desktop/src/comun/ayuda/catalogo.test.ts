@@ -98,7 +98,8 @@ describe("Guías por tarea (A2)", () => {
     const parte = GUIAS.find((g) => g.id === "presupuesto")!.partes.find((p) => p.titulo === "Guardar y descargar")!;
     const guardar = parte.pasos[0]!;
     expect(guardar).toMatch(/nace una versión/);
-    expect(guardar).toMatch(/«Guardar el desglose»/);
+    expect(guardar).toMatch(/«Guardar el desglose…»/); // el botón de la franja
+    expect(guardar).toMatch(/«Guardar el desglose»/); // el del diálogo
     expect(guardar).toMatch(/no crea versión/);
   });
 });

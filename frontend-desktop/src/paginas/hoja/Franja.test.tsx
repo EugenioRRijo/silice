@@ -58,9 +58,10 @@ interface Opciones {
   cambios?: number;
   hallazgos?: Hallazgos[];
   soloLectura?: boolean;
+  desgloses?: number;
 }
 
-function borrador({ version = "001", vigente = version, cambios = 0, hallazgos = [], soloLectura = false }: Opciones = {}): BorradorAbierto {
+function borrador({ version = "001", vigente = version, cambios = 0, hallazgos = [], soloLectura = false, desgloses }: Opciones = {}): BorradorAbierto {
   return {
     id: ID,
     base: { proyecto: "OF-001", version, vigente, lista: "Lista", espacio_de: version, solo_lectura: soloLectura, moneda: "USD" },
@@ -69,6 +70,7 @@ function borrador({ version = "001", vigente = version, cambios = 0, hallazgos =
       moneda: "USD",
       total: { texto: "2703.86", exacto: "2703.8602323440440333" },
       cambios,
+      ...(desgloses === undefined ? {} : { desgloses }),
       pendientes_catalogo: 0,
       hallazgos,
       hay_plan: true,
@@ -165,6 +167,20 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     await userEvent.click(within(zona).getByRole("button", { name: "Guardar versión…" }));
     const dialogo = await screen.findByRole("dialog");
     expect(within(dialogo).getByRole("heading", { name: "Guardar versión" })).toBeInTheDocument();
+  });
+
+  // Anexo A.6: si lo único pendiente es el desglose del desperdicio, guardar no crea versión; el botón dice lo que va a pasar.
+  test.each<[string, string, number, number]>([
+    ["solo el desglose", "Guardar el desglose…", 1, 1],
+    ["solo desgloses (2)", "Guardar el desglose…", 2, 2],
+    ["una celda y un desglose", "Guardar versión…", 2, 1],
+    ["solo celdas", "Guardar versión…", 2, 0],
+  ])("con %s, el botón de la franja dice «%s»", async (_nombre, rotulo, cambios, desgloses) => {
+    abierto = borrador({ cambios, desgloses });
+    montar();
+    const zona = await franja();
+    expect(await within(zona).findByRole("button", { name: rotulo })).toBeInTheDocument();
+    expect(within(zona).queryByRole("button", { name: rotulo === "Guardar versión…" ? "Guardar el desglose…" : "Guardar versión…" })).toBeNull();
   });
 
   test("el estado del borrador conserva el total y «Descartar cambios» (fantasma), sin el botón de guardar", async () => {

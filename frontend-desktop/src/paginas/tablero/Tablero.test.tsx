@@ -4,7 +4,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaTablero from "./index";
-import { datosDeVersiones, detalleDeTarjeta, rolDeSerie, seriesDeCurva } from "./logica";
+import { datosDePareto, datosDeVersiones, detalleDeTarjeta, rolDeSerie, seriesDeCurva } from "./logica";
 import type { TableroRespuesta } from "./logica";
 
 interface Ejes {
@@ -19,6 +19,7 @@ vi.mock("../../comun/GraficoCarbon", () => ({
       data-eje={(opciones as Ejes).axes?.bottom?.ticks?.formatter?.(4131)}
       data-etiqueta={(opciones as Ejes).pie?.labels?.formatter?.({ data: { group: "Costo directo" } })}
       data-centro={(opciones as Ejes).donut?.center?.numberFormatter?.(5060.000000001)}
+      data-grupos={(datos as { group: string }[]).map((d) => d.group).join("|")}
     />
   ),
 }));
@@ -70,6 +71,12 @@ const TABLERO: TableroRespuesta = {
   ],
 };
 
+const VERSIONES_DE_TRES = [
+  { version: "OB-001", fecha: "2026-11-02", motivo: "Inicial", costo_directo: "4000.00", total: "5060.00", vigente: false, valor: "5060" },
+  { version: "OB-002", fecha: "2026-11-05", motivo: "Ajuste", costo_directo: "4100.00", total: "5200.00", vigente: false, valor: "5200" },
+  { version: "OB-003", fecha: "2026-11-09", motivo: "Final", costo_directo: "4200.00", total: "5300.00", vigente: true, valor: "5300" },
+];
+
 describe("Tablero de la obra", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   beforeEach(() => {
@@ -97,6 +104,35 @@ describe("Tablero de la obra", () => {
     montar(null);
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  // Prueba en vivo del 18/11/2026: el Pareto salía al revés. La API lo manda de la mayor partida a la menor y «Resto» al
+  // final, pero Carbon dibuja el primer rótulo del eje izquierdo ABAJO: a la gráfica hay que darle el orden inverso para
+  // que la mayor quede arriba y «Resto» abajo. La tabla de al lado conserva el orden de la API.
+  test("el Pareto dibuja la mayor partida arriba y «Resto» abajo; su tabla va de mayor a menor", async () => {
+    const pareto = [
+      { partida: "P-01", descripcion: "Concreto", total: "3000.00", peso: "59.3 %", acumulado: "59.3 %", valor: "3000" },
+      { partida: "P-02", descripcion: "Acero", total: "1500.00", peso: "29.6 %", acumulado: "88.9 %", valor: "1500" },
+      { partida: "Resto (3)", descripcion: "las demás partidas", total: "560.00", peso: "11.1 %", acumulado: "100.0 %", valor: "560" },
+    ];
+    expect(datosDePareto(pareto).map((d) => d.group)).toEqual(["Resto (3)", "P-02", "P-01"]);
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, pareto }));
+    montar("OB-S2");
+    const barras = await screen.findAllByTestId("grafico-barras");
+    expect(barras[0]).toHaveAttribute("data-grupos", "Resto (3)|P-02|P-01");
+    const tabla = screen.getByRole("table", { name: "Partidas que más pesan" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    expect(filas.map((f) => within(f).getAllByRole("cell")[0]!.textContent)).toEqual(["P-01", "P-02", "Resto (3)"]);
+  });
+
+  test("el gráfico de versiones se lee igual que su tabla: la primera versión arriba (DS-70)", async () => {
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, versiones: VERSIONES_DE_TRES }));
+    montar("OB-S2");
+    const barras = await screen.findAllByTestId("grafico-barras");
+    expect(barras[1]).toHaveAttribute("data-grupos", "OB-003 (vigente)|OB-002|OB-001");
+    const tabla = screen.getByRole("table", { name: "Versiones del presupuesto" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    expect(filas.map((f) => within(f).getAllByRole("cell")[0]!.textContent)).toEqual(["OB-001", "OB-002", "OB-003"]);
   });
 
   test("pide el tablero del proyecto y muestra tarjetas, anillos, curva, desglose, Pareto y versiones", async () => {
@@ -264,5 +300,11 @@ describe("logica del tablero", () => {
 
   test("la version vigente se rotula en el grafico", () => {
     expect(datosDeVersiones(TABLERO.versiones)).toEqual([{ group: "OB-001 (vigente)", value: 5060 }]);
+  });
+
+  // DS-70: el gráfico se lee igual que su tabla (IBCS, barras horizontales). Carbon dibuja el primer rótulo del eje izquierdo
+  // ABAJO: para que la primera versión de la tabla quede arriba en la gráfica, los datos van en orden inverso.
+  test("las versiones van a la gráfica en el orden inverso de su tabla (DS-70)", () => {
+    expect(datosDeVersiones(VERSIONES_DE_TRES).map((d) => d.group)).toEqual(["OB-003 (vigente)", "OB-002", "OB-001"]);
   });
 });
