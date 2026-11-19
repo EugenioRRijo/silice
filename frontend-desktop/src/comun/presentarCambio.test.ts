@@ -21,6 +21,10 @@ describe("presentador común de las filas del registro de cambios", () => {
     // El rendimiento y las claves con la descripción del insumo no cambian.
     expect(presentarClave("apu", "AF-LLAVE")).toBe("AF-LLAVE");
     expect(presentarClave("apu", "MIN-001|Arena|fina")).not.toMatch(/n\.º/);
+    // Una clave mal formada (posición que no es un número, rubro desconocido) no se reescribe: se muestra como siempre.
+    expect(presentarClave("apu", "AF-LLAVE|material|x")).toBe("AF-LLAVE, material|x");
+    expect(presentarClave("apu", "AF-LLAVE|material|1|2")).not.toMatch(/n\.º/);
+    expect(presentarClave("apu", "AF-LLAVE|otro|1")).not.toMatch(/n\.º/);
   });
 
   test("el antes y el después: cifra con coma, instantánea con tilde, texto intacto", () => {
