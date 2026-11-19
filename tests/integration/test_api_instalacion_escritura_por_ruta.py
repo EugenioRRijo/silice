@@ -190,3 +190,26 @@ def test_publicar_toma_primero_la_carpeta_del_caso_y_luego_la_instalacion() -> N
     instalacion = _la_instalacion()
     assert instalacion in tomados and len(tomados) >= 2
     assert tomados.index(instalacion) > 0, tomados  # antes se tomo la base del caso
+
+
+def test_anular_un_conteo_toma_el_bloqueo_de_escritura() -> None:
+    """Anular lee el conteo vigente y si ya se anuló antes de escribir (rama de anular conteo,
+    unida con esta): dos anulaciones a la vez deben ordenarse, no leer el mismo estado."""
+    http = cliente_con_clave()
+    assert http.post("/v1/produccion/materiales", json=MATERIAL).status_code == 201
+    entrada = {
+        "material_codigo": "ARENA",
+        "tipo": "entrada",
+        "fecha": "2026-10-01",
+        "cantidad": "50",
+    }
+    assert http.post("/v1/produccion/movimientos", json=entrada).status_code == 201
+    conteo = {"material_codigo": "ARENA", "tipo": "ajuste", "fecha": "2026-10-05", "cantidad": "40"}
+    r = http.post("/v1/produccion/movimientos", json=conteo)
+    assert r.status_code == 201, r.text
+    with begins_de_escritura() as tomados:
+        r = http.post(
+            f"/v1/produccion/conteos/{r.json()['id']}/anular", json={"motivo": "Se contó mal."}
+        )
+    assert r.status_code == 201, r.text
+    assert tomados.count(_la_instalacion()) == 1
