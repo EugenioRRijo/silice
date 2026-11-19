@@ -414,3 +414,46 @@ def test_producir_antes_de_un_conteo_no_escribe_nada(sesion) -> None:
     assert _movimientos(sesion) == antes
     producir_con_receta(sesion, "MZ-1", D("100"), date(2026, 11, 7), usuario="ana", ahora=AHORA)
     assert existencia(sesion, agregado) == D("386")  # 480 - 0,94 x 100
+
+
+def test_un_consumo_que_redondea_a_cero_se_niega_antes_de_escribir(sesion) -> None:
+    """Arbitraje 2026-11-18: 0,00005 t de MZ-1 consumen 0,8 x 0,00005 / 1,6 = 0,000025 m3 de
+    AGR-12, que a cuatro decimales es 0. Antes la entrada ya estaba escrita cuando el consumo
+    fallaba."""
+    crear_material(
+        sesion,
+        codigo="AGR-12",
+        nombre="Agregado",
+        unidad_venta="m3",
+        existencia_minima=D(0),
+        densidad_t_m3=D("1.6"),
+    )
+    crear_material(sesion, codigo="MZ-1", nombre="Mezcla", unidad_venta="t", existencia_minima=D(0))
+    _registrar(sesion, [_c("AGR-12", "0.8"), _c("CA-30", "0.2", tipo="comprado")])
+    antes = _movimientos(sesion)
+    with pytest.raises(ErrorDeReceta, match=r"AGR-12.*0 m3.*cuatro decimales"):
+        producir_con_receta(
+            sesion, "MZ-1", D("0.00005"), date(2026, 10, 15), usuario="ana", ahora=AHORA
+        )
+    assert _movimientos(sesion) == antes
+
+
+def test_una_entrada_en_m3_que_redondea_a_cero_se_niega_antes_de_escribir(sesion) -> None:
+    crear_material(
+        sesion, codigo="AGR-12", nombre="Agregado", unidad_venta="t", existencia_minima=D(0)
+    )
+    crear_material(
+        sesion,
+        codigo="MZ-1",
+        nombre="Mezcla",
+        unidad_venta="m3",
+        existencia_minima=D(0),
+        densidad_t_m3=D("2.4"),
+    )
+    _registrar(sesion, [_c("AGR-12", "0.8"), _c("CA-30", "0.2", tipo="comprado")])
+    antes = _movimientos(sesion)
+    with pytest.raises(ErrorDeReceta, match=r"MZ-1.*0 m3.*cuatro decimales"):
+        producir_con_receta(
+            sesion, "MZ-1", D("0.0001"), date(2026, 10, 15), usuario="ana", ahora=AHORA
+        )
+    assert _movimientos(sesion) == antes
