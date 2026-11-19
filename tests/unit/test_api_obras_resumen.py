@@ -52,7 +52,7 @@ HOY = datetime(2026, 10, 25, 9, 0)
 HOY_DEL_RESUMEN = datetime(2026, 11, 16, 9, 0)
 
 
-def _caso(ruta: Path, moneda: str = "USD") -> Path:
+def _caso(ruta: Path, moneda: str = "USD", *, v03: bool = False) -> Path:
     preparar_base(ruta)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
@@ -60,6 +60,8 @@ def _caso(ruta: Path, moneda: str = "USD") -> Path:
             ob.sembrar(sesion)
             ob.declarar_linea_base(sesion)
             ob.registrar_v01_y_v02(sesion)
+            if v03:
+                ob.registrar(sesion, ob.VS)  # hasta el 2026-11-20
             declarar_moneda_de_la_carpeta(
                 sesion, moneda, responsable="Residente Ficticio", ahora=HOY
             )
@@ -76,6 +78,7 @@ def _plantillas(tmp_path_factory) -> dict[str, Path]:
         "instalacion": plantilla_con_cuentas(carpeta),
         "caso": _caso(carpeta / "caso.db"),
         "caso_bs": _caso(carpeta / "caso_bs.db", "Bs"),
+        "caso_v03": _caso(carpeta / "caso_v03.db", v03=True),
     }
 
 
@@ -330,3 +333,17 @@ def test_un_fallo_de_la_base_en_los_pendientes_es_503(monkeypatch: pytest.Monkey
     assert respuesta.status_code == 503
     assert respuesta.json() == {"detalle": MENSAJE_BASE}
     assert "SELECT" not in respuesta.text
+
+
+def test_una_valuacion_del_futuro_no_mueve_el_resumen_de_la_obra(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Arbitraje de feature/vivo-control: con V-03 (hasta el 20/11) y hoy el 13/11 el resumen mide al
+    # 13/11: avance 30,0 contra 37,5 del plan (memoria §3), igual que sin V-03.
+    copia = tmp_path / "caso_v03.db"
+    copia.write_bytes(_plantillas["caso_v03"].read_bytes())
+    dependencias.cerrar_motores()
+    monkeypatch.setenv(dependencias.VARIABLE_BASE, f"sqlite:///{copia.as_posix()}")
+    monkeypatch.setattr(obras, "ahora", lambda: datetime(2026, 11, 13, 9, 0))
+    (obra,) = _entrar("ana").get(RESUMEN).json()["obras"]
+    assert (obra["avance_real"], obra["avance_plan"]) == ("30.0", "37.5")

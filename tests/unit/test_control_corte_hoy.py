@@ -13,11 +13,12 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
-from aplicacion import control, mesa
+from aplicacion import control, mesa, tablero
 from core.budget.valuaciones import valuaciones_registradas
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
@@ -145,3 +146,45 @@ def test_una_valuacion_hasta_hoy_se_registra(sesion) -> None:
     resultado = _registrar(sesion, desde="2026-11-16", hasta="2026-11-18", fecha="2026-11-18")
     assert resultado.instantanea.corte == HOY
     assert _numeros(sesion) == ["V-01", "V-02", "V-03"]
+
+
+# --- arbitraje de feature/vivo-control: fronteras y las demás vistas del corte -------------------
+
+
+def test_un_hasta_de_manana_se_rechaza(sesion) -> None:
+    with pytest.raises(control.ControlInvalido, match=r"^El «Período hasta» \(19/11/2026\)"):
+        _registrar(sesion, desde="2026-11-16", hasta="2026-11-19", fecha="2026-11-19")
+    assert _numeros(sesion) == ["V-01", "V-02"]
+
+
+def test_con_el_hasta_igual_a_hoy_el_corte_por_defecto_es_hoy(sesion) -> None:
+    _registrar(sesion, desde="2026-11-16", hasta="2026-11-18", fecha="2026-11-18")
+    assert control.corte_por_defecto(sesion, ob.NOMBRE, hoy=HOY) == HOY
+    assert control.ultimo_corte(sesion, ob.NOMBRE, HOY) == HOY
+
+
+def _valor(tabla, indicador: str) -> str:
+    return next(fila[1] for fila in tabla.filas if fila[0] == indicador)
+
+
+def test_la_hoja_valor_ganado_del_excel_mide_a_hoy(sesion) -> None:
+    # Con V-03 (hasta el 20/11) y hoy el 13/11, el Excel mide al 13/11: PV 1 500 y EV 1 200
+    # (memoria de OB-S2 §3), los mismos que sin V-03.
+    _con_v03_futura(sesion)
+    hojas = control.tablas_de_control(sesion, ob.NOMBRE, Catalogo(sesion), hoy=date(2026, 11, 13))
+    valor_ganado = next(t for t in hojas if t.titulo == "Valor ganado")
+    assert (_valor(valor_ganado, "PV (USD)"), _valor(valor_ganado, "EV (USD)")) == (
+        "1500.00",
+        "1200.00",
+    )
+
+
+def test_el_tablero_mide_a_hoy(sesion) -> None:
+    _con_v03_futura(sesion)
+    datos = tablero.leer_control(sesion, Catalogo(sesion), ob.NOMBRE, hoy=date(2026, 11, 13))
+    assert (datos.indicadores.pv, datos.indicadores.ev) == (Decimal("1500.00"), Decimal("1200.00"))
+
+
+def test_la_perspectiva_de_la_linea_base_se_lee_al_corte_de_hoy(sesion) -> None:
+    _con_v03_futura(sesion)
+    assert control.perspectiva_de_la_linea_base(sesion, ob.NOMBRE, None, hoy=HOY) == "costo"

@@ -179,6 +179,8 @@ describe("Pestaña de valuaciones", () => {
     };
     const u = montar();
     await screen.findByLabelText("Valuación");
+    const regionViva = document.getElementById("val-resultado");
+    expect(regionViva).toHaveAttribute("aria-live", "polite");
     await u.type(screen.getByLabelText("Número"), "V-03");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
@@ -187,8 +189,14 @@ describe("Pestaña de valuaciones", () => {
     expect(aviso.textContent).toBe("Valuación registrada (corte 13/11/2026), pero la revisión encontró 1 error.");
     const notificacion = aviso.closest(".cds--inline-notification");
     expect(notificacion).toHaveClass("cds--inline-notification--warning");
-    expect(within(notificacion as HTMLElement).getByText("Error (R14): La valuación V-03 no tiene inspector.")).toBeInTheDocument();
-    expect(within(notificacion as HTMLElement).getByText(/^Información \(R14\): Entre las valuaciones/)).toBeInTheDocument();
+    // Arbitraje, punto 9: el resumen breve se anuncia en una región viva que ya estaba en el DOM; la lista no es parte
+    // del anuncio (ni de un role="alert"): va debajo, con su nombre.
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(aviso.closest("#val-resultado")).toBe(regionViva);
+    expect(within(notificacion as HTMLElement).queryByRole("list")).toBeNull();
+    const lista = screen.getByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" });
+    expect(within(lista).getByText("Error (R14): La valuación V-03 no tiene inspector.")).toBeInTheDocument();
+    expect(within(lista).getByText(/^Información \(R14\): Entre las valuaciones/)).toBeInTheDocument();
     expect(screen.queryByText(/^Valuación registrada: corte/)).toBeNull();
   });
 
@@ -218,5 +226,13 @@ describe("Pestaña de valuaciones", () => {
     expect(within(tabla).getByText("13/11/2026")).toBeInTheDocument();
     expect(within(tabla).getByText("1.280,00")).toBeInTheDocument();
     expect(within(tabla).getByText("libro de obra ficticio")).toBeInTheDocument();
+  });
+
+  // Arbitraje, punto 10: el monto viaja exacto; se lee a dos decimales y el exacto queda en el title.
+  test("el monto de un costo se lee a dos decimales con el exacto en el title", async () => {
+    costos = [{ Fecha: "12/11/2026", Monto: "100.005", Moneda: "USD", Partida: "OB-A", Fuente: "factura 12", Responsable: "Ana" }];
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Costos incurridos anotados" });
+    expect(within(tabla).getByText("100,01")).toHaveAttribute("title", "100.005");
   });
 });
