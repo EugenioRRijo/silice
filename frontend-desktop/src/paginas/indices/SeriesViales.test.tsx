@@ -7,8 +7,8 @@ import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaIndices from "./index";
 import { SeriesViales } from "./SeriesViales";
-import { resumenDeLaSerie } from "./seriesViales";
-import type { ImportacionVial, SeriesViales as Datos } from "./seriesViales";
+import { resumenDeLaSerie } from "./logicaSeriesViales";
+import type { ImportacionVial, SeriesViales as Datos } from "./logicaSeriesViales";
 
 // «Series del riesgo vial» en «Índices del BCV»: el índice del asfalto y el gasoil que usa «Riesgo de la obra». La API
 // trae la historia (fecha ISO y valor con punto) y el resultado de importar; la pantalla lee fechas dd/mm/aaaa y cifras

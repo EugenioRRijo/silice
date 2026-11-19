@@ -73,6 +73,7 @@ describe("Índices del BCV", () => {
       if (url === "/v1/indices/contexto") return contexto();
       if (url === "/v1/indices/leer") return leer();
       if (url === "/v1/indices/confirmar") return confirmar();
+      if (url === "/v1/indices/series-viales") return json({ series: [], responsable: "" });
       return json({ detalle: "ruta inesperada " + url }, 404);
     });
   });

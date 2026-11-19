@@ -65,6 +65,7 @@ describe("Un índice en USD (RF-214)", () => {
       if (url === "/v1/indices/en-usd/origenes") return origenes();
       if (url === "/v1/indices/en-usd/ver") return ver();
       if (url === "/v1/indices/en-usd/confirmar") return confirmar();
+      if (url === "/v1/indices/series-viales") return json({ series: [], responsable: "" });
       if (url === "/v1/indices/contexto")
         return json({ tipos: [], periodicidades: [], unidad_por_defecto: "indice_bs", extensiones: [], lee_xls: true, responsable: "" });
       return json({ detalle: "ruta inesperada " + url }, 404);
@@ -88,8 +89,9 @@ describe("Un índice en USD (RF-214)", () => {
   test("la página de índices trae la sección, y no pide nada de ella hasta abrirla", async () => {
     montar(<PaginaIndices />);
     expect(await screen.findByRole("heading", { name: "Un índice en USD" })).toBeInTheDocument();
-    await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(1));
-    expect(String(fetchFalso.mock.calls[0]![0])).toBe("/v1/indices/contexto");
+    // La página pide sus opciones y las series viales; «Un índice en USD» no pide nada hasta abrirla.
+    await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(2));
+    expect(fetchFalso.mock.calls.map(([ruta]) => String(ruta))).toEqual(["/v1/indices/contexto", "/v1/indices/series-viales"]);
   });
 
   test("al abrirla ofrece los índices en bolívares y la tasa de venta por omisión", async () => {
