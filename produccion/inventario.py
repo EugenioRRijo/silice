@@ -25,6 +25,7 @@ from datetime import date, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from produccion.costos import validar_periodo
@@ -34,6 +35,7 @@ from produccion.modelo import Material, Movimiento
 UNIDADES_VALIDAS = ("m3", "t")
 CERO = Decimal(0)
 LARGO_DEL_MOTIVO = 300  # el de prod_movimiento.motivo
+YA_ANULADO = "Ese conteo físico ya fue anulado."
 
 
 class ErrorDeInventario(ValueError):  # noqa: N818 - nombre fijado por el plan
@@ -151,6 +153,19 @@ def conteo_vigente(sesion: Session, material_id: int) -> Movimiento | None:
         .order_by(Movimiento.fecha.desc(), Movimiento.id.desc())
         .limit(1)
     )
+
+
+def abrir_transaccion(sesion: Session) -> None:
+    """Deja abierta la transaccion de la conexion antes de un `begin_nested()`.
+
+    `pysqlite` solo emite `BEGIN` antes de un `INSERT`/`UPDATE`/`DELETE`, no antes de un
+    `SAVEPOINT`: con una sesion sin escrituras previas, el `RELEASE` del savepoint mas externo
+    confirma todo y un `rollback` posterior del llamador no deshace nada. Con un `BEGIN` previo, el
+    savepoint queda anidado y quien llama conserva la decision de confirmar o deshacer."""
+    conexion = sesion.connection()
+    crudo = conexion.connection.dbapi_connection
+    if not getattr(crudo, "in_transaction", True):
+        conexion.exec_driver_sql("BEGIN")
 
 
 def ultimo_conteo(sesion: Session, material_id: int) -> date | None:
@@ -351,27 +366,48 @@ def anular_conteo(
     if conteo.anula_id is not None:
         raise Conflicto("Ese movimiento es la anulación de un conteo: no se anula.")
     if sesion.scalar(select(Movimiento.id).where(Movimiento.anula_id == conteo.id)) is not None:
-        raise Conflicto("Ese conteo físico ya fue anulado.")
+        raise Conflicto(YA_ANULADO)
     vigente = conteo_vigente(sesion, conteo.material_id)
-    if vigente is not None and vigente.id != conteo.id:
-        material = _material(sesion, conteo.material_id)
-        raise Conflicto(
-            f"Solo se puede anular el último conteo vigente de {material.codigo}, que es el del "
-            f"{vigente.fecha:%d/%m/%Y}: anule primero ese."
-        )
+    if vigente is None or vigente.id != conteo.id:
+        raise Conflicto(_no_es_el_ultimo(sesion, conteo, vigente))
     contraria = -conteo.cantidad
     if contraria == CERO:
         contraria = CERO  # «0», no «-0»
-    return _registrar(
-        sesion,
-        conteo.material_id,
-        conteo.fecha,
-        "ajuste",
-        contraria,
-        usuario=usuario,
-        ahora=ahora,
-        anula_id=conteo.id,
-        motivo=motivo,
+    # Otra anulacion del mismo conteo que gano la carrera despues de las comprobaciones: el indice
+    # unico de `anula_id` frena esta; se deshace solo su savepoint (arbitraje 2026-11-19).
+    abrir_transaccion(sesion)
+    try:
+        with sesion.begin_nested():
+            return _registrar(
+                sesion,
+                conteo.material_id,
+                conteo.fecha,
+                "ajuste",
+                contraria,
+                usuario=usuario,
+                ahora=ahora,
+                anula_id=conteo.id,
+                motivo=motivo,
+            )
+    except IntegrityError:
+        raise Conflicto(YA_ANULADO) from None
+
+
+def _no_es_el_ultimo(sesion: Session, conteo: Movimiento, vigente: Movimiento | None) -> str:
+    """Por que `conteo` no se anula: no hay conteo vigente (otra anulacion lo dejo sin el) u otro
+    lo sigue; si es del mismo dia, se dice a que hora se registro el que va despues."""
+    if vigente is None:
+        return YA_ANULADO
+    codigo = _material(sesion, conteo.material_id).codigo
+    if vigente.fecha == conteo.fecha:
+        return (
+            f"Solo se puede anular el último conteo vigente de {codigo}: el "
+            f"{vigente.fecha:%d/%m/%Y} hay otro registrado después, a las "
+            f"{vigente.registrado:%H:%M}. Anule primero ese."
+        )
+    return (
+        f"Solo se puede anular el último conteo vigente de {codigo}, que es el del "
+        f"{vigente.fecha:%d/%m/%Y}: anule primero ese."
     )
 
 
