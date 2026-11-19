@@ -5,8 +5,9 @@ tenia vuelta. Se anula como en los ERP y como `prod_costo`: nada se borra; la an
 ajuste nuevo con la cantidad contraria, `anula_id` apuntando al conteo (unico: se anula una vez) y
 el motivo. Columnas aditivas al final; los movimientos anteriores quedan sin anulacion (`anula_id`
 nulo, `motivo` vacio). SQLite no agrega una clave foranea con `ALTER TABLE`, asi que la tabla se
-recrea en lote (como `ins_0007`), conservando filas, `CHECK` y el ticket unico. Una base que ya
-trae las columnas (creada con `create_all`) se adopta sin tocarla. Al bajar se quitan las
+recrea en lote (como `ins_0007`), conservando filas, `CHECK` y el ticket unico; el indice unico
+de `anula_id` se crea en el mismo lote. Una base que ya trae las columnas (creada con
+`create_all`) se adopta sin recrearla; si le falta el indice, se le crea (arbitraje 2026-11-19). Al bajar se quitan las
 columnas; las filas de anulacion quedan como ajustes y la existencia no cambia (DA-S5-6: la
 bajada nunca se ofrece al usuario).
 
@@ -31,8 +32,14 @@ def _tiene_columna() -> bool:
     return "anula_id" in {c["name"] for c in sa.inspect(op.get_bind()).get_columns(TABLA)}
 
 
+def _tiene_indice() -> bool:
+    return INDICE in {i["name"] for i in sa.inspect(op.get_bind()).get_indexes(TABLA)}
+
+
 def upgrade() -> None:
     if _tiene_columna():
+        if not _tiene_indice():
+            op.create_index(INDICE, TABLA, ["anula_id"], unique=True)
         return
     with op.batch_alter_table(TABLA, recreate="always") as lote:
         lote.add_column(
@@ -46,13 +53,14 @@ def upgrade() -> None:
         lote.add_column(
             sa.Column("motivo", sa.String(300), nullable=False, server_default=sa.text("''"))
         )
-    op.create_index(INDICE, TABLA, ["anula_id"], unique=True)
+        lote.create_index(INDICE, ["anula_id"], unique=True)
 
 
 def downgrade() -> None:
     if not _tiene_columna():
         return
-    op.drop_index(INDICE, TABLA)
+    if _tiene_indice():
+        op.drop_index(INDICE, TABLA)
     with op.batch_alter_table(TABLA, recreate="always") as lote:
         lote.drop_column("motivo")
         lote.drop_column("anula_id")
