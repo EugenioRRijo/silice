@@ -15,6 +15,9 @@ export const AYUDA_SERIES_VIALES =
   "no escribe nada. Un archivo con las dos series se importa una vez por cada una.";
 export const SIN_ARCHIVO_VIAL = "Elija el archivo CSV de la serie.";
 export const SIN_FUENTE_VIAL = "Escriba de dónde bajó la serie.";
+export const SIN_FECHA_VIAL = "Escriba la fecha en que bajó el archivo.";
+export const FECHA_FUTURA_VIAL = "La fecha de descarga no puede ser posterior a hoy.";
+export const MAXIMO_FUENTE = 500;
 export const SIN_VALORES = "Todavía no hay valores cargados de esta serie.";
 export const EXTENSIONES_VIALES = [".csv"];
 
@@ -51,7 +54,8 @@ export interface ImportacionVial {
 export const COLUMNAS_HISTORIA: ColumnaDensa[] = [
   // La API manda aaaa-mm-dd; se lee dd/mm/aaaa. Con `celda` y no con `presentar`, para que el `title` no repita la forma ISO.
   { clave: "fecha", titulo: "Fecha", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
-  { clave: "valor", titulo: "Valor", numerica: true, presentar: formatoEsVe },
+  // Con `celda` y no con `presentar`: este dejaría el decimal con punto en el `title` (VD-5 vale también para las cifras de aquí).
+  { clave: "valor", titulo: "Valor", numerica: true, celda: (f) => formatoEsVe(f["valor"] ?? "") },
   { clave: "estado", titulo: "Estado" },
 ];
 
@@ -64,17 +68,40 @@ export function filasDeHistoria(historia: ObservacionVial[]): FilaDensa[] {
   }));
 }
 
+// La API nombra la unidad de un índice sin tilde (`indice`): aquí se lee «índice».
+export function unidadLegible(unidad: string): string {
+  return unidad === "indice" ? "índice" : unidad;
+}
+
 // «36 valores, del 01/10/2023 al 01/09/2026 (USD/l, mensual).»; sin valores, SIN_VALORES.
 export function resumenDeLaSerie(serie: SerieVial): string {
   if (serie.observaciones === 0) return SIN_VALORES;
-  const cuantos = serie.observaciones === 1 ? "1 valor" : `${serie.observaciones} valores`;
+  const cuantos = serie.observaciones === 1 ? "1 valor" : `${formatoEsVe(String(serie.observaciones))} valores`;
   const rango =
     serie.desde === serie.hasta ? `el ${fechaEsVe(serie.desde)}` : `del ${fechaEsVe(serie.desde)} al ${fechaEsVe(serie.hasta)}`;
-  return `${cuantos}, ${rango} (${serie.unidad}, ${serie.periodicidad}).`;
+  return `${cuantos}, ${rango} (${unidadLegible(serie.unidad)}, ${serie.periodicidad}).`;
 }
 
 export function textoDeOmitidas(omitidas: number): string {
-  return `Se muestran los últimos valores; ${omitidas === 1 ? "1 valor más antiguo no se muestra" : `${omitidas} valores más antiguos no se muestran`}.`;
+  const cuantas = omitidas === 1 ? "1 valor más antiguo no se muestra" : `${formatoEsVe(String(omitidas))} valores más antiguos no se muestran`;
+  return `Se muestran los últimos valores; ${cuantas}.`;
+}
+
+export interface ErroresDeImportacion {
+  fuente?: string;
+  fecha?: string;
+  archivo?: string;
+}
+
+// Lo que falta o sobra antes de enviar: la API lo diría igual, pero el campo lo dice sin ir y volver. La fecha ISO se
+// compara como texto (aaaa-mm-dd ordena igual que el calendario).
+export function validarImportacion(d: { archivo: File | null; fuente: string; fechaDescarga: string; hoy: string }): ErroresDeImportacion {
+  const errores: ErroresDeImportacion = {};
+  if (d.fuente.trim() === "") errores.fuente = SIN_FUENTE_VIAL;
+  if (d.fechaDescarga === "") errores.fecha = SIN_FECHA_VIAL;
+  else if (d.fechaDescarga > d.hoy) errores.fecha = FECHA_FUTURA_VIAL;
+  if (d.archivo === null) errores.archivo = SIN_ARCHIVO_VIAL;
+  return errores;
 }
 
 export function formularioDeImportacion(d: { serie: string; archivo: File; fuente: string; fechaDescarga: string }): FormData {

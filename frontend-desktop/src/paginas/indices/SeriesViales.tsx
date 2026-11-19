@@ -13,25 +13,26 @@ import {
   AYUDA_SERIES_VIALES,
   COLUMNAS_HISTORIA,
   EXTENSIONES_VIALES,
+  MAXIMO_FUENTE,
   RUTA_IMPORTAR_SERIE_VIAL,
   RUTA_SERIES_VIALES,
-  SIN_ARCHIVO_VIAL,
-  SIN_FUENTE_VIAL,
   filasDeHistoria,
   formularioDeImportacion,
   resumenDeLaSerie,
   textoDeOmitidas,
+  validarImportacion,
 } from "./logicaSeriesViales";
-import type { ImportacionVial, SeriesViales as Datos } from "./logicaSeriesViales";
+import type { ErroresDeImportacion, ImportacionVial, SeriesViales as Datos } from "./logicaSeriesViales";
 import { hoyIso } from "./logica";
 
 type Carga = { tipo: "cargando" } | { tipo: "listo"; datos: Datos } | { tipo: "error"; error: unknown };
 type Resultado =
   | { tipo: "ninguno" }
   | { tipo: "enCurso" }
-  | { tipo: "falta"; texto: string }
   | { tipo: "error"; error: unknown }
   | { tipo: "hecho"; respuesta: ImportacionVial };
+type Campo = "fuente" | "fecha" | "archivo";
+const ORDEN_DE_CAMPOS: readonly Campo[] = ["fuente", "fecha", "archivo"];
 
 // «Series del riesgo vial» (índice del asfalto y gasoil): las dos series que usa «Riesgo de la obra». Se leen al abrir la
 // página (definición e historia ya cargada) y se importan de a una desde su CSV canónico: la API guarda solo esa serie,
@@ -45,9 +46,15 @@ export function SeriesViales() {
   const [fuente, setFuente] = useState("");
   const [fuenteEscrita, setFuenteEscrita] = useState(false);
   const [fechaDescarga, setFechaDescarga] = useState(hoyIso());
+  const [errores, setErrores] = useState<ErroresDeImportacion>({});
+  const [foco, setFoco] = useState<{ campo: Campo; intento: number } | null>(null);
   const [resultado, setResultado] = useState<Resultado>({ tipo: "ninguno" });
   const consulta = useRef(0);
-  const vigente = useRef(true);
+  const lecturas = useRef(0);
+  const montado = useRef(true);
+  const campoFuente = useRef<HTMLInputElement>(null);
+  const campoFecha = useRef<HTMLInputElement>(null);
+  const avisoDelArchivo = useRef<HTMLDivElement>(null);
 
   const expirada = useCallback(
     (error: unknown) => {
@@ -57,12 +64,14 @@ export function SeriesViales() {
   );
 
   // Lee lo cargado. La primera vez deja elegida la primera serie y su organismo como fuente; las siguientes (tras
-  // importar) solo refrescan la historia y, si falla, lo dicen sin esconder el formulario.
+  // importar) solo refrescan la historia y, si falla, lo dicen sin esconder el formulario. Una respuesta que llega
+  // después de otra lectura más nueva (o de desmontar) se descarta.
   const leer = useCallback(
     (primera: boolean) => {
+      const numero = ++lecturas.current;
       pedir<Datos>(RUTA_SERIES_VIALES).then(
         (datos) => {
-          if (!vigente.current) return;
+          if (!montado.current || numero !== lecturas.current) return;
           setRelectura(null);
           setCarga({ tipo: "listo", datos });
           if (primera) {
@@ -71,7 +80,7 @@ export function SeriesViales() {
           }
         },
         (error: unknown) => {
-          if (!vigente.current) return;
+          if (!montado.current || numero !== lecturas.current) return;
           expirada(error);
           if (primera) setCarga({ tipo: "error", error });
           else setRelectura(error);
@@ -82,12 +91,20 @@ export function SeriesViales() {
   );
 
   useEffect(() => {
-    vigente.current = true;
+    montado.current = true;
     leer(true);
     return () => {
-      vigente.current = false;
+      montado.current = false;
     };
   }, [leer]);
+
+  // El foco va al primer campo inválido, ya pintado su error.
+  useEffect(() => {
+    if (foco === null) return;
+    if (foco.campo === "fuente") campoFuente.current?.focus();
+    else if (foco.campo === "fecha") campoFecha.current?.focus();
+    else avisoDelArchivo.current?.focus();
+  }, [foco]);
 
   const datos = carga.tipo === "listo" ? carga.datos : null;
 
@@ -100,29 +117,28 @@ export function SeriesViales() {
   const importar = (evento: FormEvent) => {
     evento.preventDefault();
     if (resultado.tipo === "enCurso") return;
-    if (archivo === null) {
+    const falta = validarImportacion({ archivo, fuente, fechaDescarga, hoy: hoyIso() });
+    setErrores(falta);
+    const primero = ORDEN_DE_CAMPOS.find((c) => falta[c] !== undefined);
+    if (primero !== undefined || archivo === null) {
       ++consulta.current;
-      setResultado({ tipo: "falta", texto: SIN_ARCHIVO_VIAL });
-      return;
-    }
-    if (fuente.trim() === "") {
-      ++consulta.current;
-      setResultado({ tipo: "falta", texto: SIN_FUENTE_VIAL });
+      setResultado({ tipo: "ninguno" });
+      if (primero !== undefined) setFoco((antes) => ({ campo: primero, intento: (antes?.intento ?? 0) + 1 }));
       return;
     }
     const numero = ++consulta.current;
     setResultado({ tipo: "enCurso" });
     pedir<ImportacionVial>(RUTA_IMPORTAR_SERIE_VIAL, {
       metodo: "POST",
-      cuerpo: formularioDeImportacion({ serie, archivo, fuente, fechaDescarga }),
+      cuerpo: formularioDeImportacion({ serie, archivo, fuente: fuente.trim(), fechaDescarga }),
     }).then(
       (respuesta) => {
-        if (numero !== consulta.current) return;
+        if (!montado.current || numero !== consulta.current) return;
         setResultado({ tipo: "hecho", respuesta });
         if (respuesta.importada) leer(false);
       },
       (error: unknown) => {
-        if (numero !== consulta.current) return;
+        if (!montado.current || numero !== consulta.current) return;
         expirada(error);
         setResultado({ tipo: "error", error });
       },
@@ -140,7 +156,7 @@ export function SeriesViales() {
       {carga.tipo === "error" && <AvisoError error={carga.error} titulo="No se pudieron leer las series viales" />}
 
       {datos !== null && (
-        <form className="silice-indices__formulario" onSubmit={importar}>
+        <form className="silice-indices__formulario" onSubmit={importar} noValidate>
           <div className="silice-indices__campos">
             <Select
               id="series-viales-serie"
@@ -155,31 +171,53 @@ export function SeriesViales() {
             </Select>
             <CampoTexto
               id="series-viales-fuente"
+              ref={campoFuente}
               labelText="Fuente de la serie"
               size="sm"
+              required
+              maxLength={MAXIMO_FUENTE}
               value={fuente}
+              invalid={errores.fuente !== undefined}
+              invalidText={errores.fuente}
               onChange={(e) => {
                 setFuenteEscrita(true);
                 setFuente(e.target.value);
+                setErrores((antes) => ({ ...antes, fuente: undefined }));
               }}
             />
             <CampoTexto
               id="series-viales-fecha"
+              ref={campoFecha}
               type="date"
               labelText="Fecha de descarga"
               size="sm"
+              required
+              max={hoyIso()}
               value={fechaDescarga}
-              onChange={(e) => setFechaDescarga(e.target.value)}
+              invalid={errores.fecha !== undefined}
+              invalidText={errores.fecha}
+              onChange={(e) => {
+                setFechaDescarga(e.target.value);
+                setErrores((antes) => ({ ...antes, fecha: undefined }));
+              }}
             />
           </div>
           <SubidaArchivo
             id="series-viales-archivo"
             etiqueta="Suelte aquí el archivo .csv de la serie, o haga clic para elegirlo"
             extensiones={EXTENSIONES_VIALES}
-            alElegir={setArchivo}
+            alElegir={(elegido) => {
+              setArchivo(elegido);
+              setErrores((antes) => ({ ...antes, archivo: undefined }));
+            }}
           />
           {archivo && <p className="silice-indices__nota cds--type-label-01">Archivo elegido: {archivo.name}</p>}
-          <p className="cds--type-body-compact-01">Responsable de la importación: {datos.responsable}</p>
+          {errores.archivo !== undefined && (
+            <div ref={avisoDelArchivo} tabIndex={-1}>
+              <InlineNotification kind="error" role="alert" title="Falta el archivo" subtitle={errores.archivo} lowContrast hideCloseButton />
+            </div>
+          )}
+          {datos.responsable !== "" && <p className="cds--type-body-compact-01">Responsable de la importación: {datos.responsable}</p>}
           <div className="silice-indices__acciones">
             <Button type="submit" kind="primary" size="md" disabled={resultado.tipo === "enCurso"}>
               Importar
@@ -189,10 +227,8 @@ export function SeriesViales() {
         </form>
       )}
 
-      <div aria-live="polite" aria-atomic="true" className="silice-indices__avisos">
-        {resultado.tipo === "falta" && (
-          <InlineNotification kind="error" role="alert" title="Falta un dato" subtitle={resultado.texto} lowContrast hideCloseButton />
-        )}
+      {/* Cada aviso trae su propio rol (`alert` o `status`): el contenedor no es otra región viva. */}
+      <div className="silice-indices__avisos">
         {resultado.tipo === "error" && <AvisoError error={resultado.error} titulo="No se importó la serie" />}
         {resultado.tipo === "hecho" && (
           <InlineNotification

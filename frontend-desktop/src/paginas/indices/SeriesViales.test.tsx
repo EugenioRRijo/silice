@@ -125,6 +125,8 @@ describe("Series del riesgo vial", () => {
     };
     return render(<ContextoAplicacion.Provider value={valor}>{nodo}</ContextoAplicacion.Provider>);
   }
+  // Carbon enlaza el mensaje de un campo inválido con `aria-errormessage`.
+  const mensajeDe = (campo: HTMLElement) => document.getElementById(campo.getAttribute("aria-errormessage") ?? "")?.textContent ?? "";
   const llamadas = (url: string) => fetchFalso.mock.calls.filter(([r]) => String(r) === url);
 
   async function elegirArchivo(nombre = "series.csv") {
@@ -324,7 +326,7 @@ describe("Series del riesgo vial", () => {
     await usuario.clear(fuente);
     await usuario.click(screen.getByRole("button", { name: "Importar" }));
     await waitFor(() => expect(fuente).toHaveAttribute("aria-invalid", "true"));
-    expect(fuente).toHaveAccessibleDescription("Escriba de dónde bajó la serie.");
+    expect(mensajeDe(fuente)).toBe("Escriba de dónde bajó la serie.");
     expect(fuente).toHaveFocus();
     expect(llamadas("/v1/indices/series-viales/importar")).toHaveLength(0);
   });
@@ -336,11 +338,11 @@ describe("Series del riesgo vial", () => {
     await usuario.clear(fecha);
     await usuario.click(screen.getByRole("button", { name: "Importar" }));
     await waitFor(() => expect(fecha).toHaveAttribute("aria-invalid", "true"));
-    expect(fecha).toHaveAccessibleDescription("Escriba la fecha en que bajó el archivo.");
+    expect(mensajeDe(fecha)).toBe("Escriba la fecha en que bajó el archivo.");
     expect(fecha).toHaveFocus();
     await usuario.type(fecha, "2999-01-01");
     await usuario.click(screen.getByRole("button", { name: "Importar" }));
-    await waitFor(() => expect(fecha).toHaveAccessibleDescription("La fecha de descarga no puede ser posterior a hoy."));
+    await waitFor(() => expect(mensajeDe(fecha)).toBe("La fecha de descarga no puede ser posterior a hoy."));
     expect(llamadas("/v1/indices/series-viales/importar")).toHaveLength(0);
   });
 

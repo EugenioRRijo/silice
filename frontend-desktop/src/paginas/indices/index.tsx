@@ -245,8 +245,8 @@ export default function PaginaIndices() {
       {/* RF-214: un índice mensual en bolívares expresado en USD, para el reajuste de un contrato en dólares. */}
       {contexto && <EnUsd />}
 
-      {/* Las dos series que proyecta «Riesgo de la obra»: solo si el módulo de riesgo está encendido. */}
-      {contexto && !(modulosApagados ?? []).includes("riesgo") && <SeriesViales />}
+      {/* Las dos series que proyecta «Riesgo de la obra»: solo si ya se sabe que el módulo de riesgo está encendido. */}
+      {contexto && modulosApagados !== undefined && !modulosApagados.includes("riesgo") && <SeriesViales />}
     </div>
   );
 }
