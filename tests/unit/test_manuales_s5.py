@@ -232,3 +232,11 @@ def test_los_manuales_no_tienen_retornos_de_carro_sueltos_ni_rutas_partidas() ->
         assert not re.search(r"%[A-Z]+%\\[A-Za-z\\]*\n[a-z]", texto), ruta.name
     instalacion = _leer("docs/manual_instalacion.md")
     assert "%LOCALAPPDATA%\\Silice\\registros" in instalacion
+
+
+def test_el_manual_de_usuario_no_dice_que_guardar_el_desglose_crea_version() -> None:
+    """Anexo A.6: solo el desglose del desperdicio se guarda sin versión nueva; el manual lo dice."""
+    manual = _leer("docs/manual_usuario.md")
+    assert "«Guardar el desglose…»" in manual
+    assert "Cada vez que guarda, nace una versión nueva." not in manual
+    assert "y, si la edita y guarda, nace una versión nueva" not in manual
