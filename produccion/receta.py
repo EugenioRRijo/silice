@@ -12,7 +12,7 @@ la unidad de venta de ese material. Lo comprado no toca el inventario de la aren
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, deque
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -106,13 +106,14 @@ def _coma(valor: Decimal) -> str:
     return format(valor, "f").replace(".", ",")
 
 
-def _camino(lleva: dict[str, set[str]], desde: str, hasta: str) -> list[str] | None:
-    """El camino de recetas de `desde` a `hasta` (`[desde, ..., hasta]`, el mas corto), o `None`
-    si no lo hay. `lleva` es producto -> codigos de sus componentes."""
-    previo: dict[str, str | None] = {desde: None}
-    pendientes = [desde]
+def _camino(lleva: dict[str, set[str]], desde: Sequence[str], hasta: str) -> list[str] | None:
+    """El camino de recetas mas corto de alguno de `desde` a `hasta` (`[origen, ..., hasta]`), o
+    `None` si no lo hay: una sola busqueda en anchura con todos los origenes a la vez. `lleva` es
+    producto -> codigos de sus componentes."""
+    previo: dict[str, str | None] = dict.fromkeys(desde)
+    pendientes = deque(previo)
     while pendientes:
-        actual = pendientes.pop(0)
+        actual = pendientes.popleft()
         if actual == hasta:
             camino: list[str] = []
             paso: str | None = actual
@@ -139,13 +140,13 @@ def _exigir_sin_ciclo(sesion: Session, producto: str, codigos: Sequence[str]) ->
         )
     ):
         lleva.setdefault(prod, set()).add(codigo)
-    for codigo in codigos:
-        camino = _camino(lleva, codigo, producto)
-        if camino is not None:
-            raise ErrorDeReceta(
-                f"La receta de {producto} no puede llevar {codigo}: {codigo} lleva {producto} "
-                f"({' → '.join(camino)}) y un producto no puede contenerse a sí mismo."
-            )
+    camino = _camino(lleva, codigos, producto)
+    if camino is not None:
+        codigo = camino[0]
+        raise ErrorDeReceta(
+            f"La receta de {producto} no puede llevar {codigo}: {codigo} lleva {producto} "
+            f"({' → '.join(camino)}) y un producto no puede contenerse a sí mismo."
+        )
 
 
 def registrar_receta(

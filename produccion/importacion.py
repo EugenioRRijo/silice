@@ -216,6 +216,8 @@ def importar(sesion: Session, lectura: LecturaBascula, *, usuario: str) -> Resul
         tickets = _tickets_existentes(sesion, lectura.pesajes)
 
         conocidos = _bandeja_por_ticket(sesion, lectura)
+        # El ultimo conteo de cada material, una consulta por material y no por pesaje.
+        conteos: dict[int, date | None] = {}
 
         def a_bandeja(sospechoso: PesajeSospechoso) -> int:
             """1 si entra a la bandeja; 0 si ya estaba (misma huella y fila, o mismo ticket y
@@ -241,7 +243,9 @@ def importar(sesion: Session, lectura: LecturaBascula, *, usuario: str) -> Resul
             else:
                 cantidad, motivo = _cantidad_de_despacho(material, pesaje.neto_t)
             if material is not None and cantidad is not None:
-                cerrado = ultimo_conteo(sesion, material.id)
+                if material.id not in conteos:
+                    conteos[material.id] = ultimo_conteo(sesion, material.id)
+                cerrado = conteos[material.id]
                 if cerrado is not None and pesaje.fecha <= cerrado:
                     cantidad, motivo = None, MOTIVO_FECHA_CERRADA
             if material is None or cantidad is None:
