@@ -31,3 +31,7 @@ def crear_motor(ruta: Path | str) -> Engine:
 
 def abrir_sesion(motor: Engine) -> Session:
     return Session(motor, expire_on_commit=False)
+
+
+def abrir_sesion_de_escritura(motor: Engine) -> Session:
+    return Session(motor, expire_on_commit=False)
