@@ -4,7 +4,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaTablero from "./index";
-import { datosDeVersiones, detalleDeTarjeta, rolDeSerie, seriesDeCurva } from "./logica";
+import { datosDePareto, datosDeVersiones, detalleDeTarjeta, rolDeSerie, seriesDeCurva } from "./logica";
 import type { TableroRespuesta } from "./logica";
 
 interface Ejes {
@@ -19,6 +19,7 @@ vi.mock("../../comun/GraficoCarbon", () => ({
       data-eje={(opciones as Ejes).axes?.bottom?.ticks?.formatter?.(4131)}
       data-etiqueta={(opciones as Ejes).pie?.labels?.formatter?.({ data: { group: "Costo directo" } })}
       data-centro={(opciones as Ejes).donut?.center?.numberFormatter?.(5060.000000001)}
+      data-grupos={(datos as { group: string }[]).map((d) => d.group).join("|")}
     />
   ),
 }));
@@ -97,6 +98,25 @@ describe("Tablero de la obra", () => {
     montar(null);
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  // Prueba en vivo del 18/11/2026: el Pareto salía al revés. La API lo manda de la mayor partida a la menor y «Resto» al
+  // final, pero Carbon dibuja el primer rótulo del eje izquierdo ABAJO: a la gráfica hay que darle el orden inverso para
+  // que la mayor quede arriba y «Resto» abajo. La tabla de al lado conserva el orden de la API.
+  test("el Pareto dibuja la mayor partida arriba y «Resto» abajo; su tabla va de mayor a menor", async () => {
+    const pareto = [
+      { partida: "P-01", descripcion: "Concreto", total: "3000.00", peso: "59.3 %", acumulado: "59.3 %", valor: "3000" },
+      { partida: "P-02", descripcion: "Acero", total: "1500.00", peso: "29.6 %", acumulado: "88.9 %", valor: "1500" },
+      { partida: "Resto (3)", descripcion: "las demás partidas", total: "560.00", peso: "11.1 %", acumulado: "100.0 %", valor: "560" },
+    ];
+    expect(datosDePareto(pareto).map((d) => d.group)).toEqual(["Resto (3)", "P-02", "P-01"]);
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, pareto }));
+    montar("OB-S2");
+    const barras = await screen.findAllByTestId("grafico-barras");
+    expect(barras[0]).toHaveAttribute("data-grupos", "Resto (3)|P-02|P-01");
+    const tabla = screen.getByRole("table", { name: "Partidas que más pesan" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    expect(filas.map((f) => within(f).getAllByRole("cell")[0]!.textContent)).toEqual(["P-01", "P-02", "Resto (3)"]);
   });
 
   test("pide el tablero del proyecto y muestra tarjetas, anillos, curva, desglose, Pareto y versiones", async () => {
