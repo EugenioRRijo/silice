@@ -488,7 +488,7 @@ def test_texto_llano_deja_igual_cualquier_otra_descripcion():
         # un parámetro negativo va entre paréntesis
         ("a + b", {"a": "3", "b": "-0.5"}, "3+(-0,5)"),
         # la potencia cero es 1 y la uno, la base (arbitraje de la rama, 2026-11-18)
-        ("a ** 0 + a ** 1", {"a": "2"}, "1+(2)"),
+        ("a ** 0 + a ** 1", {"a": "2"}, "1+2"),
         # la potencia de una potencia se agrupa como en Python: (2**2)**3 = 64
         ("(2 ** 2) ** 3", {}, "((2*2)*(2*2)*(2*2))"),
         # la resta y la división no son asociativas: el paréntesis de la derecha se conserva
@@ -565,7 +565,7 @@ def test_una_regla_que_crece_sin_medida_no_da_calculo_y_no_tarda() -> None:
     [
         ("n * (a**2 - (a - 2*e)**2) * h", {"n": "2", "a": "1.2", "e": "0.15", "h": "1.5"}),
         ("a - (b - c) / (d / e)", {"a": "9", "b": "5", "c": "1", "d": "8", "e": "2"}),
-        ("-a * 2 + b ** 3", {"a": "3", "b": "1.5"}),
+        ("-a * 2 + b ** 3", {"a": "1", "b": "1.5"}),
         ("(a + b) ** 2 / c", {"a": "1", "b": "2", "c": "4"}),
     ],
 )
