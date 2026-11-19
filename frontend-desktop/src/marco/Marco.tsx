@@ -131,6 +131,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const { recargar: recargarObras } = obras;
   // Los pendientes de todas las obras: los leen la bandeja y la barra lateral sin volver a pedirlos.
   const pendientes = useCargaDePendientes(acciones, alExpirar);
+  const { recargar: recargarPendientes } = pendientes;
 
   const fallo = useCallback(
     (razon: unknown) => {
@@ -155,10 +156,12 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       setMonedaPendiente(null);
       setProyecto(null);
       recargarObras();
+      // Los contadores de la barra son de la carpeta abierta: se piden de nuevo (la carga de Inicio solo repite al entrar en él).
+      recargarPendientes();
       setGeneracion((g) => g + 1);
       setAviso({ titulo: CARPETA_CAMBIADA, texto: `Ahora trabaja con la carpeta «${carpeta}».` });
     },
-    [recargarObras],
+    [recargarObras, recargarPendientes],
   );
   const obrasDeLaCarpeta = useMemo(
     () =>
