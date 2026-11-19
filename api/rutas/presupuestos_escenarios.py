@@ -2,8 +2,8 @@
 
 `POST /presupuestos/{codigo}/escenarios` recalcula el base bajo cada supuesto sin guardar nada,
 `GET .../escenarios/base` precarga el formulario con los parametros congelados del base y
-`POST .../escenarios/csv` devuelve la tabla de RF-31 con los `Decimal` exactos. Salieron de
-`api/rutas/presupuestos.py` sin cambios (tarea 4.1 del plan de desenredo); `api/main.py`
+`POST .../escenarios/csv` devuelve la tabla de RF-31 para Excel en español (dos decimales).
+Salieron de `api/rutas/presupuestos.py` sin cambios (tarea 4.1 del plan de desenredo); `api/main.py`
 registra este router despues del de presupuestos y del de calculo, asi el orden de las rutas
 no cambia.
 """
@@ -31,6 +31,7 @@ from api.rutas.presupuestos_ayudas import (
     _neutralizar_formula,
 )
 from aplicacion import elaboracion as aplicacion_elaboracion
+from aplicacion.escenarios_csv import csv_de_escenarios
 from core.budget import (
     cargar_elaboracion,
     comparar_escenarios,
@@ -127,9 +128,10 @@ def escenarios_en_csv(
     peticion: EscenariosPeticion,
     proyecto: str | None = None,
 ) -> Response:
-    """La tabla de RF-31 (el base y una fila por escenario) como CSV con los `Decimal` exactos, no
-    los dos decimales de la pantalla: el redondeo es solo de presentación (NORMAS.md §2.3). Mismo
-    cuerpo y mismos errores que `POST /presupuestos/{codigo}/escenarios`; no guarda nada."""
+    """La tabla de RF-31 (el base y una fila por escenario) como CSV para Excel en español: `;`,
+    coma decimal, punto de miles y los dos decimales de la pantalla (`aplicacion/escenarios_csv.py`;
+    prueba en vivo del 2026-11-18). Mismo cuerpo y mismos errores que
+    `POST /presupuestos/{codigo}/escenarios`; no guarda nada."""
     _modelo, elaboracion, escenarios, _sin_efecto = _generar_escenarios(
         sesion, codigo, proyecto, peticion
     )
@@ -139,7 +141,7 @@ def escenarios_en_csv(
     tabla["escenario"] = [_neutralizar_formula(texto) for texto in tabla["escenario"]]
     nombre = aplicacion_elaboracion.nombre_de_archivo("escenarios", codigo, "csv")
     return Response(
-        content=tabla.to_csv(index=False),
-        media_type="text/csv",
+        content=csv_de_escenarios(tabla.to_dict("records")),
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
     )

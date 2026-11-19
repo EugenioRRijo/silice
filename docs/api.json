@@ -1105,7 +1105,7 @@
           "presupuestos"
         ],
         "summary": "Escenarios En Csv",
-        "description": "La tabla de RF-31 (el base y una fila por escenario) como CSV con los `Decimal` exactos, no\nlos dos decimales de la pantalla: el redondeo es solo de presentación (NORMAS.md §2.3). Mismo\ncuerpo y mismos errores que `POST /presupuestos/{codigo}/escenarios`; no guarda nada.",
+        "description": "La tabla de RF-31 (el base y una fila por escenario) como CSV para Excel en español: `;`,\ncoma decimal, punto de miles y los dos decimales de la pantalla (`aplicacion/escenarios_csv.py`;\nprueba en vivo del 2026-11-18). Mismo cuerpo y mismos errores que\n`POST /presupuestos/{codigo}/escenarios`; no guarda nada.",
         "operationId": "escenarios_en_csv_presupuestos__codigo__escenarios_csv_post",
         "parameters": [
           {
