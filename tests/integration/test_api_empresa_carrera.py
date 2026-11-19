@@ -11,8 +11,7 @@ con la sesion de escritura la segunda no puede leer hasta que la primera confirm
 from __future__ import annotations
 
 import sqlite3
-import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from contextlib import closing
 from pathlib import Path
 
@@ -25,6 +24,7 @@ from api.rutas import entregas as ruta_entregas
 from operacion import config
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, empresas
+from tests.fixtures.carrera import dos_a_la_vez
 from tests.fixtures.instalacion import AHORA
 from tests.fixtures.sesion_web import (
     con_cuenta,
@@ -64,56 +64,22 @@ def _filas(sql: str) -> list[tuple]:
         return list(bd.execute(sql))
 
 
-def _dos_a_la_vez(
-    monkeypatch: pytest.MonkeyPatch, objeto: object, nombre: str, peticion: Callable[[], object]
-) -> list[int]:
-    """Corre `peticion` en dos hilos. `objeto.nombre` es una funcion que se llama DESPUES de leer
-    lo que decide y ANTES de escribir: la primera en llegar espera (hasta un segundo) a la
-    segunda."""
-    original = getattr(objeto, nombre)
-    llegadas, lock = [], threading.Lock()
-    primera_leyo, segunda_leyo = threading.Event(), threading.Event()
-
-    def gancho(*args, **kwargs):
-        with lock:
-            llegadas.append(1)
-            es_la_primera = len(llegadas) == 1
-        if es_la_primera:
-            primera_leyo.set()
-            segunda_leyo.wait(timeout=1)
-        else:
-            segunda_leyo.set()
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr(objeto, nombre, gancho)
-    estados: list[int] = []
-
-    def hilo(es_la_segunda: bool) -> None:
-        if es_la_segunda:
-            primera_leyo.wait(timeout=10)
-        estados.append(peticion().status_code)
-
-    hilos = [threading.Thread(target=hilo, args=(n == 1,)) for n in range(2)]
-    for h in hilos:
-        h.start()
-    for h in hilos:
-        h.join(timeout=30)
-    return sorted(estados)
-
-
 def test_dos_generaciones_de_la_clave_dejan_una_sola_activa(monkeypatch) -> None:
     with sesion_de_instalacion() as bd:
         empresas.guardar_empresa_propia(bd, "Demo, C.A.", "J-00000000-0", "", "admin", AHORA)
     navegador, cab = _admin()
     otro, cab_otro = _admin()
-    clientes = iter([(navegador, cab), (otro, cab_otro)])
-    lock = threading.Lock()
 
-    def peticion():
-        with lock:
-            c, h = next(clientes)
-        return c.post("/v1/admin/empresa/clave", json={"contrasena": FRASE}, headers=h)
+    def peticion(c: TestClient, h: dict[str, str]):
+        return lambda: c.post("/v1/admin/empresa/clave", json={"contrasena": FRASE}, headers=h)
 
-    estados = _dos_a_la_vez(monkeypatch, empresas, "exigir_contrasena_de_clave", peticion)
+    respuestas = dos_a_la_vez(
+        monkeypatch,
+        empresas,
+        "exigir_contrasena_de_clave",
+        peticion(navegador, cab),
+        peticion(otro, cab_otro),
+    )
+    estados = sorted(r.status_code for r in respuestas)
     assert estados == [200, 400]
     assert _filas("SELECT estado FROM clave_empresa") == [("activa",)]

@@ -65,7 +65,7 @@ def test_dos_escrituras_leen_y_suman_sin_perder_ninguna(tmp_path: Path) -> None:
     motor = _motor(tmp_path)
     segunda_leyo, errores = threading.Event(), []
 
-    def sumar(sesion) -> None:
+    def sumar(sesion) -> int:
         n = sesion.execute(text("SELECT n FROM contador")).scalar_one()
         return n
 

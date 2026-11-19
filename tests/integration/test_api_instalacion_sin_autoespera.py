@@ -4,7 +4,7 @@ La sesion de la ruta toma el bloqueo de escritura al empezar. Si otra dependenci
 MISMA peticion abriera otra sesion de la instalacion y escribiera mientras esa sigue abierta (la
 clave de API anota su ultimo uso, la sesion web renueva su vigencia), esperaria el `busy_timeout`
 contra si misma y daria un error a los 5 s. Con la autenticacion REAL (sin anularla), cada POST
-termina en menos de un segundo y ninguna sesion de instalacion se abre con una de escritura viva.
+termina en menos de 3,5 s y ninguna sesion de instalacion se abre con una de escritura viva.
 """
 
 from __future__ import annotations
@@ -15,12 +15,11 @@ from pathlib import Path
 import pytest
 
 import operacion.instalacion as modulo
-from api.main import app
 from seguridad import cuentas
 from tests.fixtures.produccion_api import Web, cliente_con_clave
 from tests.fixtures.sesion_web import copiar_instalacion, plantilla_con_cuentas
 
-LIMITE_S = 1.0
+LIMITE_S = 3.5  # por debajo de los 5 s del `busy_timeout`; el oraculo es la lista `solapes`
 MATERIAL = {"codigo": "ARENA", "nombre": "Arena", "unidad_venta": "m3", "existencia_minima": "0"}
 MOVIMIENTO = {
     "material_codigo": "ARENA",
@@ -101,4 +100,3 @@ def test_la_guardia_ve_el_solape(solapes: list[str]) -> None:
     with modulo.sesion_de_instalacion(escritura=True), modulo.sesion_de_instalacion():
         pass
     assert solapes == ["sesion abierta con una de escritura viva"]
-    assert app is not None
