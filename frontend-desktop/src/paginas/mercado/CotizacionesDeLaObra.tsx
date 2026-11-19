@@ -6,6 +6,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
+import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { rutaDeObra } from "../../marco/secciones";
@@ -26,7 +27,7 @@ import { cotizacionEsVe } from "./logica";
 // original, tasa del día exacto del precio, su fecha y su fuente): la interfaz no convierte, lo lee del servidor.
 // Cotizar exige `editar_hoja`: quien solo revisa ve las cotizaciones sin ningún control que escriba.
 
-const COLUMNAS = [
+const COLUMNAS: ColumnaDensa[] = [
   { clave: "codigo", titulo: "Código" },
   { clave: "insumo", titulo: "Insumo" },
   { clave: "cotizacion", titulo: "Cotización", presentar: cotizacionEsVe },
