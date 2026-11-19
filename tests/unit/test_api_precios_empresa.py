@@ -54,6 +54,7 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 from tests.fixtures.sin_extra import SinExtra
+from tests.fixtures.transacciones import lo_ultimo_de_cada_una, transacciones_del_caso
 
 RAIZ = Path(__file__).resolve().parents[2]
 CSV_EMPRESA = RAIZ / "tests" / "fixtures" / "precios_empresa_s1.csv"
@@ -236,6 +237,19 @@ def test_una_referencia_ilegible_dice_el_motivo_sin_la_ruta_del_servidor(monkeyp
 
 
 # --- la lista de la empresa -------------------------------------------------------------------
+
+
+def test_crear_la_lista_no_abre_otra_transaccion_tras_confirmar(_entorno) -> None:
+    """DS-57: la moneda de la carpeta (para el aviso de la lista para armar) se lee antes del
+    `commit`; tras él, consultar abriría otro `BEGIN IMMEDIATE` (`tests/fixtures/transacciones.py`).
+    """
+    navegador, cabeceras = _admin()
+    _cargar_referencia(navegador, cabeceras)
+    base_id = _id_de_la_referencia(navegador)
+    with transacciones_del_caso(_entorno) as por_sesion:
+        r = _crear(navegador, cabeceras, base_id)
+    assert r.status_code == 201, r.text
+    assert lo_ultimo_de_cada_una(por_sesion) == ["commit"], por_sesion
 
 
 def test_crea_la_lista_de_la_empresa_con_diez_precios_propios(_entorno) -> None:

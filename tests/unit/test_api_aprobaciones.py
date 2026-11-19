@@ -63,6 +63,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
+from tests.fixtures.transacciones import lo_ultimo_de_cada_una, transacciones_del_caso
 
 RAIZ = "/v1/aprobaciones"
 ANA = "Ana <ana>"
@@ -637,6 +638,31 @@ def test_el_envio_vale_aunque_el_reflejo_falle_y_mias_lo_repone(
     with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
         assert conexion.execute("SELECT count(*) FROM mp_indice_aprobacion").fetchone() == (0,)
     assert ana[0].get(f"{RAIZ}/mias").json() == [_fila(1)]
+
+
+def test_enviar_no_abre_otra_transaccion_en_la_carpeta_tras_confirmar(ana) -> None:
+    """DS-57: lo que se refleja en el índice de la instalación se lee de la carpeta antes de su
+    `commit`; tras él, consultar abriría otro `BEGIN IMMEDIATE` (`tests/fixtures/transacciones.py`).
+    El índice se escribe después, como antes: un fallo ahí no desdice la carpeta."""
+    with transacciones_del_caso(_vivienda()) as por_sesion:
+        enviado = _enviar(ana)
+    assert enviado.status_code == 201, enviado.text
+    assert lo_ultimo_de_cada_una(por_sesion) == ["commit"], por_sesion
+    with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
+        assert conexion.execute("SELECT count(*) FROM mp_indice_aprobacion").fetchone() == (1,)
+
+
+def test_dictaminar_no_abre_otra_transaccion_en_la_carpeta_tras_confirmar(ana, rita) -> None:
+    _enviar(ana)
+    _abrir(rita, 1)
+    with transacciones_del_caso(_vivienda()) as por_sesion:
+        dictamen = _dictaminar(rita, 1, "aprobada")
+    assert dictamen.status_code == 201, dictamen.text
+    assert lo_ultimo_de_cada_una(por_sesion) == ["commit"], por_sesion
+    with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
+        assert conexion.execute("SELECT estado FROM mp_indice_aprobacion").fetchall() == [
+            ("aprobada",)
+        ]
 
 
 def _alterar_un_renglon(version: str) -> None:

@@ -42,6 +42,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
+from tests.fixtures.transacciones import lo_ultimo_de_cada_una, transacciones_del_caso
 
 D = Decimal
 ANA = "Ana <ana>"
@@ -357,3 +358,25 @@ def test_rita_no_edita(ana) -> None:
     )
     assert r.status_code == 403
     assert r.json()["detalle"] == MENSAJE_PERMISO
+
+
+# --- la respuesta se arma antes del commit (DS-57) ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "guardar",
+    [
+        lambda ana: _guardar(ana, [TRAMO], fuente="plano 3 (ficticio)"),
+        lambda ana: _importar(ana, MUESTRA.read_bytes(), "via_ficticia.csv"),
+    ],
+    ids=["poner", "importar"],
+)
+def test_guardar_tramos_no_abre_otra_transaccion_tras_confirmar(ana, guardar) -> None:
+    """Los tramos guardados vuelven en la respuesta, leídos antes del `commit`: tras él, consultar
+    abriría otro `BEGIN IMMEDIATE`, que espera a quien escribe y, pasado el `busy_timeout`, daría
+    503 con los tramos ya guardados (`tests/fixtures/transacciones.py`)."""
+    with transacciones_del_caso(config.carpeta_casos() / "vivienda.db") as por_sesion:
+        r = guardar(ana)
+    assert r.status_code == 200, r.text
+    assert r.json()["tramos"]
+    assert lo_ultimo_de_cada_una(por_sesion) == ["commit"], por_sesion
