@@ -14,11 +14,13 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
+from produccion import inventario
 from produccion.inventario import (
     Conflicto,
     ConteoInexistente,
@@ -197,3 +199,68 @@ def test_el_cierre_dice_que_un_conteo_mal_hecho_se_anula(sesion: Session) -> Non
     assert str(error.value).endswith(
         "o, si el conteo estaba mal, anúlelo en «Existencias» con su motivo."
     )
+
+
+# --- Arbitraje 2026-11-19 ----------------------------------------------------------------------
+
+
+def test_un_movimiento_posterior_al_conteo_anulado_sigue_contando(sesion: Session) -> None:
+    """Despacho 5 el 12/11, despues del conteo del 10/11; al anularlo la existencia es la teorica
+    sin el conteo: 158 - 5 = 153 (y al 10/11, 158)."""
+    mid, _, segundo = _serie(sesion)
+    registrar_despacho(sesion, mid, date(2026, 11, 12), D("5"), usuario=USUARIO)
+    assert existencia(sesion, mid) == D("155")
+    _anular(sesion, segundo.id)
+    assert existencia(sesion, mid) == D("153")
+    assert existencia(sesion, mid, date(2026, 11, 10)) == D("158")
+
+
+def test_dos_conteos_del_mismo_dia_el_aviso_dice_cual_es_el_ultimo(sesion: Session) -> None:
+    mid, _, segundo = _serie(sesion)
+    reconteo = registrar_ajuste_por_conteo(
+        sesion, mid, date(2026, 11, 10), D("159"), usuario=USUARIO
+    )
+    reconteo.registrado = datetime(2026, 11, 10, 16, 45, 0)
+    sesion.flush()
+    with pytest.raises(Conflicto) as error:
+        _anular(sesion, segundo.id)
+    assert str(error.value) == (
+        "Solo se puede anular el último conteo vigente de PIEDRA: el 10/11/2026 hay otro "
+        "registrado después, a las 16:45. Anule primero ese."
+    )
+
+
+def test_dos_anulaciones_a_la_vez_la_segunda_es_409_por_el_indice_unico(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Carrera: la segunda pasa las comprobaciones antes de que la primera confirme y choca con el
+    indice unico de `anula_id` al escribir. Sale `Conflicto` (la API: 409), no un error interno,
+    y no queda nada de la segunda."""
+    motor = create_engine(f"sqlite:///{(tmp_path / 'instalacion.db').as_posix()}")
+    METADATA_PRODUCCION.create_all(motor)
+    with Session(motor) as preparar:
+        _, _, segundo = _serie(preparar)
+        preparar.commit()
+        conteo_id = segundo.id
+
+    original = inventario._registrar
+    ganadora: list[int] = []
+
+    def con_la_otra_antes(*args, **kwargs):
+        if not ganadora:  # solo la segunda llega aqui primero: la otra gana y confirma
+            ganadora.append(0)
+            with Session(motor) as otra:
+                ganadora[0] = _anular(otra, conteo_id).id
+                otra.commit()
+        return original(*args, **kwargs)
+
+    with Session(motor) as segunda:
+        monkeypatch.setattr(inventario, "_registrar", con_la_otra_antes)
+        with pytest.raises(Conflicto, match="Ese conteo físico ya fue anulado."):
+            _anular(segunda, conteo_id)
+        segunda.rollback()
+    monkeypatch.setattr(inventario, "_registrar", original)
+    with Session(motor) as ver:
+        anulaciones = ver.scalars(select(Movimiento.id).where(Movimiento.anula_id == conteo_id))
+        assert list(anulaciones) == ganadora
+    motor.dispose()
