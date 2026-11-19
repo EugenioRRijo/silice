@@ -21,10 +21,13 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from aplicacion.costo_propio import calcular_periodo
+from produccion.costo import ErrorDeCalculo
 from produccion.inventario import crear_material
+from produccion.modelo import Calculo, RecetaComponente, RecetaRegistrada
 from produccion.receta import Componente, producir_con_receta, registrar_receta
 from tests.fixtures import costo_propio as cp
 
@@ -80,3 +83,37 @@ def test_una_cadena_de_mezclas_se_calcula_de_la_hoja_a_la_raiz(ins, caso) -> Non
     assert calculo.por_tonelada["MZ-1"] == D("44.70")
     assert calculo.por_tonelada["AB-0"] == D("30.85")
     assert calculo.por_tonelada["AA-0"] == D("23.925")
+
+
+def test_dos_mezclas_que_se_llevan_una_a_otra_se_niegan_sin_calcular(ins, caso) -> None:
+    """Un ciclo registrado antes de que `registrar_receta` lo negara (se siembra a mano, como en la
+    base vieja): no se calcula y el mensaje nombra el ciclo."""
+    cp.noviembre_usd(ins, caso)
+    _mezcla(ins, "AA-0", "MZ-1", "50", 15)
+    _mezcla(ins, "AB-0", "AA-0", "40", 16)
+    otra = RecetaRegistrada(
+        producto="AA-0",
+        fuente="dosificacion ficticia vieja",
+        vigente_desde=cp.dia(17),
+        usuario=cp.USUARIO,
+        registrado=cp.AHORA,
+    )
+    ins.add(otra)
+    ins.flush()
+    for orden, codigo in enumerate(("AB-0", "AGR-34")):
+        ins.add(
+            RecetaComponente(
+                receta_id=otra.id,
+                orden=orden,
+                codigo=codigo,
+                cantidad_por_t=D("0.5"),
+                unidad="t",
+                tipo="propio",
+            )
+        )
+    ins.flush()
+    producir_con_receta(ins, "AA-0", D("10"), cp.dia(18), usuario=cp.USUARIO, ahora=cp.AHORA)
+    with pytest.raises(ErrorDeCalculo, match="AA-0 → AB-0 → AA-0|AB-0 → AA-0 → AB-0") as error:
+        calcular_periodo(ins, caso, cp.PERIODO, "USD", usuario=cp.USUARIO, ahora=cp.AHORA)
+    assert "no puede contenerse a sí mismo" in str(error.value)
+    assert ins.scalar(select(func.count()).select_from(Calculo)) == 0
