@@ -35,6 +35,9 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   (#128), la deuda de presentación DS-52 y DS-57 (#129), el pulido de la prueba en vivo (#130), anular el último conteo
   físico (#131) y las escrituras de la instalación con `BEGIN IMMEDIATE` por ruta, con el acta DS-67 a DS-76 (#132).
   CI verde en Ubuntu y Windows en cada PR. `main` queda en `e085ad64`.
+- **Ola del 2026-11-19** (PR #133 a #135, fusionados por Claude con la misma autorización: «sigue con lo siguiente
+  cuando terminen»): «Descargar PDF de hallazgos» en el Visor (#133), Riesgo en la obra de la demo (#134) y la carga de
+  las series viales en Índices del BCV, con la unión de la ola y el acta DS-77 a DS-89 (#135).
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
