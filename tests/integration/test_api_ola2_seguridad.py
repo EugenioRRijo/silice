@@ -155,7 +155,8 @@ def test_el_csv_neutraliza_los_nombres_que_empiezan_como_formula(cliente, items_
         "/presupuestos/API-001/escenarios/csv", json={"escenarios": [{"nombre": nombre}]}
     )
 
-    filas = list(csv.reader(io.StringIO(respuesta.text)))
+    texto = respuesta.content.decode("utf-8").removeprefix("\ufeff")
+    filas = list(csv.reader(io.StringIO(texto), delimiter=";"))
     assert filas[2][0] == "'" + nombre
     assert filas[2][1]  # el total sigue siendo un número sin tocar
     assert not filas[2][1].startswith("'")
