@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from sqlalchemy.orm import Session
 
 from aplicacion.costo_propio import calcular_periodo
 from produccion.costo import ErrorDeCalculo
+from produccion.costos import CostoDelPeriodo, registrar_costo
 from produccion.inventario import crear_material
 from produccion.modelo import Calculo, RecetaComponente, RecetaRegistrada
 from produccion.receta import Componente, producir_con_receta, registrar_receta
@@ -44,6 +46,11 @@ def ins() -> Iterator[Session]:
 def caso(tmp_path: Path) -> Iterator[Session]:
     with cp.carpeta_del_caso(tmp_path) as sesion:
         yield sesion
+
+
+def _costo(ins: Session, periodo: str, centro: str, monto: str, fecha: date) -> None:
+    registro = CostoDelPeriodo(periodo, centro, "otro", D(monto), "USD", fecha, "factura ficticia")
+    registrar_costo(ins, registro, usuario=cp.USUARIO, ahora=cp.AHORA)
 
 
 def _mezcla(ins: Session, codigo: str, de: str, toneladas: str, dia: int) -> None:
@@ -117,3 +124,29 @@ def test_dos_mezclas_que_se_llevan_una_a_otra_se_niegan_sin_calcular(ins, caso) 
         calcular_periodo(ins, caso, cp.PERIODO, "USD", usuario=cp.USUARIO, ahora=cp.AHORA)
     assert "no puede contenerse a sí mismo" in str(error.value)
     assert ins.scalar(select(func.count()).select_from(Calculo)) == 0
+
+
+def test_una_componente_del_mes_y_otra_de_un_calculo_anterior(ins, caso) -> None:
+    """Arbitraje 2026-11-19. Octubre: 100 t de `AGR-34` con 700 USD de cantera, 7/t. Noviembre:
+    150 t de `AGR-12` con 600 de cantera (4/t), `MZ-1` 100 t y `AA-0` (0,5 de `MZ-1` + 0,5 de
+    `AGR-34`, que no se produjo en noviembre) 50 t; planta 1.200 / 150 t = 8. `MZ-1` = 0,94 x 4 +
+    0,05 x 600 + 8 x 0,5 + 8 = 45,76; `AA-0` = 0,5 x 45,76 + 0,5 x 7 + 8 = 34,38: `MZ-1` del mes y
+    `AGR-34` del calculo de octubre."""
+    cp.materiales(ins)
+    cp.receta(ins)
+    cp.entrada(ins, "AGR-34", "100", date(2026, 10, 5))
+    _costo(ins, "2026-10", "cantera", "700", date(2026, 10, 5))
+    octubre = calcular_periodo(ins, caso, "2026-10", "USD", usuario=cp.USUARIO, ahora=cp.AHORA)
+    assert octubre.por_tonelada == {"AGR-34": D("7")}
+
+    cp.entrada(ins, "AGR-12", "150", cp.dia(5))
+    cp.producir(ins, "100", cp.dia(10))
+    _mezcla(ins, "AA-0", "MZ-1", "50", 15)
+    _costo(ins, cp.PERIODO, "cantera", "600", cp.dia(3))
+    _costo(ins, cp.PERIODO, "planta", "1200", cp.dia(12))
+    cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
+    calculo = calcular_periodo(ins, caso, cp.PERIODO, "USD", usuario=cp.USUARIO, ahora=cp.AHORA)
+    assert calculo.por_tonelada == {"AGR-12": D("4"), "MZ-1": D("45.76"), "AA-0": D("34.38")}
+    assert json.loads(calculo.instantanea)["entradas"]["de_otro_calculo"] == {
+        "AGR-34": {"costo": "7", "calculo": octubre.id, "periodo": "2026-10"}
+    }
