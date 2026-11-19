@@ -487,8 +487,18 @@ def test_texto_llano_deja_igual_cualquier_otra_descripcion():
          "1.200*0,7854*(0,1*0,1)"),
         # un parámetro negativo va entre paréntesis
         ("a + b", {"a": "3", "b": "-0.5"}, "3+(-0,5)"),
+        # la potencia cero es 1 y la uno, la base (arbitraje de la rama, 2026-11-18)
+        ("a ** 0 + a ** 1", {"a": "2"}, "1+(2)"),
+        # la potencia de una potencia se agrupa como en Python: (2**2)**3 = 64
+        ("(2 ** 2) ** 3", {}, "((2*2)*(2*2)*(2*2))"),
+        # la resta y la división no son asociativas: el paréntesis de la derecha se conserva
+        ("a - (b - c) / (d / e)", {"a": "9", "b": "5", "c": "1", "d": "8", "e": "2"},
+         "9-(5-1)/(8/2)"),
+        # el signo menos delante se escribe entre paréntesis
+        ("-a * 2", {"a": "3"}, "(-3)*2"),
     ],
-    ids=["tuberia", "tanquilla", "cifras_de_la_regla", "negativo"],
+    ids=["tuberia", "tanquilla", "cifras_de_la_regla", "negativo", "potencias_0_y_1",
+         "potencia_de_potencia", "no_asociativas", "menos_unario"],
 )  # fmt: skip
 def test_la_regla_del_computo_se_escribe_como_calculo(regla, parametros, calculo) -> None:
     valores = {nombre: Decimal(valor) for nombre, valor in parametros.items()}
@@ -501,11 +511,71 @@ def test_la_regla_del_computo_se_escribe_como_calculo(regla, parametros, calculo
         ("n * a**e", {"n": "2", "a": "1.2", "e": "0.15"}),  # la potencia no es un entero escrito
         ("a * b", {"a": "2"}),  # falta un parámetro
         ("max(a, b)", {"a": "2", "b": "3"}),  # una función
-        ("a ** 0", {"a": "2"}),  # potencia cero: no es un producto
+        ("a ** 10", {"a": "2"}),  # exponente mayor que 9
+        ("a ** -1", {"a": "2"}),  # exponente negativo
         ("", {}),
+        ("1 2", {}),  # dos cifras sin signo entre ellas
+        ("10 // 3", {}),  # división entera
+        ("10 % 3", {}),  # resto
+        ("(((1+2", {}),  # paréntesis sin cerrar
+        ("a if a else b", {"a": "1", "b": "2"}),
+        ("True + 1", {}),
+        ("a.real", {"a": "2"}),
     ],
-    ids=["potencia_no_entera", "falta_parametro", "funcion", "potencia_cero", "vacia"],
+    ids=[
+        "potencia_no_entera",
+        "falta_parametro",
+        "funcion",
+        "exponente_grande",
+        "exponente_negativo",
+        "vacia",
+        "dos_cifras",
+        "division_entera",
+        "resto",
+        "sin_cerrar",
+        "condicional",
+        "booleano",
+        "atributo",
+    ],
 )
 def test_una_regla_que_no_son_las_cuatro_operaciones_no_da_calculo(regla, parametros) -> None:
     valores = {nombre: Decimal(valor) for nombre, valor in parametros.items()}
     assert calculo_de_regla(regla, valores) is None
+
+
+def test_la_potencia_de_una_potencia_no_cambia_de_valor() -> None:
+    """2**2**3 es 2**(2**3) = 256 (asociativa por la derecha, como `core.verification.evaluar`):
+    el cálculo no existe o vale 256, nunca 64 (árbitro de la rama, 2026-11-18)."""
+    calculo = calculo_de_regla("2 ** 2 ** 3", {})
+    assert calculo is None or cantidad_y_regla("256", calculo)[0] == Decimal("256")
+
+
+def test_una_regla_que_crece_sin_medida_no_da_calculo_y_no_tarda() -> None:
+    """Cada potencia multiplica el largo: se corta al pasar el tope del cálculo, enseguida."""
+    import time
+
+    inicio = time.perf_counter()
+    assert calculo_de_regla("a**9**9**9**9**9**9**9**9", {"a": Decimal("2")}) is None
+    assert calculo_de_regla("((((a**9)**9)**9)**9)**9", {"a": Decimal("2")}) is None
+    assert time.perf_counter() - inicio < 1
+
+
+@pytest.mark.parametrize(
+    ("regla", "parametros"),
+    [
+        ("n * (a**2 - (a - 2*e)**2) * h", {"n": "2", "a": "1.2", "e": "0.15", "h": "1.5"}),
+        ("a - (b - c) / (d / e)", {"a": "9", "b": "5", "c": "1", "d": "8", "e": "2"}),
+        ("-a * 2 + b ** 3", {"a": "3", "b": "1.5"}),
+        ("(a + b) ** 2 / c", {"a": "1", "b": "2", "c": "4"}),
+    ],
+)
+def test_el_calculo_da_lo_mismo_que_evaluar_la_regla_en_el_nucleo(regla, parametros) -> None:
+    """Oráculo independiente: `core.verification.evaluar` sobre la regla original."""
+    from core.verification import evaluar
+
+    valores = {nombre: Decimal(valor) for nombre, valor in parametros.items()}
+    calculo = calculo_de_regla(regla, valores)
+    assert calculo is not None
+    esperado = evaluar(regla, valores)
+    obtenido, _regla = cantidad_y_regla("", calculo)
+    assert abs(obtenido - esperado) <= Decimal("0.0001"), (calculo, esperado)
