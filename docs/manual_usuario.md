@@ -1402,7 +1402,8 @@ precios se mueven como en los meses pasados.
 en USD): elija «PPI de asfalto…» para «Cemento asfáltico CA-30 (ficticio)» y «Gasoil, precio
 administrado…» para «Gasoil para equipos (ficticio)», y pulse «Proyectar». La tasa y las dos series son
 **ficticias**, didácticas: no son las del BCV, de FRED/BLS ni de la Gaceta. La demo las corre en el
-tiempo para que terminen el mes anterior al de hoy, así siempre hay historia para proyectar.
+tiempo para que terminen el mes anterior al día en que se siembra: desde ese día cubren de sobra el
+mínimo de historia para proyectar. Si ya tenía la demo, ejecute `uv run start.py --reiniciar-demo`.
 
 Al pie, «Mejora de la estimación» compara, al terminar la obra, el costo final con el presupuesto
 original y con la estimación de Sílice. Pulse «Calcular la mejora» y, si quiere, «Descargar el informe
