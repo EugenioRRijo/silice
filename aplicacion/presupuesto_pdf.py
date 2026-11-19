@@ -31,6 +31,7 @@ No escribe nada: ni la base, ni el borrador (`rev` no cambia). Sin FastAPI (RM-1
 from __future__ import annotations
 
 import re
+import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -392,18 +393,28 @@ def nombre_del_pdf(codigo: str | None, *, partida: str | None = None) -> str:
 
 # --- el dibujo -----------------------------------------------------------------------------------
 
+# `aplicacion/hallazgos_pdf.py` (el informe de hallazgos de un libro) usa de aquí, sin copiarlos,
+# estos privados: `_LETRA`, `_NEGRITA`, `_registrar_letras`, `_limpio`, `_NO_SEGURO`,
+# `_LARGO_MAXIMO` y `_SEVERIDADES`. Quien los renombre o los quite debe ajustar ese módulo.
 _LETRA, _NEGRITA = "SiliceVera", "SiliceVera-Negrita"
+#: Cada petición corre en su hilo: dos descargas en frío a la vez registrarían la letra dos veces
+#: (la segunda reemplazaría a la que el primero ya usa).
+_CERROJO_DE_LETRAS = threading.Lock()
 
 
 def _registrar_letras() -> None:
     """La letra Vera que trae reportlab (licencia de Bitstream Vera), incrustada: dibuja las
-    tildes, «m³» y «≤», que la Helvetica de la norma PDF no tiene (simulación de la bitácora)."""
+    tildes, «m³» y «≤», que la Helvetica de la norma PDF no tiene (simulación de la bitácora).
+    Segura entre hilos: solo uno la registra."""
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-    if _LETRA not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont(_LETRA, "Vera.ttf"))
-        pdfmetrics.registerFont(TTFont(_NEGRITA, "VeraBd.ttf"))
+    if _LETRA in pdfmetrics.getRegisteredFontNames():
+        return
+    with _CERROJO_DE_LETRAS:
+        if _LETRA not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont(_LETRA, "Vera.ttf"))
+            pdfmetrics.registerFont(TTFont(_NEGRITA, "VeraBd.ttf"))
 
 
 def _limpio(texto: str) -> str:

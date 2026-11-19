@@ -147,6 +147,7 @@ TABLA = {
     ("POST", "/v1/auditorias"): REVISAR,
     ("POST", "/v1/libros/auditoria"): LEER,
     ("POST", "/v1/libros/devolucion"): LEER,
+    ("POST", "/v1/libros/auditoria/pdf"): LEER,  # el informe de hallazgos en PDF
     ("POST", "/v1/libros/pdf"): LEER,
     ("POST", "/v1/libros/replica"): LEER,
     ("POST", "/v1/libros/apu-por-hoja"): LEER,  # F5 vial, tarea 6
