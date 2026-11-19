@@ -54,7 +54,7 @@ def _tablas(ruta: Path) -> set[str]:
 
 
 def test_la_cabeza_del_destino_instalacion_es_la_revision_del_historial() -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0011_receta_ligante"
+    assert revision_head(Destino.INSTALACION) == "ins_0012_conteo_anulado"
     assert METADATAS_INSTALACION == (
         Base.metadata,
         METADATA_PRODUCCION,

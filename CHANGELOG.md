@@ -7,6 +7,12 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **Anular un conteo físico** (tanda 2026-11-19): en Producción › Existencias, «Anular conteo» pide el motivo y anula el
+  último conteo vigente del material sin borrar nada (un ajuste que lo compensa, con quién, cuándo y el motivo); el
+  pasado lo vuelve a cerrar el conteo anterior. `POST /v1/produccion/conteos/{movimiento_id}/anular`, `ultimo_conteo` en
+  `/existencias` y la migración `ins_0012_conteo_anulado` (`anula_id` y `motivo` en `prod_movimiento`).
+- **Mezcla de mezclas en el costo por tonelada** (tanda 2026-11-19): una mezcla que lleva otra producida en el mismo mes
+  la toma a su costo de ese mes (orden topológico); un ciclo de recetas viejas se niega con un mensaje que lo nombra.
 - **Ola 2, llevar a la Hoja el libro auditado y el presupuesto por frente** (2026-11-13;
   `docs/bitacora/2026-11-13-ola2-libro-por-frentes.md`, D1 a D8; RF-205 a RF-212; decisiones ratificadas por delegación
   de Eugenio): el perfil de un libro con un APU por hoja admite **varias hojas de presupuesto** (`presupuesto.hojas`, una

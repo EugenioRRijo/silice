@@ -9285,6 +9285,59 @@
         }
       }
     },
+    "/v1/produccion/conteos/{movimiento_id}/anular": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Anular Un Conteo",
+        "description": "Anula un conteo físico con un ajuste nuevo que lo compensa (misma fecha, cantidad\ncontraria, el motivo y quién; la hora es la del servidor); el conteo no se borra y el pasado\nlo cierra el conteo anterior no anulado. Solo el último conteo vigente del material: otro, o\nuno ya anulado, 409; inexistente o que no es un conteo, 404; sin motivo, 422.",
+        "operationId": "anular_un_conteo_v1_produccion_conteos__movimiento_id__anular_post",
+        "parameters": [
+          {
+            "name": "movimiento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Movimiento Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnularConteoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovimientoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/bascula/importar": {
       "post": {
         "tags": [
@@ -12817,6 +12870,19 @@
           "anulada_por"
         ],
         "title": "Anulada"
+      },
+      "AnularConteoEntrada": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "AnularConteoEntrada"
       },
       "AnularCostoEntrada": {
         "properties": {
@@ -17320,6 +17386,35 @@
         ],
         "title": "ConteoRespuesta"
       },
+      "ConteoVigenteRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "diferencia": {
+            "type": "string",
+            "title": "Diferencia"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fecha",
+          "diferencia",
+          "usuario"
+        ],
+        "title": "ConteoVigenteRespuesta",
+        "description": "El último conteo físico no anulado de un material: el único que se puede anular."
+      },
       "ContraLista": {
         "properties": {
           "lista_id": {
@@ -20397,6 +20492,16 @@
           "negativa": {
             "type": "boolean",
             "title": "Negativa"
+          },
+          "ultimo_conteo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConteoVigenteRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -20407,7 +20512,8 @@
           "existencia",
           "minima",
           "queda_poco",
-          "negativa"
+          "negativa",
+          "ultimo_conteo"
         ],
         "title": "ExistenciaRespuesta"
       },
@@ -23672,6 +23778,21 @@
           "registrado": {
             "type": "string",
             "title": "Registrado"
+          },
+          "anula_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anula Id"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
           }
         },
         "type": "object",
@@ -23687,7 +23808,9 @@
           "nota",
           "origen",
           "usuario",
-          "registrado"
+          "registrado",
+          "anula_id",
+          "motivo"
         ],
         "title": "MovimientoRespuesta"
       },

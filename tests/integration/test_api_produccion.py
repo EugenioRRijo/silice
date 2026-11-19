@@ -57,6 +57,7 @@ RUTAS = [
     ("GET", "/v1/produccion/materiales"),
     ("POST", "/v1/produccion/materiales"),
     ("POST", "/v1/produccion/movimientos"),
+    ("POST", "/v1/produccion/conteos/1/anular"),  # tanda 2026-11-19
     ("GET", "/v1/produccion/existencias"),
     ("POST", "/v1/produccion/bascula/importar"),
     ("GET", "/v1/produccion/pesajes-sospechosos"),
@@ -160,7 +161,7 @@ def test_sin_clave_toda_ruta_responde_401(metodo: str, ruta: str) -> None:
 
 def test_las_rutas_de_la_tabla_son_todas_las_de_produccion_en_la_aplicacion() -> None:
     """Si alguien agrega una ruta a `/v1/produccion` sin ponerla en `RUTAS`, esta prueba lo dice."""
-    ids = ("{id_sospechoso}", "{costo_id}", "{calculo_id}")
+    ids = ("{id_sospechoso}", "{costo_id}", "{calculo_id}", "{movimiento_id}")
     esquema = {
         (metodo.upper(), functools.reduce(lambda c, i: c.replace(i, "1"), ids, camino))
         for camino, operaciones in app.openapi()["paths"].items()
@@ -950,6 +951,7 @@ def test_contrato_de_existencias_claves_y_tipos_exactos(http) -> None:
             "minima",
             "queda_poco",
             "negativa",
+            "ultimo_conteo",  # tanda 2026-11-19: el conteo que se puede anular, o null
         }
         for clave in ("codigo", "nombre", "unidad_venta", "existencia", "minima"):
             assert isinstance(fila[clave], str), clave
@@ -963,6 +965,7 @@ def test_contrato_de_existencias_claves_y_tipos_exactos(http) -> None:
             "minima": "20",
             "queda_poco": False,
             "negativa": False,
+            "ultimo_conteo": None,
         },
         {
             "codigo": "PIEDRA34",
@@ -972,6 +975,7 @@ def test_contrato_de_existencias_claves_y_tipos_exactos(http) -> None:
             "minima": "10",
             "queda_poco": True,
             "negativa": True,
+            "ultimo_conteo": None,
         },
     ]
 
@@ -1014,6 +1018,8 @@ def test_contrato_de_movimientos(http) -> None:
         "origen",
         "usuario",
         "registrado",
+        "anula_id",  # tanda 2026-11-19: la anulacion de un conteo apunta a el
+        "motivo",
     }
     assert (cuerpo["material_codigo"], cuerpo["fecha"], cuerpo["cantidad"]) == (
         "ARENA",
@@ -1021,6 +1027,7 @@ def test_contrato_de_movimientos(http) -> None:
         "100",
     )
     assert cuerpo["ticket"] is None and cuerpo["nota"] == "primera"
+    assert (cuerpo["anula_id"], cuerpo["motivo"]) == (None, "")
 
 
 def test_contrato_de_la_importacion_y_de_la_bandeja(http) -> None:

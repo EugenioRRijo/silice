@@ -19,6 +19,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0011_receta_ligante"
 ANTERIOR = "ins_0010_modulo"
+CABEZA = "ins_0012_conteo_anulado"  # la anulacion del conteo fisico cuelga de esta
 TABLA = "prod_receta_componente"
 ANTES = ["id", "receta_id", "orden", "codigo", "cantidad_por_t", "unidad", "tipo"]
 
@@ -38,8 +39,8 @@ def _receta_con_componentes(conexion: sqlite3.Connection) -> None:
     )
 
 
-def test_es_la_cabeza_de_la_instalacion() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+def test_le_sigue_la_del_conteo_anulado() -> None:
+    assert revision_head(Destino.INSTALACION) == CABEZA
 
 
 def test_agrega_la_columna_al_final_y_lo_anterior_queda_sin_marca(tmp_path: Path) -> None:
@@ -86,5 +87,5 @@ def test_una_base_que_ya_trae_la_columna_se_adopta(tmp_path: Path) -> None:
     with closing(sqlite3.connect(base)) as conexion:
         assert _columnas(conexion).count("es_ligante") == 1
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            (REVISION,)
+            (CABEZA,)
         ]

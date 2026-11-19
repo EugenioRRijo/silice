@@ -15,7 +15,7 @@ Reglas de la frontera:
   Excepción, los costos del periodo (`/costos`), las recetas (`/recetas`) y las producciones
   (`/producciones`), que viven en `api.rutas.produccion_planta` con el mismo prefijo y la misma
   puerta: su `registrado` es la hora del servidor (`_ahora`) y el cuerpo no lleva `ahora` (si lo
-  trae, se ignora).
+  trae, se ignora). Lo mismo la anulación de un conteo físico (`/conteos/{id}/anular`).
 - **Cada petición es una transacción** (`SesionInstalacionDep`): lo que registra queda confirmado al
   terminar bien y un error, de cualquier tipo, no deja nada a medias.
 - **Dos entradas** (RT-9): la clave de API (`X-Silice-Clave`, integraciones) o la sesión web
@@ -26,8 +26,9 @@ Reglas de la frontera:
 - **Usuario de lo que se escribe**: con clave, `USUARIO_API` (RT-S4-4), pues la clave no entrega su
   identidad a la ruta; con sesión web, el responsable de la cuenta (`Nombre <login>`, RF-82).
 
-Errores, siempre `{"detalle": ...}`: código o ticket repetido y pesaje sospechoso ya cerrado 409;
-pesaje sospechoso inexistente 404; extensión que no es `.csv` ni `.xlsx` 415; cuerpo de más de
+Errores, siempre `{"detalle": ...}`: código o ticket repetido, pesaje sospechoso ya cerrado y conteo
+ya anulado o que no es el último vigente de su material 409; pesaje sospechoso o conteo inexistente
+404; extensión que no es `.csv` ni `.xlsx` 415; cuerpo de más de
 20 MiB 413 (el tope real lo pone `api.proteccion`; el archivo se lee además por bloques); dato
 inválido, archivo rechazado por la guardia (`ArchivoRechazado`) o por el lector (`ReporteRechazado`)
 422 con su mensaje, escrito para el usuario; `MapeoNecesario` 422 con el mensaje y la lista
@@ -63,7 +64,9 @@ from produccion.conectores.detector_columnas import MapeoNecesario
 from produccion.importacion import descartar, importar, pendientes, resolver, sospechoso_por_id
 from produccion.inventario import (
     Conflicto,
+    ConteoInexistente,
     ErrorDeInventario,
+    anular_conteo,
     crear_material,
     material_por_codigo,
     material_por_id,
@@ -151,6 +154,17 @@ class MovimientoRespuesta(BaseModel):
     origen: str
     usuario: str
     registrado: str
+    anula_id: int | None  # la anulación de un conteo: el conteo que anula
+    motivo: str  # de la anulación; vacío en el resto
+
+
+class ConteoVigenteRespuesta(BaseModel):
+    """El último conteo físico no anulado de un material: el único que se puede anular."""
+
+    id: int
+    fecha: str
+    diferencia: str  # el ajuste que dejó, con signo
+    usuario: str
 
 
 class ExistenciaRespuesta(BaseModel):
@@ -161,6 +175,11 @@ class ExistenciaRespuesta(BaseModel):
     minima: str
     queda_poco: bool
     negativa: bool
+    ultimo_conteo: ConteoVigenteRespuesta | None
+
+
+class AnularConteoEntrada(BaseModel):
+    motivo: str
 
 
 class ImportacionRespuesta(BaseModel):
@@ -286,6 +305,19 @@ def _movimiento_respuesta(movimiento: Movimiento, material_codigo: str) -> Movim
         origen=movimiento.origen,
         usuario=movimiento.usuario,
         registrado=movimiento.registrado.isoformat(),
+        anula_id=movimiento.anula_id,
+        motivo=movimiento.motivo,
+    )
+
+
+def _conteo_respuesta(conteo: Movimiento | None) -> ConteoVigenteRespuesta | None:
+    if conteo is None:
+        return None
+    return ConteoVigenteRespuesta(
+        id=conteo.id,
+        fecha=conteo.fecha.isoformat(),
+        diferencia=exacto(conteo.cantidad),
+        usuario=conteo.usuario,
     )
 
 
@@ -391,9 +423,36 @@ def ver_existencias(
             minima=exacto(fila.minima),
             queda_poco=fila.queda_poco,
             negativa=fila.negativa,
+            ultimo_conteo=_conteo_respuesta(fila.conteo),
         )
         for fila in tablero(sesion, hasta)
     ]
+
+
+@router.post(
+    "/conteos/{movimiento_id}/anular",
+    response_model=MovimientoRespuesta,
+    status_code=201,
+)
+def anular_un_conteo(
+    movimiento_id: int,
+    entrada: AnularConteoEntrada,
+    sesion: SesionInstalacionDep,
+    usuario: UsuarioDep,
+) -> MovimientoRespuesta:
+    """Anula un conteo físico con un ajuste nuevo que lo compensa (misma fecha, cantidad
+    contraria, el motivo y quién; la hora es la del servidor); el conteo no se borra y el pasado
+    lo cierra el conteo anterior no anulado. Solo el último conteo vigente del material: otro, o
+    uno ya anulado, 409; inexistente o que no es un conteo, 404; sin motivo, 422."""
+    try:
+        with _conflictos():
+            anulacion = anular_conteo(
+                sesion, movimiento_id, motivo=entrada.motivo, usuario=usuario, ahora=_ahora()
+            )
+    except ConteoInexistente as error:
+        raise HTTPException(404, str(error)) from None
+    material = material_por_id(sesion, anulacion.material_id)
+    return _movimiento_respuesta(anulacion, material.codigo if material else "")
 
 
 # --- Importar el reporte de báscula --------------------------------------------------------------

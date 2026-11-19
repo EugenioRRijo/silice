@@ -33,6 +33,8 @@ COLUMNAS = {
         "origen",
         "usuario",
         "registrado",
+        "anula_id",  # tanda 2026-11-19, ins_0012: la anulacion de un conteo fisico
+        "motivo",
     },
     "prod_pesaje_sospechoso": {
         "id",
