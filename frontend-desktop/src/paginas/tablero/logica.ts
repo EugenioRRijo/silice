@@ -131,8 +131,11 @@ export function datosDeDesglose(desglose: Rubro[]): { group: string; value: numb
   return desglose.map((r) => ({ group: r.rubro, value: Number(r.valor) }));
 }
 
+// La API manda el Pareto de la mayor partida a la menor y «Resto» al final. Carbon dibuja el primer rótulo del eje izquierdo
+// ABAJO, así que a la gráfica se le da el orden inverso: la mayor queda arriba y «Resto» abajo, como lee la tabla de al lado
+// (prueba en vivo del 18/11/2026: salía al revés).
 export function datosDePareto(pareto: FilaPareto[]): { group: string; value: number }[] {
-  return pareto.map((f) => ({ group: f.partida, value: Number(f.valor) }));
+  return pareto.map((f) => ({ group: f.partida, value: Number(f.valor) })).reverse();
 }
 
 export function datosDeVersiones(versiones: VersionDelTablero[]): { group: string; value: number }[] {
