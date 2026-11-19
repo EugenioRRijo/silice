@@ -250,10 +250,12 @@ def registrar_ajuste_por_conteo(
     *,
     usuario: str,
     nota: str = "",
+    hoy: date | None = None,
 ) -> Movimiento:
     """Guarda el conteo como un ajuste con la diferencia contra la existencia a `fecha`. Un conteo
     que coincide tambien se guarda (ajuste en 0, arbitraje 2026-11-18): es el que cierra el pasado
-    del material."""
+    del material. Un conteo con fecha posterior a `hoy` (la del equipo si no se da) se niega:
+    cerraria el material hasta esa fecha sin salida."""
     if (
         not isinstance(conteo_fisico, Decimal)
         or not conteo_fisico.is_finite()
@@ -261,6 +263,12 @@ def registrar_ajuste_por_conteo(
     ):
         raise ErrorDeInventario("El conteo físico debe ser un número de cero o más.")
     material = _material(sesion, material_id)
+    hoy = date.today() if hoy is None else hoy
+    if fecha > hoy:
+        raise ErrorDeInventario(
+            f"El conteo físico no puede tener fecha futura: el {fecha:%d/%m/%Y} es posterior a hoy "
+            f"({hoy:%d/%m/%Y}). Registre el conteo el día en que se hizo."
+        )
     anterior = ultimo_conteo(sesion, material_id)
     if anterior is not None and fecha < anterior:
         raise ErrorDeInventario(
