@@ -259,6 +259,20 @@ def _de_otro_calculo(
     (pregunta 15; fila 26 de la bitacora: recalcular septiembre despues de octubre no gana a
     octubre). Nunca uno de un mes posterior. Sin ninguno, `ErrorDeCalculo` que nombra la mezcla y
     el agregado."""
+    # Una receta usada en el periodo que se lleva a si misma (registrada antes de que
+    # `registrar_receta` lo rechazara, prueba en vivo 2026-11-18): se mira en TODAS, no solo en la
+    # primera mezcla que pide cada componente (arbitraje 2026-11-18). Se corrige con otra receta de
+    # la misma fecha, que gana por ser posterior.
+    for mezcla, usos in sorted(producido.usos.items()):
+        for receta, _ in usos.values():
+            if any(c.codigo == mezcla for c in receta.componentes):
+                desde = f"{receta.vigente_desde:%d/%m/%Y}"
+                raise ErrorDeCalculo(
+                    f"La receta de {mezcla} vigente desde el {desde} lleva {mezcla} entre sus "
+                    "componentes y un producto no puede contenerse a sí mismo. Registre de nuevo "
+                    f"la receta de {mezcla} con fecha de vigencia {desde} y sin {mezcla} entre "
+                    "sus componentes."
+                )
     faltan: dict[str, str] = {}  # agregado -> la primera mezcla que lo usa
     for mezcla, usos in sorted(producido.usos.items()):
         for receta, _ in usos.values():
@@ -277,14 +291,6 @@ def _de_otro_calculo(
     ]
     hallados: dict[str, CalculoGuardado] = {}
     for codigo, mezcla in sorted(faltan.items()):
-        if codigo == mezcla:
-            # Una receta registrada antes de que `registrar_receta` lo rechazara (prueba en vivo
-            # 2026-11-18): se corrige con otra receta de la misma fecha, que gana por ser posterior.
-            raise ErrorDeCalculo(
-                f"La receta de {mezcla} lleva {mezcla} entre sus componentes y un producto no "
-                f"puede contenerse a sí mismo. Registre de nuevo la receta de {mezcla} con la "
-                f"misma fecha de vigencia y sin {mezcla} entre sus componentes."
-            )
         hallado = next((c for c in anteriores if codigo in c.por_tonelada), None)
         if hallado is None:
             raise ErrorDeCalculo(
