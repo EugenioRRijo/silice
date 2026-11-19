@@ -285,6 +285,33 @@ describe("Receta de la planta", () => {
     expect(alerta).not.toHaveTextContent(/422|loc|detail/);
   });
 
+  // Re-verificación en vivo 2026-11-18: el aviso del 422 quedaba al final del cuerpo del diálogo (y≈1089 en una ventana de
+  // 900 px), sin desplazarse ni enfocarse, y parecía que «Registrar receta» no hacía nada. Ahora el aviso recibe el foco
+  // y se lleva a la vista.
+  test("el error al registrar se lleva a la vista y recibe el foco", async () => {
+    alta = () => json({ detalle: "La receta de MZP-01 no puede llevar MZP-01." }, 422);
+    const desplazar = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = desplazar;
+    try {
+      montar();
+      const dialogo = await abrir();
+      await llenarCabecera(dialogo);
+      await llenarComponente(dialogo, 1, "AGR-12", "1");
+      await usuario.click(within(dialogo).getByRole("button", { name: "Registrar receta" }));
+      const alerta = await within(dialogo).findByRole("alert");
+      expect(alerta).toHaveTextContent("La receta de MZP-01 no puede llevar MZP-01.");
+      // La caja enfocable es la del aviso, no el diálogo entero (que también tiene tabindex -1).
+      const caja = alerta.closest("[tabindex='-1']");
+      expect(caja).not.toBeNull();
+      expect(caja).not.toBe(dialogo);
+      await waitFor(() => expect(document.activeElement).toBe(caja));
+      expect(desplazar.mock.contexts).toContain(caja);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
   test("Esc cierra el diálogo y devuelve el foco al botón que lo abrió", async () => {
     montar();
     const boton = screen.getByRole("button", { name: "Registrar una receta nueva" });
