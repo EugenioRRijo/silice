@@ -48,6 +48,7 @@ from core import models
 from core.catalog import Catalogo
 from produccion.costo import ErrorDeCalculo
 from produccion.costos import CostoDelPeriodo, registrar_costo
+from produccion.inventario import crear_material
 from produccion.modelo import Calculo, RecetaComponente, RecetaRegistrada
 from produccion.receta import Componente
 from tests.fixtures import costo_propio as cp
@@ -599,20 +600,19 @@ def test_con_un_hueco_mas_largo_pide_el_primer_mes_que_falta(ins, caso) -> None:
 # aunque MZ-1 si se produjo. El texto dice ahora que la receta es imposible y como salir de ella.
 
 
-def test_una_receta_vieja_que_se_lleva_a_si_misma_lo_dice_y_dice_como_corregirla(ins, caso) -> None:
-    cp.materiales(ins)
+def _receta_vieja(ins, producto: str, componentes, desde: date = date(2026, 10, 1)) -> int:
+    """Una receta guardada sin pasar por `registrar_receta` (como las de antes de que rechazara los
+    ciclos): `componentes` son (codigo, cantidad por t, tipo), todos en t."""
     vieja = RecetaRegistrada(
-        producto="MZ-1",
+        producto=producto,
         fuente="dosificacion ficticia",
-        vigente_desde=date(2026, 10, 1),
+        vigente_desde=desde,
         usuario="ana",
         registrado=cp.AHORA,
     )
     ins.add(vieja)
     ins.flush()
-    for orden, (codigo, cantidad, tipo) in enumerate(
-        [("MZ-1", "0.94", "propio"), ("CA-30", "0.05", "comprado")]
-    ):
+    for orden, (codigo, cantidad, tipo) in enumerate(componentes):
         ins.add(
             RecetaComponente(
                 receta_id=vieja.id,
@@ -624,14 +624,40 @@ def test_una_receta_vieja_que_se_lleva_a_si_misma_lo_dice_y_dice_como_corregirla
             )
         )
     ins.flush()
+    return vieja.id
+
+
+AUTOCICLO_MZ1 = (
+    "La receta de MZ-1 vigente desde el 01/10/2026 lleva MZ-1 entre sus componentes y un producto "
+    "no puede contenerse a sí mismo. Registre de nuevo la receta de MZ-1 con fecha de vigencia "
+    "01/10/2026 y sin MZ-1 entre sus componentes."
+)
+
+
+def test_una_receta_vieja_que_se_lleva_a_si_misma_lo_dice_y_dice_como_corregirla(ins, caso) -> None:
+    cp.materiales(ins)
+    _receta_vieja(ins, "MZ-1", [("MZ-1", "0.94", "propio"), ("CA-30", "0.05", "comprado")])
     cp.entrada(ins, "MZ-1", "100", cp.dia(10))
     _costo(ins, NOV, "planta", "1200", "USD", cp.dia(12))
     cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
     with pytest.raises(ErrorDeCalculo) as error:
         _calcular(ins, caso, NOV)
-    assert str(error.value) == (
-        "La receta de MZ-1 lleva MZ-1 entre sus componentes y un producto no puede contenerse a "
-        "sí mismo. Registre de nuevo la receta de MZ-1 con la misma fecha de vigencia y sin MZ-1 "
-        "entre sus componentes."
-    )
+    assert str(error.value) == AUTOCICLO_MZ1
+    assert _calculos(ins) == 0
+
+
+def test_el_autociclo_se_ve_aunque_otra_mezcla_use_la_receta_rota(ins, caso) -> None:
+    """Arbitraje 2026-11-18: MZ-0 usa MZ-1 y la receta vieja de MZ-1 se lleva a si misma. Antes
+    solo se miraba la primera mezcla que usaba MZ-1 y salia «MZ-0 usa MZ-1, que no se produjo»."""
+    cp.materiales(ins)
+    crear_material(ins, codigo="MZ-0", nombre="Mezcla 0", unidad_venta="t", existencia_minima=D(0))
+    _receta_vieja(ins, "MZ-1", [("MZ-1", "0.94", "propio"), ("CA-30", "0.05", "comprado")])
+    _receta_vieja(ins, "MZ-0", [("MZ-1", "0.94", "propio"), ("CA-30", "0.05", "comprado")])
+    cp.entrada(ins, "MZ-1", "100", cp.dia(10))
+    cp.entrada(ins, "MZ-0", "50", cp.dia(11))
+    _costo(ins, NOV, "planta", "1200", "USD", cp.dia(12))
+    cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
+    with pytest.raises(ErrorDeCalculo) as error:
+        _calcular(ins, caso, NOV)
+    assert str(error.value) == AUTOCICLO_MZ1
     assert _calculos(ins) == 0
