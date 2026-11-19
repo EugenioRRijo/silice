@@ -75,6 +75,9 @@ describe("logica de Revisar un paquete", () => {
     expect(presentar("objeto", "apu")).toBe("APU");
     expect(presentar("campo", "cantidad")).toBe("Cantidad");
     expect(presentar("campo", "penalizacion_diaria")).toBe("Penalización diaria por retraso");
-    expect(presentar("fecha", "2026-11-02T08:00:00.123456")).toBe("02/11/2026 08:00");
+    // La fecha va con `celda` y no con `presentar` (VD-5: este dejaría la forma ISO en el title).
+    const fecha = COLUMNAS_CAMBIOS.find((c) => c.clave === "fecha")!;
+    expect(fecha.presentar).toBeUndefined();
+    expect((fecha.celda as (f: { id: string; fecha: string }) => string)({ id: "0", fecha: "2026-11-02T08:00:00.123456" })).toBe("02/11/2026 08:00");
   });
 });

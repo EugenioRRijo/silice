@@ -127,7 +127,7 @@ export default function PaginaHistorial() {
 const COLUMNAS = [
   { clave: "archivo", titulo: "Archivo" },
   { clave: "tipo", titulo: "Tipo" },
-  { clave: "fecha", titulo: "Fecha y hora", presentar: fechaEsVe },
+  { clave: "fecha", titulo: "Fecha y hora", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
   { clave: "resultado", titulo: "Resultado", ordenable: false },
   { clave: "ver", titulo: "Detalle", ordenable: false },
 ];

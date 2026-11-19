@@ -59,7 +59,7 @@ export const COLUMNAS_CAMBIOS: ColumnaDensa[] = [
   { clave: "despues", titulo: "Después", celda: (f) => <span title={f.despues}>{presentarValor(f.campo ?? "", f.despues ?? "", f.clave ?? "")}</span> },
   { clave: "fuente", titulo: "Fuente" },
   { clave: "responsable", titulo: "Responsable" },
-  { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
+  { clave: "fecha", titulo: "Fecha", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
   { clave: "marca", titulo: "Marca" },
 ];
 

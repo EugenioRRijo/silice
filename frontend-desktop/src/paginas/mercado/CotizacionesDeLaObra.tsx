@@ -33,7 +33,7 @@ const COLUMNAS = [
   { clave: "moneda_original", titulo: "Moneda original" },
   { clave: "precio_original", titulo: "Precio original", numerica: true, presentar: formatoEsVe },
   { clave: "tasa", titulo: "Tasa", numerica: true, presentar: formatoEsVe },
-  { clave: "fecha_tasa", titulo: "Fecha de la tasa", presentar: fechaEsVe },
+  { clave: "fecha_tasa", titulo: "Fecha de la tasa", celda: (f) => fechaEsVe(f["fecha_tasa"] ?? "") },
   { clave: "fuente_tasa", titulo: "Fuente de la tasa" },
 ];
 
