@@ -71,6 +71,12 @@ const TABLERO: TableroRespuesta = {
   ],
 };
 
+const VERSIONES_DE_TRES = [
+  { version: "OB-001", fecha: "2026-11-02", motivo: "Inicial", costo_directo: "4000.00", total: "5060.00", vigente: false, valor: "5060" },
+  { version: "OB-002", fecha: "2026-11-05", motivo: "Ajuste", costo_directo: "4100.00", total: "5200.00", vigente: false, valor: "5200" },
+  { version: "OB-003", fecha: "2026-11-09", motivo: "Final", costo_directo: "4200.00", total: "5300.00", vigente: true, valor: "5300" },
+];
+
 describe("Tablero de la obra", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   beforeEach(() => {
@@ -117,6 +123,16 @@ describe("Tablero de la obra", () => {
     const tabla = screen.getByRole("table", { name: "Partidas que más pesan" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     expect(filas.map((f) => within(f).getAllByRole("cell")[0]!.textContent)).toEqual(["P-01", "P-02", "Resto (3)"]);
+  });
+
+  test("el gráfico de versiones se lee igual que su tabla: la primera versión arriba (DS-70)", async () => {
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, versiones: VERSIONES_DE_TRES }));
+    montar("OB-S2");
+    const barras = await screen.findAllByTestId("grafico-barras");
+    expect(barras[1]).toHaveAttribute("data-grupos", "OB-003 (vigente)|OB-002|OB-001");
+    const tabla = screen.getByRole("table", { name: "Versiones del presupuesto" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    expect(filas.map((f) => within(f).getAllByRole("cell")[0]!.textContent)).toEqual(["OB-001", "OB-002", "OB-003"]);
   });
 
   test("pide el tablero del proyecto y muestra tarjetas, anillos, curva, desglose, Pareto y versiones", async () => {
@@ -288,19 +304,7 @@ describe("logica del tablero", () => {
 
   // DS-70: el gráfico se lee igual que su tabla (IBCS, barras horizontales). Carbon dibuja el primer rótulo del eje izquierdo
   // ABAJO: para que la primera versión de la tabla quede arriba en la gráfica, los datos van en orden inverso.
-  test("las versiones se dibujan en el orden inverso de su tabla, para leerse igual (DS-70)", async () => {
-    const versiones = [
-      { version: "OB-001", fecha: "2026-11-02", motivo: "Inicial", costo_directo: "4000.00", total: "5060.00", vigente: false, valor: "5060" },
-      { version: "OB-002", fecha: "2026-11-05", motivo: "Ajuste", costo_directo: "4100.00", total: "5200.00", vigente: false, valor: "5200" },
-      { version: "OB-003", fecha: "2026-11-09", motivo: "Final", costo_directo: "4200.00", total: "5300.00", vigente: true, valor: "5300" },
-    ];
-    expect(datosDeVersiones(versiones).map((d) => d.group)).toEqual(["OB-003 (vigente)", "OB-002", "OB-001"]);
-    fetchFalso.mockImplementation(async () => json({ ...TABLERO, versiones }));
-    montar("OB-S2");
-    const barras = await screen.findAllByTestId("grafico-barras");
-    expect(barras[1]).toHaveAttribute("data-grupos", "OB-003 (vigente)|OB-002|OB-001");
-    const tabla = screen.getByRole("table", { name: "Versiones del presupuesto" });
-    const filas = within(tabla).getAllByRole("row").slice(1);
-    expect(filas.map((f) => within(f).getAllByRole("cell")[0]!.textContent)).toEqual(["OB-001", "OB-002", "OB-003"]);
+  test("las versiones van a la gráfica en el orden inverso de su tabla (DS-70)", () => {
+    expect(datosDeVersiones(VERSIONES_DE_TRES).map((d) => d.group)).toEqual(["OB-003 (vigente)", "OB-002", "OB-001"]);
   });
 });
