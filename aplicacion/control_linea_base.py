@@ -268,6 +268,10 @@ def registrar_y_controlar(
     fin = _fecha(hasta, "Período hasta")
     firmada = _fecha(fecha, "Fecha de la valuación") if fecha.strip() else None
     exigir_que_no_sea_futura(fin, firmada, hoy)
+    lineas = lineas_desde_filas(filas)
+    if not lineas:
+        # el núcleo diría «una valuacion necesita al menos una linea», sin tildes
+        raise ControlInvalido("Una valuación necesita al menos una línea medida.")
 
     def accion():
         causas = causas_de_las_filas(filas)
@@ -279,7 +283,7 @@ def registrar_y_controlar(
             hasta=fin,
             fecha=firmada,
             inspector=inspector,
-            lineas=lineas_desde_filas(filas),
+            lineas=lineas,
             fuente=fuente,
             responsable=responsable,
         )

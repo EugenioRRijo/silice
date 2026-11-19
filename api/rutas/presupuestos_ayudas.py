@@ -42,6 +42,7 @@ from aplicacion import actualizacion as aplicacion_actualizacion
 from aplicacion import elaboracion as aplicacion_elaboracion
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.componer_parametros import NOMBRES as NOMBRES_DE_PARAMETROS
+from aplicacion.formulas import neutralizar_formula
 from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto
 from aplicacion.proyectos import proyecto_por_nombre, resolver_proyecto
 from core.budget import (
@@ -202,8 +203,8 @@ def _partidas_respuesta(presupuesto: Presupuesto) -> list[PartidaPresupuestadaRe
 
 
 def _neutralizar_formula(texto: str) -> str:
-    """Antepone `'` al texto que una hoja de calculo leeria como formula."""
-    return f"'{texto}" if texto.startswith(("=", "+", "-", "@", "\t", "\r")) else texto
+    """Antepone `'` al texto que una hoja de calculo leeria como formula (`aplicacion.formulas`)."""
+    return neutralizar_formula(texto)
 
 
 def _generar_escenarios(

@@ -22,7 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep
 from api.presentacion import exacto, exacto_o_nada
-from api.sesion_web import exigir_clave_o_sesion
+from api.sesion_web import ahora, exigir_clave_o_sesion
 from aplicacion import tablero
 from aplicacion.estilo import indice, porcentaje
 from aplicacion.proyectos import resolver_proyecto
@@ -248,7 +248,7 @@ def leer_tablero(
         )
     proyecto = encontrado.nombre
     try:
-        datos = tablero.leer_tablero(sesion, Catalogo(sesion), proyecto)
+        datos = tablero.leer_tablero(sesion, Catalogo(sesion), proyecto, hoy=ahora().date())
     except (SQLAlchemyError, ValueError, LookupError) as error:
         raise HTTPException(status_code=409, detail=f"No se pudo leer la obra: {error}") from error
     if datos is None:

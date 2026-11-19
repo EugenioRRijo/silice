@@ -94,7 +94,8 @@ def sembrar_tasa_didactica(sesion, inicio: date, hoy: date) -> None:
         sesion,
         definicion_tasa(LADO_POR_DEFECTO),
         observaciones,
-        archivo="tasa_didactica_de_la_demo.csv",
+        # la pantalla «Índices del BCV» no lista las importaciones: el nombre lo dice también
+        archivo="tasa_FICTICIA_didactica_de_la_demo_no_es_del_BCV.csv",
         huella=huella,
         fuente=FUENTE_DE_LA_TASA_DE_LA_DEMO,
         fecha_descarga=hoy,
@@ -106,7 +107,13 @@ def sembrar_tasa_didactica(sesion, inicio: date, hoy: date) -> None:
 
 def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
     """Una obra pequeña con valuaciones y costos registrados, para la pantalla Control de obra.
-    Sus fechas van hasta la semana de `hoy` (por defecto, el reloj), nunca después."""
+    Sus fechas van hasta la semana de `hoy` (por defecto, el reloj, leído una sola vez), nunca
+    después.
+
+    Todo o nada, como `_sembrar_copia`: se siembra en un temporal de la misma carpeta y se publica
+    con `os.replace`. Si algo falla a medias, el temporal (y sus -wal/-shm/-journal) se borra y
+    `destino` queda como estaba: sin crear o con la base anterior (arbitraje de
+    feature/vivo-control: antes quedaba una base vacía que `preparar_demo` no volvía a sembrar)."""
     from core.catalog.sesion import abrir_sesion, crear_motor
     from operacion.base_datos import preparar_base
     from scripts.generar_obra_control import (
@@ -116,22 +123,35 @@ def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
         sembrar,
     )
 
-    destino.unlink(missing_ok=True)
-    preparar_base(destino)
-    inicio = inicio_de_la_demo(hoy or date.today())
-    obra = generar(
-        partidas=12, periodos=10, valuaciones=VALUACIONES_DE_LA_DEMO, semilla=7, inicio=inicio
-    )
-    motor = crear_motor(f"sqlite:///{destino.resolve().as_posix()}")
+    dia = hoy or date.today()
+    temporal = destino.with_name(f".{destino.name}.tmp")
+    restos = [temporal] + [
+        temporal.with_name(temporal.name + s) for s in ("-wal", "-shm", "-journal")
+    ]
     try:
-        with abrir_sesion(motor) as sesion:
-            sembrar(sesion, obra, con_valuaciones=True)
-            registrar_valuacion_de(sesion, obra.valuaciones[-1])
-            registrar_costo_de(sesion, obra.costos[-1])
-            sembrar_tasa_didactica(sesion, inicio, hoy or date.today())
-            sesion.commit()
+        for resto in restos:
+            resto.unlink(missing_ok=True)
+        preparar_base(temporal)
+        inicio = inicio_de_la_demo(dia)
+        obra = generar(
+            partidas=12, periodos=10, valuaciones=VALUACIONES_DE_LA_DEMO, semilla=7, inicio=inicio
+        )
+        motor = crear_motor(f"sqlite:///{temporal.resolve().as_posix()}")
+        try:
+            with abrir_sesion(motor) as sesion:
+                sembrar(sesion, obra, con_valuaciones=True)
+                registrar_valuacion_de(sesion, obra.valuaciones[-1])
+                registrar_costo_de(sesion, obra.costos[-1])
+                sembrar_tasa_didactica(sesion, inicio, dia)
+                sesion.commit()
+        finally:
+            motor.dispose()
+        for resto in restos[1:]:
+            resto.unlink(missing_ok=True)
+        os.replace(temporal, destino)
     finally:
-        motor.dispose()
+        for resto in restos:
+            resto.unlink(missing_ok=True)
 
 
 def sellar_caso_copiado(destino: Path) -> None:

@@ -10,18 +10,21 @@ una presentación, como la tabla de la pantalla.
 
 Decisión (para el acta): dos decimales en vez de los exactos. Un CSV abierto en Excel es lo que
 lee la persona; los 28 dígitos no los usa nadie y Excel en español no los leía como número.
+
+Arbitraje de feature/vivo-control: las cifras las presenta quien llama con la presentación segura
+de la API (`api.presentacion.cifra_presentada`: el exacto si no cabe al cuantizar, «no disponible»
+si no es finita; la capa de aplicación no importa `api`), y el nombre se neutraliza aquí contra
+fórmulas (`aplicacion.formulas`).
 """
 
 from __future__ import annotations
 
 import csv
 import io
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from decimal import Decimal
 
-from aplicacion.cifras import texto_de_cifra
-from core.verification.informe import DECIMALES_PRESENTACION
-from core.verification.texto import formatear_decimal
+from aplicacion.formulas import neutralizar_formula
 
 __all__ = ["COLUMNAS_CSV_ESCENARIOS", "csv_de_escenarios"]
 
@@ -32,23 +35,20 @@ COLUMNAS_CSV_ESCENARIOS = (
     ("variacion", "Variación"),
     ("variacion_pct", "Variación %"),
 )
-_MARCA_UTF8 = "﻿"
+_MARCA_UTF8 = "\ufeff"
 
 
-def _cifra(valor: object) -> str:
-    """La cifra a dos decimales con coma decimal y punto de miles («1.234,56»)."""
-    return texto_de_cifra(Decimal(formatear_decimal(Decimal(valor), DECIMALES_PRESENTACION)))
-
-
-def csv_de_escenarios(filas: Iterable[Mapping[str, object]]) -> bytes:
-    """El CSV (UTF-8 con marca, `;`) de las filas de la tabla de escenarios: el nombre tal cual
-    (quien llama ya lo neutralizó contra fórmulas) y las tres cifras a dos decimales."""
+def csv_de_escenarios(
+    filas: Iterable[Mapping[str, object]], *, presentar: Callable[[Decimal], str]
+) -> bytes:
+    """El CSV (UTF-8 con marca, `;`) de las filas de la tabla de escenarios: el nombre
+    neutralizado contra fórmulas y las tres cifras con `presentar`."""
     buffer = io.StringIO()
     escritor = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
     escritor.writerow([titulo for _, titulo in COLUMNAS_CSV_ESCENARIOS])
     for fila in filas:
         escritor.writerow(
-            [str(fila["escenario"])]
-            + [_cifra(fila[columna]) for columna, _ in COLUMNAS_CSV_ESCENARIOS[1:]]
+            [neutralizar_formula(str(fila["escenario"]))]
+            + [presentar(Decimal(fila[columna])) for columna, _ in COLUMNAS_CSV_ESCENARIOS[1:]]
         )
     return (_MARCA_UTF8 + buffer.getvalue()).encode("utf-8")

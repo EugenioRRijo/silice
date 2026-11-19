@@ -22,13 +22,13 @@ from api.esquemas import (
     PendienteRespuesta,
 )
 from api.esquemas_ola2 import EscenariosBaseRespuesta
+from api.presentacion import cifra_presentada
 from api.rutas.presupuestos_ayudas import (
     _CAMPOS_PARAMETROS,
     _buscar_modelo,
     _campos_pendiente,
     _filas_comparativo,
     _generar_escenarios,
-    _neutralizar_formula,
 )
 from aplicacion import elaboracion as aplicacion_elaboracion
 from aplicacion.escenarios_csv import csv_de_escenarios
@@ -136,12 +136,11 @@ def escenarios_en_csv(
         sesion, codigo, proyecto, peticion
     )
     tabla = comparar_escenarios(elaboracion.presupuesto, escenarios)
-    # El nombre de un escenario y el codigo del base son texto de la persona: Excel evaluaria como
-    # formula uno que empiece por = + - @ (mismo criterio que el libro, core/budget/excel.py).
-    tabla["escenario"] = [_neutralizar_formula(texto) for texto in tabla["escenario"]]
+    # El nombre de un escenario y el codigo del base son texto de la persona: el CSV los neutraliza
+    # contra formulas (`aplicacion.formulas`).
     nombre = aplicacion_elaboracion.nombre_de_archivo("escenarios", codigo, "csv")
     return Response(
-        content=csv_de_escenarios(tabla.to_dict("records")),
+        content=csv_de_escenarios(tabla.to_dict("records"), presentar=cifra_presentada),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
     )

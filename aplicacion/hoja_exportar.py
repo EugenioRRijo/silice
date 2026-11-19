@@ -152,7 +152,9 @@ def excel_del_borrador(vivo: BorradorVivo, sesion: Session, hoy: date) -> tuple[
         precios = hoja.precios_de_version(
             sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=hoy
         )
-        hojas_de_control = control.tablas_de_control(sesion, abierta.proyecto, Catalogo(sesion))
+        hojas_de_control = control.tablas_de_control(
+            sesion, abierta.proyecto, Catalogo(sesion), hoy=hoy
+        )
     try:
         contenido = hoja.excel_de_hoja_en_bytes(
             *sanear_para_xlsx((resultado, borrador)),

@@ -12,8 +12,9 @@ tabla `anulacion_costo` (como `anulacion_valuacion`) con su migración de `casos
 en `instantanea_control`, o aceptar un reverso negativo que cite el costo que anula.
 
 El texto de cada fila (fuente, partida, responsable) es de quien lo escribió: viaja como dato y
-la pantalla lo pinta como texto. El monto va exacto a dos decimales con punto (la pantalla lo
-presenta en es-VE, como los montos de las valuaciones).
+la pantalla lo pinta como texto. El monto va **exacto**, con punto y la escala con que se guardó:
+la pantalla lo presenta a dos decimales en es-VE y deja el exacto en el `title`, así la suma de
+la tabla cuadra con el AC (arbitraje de feature/vivo-control).
 """
 
 from __future__ import annotations
@@ -21,7 +22,6 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from aplicacion.control_comun import _monto
 from core import models
 
 __all__ = ["COLUMNAS_COSTOS", "filas_de_costos"]
@@ -40,7 +40,7 @@ def filas_de_costos(sesion: Session, proyecto: str) -> list[dict[str, str]]:
     return [
         {
             "Fecha": f"{c.fecha:%d/%m/%Y}",
-            "Monto": _monto(c.monto),
+            "Monto": format(c.monto, "f"),
             "Moneda": c.moneda,
             "Partida": c.codigo_partida or "",
             "Fuente": c.fuente,

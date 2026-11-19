@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Mapping, Sequence
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -597,12 +598,14 @@ def tablas_de_control(
     catalogo: Catalogo,
     *,
     precios: PreciosDelCorte | None = None,
+    hoy: date | None = None,
 ) -> list[TablaExportable]:
     """Las hojas «Valuaciones», «Valor ganado» y «Decisiones» del Excel de la hoja (`hojas_extra`,
-    SF-E4). Sin línea base de control (o sin valuaciones) no agrega ninguna: el Excel de la hoja
-    conserva sus hojas y sale igual que antes."""
+    SF-E4), al corte de la última valuación, nunca después de `hoy`. Sin línea base de control (o
+    sin valuaciones) no agrega ninguna: el Excel de la hoja conserva sus hojas y sale igual que
+    antes."""
     try:
-        corte = ultimo_corte(sesion, proyecto)  # nunca después de hoy
+        corte = ultimo_corte(sesion, proyecto, hoy)
         resultado = calcular_control(
             sesion, proyecto, catalogo=catalogo, corte=corte, precios=precios
         )

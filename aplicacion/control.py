@@ -340,10 +340,13 @@ class PrecioElegido:
     fuente: str = ""
 
 
-def perspectiva_de_la_linea_base(sesion: Session, proyecto: str, corte: date | None) -> str:
+def perspectiva_de_la_linea_base(
+    sesion: Session, proyecto: str, corte: date | None, *, hoy: date | None = None
+) -> str:
     """La perspectiva (costo o precio) de la línea base vigente al `corte` (sin `corte`, al de la
-    última valuación). Sin línea base, «costo»: el cálculo dirá luego por qué no se puede."""
-    fila = linea_base_vigente(sesion, proyecto, corte or corte_por_defecto(sesion, proyecto))
+    última valuación, nunca después de `hoy`). Sin línea base, «costo»: el cálculo dirá luego por
+    qué no se puede."""
+    fila = linea_base_vigente(sesion, proyecto, corte or corte_por_defecto(sesion, proyecto, hoy))
     return "costo" if fila is None else fila.perspectiva
 
 

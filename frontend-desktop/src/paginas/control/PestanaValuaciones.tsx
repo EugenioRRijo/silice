@@ -9,7 +9,7 @@ import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {
   COLUMNAS_VALUACIONES,
@@ -55,21 +55,11 @@ function Resultado({ exito, error }: { exito: string; error: unknown }) {
   );
 }
 
-// Prueba en vivo del 2026-11-18, hallazgo 2: con errores en la revisión el aviso no es verde de éxito; cada hallazgo se
-// lee con su severidad, su regla y su mensaje.
+// Prueba en vivo del 2026-11-18, hallazgo 2: con errores en la revisión el aviso no es verde de éxito. Arbitraje (punto 9):
+// el aviso es un resumen breve que se anuncia en una región viva ya presente en el DOM (`#val-resultado`); la lista de
+// hallazgos va debajo, fuera del anuncio, con su nombre.
 function AvisoDeRegistro({ registro }: { registro: RegistroDeValuacion }) {
   const corte = fechaDeRanura(registro.corte);
-  const detalle = registro.detalle ?? [];
-  const lista =
-    detalle.length > 0 ? (
-      <ul className="silice-control__hallazgos">
-        {detalle.map((h, i) => (
-          <li key={i} className="cds--type-body-compact-01">
-            {textoDeHallazgo(h)}
-          </li>
-        ))}
-      </ul>
-    ) : undefined;
   if (registro.errores > 0) {
     const errores = registro.errores === 1 ? "1 error" : `${registro.errores} errores`;
     return (
@@ -77,22 +67,30 @@ function AvisoDeRegistro({ registro }: { registro: RegistroDeValuacion }) {
         kind="warning"
         lowContrast
         hideCloseButton
-        role="alert"
+        role="status"
         title={`Valuación registrada (corte ${corte}), pero la revisión encontró ${errores}.`}
         subtitle="Revise cada hallazgo; si la valuación está mal, anúlela y regístrela de nuevo."
-      >
-        {lista}
-      </InlineNotification>
+      />
     );
   }
   const titulo =
     registro.hallazgos === 0
       ? `Valuación registrada: corte ${corte}, sin hallazgos en la revisión.`
       : `Valuación registrada: corte ${corte}, ${registro.hallazgos} hallazgo(s) en la revisión, ninguno con severidad Error.`;
+  return <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={titulo} />;
+}
+
+function HallazgosDelRegistro({ registro }: { registro: RegistroDeValuacion }) {
+  const detalle = registro.detalle ?? [];
+  if (detalle.length === 0) return null;
   return (
-    <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={titulo}>
-      {lista}
-    </InlineNotification>
+    <ul className="silice-control__hallazgos" aria-label="Hallazgos de la revisión de la valuación registrada">
+      {detalle.map((h, i) => (
+        <li key={i} className="cds--type-body-compact-01">
+          {textoDeHallazgo(h)}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -274,7 +272,10 @@ function Registrar({
           </Button>
         </div>
         <Resultado exito={estado.exito} error={estado.error} />
-        {registro && !estado.enviando && !estado.error && <AvisoDeRegistro registro={registro} />}
+        <div id="val-resultado" aria-live="polite">
+          {registro && !estado.enviando && !estado.error && <AvisoDeRegistro registro={registro} />}
+        </div>
+        {registro && !estado.enviando && !estado.error && <HallazgosDelRegistro registro={registro} />}
       </div>
     </details>
   );
@@ -457,7 +458,11 @@ function Costo({ proyecto, partidas, alCambiar }: { proyecto: string; partidas: 
 
 // Prueba en vivo del 2026-11-18, hallazgo 3: los costos anotados se ven. Anularlos necesita un cambio del núcleo
 // (aplicacion/control_costos.py): mientras tanto la nota lo dice para que se revise antes de anotar.
-const COLUMNAS_COSTOS = columnasDe(["Fecha", "Monto", "Moneda", "Partida", "Fuente", "Responsable"], ["Monto"]);
+// El monto llega exacto (arbitraje, punto 10): se lee en centésimas es-VE y el exacto queda en el title, así la suma
+// de la tabla cuadra con el AC.
+const COLUMNAS_COSTOS = columnasDe(["Fecha", "Monto", "Moneda", "Partida", "Fuente", "Responsable"]).map((c) =>
+  c.clave === "Monto" ? { ...c, numerica: true, presentar: centesimasEsVe } : c,
+);
 
 function CostosAnotados({ proyecto, clave }: { proyecto: string; clave: number }) {
   const { alExpirar } = useAplicacion();
