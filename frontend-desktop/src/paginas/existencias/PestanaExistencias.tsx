@@ -136,7 +136,8 @@ export function PestanaExistencias({
           <Button
             kind="ghost"
             size="sm"
-            aria-label={`Anular el conteo de ${material.nombre} del ${fechaEsVe(conteo.fecha)}`}
+            // WCAG 2.5.3: el nombre accesible empieza por el texto visible.
+            aria-label={`Anular conteo de ${material.nombre} del ${fechaEsVe(conteo.fecha)}`}
             onClick={() => {
               setAviso(null);
               setAnulando({ ...material, ultimo_conteo: conteo });
@@ -181,6 +182,7 @@ export function PestanaExistencias({
         <DialogoAnularConteo
           material={anulando}
           alCerrar={() => setAnulando(null)}
+          alDesactualizar={alAnularConteo}
           alAnular={() => {
             setAnulando(null);
             setAviso(`Conteo anulado: ${anulando.codigo} vuelve a la existencia de antes del conteo.`);

@@ -1,7 +1,7 @@
 import { Button } from "@carbon/react";
 import { useId, useState } from "react";
 import type { FormEvent, JSX } from "react";
-import { pedir } from "../../api/cliente";
+import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
@@ -19,6 +19,9 @@ interface Props {
   alCerrar: () => void;
   // La anulacion se guardo: la pestana vuelve a leer la existencia.
   alAnular: () => void;
+  // La API dijo que el conteo ya no existe o ya no es el ultimo (404 o 409): la tabla quedo vieja y se vuelve a leer,
+  // con el dialogo abierto mostrando el detalle.
+  alDesactualizar: () => void;
   reacciones: Reacciones;
 }
 
@@ -26,7 +29,7 @@ const ID_FORMULARIO = "silice-conteo-anular";
 
 // «Anular un conteo físico» (tanda 2026-11-19), como «Anular un costo»: pide el motivo. Anular no borra: el conteo queda
 // en el registro con un ajuste que lo compensa, y el pasado lo vuelve a cerrar el conteo anterior.
-export function DialogoAnularConteo({ material, alCerrar, alAnular, reacciones }: Props): JSX.Element {
+export function DialogoAnularConteo({ material, alCerrar, alAnular, alDesactualizar, reacciones }: Props): JSX.Element {
   const base = useId();
   const conteo = material.ultimo_conteo;
   const [motivo, setMotivo] = useState("");
@@ -50,6 +53,7 @@ export function DialogoAnularConteo({ material, alCerrar, alAnular, reacciones }
       });
       alAnular();
     } catch (razon) {
+      if (razon instanceof ErrorDeApi && (razon.estado === 404 || razon.estado === 409)) alDesactualizar();
       setError(reaccionar(razon, reacciones));
     } finally {
       setEnviando(false);
