@@ -461,6 +461,12 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     await within(region).findByText(/Versión 002 · Sin cambios sin guardar/);
     expect(guardados()).toHaveLength(1);
     expect(aperturas().map((a) => a.version)).toEqual(["002"]);
+    // Re-verificación del 18/11/2026: el diálogo queda coherente con el borrador releído: solo el aviso y «Cerrar».
+    expect(dialogo.textContent).not.toMatch(/Se registrarán|No hay cambios para guardar|Cambios \(/);
+    expect(within(dialogo).queryByRole("textbox", { name: /^Fuente/ })).toBeNull();
+    expect(within(dialogo).queryByRole("button", { name: /^Guardar/ })).toBeNull();
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   test("prueba en vivo: con partidas sin precio el diálogo lo dice antes de guardar (la versión quedaría con ese error)", async () => {
