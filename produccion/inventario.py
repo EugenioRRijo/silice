@@ -9,6 +9,12 @@ Un conteo fisico cierra el pasado de su material (prueba en vivo 2026-11-18): el
 diferencia con la existencia del dia en que se registra, asi que un movimiento con fecha anterior o
 igual registrado despues cambiaria la existencia posterior al conteo. Se niega, como en el cierre de
 inventario de un ERP; un reconteo el mismo dia si se admite (ve todo lo de esa fecha).
+
+Un conteo mal hecho se anula (tanda 2026-11-19) sin borrar nada: la anulacion es otro ajuste, con
+la cantidad contraria, la fecha del conteo, `anula_id` y el motivo, asi que la existencia vuelve a
+la de antes del conteo. El conteo anulado y su anulacion no cuentan como conteo: el pasado lo
+cierra el anterior no anulado. Solo se anula el ultimo conteo vigente del material: el siguiente se
+calculo sobre la existencia que el incluia y quedaria mal.
 """
 
 from __future__ import annotations
@@ -18,8 +24,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, aliased
 
 from produccion.costos import validar_periodo
 from produccion.fuentes import CUANTO_T_A_M3
@@ -27,6 +33,7 @@ from produccion.modelo import Material, Movimiento
 
 UNIDADES_VALIDAS = ("m3", "t")
 CERO = Decimal(0)
+LARGO_DEL_MOTIVO = 300  # el de prod_movimiento.motivo
 
 
 class ErrorDeInventario(ValueError):  # noqa: N818 - nombre fijado por el plan
@@ -37,6 +44,10 @@ class Conflicto(ErrorDeInventario):
     """El dato choca con uno ya registrado (codigo o ticket repetido): la API lo responde 409."""
 
 
+class ConteoInexistente(ErrorDeInventario):
+    """No hay un conteo fisico con ese numero: la API lo responde 404."""
+
+
 @dataclass(frozen=True, slots=True)
 class FilaExistencia:
     material: Material
@@ -44,6 +55,7 @@ class FilaExistencia:
     minima: Decimal
     queda_poco: bool
     negativa: bool
+    conteo: Movimiento | None = None  # el conteo vigente, el unico que se puede anular
 
 
 def _ahora() -> datetime:
@@ -120,13 +132,31 @@ def crear_material(
     return material
 
 
-def ultimo_conteo(sesion: Session, material_id: int) -> date | None:
-    """La fecha del ultimo conteo fisico (ajuste) del material, o `None` si nunca se conto."""
-    return sesion.scalar(
-        select(func.max(Movimiento.fecha)).where(
-            Movimiento.material_id == material_id, Movimiento.tipo == "ajuste"
-        )
+def _conteos_vigentes(material_id: int):
+    """Los conteos (ajustes) del material que no son una anulacion ni estan anulados."""
+    anulacion = aliased(Movimiento)
+    return select(Movimiento).where(
+        Movimiento.material_id == material_id,
+        Movimiento.tipo == "ajuste",
+        Movimiento.anula_id.is_(None),
+        ~select(anulacion.id).where(anulacion.anula_id == Movimiento.id).exists(),
     )
+
+
+def conteo_vigente(sesion: Session, material_id: int) -> Movimiento | None:
+    """El ultimo conteo fisico no anulado del material (fecha mayor y, en la misma fecha, el
+    registrado despues), o `None`."""
+    return sesion.scalar(
+        _conteos_vigentes(material_id)
+        .order_by(Movimiento.fecha.desc(), Movimiento.id.desc())
+        .limit(1)
+    )
+
+
+def ultimo_conteo(sesion: Session, material_id: int) -> date | None:
+    """La fecha del ultimo conteo fisico no anulado del material, o `None` si no hay ninguno."""
+    conteo = conteo_vigente(sesion, material_id)
+    return None if conteo is None else conteo.fecha
 
 
 def exigir_fecha_abierta(sesion: Session, material: Material, fecha: date) -> None:
@@ -167,6 +197,8 @@ def _registrar(
     origen: str = "manual",
     nota: str = "",
     ahora: datetime | None = None,
+    anula_id: int | None = None,
+    motivo: str = "",
 ) -> Movimiento:
     material = _material(sesion, material_id)
     if tipo != "ajuste":
@@ -183,6 +215,8 @@ def _registrar(
         origen=origen,
         usuario=usuario,
         registrado=_ahora() if ahora is None else ahora,
+        anula_id=anula_id,
+        motivo=motivo,
     )
     sesion.add(movimiento)
     sesion.flush()
@@ -295,6 +329,51 @@ def registrar_ajuste_por_conteo(
     return _registrar(sesion, material_id, fecha, "ajuste", diferencia, usuario=usuario, nota=nota)
 
 
+def anular_conteo(
+    sesion: Session, movimiento_id: int, *, motivo: str, usuario: str, ahora: datetime
+) -> Movimiento:
+    """Anula el conteo fisico `movimiento_id` con un ajuste nuevo que lo compensa (misma fecha,
+    cantidad contraria, `anula_id` y `motivo`) y lo devuelve; el conteo no cambia. Lo que no es un
+    conteo: `ConteoInexistente`. Ya anulado, una anulacion o no el ultimo conteo vigente del
+    material: `Conflicto`. Sin motivo o con mas de `LARGO_DEL_MOTIVO` caracteres, el error lo
+    dice."""
+    motivo = motivo.strip()
+    if not motivo:
+        raise ErrorDeInventario("Escriba el motivo de la anulación del conteo.")
+    if len(motivo) > LARGO_DEL_MOTIVO:
+        raise ErrorDeInventario(
+            f"El motivo de la anulación admite hasta {LARGO_DEL_MOTIVO} caracteres."
+        )
+    conteo = sesion.get(Movimiento, movimiento_id)
+    if conteo is None or conteo.tipo != "ajuste":
+        raise ConteoInexistente("No existe ese conteo físico. Actualice la existencia.")
+    if conteo.anula_id is not None:
+        raise Conflicto("Ese movimiento es la anulación de un conteo: no se anula.")
+    if sesion.scalar(select(Movimiento.id).where(Movimiento.anula_id == conteo.id)) is not None:
+        raise Conflicto("Ese conteo físico ya fue anulado.")
+    vigente = conteo_vigente(sesion, conteo.material_id)
+    if vigente is not None and vigente.id != conteo.id:
+        material = _material(sesion, conteo.material_id)
+        raise Conflicto(
+            f"Solo se puede anular el último conteo vigente de {material.codigo}, que es el del "
+            f"{vigente.fecha:%d/%m/%Y}: anule primero ese."
+        )
+    contraria = -conteo.cantidad
+    if contraria == CERO:
+        contraria = CERO  # «0», no «-0»
+    return _registrar(
+        sesion,
+        conteo.material_id,
+        conteo.fecha,
+        "ajuste",
+        contraria,
+        usuario=usuario,
+        ahora=ahora,
+        anula_id=conteo.id,
+        motivo=motivo,
+    )
+
+
 def _neto(movimiento: Movimiento) -> Decimal:
     if movimiento.tipo == "entrada":
         return movimiento.cantidad
@@ -328,6 +407,7 @@ def tablero(sesion: Session, a_fecha: date | None = None) -> list[FilaExistencia
                 minima=material.existencia_minima,
                 queda_poco=actual <= material.existencia_minima,
                 negativa=actual < CERO,
+                conteo=conteo_vigente(sesion, material.id),
             )
         )
     return filas

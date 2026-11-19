@@ -28,6 +28,8 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
 
 LONGITUD_DECIMAL = 40
+#: Con nombre: `ins_0012` la agrega recreando la tabla en lote, que lo exige.
+FK_ANULA_MOVIMIENTO = "fk_prod_movimiento_anula_id"
 
 
 class Cantidad(TypeDecorator[Decimal]):
@@ -72,6 +74,10 @@ class Material(Base):
 
 
 class Movimiento(Base):
+    """Un movimiento de existencia. El ajuste guarda la diferencia de un conteo fisico con signo.
+    Anular un conteo (tanda 2026-11-19) es otro ajuste, con la cantidad contraria, `anula_id`
+    apuntando al conteo, que no cambia, y el motivo; como `Costo`, nada se sobrescribe."""
+
     __tablename__ = "prod_movimiento"
     __table_args__ = (
         UniqueConstraint("ticket", name="uq_prod_movimiento_ticket"),
@@ -95,6 +101,13 @@ class Movimiento(Base):
     origen: Mapped[str] = mapped_column(String(10), default="manual")
     usuario: Mapped[str] = mapped_column(String(120))
     registrado: Mapped[datetime] = mapped_column(DateTime)
+    anula_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prod_movimiento.id", name=FK_ANULA_MOVIMIENTO),
+        nullable=True,
+        index=True,
+        unique=True,
+    )
+    motivo: Mapped[str] = mapped_column(String(300), default="", server_default="")
 
 
 class PesajeSospechoso(Base):
