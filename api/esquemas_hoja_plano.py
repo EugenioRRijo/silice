@@ -116,3 +116,7 @@ class FusionRespuesta(BaseModel):
     fusion: ResumenDeFusionRespuesta
     informe: list[FilaInformeRespuesta]
     mensaje: str
+    entro: bool = Field(
+        default=True,
+        description="Falso si no entró ninguna fila: el borrador no cambió, nada que guardar",
+    )

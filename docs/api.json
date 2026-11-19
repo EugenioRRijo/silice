@@ -21035,6 +21035,12 @@
           "mensaje": {
             "type": "string",
             "title": "Mensaje"
+          },
+          "entro": {
+            "type": "boolean",
+            "title": "Entro",
+            "description": "Falso si no entró ninguna fila: el borrador no cambió, nada que guardar",
+            "default": true
           }
         },
         "type": "object",

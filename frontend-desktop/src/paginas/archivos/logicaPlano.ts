@@ -92,6 +92,8 @@ export interface RespuestaDeFusion {
   fusion: ResumenDeFusionRespuesta;
   informe: FilaDeInforme[];
   mensaje: string;
+  // Falso si no entró ninguna fila (todas omitidas o ya iguales): no es un éxito (re-verificación del 18/11/2026).
+  entro?: boolean;
 }
 
 export type ValoresDeCircuito = [string, string, string, string];

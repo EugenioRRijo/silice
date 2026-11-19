@@ -616,13 +616,26 @@ def _mensaje_sin_filas(fusion: Fusion) -> str:
     )
 
 
+def _por_tipo(por_tipo: Sequence[tuple[str, int]]) -> list[dict]:
+    """Los conteos de la fusión con «Importado» contando lo que de verdad entró: lo que leyó el
+    plano menos lo omitido, que el lector contó como importado (re-verificación del 18/11/2026:
+    «Importado 33» junto a «Omitido 33» cuando no entró nada)."""
+    cuentas = dict(por_tipo)
+    importado = hoja.ROTULOS_DEL_INFORME[TipoItem.IMPORTADO]
+    omitido = cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.OMITIDO], 0)
+    return [
+        {"rotulo": r, "cantidad": max(n - omitido, 0) if r == importado else n} for r, n in por_tipo
+    ]
+
+
 def vista_de_fusion(fusion: Fusion) -> dict:
     """El informe de la ultima fusion (P:1480-1485) y el mensaje de exito (P:1367-1373) o, si no
     entró ninguna fila, el que lo dice (`_mensaje_sin_filas`)."""
     filas = fusion.resultado.filas
     return {
+        "entro": fusion.entro,
         "fusion": {
-            "por_tipo": [{"rotulo": r, "cantidad": n} for r, n in fusion.resumen.por_tipo],
+            "por_tipo": _por_tipo(fusion.resumen.por_tipo),
             "filas_por_tabla": [
                 {"rotulo": r, "cantidad": n} for r, n in fusion.resumen.filas_por_tabla
             ],
