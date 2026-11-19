@@ -16,7 +16,8 @@ Reglas de la frontera:
   (`/producciones`), que viven en `api.rutas.produccion_planta` con el mismo prefijo y la misma
   puerta: su `registrado` es la hora del servidor (`_ahora`) y el cuerpo no lleva `ahora` (si lo
   trae, se ignora).
-- **Cada petición es una transacción** (`SesionInstalacionDep`): lo que registra queda confirmado al
+- **Cada petición es una transacción** (`SesionInstalacionEscrituraDep` en lo que escribe,
+  `SesionInstalacionDep` en lo que lee): lo que registra queda confirmado al
   terminar bien y un error, de cualquier tipo, no deja nada a medias.
 - **Dos entradas** (RT-9): la clave de API (`X-Silice-Clave`, integraciones) o la sesión web
   (cookie más `X-Silice-CSRF` y `Origin` en lo que escribe; solo arma y administrador,
@@ -53,7 +54,7 @@ from starlette.concurrency import run_in_threadpool
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from api.acceso_modulos import requiere_modulo
-from api.dependencias import USUARIO_API, SesionInstalacionDep
+from api.dependencias import USUARIO_API, SesionInstalacionDep, SesionInstalacionEscrituraDep
 from api.presentacion import exacto, exacto_o_nada
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
@@ -316,7 +317,9 @@ def listar_materiales(sesion: SesionInstalacionDep) -> list[MaterialRespuesta]:
 
 
 @router.post("/materiales", response_model=MaterialRespuesta, status_code=201)
-def crear_un_material(entrada: MaterialEntrada, sesion: SesionInstalacionDep) -> MaterialRespuesta:
+def crear_un_material(
+    entrada: MaterialEntrada, sesion: SesionInstalacionEscrituraDep
+) -> MaterialRespuesta:
     """Da de alta un material. La densidad es dato de la empresa (sin valor por defecto). Código
     repetido: 409; datos inválidos: 422."""
     minima = _decimal(entrada.existencia_minima, "existencia_minima")
@@ -344,7 +347,7 @@ def crear_un_material(entrada: MaterialEntrada, sesion: SesionInstalacionDep) ->
     status_code=201,
 )
 def registrar_un_movimiento(
-    entrada: MovimientoEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
+    entrada: MovimientoEntrada, sesion: SesionInstalacionEscrituraDep, usuario: UsuarioDep
 ) -> MovimientoRespuesta:
     """Registra una entrada (producción), un despacho o un ajuste por conteo. En el ajuste,
     `cantidad` es el **conteo físico** y se guarda la diferencia con la existencia a esa fecha,
@@ -473,7 +476,7 @@ def _mapeo(texto: str | None) -> dict[str, int] | None:
     },
 )
 async def importar_reporte(
-    sesion: SesionInstalacionDep,
+    sesion: SesionInstalacionEscrituraDep,
     usuario: UsuarioDep,
     archivo: Annotated[UploadFile, File(description="Reporte de la báscula (.csv o .xlsx)")],
     fecha_referencia: Annotated[
@@ -551,7 +554,10 @@ def _sospechoso_pendiente(sesion: Session, id_sospechoso: int) -> None:
     status_code=201,
 )
 def resolver_sospechoso(
-    id_sospechoso: int, entrada: ResolverEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
+    id_sospechoso: int,
+    entrada: ResolverEntrada,
+    sesion: SesionInstalacionEscrituraDep,
+    usuario: UsuarioDep,
 ) -> MovimientoRespuesta:
     """Crea el despacho con los valores corregidos y cierra el sospechoso como resuelto. Ya cerrado
     o ticket ya registrado: 409; inexistente: 404."""
@@ -576,7 +582,10 @@ def resolver_sospechoso(
 
 @router.post("/pesajes-sospechosos/{id_sospechoso}/descartar", status_code=204)
 def descartar_sospechoso(
-    id_sospechoso: int, entrada: DescartarEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
+    id_sospechoso: int,
+    entrada: DescartarEntrada,
+    sesion: SesionInstalacionEscrituraDep,
+    usuario: UsuarioDep,
 ) -> Response:
     """Cierra el sospechoso como descartado, sin crear ningún despacho. Ya cerrado: 409."""
     ahora = _instante(entrada.ahora, "ahora")
