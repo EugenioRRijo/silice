@@ -1108,6 +1108,50 @@ describe("Marco: lo que se monta con él", () => {
 
   // Prueba en vivo del 2026-11-18: la barra lateral tenía su propia lectura de las obras; al abrir otra carpeta el marco
   // recargaba la suya y la barra seguía con la carpeta anterior («Se creará en…» decía la de antes).
+  // Prueba en vivo (2026-11-18): tras abrir otra carpeta la barra seguía con los contadores de pendientes de la anterior
+  // hasta recargar o entrar en Inicio.
+  test("al abrir otra carpeta los contadores de pendientes de la barra son los de la nueva, pedidos una vez", async () => {
+    const u = userEvent.setup();
+    const pendiente = (n: number) => ({
+      carpeta: null,
+      obra_id: n,
+      obra: `Obra ${n}`,
+      grupo: "compras",
+      urgencia: "aviso",
+      texto: `Falta algo ${n}`,
+      accion: { texto: "Abrir el presupuesto", pagina: "hoja" },
+    });
+    let pedidos = 0;
+    const base = servidor.fetchFalso;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+        if (String(entrada) === "/v1/obras/pendientes/todas") {
+          pedidos += 1;
+          const n = servidor.estado.actual.nombre === SUR ? 2 : 1;
+          return json({ pendientes: Array.from({ length: n }, (_, i) => pendiente(i + 1)), carpetas_omitidas: 0 });
+        }
+        return base(entrada, init);
+      }),
+    );
+    function AbrirSur() {
+      const { abrirCarpeta } = useAplicacion();
+      return (
+        <button type="button" onClick={() => void abrirCarpeta?.(SUR)}>
+          Abrir Sur
+        </button>
+      );
+    }
+    const admin = sesionDe("ana", { acciones: [...ACCIONES.ana, "administrar_cuentas"] });
+    montar({ sesion: admin, en: "/cuenta/cuentas", paginas: ligeras({ administracion: AbrirSur }) });
+    const lateral = await screen.findByRole("complementary", { name: "Barra lateral" });
+    expect(await within(lateral).findByRole("link", { name: "Vista general, 1 por hacer" })).toBeInTheDocument();
+    expect(pedidos).toBe(1);
+    await u.click(await screen.findByRole("button", { name: "Abrir Sur" }));
+    expect(await within(lateral).findByRole("link", { name: "Vista general, 2 por hacer" })).toBeInTheDocument();
+    expect(pedidos).toBe(2);
+  });
+
   test("al abrir otra carpeta, «Nueva obra» dice la nueva y la lista de obras se pide una sola vez por carga", async () => {
     const u = userEvent.setup();
     function AbrirSur() {
