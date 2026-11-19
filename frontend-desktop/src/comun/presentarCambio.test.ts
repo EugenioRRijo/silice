@@ -12,6 +12,17 @@ describe("presentador común de las filas del registro de cambios", () => {
     expect(presentarClave("apu", "MIN-001|Arena")).toBe("MIN-001, Arena");
   });
 
+  // Prueba en vivo del 18/11/2026: la línea de un APU sale con su clave interna («AF-LLAVE, material|1»). La clave es
+  // «{partida}|{rubro}|{posición}» (`aplicacion/hoja.py`, `aplicacion/hoja_desperdicio.py`): se lee «partida, rubro n.º N».
+  test("la clave de una línea del APU dice su rubro y su posición, sin la barra interna", () => {
+    expect(presentarClave("apu", "AF-LLAVE|material|1")).toBe("AF-LLAVE, material n.º 1");
+    expect(presentarClave("apu", "AF-LLAVE|equipo|2")).toBe("AF-LLAVE, equipo n.º 2");
+    expect(presentarClave("apu", "AF-LLAVE|mano_obra|10")).toBe("AF-LLAVE, mano de obra n.º 10");
+    // El rendimiento y las claves con la descripción del insumo no cambian.
+    expect(presentarClave("apu", "AF-LLAVE")).toBe("AF-LLAVE");
+    expect(presentarClave("apu", "MIN-001|Arena|fina")).not.toMatch(/n\.º/);
+  });
+
   test("el antes y el después: cifra con coma, instantánea con tilde, texto intacto", () => {
     expect(presentarValor("cantidad", "24.5")).toBe("24,5");
     expect(presentarValor("ambiente_id", "A1.2")).toBe("A1.2");
