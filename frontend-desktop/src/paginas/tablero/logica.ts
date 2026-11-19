@@ -138,6 +138,8 @@ export function datosDePareto(pareto: FilaPareto[]): { group: string; value: num
   return pareto.map((f) => ({ group: f.partida, value: Number(f.valor) })).reverse();
 }
 
+// Como el Pareto: la gráfica se lee igual que su tabla (DS-70), y Carbon dibuja el primer rótulo del eje izquierdo abajo, así
+// que va en orden inverso: la primera versión de la tabla queda arriba.
 export function datosDeVersiones(versiones: VersionDelTablero[]): { group: string; value: number }[] {
-  return versiones.map((v) => ({ group: v.vigente ? `${v.version} (vigente)` : v.version, value: Number(v.valor) }));
+  return versiones.map((v) => ({ group: v.vigente ? `${v.version} (vigente)` : v.version, value: Number(v.valor) })).reverse();
 }
