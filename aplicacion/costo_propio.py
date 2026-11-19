@@ -25,7 +25,8 @@ Reglas (las decisiones estan en `docs/bitacora/2026-10-30-plan-vial-fase-a.md`, 
   que lo tenga, anotado en `de_otro_calculo`; nunca de un mes posterior. Sin ninguno, se niega.
 - **Que es mezcla**: un producto con receta registrada que rija al ultimo dia del periodo; el
   resto de lo producido son agregados y reciben la cantera (D-V-1: por tonelada, o por pesos). La
-  planta va a las mezclas por tonelada.
+  planta va a las mezclas por tonelada. Una mezcla que lleva otra mezcla producida en el mismo mes
+  la toma a su costo de ese mes, calculado antes (orden topologico, tanda 2026-11-19).
 - **Receta de cada produccion**: la vigente en la fecha de esa entrada (`receta_vigente`), no la
   nota del movimiento; la mezcla del periodo pondera cada receta por sus toneladas.
 - **Moneda (Foco 1)**: cada costo en otra moneda se convierte con la tasa BCV del dia exacto de
@@ -63,6 +64,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
+from graphlib import TopologicalSorter
 from typing import Any
 
 from sqlalchemy import select
@@ -232,6 +234,24 @@ def _producido(sesion_ins: Session, periodo: str) -> _Producido:
     return producido
 
 
+def _mezclas_en_orden(producido: _Producido) -> list[str]:
+    """Las mezclas del periodo con cada mezcla del mismo mes que otra lleva como componente antes
+    que ella (orden topologico; tanda 2026-11-19): su costo por tonelada ya esta cuando se usa. Sin
+    dependencias, por codigo (`registrar_receta` niega los ciclos)."""
+    grafo = {
+        mezcla: sorted(
+            {
+                c.codigo
+                for receta, _ in usos.values()
+                for c in receta.componentes
+                if c.tipo == "propio" and c.codigo in producido.usos
+            }
+        )
+        for mezcla, usos in sorted(producido.usos.items())
+    }
+    return list(TopologicalSorter(grafo).static_order())
+
+
 def _exigir_centros(periodo: str, hay: Mapping[str, bool], producido: _Producido) -> None:
     """Cada agregado tiene costo de cantera y cada mezcla costo de planta (sin ellos su costo por
     tonelada saldria corto). Un centro con costo y sin receptor ya no se niega: pasa al mes
@@ -277,7 +297,8 @@ def _de_otro_calculo(
     for mezcla, usos in sorted(producido.usos.items()):
         for receta, _ in usos.values():
             for c in receta.componentes:
-                if c.tipo == "propio" and c.codigo not in producido.agregados:
+                hecho_en_el_mes = c.codigo in producido.agregados or c.codigo in producido.usos
+                if c.tipo == "propio" and not hecho_en_el_mes:
                     faltan.setdefault(c.codigo, mezcla)
     if not faltan:
         return {}
@@ -583,10 +604,12 @@ def calcular_periodo(
         mezclas = {m: sum((t for _, t in u.values()), CERO) for m, u in producido.usos.items()}
         planta_por_t = costo_por_tonelada(planta, mezclas)[next(iter(mezclas))]
         propios = por_tonelada | {c: calc.por_tonelada[c] for c, calc in de_otro.items()}
-        for mezcla, usos in sorted(producido.usos.items()):
+        for mezcla in _mezclas_en_orden(producido):
+            usos = producido.usos[mezcla]
             por_tonelada[mezcla] = costo_de_mezcla_del_periodo(
                 [usos[i] for i in sorted(usos)], propios, precios, planta_por_t
             )
+            propios[mezcla] = por_tonelada[mezcla]
     en_cero = sorted(c for c, v in por_tonelada.items() if not v > CERO)
     if en_cero:
         raise ErrorDeCalculo(
