@@ -1,6 +1,7 @@
 // Logica pura de «Índices del BCV» (UC-17 pasos 1-3): arma los formularios y las tablas con lo que manda la API. No
 // calcula ni redondea nada: la API solo trae recuentos y rangos de fechas, y los mensajes se muestran tal cual.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
+import { fechaEsVe } from "../../indicadores/formatoEsVe";
 
 export const AYUDA =
   "Importe la tasa de referencia del BCV, el INPC o una serie en CSV. «Leer» no escribe nada: muestra lo que se " +
@@ -70,8 +71,9 @@ export interface Lectura {
 export const COLUMNAS_SERIES: ColumnaDensa[] = [
   { clave: "serie", titulo: "Serie" },
   { clave: "valores", titulo: "Valores", numerica: true },
-  { clave: "desde", titulo: "Desde" },
-  { clave: "hasta", titulo: "Hasta" },
+  // La API manda aaaa-mm-dd; se lee como en el resto de Sílice (VB-19).
+  { clave: "desde", titulo: "Desde", presentar: fechaEsVe },
+  { clave: "hasta", titulo: "Hasta", presentar: fechaEsVe },
 ];
 export const COLUMNAS_RECHAZOS: ColumnaDensa[] = [
   { clave: "lugar", titulo: "Lugar" },
