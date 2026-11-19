@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   buscadorDeInsumos,
+  cotizacionEsVe,
   deObservaciones,
   diasValidos,
   enumeracion,
@@ -111,3 +112,21 @@ describe("buscador de insumos (lista del catalogo, filtrada en el navegador)", (
     expect(fetchFalso).toHaveBeenCalledTimes(2);
   });
 });
+
+// Prueba en vivo del 2026-11-18, hallazgo 8: la columna «Cotización» decía la fecha en ISO («2026-11-18»). El núcleo la
+// arma como «proveedor, número, AAAA-MM-DD» (core/catalog/origen.py): solo la fecha final, la del sistema, cambia de forma.
+describe("la cotización de un precio", () => {
+  test("la fecha final va en dd/mm/aaaa y el proveedor y el número quedan tal cual", () => {
+    expect(cotizacionEsVe("Ferretería Demo, COT-17, 2026-11-18")).toBe("Ferretería Demo, COT-17, 18/11/2026");
+    expect(cotizacionEsVe("Proveedor 2026-01-02, N.º 2026-03-04, 2026-11-18")).toBe(
+      "Proveedor 2026-01-02, N.º 2026-03-04, 18/11/2026",
+    );
+  });
+
+  test("un texto sin la fecha final del sistema no cambia", () => {
+    expect(cotizacionEsVe("")).toBe("");
+    expect(cotizacionEsVe("COT-17 · Ferretería Demo")).toBe("COT-17 · Ferretería Demo");
+    expect(cotizacionEsVe("2026-11-18")).toBe("2026-11-18");
+  });
+});
+
