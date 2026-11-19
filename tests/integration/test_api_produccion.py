@@ -1104,3 +1104,10 @@ def test_un_4xx_tras_una_escritura_parcial_no_deja_nada_y_va_sin_cache(http, mon
         assert r.status_code == estado, r.text
         assert r.headers["Cache-Control"] == "no-store"
         assert contar(Movimiento) == 0 and contar(PesajeSospechoso) == 0
+
+
+def test_un_conteo_con_fecha_futura_es_422_y_no_escribe(http) -> None:
+    _material(http, "ARENA", "m3", "20", "1.60")
+    r = _movimiento(http, "ARENA", "ajuste", "2999-01-01", "40")
+    assert r.status_code == 422 and "fecha futura" in r.json()["detalle"]
+    assert contar(Movimiento) == 0

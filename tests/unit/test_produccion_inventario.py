@@ -273,3 +273,16 @@ def test_un_conteo_no_va_antes_del_ultimo_y_el_mismo_dia_es_un_reconteo(sesion: 
     )
     assert reconteo is not None and reconteo.cantidad == D("-1.5")
     assert existencia(sesion, mid) == D("146.5")
+
+
+def test_un_conteo_con_fecha_futura_se_niega(sesion: Session) -> None:
+    """Arbitraje 2026-11-18: un conteo futuro cerraria el material hasta esa fecha sin salida."""
+    mid = _arena(sesion)
+    hoy = date(2026, 11, 18)
+    with pytest.raises(ErrorDeInventario, match=r"fecha futura.*19/11/2026.*18/11/2026"):
+        registrar_ajuste_por_conteo(
+            sesion, mid, date(2026, 11, 19), D("5"), usuario=USUARIO, hoy=hoy
+        )
+    assert existencia(sesion, mid) == D("0")
+    hecho = registrar_ajuste_por_conteo(sesion, mid, hoy, D("5"), usuario=USUARIO, hoy=hoy)
+    assert hecho.cantidad == D("5")
