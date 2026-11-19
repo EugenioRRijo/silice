@@ -556,9 +556,11 @@ def dictaminar(
     revisor: str,
     ahora: datetime,
     armo: bool,
+    antes_de_confirmar: Callable[[], None] | None = None,
 ) -> int:
     """El dictamen, atado al SHA-256 del archivo y al estado de verificación de ESE momento.
-    `ValueError` (`SIN_DICTAMEN`) si el paquete no quedó registrado: no hay a qué atarlo."""
+    `ValueError` (`SIN_DICTAMEN`) si el paquete no quedó registrado: no hay a qué atarlo.
+    `antes_de_confirmar()` corre con el dictamen ya escrito y antes del `commit` (DS-57)."""
     if recibido.paquete_id == 0:
         raise ValueError(SIN_DICTAMEN)
     identificador = paq.registrar_dictamen(
@@ -572,6 +574,8 @@ def dictaminar(
         estado_verificacion=recibido.verificacion.estado,
         revisor_armo=armo,
     )
+    if antes_de_confirmar is not None:
+        antes_de_confirmar()
     caso.commit()
     return identificador
 

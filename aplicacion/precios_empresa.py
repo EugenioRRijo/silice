@@ -86,9 +86,13 @@ class RevisionDelArchivo:
     otra_unidad: tuple[str, ...]
 
 
-def _confirmar[T](sesion, accion: Callable[[], T]) -> T:
+def _confirmar[T](
+    sesion, accion: Callable[[], T], antes_de_confirmar: Callable[[], None] | None = None
+) -> T:
     try:
         resultado = accion()
+        if antes_de_confirmar is not None:
+            antes_de_confirmar()
         sesion.commit()
     except BaseException:
         sesion.rollback()
@@ -240,6 +244,7 @@ def crear_lista(
     fuente: str,
     nombre: str,
     dar_de_alta: bool = False,
+    antes_de_confirmar: Callable[[], None] | None = None,
 ) -> ResumenEmpresa:
     """UC-17 4: lee el archivo, separa los precios propios de los insumos que el catalogo no
     conoce y crea la lista de empresa sobre la base elegida. Si la base esta en otra moneda, se
@@ -249,7 +254,8 @@ def crear_lista(
 
     `desconocidos` son solo los insumos que el catálogo no tiene: uno que tiene con otra unidad va
     en `otra_unidad` (antes iba en los dos y se contradecían; pasada en navegador, D9a). Sin
-    `nombre`, el de omisión con « (2)»… si ya existe (D9c)."""
+    `nombre`, el de omisión con « (2)»… si ya existe (D9c). `antes_de_confirmar()` corre con la
+    lista ya escrita y antes del `commit` (DS-57)."""
     exigir_moneda(moneda)
     leidos = _con_la_lista(leer_lista_precios(ruta), fecha, fuente)
 
@@ -290,7 +296,7 @@ def crear_lista(
             lista.id,
         )
 
-    return _confirmar(sesion, accion)
+    return _confirmar(sesion, accion, antes_de_confirmar)
 
 
 def hallazgos_de_lista(sesion, lista_id: int, fecha_evaluacion: date) -> list[dict[str, str]]:

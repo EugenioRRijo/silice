@@ -496,6 +496,9 @@ def dictaminar(
             if not v.legible:
                 raise HTTPException(422, banner(v)[1])
             armo = logica.revisor_armo(v, login_revisor=activa.login, empresa_propia=mi_empresa)
+            # Los dictámenes (con el nuevo) se leen antes del commit: tras él, consultar abriría
+            # otra transacción (DS-57).
+            dictamenes: list[list[DictamenAnterior]] = []
             logica.dictaminar(
                 sesion,
                 recibido,
@@ -504,12 +507,11 @@ def dictaminar(
                 revisor=activa.usuario,
                 ahora=ahora(),
                 armo=bool(armo),
+                antes_de_confirmar=lambda: dictamenes.append(_dictamenes(sesion, v.sha256)),
             )
         except ERRORES_DEL_PAQUETE as error:
             raise HTTPException(422, str(error)) from None
-    return DictamenGuardado(
-        mensaje=logica.DICTAMEN_GUARDADO, dictamenes=_dictamenes(sesion, v.sha256)
-    )
+    return DictamenGuardado(mensaje=logica.DICTAMEN_GUARDADO, dictamenes=dictamenes[-1])
 
 
 @router.post(

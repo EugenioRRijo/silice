@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import json
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager, ExitStack
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -285,10 +285,13 @@ def guardar_tramos(
     usuario: str,
     ahora: datetime,
     fuente: str = "",
+    antes_de_confirmar: Callable[[], None] | None = None,
 ) -> None:
     """Guarda `tramos` como los de la versión `version_id` y confirma. Es un guardado nuevo: el
     anterior no se borra. `VersionInexistente`, `VersionBloqueada` y `ValueError` (un id de tramo
-    repetido, un usuario o una fuente demasiado largos); en cualquier fallo no queda nada."""
+    repetido, un usuario o una fuente demasiado largos); en cualquier fallo no queda nada.
+    `antes_de_confirmar()` corre con lo guardado y antes del `commit`, en la misma transacción
+    (la API arma ahí su respuesta: tras el `commit`, consultar abriría otra, DS-57)."""
     try:
         _presupuesto(sesion, version_id)
         bloqueo = bloqueo_de_version(sesion, version_id)
@@ -317,6 +320,8 @@ def guardar_tramos(
                     transporte=tramo.transporte,
                 )
             )
+        if antes_de_confirmar is not None:
+            antes_de_confirmar()
         sesion.commit()
     except BaseException:
         sesion.rollback()

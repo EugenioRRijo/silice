@@ -134,6 +134,8 @@ def _respuesta(sesion, proyecto: str, codigo: str) -> TramosRespuesta:
 
 
 def _guardar(sesion, proyecto: str, codigo: str, tramos, activa: SesionActiva, fuente: str):
+    # La respuesta se arma antes del commit: tras él, consultar abriría otra transacción (DS-57).
+    armada: list[TramosRespuesta] = []
     try:
         vial.guardar_tramos(
             sesion,
@@ -142,12 +144,13 @@ def _guardar(sesion, proyecto: str, codigo: str, tramos, activa: SesionActiva, f
             usuario=activa.usuario,
             ahora=ahora(),
             fuente=fuente,
+            antes_de_confirmar=lambda: armada.append(_respuesta(sesion, proyecto, codigo)),
         )
     except vial.VersionBloqueada as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
-    return _respuesta(sesion, proyecto, codigo)
+    return armada[-1]
 
 
 @router.get("/tramos", response_model=TramosRespuesta, dependencies=[LEER])

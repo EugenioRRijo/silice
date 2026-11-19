@@ -8,9 +8,11 @@ Las aprobaciones viven en cada carpeta de trabajo y no hay transacción común e
   rastro (`aplicacion.aprobaciones.envios`): borra las suyas y escribe una por envío. Borra ANTES
   de leer la carpeta: el borrado toma el bloqueo de escritura de la instalación, así que dos
   reflejos de la misma carpeta se ordenan y el último lee la carpeta más nueva. Solo `flush`: la
-  transacción de la instalación es de quien llama. Las rutas lo llaman después de confirmar la
-  carpeta, y `GET /v1/aprobaciones/pendientes` lo llama con la carpeta abierta: si un reflejo se
-  perdió (la instalación falló después de confirmar la carpeta), ahí se repone.
+  transacción de la instalación es de quien llama. Al enviar y al dictaminar, las rutas lo llaman
+  con lo escrito y antes del `commit` de la carpeta (leerla tras él abriría otro `BEGIN
+  IMMEDIATE`, DS-57) y confirman la instalación después de la carpeta; `GET
+  /v1/aprobaciones/pendientes` lo llama con la carpeta abierta: si un reflejo se perdió (falló
+  antes o después de confirmar la carpeta), ahí se repone.
 - `pendientes(sesion_ins)`: lo que espera dictamen en todas las carpetas, lo más antiguo primero.
 - `de_quien(sesion_ins, usuario, limite)`: lo último que envió una cuenta (reconocida por su
   `<login>`, con `aprobaciones.misma_cuenta`), lo más reciente primero.
