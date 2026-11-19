@@ -100,9 +100,15 @@ describe("Visor: Descargar PDF de hallazgos", () => {
         headers: { "Content-Disposition": 'attachment; filename="hallazgos_libro_minimo.pdf"' },
       }),
     );
+    // Se esta tecleando otra fecha (incompleta, asi que aun no se vuelve a auditar): el PDF lleva la del resultado.
+    const campo = screen.getByLabelText("Fecha de devolución");
+    await usuario.clear(campo);
+    await usuario.type(campo, "2026-1");
     await usuario.click(screen.getByRole("button", BOTON));
     await vi.waitFor(() => expect(clics).toHaveLength(1));
     expect(clics[0].descarga).toBe("hallazgos_libro_minimo.pdf");
+    expect(crearUrl).toHaveBeenCalledOnce();
+    expect(revocarUrl).toHaveBeenCalledWith("blob:falso");
     expect(fetchFalso).toHaveBeenCalledTimes(1);
     const [ruta, init] = fetchFalso.mock.calls[0];
     expect(String(ruta)).toBe("/v1/libros/auditoria/pdf");
@@ -117,9 +123,38 @@ describe("Visor: Descargar PDF de hallazgos", () => {
   test("mientras baja lo dice y se deshabilita", async () => {
     responderAuditoria();
     const usuario = await abrir();
-    fetchFalso.mockImplementation(() => new Promise<Response>(() => {}));
+    let resolver: (r: Response) => void = () => {};
+    fetchFalso.mockImplementation(() => new Promise<Response>((fin) => (resolver = fin)));
     await usuario.click(screen.getByRole("button", BOTON));
     expect(await screen.findByRole("button", { name: "Descargando…" })).toBeDisabled();
+    resolver(new Response("%PDF-1.4", { status: 200 }));
+    expect(await screen.findByRole("button", BOTON)).toBeEnabled();
+    expect(clics).toHaveLength(1);
+  });
+
+  test("el error de un libro anterior no queda cuando el resultado cambia", async () => {
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const ruta = String(entrada);
+      if (ruta.endsWith("/v1/libros/replica")) return json(replica);
+      if (ruta.endsWith("/v1/libros/auditoria")) {
+        const fecha = (init?.body as FormData).get("fecha_devolucion") as string;
+        return json({ ...auditoria, fecha_devolucion: fecha });
+      }
+      return json({ detalle: "No se pudo preparar el PDF de hallazgos." }, 500);
+    });
+    render(<Visor crearHoja={crearHoja} />);
+    const usuario = userEvent.setup();
+    const entrada = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await usuario.upload(entrada, new File([new Uint8Array([80, 75, 3, 4])], "libro_minimo.xlsx"));
+    await screen.findByRole("region", { name: "Hoja del libro" });
+    await usuario.click(screen.getByRole("button", BOTON));
+    expect(await alertaConTexto()).toHaveTextContent("No se pudo preparar");
+    // Otra fecha valida: se audita de nuevo y el resultado es otro; el aviso de antes ya no corresponde.
+    const campo = screen.getByLabelText("Fecha de devolución");
+    await usuario.clear(campo);
+    await usuario.type(campo, "2026-11-02");
+    await vi.waitFor(() => expect(screen.queryByText(/No se pudo preparar el PDF/)).toBeNull());
+    expect(screen.getByRole("button", BOTON)).toBeEnabled();
   });
 
   test("si el servidor falla anuncia el detalle y no baja nada", async () => {

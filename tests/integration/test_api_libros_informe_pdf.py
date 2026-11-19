@@ -15,8 +15,10 @@ pdfplumber, otra biblioteca.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 import pdfplumber
@@ -24,7 +26,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
-from api.proteccion import MENSAJE_SIN_CLAVE
+from api.proteccion import LIMITE_CUERPO, MENSAJE_SIN_CLAVE
 from api.sesion_web import MENSAJE_SIN_SESION
 from operacion import config
 from operacion.base_datos import Destino, preparar_base
@@ -109,10 +111,53 @@ def test_el_pdf_no_deja_ninguna_fila_en_el_historial(cliente, limpio) -> None:
     assert cliente.get("/v1/auditorias-libro").json() == []
 
 
-def test_con_la_misma_fecha_el_mismo_libro_da_el_mismo_texto(cliente, con_h1) -> None:
-    primero = _texto(_pedir(cliente, con_h1.datos).content)
-    segundo = _texto(_pedir(cliente, con_h1.datos).content)
+def test_con_la_misma_fecha_el_mismo_libro_da_el_mismo_texto(cliente, con_h1, monkeypatch) -> None:
+    import api.rutas.libros_informe as ruta
+
+    monkeypatch.setattr(ruta, "_ahora", lambda: datetime(2026, 11, 19, 10, 0, 0))
+    respuestas = [_pedir(cliente, con_h1.datos) for _ in range(2)]
+    assert [r.status_code for r in respuestas] == [200, 200]
+    primero, segundo = (_texto(r.content) for r in respuestas)
+    assert "Emitido el 19/11/2026" in primero  # la única parte que depende del reloj
     assert primero == segundo
+
+
+def test_el_pdf_imprime_la_huella_abreviada_del_libro_auditado(cliente, limpio) -> None:
+    huella = hashlib.sha256(limpio.datos).hexdigest()[:12]
+    assert f"Huella del libro (SHA-256): {huella}" in _texto(_pedir(cliente, limpio.datos).content)
+
+
+def test_cuerpo_de_mas_de_20_mib_413_y_en_el_limite_no(cliente) -> None:
+    cabecera = {"content-type": "multipart/form-data; boundary=x"}
+    assert (
+        cliente.post(RUTA, content=b"0" * (LIMITE_CUERPO + 1), headers=cabecera).status_code == 413
+    )
+    assert cliente.post(RUTA, content=b"0" * LIMITE_CUERPO, headers=cabecera).status_code == 400
+
+
+def test_un_xlsx_dañado_es_422_con_el_mensaje_de_la_guardia(cliente) -> None:
+    r = _pedir(cliente, b"esto no es un libro de Excel", nombre="falso.xlsx")
+    assert r.status_code == 422, r.text
+    assert r.json() == {
+        "detalle": "El archivo «falso.xlsx» no es un libro .xlsx válido (está dañado o no es de "
+        "Excel)."
+    }
+
+
+def test_un_fallo_al_procesar_el_libro_es_500_con_mensaje_fijo(
+    cliente, limpio, monkeypatch, caplog
+) -> None:
+    import api.rutas.libros as libros
+
+    def _revienta(*_a, **_k):
+        raise RuntimeError("detalle-interno C:\ruta\\secreta")
+
+    monkeypatch.setattr(libros, "procesar_libro", _revienta)
+    r = _pedir(cliente, limpio.datos)
+    assert r.status_code == 500
+    assert r.json() == {"detalle": "El libro no se pudo interpretar."}
+    assert "detalle-interno" not in r.text and "RuntimeError" not in r.text
+    assert any("RuntimeError" in m for m in caplog.messages)  # el detalle va al registro
 
 
 @pytest.mark.parametrize("clave", [None, "", "desconocida.secreto"])

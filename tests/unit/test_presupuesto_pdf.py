@@ -437,3 +437,43 @@ def test_el_apu_con_traza_lleva_la_neta_el_porcentaje_y_la_cantidad_con_desperdi
     # sin traza, las columnas de siempre
     sin = documento_de_la_hoja(_vivo(_of001), HOY, partida="AF-LLAVE")
     assert sin.apus[0].tablas[0].columnas == ("Descripción", "Unidad", "Cantidad", "Precio")
+
+
+def test_dos_descargas_en_frio_a_la_vez_registran_la_letra_una_sola_vez(monkeypatch):
+    """`_registrar_letras` se llama desde hilos distintos (cada petición va en el suyo): con la
+    letra aún sin registrar, solo uno la registra."""
+    import threading
+    import time
+
+    from reportlab.pdfbase import pdfmetrics
+
+    from aplicacion import presupuesto_pdf
+
+    guardadas = {
+        n: pdfmetrics._fonts.pop(n, None)  # noqa: SLF001
+        for n in (presupuesto_pdf._LETRA, presupuesto_pdf._NEGRITA)  # noqa: SLF001
+    }
+    registros: list[str] = []
+    real = pdfmetrics.registerFont
+
+    def contado(fuente):
+        registros.append(fuente.fontName)
+        time.sleep(0.05)  # ensancha la carrera
+        real(fuente)
+
+    monkeypatch.setattr(pdfmetrics, "registerFont", contado)
+    try:
+        hilos = [
+            threading.Thread(target=presupuesto_pdf._registrar_letras)  # noqa: SLF001
+            for _ in range(6)
+        ]
+        for h in hilos:
+            h.start()
+        for h in hilos:
+            h.join()
+    finally:
+        for nombre, fuente in guardadas.items():
+            pdfmetrics._fonts.pop(nombre, None)  # noqa: SLF001
+            if fuente is not None:
+                pdfmetrics._fonts[nombre] = fuente  # noqa: SLF001
+    assert sorted(registros) == ["SiliceVera", "SiliceVera-Negrita"]
