@@ -78,20 +78,35 @@ def _indice(valor: Decimal | None) -> str:
 
 
 def _fecha(texto: str, que: str) -> date:
+    """La fecha AAAA-MM-DD del campo `que` (su nombre en la pantalla). Vacía o ilegible, un
+    `ControlInvalido` que nombra el campo como lo ve la persona (prueba en vivo 2026-11-18)."""
+    if not texto.strip():
+        raise ControlInvalido(f"Falta la fecha «{que}».")
     try:
         return date.fromisoformat(texto.strip()[:10])
     except ValueError:
-        raise ControlInvalido(f"{que}: {texto!r} no es una fecha (AAAA-MM-DD)") from None
+        raise ControlInvalido(f"«{que}»: «{texto.strip()}» no es una fecha válida.") from None
 
 
 def _decimal(texto: str, que: str) -> Decimal:
+    """El número del campo `que` (su nombre en la pantalla; la pantalla ya lo manda con punto).
+    Vacío o ilegible, un `ControlInvalido` que nombra el campo sin repetir lo enviado."""
+    if not str(texto).strip():
+        raise ControlInvalido(f"Falta la cifra «{que}».")
     try:
         valor = Decimal(str(texto).strip())
     except InvalidOperation:
-        raise ControlInvalido(f"{que}: {texto!r} no es un numero decimal") from None
+        raise ControlInvalido(f"«{que}» no es un número válido.") from None
     if not valor.is_finite():
-        raise ControlInvalido(f"{que}: {texto!r} no es un numero finito")
+        raise ControlInvalido(f"«{que}» no es un número finito.")
     return valor
+
+
+def _exigir_texto(texto: str, mensaje: str) -> None:
+    """`ControlInvalido(mensaje)` si `texto` está en blanco: el núcleo diría «la fuente del cambio
+    es obligatoria» aunque el campo de la pantalla se llame «Motivo»."""
+    if not texto.strip():
+        raise ControlInvalido(mensaje)
 
 
 def _escribir(sesion: Session, accion):

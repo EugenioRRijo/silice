@@ -263,7 +263,7 @@ def test_anular_y_el_costo_real_desde_los_textos(obra):
         obra, ob.NOMBRE, monto="12.50", moneda="USD", fecha="2026-11-13", fuente="factura",
         responsable="Ing.", partida="OB-A",
     )  # fmt: skip
-    with pytest.raises(control.ControlInvalido, match="monto"):
+    with pytest.raises(control.ControlInvalido, match="«Monto»"):
         control.registrar_costo_real(
             obra,
             ob.NOMBRE,
@@ -277,7 +277,7 @@ def test_anular_y_el_costo_real_desde_los_textos(obra):
 
 def test_importar_el_xlsx_de_ob_s2_con_informe_previo(obra):
     lectura = control.leer_excel(ob.RUTA_XLSX)
-    assert lectura.informe[0] == "Valuaciones: 2 valuacion(es)"
+    assert lectura.informe[0] == "Hoja «Valuaciones»: 2 valuación(es)"
     assert control.importar_excel(obra, ob.NOMBRE, lectura, fuente="XLSX", responsable="Ing.") == 2
     with pytest.raises(control.ControlInvalido, match="ya estan registradas"):
         control.importar_excel(obra, ob.NOMBRE, lectura, fuente="XLSX", responsable="Ing.")

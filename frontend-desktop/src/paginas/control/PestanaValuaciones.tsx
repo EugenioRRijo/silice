@@ -317,8 +317,9 @@ function Importar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => 
       <summary className="cds--type-body-compact-01">Importar valuaciones de un XLSX</summary>
       <div className="silice-control__formulario">
         <p className="silice-control__nota cds--type-body-compact-01">
-          Hojas Valuaciones (numero, desde, hasta, fecha, inspector), Lineas (numero, codigo_partida, cantidad,
-          fecha_medicion, observacion) y Costos (opcional). Un archivo malformado se rechaza entero.
+          El libro lleva tres hojas con estos nombres exactos, sin tildes: «Valuaciones» (columnas numero, desde, hasta,
+          fecha, inspector), «Lineas» (numero, codigo_partida, cantidad, fecha_medicion, observacion) y «Costos»
+          (opcional). Un archivo malformado se rechaza entero.
         </p>
         {/* Mientras se lee o se importa no se elige otro: el informe y la importación son del archivo que se ve. */}
         <SubidaArchivo
