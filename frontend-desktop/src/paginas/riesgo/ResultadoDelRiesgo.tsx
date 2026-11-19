@@ -12,15 +12,28 @@ interface Props<T> {
   children?: ReactNode;
 }
 
-// Sin ningún insumo que empuje. En USD un insumo sin serie queda fijo (en Bs sigue a la tasa): la causa más común es no
-// haber elegido ninguna serie, así que se dice dónde (prueba en vivo del 2026-11-18, la demo salía plana sin explicarlo).
+interface PropsDeLaProyeccion extends Props<ProyeccionDeLaObra> {
+  // Si la proyección se pidió con alguna serie elegida (el mapa enviado no iba vacío).
+  conSeries: boolean;
+}
+
+// Sin ningún insumo que empuje. En USD un insumo sin serie queda fijo (en Bs sigue a la tasa): sin ninguna serie elegida
+// se dice dónde elegirla (prueba en vivo del 2026-11-18, la demo salía plana sin explicarlo); con series elegidas, que no
+// variaron (si hubieran bajado, la contribución traería montos negativos y se verían en la tabla).
 const QUIETO = "Ningún insumo se movió con la historia usada.";
 const QUIETO_EN_USD =
   "En una obra en USD solo se mueven los insumos que siguen una serie: elíjala en «Serie que mueve cada insumo».";
+const QUIETO_CON_SERIES =
+  "Ningún insumo se movió con la historia usada: las series elegidas no variaron en los meses de historia usados.";
+
+function textoQuieto(moneda: string, conSeries: boolean): string {
+  if (moneda !== "USD") return QUIETO;
+  return conSeries ? QUIETO_CON_SERIES : `${QUIETO} ${QUIETO_EN_USD}`;
+}
 
 // La proyección como la manda el servidor: P50, P80, la reserva que cubre el P80 y los insumos que más la empujan. Nada
 // se calcula aquí; los montos exactos se leen en centésimas con coma decimal y punto de miles.
-export function ResultadoDeLaProyeccion({ datos, region, children }: Props<ProyeccionDeLaObra>): JSX.Element {
+export function ResultadoDeLaProyeccion({ datos, region, conSeries, children }: PropsDeLaProyeccion): JSX.Element {
   const m = (exacto: string) => monto(exacto, datos.moneda);
   const columnas: ColumnaDensa[] = [
     { clave: "insumo", titulo: "Insumo", ordenable: false },
@@ -48,9 +61,7 @@ export function ResultadoDeLaProyeccion({ datos, region, children }: Props<Proye
       {filas.length > 0 ? (
         <TablaDensa etiqueta="Los tres insumos que más empujan" columnas={columnas} filas={filas} />
       ) : (
-        <p className="riesgo-nota cds--type-body-compact-01">
-          {datos.moneda === "USD" ? `${QUIETO} ${QUIETO_EN_USD}` : QUIETO}
-        </p>
+        <p className="riesgo-nota cds--type-body-compact-01">{textoQuieto(datos.moneda, conSeries)}</p>
       )}
       <details className="cds--type-body-compact-01">
         <summary>Supuestos de la proyección</summary>
