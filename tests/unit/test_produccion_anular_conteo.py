@@ -187,3 +187,13 @@ def test_el_tablero_trae_el_conteo_vigente_de_cada_material(sesion: Session) -> 
     assert filas["ARENA"].conteo is None and otro.id != mid
     _anular(sesion, segundo.id)
     assert {f.material.codigo: f for f in tablero(sesion)}["PIEDRA"].conteo == primero
+
+
+def test_el_cierre_dice_que_un_conteo_mal_hecho_se_anula(sesion: Session) -> None:
+    """El mensaje del cierre ya no manda a «hacer un conteo nuevo», que no reabre el pasado."""
+    mid, _, _ = _serie(sesion)
+    with pytest.raises(ErrorDeInventario) as error:
+        registrar_entrada(sesion, mid, date(2026, 11, 9), D("1"), usuario=USUARIO)
+    assert str(error.value).endswith(
+        "o, si el conteo estaba mal, anúlelo en «Existencias» con su motivo."
+    )
