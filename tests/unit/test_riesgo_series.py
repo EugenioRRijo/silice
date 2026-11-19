@@ -225,3 +225,19 @@ def test_una_importacion_dice_cuantos_valores_trajo_y_su_rango(sesion, tmp_path)
     ruta = _csv(tmp_path, "p.csv", [f"GASOIL_USD,2026-0{m}-01,0.3,no,f" for m in (3, 1, 2)])
     id_ = _importar(sesion, "GASOIL_USD", ruta)
     assert resumen_de_importacion(sesion, id_) == (3, date(2026, 1, 1), date(2026, 3, 1))
+
+
+def test_una_importacion_sin_valores_se_resume_en_cero_sin_fechas(sesion):
+    importacion = registrar_importacion(
+        sesion,
+        GASOIL_USD,
+        [],
+        archivo="v.csv",
+        huella="d" * 64,
+        fuente="f",
+        fecha_descarga=HOY,
+        responsable="r",
+        filas_leidas=0,
+        filas_rechazadas=0,
+    )
+    assert resumen_de_importacion(sesion, importacion.id) == (0, None, None)

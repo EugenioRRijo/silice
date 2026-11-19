@@ -18,6 +18,7 @@ envíos del mismo archivo coincidan). Datos ficticios, construidos aquí.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from datetime import date
 from decimal import Decimal
@@ -25,10 +26,16 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import indices as ruta_indices
+from aplicacion.riesgo.proyeccion import (
+    SERIE_TASA,
+    ParametrosProyeccion,
+    mensaje_de_pocos_meses,
+)
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
@@ -418,3 +425,130 @@ def test_una_fuente_con_caracteres_de_control_se_rechaza(fuente: str, _entorno: 
         {"detalle": "La fuente no puede llevar caracteres de control."},
     )
     assert _conteos(_entorno) == (0, 0, 0)
+
+
+# --- Arbitraje: refuerzos de fronteras, fallos y revisiones ----------------------------------
+
+
+def _meses(n: int, serie: str = PPI, base: int = 100) -> bytes:
+    filas = "".join(f"{serie},2026-{m:02d}-01,{base + m},no,ficticia\n" for m in range(1, n + 1))
+    return (ENCABEZADO + filas).encode()
+
+
+@pytest.mark.parametrize(("n", "omitidas"), [(3, 0), (4, 1), (5, 2)])
+def test_el_tope_de_la_historia_deja_los_ultimos_en_orden_y_cuenta_las_omitidas(
+    monkeypatch, n: int, omitidas: int
+) -> None:
+    monkeypatch.setattr(ruta_indices, "MAXIMO_HISTORIA_VIAL", 3)
+    cuenta = _admin()
+    assert _importar(_meses(n), cuenta=cuenta).status_code == 200
+    ppi = cuenta[0].get("/v1/indices/series-viales").json()["series"][0]
+    assert ppi["observaciones"] == n  # el total real, no el que viaja
+    assert ppi["omitidas"] == omitidas
+    assert [o["fecha"] for o in ppi["historia"]] == [
+        f"2026-{m:02d}-01" for m in range(n - 2, n + 1)
+    ]
+    assert (ppi["desde"], ppi["hasta"]) == ("2026-01-01", f"2026-{n:02d}-01")
+
+
+def test_la_fecha_de_descarga_es_el_limite_exacto_de_los_datos(_entorno: Path) -> None:
+    """La última fecha del archivo es 2026-03-01: bajarlo ese día vale; el día anterior, no."""
+    r = _importar(fecha="2026-03-01")
+    assert r.status_code == 200, r.text
+    escritos = _conteos(_entorno)
+    antes = _importar(fecha="2026-02-28", fuente="otra fuente")
+    assert antes.status_code == 422
+    assert "series.csv:4: fecha posterior a la descarga" in antes.json()["detalle"]
+    assert _conteos(_entorno) == escritos
+
+
+def test_un_csv_de_una_fila_dice_valor_en_singular() -> None:
+    r = _importar(_meses(1))
+    assert r.status_code == 200, r.text
+    assert (r.json()["observaciones"], r.json()["mensaje"]) == (
+        1,
+        "Se importó 1 valor, el 01/01/2026.",
+    )
+
+
+def test_el_mismo_archivo_otra_vez_no_agrega_ni_una_fila(_entorno: Path) -> None:
+    cuenta = _admin()
+    assert _importar(cuenta=cuenta).json()["importada"] is True
+    antes = _conteos(_entorno)
+    assert antes == (3, 1, 1)
+    for _ in range(2):
+        assert _importar(cuenta=cuenta).json()["importada"] is False
+    assert _conteos(_entorno) == antes  # filas reales, no un diccionario que colapsa
+
+
+def test_una_revision_de_una_fecha_manda_en_la_historia() -> None:
+    cuenta = _admin()
+    primero = (ENCABEZADO + f"{PPI},2026-01-01,101.2,no,f\n{PPI},2026-02-01,102,no,f\n").encode()
+    revision = (ENCABEZADO + f"{PPI},2026-02-01,105.5,si,f\n").encode()
+    assert _importar(primero, cuenta=cuenta).json()["importada"] is True
+    assert _importar(revision, cuenta=cuenta, nombre="revision.csv").json()["importada"] is True
+    ppi = cuenta[0].get("/v1/indices/series-viales").json()["series"][0]
+    assert ppi["observaciones"] == 2  # una por fecha: la revisión sustituye a la anterior
+    assert ppi["historia"] == [
+        {"fecha": "2026-01-01", "valor": "101.2", "provisional": False},
+        {"fecha": "2026-02-01", "valor": "105.5", "provisional": True},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("fallo", "estado"),
+    [
+        (OperationalError("INSERT", {}, Exception("base bloqueada")), 503),
+        (ValueError("algo inesperado"), 422),
+    ],
+)
+def test_un_fallo_despues_de_escribir_deshace_todo(
+    monkeypatch, _entorno: Path, fallo: Exception, estado: int
+) -> None:
+    def falla(*_args, **_kwargs):
+        raise fallo
+
+    monkeypatch.setattr(ruta_indices.series_viales, "resumen_de_importacion", falla)
+    r = _importar()
+    assert r.status_code == estado, r.text
+    assert r.json()["detalle"].startswith(
+        "No se pudo escribir en el caso: " if estado == 503 else "No se importó nada: "
+    )
+    assert _conteos(_entorno) == (0, 0, 0)
+
+
+def test_la_fuente_se_guarda_recortada(_entorno: Path) -> None:
+    assert _importar(fuente="  FRED/BLS  ").status_code == 200
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            assert set(sesion.scalars(select(models.ImportacionIndice.fuente))) == {"FRED/BLS"}
+    finally:
+        motor.dispose()
+
+
+# --- El enlace de Riesgo reconoce la frase que escribe el servidor ----------------------------
+
+LOGICA_DE_RIESGO = (
+    Path(__file__).resolve().parents[2]
+    / "frontend-desktop"
+    / "src"
+    / "paginas"
+    / "riesgo"
+    / "logica.ts"
+)
+
+
+def _frase_que_busca_el_enlace() -> str:
+    texto = LOGICA_DE_RIESGO.read_text(encoding="utf-8")
+    pagina = re.search(r'PAGINA_DE_LAS_SERIES = "([^"]+)"', texto)
+    assert pagina, "logica.ts ya no declara PAGINA_DE_LAS_SERIES"
+    assert "`«${PAGINA_DE_LAS_SERIES}»`" in texto, "faltaCargarSeries ya no busca «página»"
+    return f"«{pagina.group(1)}»"
+
+
+@pytest.mark.parametrize("serie", [GASOIL, PPI, SERIE_TASA])
+def test_el_aviso_de_pocos_meses_trae_la_frase_que_el_enlace_de_riesgo_busca(serie: str) -> None:
+    parametros = ParametrosProyeccion(inicio=date(2027, 1, 1), trayectorias=200)
+    mensaje = mensaje_de_pocos_meses({}, [serie], parametros, 0)
+    assert _frase_que_busca_el_enlace() in mensaje
