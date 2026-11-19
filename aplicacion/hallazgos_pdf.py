@@ -16,6 +16,8 @@ No escribe nada y no guarda ni el libro ni el PDF (RNF-28). Sin FastAPI (RM-1).
 
 from __future__ import annotations
 
+from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from io import BytesIO
@@ -27,6 +29,7 @@ from aplicacion.presupuesto_pdf import (
     _LETRA,
     _NEGRITA,
     _NO_SEGURO,
+    _SEVERIDADES,
     _limpio,
     _registrar_letras,
 )
@@ -66,6 +69,31 @@ class InformeDeHallazgos:
     conteo: tuple[str, ...]
     totales: tuple[LineaDeTotal, ...]
     hallazgos: tuple[FilaDeHallazgo, ...]
+
+
+#: La severidad como la escribe la interfaz (`severidad/severidad.ts`), de la más a la menos grave.
+_NOMBRES = {
+    "CRITICO": "Crítico",
+    "ERROR": "Error",
+    "ADVERTENCIA": "Advertencia",
+    "INFO": "Información",
+}
+
+
+def severidad_escrita(severidad: str) -> str:
+    """«ERROR» -> «Error»; una severidad desconocida se muestra tal cual."""
+    return _NOMBRES.get(severidad, severidad)
+
+
+def conteo_por_severidad(severidades: Iterable[str]) -> tuple[str, ...]:
+    """«4 errores», «2 avisos informativos»: de la más a la menos grave y solo las que hay; sin
+    ninguna, «Sin hallazgos»."""
+    cuenta = Counter(severidades)
+    partes = []
+    for clave, (singular, plural) in _SEVERIDADES.items():
+        if cuenta[clave]:
+            partes.append(f"{cuenta[clave]} {singular if cuenta[clave] == 1 else plural}")
+    return tuple(partes) or ("Sin hallazgos",)
 
 
 def dinero(valor: Decimal) -> str:
@@ -214,7 +242,9 @@ __all__ = (
     "InformeDeHallazgos",
     "FilaDeHallazgo",
     "LineaDeTotal",
+    "conteo_por_severidad",
     "dinero",
     "nombre_del_pdf_de_hallazgos",
     "pdf_de_hallazgos",
+    "severidad_escrita",
 )

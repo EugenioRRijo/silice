@@ -1642,6 +1642,44 @@
         }
       }
     },
+    "/v1/libros/auditoria/pdf": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Pdf De La Auditoria",
+        "description": "El informe de hallazgos del libro en PDF: libro, fechas, resultado, totales y cada hallazgo.\nNo guarda nada ni toca el historial.",
+        "operationId": "pdf_de_la_auditoria_v1_libros_auditoria_pdf_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_pdf_de_la_auditoria_v1_libros_auditoria_pdf_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "El PDF de hallazgos.",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/simulador": {
       "post": {
         "tags": [
@@ -14963,6 +15001,77 @@
           "moneda"
         ],
         "title": "Body_llevar_libro_v1_hoja_libro_post"
+      },
+      "Body_pdf_de_la_auditoria_v1_libros_auditoria_pdf_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro de la empresa (.xlsx sin macros)"
+          },
+          "fecha_devolucion": {
+            "type": "string",
+            "title": "Fecha Devolucion",
+            "description": "Fecha de devolución, ISO (AAAA-MM-DD). Obligatoria."
+          },
+          "pdf": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf",
+            "description": "PDF entregado (opcional; L11 o L10)"
+          },
+          "anterior": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anterior",
+            "description": "Otra versión del libro (.xlsx, opcional)"
+          },
+          "fecha_libro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Libro",
+            "description": "Fecha del libro, ISO; sin ella, la de la PORTADA"
+          },
+          "umbral": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Umbral",
+            "description": "Variación de precio desde la que hay alerta, 0 < umbral < 1 (0.05)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "fecha_devolucion"
+        ],
+        "title": "Body_pdf_de_la_auditoria_v1_libros_auditoria_pdf_post"
       },
       "Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post": {
         "properties": {
