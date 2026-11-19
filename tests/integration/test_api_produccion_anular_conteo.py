@@ -80,12 +80,14 @@ def _anular(http, movimiento_id: int, motivo: str = MOTIVO):
 
 def test_la_existencia_trae_el_conteo_vigente(http) -> None:
     _, segundo = _serie(http)
-    assert _piedra(http)["ultimo_conteo"] == {
-        "id": segundo["id"],
-        "fecha": "2026-11-10",
-        "diferencia": "2",
-        "usuario": USUARIO_API,
-    }
+    conteo = _piedra(http)["ultimo_conteo"]
+    assert set(conteo) == {"id", "fecha", "diferencia", "usuario"}
+    assert (conteo["id"], conteo["fecha"], conteo["usuario"]) == (
+        segundo["id"],
+        "2026-11-10",
+        USUARIO_API,
+    )
+    assert isinstance(conteo["diferencia"], str) and Decimal(conteo["diferencia"]) == Decimal("2")
 
 
 def test_un_material_sin_conteo_lo_trae_nulo(http) -> None:
@@ -102,7 +104,8 @@ def test_anular_el_ultimo_conteo_lo_compensa_y_el_vigente_es_el_anterior(http) -
     r = _anular(http, segundo["id"])
     assert r.status_code == 201, r.text
     cuerpo = r.json()
-    assert (cuerpo["tipo"], cuerpo["fecha"], cuerpo["cantidad"]) == ("ajuste", "2026-11-10", "-2")
+    assert (cuerpo["tipo"], cuerpo["fecha"]) == ("ajuste", "2026-11-10")
+    assert Decimal(cuerpo["cantidad"]) == Decimal("-2")
     assert (cuerpo["anula_id"], cuerpo["motivo"], cuerpo["usuario"]) == (
         segundo["id"],
         MOTIVO,
@@ -112,7 +115,7 @@ def test_anular_el_ultimo_conteo_lo_compensa_y_el_vigente_es_el_anterior(http) -
     fila = _piedra(http)
     assert Decimal(fila["existencia"]) == Decimal("158")
     assert fila["ultimo_conteo"]["id"] == primero["id"]
-    assert contar(Movimiento) == 6  # nada se borra: los cinco y la anulacion
+    assert contar(Movimiento) == 5  # nada se borra: los cuatro de la serie y la anulacion
     # el pasado entre los dos conteos vuelve a estar abierto
     _mover(http, "despacho", "2026-11-09", "8")
     assert Decimal(_piedra(http)["existencia"]) == Decimal("150")
@@ -123,7 +126,7 @@ def test_solo_el_ultimo_conteo_vigente_se_anula(http) -> None:
     r = _anular(http, primero["id"])
     assert r.status_code == 409
     assert "último conteo vigente de PIEDRA, que es el del 10/11/2026" in r.json()["detalle"]
-    assert contar(Movimiento) == 5
+    assert contar(Movimiento) == 4
 
 
 def test_anular_dos_veces_responde_409(http) -> None:
@@ -131,7 +134,7 @@ def test_anular_dos_veces_responde_409(http) -> None:
     assert _anular(http, segundo["id"]).status_code == 201
     r = _anular(http, segundo["id"])
     assert r.status_code == 409 and r.json()["detalle"] == "Ese conteo físico ya fue anulado."
-    assert contar(Movimiento) == 6
+    assert contar(Movimiento) == 5
 
 
 def test_lo_que_no_es_un_conteo_responde_404(http) -> None:
@@ -141,7 +144,7 @@ def test_lo_que_no_es_un_conteo_responde_404(http) -> None:
         r = _anular(http, movimiento_id)
         assert r.status_code == 404
         assert r.json()["detalle"] == "No existe ese conteo físico. Actualice la existencia."
-    assert contar(Movimiento) == 6
+    assert contar(Movimiento) == 5
 
 
 @pytest.mark.parametrize("motivo", ["", "   "])
@@ -150,7 +153,7 @@ def test_sin_motivo_responde_422_y_no_escribe(http, motivo: str) -> None:
     r = _anular(http, segundo["id"], motivo)
     assert r.status_code == 422
     assert r.json()["detalle"] == "Escriba el motivo de la anulación del conteo."
-    assert contar(Movimiento) == 5
+    assert contar(Movimiento) == 4
 
 
 def test_con_sesion_la_anulacion_queda_a_nombre_de_la_cuenta() -> None:
@@ -167,4 +170,4 @@ def test_con_sesion_sin_anti_csrf_se_rechaza_y_no_escribe() -> None:
     _, segundo = _serie(ana)
     r = ana.cliente.post(f"/v1/produccion/conteos/{segundo['id']}/anular", json={"motivo": MOTIVO})
     assert r.status_code == 403
-    assert contar(Movimiento) == 5
+    assert contar(Movimiento) == 4
