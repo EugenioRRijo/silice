@@ -241,17 +241,17 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // El aviso es de la pantalla en que se dio: al navegar a otra se cierra. Se ajusta durante el dibujo, sin efecto.
   // Salvo el de un cambio de carpeta que la persona pidió para ir a una herramienta (`abrirDePendiente`): ese aviso dice dónde
   // está trabajando ahora y sobrevive a esa navegación, que es la intencionada.
-  const rutaQueConservaElAviso = useRef<string | null>(null);
+  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<string | null>(null);
   const [rutaDelAviso, setRutaDelAviso] = useState(ubicacion.pathname);
   if (rutaDelAviso !== ubicacion.pathname) {
     setRutaDelAviso(ubicacion.pathname);
-    if (aviso && rutaQueConservaElAviso.current !== ubicacion.pathname) setAviso(null);
+    if (aviso && rutaQueConservaElAviso !== ubicacion.pathname) setAviso(null);
+    if (rutaQueConservaElAviso !== null) setRutaQueConservaElAviso(null);
   }
   // Cada vez que cambia la ruta, lo que quedó a medias de un pendiente (abrir su carpeta) ya no es lo que la persona pidió.
   const turnoDePendiente = useRef(0);
   useEffect(() => {
     turnoDePendiente.current += 1;
-    rutaQueConservaElAviso.current = null;
   }, [ubicacion.pathname]);
 
   // Salir de donde se está por el marco (barra lateral, buscador) sin perder trabajo (foco 5 del plan): con
@@ -284,7 +284,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
         }
         // La persona fue a otra parte mientras se abría la carpeta (o pidió otro paso): ese destino ya no es el suyo.
         if (turno !== turnoDePendiente.current) return;
-        rutaQueConservaElAviso.current = destino.split("?")[0] ?? destino;
+        setRutaQueConservaElAviso(destino.split("?")[0] ?? destino);
       }
       await irSeguro(destino);
     },
