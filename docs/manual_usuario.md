@@ -725,6 +725,13 @@ Cuando el borrador tiene cambios, la franja dice «Siguiente paso: Hay 3 cambios
 
 Verá «Versión guardada» y, por ejemplo, «Se guardó la versión V-005 con 3 cambios registrados.».
 
+**Si solo cambió el desglose del desperdicio.** Cuando lo único pendiente es el desglose del desperdicio de un
+material (la misma cantidad, con otra neta y otro porcentaje, sección 4.11), el botón de la franja y el diálogo dicen
+«Guardar el desglose…» y «Guardar el desglose». Guardar el desglose no pide fuente y no crea versión: la versión abierta
+sigue siendo la misma y el aviso dice, por ejemplo, «Se guardó el desglose del desperdicio de 1 línea. La cantidad no
+cambió, así que la versión V-005 sigue siendo la misma.». Si además cambió alguna cantidad o rendimiento, el botón
+sigue diciendo «Guardar versión…»: nace una versión nueva con esos cambios y el desglose se guarda junto con ella.
+
 **La primera versión de una obra larga.** Al guardar la primera versión, Sílice arma el plan de trabajo desde los
 rendimientos. El plan admite hasta 500 períodos: si por días no cabe, lo arma por semanas (de 5 días hábiles) y, si
 tampoco, por meses (de 20 días hábiles), y el mensaje de guardado lo dice, por ejemplo «El plan por días tendría 700
@@ -813,7 +820,7 @@ Sílice revisa en este orden y muestra la primera que se cumple:
 | Mensaje | Qué significa | Qué hacer |
 |---|---|---|
 | «Te falta: Agregue la primera partida» | La obra no tiene partidas | Pulse «Agregar la primera partida» (sección 4.3) |
-| «Siguiente paso: Hay 3 cambios sin guardar» | Cambió algo y no lo guardó | Pulse «Guardar versión…» o «Guardar primera versión…» (sección 4.8) |
+| «Siguiente paso: Hay 3 cambios sin guardar» | Cambió algo y no lo guardó | Pulse «Guardar versión…», «Guardar primera versión…» o, si solo cambió el desglose del desperdicio, «Guardar el desglose…» (sección 4.8) |
 | «Te falta: Hay 2 hallazgos graves: revíselos antes de enviar» | La auditoría encontró errores o hallazgos críticos | Pulse «Ir a Revisión», corrija y guarde |
 | «Te falta: La versión V-004 fue devuelta: corrija lo observado» | Quien revisa la devolvió | Pulse «Hacer una versión nueva», corrija y guarde (sección 6.7) |
 | «Siguiente paso: La versión V-004 espera dictamen» | Ya la envió | Nada: espere el dictamen |
@@ -846,7 +853,9 @@ hábiles (SPI 0,92)».
 
 ## 6. Versiones y aprobación
 
-Cada vez que guarda, nace una versión nueva. Las anteriores no se borran nunca.
+Cada vez que guarda un cambio de cantidad, de rendimiento o de otra celda, nace una versión nueva. Las anteriores no
+se borran nunca. La excepción es el desglose del desperdicio de un material (sección 4.8): si es lo único que cambió,
+se guarda sin crear versión.
 
 ### 6.1 La sección «Versiones»
 
@@ -868,7 +877,8 @@ Botones de cada fila:
 ### 6.2 Abrir una versión anterior
 
 Pulse «Abrir» en su fila. La cabecera dirá «Versión abierta: V-002 (la vigente es V-004)». Puede mirarla
-y, si la edita y guarda, nace una versión nueva que sale de ella.
+y, si cambia alguna cantidad, rendimiento o precio y guarda, nace una versión nueva que sale de ella. Si lo único que
+cambia es el desglose del desperdicio de un material, se guarda sin versión nueva (sección 4.8).
 
 ### 6.3 Restaurar una versión
 
