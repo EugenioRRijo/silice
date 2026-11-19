@@ -141,7 +141,7 @@ def test_el_administrador_tambien_lo_baja_sin_carpeta_abierta(admin, calculo) ->
 def test_un_periodo_sin_calculos_404_con_el_periodo(ana) -> None:
     r = _pedir(ana, periodo="2026-01")
     assert r.status_code == 404, r.text
-    assert "2026-01" in r.json().get("detalle", "")
+    assert "enero de 2026" in r.json().get("detalle", "")
 
 
 def test_sin_periodo_o_con_periodo_malo_422(ana) -> None:

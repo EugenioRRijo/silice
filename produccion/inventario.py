@@ -13,6 +13,7 @@ inventario de un ERP; un reconteo el mismo dia si se admite (ve todo lo de esa f
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
@@ -71,9 +72,10 @@ def materiales(sesion: Session) -> list[Material]:
     return list(sesion.scalars(select(Material).order_by(Material.codigo)))
 
 
-def _exigir_positiva(cantidad: Decimal, que: str) -> None:
+def _exigir_positiva(cantidad: Decimal, de_que: str) -> None:
+    """`de_que` es la frase que sigue a «La cantidad»: «de la entrada», «del consumo»."""
     if not isinstance(cantidad, Decimal) or not cantidad.is_finite() or cantidad <= CERO:
-        raise ErrorDeInventario(f"La cantidad de {que} debe ser un número mayor que cero.")
+        raise ErrorDeInventario(f"La cantidad {de_que} debe ser un número mayor que cero.")
 
 
 def crear_material(
@@ -130,8 +132,20 @@ def ultimo_conteo(sesion: Session, material_id: int) -> date | None:
 def exigir_fecha_abierta(sesion: Session, material: Material, fecha: date) -> None:
     """`ErrorDeInventario` si `fecha` no pasa del ultimo conteo fisico de `material`: ese conteo
     cerro su pasado. Lo usan todos los movimientos menos el propio conteo."""
-    cerrado = ultimo_conteo(sesion, material.id)
-    if cerrado is not None and fecha <= cerrado:
+    exigir_fechas_abiertas(sesion, [material], fecha)
+
+
+def exigir_fechas_abiertas(sesion: Session, materiales: Sequence[Material], fecha: date) -> None:
+    """`exigir_fecha_abierta` para varios materiales a la vez (producir): si mas de uno esta
+    cerrado en `fecha`, nombra el cierre mas tardio, que es el que obliga a mover la fecha
+    (arbitraje 2026-11-18)."""
+    cierres = [
+        (cerrado, material)
+        for material in materiales
+        if (cerrado := ultimo_conteo(sesion, material.id)) is not None and fecha <= cerrado
+    ]
+    if cierres:
+        cerrado, material = max(cierres, key=lambda par: par[0])
         raise ErrorDeInventario(
             f"El material {material.codigo} tiene un conteo físico del {cerrado:%d/%m/%Y}, que "
             f"cerró su existencia hasta ese día: registre el movimiento con una fecha posterior al "
@@ -185,7 +199,7 @@ def registrar_entrada(
     nota: str = "",
     ahora: datetime | None = None,
 ) -> Movimiento:
-    _exigir_positiva(cantidad, "la entrada")
+    _exigir_positiva(cantidad, "de la entrada")
     return _registrar(
         sesion, material_id, fecha, "entrada", cantidad, usuario=usuario, nota=nota, ahora=ahora
     )
@@ -203,7 +217,7 @@ def registrar_consumo(
 ) -> Movimiento:
     """Lo que la planta gasta de un material propio al producir (plan vial, Tarea 3). Se guarda en
     positivo, como el despacho, y resta de la existencia."""
-    _exigir_positiva(cantidad, "el consumo")
+    _exigir_positiva(cantidad, "del consumo")
     return _registrar(
         sesion, material_id, fecha, "consumo", cantidad, usuario=usuario, nota=nota, ahora=ahora
     )
@@ -222,7 +236,7 @@ def registrar_despacho(
     origen: str = "manual",
     nota: str = "",
 ) -> Movimiento:
-    _exigir_positiva(cantidad, "el despacho")
+    _exigir_positiva(cantidad, "del despacho")
     if ticket is not None and (
         sesion.scalar(select(Movimiento.id).where(Movimiento.ticket == ticket)) is not None
     ):

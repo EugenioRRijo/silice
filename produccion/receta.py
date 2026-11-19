@@ -26,7 +26,7 @@ from produccion.inventario import (
     CERO,
     ErrorDeInventario,
     de_toneladas,
-    exigir_fecha_abierta,
+    exigir_fechas_abiertas,
     producido_en_periodo,
     registrar_consumo,
     registrar_entrada,
@@ -300,13 +300,14 @@ def producir_con_receta(
     cantidad_producida = de_toneladas(material_producto, toneladas)
     # Antes de escribir nada (arbitraje 2026-11-18): una cantidad en m3 que redondea a 0 a cuatro
     # decimales, y un conteo fisico que cerro el pasado de algun material.
-    for material, cantidad in [(material_producto, cantidad_producida), *consumos]:
+    movidos = [(material_producto, cantidad_producida), *consumos]
+    for material, cantidad in movidos:
         if cantidad <= CERO:
             raise ErrorDeReceta(
                 f"Con {_coma(toneladas)} t de {producto}, {material.codigo} queda en 0 "
                 f"{material.unidad_venta} al redondear a cuatro decimales: indique más toneladas."
             )
-        exigir_fecha_abierta(sesion, material, fecha)
+    exigir_fechas_abiertas(sesion, [material for material, _ in movidos], fecha)
     nota = f"receta {receta.id}"
     entrada = registrar_entrada(
         sesion,

@@ -521,7 +521,9 @@ def costo_de_produccion(
     """Los cálculos del `periodo` (el más reciente primero) con sus costos, lo producido y el costo
     por tonelada. `SinCalculosDelPeriodo` si no hay ninguno."""
     if not calculos:
-        raise SinCalculosDelPeriodo(f"No hay cálculos de producción del período {periodo}.")
+        raise SinCalculosDelPeriodo(
+            f"No hay cálculos de producción del período de {periodo_en_palabras(periodo)}."
+        )
     libro = _Libro("Costo de producción", f"Período: {periodo_en_palabras(periodo)}")
     datos = [(c, p, json.loads(c.instantanea)) for c, p in calculos]
     libro.hoja(
