@@ -200,19 +200,54 @@ def mensaje_sin_valorar(
     otros = [f for f in faltas if f.otro is not None]
     if otros:
         partes.append("; ".join(f"«{f.codigo}»: {f.otro}" for f in otros) + ".")
-    if componer_con is not None:
-        partes.append(
-            f"Qué hacer: en Componer, guarde {esas} con fecha {componer_con:%d/%m/%Y}: sus precios "
-            f"quedan en «{lista.nombre}» y su rendimiento a esa fecha ({DE_NUEVO}). {cierre}"
-        )
+    pasos = _pasos(
+        lista, fecha, componer_con, esas, sin_precio=bool(sin_precio),
+        sin_rendimiento=bool(sin_rendimiento), otros=bool(otros),
+    )  # fmt: skip
+    partes.append(f"Qué hacer: {'; '.join(pasos)}. {cierre}")
+    return " ".join(partes)
+
+
+def _pasos(
+    lista: models.ListaPrecios,
+    fecha: date,
+    componer_con: date | None,
+    esas: str,
+    *,
+    sin_precio: bool,
+    sin_rendimiento: bool,
+    otros: bool,
+) -> list[str]:
+    """Los pasos de «Qué hacer», solo de lo que falta (árbitro de la rama, 2026-11-18).
+
+    Componer, guardando con `componer_con`, solo AGREGA a `lista` los precios que le faltan: un
+    insumo que ya tiene precio en ella se reutiliza si el precio coincide y, si no, se crea una
+    variante con su propio precio (`core/catalog/repositorio.py`, `_resolver_insumo`); ningún
+    precio de la lista se reescribe, así que lo que ya valoraron otras versiones no cambia."""
+    guardarla = "guardarlas" if esas.endswith("s") else "guardarla"
+    pasos: list[str] = []
+    if componer_con is not None and (sin_precio or sin_rendimiento):
+        guarde = f"en Componer, guarde {esas} con fecha {componer_con:%d/%m/%Y}"
+        agrega = f"solo se agregan a «{lista.nombre}» los precios que le faltan"
+        if sin_precio and sin_rendimiento:
+            pasos.append(
+                f"{guarde}: {agrega} (los que ya tiene no cambian) y su rendimiento queda a esa "
+                f"fecha ({DE_NUEVO})"
+            )
+        elif sin_precio:
+            pasos.append(f"{guarde}: {agrega}; los que ya tiene no cambian")
+        else:
+            pasos.append(f"{guarde} para registrar su rendimiento a esa fecha ({DE_NUEVO})")
     else:
-        pasos = [f"cargue esos precios en «{lista.nombre}»"] if sin_precio else []
+        if sin_precio:
+            pasos.append(f"cargue esos precios en «{lista.nombre}»")
         if sin_rendimiento:
             pasos.append(
                 f"en Componer, guarde {esas} con fecha {fecha:%d/%m/%Y} o anterior ({DE_NUEVO})"
             )
-        partes.append(f"Qué hacer: {'; '.join(pasos)}. {cierre}")
-    return " ".join(partes)
+    if otros:
+        pasos.append(f"revise {esas} en Componer y vuelva a {guardarla}")
+    return pasos
 
 
 def explicar(

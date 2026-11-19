@@ -86,7 +86,6 @@ from api.esquemas_hoja import (
     GuardarVersion,
     ImportacionesRespuesta,
     InstantaneaHojaRespuesta,
-    PartidaAgregadaRespuesta,
     PartidaQuitadaRespuesta,
     QuitarLineaApu,
     QuitarPartida,
@@ -103,6 +102,7 @@ from api.esquemas_hoja import (
     vista_plan_a_respuesta,
     vista_presupuesto_a_respuesta,
 )
+from api.esquemas_hoja_partidas import PartidaAgregadaRespuesta
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
@@ -635,13 +635,13 @@ def agregar_partida(
     Solo cambia el borrador en memoria. La partida que no está en el catálogo, 404; la cifra o el
     cálculo, 422 con el texto de su regla; `rev` viejo, 409; sin lista para valorar la obra (en
     blanco: sin lista para armar o, en la otra moneda, sin tasa del BCV de los últimos 7 días),
-    409 con ese texto, como si quedaría pendiente con la lista de la versión (qué falta y qué
-    hacer, `elaboracion.agregar`). Nada de esto deja el borrador a medias."""
+    409 con ese texto. Si queda pendiente con la lista de la versión, entra y `aviso` dice qué
+    falta y qué hacer (`elaboracion.agregar`). Nada de esto deja el borrador a medias."""
     vivo = _vivo(request, activa, id)
     clave: list[str] = []
 
     def editar() -> BorradorVivo:
-        editado, nueva = elaboracion.agregar(
+        editado, *nueva = elaboracion.agregar(
             sesion,
             activa.huella_ficha,
             id,
@@ -651,12 +651,12 @@ def agregar_partida(
             calculo=datos.calculo,
             nota=datos.nota,
         )
-        clave.append(nueva)
+        clave.extend(nueva)  # la clave del renglón y el aviso (o None)
         return editado
 
     resumen, _ = _editar(sesion, vivo, editar, lambda _editado: None)
     return PartidaAgregadaRespuesta(
-        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), clave=clave[0]
+        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), clave=clave[0], aviso=clave[1]
     )
 
 

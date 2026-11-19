@@ -463,30 +463,28 @@ def _validar(sesion: Session, partidas: Sequence[PartidaParaLlevar]) -> None:
             raise HojaInvalida(f"{partida.codigo}: {error}") from None
 
 
-def explicar_pendiente(
-    sesion: Session, error: hoja_edicion.PartidaQuedariaPendiente, *, llevando: bool = False
-) -> str:
-    """El mensaje del 409 de `hoja_edicion.PartidaQuedariaPendiente`: qué insumos de la partida no
-    tienen precio en la lista de la versión, en qué listas están, qué rendimiento falta y qué
-    hacer (`hoja_sin_valorar`, con la política de rendimiento vigente de este módulo). Con
-    `llevando`, el de llevar un cómputo (no se llevó nada)."""
-    codigo = error.codigo
-    inicio = (
-        f"No se llevó nada: la partida «{codigo}» quedaría pendiente en el Presupuesto"
-        if llevando
-        else f"No se agregó la partida «{codigo}»: quedaría pendiente en el Presupuesto"
-    )
+def _sin_valorar(
+    sesion: Session, vivo: BorradorVivo, codigos: Sequence[str], **textos: str
+) -> str | None:
+    """Qué dice la Hoja de las partidas `codigos` que quedaron sin APU (PENDIENTE) en la versión
+    abierta de `vivo`: qué insumos no tienen precio en su lista, en qué listas están, qué
+    rendimiento falta y qué hacer (`hoja_sin_valorar`, con la política de rendimiento vigente de
+    este módulo). `None` si todas se valoran o el borrador está en blanco (se valora con la lista
+    para armar, donde escribe Componer)."""
+    if vivo.abierta is None:
+        return None
+    faltan = sorted(set(codigos) - set(vivo.borrador.composiciones))
+    if not faltan:
+        return None
+    lista, _valoracion = hoja_edicion.lista_para_completar(sesion, vivo, vivo.borrador.fecha)
     return hoja_sin_valorar.explicar(
         sesion,
-        [codigo],
-        error.lista,
-        error.version,
-        error.fecha,
+        faltan,
+        lista,
+        vivo.abierta.codigo,
+        vivo.borrador.fecha,
         vigente=es_rendimiento_vigente,
-        inicio=inicio,
-        se_valora="se puede valorar",
-        esas="esa partida",
-        cierre="Luego vuelva a llevar." if llevando else "Luego vuelva a agregarla.",
+        **textos,
     )
 
 
@@ -500,18 +498,43 @@ def agregar(
     cantidad: str,
     calculo: str,
     nota: str,
-    llevando: bool = False,
-) -> tuple[BorradorVivo, str]:
-    """`hoja_edicion.agregar` con el mensaje de una partida que quedaría pendiente con la lista de
-    la versión: `hoja_sin_valorar.PartidasSinValorar` (409) con `explicar_pendiente` (prueba en
-    vivo del 18/11/2026). Lo usan agregar una partida en la Hoja y llevar un cómputo."""
-    try:
-        return hoja_edicion.agregar(
-            sesion, huella, id, rev, codigo=codigo, cantidad=cantidad, calculo=calculo, nota=nota
-        )
-    except hoja_edicion.PartidaQuedariaPendiente as error:
-        mensaje = explicar_pendiente(sesion, error, llevando=llevando)
-        raise hoja_sin_valorar.PartidasSinValorar(mensaje) from None
+) -> tuple[BorradorVivo, str, str | None]:
+    """`hoja_edicion.agregar` desde la Hoja, con el aviso de una partida que queda PENDIENTE con
+    la lista de la versión (prueba en vivo del 18/11/2026): el borrador, la clave del renglón y el
+    aviso, o `None`. Árbitro de la rama (2026-11-18): agregar a mano no se bloquea, porque una
+    partida puede esperar su cotización (UC-01 3a), otro renglón de una partida ya pendiente es
+    legítimo y una lista de la obra o convertida no la escribe Componer; el diálogo de guardar
+    vuelve a avisarlo."""
+    vivo, clave = hoja_edicion.agregar(
+        sesion, huella, id, rev, codigo=codigo, cantidad=cantidad, calculo=calculo, nota=nota
+    )
+    aviso = _sin_valorar(
+        sesion,
+        vivo,
+        [codigo],
+        inicio=f"La partida «{codigo}» queda pendiente en el Presupuesto",
+        se_valora="se puede valorar",
+        esas="esa partida",
+        cierre="Mientras siga pendiente, la versión no se podrá enviar a aprobación.",
+    )
+    return vivo, clave, aviso
+
+
+def _exigir_valoradas(sesion: Session, vivo: BorradorVivo, codigos: Sequence[str]) -> None:
+    """Llevar es todo o nada (como los tramos, `hoja_vial._valorado`): si alguna partida queda
+    PENDIENTE con la lista de la versión, `hoja_sin_valorar.PartidasSinValorar` (409) con TODAS
+    las que faltan a la vez (árbitro de la rama, 2026-11-18)."""
+    faltan = sorted(set(codigos) - set(vivo.borrador.composiciones))
+    cuantas = (
+        "1 partida quedaría pendiente"
+        if len(faltan) == 1
+        else f"{len(faltan)} partidas quedarían pendientes"
+    )
+    mensaje = _sin_valorar(
+        sesion, vivo, codigos, inicio=f"No se llevó nada: {cuantas} en el Presupuesto"
+    )
+    if mensaje is not None:
+        raise hoja_sin_valorar.PartidasSinValorar(mensaje)
 
 
 def version_del_borrador_de_la_obra(
@@ -616,7 +639,7 @@ def llevar_a_la_hoja(
             for partida in partidas:
                 calculo, nota = _calculo_y_nota(partida)
                 try:
-                    vivo, _clave = agregar(
+                    vivo, _clave = hoja_edicion.agregar(
                         sesion,
                         huella,
                         vivo.id,
@@ -625,10 +648,10 @@ def llevar_a_la_hoja(
                         cantidad=texto_de_cifra(partida.cantidad),
                         calculo=calculo,
                         nota=nota,
-                        llevando=True,
                     )
                 except HojaInvalida as error:  # varias partidas: se dice cual
                     raise HojaInvalida(f"{partida.codigo}: {error}") from None
+            _exigir_valoradas(sesion, vivo, [partida.codigo for partida in partidas])
             if archivo is not None:
                 texto = importaciones.resumen_de_computo(len(partidas))
                 importaciones.anotar(

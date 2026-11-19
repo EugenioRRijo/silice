@@ -1035,14 +1035,6 @@ class AgregarPartida(BaseModel):
     nota: Annotated[str, Field(strict=True, max_length=500)] = ""
 
 
-class PartidaAgregadaRespuesta(BaseModel):
-    """El borrador ya recalculado: su `rev` nuevo, el resumen y la clave del renglón nuevo."""
-
-    rev: int
-    resumen: ResumenHojaRespuesta
-    clave: str
-
-
 class QuitarPartida(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

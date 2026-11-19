@@ -99,7 +99,13 @@ export function useGuardado({ id, rev, proyecto, alExpirar, alGuardada, alVaciar
         setError(clasificado);
         enVuelo.current = false;
         setEnviando(false);
-        if (clasificado.clase === "desglose-ya-guardado") await alVaciarseLaCuenta?.();
+        if (clasificado.clase === "desglose-ya-guardado") {
+          try {
+            await alVaciarseLaCuenta?.();
+          } catch {
+            // Releer el borrador falló: el aviso del desglose sigue a la vista y la página lo relee al volver.
+          }
+        }
         return;
       }
       enVuelo.current = false;

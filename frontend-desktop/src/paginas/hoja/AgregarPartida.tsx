@@ -46,6 +46,8 @@ interface PartidaAgregada {
   rev: number;
   resumen: Resumen;
   clave: string;
+  // La partida entró, pero queda «Pendiente» con la lista de la versión: qué falta y qué hacer (árbitro, 2026-11-18).
+  aviso?: string | null;
 }
 
 // La partida elegida: del catálogo, de las parecidas o recién compuesta. Sin unidad (una parecida sin desglose) la cantidad
@@ -82,7 +84,7 @@ interface Props {
   anfitrion: HTMLElement;
   // El `rev` con que se manda: primero sale lo que la pestaña tenga por mandar.
   revActual: () => Promise<number>;
-  alAgregada: (resumen: Resumen, codigo: string) => void;
+  alAgregada: (resumen: Resumen, codigo: string, aviso: string | null) => void;
   alCancelar: () => void;
   alAusente: () => void;
   // Vuelve a leer el borrador (su `rev`) y la vista, tras un 409 por `rev` viejo.
@@ -190,7 +192,7 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
         metodo: "POST",
         cuerpo: cuerpoDeAgregarPartida(rev, escrito),
       });
-      alAgregada(r.resumen, elegida.codigo);
+      alAgregada(r.resumen, elegida.codigo, r.aviso ?? null);
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) {
         alExpirar();

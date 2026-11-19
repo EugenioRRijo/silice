@@ -385,10 +385,10 @@ function ContenidoPresupuesto(props: PropsContenido) {
   }, []);
   const revActual = useCallback(async () => (espera.current !== null ? espera.current() : revDeLaPagina.current), []);
   const alAgregada = useCallback(
-    (resumen: Resumen, codigo: string) => {
+    (resumen: Resumen, codigo: string, pendiente: string | null) => {
       alAceptar(resumen);
       alRelectura();
-      setAviso(`Se agregó ${codigo} al presupuesto.`);
+      setAviso(pendiente === null ? `Se agregó ${codigo} al presupuesto.` : `Se agregó ${codigo} al presupuesto. ${pendiente}`);
       cerrar(true);
     },
     [alAceptar, alRelectura, cerrar],
