@@ -404,7 +404,7 @@ export default function PaginaEscenarios() {
                     ruta={rutaEscenarios(base.codigo, base.proyecto, "/csv")}
                     metodo="POST"
                     cuerpo={{ escenarios: peticiones }}
-                    etiqueta="Descargar tabla (CSV, valores exactos)"
+                    etiqueta="Descargar tabla (CSV para Excel)"
                     nombrePorOmision={`escenarios_${base.codigo}.csv`}
                     alExpirar={alExpirar}
                     size="sm"

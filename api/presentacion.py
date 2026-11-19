@@ -78,7 +78,18 @@ def redondeado(valor: Decimal, lugares: int) -> str:
     return formatear_decimal(valor, lugares)
 
 
+#: Lo que se escribe en lugar de una cifra que no es finita (`NaN`, `Infinity`).
+NO_DISPONIBLE = "no disponible"
+
+
 def cifra_presentada(valor: Decimal, decimales: int = DECIMALES_PRESENTACION) -> str:
     """La cifra redondeada al alza y escrita con coma decimal y punto de miles: `1234.565` ->
-    `1.234,57`."""
-    return texto_de_cifra(Decimal(formatear_decimal(valor, decimales)))
+    `1.234,57`. Como `monto`, si no cabe en la precisión al cuantizar (más de ~26 cifras enteras)
+    va el exacto, y una cifra no finita dice «no disponible»: nunca lanza (el CSV de escenarios
+    daba 500, arbitraje de feature/vivo-control)."""
+    if not valor.is_finite():
+        return NO_DISPONIBLE
+    try:
+        return texto_de_cifra(Decimal(formatear_decimal(valor, decimales)))
+    except InvalidOperation:
+        return texto_de_cifra(valor)

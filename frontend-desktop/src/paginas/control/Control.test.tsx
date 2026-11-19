@@ -131,6 +131,7 @@ describe("Control de obra", () => {
       if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return lineaBase();
       if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return valuaciones();
       if (url.startsWith("/v1/control/calculo")) return calculo();
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 2, errores: 1 });
       if (url === "/v1/control/recuperacion/opciones") return json({ opciones: OPCIONES });
       if (url === "/v1/control/recuperacion/elegir") return json({ version: "OB-002" });
@@ -503,9 +504,8 @@ describe("Control de obra", () => {
     await u.click(screen.getByRole("button", { name: "Agregar línea" }));
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
     await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
-    expect(
-      await screen.findByText("Valuación registrada: corte 20/11/2026, 2 hallazgo(s) en la revisión de la valuación (1 con severidad Error)."),
-    ).toBeInTheDocument();
+    // con un error en la revisión el aviso no es de éxito (prueba en vivo del 2026-11-18, hallazgo 2)
+    expect(await screen.findByText("Valuación registrada (corte 20/11/2026), pero la revisión encontró 1 error.")).toBeInTheDocument();
     const cuerpo = cuerpoDe("/v1/control/valuaciones");
     expect(cuerpo).toMatchObject({ proyecto: "OB-S2", numero: "V-03", fuente: "acta 3" });
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "", causa: null }]);
@@ -559,6 +559,7 @@ describe("Control de obra", () => {
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       if ((init?.method ?? "GET") === "POST") return json({ detalle: "falta la partida" }, 422);
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url.startsWith("/v1/control/valuaciones")) return json(VALUACIONES);
       return json(LINEA_BASE);
     });
@@ -574,6 +575,7 @@ describe("Control de obra", () => {
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       if ((init?.method ?? "GET") === "POST") return json({ detalle: "falta la partida" }, 422);
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url.startsWith("/v1/control/valuaciones")) return json(VALUACIONES);
       return json(LINEA_BASE);
     });
@@ -816,6 +818,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
       if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return json(LINEA_BASE);
       if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return json(VALUACIONES);
       if (url.startsWith("/v1/control/calculo")) return json(CALCULO);
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 0, errores: 0 });
       if (url === "/v1/control/costos") return json({});
       if (url === "/v1/control/parametros") return json({ cambiados: 1 });

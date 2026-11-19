@@ -17,6 +17,7 @@ import pytest
 from sqlalchemy import select
 
 from api.dependencias import USUARIO_SIN_CLAVE
+from aplicacion.cifras import cifra_escrita
 from core import models
 from core.budget import plan_de_version
 from core.verification.informe import DECIMALES_PRESENTACION
@@ -470,22 +471,22 @@ def test_el_base_con_el_proyecto_correcto_responde(cliente, base):
 
 
 def test_el_csv_calcula_el_escenario_de_utilidad_con_valores_exactos(cliente, base):
-    import csv
 
     respuesta = cliente.post(
         "/presupuestos/API-001/escenarios/csv",
         json={"escenarios": [{"nombre": "utilidad 20", "utilidad": "0.20"}]},
     )
 
-    filas = list(csv.DictReader(io.StringIO(respuesta.text)))
-    total_base = Decimal(filas[0]["total"])
-    assert total_base == linea_base.TOTAL_EXACTO_LINEA_BASE
-    # La utilidad encadena en cascada sobre todo el costo: total × 1,20 / 1,10.
-    assert Decimal(filas[1]["total"]) == pytest.approx(
-        total_base * Decimal("1.2") / Decimal("1.1"), abs=Decimal("1e-9")
+    filas = _filas_del_csv(respuesta)
+    exacto = linea_base.TOTAL_EXACTO_LINEA_BASE
+    assert cifra_escrita(filas[0]["Total"]) == _dos_decimales(exacto)
+    # La utilidad encadena en cascada sobre todo el costo: total × 1,20 / 1,10 (a dos decimales al
+    # presentar, prueba en vivo del 2026-11-18).
+    assert cifra_escrita(filas[1]["Total"]) == _dos_decimales(
+        exacto * Decimal("1.2") / Decimal("1.1")
     )
     esperado_pct = Decimal(100) * (Decimal("1.2") / Decimal("1.1") - 1)
-    assert Decimal(filas[1]["variacion_pct"]) == pytest.approx(esperado_pct, abs=Decimal("1e-9"))
+    assert cifra_escrita(filas[1]["Variación %"]) == _dos_decimales(esperado_pct)
 
 
 def test_el_csv_de_un_presupuesto_inexistente_es_404(cliente, base):
@@ -507,15 +508,15 @@ def test_el_csv_con_un_precio_que_no_es_decimal_es_422(cliente, base):
 
 
 def test_el_csv_de_un_base_con_pendientes_no_los_cuenta(cliente_con_pendiente):
-    import csv
 
     respuesta = cliente_con_pendiente.post(
         f"/presupuestos/{linea_base.CODIGO_PRESUPUESTO}/escenarios/csv",
         json={"escenarios": [{"nombre": "utilidad 20", "utilidad": "0.20"}]},
     )
 
-    filas = list(csv.DictReader(io.StringIO(respuesta.text)))
-    assert Decimal(filas[0]["total"]) == linea_base.TOTAL_EXACTO_LINEA_BASE  # el pendiente no suma
+    filas = _filas_del_csv(respuesta)
+    # el pendiente no suma
+    assert cifra_escrita(filas[0]["Total"]) == _dos_decimales(linea_base.TOTAL_EXACTO_LINEA_BASE)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -943,3 +944,18 @@ def test_si_exportar_el_excel_falla_el_temporal_se_borra(cliente, base, monkeypa
         cliente.get("/presupuestos/API-001/excel")
 
     assert len(creados) == 1 and not creados[0].exists()
+
+
+def _filas_del_csv(respuesta) -> list[dict[str, str]]:
+    """El CSV de escenarios como lo abre Excel en español: UTF-8 con marca, `;` y coma decimal."""
+    import csv
+
+    texto = respuesta.content.decode("utf-8").removeprefix("\ufeff")
+    return list(csv.DictReader(io.StringIO(texto), delimiter=";"))
+
+
+def _dos_decimales(valor: Decimal) -> Decimal:
+    from decimal import ROUND_HALF_UP
+
+    return valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+

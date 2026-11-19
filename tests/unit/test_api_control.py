@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -50,7 +50,7 @@ P = {"proyecto": ob.NOMBRE}
 FRONT_CONTROL = Path(__file__).resolve().parents[2] / "frontend-desktop/src/paginas/control"
 
 
-def _base(ruta: Path, *, linea: bool, valuaciones: bool) -> Path:
+def _base(ruta: Path, *, linea: bool, valuaciones: bool, v03: bool = False) -> Path:
     preparar_base(ruta)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
@@ -60,6 +60,8 @@ def _base(ruta: Path, *, linea: bool, valuaciones: bool) -> Path:
                 ob.declarar_linea_base(sesion)
             if valuaciones:
                 ob.registrar_v01_y_v02(sesion)
+            if v03:
+                ob.registrar(sesion, ob.VS)  # hasta el 2026-11-20, sin pasar por la compuerta
             sesion.commit()
     finally:
         motor.dispose()
@@ -74,6 +76,7 @@ def _plantillas(tmp_path_factory) -> dict[str, Path]:
         "completa": _base(carpeta / "completa.db", linea=True, valuaciones=True),
         "solo_linea": _base(carpeta / "solo_linea.db", linea=True, valuaciones=False),
         "vacia": _base(carpeta / "vacia.db", linea=False, valuaciones=False),
+        "con_v03": _base(carpeta / "con_v03.db", linea=True, valuaciones=True, v03=True),
     }
 
 
@@ -349,7 +352,66 @@ def _url() -> str:
     return os.environ[dependencias.VARIABLE_BASE]
 
 
-def test_una_valuacion_sin_lineas_se_rechaza_con_422_y_no_se_guarda() -> None:
+def test_registrar_devuelve_cada_hallazgo_legible_y_la_lista_los_repite(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Prueba en vivo del 2026-11-18, hallazgo 2: antes solo volvían los conteos.
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-01",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "inspector": "",
+        "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+        "fuente": ob.FUENTE,
+    }
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    esperado = [
+        {
+            "valuacion": "V-01",
+            "regla": "R14",
+            "severidad": "Error",
+            "mensaje": "La valuación V-01 no tiene inspector.",
+        }
+    ]
+    datos = respuesta.json()
+    assert (datos["hallazgos"], datos["errores"], datos["detalle"]) == (1, 1, esperado)
+    lista = navegador.get("/v1/control/valuaciones", params=P).json()
+    assert lista["hallazgos"] == esperado
+
+
+def test_una_valuacion_del_futuro_se_rechaza_con_422_y_un_mensaje_claro() -> None:
+    # Prueba en vivo del 2026-11-18, hallazgo 1: un «hasta» posterior a hoy se rechaza.
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-09",
+        "desde": "2099-01-05",
+        "hasta": "2099-01-09",
+        "fecha": "2099-01-12",
+        "inspector": ob.INSPECTOR,
+        "lineas": [{"partida": "OB-A", "cantidad": "1"}],
+        "fuente": "x",
+    }
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"].startswith(
+        "El «Período hasta» (09/01/2099) es posterior a hoy ("
+    )
+    assert [
+        f["Numero"] for f in navegador.get("/v1/control/valuaciones", params=P).json()["filas"]
+    ] == ["V-01", "V-02"]
+
+
+def test_una_valuacion_sin_lineas_se_rechaza_con_422_y_no_se_guarda(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Fechas pasadas fijas y «hoy» fijado: el rechazo es por la falta de líneas, no por el futuro.
+    _fijar_hoy(monkeypatch, date(2026, 11, 30))
     navegador, cabeceras = _arma()
     cuerpo = {
         **P,
@@ -363,6 +425,7 @@ def test_una_valuacion_sin_lineas_se_rechaza_con_422_y_no_se_guarda() -> None:
     }
     respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
     assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == "Una valuación necesita al menos una línea medida."
     assert [
         f["Numero"] for f in navegador.get("/v1/control/valuaciones", params=P).json()["filas"]
     ] == ["V-01", "V-02"]
@@ -440,7 +503,48 @@ def test_anotar_un_costo_y_un_monto_ilegible_da_422() -> None:
     assert navegador.post("/v1/control/costos", json=bueno, headers=cabeceras).status_code == 200
     malo = {**bueno, "monto": "cien"}
     respuesta = navegador.post("/v1/control/costos", json=malo, headers=cabeceras)
-    assert respuesta.status_code == 422 and "no es un numero decimal" in respuesta.json()["detalle"]
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == "«Monto» no es un número válido."
+
+
+def test_los_costos_anotados_se_listan_en_el_orden_en_que_se_anotaron() -> None:
+    # Prueba en vivo del 2026-11-18, hallazgo 3: un costo anotado no se podía ver.
+    navegador, cabeceras = _arma()
+    bueno = {
+        **P,
+        "monto": "100.005",
+        "moneda": "USD",
+        "fecha": "2026-11-12",
+        "partida": "OB-A",
+        "fuente": "factura 12",
+    }
+    assert navegador.post("/v1/control/costos", json=bueno, headers=cabeceras).status_code == 200
+    respuesta = navegador.get("/v1/control/costos", params=P)
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.headers.get("cache-control") == "no-store"
+    filas = respuesta.json()["filas"]
+    assert [{k: v for k, v in f.items() if k != "Responsable"} for f in filas] == [
+        {
+            "Fecha": "13/11/2026",
+            "Monto": "1280.00",
+            "Moneda": "USD",
+            "Partida": "",
+            "Fuente": "libro de obra ficticio",
+        },
+        {
+            "Fecha": "12/11/2026",
+            "Monto": "100.005",  # el exacto: la pantalla lo presenta y lo deja en el title
+            "Moneda": "USD",
+            "Partida": "OB-A",
+            "Fuente": "factura 12",
+        },
+    ]
+    assert filas[0]["Responsable"] == ob.RESPONSABLE
+    assert "ana" in filas[1]["Responsable"]
+
+
+def test_los_costos_de_una_obra_que_no_existe_son_404() -> None:
+    assert _con_clave().get("/v1/control/costos", params={"proyecto": "NO"}).status_code == 404
 
 
 def test_importar_un_xlsx_muestra_el_informe_previo_y_luego_registra(
@@ -1188,3 +1292,111 @@ def test_un_fallo_de_la_base_en_el_control_es_503_fijo_y_sin_cache(
     }
     assert r.headers.get("cache-control") == "no-store"
     assert "tabla_interna" not in r.text
+
+
+# --- arbitraje de feature/vivo-control: «hoy» sale del reloj de la API --------------------------
+
+
+def _fijar_hoy(monkeypatch: pytest.MonkeyPatch, dia: date) -> None:
+    """Fija el reloj de la API (`api.sesion_web.ahora`, el que leen las rutas de Control)."""
+    from api.rutas import control as rutas_control
+
+    monkeypatch.setattr(rutas_control, "ahora", lambda: datetime(dia.year, dia.month, dia.day, 9))
+
+
+def test_la_lista_de_valuaciones_mide_al_hoy_de_la_api(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # V-03 termina el 2026-11-20: con hoy el 13/11 el corte es el 13/11; con hoy el 30/11, el 20/11.
+    _usar(_plantillas, "con_v03", tmp_path, monkeypatch)
+    navegador = _con_clave()
+    _fijar_hoy(monkeypatch, date(2026, 11, 13))
+    datos = navegador.get("/v1/control/valuaciones", params=P).json()
+    assert datos["corte_por_defecto"] == "2026-11-13"
+    assert any(
+        h["mensaje"] == "La valuación V-03 termina el 20/11/2026, después del corte (13/11/2026)."
+        for h in datos["hallazgos"]
+    )
+    _fijar_hoy(monkeypatch, date(2026, 11, 30))
+    assert navegador.get("/v1/control/valuaciones", params=P).json()["corte_por_defecto"] == (
+        "2026-11-20"
+    )
+
+
+def test_el_calculo_sin_corte_mide_al_hoy_de_la_api(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "con_v03", tmp_path, monkeypatch)
+    _fijar_hoy(monkeypatch, date(2026, 11, 13))
+    calculo = _con_clave().get("/v1/control/calculo", params=P).json()
+    assert calculo["corte"] == "2026-11-13"
+
+
+def test_registrar_rechaza_lo_posterior_al_hoy_de_la_api(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    _fijar_hoy(monkeypatch, date(2026, 11, 8))
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-01",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "inspector": ob.INSPECTOR,
+        "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+        "fuente": ob.FUENTE,
+    }
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == (
+        "La «Fecha de la valuación» (09/11/2026) es posterior a hoy (08/11/2026): use la fecha "
+        "en que se firmó, que no puede ser futura."
+    )
+    _fijar_hoy(monkeypatch, date(2026, 11, 9))
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+
+
+#: V-02 firmada el mismo día que termina (2026-11-13): solo su «hasta» decide si es futura.
+V02_FIRMADA_AL_TERMINAR = {**ob.V02, "fecha": date(2026, 11, 13)}
+TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _importar(navegador, cabeceras, xlsx: Path):
+    return navegador.post(
+        "/v1/control/importar",
+        data={**P, "fuente": ob.FUENTE},
+        files={"archivo": ("ob_s2.xlsx", xlsx.read_bytes(), TIPO_XLSX)},
+        headers=cabeceras,
+    )
+
+
+def test_importar_un_xlsx_con_una_valuacion_del_futuro_no_importa_nada(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    _fijar_hoy(monkeypatch, date(2026, 11, 12))  # V-02 termina el 13: mañana
+    xlsx = ob.escribir_xlsx(tmp_path / "ob_s2.xlsx", valuaciones=(ob.V01, V02_FIRMADA_AL_TERMINAR))
+    navegador, cabeceras = _arma()
+    respuesta = _importar(navegador, cabeceras, xlsx)
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == (
+        "Valuación V-02: El «Período hasta» (13/11/2026) es posterior a hoy (12/11/2026): una "
+        "valuación solo mide obra ya ejecutada. Regístrela cuando termine el período. "
+        "No se importó nada."
+    )
+    assert navegador.get("/v1/control/valuaciones", params=P).json()["filas"] == []
+
+
+def test_importar_un_xlsx_cuya_ultima_valuacion_termina_hoy_si_importa(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    _fijar_hoy(monkeypatch, date(2026, 11, 13))
+    xlsx = ob.escribir_xlsx(tmp_path / "ob_s2.xlsx", valuaciones=(ob.V01, V02_FIRMADA_AL_TERMINAR))
+    navegador, cabeceras = _arma()
+    respuesta = _importar(navegador, cabeceras, xlsx)
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["importadas"] == 2

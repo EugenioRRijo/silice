@@ -9,7 +9,7 @@ import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {
   COLUMNAS_VALUACIONES,
@@ -24,10 +24,11 @@ import {
   porcentajeDeAlicuota,
   rutaDe,
   sinLineasVacias,
+  textoDeHallazgo,
   useAccion,
   useCargaSuave,
 } from "./logica";
-import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
+import type { CausaDeRetraso, Fila, LineaEditable, RegistroDeValuacion, Valuaciones } from "./logica";
 import { fechaDeRanura, periodoCompacto } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { MONEDAS } from "../../comun/monedas";
@@ -51,6 +52,45 @@ function Resultado({ exito, error }: { exito: string; error: unknown }) {
       <AvisoError error={error} />
       {exito && <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={exito} />}
     </>
+  );
+}
+
+// Prueba en vivo del 2026-11-18, hallazgo 2: con errores en la revisión el aviso no es verde de éxito. Arbitraje (punto 9):
+// el aviso es un resumen breve que se anuncia en una región viva ya presente en el DOM (`#val-resultado`); la lista de
+// hallazgos va debajo, fuera del anuncio, con su nombre.
+function AvisoDeRegistro({ registro }: { registro: RegistroDeValuacion }) {
+  const corte = fechaDeRanura(registro.corte);
+  if (registro.errores > 0) {
+    const errores = registro.errores === 1 ? "1 error" : `${registro.errores} errores`;
+    return (
+      <InlineNotification
+        kind="warning"
+        lowContrast
+        hideCloseButton
+        role="status"
+        title={`Valuación registrada (corte ${corte}), pero la revisión encontró ${errores}.`}
+        subtitle="Revise cada hallazgo; si la valuación está mal, anúlela y regístrela de nuevo."
+      />
+    );
+  }
+  const titulo =
+    registro.hallazgos === 0
+      ? `Valuación registrada: corte ${corte}, sin hallazgos en la revisión.`
+      : `Valuación registrada: corte ${corte}, ${registro.hallazgos} hallazgo(s) en la revisión, ninguno con severidad Error.`;
+  return <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={titulo} />;
+}
+
+function HallazgosDelRegistro({ registro }: { registro: RegistroDeValuacion }) {
+  const detalle = registro.detalle ?? [];
+  if (detalle.length === 0) return null;
+  return (
+    <ul className="silice-control__hallazgos" aria-label="Hallazgos de la revisión de la valuación registrada">
+      {detalle.map((h, i) => (
+        <li key={i} className="cds--type-body-compact-01">
+          {textoDeHallazgo(h)}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -88,6 +128,7 @@ function Registrar({
 }) {
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
+  const [registro, setRegistro] = useState<RegistroDeValuacion | null>(null);
   const [v, setV] = useState({ numero: "", desde: "", hasta: "", fecha: "", inspector: "", fuente: "" });
   const [lineas, setLineas] = useState<LineaEditable[]>([{ ...LINEA_VACIA }]);
   // MP-7, Tarea 24: la procura sugiere una causa por partida al «hasta» de la valuacion (sin él, a hoy). Una linea cuyo
@@ -137,8 +178,9 @@ function Registrar({
     setErrores(nuevos);
     setErroresDePartida(fuera);
     if (Object.keys(nuevos).length > 0 || Object.keys(fuera).length > 0) return;
+    setRegistro(null);
     void ejecutar(async () => {
-      const r = await pedir<{ corte: string; hallazgos: number; errores: number }>("/v1/control/valuaciones", {
+      const r = await pedir<RegistroDeValuacion>("/v1/control/valuaciones", {
         metodo: "POST",
         cuerpo: {
           proyecto,
@@ -152,7 +194,8 @@ function Registrar({
           ).map(lineaParaApi),
         },
       });
-      return `Valuación registrada: corte ${fechaDeRanura(r.corte)}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
+      setRegistro(r);
+      return "";
     });
   };
   return (
@@ -229,6 +272,10 @@ function Registrar({
           </Button>
         </div>
         <Resultado exito={estado.exito} error={estado.error} />
+        <div id="val-resultado" aria-live="polite">
+          {registro && !estado.enviando && !estado.error && <AvisoDeRegistro registro={registro} />}
+        </div>
+        {registro && !estado.enviando && !estado.error && <HallazgosDelRegistro registro={registro} />}
       </div>
     </details>
   );
@@ -272,8 +319,9 @@ function Importar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => 
       <summary className="cds--type-body-compact-01">Importar valuaciones de un XLSX</summary>
       <div className="silice-control__formulario">
         <p className="silice-control__nota cds--type-body-compact-01">
-          Hojas Valuaciones (numero, desde, hasta, fecha, inspector), Lineas (numero, codigo_partida, cantidad,
-          fecha_medicion, observacion) y Costos (opcional). Un archivo malformado se rechaza entero.
+          El libro lleva tres hojas con estos nombres exactos, sin tildes: «Valuaciones» (columnas numero, desde, hasta,
+          fecha, inspector), «Lineas» (numero, codigo_partida, cantidad, fecha_medicion, observacion) y «Costos»
+          (opcional). Un archivo malformado se rechaza entero.
         </p>
         {/* Mientras se lee o se importa no se elige otro: el informe y la importación son del archivo que se ve. */}
         <SubidaArchivo
@@ -408,6 +456,34 @@ function Costo({ proyecto, partidas, alCambiar }: { proyecto: string; partidas: 
   );
 }
 
+// Prueba en vivo del 2026-11-18, hallazgo 3: los costos anotados se ven. Anularlos necesita un cambio del núcleo
+// (aplicacion/control_costos.py): mientras tanto la nota lo dice para que se revise antes de anotar.
+// El monto llega exacto (arbitraje, punto 10): se lee en centésimas es-VE y el exacto queda en el title, así la suma
+// de la tabla cuadra con el AC.
+const COLUMNAS_COSTOS = columnasDe(["Fecha", "Monto", "Moneda", "Partida", "Fuente", "Responsable"]).map((c) =>
+  c.clave === "Monto" ? { ...c, numerica: true, presentar: centesimasEsVe } : c,
+);
+
+function CostosAnotados({ proyecto, clave }: { proyecto: string; clave: number }) {
+  const { alExpirar } = useAplicacion();
+  const carga = useCargaSuave<{ filas: Fila[] }>(rutaDe("/v1/control/costos", proyecto, { n: String(clave) }), alExpirar);
+  if (carga.estado === "cargando") return null;
+  if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudieron cargar los costos anotados" />;
+  return (
+    <div>
+      <h3 className="cds--type-heading-compact-01">Costos incurridos anotados</h3>
+      {carga.datos.filas.length === 0 ? (
+        <p className="cds--type-body-compact-01">Aún no hay costos anotados.</p>
+      ) : (
+        <TablaDensa etiqueta="Costos incurridos anotados" columnas={COLUMNAS_COSTOS} filas={conId(carga.datos.filas)} />
+      )}
+      <p className="silice-control__nota cds--type-helper-text-01">
+        Un costo anotado todavía no se puede anular: revise el monto, la moneda y la fecha antes de anotarlo.
+      </p>
+    </div>
+  );
+}
+
 // A 1366 px las nueve columnas no caben con el período en dos fechas completas: se lee «02/11 a 06/11/2026» y el texto
 // completo queda en el title. Es solo presentación; el orden y el valor de la fila no cambian.
 const COLUMNAS_DE_VALUACIONES = columnasDe(COLUMNAS_VALUACIONES, NUMERICAS_VALUACIONES).map((c) =>
@@ -448,6 +524,20 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
             <TablaDensa etiqueta="Valuaciones registradas" columnas={COLUMNAS_DE_VALUACIONES} filas={conId(datos.filas)} />
           </div>
         )}
+        {(datos.hallazgos ?? []).length > 0 && (
+          <>
+            <h3 id="control-hallazgos" className="cds--type-heading-compact-01">
+              Hallazgos de la revisión
+            </h3>
+            <ul className="silice-control__hallazgos" aria-label="Hallazgos de la revisión de las valuaciones">
+              {(datos.hallazgos ?? []).map((h, i) => (
+                <li key={i} className="cds--type-body-compact-01">
+                  {h.valuacion ? `${h.valuacion} · ${textoDeHallazgo(h)}` : textoDeHallazgo(h)}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
         {datos.filas.length > 0 && (
           <p className="silice-control__nota cds--type-helper-text-01">
             {`Lo medido hasta hoy: ${formatoEsVe(datos.impuestos.subtotal)} sin IVA; IVA al ${porcentajeDeAlicuota(datos.impuestos.alicuota)} %: ${formatoEsVe(datos.impuestos.iva)}; total con IVA: ${formatoEsVe(datos.impuestos.total)}. Fuente de la alícuota: ${datos.impuestos.fuente_alicuota}.${datos.perspectiva === "costo" ? " La línea base está en costo directo: este IVA no es una cifra facturable." : ""}`}
@@ -466,6 +556,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         <Importar proyecto={proyecto} alCambiar={alCambiar} />
         <Anular proyecto={proyecto} datos={datos} alCambiar={alCambiar} />
         <Costo proyecto={proyecto} partidas={partidas} alCambiar={alCambiar} />
+        <CostosAnotados proyecto={proyecto} clave={clave} />
       </section>
     </>
   );

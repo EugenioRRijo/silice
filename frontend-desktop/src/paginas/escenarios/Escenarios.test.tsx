@@ -324,7 +324,7 @@ describe("Escenarios de sensibilidad", () => {
     const usuario = userEvent.setup();
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
     await screen.findByText("Comparación contra el base");
-    await usuario.click(screen.getByRole("button", { name: "Descargar tabla (CSV, valores exactos)" }));
+    await usuario.click(screen.getByRole("button", { name: "Descargar tabla (CSV para Excel)" }));
     await waitFor(() => expect(posts()).toHaveLength(2));
     expect(posts()[1][0]).toBe("/presupuestos/FIC-1/escenarios/csv?proyecto=Obra%20ficticia");
     expect(cuerpoDe(posts()[1])).toEqual(cuerpoDe(posts()[0]));

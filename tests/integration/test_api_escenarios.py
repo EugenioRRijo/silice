@@ -99,7 +99,8 @@ def test_parametro_fuera_de_rango_se_rechaza_por_el_contrato(cliente, presupuest
         json={"escenarios": [{"nombre": "invalido", "utilidad": "-0.10"}]},
     )
     assert respuesta.status_code == 422
-    assert "utilidad" in respuesta.json()["detalle"]
+    # prueba en vivo del 2026-11-18, hallazgo 5: el nombre de la pantalla y la coma decimal
+    assert respuesta.json()["detalle"] == "Utilidad: el valor no puede ser negativo (-0,10)."
 
 
 def test_los_escenarios_de_un_base_con_pendientes_los_declaran(cliente_con_pendiente):

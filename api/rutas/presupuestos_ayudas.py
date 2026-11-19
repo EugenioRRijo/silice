@@ -40,6 +40,9 @@ from api.rutas.rendimientos import propuesta_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import actualizacion as aplicacion_actualizacion
 from aplicacion import elaboracion as aplicacion_elaboracion
+from aplicacion.cifras import texto_de_cifra
+from aplicacion.componer_parametros import NOMBRES as NOMBRES_DE_PARAMETROS
+from aplicacion.formulas import neutralizar_formula
 from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto
 from aplicacion.proyectos import proyecto_por_nombre, resolver_proyecto
 from core.budget import (
@@ -200,8 +203,8 @@ def _partidas_respuesta(presupuesto: Presupuesto) -> list[PartidaPresupuestadaRe
 
 
 def _neutralizar_formula(texto: str) -> str:
-    """Antepone `'` al texto que una hoja de calculo leeria como formula."""
-    return f"'{texto}" if texto.startswith(("=", "+", "-", "@", "\t", "\r")) else texto
+    """Antepone `'` al texto que una hoja de calculo leeria como formula (`aplicacion.formulas`)."""
+    return neutralizar_formula(texto)
 
 
 def _generar_escenarios(
@@ -377,6 +380,14 @@ def _parametros_escenario(
         texto = getattr(escenario, nombre)
         if texto is not None:
             campos[nombre] = decimal_desde_texto(texto, nombre)
+            # El contrato diría «utilidad no puede ser negativo: -0.1» (nombre interno y punto
+            # decimal): se responde con el nombre de la pantalla y la coma (prueba en vivo
+            # 2026-11-18, hallazgo 5), como Componer.
+            if campos[nombre] < 0:
+                raise ValueError(
+                    f"{NOMBRES_DE_PARAMETROS[nombre]}: el valor no puede ser negativo "
+                    f"({texto_de_cifra(campos[nombre])})."
+                )
     return ParametrosCosto(**campos)
 
 

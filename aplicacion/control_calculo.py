@@ -18,6 +18,7 @@ from aplicacion.control_comun import (
     _decimal,
     _escribir,
 )
+from aplicacion.control_corte import ultimo_corte
 from core import models
 from core.budget.control import (
     ResultadoControl,
@@ -39,10 +40,14 @@ def calcular_el_control(
     *,
     corte: date | None = None,
     precios: PreciosDelCorte | None = None,
+    hoy: date | None = None,
 ) -> ResultadoControl:
-    """El control al corte (sin escribir). `ControlInvalido` si no hay línea base, si está
+    """El control al corte (sin escribir). Sin `corte`, el de `ultimo_corte`: el *hasta* de la
+    última valuación, nunca después de `hoy`. `ControlInvalido` si no hay línea base, si está
     invalidada por un cambio de moneda o si no hay valuaciones ni corte."""
     try:
+        if corte is None:
+            corte = ultimo_corte(sesion, proyecto, hoy)
         return calcular_control(sesion, proyecto, catalogo=catalogo, corte=corte, precios=precios)
     except LineaBaseInvalidada as error:
         raise ControlInvalido(str(error)) from error

@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import date
 from pathlib import Path
 
 from sqlalchemy import select
@@ -25,8 +26,10 @@ from aplicacion.control_comun import (
     ControlInvalido,
     _decimal,
     _escribir,
+    _exigir_texto,
     _fecha,
 )
+from aplicacion.control_corte import exigir_que_no_sea_futura
 from aplicacion.tablas_causas import guardar_causas
 from core import models
 from core.budget.control import ResultadoControl
@@ -73,6 +76,37 @@ def versiones_revaloradas(sesion: Session, proyecto: str) -> list[str]:
             .order_by(models.Presupuesto.id.desc())
         )
     )
+
+
+#: Lo que se responde a un respaldo en blanco, con el nombre del campo de la pantalla: el núcleo
+#: diría «la fuente del cambio es obligatoria» también bajo «Motivo» (prueba en vivo 2026-11-18).
+_SIN_FUENTE_DE_LINEA_BASE = (
+    "La fuente de la línea base es obligatoria: diga de dónde sale (acta, contrato)."
+)
+_SIN_FUENTE_DE_VALUACION = (
+    "La fuente de la valuación es obligatoria: diga de dónde sale (acta, oficio)."
+)
+_SIN_FUENTE_DE_COSTO = (
+    "La fuente del costo es obligatoria: diga de dónde sale (factura, libro de obra)."
+)
+_SIN_FUENTE_DE_IMPORTACION = (
+    "La fuente de la importación es obligatoria: diga de dónde sale el archivo."
+)
+_SIN_MOTIVO_DE_ANULACION = (
+    "El motivo de la anulación es obligatorio: diga por qué se anula y con qué respaldo."
+)
+
+#: El informe previo del XLSX (`core/budget/valuaciones.py`, sin tildes) como lo lee la persona.
+_INFORME = re.compile(r"(Valuaciones|Lineas|Costos): (\d+) (valuacion\(es\)|linea\(s\)|costo\(s\))")
+_CONTADO = {"valuacion(es)": "valuación(es)", "linea(s)": "línea(s)", "costo(s)": "costo(s)"}
+
+
+def _informe_con_tildes(linea: str) -> str:
+    calce = _INFORME.fullmatch(linea)
+    if calce is None:
+        return linea
+    hoja, cuantos, que = calce.groups()
+    return f"Hoja «{hoja}»: {cuantos} {_CONTADO[que]}"
 
 
 #: Días hábiles por período que se proponen si el plan no dice su unidad: un mes de cuatro semanas
@@ -153,11 +187,14 @@ def declarar_linea_base(
     """Declara la línea base de control (RF-72) desde los textos de la pantalla. Los feriados van
     separados por comas o saltos de línea, en AAAA-MM-DD. Sin `dias_por_periodo` (en blanco), los
     del plan de la versión (`dias_por_periodo_del_plan`, RF-196)."""
+    _exigir_texto(fuente, _SIN_FUENTE_DE_LINEA_BASE)
     if not dias_por_periodo.strip():
         dias_por_periodo = str(dias_por_periodo_del_plan(sesion, proyecto, version).dias)
-    dias = _decimal(dias_por_periodo, "dias por periodo")
+    dias = _decimal(dias_por_periodo, "Días hábiles por período")
     if dias != dias.to_integral_value():
-        raise ControlInvalido(f"dias por periodo: {dias_por_periodo!r} debe ser un entero")
+        raise ControlInvalido(
+            f"«Días hábiles por período» debe ser un número entero: «{dias_por_periodo.strip()}»."
+        )
     lista = [parte for parte in feriados.replace("\n", ",").split(",") if parte.strip()]
 
     def accion():
@@ -165,12 +202,12 @@ def declarar_linea_base(
             sesion,
             proyecto,
             version,
-            desde=_fecha(desde, "desde"),
+            desde=_fecha(desde, "Vigente desde"),
             perspectiva=perspectiva,
             calendario=Calendario(
-                _fecha(inicio, "fecha de inicio"),
+                _fecha(inicio, "Inicio de obra"),
                 int(dias),
-                tuple(_fecha(dia, "feriado") for dia in lista),
+                tuple(_fecha(dia, "Feriados") for dia in lista),
             ),
             fuente=fuente,
             responsable=responsable,
@@ -190,19 +227,16 @@ def lineas_desde_filas(filas: Sequence[Mapping[str, object]]) -> list[LineaValua
         if not partida and not cantidad:
             continue
         if not partida:
-            raise ControlInvalido(f"fila {numero}: falta la partida")
+            raise ControlInvalido(f"Línea {numero}: falta la partida.")
         medicion = str(fila.get("Fecha de medicion") or "").strip()
+        cifra = _decimal(cantidad, f"Cantidad {numero}")
+        dia = _fecha(medicion, f"Fecha de medición {numero}") if medicion else None
         try:
             lineas.append(
-                LineaValuacion(
-                    partida,
-                    _decimal(cantidad, f"fila {numero}, cantidad"),
-                    _fecha(medicion, f"fila {numero}, fecha de medicion") if medicion else None,
-                    str(fila.get("Observacion") or "").strip(),
-                )
+                LineaValuacion(partida, cifra, dia, str(fila.get("Observacion") or "").strip())
             )
         except ValueError as error:
-            raise ControlInvalido(f"fila {numero}: {error}") from None
+            raise ControlInvalido(f"Línea {numero}: {error}") from None
     return lineas
 
 
@@ -220,13 +254,24 @@ def registrar_y_controlar(
     fuente: str,
     responsable: str,
     precios: PreciosDelCorte | None = None,
+    hoy: date | None = None,
 ) -> ResultadoControl:
     """UC-19 4 y 5: registra la valuación y calcula al corte (su fecha *hasta*) el informe de
     control, los indicadores, las alertas y la reproyección. Es lo que mide RNF-15.
 
     La causa de retraso de cada línea (clave «Causa» de la fila, MP-7) se guarda en la misma
-    transacción que la valuación; una causa desconocida la rechaza entera."""
-    fin = _fecha(hasta, "hasta")
+    transacción que la valuación; una causa desconocida la rechaza entera. Una valuación que
+    termina o se firma después de `hoy` (por defecto, el reloj) se rechaza sin guardar nada:
+    mide obra ya ejecutada (`exigir_que_no_sea_futura`)."""
+    _exigir_texto(fuente, _SIN_FUENTE_DE_VALUACION)
+    inicio = _fecha(desde, "Período desde")
+    fin = _fecha(hasta, "Período hasta")
+    firmada = _fecha(fecha, "Fecha de la valuación") if fecha.strip() else None
+    exigir_que_no_sea_futura(fin, firmada, hoy)
+    lineas = lineas_desde_filas(filas)
+    if not lineas:
+        # el núcleo diría «una valuacion necesita al menos una linea», sin tildes
+        raise ControlInvalido("Una valuación necesita al menos una línea medida.")
 
     def accion():
         causas = causas_de_las_filas(filas)
@@ -234,11 +279,11 @@ def registrar_y_controlar(
             sesion,
             proyecto,
             numero=numero,
-            desde=_fecha(desde, "desde"),
+            desde=inicio,
             hasta=fin,
-            fecha=_fecha(fecha, "fecha") if fecha.strip() else None,
+            fecha=firmada,
             inspector=inspector,
-            lineas=lineas_desde_filas(filas),
+            lineas=lineas,
             fuente=fuente,
             responsable=responsable,
         )
@@ -250,6 +295,7 @@ def registrar_y_controlar(
 
 def anular(sesion: Session, valuacion_id: int, *, motivo: str, responsable: str) -> None:
     """Anula una valuación (UC-19 4c): se conserva y deja de contar."""
+    _exigir_texto(motivo, _SIN_MOTIVO_DE_ANULACION)
     _escribir(
         sesion,
         lambda: anular_valuacion(sesion, valuacion_id, motivo=motivo, responsable=responsable),
@@ -268,14 +314,17 @@ def registrar_costo_real(
     partida: str = "",
 ) -> None:
     """Anota un costo incurrido (monto, moneda, fecha y fuente); se convierte al calcular."""
+    cifra = _decimal(monto, "Monto")
+    dia = _fecha(fecha, "Fecha")
+    _exigir_texto(fuente, _SIN_FUENTE_DE_COSTO)
     _escribir(
         sesion,
         lambda: registrar_costo(
             sesion,
             proyecto,
-            monto=_decimal(monto, "monto"),
+            monto=cifra,
             moneda=moneda,
-            fecha=_fecha(fecha, "fecha"),
+            fecha=dia,
             fuente=fuente,
             responsable=responsable,
             codigo_partida=partida.strip() or None,
@@ -287,15 +336,31 @@ def leer_excel(ruta: Path) -> LecturaControl:
     """Lee un XLSX de valuaciones sin escribir nada (informe previo). `ControlInvalido` si se
     rechaza: el archivo se rechaza entero."""
     try:
-        return leer_valuaciones_excel(ruta)
+        lectura = leer_valuaciones_excel(ruta)
     except ValueError as error:
         raise ControlInvalido(str(error)) from None
+    return replace(lectura, informe=tuple(map(_informe_con_tildes, lectura.informe)))
 
 
 def importar_excel(
-    sesion: Session, proyecto: str, lectura: LecturaControl, *, fuente: str, responsable: str
+    sesion: Session,
+    proyecto: str,
+    lectura: LecturaControl,
+    *,
+    fuente: str,
+    responsable: str,
+    hoy: date | None = None,
 ) -> int:
-    """Registra lo leído (todas las valuaciones y costos, o ninguno) y devuelve cuántas son."""
+    """Registra lo leído (todas las valuaciones y costos, o ninguno) y devuelve cuántas son. Una
+    valuación del futuro (`exigir_que_no_sea_futura`) rechaza el archivo entero."""
+    _exigir_texto(fuente, _SIN_FUENTE_DE_IMPORTACION)
+    for valuacion in lectura.valuaciones:
+        try:
+            exigir_que_no_sea_futura(valuacion.hasta, valuacion.fecha, hoy)
+        except ControlInvalido as error:
+            raise ControlInvalido(
+                f"Valuación {valuacion.numero}: {error} No se importó nada."
+            ) from None
     registradas, _ = _escribir(
         sesion,
         lambda: registrar_lectura(

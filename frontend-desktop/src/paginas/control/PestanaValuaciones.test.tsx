@@ -55,6 +55,9 @@ describe("Pestaña de valuaciones", () => {
   let anulables: Valuaciones["anulables"];
   let informe: (cuerpo: FormData) => Response | Promise<Response>;
   let importar: () => Response | Promise<Response>;
+  let registro: unknown;
+  let hallazgosDeLaLista: Valuaciones["hallazgos"];
+  let costos: Record<string, string>[];
 
   function montar() {
     render(
@@ -78,10 +81,15 @@ describe("Pestaña de valuaciones", () => {
     anulables = [V01, V02];
     informe = () => json({ informe: ["sin novedades"] });
     importar = () => json({ importadas: 1 });
+    registro = { corte: "2026-11-13", hallazgos: 0, errores: 0, detalle: [] };
+    hallazgosDeLaLista = [];
+    costos = [];
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       const metodo = init?.method ?? "GET";
-      if (url.startsWith("/v1/control/valuaciones?") && metodo === "GET") return json(valuaciones(anulables));
+      if (url.startsWith("/v1/control/valuaciones?") && metodo === "GET") return json({ ...valuaciones(anulables), hallazgos: hallazgosDeLaLista });
+      if (url === "/v1/control/valuaciones" && metodo === "POST") return json(registro);
+      if (url.startsWith("/v1/control/costos?") && metodo === "GET") return json({ filas: costos });
       const anular = /^\/v1\/control\/valuaciones\/(\d+)\/anular$/.exec(url);
       if (anular && metodo === "POST") {
         anulables = anulables.filter((a) => String(a.id) !== anular[1]);
@@ -156,5 +164,75 @@ describe("Pestaña de valuaciones", () => {
     soltar(json({ importadas: 1 }));
     expect(await screen.findByText("1 valuación(es) importada(s).")).toBeInTheDocument();
     expect(campoArchivo()).toBeEnabled();
+  });
+
+  // Prueba en vivo del 2026-11-18, hallazgo 2: con errores el aviso no es verde de éxito y dice cuáles son.
+  test("registrar con errores avisa en ámbar y lista cada hallazgo con su mensaje", async () => {
+    registro = {
+      corte: "2026-11-13",
+      hallazgos: 2,
+      errores: 1,
+      detalle: [
+        { valuacion: "V-03", regla: "R14", severidad: "Error", mensaje: "La valuación V-03 no tiene inspector." },
+        { valuacion: "V-03", regla: "R14", severidad: "Información", mensaje: "Entre las valuaciones V-02 y V-03 hay 1 día(s) hábil(es) sin cubrir (16/11/2026 a 16/11/2026)." },
+      ],
+    };
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    const regionViva = document.getElementById("val-resultado");
+    expect(regionViva).toHaveAttribute("aria-live", "polite");
+    await u.type(screen.getByLabelText("Número"), "V-03");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    const aviso = await screen.findByText(/la revisión encontró 1 error/);
+    expect(aviso.textContent).toBe("Valuación registrada (corte 13/11/2026), pero la revisión encontró 1 error.");
+    const notificacion = aviso.closest(".cds--inline-notification");
+    expect(notificacion).toHaveClass("cds--inline-notification--warning");
+    // Arbitraje, punto 9: el resumen breve se anuncia en una región viva que ya estaba en el DOM; la lista no es parte
+    // del anuncio (ni de un role="alert"): va debajo, con su nombre.
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(aviso.closest("#val-resultado")).toBe(regionViva);
+    expect(within(notificacion as HTMLElement).queryByRole("list")).toBeNull();
+    const lista = screen.getByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" });
+    expect(within(lista).getByText("Error (R14): La valuación V-03 no tiene inspector.")).toBeInTheDocument();
+    expect(within(lista).getByText(/^Información \(R14\): Entre las valuaciones/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Valuación registrada: corte/)).toBeNull();
+  });
+
+  test("registrar sin hallazgos dice el corte en verde", async () => {
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(await screen.findByText("Valuación registrada: corte 13/11/2026, sin hallazgos en la revisión.")).toBeInTheDocument();
+  });
+
+  test("los hallazgos de las valuaciones guardadas se leen junto a la tabla", async () => {
+    hallazgosDeLaLista = [{ valuacion: "V-02", regla: "R14", severidad: "Error", mensaje: "La valuación V-02 no tiene inspector." }];
+    montar();
+    const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de las valuaciones" });
+    expect(within(lista).getByText("V-02 · Error (R14): La valuación V-02 no tiene inspector.")).toBeInTheDocument();
+  });
+
+  // Prueba en vivo del 2026-11-18, hallazgo 3: un costo anotado no se podía ver.
+  test("los costos anotados se ven en una tabla con el monto en es-VE", async () => {
+    costos = [
+      { Fecha: "13/11/2026", Monto: "1280.00", Moneda: "USD", Partida: "", Fuente: "libro de obra ficticio", Responsable: "Residente Ficticio" },
+    ];
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Costos incurridos anotados" });
+    expect(within(tabla).getByText("13/11/2026")).toBeInTheDocument();
+    expect(within(tabla).getByText("1.280,00")).toBeInTheDocument();
+    expect(within(tabla).getByText("libro de obra ficticio")).toBeInTheDocument();
+  });
+
+  // Arbitraje, punto 10: el monto viaja exacto; se lee a dos decimales y el exacto queda en el title.
+  test("el monto de un costo se lee a dos decimales con el exacto en el title", async () => {
+    costos = [{ Fecha: "12/11/2026", Monto: "100.005", Moneda: "USD", Partida: "OB-A", Fuente: "factura 12", Responsable: "Ana" }];
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Costos incurridos anotados" });
+    expect(within(tabla).getByText("100,01")).toHaveAttribute("title", "100.005");
   });
 });

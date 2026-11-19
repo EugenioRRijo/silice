@@ -62,6 +62,7 @@ from aplicacion.control_comun import (
     _decimal,
     _monto,
 )
+from aplicacion.control_corte import hoy_o_el_dado, ultimo_corte
 from aplicacion.control_linea_base import (
     DIAS_POR_OMISION,
     DiasDelPlan,
@@ -339,10 +340,13 @@ class PrecioElegido:
     fuente: str = ""
 
 
-def perspectiva_de_la_linea_base(sesion: Session, proyecto: str, corte: date | None) -> str:
+def perspectiva_de_la_linea_base(
+    sesion: Session, proyecto: str, corte: date | None, *, hoy: date | None = None
+) -> str:
     """La perspectiva (costo o precio) de la línea base vigente al `corte` (sin `corte`, al de la
-    última valuación). Sin línea base, «costo»: el cálculo dirá luego por qué no se puede."""
-    fila = linea_base_vigente(sesion, proyecto, corte or corte_por_defecto(sesion, proyecto))
+    última valuación, nunca después de `hoy`). Sin línea base, «costo»: el cálculo dirá luego por
+    qué no se puede."""
+    fila = linea_base_vigente(sesion, proyecto, corte or corte_por_defecto(sesion, proyecto, hoy))
     return "costo" if fila is None else fila.perspectiva
 
 
@@ -436,9 +440,10 @@ def hay_valuaciones(sesion: Session, proyecto: str) -> bool:
     return bool(valuaciones_registradas(sesion, proyecto, con_anuladas=True))
 
 
-def corte_por_defecto(sesion: Session, proyecto: str) -> date:
-    """El *hasta* de la última valuación no anulada; hoy si no hay ninguna."""
-    return max((v.hasta for v in valuaciones_registradas(sesion, proyecto)), default=date.today())
+def corte_por_defecto(sesion: Session, proyecto: str, hoy: date | None = None) -> date:
+    """El *hasta* de la última valuación no anulada, nunca después de hoy (`ultimo_corte`); hoy
+    si no hay ninguna. `hoy` lo fijan las pruebas."""
+    return ultimo_corte(sesion, proyecto, hoy) or hoy_o_el_dado(hoy)
 
 
 def valuaciones_para_anular(sesion: Session, proyecto: str) -> list[tuple[int, str]]:

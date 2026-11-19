@@ -60,6 +60,13 @@ def _p(**cambios) -> ParametrosProyeccion:
     return ParametrosProyeccion(inicio=INICIO, trayectorias=200, **cambios)
 
 
+#: El principio del mensaje de pocos meses (prueba en vivo del 2026-11-18, hallazgo 4).
+_SIN_MESES = (
+    r"^Solo hay {} de historia en los 36 meses anteriores al inicio \(01/2027\); se necesitan "
+    r"12\. Falta historia de: "
+)
+
+
 # --- Pruebas --------------------------------------------------------------------------------------
 
 
@@ -111,7 +118,7 @@ def test_menos_de_12_meses_completos():
     presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
 
-    with pytest.raises(ValueError, match="^solo hay 9 meses completos; se necesitan 12$"):
+    with pytest.raises(ValueError, match=_SIN_MESES.format("9 meses completos")):
         proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(n=10), mapa, _p())
 
 
@@ -121,7 +128,7 @@ def test_un_solo_mes_completo_se_dice_en_singular():
     presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
 
-    with pytest.raises(ValueError, match="^solo hay 1 mes completo; se necesitan 12$"):
+    with pytest.raises(ValueError, match=_SIN_MESES.format("1 mes completo")):
         proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(n=2), mapa, _p())
 
 
@@ -131,7 +138,7 @@ def test_una_serie_del_mapa_sin_historia_deja_cero_meses():
     historia = historia_uniforme()
     del historia[GASOIL]
 
-    with pytest.raises(ValueError, match="^solo hay 0 meses completos; se necesitan 12$"):
+    with pytest.raises(ValueError, match=_SIN_MESES.format("0 meses completos")):
         proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p())
 
 
@@ -510,3 +517,35 @@ def test_historia_para_proyectar_lee_hasta_el_fin_del_mes_anterior(sesion):
         PPI: {date(2023, 9, 1): D(2), date(2026, 9, 1): D(3)},
         SERIE_TASA: {date(2023, 9, 1): D(1), date(2026, 9, 1): D(3)},
     }
+
+
+# --- Prueba en vivo del 2026-11-18, hallazgo 4: el mensaje nombra la serie y dónde se carga ---
+
+
+def test_sin_historia_de_la_tasa_el_mensaje_la_nombra_y_dice_donde_se_carga():
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
+    mapa = MapaSeries({})  # sin series viales: interviene solo la tasa
+    with pytest.raises(ValueError) as error:
+        proyectar(presupuesto, composiciones, PARAMETROS, {}, mapa, _p())
+    assert str(error.value) == (
+        "Solo hay 0 meses completos de historia en los 36 meses anteriores al inicio (01/2027); "
+        "se necesitan 12. Falta historia de: «Tasa de referencia USD (venta)» del BCV (0 de 36 "
+        "meses), que se carga en la página «Índices del BCV»."
+    )
+
+
+def test_una_serie_vial_corta_se_nombra_con_su_cuenta_y_las_completas_no():
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
+    mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
+    historia = historia_uniforme()
+    historia[GASOIL] = serie_creciente(D(1), 6)  # 5 variaciones al final de la ventana
+    with pytest.raises(ValueError) as error:
+        proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p())
+    mensaje = str(error.value)
+    assert mensaje.startswith("Solo hay 5 meses completos de historia")
+    assert mensaje.endswith(
+        "Falta historia de: «Gasoil, precio administrado (escalones; a cotejar en la Gaceta)» "
+        "(5 de 36 meses), que se importa desde su CSV canónico."
+    )
+    assert "PPI" not in mensaje and "Tasa" not in mensaje
+

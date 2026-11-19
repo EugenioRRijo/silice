@@ -210,3 +210,14 @@ export function buscadorDeInsumos() {
     return gruposDeInsumos(insumos, q, limite);
   };
 }
+
+// La cotización de un precio la arma el núcleo como «proveedor, número, AAAA-MM-DD» (core/catalog/origen.py). Solo esa
+// fecha final, la del sistema, se presenta en dd/mm/aaaa (prueba en vivo del 2026-11-18, hallazgo 8); el proveedor y el
+// número son texto de la persona y quedan tal cual aunque tengan forma de fecha.
+const FECHA_FINAL_DE_COTIZACION = /^(.+, )(\d{4})-(\d{2})-(\d{2})$/s;
+
+export function cotizacionEsVe(texto: string): string {
+  const m = FECHA_FINAL_DE_COTIZACION.exec(texto);
+  return m ? `${m[1]}${m[4]}/${m[3]}/${m[2]}` : texto;
+}
+

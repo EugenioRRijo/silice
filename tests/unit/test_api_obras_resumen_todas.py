@@ -420,12 +420,14 @@ def test_sin_sesion_401() -> None:
 
 
 def test_con_las_obras_reales_cada_moneda_va_en_su_fila(
-    _plantillas: dict[str, Path], _entorno: Path
+    _plantillas: dict[str, Path], _entorno: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Sin mesa falsa: OB-S2 en ejecución en USD (Carpeta Este) y OB-S2 recién presupuestada en
     Bs (Carpeta Oeste), los mismos 5 060,00; la empresa con «Edificio Central» en blanco (USD por
     omisión, sin total). Bs: 1 obra, 5 060,00, 0 en ejecución; USD: 2 obras, 5 060,00, 1 en
     ejecución (OB-S2 atrasada). Nunca 10 120,00."""
+    # «hoy» después del «hasta» de V-02 (2026-11-13): el corte del control nunca pasa de hoy
+    monkeypatch.setattr(obras, "ahora", lambda: datetime(2026, 11, 16, 9, 0))
     (_entorno / NORTE).unlink()
     (_entorno / SUR).unlink()
     for nombre in (ESTE, OESTE):

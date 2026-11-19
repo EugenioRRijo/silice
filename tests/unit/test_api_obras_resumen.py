@@ -47,9 +47,12 @@ RESUMEN = "/v1/obras/resumen"
 PENDIENTES = "/v1/obras/pendientes"
 MENSAJE_BASE = "No se pudo leer la carpeta de trabajo. Intente de nuevo."
 HOY = datetime(2026, 10, 25, 9, 0)
+#: El «hoy» del resumen: después del «hasta» de V-02 (2026-11-13), porque el corte del control nunca
+#: pasa de hoy (prueba en vivo del 2026-11-18). La carpeta se declara el HOY de siempre.
+HOY_DEL_RESUMEN = datetime(2026, 11, 16, 9, 0)
 
 
-def _caso(ruta: Path, moneda: str = "USD") -> Path:
+def _caso(ruta: Path, moneda: str = "USD", *, v03: bool = False) -> Path:
     preparar_base(ruta)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
@@ -57,6 +60,8 @@ def _caso(ruta: Path, moneda: str = "USD") -> Path:
             ob.sembrar(sesion)
             ob.declarar_linea_base(sesion)
             ob.registrar_v01_y_v02(sesion)
+            if v03:
+                ob.registrar(sesion, ob.VS)  # hasta el 2026-11-20
             declarar_moneda_de_la_carpeta(
                 sesion, moneda, responsable="Residente Ficticio", ahora=HOY
             )
@@ -73,6 +78,7 @@ def _plantillas(tmp_path_factory) -> dict[str, Path]:
         "instalacion": plantilla_con_cuentas(carpeta),
         "caso": _caso(carpeta / "caso.db"),
         "caso_bs": _caso(carpeta / "caso_bs.db", "Bs"),
+        "caso_v03": _caso(carpeta / "caso_v03.db", v03=True),
     }
 
 
@@ -128,14 +134,15 @@ def _numeros(valor) -> list:
 # --- resumen ------------------------------------------------------------------------------------
 
 
-def test_resumen_de_ob_s2_en_una_carpeta_en_usd() -> None:
+def test_resumen_de_ob_s2_en_una_carpeta_en_usd(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(obras, "ahora", lambda: HOY_DEL_RESUMEN)
     respuesta = _entrar("ana").get(RESUMEN)
 
     assert respuesta.status_code == 200, respuesta.text
     _sin_cache(respuesta)
     cuerpo = respuesta.json()
     assert cuerpo["moneda"] == "USD"
-    assert cuerpo["hoy"] == "2026-10-25"
+    assert cuerpo["hoy"] == "2026-11-16"
     assert cuerpo["cifras"][0] == {
         "clave": "valor_ganado",
         "titulo": "Valor ganado",
@@ -187,6 +194,7 @@ def test_ob_s2_en_usd_se_convierte_con_la_tasa_del_bcv_y_declara_su_fecha(
     # corte de OB-S2: 2026-11-13; tasa del 2026-11-09 (4 días antes, dentro de los 7):
     # EV 1 200 × 40 = 48 000,00 Bs y PV 1 500 × 40 = 60 000,00 Bs
     _usar_carpeta_en_bs(_plantillas, tmp_path, monkeypatch, date(2026, 11, 9))
+    monkeypatch.setattr(obras, "ahora", lambda: HOY_DEL_RESUMEN)
 
     cuerpo = _entrar("ana").get(RESUMEN).json()
 
@@ -205,6 +213,7 @@ def test_sin_tasa_de_los_ultimos_7_dias_ob_s2_queda_fuera_de_la_suma(
 ) -> None:
     # tasa del 2026-11-05: 8 días antes del corte del 2026-11-13, más de 7 → no se convierte
     _usar_carpeta_en_bs(_plantillas, tmp_path, monkeypatch, date(2026, 11, 5))
+    monkeypatch.setattr(obras, "ahora", lambda: HOY_DEL_RESUMEN)
 
     cuerpo = _entrar("ana").get(RESUMEN).json()
 
@@ -324,3 +333,17 @@ def test_un_fallo_de_la_base_en_los_pendientes_es_503(monkeypatch: pytest.Monkey
     assert respuesta.status_code == 503
     assert respuesta.json() == {"detalle": MENSAJE_BASE}
     assert "SELECT" not in respuesta.text
+
+
+def test_una_valuacion_del_futuro_no_mueve_el_resumen_de_la_obra(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Arbitraje de feature/vivo-control: con V-03 (hasta el 20/11) y hoy el 13/11 el resumen mide al
+    # 13/11: avance 30,0 contra 37,5 del plan (memoria §3), igual que sin V-03.
+    copia = tmp_path / "caso_v03.db"
+    copia.write_bytes(_plantillas["caso_v03"].read_bytes())
+    dependencias.cerrar_motores()
+    monkeypatch.setenv(dependencias.VARIABLE_BASE, f"sqlite:///{copia.as_posix()}")
+    monkeypatch.setattr(obras, "ahora", lambda: datetime(2026, 11, 13, 9, 0))
+    (obra,) = _entrar("ana").get(RESUMEN).json()["obras"]
+    assert (obra["avance_real"], obra["avance_plan"]) == ("30.0", "37.5")

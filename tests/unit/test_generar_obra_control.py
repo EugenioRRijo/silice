@@ -7,6 +7,8 @@ from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 
+import pytest
+
 from core.budget.control import construir_estado
 from core.budget.curva import generar_curva
 from core.budget.valor_ganado import indicadores, reproyectar, separar_desvio
@@ -97,3 +99,126 @@ def test_la_identidad_cv_igual_precio_mas_consumo_se_cumple_en_la_obra_del_gener
     assert ind.spi is not None and 0 < ind.spi
     assert sep.precio + sep.consumo == ind.cv
     assert sep.vac_precio + sep.vac_consumo == ind.vac
+
+
+def test_el_inicio_se_puede_elegir_y_las_fechas_se_corren_con_el():
+    from datetime import date
+
+    inicio = date(2026, 10, 5)  # lunes
+    obra = generador.generar(12, 10, 5, semilla=7, inicio=inicio)
+    assert obra.calendario.fecha_inicio == inicio
+    assert obra.valuaciones[0].desde == inicio
+    assert obra.valuaciones[-1].fecha == inicio + timedelta(weeks=5)
+    # misma obra que con el inicio de siempre, solo corrida en el tiempo
+    base = generador.generar(12, 10, 5, semilla=7)
+    assert [v.lineas for v in obra.valuaciones] == [v.lineas for v in base.valuaciones]
+
+
+def test_la_demo_de_control_siembra_valuaciones_y_costos_que_no_pasan_de_hoy(tmp_path):
+    # Prueba en vivo del 2026-11-18, hallazgo 1: la demo sembraba valuaciones hasta el 04/12.
+    from datetime import date
+
+    import start
+    from core.budget.valuaciones import valuaciones_registradas
+    from core.catalog import abrir_sesion, crear_motor
+
+    hoy = date(2026, 11, 18)
+    destino = tmp_path / "obra_control.db"
+    start.sembrar_obra_control(destino, hoy=hoy)
+    motor = crear_motor(f"sqlite:///{destino.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            valuaciones = valuaciones_registradas(sesion, generador.NOMBRE)
+            assert len(valuaciones) == 5
+            assert all(v.hasta <= hoy and v.fecha <= hoy for v in valuaciones)
+            # la última se firmó esta misma semana: la demo queda al día
+            assert hoy - valuaciones[-1].fecha < timedelta(weeks=1)
+            from sqlalchemy import select
+
+            from core import models
+
+            assert all(c.fecha <= hoy for c in sesion.scalars(select(models.CostoReal)))
+    finally:
+        motor.dispose()
+
+
+def test_la_demo_de_control_trae_historia_didactica_de_la_tasa_para_riesgo(tmp_path):
+    # Prueba en vivo del 2026-11-18, hallazgo 4: Riesgo no corría en ningún caso de la demo
+    # («solo hay 0 meses completos; se necesitan 12»). La tasa es ficticia y lo dice (NORMAS §1).
+    from datetime import date
+
+    from sqlalchemy import select
+
+    import start
+    from aplicacion.riesgo.proyeccion import (
+        MINIMO_DE_MESES,
+        SERIE_TASA,
+        ParametrosProyeccion,
+        historia_para_proyectar,
+        meses_completos,
+    )
+    from aplicacion.riesgo.series import MapaSeries
+    from core import models
+    from core.catalog import abrir_sesion, crear_motor
+
+    hoy = date(2026, 11, 18)
+    destino = tmp_path / "obra_control.db"
+    start.sembrar_obra_control(destino, hoy=hoy)
+    motor = crear_motor(f"sqlite:///{destino.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            p = ParametrosProyeccion(inicio=start.inicio_de_la_demo(hoy))
+            historia = historia_para_proyectar(sesion, MapaSeries({}), p)
+            completos = meses_completos(historia, [SERIE_TASA], p)
+            assert len(completos) >= int(MINIMO_DE_MESES.valor)
+            (importacion,) = sesion.scalars(select(models.ImportacionIndice))
+            assert "ficticia" in importacion.fuente and "didáctica" in importacion.fuente
+            # ninguna observación es del futuro
+            assert all(v.fecha <= hoy for v in sesion.scalars(select(models.ValorIndice)))
+    finally:
+        motor.dispose()
+
+
+@pytest.mark.parametrize("dia", range(16, 23))  # lunes 16 a domingo 22 de noviembre de 2026
+def test_la_demo_no_siembra_nada_despues_de_hoy_ningun_dia_de_la_semana(tmp_path, dia):
+    from datetime import date
+
+    import start
+    from core.budget.valuaciones import valuaciones_registradas
+    from core.catalog import abrir_sesion, crear_motor
+
+    hoy = date(2026, 11, dia)
+    destino = tmp_path / "obra_control.db"
+    start.sembrar_obra_control(destino, hoy=hoy)
+    motor = crear_motor(f"sqlite:///{destino.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            valuaciones = valuaciones_registradas(sesion, generador.NOMBRE)
+            assert all(v.hasta <= hoy and v.fecha <= hoy for v in valuaciones)
+    finally:
+        motor.dispose()
+
+
+@pytest.mark.parametrize("habia_una", [False, True])
+def test_una_siembra_que_falla_a_medias_no_deja_una_base_a_medias(tmp_path, monkeypatch, habia_una):
+    # Arbitraje: se sembraba sobre el archivo definitivo; una falla dejaba una base vacía que
+    # `preparar_demo` ya no volvía a sembrar.
+    from datetime import date
+
+    import start
+
+    destino = tmp_path / "obra_control.db"
+    if habia_una:
+        destino.write_bytes(b"la anterior")
+
+    def falla(*_args, **_kwargs):
+        raise RuntimeError("falla simulada a mitad de la siembra")
+
+    monkeypatch.setattr(start, "sembrar_tasa_didactica", falla)
+    with pytest.raises(RuntimeError, match="falla simulada"):
+        start.sembrar_obra_control(destino, hoy=date(2026, 11, 18))
+    if habia_una:
+        assert destino.read_bytes() == b"la anterior"
+    else:
+        assert not destino.exists()
+    assert sorted(p.name for p in tmp_path.iterdir()) == (["obra_control.db"] if habia_una else [])

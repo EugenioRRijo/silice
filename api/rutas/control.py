@@ -5,9 +5,10 @@ propia:
 
 - `GET /linea-base` y `POST /linea-base`, `POST /parametros`: la línea base vigente, su
   declaración y los parámetros de control con su naturaleza;
-- `GET /valuaciones`, `POST /valuaciones`, `POST /valuaciones/{id}/anular`, `POST /costos`, `POST
-  /importar/informe` y `POST /importar`: las valuaciones (con la causa de retraso de cada línea y la
-  lista de causas que se pueden elegir, MP-7), su anulación, los costos y el XLSX;
+- `GET /valuaciones`, `POST /valuaciones`, `POST /valuaciones/{id}/anular`, `GET /costos`, `POST
+  /costos`, `POST /importar/informe` y `POST /importar`: las valuaciones (con la causa de retraso
+  de cada línea y la lista de causas que se pueden elegir, MP-7), su anulación, los costos y el
+  XLSX;
 - `GET /calculo`: el valor ganado, las alertas, la reproyección y el atraso por partida con su
   causa (MP-7), que se calculan siempre (UC-20 1 a 3);
 - `POST /recuperacion/opciones` y `POST /recuperacion/elegir`: las opciones a pedido y la
@@ -49,11 +50,14 @@ from api.dependencias import USUARIO_SIN_CLAVE, SesionDeEscrituraDep, SesionDep
 from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
 from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
 from api.esquemas_partidas import RenglonesDelContratoRespuesta, renglones_a_respuesta
-from api.sesion_web import exigir_clave_o_sesion
+from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion import control as logica
 from aplicacion.causas import CAUSAS, atrasos
+from aplicacion.control_corte import ultimo_corte
+from aplicacion.control_costos import filas_de_costos
+from aplicacion.control_hallazgos import hallazgos_de_valuaciones
 from aplicacion.precios_declarados import precios_convertidos
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.control import ResultadoControl
@@ -89,6 +93,13 @@ METODOS = {
     "escalatoria": logica.METODO_ESCALATORIA,
     "declarados": logica.METODO_DECLARADOS,
 }
+
+
+def hoy() -> date:
+    """El día del reloj de la API (`api.sesion_web.ahora`, como `api/rutas/riesgo.py`): cada ruta
+    lo lee una sola vez por petición y lo pasa a todo lo que mide al corte (arbitraje de
+    feature/vivo-control). Las pruebas fijan `ahora` en este módulo."""
+    return ahora().date()
 
 
 def _responsable(activa: SesionActiva | None) -> str:
@@ -131,7 +142,12 @@ class Precios(BaseModel):
 
 
 def _precios(
-    sesion: Session, proyecto: str, catalogo: Catalogo, datos: Precios, corte: date | None
+    sesion: Session,
+    proyecto: str,
+    catalogo: Catalogo,
+    datos: Precios,
+    corte: date | None,
+    dia: date,
 ):
     if datos.metodo not in METODOS:
         raise logica.ControlInvalido(
@@ -142,7 +158,7 @@ def _precios(
     )
     # La perspectiva es la de la línea base al corte (antes, «costo» fijo: con una línea base en
     # la perspectiva precio, el desvío comparaba costo directo con precio unitario).
-    perspectiva = logica.perspectiva_de_la_linea_base(sesion, proyecto, corte)
+    perspectiva = logica.perspectiva_de_la_linea_base(sesion, proyecto, corte, hoy=dia)
     return logica.precios_del_corte(sesion, proyecto, catalogo, elegido, perspectiva, corte=corte)
 
 
@@ -150,9 +166,14 @@ def _calcular(
     sesion: Session, proyecto: str, corte: str | None, datos: Precios
 ) -> tuple[Catalogo, ResultadoControl]:
     catalogo = Catalogo(sesion)
-    dia = _corte(corte)
-    precios = _precios(sesion, proyecto, catalogo, datos, dia)
-    resultado = logica.calcular_el_control(sesion, proyecto, catalogo, corte=dia, precios=precios)
+    dia = hoy()
+    # sin corte elegido, el de la última valuación, nunca después de hoy: el mismo para los
+    # precios y para el cálculo (prueba en vivo del 2026-11-18)
+    al_corte = _corte(corte) or ultimo_corte(sesion, proyecto, dia)
+    precios = _precios(sesion, proyecto, catalogo, datos, al_corte, dia)
+    resultado = logica.calcular_el_control(
+        sesion, proyecto, catalogo, corte=al_corte, precios=precios, hoy=dia
+    )
     return catalogo, resultado
 
 
@@ -347,6 +368,30 @@ class CausaRespuesta(BaseModel):
     nombre: str
 
 
+class HallazgoDeValuacion(BaseModel):
+    """Un hallazgo de R13 o R14 como lo lee la persona: la valuación que lo trae (vacía si es de
+    una partida), la regla, la severidad («Error», «Advertencia»…) y el mensaje."""
+
+    valuacion: str
+    regla: str
+    severidad: str
+    mensaje: str
+
+
+def _hallazgos(resultado: ResultadoControl | None) -> list[HallazgoDeValuacion]:
+    if resultado is None:
+        return []
+    return [
+        HallazgoDeValuacion(
+            valuacion=f["Valuacion"],
+            regla=f["Regla"],
+            severidad=f["Severidad"],
+            mensaje=f["Mensaje"],
+        )
+        for f in hallazgos_de_valuaciones(resultado)
+    ]
+
+
 class ValuacionesRespuesta(BaseModel):
     tiene_linea_base: bool
     filas: list[Fila]
@@ -361,6 +406,8 @@ class ValuacionesRespuesta(BaseModel):
     #: La perspectiva de la línea base («costo» o «precio»); vacía sin línea base. Con «costo»
     #: el IVA de lo medido no es una cifra facturable (T18-3).
     perspectiva: str = ""
+    #: Los hallazgos de R13 y R14 al corte por defecto, legibles (prueba en vivo 2026-11-18).
+    hallazgos: list[HallazgoDeValuacion] = Field(default_factory=list)
 
 
 @router.get("/valuaciones", response_model=ValuacionesRespuesta)
@@ -379,9 +426,10 @@ def valuaciones(sesion: SesionDep, proyecto: str) -> ValuacionesRespuesta:
     filas: list[Fila] = []
     aviso = ""
     resultado = None
+    dia = hoy()
     if logica.hay_valuaciones(sesion, proyecto):
         try:
-            resultado = logica.calcular_el_control(sesion, proyecto, Catalogo(sesion))
+            resultado = logica.calcular_el_control(sesion, proyecto, Catalogo(sesion), hoy=dia)
             filas = logica.filas_de_valuaciones(resultado)
         except logica.ControlInvalido as error:
             aviso = str(error)
@@ -392,9 +440,10 @@ def valuaciones(sesion: SesionDep, proyecto: str) -> ValuacionesRespuesta:
         anulables=[
             Anulable(id=i, rotulo=r) for i, r in logica.valuaciones_para_anular(sesion, proyecto)
         ],
-        corte_por_defecto=logica.corte_por_defecto(sesion, proyecto).isoformat(),
+        corte_por_defecto=logica.corte_por_defecto(sesion, proyecto, dia).isoformat(),
         impuestos=impuestos_a_respuesta(logica.impuestos_de_valuaciones(resultado)),
-        perspectiva=logica.perspectiva_de_la_linea_base(sesion, proyecto, None),
+        perspectiva=logica.perspectiva_de_la_linea_base(sesion, proyecto, None, hoy=dia),
+        hallazgos=_hallazgos(resultado),
     )
 
 
@@ -422,6 +471,8 @@ class RegistroRespuesta(BaseModel):
     corte: str
     hallazgos: int
     errores: int
+    #: Cada hallazgo legible (antes solo volvían los conteos: prueba en vivo 2026-11-18).
+    detalle: list[HallazgoDeValuacion] = Field(default_factory=list)
 
 
 @router.post("/valuaciones", response_model=RegistroRespuesta)
@@ -452,12 +503,14 @@ def registrar_valuacion(
         filas=filas,
         fuente=peticion.fuente,
         responsable=_responsable(activa),
+        hoy=hoy(),
     )
     hallazgos = resultado.informe.hallazgos
     return RegistroRespuesta(
         corte=resultado.instantanea.corte.isoformat(),
         hallazgos=len(hallazgos),
         errores=sum(1 for h in hallazgos if h.severidad.name == "ERROR"),
+        detalle=_hallazgos(resultado),
     )
 
 
@@ -504,6 +557,19 @@ def anotar_costo(
         partida=peticion.partida,
     )
     return ListoRespuesta()
+
+
+class CostosRespuesta(BaseModel):
+    """Los costos incurridos anotados, en el orden en que se anotaron (prueba en vivo
+    2026-11-18). Anularlos necesita expediente de `core/` (`aplicacion/control_costos.py`)."""
+
+    filas: list[Fila]
+
+
+@router.get("/costos", response_model=CostosRespuesta)
+def costos(sesion: SesionDep, proyecto: str) -> CostosRespuesta:
+    """Los costos incurridos de la obra (solo lectura)."""
+    return CostosRespuesta(filas=filas_de_costos(sesion, _existe(sesion, proyecto)))
 
 
 class InformeRespuesta(BaseModel):
@@ -554,7 +620,7 @@ def importar(
     datos = _leer(archivo)  # antes de la primera consulta: con ella se toma el bloqueo (DS-32)
     proyecto = _existe(sesion, proyecto)
     cuantas = logica.importar_excel(
-        sesion, proyecto, datos, fuente=fuente, responsable=_responsable(activa)
+        sesion, proyecto, datos, fuente=fuente, responsable=_responsable(activa), hoy=hoy()
     )
     return ImportadasRespuesta(importadas=cuantas)
 

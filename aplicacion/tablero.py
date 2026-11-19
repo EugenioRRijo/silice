@@ -98,7 +98,9 @@ def _version(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
     ).one()
 
 
-def leer_tablero(sesion: Session, catalogo: Catalogo, proyecto: str) -> DatosTablero | None:
+def leer_tablero(
+    sesion: Session, catalogo: Catalogo, proyecto: str, *, hoy: date | None = None
+) -> DatosTablero | None:
     """El tablero de la version vigente del proyecto; `None` si no tiene version guardada.
 
     `ValueError` si el catalogo ya no reconstruye la version (`cargar_presupuesto`): la pantalla
@@ -123,19 +125,22 @@ def leer_tablero(sesion: Session, catalogo: Catalogo, proyecto: str) -> DatosTab
         elaboracion=elaboracion,
         equilibrio=punto_equilibrio(elaboracion.presupuesto, parametros),
         versiones=filas_comparativo(sesion, proyecto),
-        control=leer_control(sesion, catalogo, proyecto),
+        control=leer_control(sesion, catalogo, proyecto, hoy=hoy),
     )
 
 
-def leer_control(sesion: Session, catalogo: Catalogo, proyecto: str) -> DatosControl:
-    """El control al corte por defecto (la ultima valuacion), sin escribir."""
+def leer_control(
+    sesion: Session, catalogo: Catalogo, proyecto: str, *, hoy: date | None = None
+) -> DatosControl:
+    """El control al corte por defecto (la ultima valuacion, nunca despues de `hoy`), sin
+    escribir."""
     if not control.tiene_linea_base(sesion, proyecto):
         return DatosControl(None, [], "Sin línea base de control: declárela en Control de obra.")
     if not control.hay_valuaciones(sesion, proyecto):
         return DatosControl(None, [], "La línea base está declarada; falta la primera valuación.")
     try:
         resultado = control.calcular_el_control(
-            sesion, proyecto, catalogo, corte=control.corte_por_defecto(sesion, proyecto)
+            sesion, proyecto, catalogo, corte=control.corte_por_defecto(sesion, proyecto, hoy)
         )
         curva = control.curva_pv_ev_ac(sesion, resultado)
     except (control.ControlInvalido, ValueError, LookupError) as error:

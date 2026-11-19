@@ -1,6 +1,6 @@
 import { WarningAltFilled } from "@carbon/icons-react";
 import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -9,6 +9,7 @@ import { textoDeEquivalencia, textoDeEquivalenciaExacta } from "../../comun/Line
 import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import { AYUDA_CIFRAS, leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { Monto } from "./Cifras";
@@ -88,8 +89,13 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
   const debajoDelPiso = lado === "cobro" && propuesta.razon === RAZON_POR_DEBAJO;
   const citables = estudio.observaciones.filter((o) => o.cuenta);
   const ocupado = paso.fase === "consultando" || paso.fase === "guardando";
-  // La casilla solo existe en compra y con una obra abierta; sin ella nunca se declara.
-  const obra = lado === "compra" && proyecto ? { codigo: proyecto, nombre: nombreProyecto ?? proyecto } : null;
+  // La casilla solo existe en compra y con una obra abierta; sin ella nunca se declara. Prueba en vivo del 2026-11-18
+  // (hallazgo 7): si la ficha de la obra abierta dice que no tiene línea base de control, tampoco (la API daría 409: no hay
+  // precio del corte sin línea base); se dice por qué. Sin ficha (fuera del espacio de la obra) decide el servidor.
+  const deLaObra = useContext(ContextoDeLaObra);
+  const sinLineaBase = deLaObra?.ficha.estado === "lista" && !deLaObra.ficha.obra.version_de_linea_base;
+  const abierta = lado === "compra" && proyecto ? { codigo: proyecto, nombre: nombreProyecto ?? proyecto } : null;
+  const obra = sinLineaBase ? null : abierta;
   const declarando = obra !== null && declarar;
 
   function fallo(e: unknown) {
@@ -246,6 +252,11 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
               onChange={(_e, { checked }) => setDeclarar(checked)}
             />
           </div>
+        )}
+        {abierta !== null && sinLineaBase && (
+          <p className="silice-mercado__nota silice-mercado__ancho cds--type-helper-text-01">
+            {`La obra ${abierta.nombre} aún no tiene línea base de control: sin ella no hay precio del corte que declarar.`}
+          </p>
         )}
         <p className="silice-mercado__nota silice-mercado__ancho cds--type-helper-text-01">
           {lado === "compra"

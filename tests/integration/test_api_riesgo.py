@@ -239,7 +239,10 @@ def test_el_error_de_pocos_meses_dice_el_numero() -> None:
     """Foco de revisión 4: con el inicio en septiembre de 2025 solo hay 11 meses completos."""
     r = _en_la_via().post(PROYECCION, json=_proyeccion(inicio="2025-09-01"))
     assert r.status_code == 422, r.text
-    assert r.json()["detalle"] == "solo hay 11 meses completos; se necesitan 12"
+    assert r.json()["detalle"].startswith(
+        "Solo hay 11 meses completos de historia en los 36 meses anteriores al inicio (09/2025); "
+        "se necesitan 12. Falta historia de: "
+    )
 
 
 def test_la_comprobacion_informa_cortes_y_cobertura() -> None:

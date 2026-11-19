@@ -101,11 +101,17 @@ def _plan(rng: random.Random, partidas: int, periodos: int) -> list[PeriodoPlan]
 
 
 def generar(
-    partidas: int = 500, periodos: int = 52, valuaciones: int = 26, semilla: int = 0
+    partidas: int = 500,
+    periodos: int = 52,
+    valuaciones: int = 26,
+    semilla: int = 0,
+    inicio: date = INICIO,
 ) -> ObraGenerada:
     """La obra de `partidas` partidas con valuaciones semanales hasta la semana `valuaciones`.
 
-    El corte es el viernes de la última semana valuada. Cada valuación cubre una semana exacta y
+    `inicio` (un lunes) es el de la obra; cambiarlo solo corre las fechas, las cantidades son las
+    mismas (la demo lo usa para que ninguna valuación quede en el futuro). El corte es el viernes
+    de la última semana valuada. Cada valuación cubre una semana exacta y
     avanza lo planificado de esa semana por un factor entre 0,70 y 1,10 (sin pasar de lo
     presupuestado)."""
     if not 1 <= valuaciones <= periodos:
@@ -127,7 +133,7 @@ def generar(
     ]
     plan = _plan(rng, partidas, periodos)
     resultado = elaborar(
-        items, composiciones, PARAMETROS, codigo=CODIGO, fecha=INICIO, moneda=MONEDA, plan=plan
+        items, composiciones, PARAMETROS, codigo=CODIGO, fecha=inicio, moneda=MONEDA, plan=plan
     )
     fracciones = {(codigo, n): f for n, (_, reparto) in enumerate(plan) for codigo, f in reparto}
     ejecutadas: dict[str, Decimal] = {}
@@ -137,7 +143,7 @@ def generar(
         p.item.codigo_partida: p.resultado.costo_directo for p in resultado.presupuesto.partidas
     }
     for semana in range(valuaciones):
-        desde = INICIO + timedelta(weeks=semana)
+        desde = inicio + timedelta(weeks=semana)
         hasta = desde + timedelta(days=4)
         lineas = []
         gastado = D(0)
@@ -187,26 +193,28 @@ def generar(
         tuple(lista),
         tuple(costos),
         precios,
-        Calendario(INICIO, 5),
+        Calendario(inicio, 5),
         lista[-1].hasta,
     )
 
 
 def sembrar(sesion, obra: ObraGenerada, *, con_valuaciones: bool = True) -> None:
     """Guarda la obra en la base: lista, catálogo, versión con su plan, línea base de control y,
-    si `con_valuaciones`, sus valuaciones y costos salvo la última (la que se mide). No confirma."""
-    lista = models.ListaPrecios(nombre="Generada USD", moneda=MONEDA, fecha_vigencia=INICIO)
+    si `con_valuaciones`, sus valuaciones y costos salvo la última (la que se mide). Las fechas
+    son las del calendario de la obra (`generar(inicio=...)`). No confirma."""
+    inicio = obra.calendario.fecha_inicio
+    lista = models.ListaPrecios(nombre="Generada USD", moneda=MONEDA, fecha_vigencia=inicio)
     sesion.add(lista)
     sesion.flush()
     catalogo = Catalogo(sesion)
     for composicion in obra.composiciones.values():
-        catalogo.cargar_composicion(composicion, lista, Dominio.CIVIL, INICIO, "generador")
+        catalogo.cargar_composicion(composicion, lista, Dominio.CIVIL, inicio, "generador")
     resultado = elaborar(
         obra.items,
         obra.composiciones,
         PARAMETROS,
         codigo=CODIGO,
-        fecha=INICIO,
+        fecha=inicio,
         moneda=MONEDA,
         plan=list(obra.plan),
     )
@@ -221,7 +229,7 @@ def sembrar(sesion, obra: ObraGenerada, *, con_valuaciones: bool = True) -> None
         usuario="script:generar_obra_control",
     )
     registrar_linea_base(
-        sesion, NOMBRE, CODIGO, desde=INICIO, perspectiva="costo", calendario=obra.calendario,
+        sesion, NOMBRE, CODIGO, desde=inicio, perspectiva="costo", calendario=obra.calendario,
         fuente=FUENTE, responsable=RESPONSABLE,
     )  # fmt: skip
     if con_valuaciones:

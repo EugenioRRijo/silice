@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import csv
 import io
-from decimal import Decimal
+import re
+from decimal import ROUND_HALF_UP, Decimal
 
 import pytest
 
+from aplicacion.cifras import cifra_escrita
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from scripts.seed import NOMBRE_PROYECTO
@@ -88,21 +90,36 @@ def test_el_base_de_un_presupuesto_inexistente_es_404(cliente):
     assert cliente.get("/presupuestos/NO-EXISTE/escenarios/base").status_code == 404
 
 
-def test_el_csv_lleva_la_tabla_de_rf31_con_valores_exactos(cliente, presupuesto_001):
+def _filas_del_csv(respuesta) -> list[dict[str, str]]:
+    """El CSV como lo abre Excel en español: UTF-8 con marca, `;` y coma decimal."""
+    texto = respuesta.content.decode("utf-8")
+    assert texto.startswith("\ufeff")
+    return list(csv.DictReader(io.StringIO(texto.removeprefix("\ufeff")), delimiter=";"))
+
+
+def _dos_decimales(valor: Decimal) -> Decimal:
+    return valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def test_el_csv_lleva_la_tabla_de_rf31_como_la_lee_excel_en_espanol(cliente, presupuesto_001):
+    # Prueba en vivo del 2026-11-18, hallazgo 6: salía con punto decimal y hasta 28 dígitos
+    # (4.545454545454545454545454545). Ahora: coma decimal, punto de miles y dos decimales.
     respuesta = cliente.post("/presupuestos/001/escenarios/csv", json=ESCENARIOS)
 
     assert respuesta.status_code == 200, respuesta.text
     assert respuesta.headers["content-type"].startswith("text/csv")
     assert 'filename="escenarios_001.csv"' in respuesta.headers["content-disposition"]
-    filas = list(csv.DictReader(io.StringIO(respuesta.text)))
-    assert [f["escenario"] for f in filas] == ["001", "cemento y arena", "utilidad 20"]
-    assert list(filas[0]) == ["escenario", "total", "variacion", "variacion_pct"]
-    # El base: variación cero. El escenario del cemento y la arena: 50,082615 exactos, no 50,08.
-    assert Decimal(filas[0]["variacion"]) == 0
-    assert Decimal(filas[1]["variacion"]) == INCREMENTO_TOTAL
-    assert Decimal(filas[1]["total"]) - Decimal(filas[0]["total"]) == INCREMENTO_TOTAL
-    # 100 x (1,20/1,10 - 1) no se redondea a dos decimales en el CSV.
-    assert len(filas[2]["variacion_pct"].split(".")[1]) > 2
+    filas = _filas_del_csv(respuesta)
+    assert [f["Escenario"] for f in filas] == ["001", "cemento y arena", "utilidad 20"]
+    assert list(filas[0]) == ["Escenario", "Total", "Variación", "Variación %"]
+    for fila in filas:
+        for columna in ("Total", "Variación", "Variación %"):
+            assert re.fullmatch(r"-?\d{1,3}(\.\d{3})*,\d{2}", fila[columna]), fila[columna]
+    assert filas[0]["Variación"] == "0,00"
+    # El escenario del cemento y la arena: 50,082615 exactos se presentan 50,08.
+    assert cifra_escrita(filas[1]["Variación"]) == _dos_decimales(INCREMENTO_TOTAL)
+    # 100 x (1,20/1,10 - 1) = 9,0909... se presenta 9,09.
+    assert filas[2]["Variación %"] == "9,09"
 
 
 def test_el_csv_con_un_parametro_fuera_de_rango_es_422(cliente, presupuesto_001):
@@ -112,7 +129,8 @@ def test_el_csv_con_un_parametro_fuera_de_rango_es_422(cliente, presupuesto_001)
     )
 
     assert respuesta.status_code == 422
-    assert "utilidad" in respuesta.json()["detalle"]
+    # prueba en vivo del 2026-11-18, hallazgo 5: el nombre de la pantalla y la coma decimal
+    assert respuesta.json()["detalle"] == "Utilidad: el valor no puede ser negativo (-0,10)."
 
 
 def test_el_csv_no_guarda_nada(cliente, presupuesto_001):

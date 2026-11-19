@@ -101,6 +101,7 @@ describe("Control de obra: causas de retraso y atraso por partida", () => {
       if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return json(LINEA_BASE);
       if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return json(VALUACIONES);
       if (url.startsWith("/v1/control/calculo")) return respuestaCalculo();
+      if (url.startsWith("/v1/control/costos")) return json({ filas: [] });
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-06", hallazgos: 0, errores: 0 });
       return json({ detalle: `ruta inesperada ${metodo} ${url}` }, 500);
     });
