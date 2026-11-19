@@ -8,6 +8,8 @@ interface Destino {
   ruta: string;
   // La pantalla que se monta al llegar (id de `shell/rutas.ts`): con ella se sabe si la cuenta puede usarla.
   pagina: string;
+  // La pantalla es una herramienta de un espacio (Precios, Auditoría, Producción): trabaja con la carpeta abierta y su ruta no lleva carpeta.
+  deEspacio: boolean;
 }
 
 // La sección de la obra que monta la pantalla de la acción o, si es una subvista («actualizar precios», «entregar»…), la
@@ -18,9 +20,9 @@ function destino(carpeta: string | null, obraId: number, id: string): Destino {
   const obra = { carpeta, obraId };
   const deLaObra = SECCIONES_DE_OBRA.some((s) => s.pagina === id) || subvistaDeLaPagina(id) !== undefined;
   const fueraDeLaObra = !deLaObra && (espacioDeLaPagina(id) !== undefined || SECCIONES_DE_CUENTA.some((c) => c.pagina === id));
-  if (fueraDeLaObra) return { ruta: rutaOPendientes(id), pagina: id };
+  if (fueraDeLaObra) return { ruta: rutaOPendientes(id), pagina: id, deEspacio: espacioDeLaPagina(id) !== undefined };
   const pagina = deLaObra ? id : (seccionPorId("resumen")?.pagina ?? id);
-  return { ruta: rutaOPendientes(pagina, obra), pagina };
+  return { ruta: rutaOPendientes(pagina, obra), pagina, deEspacio: false };
 }
 
 // Adónde lleva una acción (`accion.pagina`) de una obra: lo usan la bandeja, por cada pendiente, y el Resumen, por la
@@ -35,6 +37,19 @@ export function destinoDelPendiente(p: PendienteDeObra): string {
 
 export function paginaQueAbre(p: PendienteDeObra): string {
   return destino(p.carpeta, p.obra_id, p.accion.pagina).pagina;
+}
+
+// La acción del pendiente abre una herramienta de un espacio: su ruta no lleva carpeta y trabaja con la abierta.
+export function esDeEspacio(p: PendienteDeObra): boolean {
+  return destino(p.carpeta, p.obra_id, p.accion.pagina).deEspacio;
+}
+
+// La carpeta que hay que abrir antes de ir a lo que el pendiente pide: la herramienta de un espacio (el Catálogo, Auditoría…)
+// trabaja con la carpeta abierta, no con la de la obra del pendiente. null si no hace falta cambiar (la acción es de la
+// obra o de la Cuenta, el pendiente ya es de la carpeta abierta, o no se sabe cuál está abierta: `undefined`).
+export function carpetaPorAbrir(p: PendienteDeObra, carpetaAbierta: string | null | undefined): { carpeta: string | null } | null {
+  if (carpetaAbierta === undefined || p.carpeta === carpetaAbierta) return null;
+  return esDeEspacio(p) ? { carpeta: p.carpeta } : null;
 }
 
 // La misma clave que usa el marco para una obra: la carpeta (vacía la de la empresa) y su número.

@@ -39,6 +39,9 @@ export interface Aplicacion {
   declararMoneda?: (carpeta: string, moneda: string) => Promise<boolean>;
   // Mientras se declara, la lista de carpetas no deja abrir otra (la moneda iria a parar a la que se abre).
   declarandoMoneda?: boolean;
+  // Cambia la contraseña de la cuenta (`POST /v1/sesion/contrasena`) y relee la sesión: la API cierra todas las fichas y abre
+  // otra, con otro token anti-CSRF. La usa Cuenta › Contraseña; sin ella (pruebas) esa sección no puede cambiarla.
+  cambiarContrasena?: (actual: string, nueva: string) => Promise<void>;
   // El marco siempre da las anteriores; son opcionales para que las pruebas de cada pagina no tengan que inventarlas.
   // La API contesto 401: la sesion vencio.
   alExpirar: () => void;

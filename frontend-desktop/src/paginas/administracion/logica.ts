@@ -82,9 +82,28 @@ export function formatearFecha(iso: string): string {
   return `${Number(m[3])} ${mes} ${m[1]}, ${m[4]}:${m[5]}`;
 }
 
+// Por qué se hizo un respaldo (`operacion.respaldo.MOTIVO_*`), como lo lee la persona.
+const MOTIVOS_DE_RESPALDO: Record<string, string> = {
+  migracion: "migración",
+  subida: "subida",
+  manual: "manual",
+  antes_de_restaurar: "antes de restaurar",
+};
+
+// «20261118-172700 (migración, 1 base)»: el nombre del juego, su motivo con tilde y las bases en singular o plural.
+export function textoDelRespaldo(juego: { nombre: string; motivo: string; bases: number }): string {
+  const motivo = MOTIVOS_DE_RESPALDO[juego.motivo] ?? juego.motivo.replaceAll("_", " ");
+  return `${juego.nombre} (${motivo}, ${juego.bases} ${juego.bases === 1 ? "base" : "bases"})`;
+}
+
 export const AYUDA_CONTRASENA =
   "De 10 a 128 caracteres. Anótela y entréguela en persona; la persona la cambiará al entrar.";
-export const AYUDA_USUARIO = "Minúsculas, sin espacios; de 3 a 40 caracteres.";
+export const AYUDA_USUARIO =
+  "De 3 a 40 caracteres: letras sin tilde, números, punto, guion o guion bajo. Empieza con letra o número, sin espacios. Se guarda en minúsculas.";
+export const TEXTO_USUARIO_INVALIDO =
+  "El usuario debe tener de 3 a 40 caracteres: letras sin tilde, números, punto, guion o guion bajo, y empezar con letra o número.";
+// La regla del servidor (`seguridad.cuentas.PATRON_LOGIN`), que primero quita los espacios de los bordes y pasa a minúsculas.
+const PATRON_USUARIO = /^[a-z0-9][a-z0-9._-]{2,39}$/;
 export const AYUDA_DESBLOQUEAR = "Permite entrar de nuevo a una cuenta bloqueada por intentos fallidos.";
 export const MINIMO_CONTRASENA = 10;
 export const MAXIMO_CONTRASENA = 128;
@@ -100,8 +119,17 @@ export function errorDeContrasena(clave: string): string | null {
   return clave === "" || contrasenaValida(clave) ? null : TEXTO_CONTRASENA_INVALIDA;
 }
 
+export function usuarioValido(login: string): boolean {
+  return PATRON_USUARIO.test(login.trim().toLowerCase());
+}
+
+// Texto de error del usuario mientras se escribe: nada si está vacío (aún no se escribió) o si el servidor lo aceptaría.
+export function errorDeUsuario(login: string): string | null {
+  return login.trim() === "" || usuarioValido(login) ? null : TEXTO_USUARIO_INVALIDO;
+}
+
 export function puedeCrear(login: string, nombre: string, clave: string): boolean {
-  return login.trim() !== "" && nombre.trim() !== "" && contrasenaValida(clave);
+  return usuarioValido(login) && nombre.trim() !== "" && contrasenaValida(clave);
 }
 export const AVISO_TEMPORAL = "La persona deberá cambiar la contraseña al entrar.";
 

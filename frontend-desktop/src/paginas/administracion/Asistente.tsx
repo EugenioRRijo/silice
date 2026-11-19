@@ -195,7 +195,11 @@ export default function Asistente() {
           value={tope}
           invalid={errorTope !== null}
           invalidText={errorTope ?? ""}
-          onChange={(e) => setTope(e.target.value)}
+          onChange={(e) => {
+            setTope(e.target.value);
+            // El error que dio el servidor era de lo tecleado antes: no se queda junto al del navegador.
+            setError(null);
+          }}
         />
         <Button type="submit" kind="primary" size="md" disabled={ocupada}>
           Guardar la configuración

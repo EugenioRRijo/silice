@@ -235,10 +235,29 @@ describe("Administracion: Cuentas y Accesos", () => {
       expect(screen.queryByText("La contraseña debe tener entre 10 y 128 caracteres.")).toBeNull();
     });
 
+    test("un usuario que el servidor rechazaría se marca al escribir y no deja crear", async () => {
+      montar();
+      const usuario = userEvent.setup();
+      await cargada();
+      const texto = "El usuario debe tener de 3 a 40 caracteres: letras sin tilde, números, punto, guion o guion bajo, y empezar con letra o número.";
+      expect(screen.queryByText(texto)).toBeNull();
+      await usuario.type(screen.getByLabelText("Usuario"), "ana perez");
+      await usuario.type(screen.getByLabelText("Nombre de la persona"), "Ana");
+      await usuario.type(screen.getByLabelText("Contraseña temporal"), TEMPORAL);
+      expect(screen.getByText(texto)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Crear la cuenta" })).toBeDisabled();
+      await usuario.clear(screen.getByLabelText("Usuario"));
+      await usuario.type(screen.getByLabelText("Usuario"), "ana.perez");
+      expect(screen.queryByText(texto)).toBeNull();
+      expect(screen.getByRole("button", { name: "Crear la cuenta" })).toBeEnabled();
+    });
+
     test("explica el usuario y la politica de contrasena", async () => {
       montar();
       await cargada();
-      expect(screen.getByText("Minúsculas, sin espacios; de 3 a 40 caracteres.")).toBeInTheDocument();
+      expect(
+        screen.getByText("De 3 a 40 caracteres: letras sin tilde, números, punto, guion o guion bajo. Empieza con letra o número, sin espacios. Se guarda en minúsculas."),
+      ).toBeInTheDocument();
       expect(screen.getAllByText(/De 10 a 128 caracteres\. Anótela y entréguela en persona/).length).toBeGreaterThan(0);
       expect(screen.getByLabelText("Usuario")).toBeRequired();
       expect(screen.getByLabelText("Nombre de la persona")).toBeRequired();

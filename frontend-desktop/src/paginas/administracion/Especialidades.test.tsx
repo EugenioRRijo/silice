@@ -59,6 +59,19 @@ describe("Administración › Especialidades", () => {
     expect(screen.getByRole("switch", { name: "Riesgo" })).toBeChecked();
   });
 
+  // Prueba en vivo (2026-11-18): decía «el 2026-11-18 17:27», la fecha ISO, y no el formato de fecha del resto de la app.
+  it("dice quién la cambió y cuándo, con la fecha como en el resto de la aplicación", async () => {
+    const base = pedirFalso.getMockImplementation()!;
+    pedirFalso.mockImplementation(async (ruta, opciones) => {
+      if (ruta === "/v1/modulos") {
+        return { modulos: [{ clave: "vial", nombre: "vial", activo: false, cambiado_por: "ana", cambiado_el: "2026-11-18T17:27:05" }] };
+      }
+      return base(ruta, opciones);
+    });
+    pintar();
+    expect(await screen.findByText("Vial: cambiada por ana el 18 nov 2026, 17:27")).toBeInTheDocument();
+  });
+
   it("dice que apagar no borra los datos", async () => {
     pintar();
     expect(await screen.findByText(/no borra nada/i)).toBeInTheDocument();

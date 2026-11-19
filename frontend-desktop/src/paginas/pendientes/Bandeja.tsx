@@ -12,16 +12,21 @@ import { usePendientes } from "../../marco/usePendientes";
 import { useAplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
 import "./Bandeja.scss";
-import { claveDeObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
+import { carpetaPorAbrir, claveDeObra, contarUrgencias, destinoDelPendiente, esDeEspacio, indiceTrasTecla, paginaQueAbre } from "./logica";
 import { TEXTOS } from "./textos";
 
 interface Props {
   // Abre la sección del pendiente pasando por la confirmación de salida del marco (`irSeguro` de Marco.tsx): formularios
   // sin guardar y, si la obra está en otra carpeta, los borradores de la Hoja que el cambio de carpeta perdería (foco 3).
-  alAbrir: (ruta: string) => void;
+  // Con `antes`, el marco abre primero esa carpeta (con su pregunta y aviso) y solo si se abrió va a la ruta.
+  // Puede devolver una promesa: el botón queda deshabilitado hasta que termina (abrir una carpeta tarda).
+  alAbrir: (ruta: string, antes?: { carpeta: string | null }) => void | Promise<void>;
   // Las obras que el marco ya cargó: de ahí sale la carpeta de las obras que se llaman igual (D-F3-3). Una obra que no
   // esté en la lista no muestra carpeta.
   obras?: readonly ObraDeCarpeta[];
+  // La carpeta abierta en la sesión (null, la de la empresa). `undefined` = todavía no se sabe (las obras cargan o fallaron):
+  // una herramienta de espacio no se lanza a ciegas.
+  carpetaActual?: string | null;
 }
 
 // La carpeta de una obra, solo si otra obra de otra carpeta se llama igual (la misma regla que el árbol de la barra).
@@ -30,7 +35,7 @@ type CarpetaDe = (p: PendienteDeObra) => string | undefined;
 // La bandeja de Pendientes (rediseño F3, Tarea 2; especificación §2.2 y §8 bis): lo que piden las obras de todas las
 // carpetas, en el orden que da la API (lo que bloquea primero), con el detalle del elegido y el botón para hacerlo. Los
 // datos los pide el marco (`usePendientes`), que los vuelve a pedir cada vez que se entra aquí.
-export function Bandeja({ alAbrir, obras = [] }: Props) {
+export function Bandeja({ alAbrir, obras = [], carpetaActual }: Props) {
   const carga = usePendientes();
   const homonimas = useMemo(() => obrasConMismoNombre(obras), [obras]);
   const carpetaDe: CarpetaDe = (p) => homonimas.get(claveDeObra(p.carpeta, p.obra_id));
@@ -66,7 +71,7 @@ export function Bandeja({ alAbrir, obras = [] }: Props) {
         (total === 0 ? (
           <EstadoVacio titulo={TEXTOS.vacio} descripcion={TEXTOS.vacioExplica} />
         ) : (
-          <ListaYDetalle pendientes={carga.pendientes} alAbrir={alAbrir} carpetaDe={carpetaDe} />
+          <ListaYDetalle pendientes={carga.pendientes} alAbrir={alAbrir} carpetaDe={carpetaDe} obras={obras} carpetaActual={carpetaActual} />
         ))}
     </div>
   );
@@ -78,10 +83,14 @@ function ListaYDetalle({
   pendientes,
   alAbrir,
   carpetaDe,
+  obras,
+  carpetaActual,
 }: {
   pendientes: PendienteDeObra[];
   alAbrir: Props["alAbrir"];
   carpetaDe: CarpetaDe;
+  obras: readonly ObraDeCarpeta[];
+  carpetaActual: Props["carpetaActual"];
 }) {
   const base = useId();
   const [elegido, setElegido] = useState(0);
@@ -133,7 +142,7 @@ function ListaYDetalle({
           ))}
         </ul>
       </div>
-      <Detalle pendiente={pendientes[actual]} alAbrir={alAbrir} carpetaDe={carpetaDe} />
+      <Detalle pendiente={pendientes[actual]} alAbrir={alAbrir} carpetaDe={carpetaDe} obras={obras} carpetaActual={carpetaActual} />
     </div>
   );
 }
@@ -144,16 +153,40 @@ function Detalle({
   pendiente: p,
   alAbrir,
   carpetaDe,
+  obras,
+  carpetaActual,
 }: {
   pendiente: PendienteDeObra;
   alAbrir: Props["alAbrir"];
   carpetaDe: CarpetaDe;
+  obras: readonly ObraDeCarpeta[];
+  carpetaActual: Props["carpetaActual"];
 }) {
   const { sesion, modulosApagados } = useAplicacion();
   // La pantalla que se abre es la de la acción (una subvista como «Actualizar precios» o «Entregar» abre la suya, con su
   // propio permiso: `editar_hoja`, `entregar_paquete`), la misma regla de la franja del Resumen (`pantallaVisible`).
   const pagina = paginaPorId(paginaQueAbre(p));
   const puede = pagina !== undefined && usable(pagina, sesion.acciones, sesion.modo_entrega, modulosApagados);
+  // Una herramienta de un espacio trabaja con la carpeta abierta: la del pendiente se abre antes; si la cuenta no puede abrir
+  // carpetas, no se ofrece el paso (abriría la herramienta de otra carpeta) y se dice cuál es.
+  const antes = carpetaPorAbrir(p, carpetaActual);
+  const desconocida = carpetaActual === undefined && esDeEspacio(p);
+  const [abriendo, setAbriendo] = useState(false);
+  const idExplicacion = useId();
+  const puedeAbrirCarpeta = sesion.acciones.includes("abrir_carpeta");
+  const tituloDeLaCarpeta =
+    obras.find((o) => o.carpeta === p.carpeta)?.carpeta_titulo ?? (p.carpeta === null ? "Carpeta de la empresa" : p.carpeta.replace(/\.db$/, ""));
+  const explicacion = desconocida ? TEXTOS.carpetaSinSaber : antes !== null ? TEXTOS.abreAntes(tituloDeLaCarpeta) : null;
+  // Mientras abre la carpeta el botón no admite otro clic: un doble clic haría dos cambios, y el segundo podría llevar a un
+  // destino viejo.
+  async function abrir() {
+    setAbriendo(true);
+    try {
+      await (antes === null ? alAbrir(destinoDelPendiente(p)) : alAbrir(destinoDelPendiente(p), antes));
+    } finally {
+      setAbriendo(false);
+    }
+  }
   return (
     <section className="silice-bandeja__detalle" aria-label={TEXTOS.detalle}>
       <h2 className="cds--type-heading-compact-02">{p.texto}</h2>
@@ -168,10 +201,25 @@ function Detalle({
         </dd>
       </dl>
       <div>
-        {puede ? (
-          <Button kind="primary" size="md" onClick={() => alAbrir(destinoDelPendiente(p))}>
-            {p.accion.texto}
-          </Button>
+        {puede && antes !== null && !puedeAbrirCarpeta ? (
+          <p className="cds--type-body-compact-01">{TEXTOS.sinCambiarDeCarpeta(tituloDeLaCarpeta)}</p>
+        ) : puede ? (
+          <>
+            <Button
+              kind="primary"
+              size="md"
+              disabled={abriendo || desconocida}
+              aria-describedby={explicacion === null ? undefined : idExplicacion}
+              onClick={() => void abrir()}
+            >
+              {p.accion.texto}
+            </Button>
+            {explicacion !== null && (
+              <p id={idExplicacion} className="cds--type-helper-text-01">
+                {explicacion}
+              </p>
+            )}
+          </>
         ) : (
           <p className="cds--type-body-compact-01">{TEXTOS.sinPermiso}</p>
         )}

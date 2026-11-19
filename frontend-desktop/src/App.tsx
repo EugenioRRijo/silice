@@ -81,6 +81,7 @@ export function App({ crearHoja }: Props = {}) {
               sesion={estado.sesion}
               alSalir={alSalir}
               alExpirar={expirar}
+              alCambiarContrasena={cambiarContrasena}
               almacen={almacen}
               crearHoja={crearHoja}
             />

@@ -12,6 +12,7 @@ import {
   AYUDA_CONTRASENA,
   AYUDA_DESBLOQUEAR,
   AYUDA_USUARIO,
+  errorDeUsuario,
   CONFIRMACIONES,
   ROLES,
   avisoDeRoles,
@@ -360,6 +361,8 @@ export default function Cuentas() {
             labelText="Usuario"
             helperText={AYUDA_USUARIO}
             required
+            invalid={errorDeUsuario(login) !== null}
+            invalidText={errorDeUsuario(login) ?? ""}
             value={login}
             onChange={(e) => setLogin(e.target.value)}
           />

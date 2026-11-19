@@ -126,6 +126,56 @@ describe("App", () => {
     expect(await screen.findByRole("button", { name: "Salir de la sesión" })).toBeInTheDocument();
   });
 
+  // Prueba en vivo (2026-11-18): la contraseña solo se cambiaba si la cuenta la tenía provisional. Desde la Cuenta cualquiera
+  // la cambia; la API cierra las demás sesiones y abre otra, así que la persona sigue dentro, con la sesión y el token de la respuesta.
+  test("desde la Cuenta se cambia la contraseña y la persona sigue dentro, con la sesión y el token de la respuesta", async () => {
+    const usuario = userEvent.setup();
+    const base = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      if (String(entrada) === "/v1/sesion/contrasena" && init?.method === "POST") return json({ ...sesion, csrf: "tok-nuevo" });
+      return base(entrada, init);
+    });
+    window.location.hash = "#/cuenta/contrasena";
+    render(<App />);
+    await usuario.type(await screen.findByLabelText("Contraseña actual", {}, { timeout: 5000 }), "vieja-1");
+    await usuario.type(screen.getByLabelText("Contraseña nueva"), "nueva-segura-2");
+    await usuario.type(screen.getByLabelText("Confirme la contraseña nueva"), "nueva-segura-2");
+    const lecturasAntes = fetchFalso.mock.calls.filter((c) => String(c[0]) === "/v1/sesion" && (c[1]?.method ?? "GET") === "GET").length;
+    // La respuesta del POST ya trae la sesión nueva: si leerla otra vez fallara, el cambio ya hecho no se da por fallido.
+    sesionActual = () => json({ detalle: "Se cayó." }, 500);
+    await usuario.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+    expect(await screen.findByText("Contraseña cambiada.")).toBeInTheDocument();
+    const envio = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/sesion/contrasena");
+    expect(JSON.parse(String(envio?.[1]?.body))).toEqual({ actual: "vieja-1", nueva: "nueva-segura-2" });
+    const lecturasDespues = fetchFalso.mock.calls.filter((c) => String(c[0]) === "/v1/sesion" && (c[1]?.method ?? "GET") === "GET").length;
+    expect(lecturasDespues).toBe(lecturasAntes);
+    expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Contraseña" })).toBeInTheDocument();
+    // La petición siguiente lleva el token nuevo (el de la respuesta), no el de la sesión vieja.
+    await usuario.click(screen.getByRole("button", { name: "Salir de la sesión" }));
+    await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/sesion" && c[1]?.method === "DELETE")).toBe(true));
+    const salida = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/sesion" && c[1]?.method === "DELETE");
+    expect(new Headers(salida?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok-nuevo");
+  });
+
+  // Arbitraje: un 401 al cambiarla (sesión vencida o revocada en otra pestaña) vence la sesión, no deja a la persona dentro.
+  test("un 401 al cambiar la contraseña desde la Cuenta da la sesión por vencida", async () => {
+    const usuario = userEvent.setup();
+    const base = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      if (String(entrada) === "/v1/sesion/contrasena" && init?.method === "POST") return json({ detalle: "Sin sesión." }, 401);
+      return base(entrada, init);
+    });
+    window.location.hash = "#/cuenta/contrasena";
+    render(<App />);
+    await usuario.type(await screen.findByLabelText("Contraseña actual", {}, { timeout: 5000 }), "vieja-1");
+    await usuario.type(screen.getByLabelText("Contraseña nueva"), "nueva-segura-2");
+    await usuario.type(screen.getByLabelText("Confirme la contraseña nueva"), "nueva-segura-2");
+    await usuario.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.getByText("Su sesión venció. Entre de nuevo para seguir.")).toBeInTheDocument();
+  });
+
   // Cierre de F3 (H4): el color de la empresa vale en TODA la aplicacion, tambien antes de entrar. GET /v1/tema es
   // publico (no pide sesion), asi que se carga al arrancar y no solo dentro del marco. Colores inventados.
   describe("tema de la empresa", () => {

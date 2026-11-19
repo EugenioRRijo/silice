@@ -61,16 +61,17 @@ describe("rutaCanonica", () => {
     expect(rutaOPendientes("administracion")).toBe("/cuenta/cuentas");
   });
 
-  test("rutaDeCuenta y esCuenta dicen las seis secciones de la Cuenta y nada más", () => {
-    expect(["preferencias", "cuentas", "empresa", "carpetas", "sistema", "ayuda"].map((id) => rutaDeCuenta(id as CuentaId))).toEqual([
+  test("rutaDeCuenta y esCuenta dicen las siete secciones de la Cuenta y nada más", () => {
+    expect(["preferencias", "contrasena", "cuentas", "empresa", "carpetas", "sistema", "ayuda"].map((id) => rutaDeCuenta(id as CuentaId))).toEqual([
       "/cuenta/preferencias",
+      "/cuenta/contrasena",
       "/cuenta/cuentas",
       "/cuenta/empresa",
       "/cuenta/carpetas",
       "/cuenta/sistema",
       "/cuenta/ayuda",
     ]);
-    expect(["preferencias", "cuentas", "empresa", "carpetas", "sistema", "ayuda"].every(esCuenta)).toBe(true);
+    expect(["preferencias", "contrasena", "cuentas", "empresa", "carpetas", "sistema", "ayuda"].every(esCuenta)).toBe(true);
     expect(["xyz", "", "toString", "personas"].some(esCuenta)).toBe(false);
   });
 
@@ -304,9 +305,10 @@ describe("ESPACIOS (contrato 2.2) y SECCIONES_DE_CUENTA (contrato 3)", () => {
     });
   });
 
-  test("la Cuenta tiene sus seis secciones, con los títulos del contrato", () => {
+  test("la Cuenta tiene sus siete secciones, con los títulos del contrato", () => {
     expect(SECCIONES_DE_CUENTA.map((c) => [c.id, c.titulo])).toEqual([
       ["preferencias", "Pantalla y tamaño de letra"],
+      ["contrasena", "Contraseña"],
       ["cuentas", "Cuentas y permisos"],
       ["empresa", "Empresa y tema"],
       ["carpetas", "Carpetas"],

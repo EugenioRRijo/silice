@@ -6,6 +6,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { useAplicacion } from "../../shell/contexto";
+import { textoDelRespaldo } from "./logica";
 import { textoDeRed } from "./sensibles";
 import type { InstalacionEstado, Pendiente } from "./sensibles";
 
@@ -133,7 +134,7 @@ export default function Instalacion() {
             <ul>
               {estado.respaldos.map((j) => (
                 <li key={j.nombre} className="cds--type-body-compact-01">
-                  {j.nombre} ({j.motivo}, {j.bases} bases)
+                  {textoDelRespaldo(j)}
                 </li>
               ))}
             </ul>

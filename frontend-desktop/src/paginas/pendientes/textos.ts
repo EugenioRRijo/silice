@@ -29,4 +29,9 @@ export const TEXTOS = {
   omitidas: (n: number) =>
     n === 1 ? "No se pudo leer 1 carpeta; sus pendientes no aparecen." : `No se pudieron leer ${cifra(n)} carpetas; sus pendientes no aparecen.`,
   sinPermiso: "Su cuenta no puede dar este paso.",
+  // La herramienta de un espacio trabaja con la carpeta abierta: abrir la del pendiente antes se dice debajo del botón.
+  abreAntes: (carpeta: string) => `Abre antes la carpeta «${carpeta}».`,
+  carpetaSinSaber: "Todavía no se sabe qué carpeta está abierta; este paso estará disponible en cuanto se sepa.",
+  sinCambiarDeCarpeta: (carpeta: string) =>
+    `Esta herramienta trabaja con la carpeta abierta y este pendiente es de la carpeta «${carpeta}». Su cuenta no puede abrir otra carpeta.`,
 } as const;

@@ -8,7 +8,7 @@ import { ContextoAplicacion } from "../shell/contexto";
 import { DialogoSalida } from "../shell/DialogoSalida";
 import { cancelarSalida } from "../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../shell/sucio";
-import { sesionDe } from "../shell/obras/datosDePrueba";
+import { ConObras, sesionDe } from "../shell/obras/datosDePrueba";
 import { BarraLateral } from "./BarraLateral";
 import { ContextoPendientes } from "./usePendientes";
 import type { PendientesDelMarco } from "./usePendientes";
@@ -107,7 +107,9 @@ function pintar({
         value={{ sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}
       >
         <ContextoPendientes.Provider value={pendientes}>
-          <BarraLateral obraAbierta={abierta} />
+          <ConObras>
+            <BarraLateral obraAbierta={abierta} />
+          </ConObras>
         </ContextoPendientes.Provider>
         <Ubicacion />
       </ContextoAplicacion.Provider>
@@ -1004,7 +1006,9 @@ describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
           value={{ sesion: sesionDe("admin"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados }}
         >
           <ContextoPendientes.Provider value={SIN_PENDIENTES}>
-            <BarraLateral obraAbierta={null} />
+            <ConObras>
+              <BarraLateral obraAbierta={null} />
+            </ConObras>
           </ContextoPendientes.Provider>
         </ContextoAplicacion.Provider>
       </MemoryRouter>,
