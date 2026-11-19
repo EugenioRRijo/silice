@@ -440,7 +440,7 @@ def ver_existencias(
 def anular_un_conteo(
     movimiento_id: int,
     entrada: AnularConteoEntrada,
-    sesion: SesionInstalacionDep,
+    sesion: SesionInstalacionEscrituraDep,
     usuario: UsuarioDep,
 ) -> MovimientoRespuesta:
     """Anula un conteo físico con un ajuste nuevo que lo compensa (misma fecha, cantidad
