@@ -24,7 +24,8 @@ const SESION: SesionRespuesta = {
 
 const EXISTENCIAS = "/v1/produccion/existencias";
 const ANULAR = "/v1/produccion/conteos/41/anular";
-const BOTON = "Anular el conteo de Arena lavada del 10/10/2026";
+// WCAG 2.5.3: el nombre accesible empieza por el texto visible del boton («Anular conteo»).
+const BOTON = "Anular conteo de Arena lavada del 10/10/2026";
 
 describe("Anular un conteo físico", () => {
   let servidor: ServidorFalso;
@@ -107,10 +108,33 @@ describe("Anular un conteo físico", () => {
       json({ detalle: "Solo se puede anular el último conteo vigente de ARE-01, que es el del 12/10/2026: anule primero ese." }, 409),
     );
     const dialogo = await abrirDialogo();
+    const pedidasAntes = servidor.de("GET", EXISTENCIAS).length;
     await usuario.type(within(dialogo).getByLabelText("Motivo de la anulación"), "mal contado");
     await usuario.click(within(dialogo).getByRole("button", { name: "Anular conteo" }));
     expect(await within(dialogo).findByRole("alert")).toHaveTextContent("anule primero ese");
     expect(screen.getByRole("dialog", { name: "Anular un conteo físico" })).toBeInTheDocument();
+    // la existencia cambio por detras: se vuelve a leer para que la tabla diga el conteo de verdad
+    await waitFor(() => expect(servidor.de("GET", EXISTENCIAS).length).toBeGreaterThan(pedidasAntes));
+  });
+
+  test("un 404 (el conteo ya no existe) también se muestra y vuelve a leer la existencia", async () => {
+    servidor.responder(`POST ${ANULAR}`, () => json({ detalle: "No existe ese conteo físico. Actualice la existencia." }, 404));
+    const dialogo = await abrirDialogo();
+    const pedidasAntes = servidor.de("GET", EXISTENCIAS).length;
+    await usuario.type(within(dialogo).getByLabelText("Motivo de la anulación"), "mal contado");
+    await usuario.click(within(dialogo).getByRole("button", { name: "Anular conteo" }));
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent("No existe ese conteo físico");
+    await waitFor(() => expect(servidor.de("GET", EXISTENCIAS).length).toBeGreaterThan(pedidasAntes));
+  });
+
+  test("un 422 (motivo rechazado) no vuelve a leer la existencia", async () => {
+    servidor.responder(`POST ${ANULAR}`, () => json({ detalle: "El motivo de la anulación admite hasta 300 caracteres." }, 422));
+    const dialogo = await abrirDialogo();
+    const pedidasAntes = servidor.de("GET", EXISTENCIAS).length;
+    await usuario.type(within(dialogo).getByLabelText("Motivo de la anulación"), "mal contado");
+    await usuario.click(within(dialogo).getByRole("button", { name: "Anular conteo" }));
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent("300 caracteres");
+    expect(servidor.de("GET", EXISTENCIAS)).toHaveLength(pedidasAntes);
   });
 
   test("con la sesión vencida avisa a la aplicación", async () => {
