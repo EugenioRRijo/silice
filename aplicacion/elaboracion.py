@@ -515,7 +515,12 @@ def agregar(
         inicio=f"La partida «{codigo}» queda pendiente en el Presupuesto",
         se_valora="se puede valorar",
         esas="esa partida",
-        cierre="Mientras siga pendiente, la versión no se podrá enviar a aprobación.",
+        # la fila que ya está no se revalora sola: el borrador completa solo las partidas nuevas
+        # (re-verificación del 18/11/2026; revalorarla haría falta una ruta nueva en la Hoja)
+        cierre=(
+            "Después, quite la fila y agréguela de nuevo: la fila que ya está no se vuelve a "
+            "valorar sola. Mientras siga pendiente, la versión no se podrá enviar a aprobación."
+        ),
     )
     return vivo, clave, aviso
 
