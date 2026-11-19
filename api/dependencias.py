@@ -136,24 +136,22 @@ SesionDep = Annotated[Session, Depends(sesion_api)]
 SesionDeEscrituraDep = Annotated[Session, Depends(sesion_de_escritura_api, scope="function")]
 
 
-def sesion_instalacion_api() -> Iterator[Session]:
-    """Sesión de `instalacion.db` por petición (arenera, RT-S4-1). Cada petición es una transacción:
-    al terminar bien hace `commit`; si la ruta lanza cualquier excepción (un 4xx incluido), hace
-    `rollback` y la vuelve a lanzar. Los servicios de `produccion/` solo hacen `flush`.
-
-    Se abre la transacción con un `BEGIN` explícito: `pysqlite` no emite `BEGIN` antes de un
-    `SAVEPOINT` (solo antes de un `INSERT`/`UPDATE`/`DELETE`) y, sin él, el `RELEASE` del primer
-    `begin_nested()` de un servicio confirmaría todo y el `rollback` posterior no deshace nada.
-
-    Las rutas bajo esta dependencia no deben convertir una `HTTPException` en respuesta
-    (`RutaSinCache` la relanza): si lo hacen, la sesión ve una salida normal y confirma lo
-    escrito a medias."""
+def _transaccion_de_instalacion(*, escritura: bool) -> Iterator[Session]:
+    """Una transacción de `instalacion.db` por petición: al terminar bien hace `commit`; si la ruta
+    lanza cualquier excepción (un 4xx incluido), hace `rollback` y la vuelve a lanzar. Los
+    servicios de `produccion/` solo hacen `flush`."""
     try:
         motor_de_instalacion()  # la prepara y migra una vez por proceso; una base mala es un 503
     except ErrorDeBase as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
-    with sesion_de_instalacion() as sesion:
-        sesion.connection().exec_driver_sql("BEGIN")
+    with sesion_de_instalacion(escritura=escritura) as sesion:
+        if not escritura:
+            # `BEGIN` explícito: `pysqlite` no emite `BEGIN` antes de un `SAVEPOINT` (solo antes
+            # de un `INSERT`/`UPDATE`/`DELETE`) y, sin él, el `RELEASE` del primer
+            # `begin_nested()` de un servicio confirmaría todo y el `rollback` posterior no
+            # deshace nada. La de escritura lo abre sola (`BEGIN IMMEDIATE`) en su primera
+            # sentencia, sea la que sea.
+            sesion.connection().exec_driver_sql("BEGIN")
         try:
             yield sesion
             sesion.commit()
@@ -162,10 +160,37 @@ def sesion_instalacion_api() -> Iterator[Session]:
             raise
 
 
+def sesion_instalacion_api() -> Iterator[Session]:
+    """Sesión de `instalacion.db` por petición (arenera, RT-S4-1), `BEGIN` diferido: la de las
+    rutas que solo leen y la del control de módulos (`requiere_modulo`) de TODA ruta, incluidas las
+    que escriben en el caso o corren una simulación larga. No toma el bloqueo de escritura.
+
+    Las rutas bajo esta dependencia no deben convertir una `HTTPException` en respuesta
+    (`RutaSinCache` la relanza): si lo hacen, la sesión ve una salida normal y confirma lo
+    escrito a medias."""
+    yield from _transaccion_de_instalacion(escritura=False)
+
+
+def sesion_instalacion_escritura_api() -> Iterator[Session]:
+    """La misma transacción por petición, pero con `BEGIN IMMEDIATE` en su primera sentencia: la de
+    las rutas que ESCRIBEN tras leer algo que deciden (el último conteo, un contador, si ya existe).
+    Toma el bloqueo de escritura antes de leer y la otra petición espera (hasta `busy_timeout`) y
+    lo ve ya confirmado, en vez de leer el mismo estado y pisarlo. Se toma al primer uso (no al
+    resolver la dependencia): una ruta que escribe también en el caso toca primero el caso y luego
+    ésta, siempre en ese orden (caso, instalación), para que dos peticiones no se esperen en cruz.
+    Si la ruta pide también la diferida, son dos sesiones: la diferida solo lee (en WAL no
+    bloquea)."""
+    yield from _transaccion_de_instalacion(escritura=True)
+
+
 #: `scope="function"`: la salida del generador (el `commit`) corre al volver la ruta, ANTES de
 #: enviar la respuesta; con el alcance por omisión correría después y un cliente podría leer antes
 #: del commit.
 SesionInstalacionDep = Annotated[Session, Depends(sesion_instalacion_api, scope="function")]
+#: La de escritura (`BEGIN IMMEDIATE`), solo para las rutas que escriben tras leer lo que deciden.
+SesionInstalacionEscrituraDep = Annotated[
+    Session, Depends(sesion_instalacion_escritura_api, scope="function")
+]
 
 
 class RespuestaNoArmada(RuntimeError):  # noqa: N818

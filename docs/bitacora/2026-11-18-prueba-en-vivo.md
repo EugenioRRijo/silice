@@ -106,8 +106,10 @@ que no se reprodujo.
   congelado. Hoy el aviso dice que hay que quitar la fila y agregarla de nuevo.
 - **La hoja «Trazabilidad» del Excel con punto decimal y la fila que dice «sin APU en el catálogo»:** el texto sale de
   `core/` o de `aplicacion/hoja.py`.
-- **`BEGIN IMMEDIATE` en las escrituras de `instalacion.db`:** evitaría carreras entre leer el conteo y escribir. Es un
-  cambio transversal y va al plan.
-- **Producción:** la anulación auditable de conteos y la mezcla de mezclas del mismo mes en orden topológico.
+- **`BEGIN IMMEDIATE` en las escrituras de `instalacion.db`:** hecho el 2026-11-19 (`feature/escrituras-inmediatas`,
+  DS-67 y DS-68), solo en las rutas que escriben tras leer lo que deciden. Queda por analizar `revision.py` (analizar y
+  recibir un paquete), que mezcla el caso y la instalación.
+- **Producción:** hecho el 2026-11-19 (`feature/produccion-anular-conteo`, DS-72 y DS-73): anular el último conteo
+  físico con su motivo y la mezcla de mezclas del mismo mes en orden topológico.
 - **Otras mejoras:** una página para cargar las series viales, y que Riesgo de la demo muestre algo (la tasa ficticia
   no mueve una obra en USD).

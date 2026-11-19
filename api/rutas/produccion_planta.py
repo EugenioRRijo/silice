@@ -46,6 +46,7 @@ from api.dependencias import (
     SesionDeEscrituraDep,
     SesionDep,
     SesionInstalacionDep,
+    SesionInstalacionEscrituraDep,
     ruta_de_url,
     url_de_la_peticion,
 )
@@ -284,7 +285,7 @@ def _costo_respuesta(r: CostoRegistrado) -> CostoRespuesta:
     dependencies=[Depends(REGISTRAR_COSTOS)],
 )
 def registrar_un_costo(
-    entrada: CostoEntrada, sesion: SesionInstalacionDep, usuario: UsuarioCostosDep
+    entrada: CostoEntrada, sesion: SesionInstalacionEscrituraDep, usuario: UsuarioCostosDep
 ) -> CostoCreado:
     """Registra un costo del periodo (cantera o planta). Monto como texto con punto; periodo,
     centro, concepto, moneda, fecha o fuente inválidos: 422. No guarda nada si algo falla."""
@@ -339,7 +340,7 @@ def totales_de_costos(
 def anular_un_costo(
     costo_id: int,
     entrada: AnularCostoEntrada,
-    sesion: SesionInstalacionDep,
+    sesion: SesionInstalacionEscrituraDep,
     usuario: UsuarioCostosDep,
 ) -> CostoCreado:
     """Anula un costo con un registro nuevo; el original no se borra. Inexistente: 404; ya
@@ -379,7 +380,7 @@ def _receta_respuesta(r: Receta) -> RecetaRespuesta:
 
 @router.post("/recetas", response_model=RecetaCreada, status_code=201)
 def registrar_una_receta(
-    entrada: RecetaEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
+    entrada: RecetaEntrada, sesion: SesionInstalacionEscrituraDep, usuario: UsuarioDep
 ) -> RecetaCreada:
     """Registra una receta de la planta; una receta nueva no cambia las anteriores. Las toneladas
     de componentes por tonelada de mezcla deben sumar 1 (con tolerancia); si no, 422 con la suma."""
@@ -435,7 +436,7 @@ def ver_recetas_vigentes(
 
 @router.post("/producciones", response_model=ProduccionCreada, status_code=201)
 def producir_mezcla(
-    entrada: ProduccionEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
+    entrada: ProduccionEntrada, sesion: SesionInstalacionEscrituraDep, usuario: UsuarioDep
 ) -> ProduccionCreada:
     """Produce el producto con la receta vigente en la fecha: registra su entrada y un consumo por
     cada componente propio. Sin receta vigente o con un material que no existe: 422, sin dejar
@@ -503,7 +504,7 @@ def _calculo_respuesta(
 )
 def calcular_costo_por_tonelada(
     entrada: CalculoDeCostoEntrada,
-    sesion: SesionInstalacionDep,
+    sesion: SesionInstalacionEscrituraDep,
     caso: SesionDep,
     usuario: UsuarioCostosDep,
 ) -> CalculoDeCostoRespuesta:
@@ -576,7 +577,7 @@ def ver_calculo(calculo_id: int, sesion: SesionInstalacionDep) -> CalculoDeCosto
 def publicar_costo_propio(
     calculo_id: int,
     request: Request,
-    sesion: SesionInstalacionDep,
+    sesion: SesionInstalacionEscrituraDep,
     caso: SesionDeEscrituraDep,
     usuario: UsuarioPublicaDep,
 ) -> PublicacionCreada:
@@ -588,6 +589,7 @@ def publicar_costo_propio(
     a la moneda del cálculo: 422, sin escribir; inexistente: 404. Sin costo por tonelada: 422;
     ya publicado: 409, sin escribir nada (Tarea 4b). Nada se sobrescribe: cada publicación es otra
     lista, anotada en la instalación, que se confirma después de la carpeta."""
+    caso.connection()  # primero el bloqueo de la carpeta y luego el de la instalación, siempre
     try:
         calculo = calculo_guardado(sesion, calculo_id)
         exigir_publicable(sesion, calculo)

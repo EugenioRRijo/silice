@@ -136,7 +136,7 @@ def ver(request: Request) -> EmpresaRespuesta:
 def guardar(
     datos: EmpresaDatos, request: Request, activa: Annotated[SesionActiva, ADMIN]
 ) -> EmpresaRespuesta:
-    with sesion_de_instalacion() as bd:
+    with sesion_de_instalacion(escritura=True) as bd:
         try:
             empresas.guardar_empresa_propia(
                 bd, datos.nombre, datos.rif, datos.ciudad, activa.login, ahora()
@@ -152,7 +152,7 @@ def generar(
     datos: GenerarClave, request: Request, activa: Annotated[SesionActiva, EN_EL_EQUIPO]
 ) -> EmpresaRespuesta:
     """Genera el par de claves en este equipo; la privada queda cifrada con la contraseña."""
-    with sesion_de_instalacion() as bd:
+    with sesion_de_instalacion(escritura=True) as bd:
         try:
             empresas.generar_clave(bd, datos.contrasena, activa.login, ahora())
         except ERRORES_ESPERADOS as error:
@@ -205,7 +205,7 @@ def retirar(
     datos: BajaDeClave, request: Request, activa: Annotated[SesionActiva, EN_EL_EQUIPO]
 ) -> EmpresaRespuesta:
     """Cambio de clave sin compromiso: se destruye la privada de este equipo."""
-    with sesion_de_instalacion() as bd:
+    with sesion_de_instalacion(escritura=True) as bd:
         try:
             empresas.retirar_clave(bd, activa.login, ahora(), datos.motivo)
         except ERRORES_ESPERADOS as error:
@@ -228,7 +228,7 @@ def revocar(
             raise HTTPException(
                 status_code=429, detail=MENSAJE_FRENO, headers={"Retry-After": str(int(espera) + 1)}
             )
-    with sesion_de_instalacion() as bd:
+    with sesion_de_instalacion(escritura=True) as bd:
         try:
             aviso = empresas.revocar_clave_propia(
                 bd, activa.login, momento, datos.motivo, datos.contrasena or None

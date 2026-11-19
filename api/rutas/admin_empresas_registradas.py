@@ -143,7 +143,7 @@ def registrar(
 ) -> RegistradasRespuesta:
     """Registra la clave de otra empresa con la huella leída por otro canal."""
     contenido = _contenido(archivo)
-    with sesion_de_instalacion() as bd:
+    with sesion_de_instalacion(escritura=True) as bd:
         try:
             empresas.registrar_empresa_ajena(
                 bd, contenido, huella, comprobada_con, metodo, activa.login, ahora()
@@ -159,7 +159,7 @@ def retirar(
     empresa_id: int, datos: Retiro, activa: Annotated[SesionActiva, ADMIN]
 ) -> RegistradasRespuesta:
     """La empresa avisó que cambió de clave: sus paquetes anteriores a la fecha siguen valiendo."""
-    with sesion_de_instalacion() as bd:
+    with sesion_de_instalacion(escritura=True) as bd:
         try:
             empresas.retirar_ajena(
                 bd, empresa_id, datetime.combine(datos.fecha, time.min), activa.login, ahora()
@@ -182,7 +182,7 @@ def revocar(
     firmado = _contenido(aviso) if aviso is not None and aviso.filename else None
     if firmado is None and motivo.strip() == "":
         raise HTTPException(status_code=400, detail=MENSAJE_REVOCACION_INVALIDA)
-    with sesion_de_instalacion() as bd:
+    with sesion_de_instalacion(escritura=True) as bd:
         try:
             empresas.revocar_ajena(bd, empresa_id, motivo, activa.login, ahora(), firmado)
         except ERRORES_ESPERADOS as error:
