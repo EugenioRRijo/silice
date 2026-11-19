@@ -345,10 +345,12 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
       )}
 
       {/* El informe de hallazgos en PDF (decision P2): el servidor lo dibuja con el mismo libro y la fecha con la que se
-          audito lo que se ve. Solo hay boton cuando hay resultado. */}
+          audito lo que se ve. Solo hay boton cuando hay resultado; la `key` es el resultado (libro y fecha): con otro resultado el
+          boton arranca limpio y no arrastra el error de antes. */}
       {fase === "listo" && auditoria && archivo && (
         <div className="visor__descarga">
           <DescargaArchivo
+            key={`${auditoria.libro.sha256}-${auditoria.fecha_devolucion ?? fecha}`}
             ruta="/v1/libros/auditoria/pdf"
             metodo="POST"
             cuerpo={cuerpoDeLibro(archivo, auditoria.fecha_devolucion ?? fecha)}

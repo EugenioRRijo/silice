@@ -40,6 +40,8 @@ TIPO_PDF = "application/pdf"
 MENSAJE_PDF_HALLAZGOS = "No se pudo preparar el PDF de hallazgos."
 SIN_FECHA = "sin fecha"
 SIN_TOTAL = "—"
+#: Cuántos caracteres del SHA-256 del libro lleva el PDF.
+HUELLA_ABREVIADA = 12
 
 
 def _dia(valor: date | None) -> str:
@@ -67,6 +69,7 @@ def informe_de(r: ResultadoFusion, emitido: date) -> InformeDeHallazgos:
         veredicto="Cumple" if r.informe.cumple else "No cumple",
         conteo=conteo_por_severidad(h.severidad for h in r.hallazgos_tabla),
         totales=totales,
+        huella=r.libro.sha256[:HUELLA_ABREVIADA],
         hallazgos=tuple(
             FilaDeHallazgo(
                 codigo=h.codigo,

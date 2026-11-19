@@ -57,8 +57,16 @@ body {
 .visor__descarga {
   display: flex;
   flex: none;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
   padding: 0.5rem 1rem 0;
+
+  // el aviso de error baja debajo del boton y ocupa el ancho entero, sin apretarlo
+  .silice-descarga {
+    justify-items: end;
+    max-inline-size: 100%;
+  }
 }
 
 .visor__fecha {
