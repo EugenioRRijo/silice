@@ -340,13 +340,14 @@ describe("Existencias de la arenera", () => {
       expect(servidor.de("POST", MOVIMIENTOS)[0].cuerpo).toMatchObject({ tipo: "ajuste", cantidad: "118" });
     });
 
-    test("un conteo igual a la existencia (la API contesta null) dice que no hizo falta ajustar", async () => {
-      servidor.responder(`POST ${MOVIMIENTOS}`, () => json(null, 200));
+    // Arbitraje 2026-11-18: el conteo que coincide queda registrado (un ajuste en 0) y cierra la existencia hasta su fecha.
+    test("un conteo igual a la existencia (ajuste en 0) dice que quedó registrado sin diferencia", async () => {
+      servidor.responder(`POST ${MOVIMIENTOS}`, () => json({ id: 3, tipo: "ajuste", cantidad: "0" }, 201));
       await abrirRegistrar();
       await irA("Conteo físico");
       await usuario.type(screen.getByLabelText("Lo contado (m³)"), "0");
       await usuario.click(screen.getByRole("button", { name: "Registrar conteo" }));
-      expect(await screen.findByText("El conteo coincide con la existencia: no hizo falta ajustar.")).toBeInTheDocument();
+      expect(await screen.findByText("Conteo registrado: coincide con la existencia, sin diferencia.")).toBeInTheDocument();
     });
 
     test("crea un material nuevo con su minima y su densidad, y ya aparece en las listas", async () => {

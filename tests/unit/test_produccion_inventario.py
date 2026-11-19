@@ -77,14 +77,29 @@ def test_el_ajuste_guarda_la_diferencia_con_signo(sesion: Session) -> None:
     assert existencia(sesion, mid) == D("20")
 
 
-def test_conteo_igual_a_lo_teorico_no_crea_ajuste(sesion: Session) -> None:
+def test_conteo_igual_a_lo_teorico_deja_un_ajuste_en_cero_y_cierra_el_pasado(
+    sesion: Session,
+) -> None:
+    """Arbitraje 2026-11-18: el conteo que coincide tambien se guarda (un ajuste en 0): sin fila no
+    cerraba el pasado y una entrada retroactiva cambiaba la existencia posterior al conteo."""
     mid = _arena(sesion)
     _serie(sesion, mid)
-    assert (
-        registrar_ajuste_por_conteo(sesion, mid, date(2026, 10, 5), D("34.5"), usuario=USUARIO)
-        is None
-    )
+    ajuste = registrar_ajuste_por_conteo(sesion, mid, date(2026, 10, 5), D("34.5"), usuario=USUARIO)
+    assert ajuste is not None and ajuste.tipo == "ajuste"
+    assert ajuste.cantidad == D("0") and str(ajuste.cantidad) == "0"
     assert existencia(sesion, mid) == D("34.5")
+    with pytest.raises(ErrorDeInventario, match="conteo físico del 05/10/2026"):
+        registrar_entrada(sesion, mid, date(2026, 10, 4), D("10"), usuario=USUARIO)
+    assert existencia(sesion, mid) == D("34.5")
+
+
+def test_un_material_sin_movimientos_contado_en_cero_tambien_cierra(sesion: Session) -> None:
+    mid = _arena(sesion)
+    ajuste = registrar_ajuste_por_conteo(sesion, mid, date(2026, 10, 5), D("0"), usuario=USUARIO)
+    assert ajuste is not None and ajuste.cantidad == D("0")
+    assert existencia(sesion, mid) == D("0")
+    with pytest.raises(ErrorDeInventario, match="conteo físico del 05/10/2026"):
+        registrar_despacho(sesion, mid, date(2026, 10, 1), D("3"), usuario=USUARIO)
 
 
 def test_queda_poco_incluye_el_minimo_exacto(sesion: Session) -> None:
