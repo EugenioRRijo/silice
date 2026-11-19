@@ -1320,7 +1320,9 @@ La pestaña «Existencias» abre la pantalla «Existencias de la arenera».
 **Existencias.** Cuatro pestañas:
 
 - «Existencias»: cuánto hay de cada material, con su «Estado» («Normal», «Queda poco» o «Existencia
-  negativa: falta registrar producción o conteo»).
+  negativa: falta registrar producción o conteo») y su «Último conteo». Un conteo físico cierra la
+  existencia del material hasta su fecha; si estaba mal, «Anular conteo» pide el motivo y lo anula sin
+  borrarlo: la existencia vuelve a la de antes del conteo. Solo se anula el último de cada material.
 - «Registrar»: «Entrada», «Despacho», «Conteo físico» y «Material nuevo».
 - «Importar báscula»: suelte el archivo de pesajes (`.csv` o `.xlsx`) y pulse «Importar».
 - «Pesajes sospechosos»: los pesajes que no cuadran; «Revisar» cada uno y resolverlo o descartarlo.

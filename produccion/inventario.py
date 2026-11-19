@@ -179,7 +179,8 @@ def exigir_fechas_abiertas(sesion: Session, materiales: Sequence[Material], fech
         raise ErrorDeInventario(
             f"El material {material.codigo} tiene un conteo físico del {cerrado:%d/%m/%Y}, que "
             f"cerró su existencia hasta ese día: registre el movimiento con una fecha posterior al "
-            f"{cerrado:%d/%m/%Y} o, si el conteo estaba mal, haga un conteo nuevo."
+            f"{cerrado:%d/%m/%Y} o, si el conteo estaba mal, anúlelo en «Existencias» con su "
+            "motivo."
         )
 
 

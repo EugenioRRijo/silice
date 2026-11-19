@@ -481,6 +481,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
     titulo: "Existencias de la arenera",
     parrafos: [
       "Cuánto hay de cada material de la arenera a una fecha. En «Registrar» se anotan las entradas, los despachos, los conteos físicos y los materiales nuevos; en «Importar báscula», el reporte de la báscula, y en «Pesajes sospechosos» se resuelven los pesajes que no cuadran.",
+      "Un conteo físico cierra la existencia del material hasta su fecha. Si estaba mal, «Anular conteo» lo anula con su motivo, sin borrarlo; solo se anula el último de cada material.",
     ],
   },
   costos: {
