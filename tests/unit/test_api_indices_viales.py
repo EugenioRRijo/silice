@@ -24,10 +24,11 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from api import caso_web, dependencias
 from api.main import app
+from api.rutas import indices as ruta_indices
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
@@ -336,3 +337,84 @@ def test_la_fecha_de_descarga_anterior_a_los_datos_se_rechaza(_entorno: Path) ->
     assert r.status_code == 422, r.text
     assert r.json()["detalle"].startswith("No se importó nada: ")
     assert _valores(_entorno) == {}
+
+
+# --- Arbitraje: entrada hostil, cabeceras y mensajes (rojo) -----------------------------------
+
+
+def _conteos(ruta: Path) -> tuple[int, int, int]:
+    """(valores, importaciones, series) guardados: lo que NO debe quedar tras un fallo."""
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            return tuple(  # type: ignore[return-value]
+                sesion.scalar(select(func.count()).select_from(m))
+                for m in (models.ValorIndice, models.ImportacionIndice, models.SerieIndice)
+            )
+    finally:
+        motor.dispose()
+
+
+def test_un_campo_enorme_no_es_500_sino_422_y_no_escribe(_entorno: Path) -> None:
+    enorme = (ENCABEZADO + f"{PPI},2026-01-01,{'9' * 200_000},no,ficticia\n").encode()
+    r = _importar(enorme)
+    assert r.status_code == 422, r.text[:300]
+    assert r.json()["detalle"].startswith("No se importó nada: ")
+    assert len(r.text) < 3000  # el detalle se acota: no repite el campo enorme
+    assert _conteos(_entorno) == (0, 0, 0)
+
+
+def test_un_byte_nulo_en_cualquier_campo_nunca_es_500() -> None:
+    for fila in (
+        f"{PPI},2026-01-01,1\x00,no,ficticia\n",
+        f"{PPI}\x00,2026-01-01,1,no,ficticia\n",
+        f"{PPI},2026-01-01,1,no,fic\x00ticia\n",
+    ):
+        r = _importar((ENCABEZADO + fila).encode())
+        assert r.status_code in (200, 422), (fila, r.status_code)
+
+
+def test_un_csv_con_bom_de_excel_se_importa(_entorno: Path) -> None:
+    r = _importar(b"\xef\xbb\xbf" + BUENO)
+    assert r.status_code == 200, r.text
+    assert (r.json()["importada"], r.json()["observaciones"]) == (True, 3)
+
+
+@pytest.mark.parametrize("nombre", ["CON.csv", "NUL.csv", "com1.csv", "a<b>.csv"])
+def test_un_nombre_reservado_de_windows_no_da_error_del_sistema(nombre: str) -> None:
+    r = _importar(nombre=nombre)
+    assert r.status_code == 200, r.text
+
+
+def test_un_nombre_sin_parte_utilizable_es_422_con_su_mensaje() -> None:
+    r = _importar(nombre="..")
+    assert (r.status_code, r.json()) == (422, {"detalle": ruta_indices.MENSAJE_SIN_NOMBRE})
+
+
+def test_los_422_de_nombre_y_extension_no_se_guardan_en_cache() -> None:
+    for nombre in ("..", "series.txt"):
+        r = _importar(nombre=nombre)
+        assert r.status_code == 422
+        assert r.headers.get("cache-control") == "no-store", nombre
+
+
+def test_un_archivo_por_encima_del_tope_se_rechaza_con_su_mensaje_y_sin_escribir(
+    monkeypatch, _entorno: Path
+) -> None:
+    monkeypatch.setattr(ruta_indices, "LIMITE_BYTES", 2 * 2**20)
+    r = _importar(b"x" * (3 * 2**20))
+    assert (r.status_code, r.json()) == (
+        422,
+        {"detalle": "No se importó nada: series.csv: pesa 3.0 MB; el límite es 2 MB."},
+    )
+    assert _conteos(_entorno) == (0, 0, 0)
+
+
+@pytest.mark.parametrize("fuente", ["FRED\x07", "FRED\nBLS", "FRED\x00BLS", "FRED\x7f"])
+def test_una_fuente_con_caracteres_de_control_se_rechaza(fuente: str, _entorno: Path) -> None:
+    r = _importar(fuente=fuente)
+    assert (r.status_code, r.json()) == (
+        422,
+        {"detalle": "La fuente no puede llevar caracteres de control."},
+    )
+    assert _conteos(_entorno) == (0, 0, 0)
