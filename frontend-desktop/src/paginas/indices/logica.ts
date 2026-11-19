@@ -71,9 +71,10 @@ export interface Lectura {
 export const COLUMNAS_SERIES: ColumnaDensa[] = [
   { clave: "serie", titulo: "Serie" },
   { clave: "valores", titulo: "Valores", numerica: true },
-  // La API manda aaaa-mm-dd; se lee como en el resto de Sílice (VB-19).
-  { clave: "desde", titulo: "Desde", presentar: fechaEsVe },
-  { clave: "hasta", titulo: "Hasta", presentar: fechaEsVe },
+  // La API manda aaaa-mm-dd; se lee como en el resto de Sílice (VB-19). Con `celda` y no con `presentar`: este pondría la
+  // forma ISO en el `title` (VD-5), como la fecha de las versiones del Tablero.
+  { clave: "desde", titulo: "Desde", celda: (f) => fechaEsVe(f["desde"] ?? "") },
+  { clave: "hasta", titulo: "Hasta", celda: (f) => fechaEsVe(f["hasta"] ?? "") },
 ];
 export const COLUMNAS_RECHAZOS: ColumnaDensa[] = [
   { clave: "lugar", titulo: "Lugar" },
