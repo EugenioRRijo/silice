@@ -301,3 +301,29 @@ def test_un_dia_antes_del_conteo_tambien_esta_cerrado(sesion: Session) -> None:
     with pytest.raises(ErrorDeInventario, match=cerrado):
         registrar_despacho(sesion, mid, date(2026, 11, 5), D("1"), usuario=USUARIO)
     assert existencia(sesion, mid) == D("148")
+
+
+@pytest.mark.parametrize(
+    ("registrar", "texto"),
+    [
+        (
+            lambda s, m: registrar_entrada(s, m, date(2026, 10, 1), D("0"), usuario=USUARIO),
+            "de la entrada",
+        ),
+        (
+            lambda s, m: registrar_despacho(s, m, date(2026, 10, 1), D("0"), usuario=USUARIO),
+            "del despacho",
+        ),
+        (
+            lambda s, m: registrar_consumo(
+                s, m, date(2026, 10, 1), D("0"), usuario=USUARIO, ahora=datetime(2026, 10, 2)
+            ),
+            "del consumo",
+        ),
+    ],
+)
+def test_la_cantidad_en_cero_se_dice_con_buen_castellano(sesion: Session, registrar, texto) -> None:
+    """Arbitraje 2026-11-18: decia «La cantidad de el consumo» y «de el despacho»."""
+    mid = _arena(sesion)
+    with pytest.raises(ErrorDeInventario, match=rf"^La cantidad {texto} debe ser un número"):
+        registrar(sesion, mid)

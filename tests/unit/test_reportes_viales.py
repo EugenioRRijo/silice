@@ -381,7 +381,7 @@ def test_produccion_publicado_dice_la_lista(ins, caso):
 
 
 def test_produccion_sin_calculos_es_un_error_llano():
-    with pytest.raises(ValueError, match="2026-11"):
+    with pytest.raises(ValueError, match=r"período de noviembre de 2026\.$"):
         reportes.costo_de_produccion([], periodo="2026-11")
 
 

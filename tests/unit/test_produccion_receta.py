@@ -457,3 +457,16 @@ def test_una_entrada_en_m3_que_redondea_a_cero_se_niega_antes_de_escribir(sesion
             sesion, "MZ-1", D("0.0001"), date(2026, 10, 15), usuario="ana", ahora=AHORA
         )
     assert _movimientos(sesion) == antes
+
+
+def test_con_varios_materiales_cerrados_se_nombra_el_cierre_mas_tardio(sesion) -> None:
+    """Arbitraje 2026-11-18: MZ-1 contado el 04/11 y AGR-12 el 06/11; producir el 03/11 debe
+    nombrar el cierre del 06/11, que es el que de verdad obliga a mover la fecha."""
+    _planta(sesion)
+    _registrar(sesion, _mezcla())
+    ids = {m.codigo: m.id for m in sesion.scalars(select(Material).where(Material.codigo != ""))}
+    registrar_entrada(sesion, ids["AGR-12"], date(2026, 11, 1), D("500"), usuario="ana")
+    registrar_ajuste_por_conteo(sesion, ids["MZ-1"], date(2026, 11, 4), D("0"), usuario="ana")
+    registrar_ajuste_por_conteo(sesion, ids["AGR-12"], date(2026, 11, 6), D("480"), usuario="ana")
+    with pytest.raises(ErrorDeInventario, match=r"AGR-12 tiene un conteo físico del 06/11/2026"):
+        producir_con_receta(sesion, "MZ-1", D("10"), date(2026, 11, 3), usuario="ana", ahora=AHORA)
