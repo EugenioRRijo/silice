@@ -267,6 +267,8 @@ TABLA = {
     ("GET", "/v1/indices/en-usd/origenes"): PRECIOS,  # RF-214 (ola 2, linea 4)
     ("POST", "/v1/indices/en-usd/ver"): PRECIOS,
     ("POST", "/v1/indices/en-usd/confirmar"): PRECIOS,
+    ("GET", "/v1/indices/series-viales"): PRECIOS,  # series del riesgo vial (ola 1119B)
+    ("POST", "/v1/indices/series-viales/importar"): PRECIOS,
     ("GET", "/v1/precios-empresa"): PRECIOS,
     ("POST", "/v1/precios-empresa/referencia"): PRECIOS,
     ("POST", "/v1/precios-empresa/listas"): PRECIOS,

@@ -5628,6 +5628,70 @@
         }
       }
     },
+    "/v1/indices/series-viales": {
+      "get": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Leer Series Viales",
+        "description": "Las series viales con su definición y su historia cargada. No escribe nada.",
+        "operationId": "leer_series_viales_v1_indices_series_viales_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesVialesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/indices/series-viales/importar": {
+      "post": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Importar Serie Vial",
+        "description": "Importa SOLO la serie elegida del CSV canónico: todo o nada, y el mismo archivo dos veces\nno escribe nada. El responsable es la persona de la sesión (RF-82).",
+        "operationId": "importar_serie_vial_v1_indices_series_viales_importar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_serie_vial_v1_indices_series_viales_importar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacionVialRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/indices/en-usd/origenes": {
       "get": {
         "tags": [
@@ -14762,6 +14826,38 @@
         ],
         "title": "Body_importar_reporte_v1_produccion_bascula_importar_post"
       },
+      "Body_importar_serie_vial_v1_indices_series_viales_importar_post": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Serie"
+          },
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "fecha_descarga": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Descarga"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie",
+          "archivo",
+          "fecha_descarga",
+          "fuente"
+        ],
+        "title": "Body_importar_serie_vial_v1_indices_series_viales_importar_post"
+      },
       "Body_importar_tramos_v1_vial_tramos_importar_post": {
         "properties": {
           "archivo": {
@@ -21808,6 +21904,67 @@
         "title": "ImportacionDeObraRespuesta",
         "description": "Una fila del registro de importaciones de la obra (F4, Tarea 10). `version: null` y\n`guardada: false` son lo importado que sigue en un borrador sin guardar."
       },
+      "ImportacionVialRespuesta": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "title": "Serie"
+          },
+          "importada": {
+            "type": "boolean",
+            "title": "Importada"
+          },
+          "observaciones": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observaciones"
+          },
+          "desde": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desde"
+          },
+          "hasta": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hasta"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie",
+          "importada",
+          "observaciones",
+          "desde",
+          "hasta",
+          "mensaje"
+        ],
+        "title": "ImportacionVialRespuesta"
+      },
       "ImportacionesRespuesta": {
         "properties": {
           "importaciones": {
@@ -24503,6 +24660,31 @@
           "sin_tasa"
         ],
         "title": "ObservacionRespuesta"
+      },
+      "ObservacionVialRespuesta": {
+        "properties": {
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor",
+            "description": "El valor exacto, con punto decimal."
+          },
+          "provisional": {
+            "type": "boolean",
+            "title": "Provisional"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha",
+          "valor",
+          "provisional"
+        ],
+        "title": "ObservacionVialRespuesta"
       },
       "OpcionListaRespuesta": {
         "properties": {
@@ -28503,6 +28685,89 @@
           "organismo"
         ],
         "title": "SerieOrigen"
+      },
+      "SerieVialRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "organismo": {
+            "type": "string",
+            "title": "Organismo"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "periodicidad": {
+            "type": "string",
+            "title": "Periodicidad"
+          },
+          "observaciones": {
+            "type": "integer",
+            "title": "Observaciones"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "title": "Hasta"
+          },
+          "historia": {
+            "items": {
+              "$ref": "#/components/schemas/ObservacionVialRespuesta"
+            },
+            "type": "array",
+            "title": "Historia"
+          },
+          "omitidas": {
+            "type": "integer",
+            "title": "Omitidas",
+            "description": "Valores más antiguos que no viajan (solo los últimos)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre",
+          "organismo",
+          "unidad",
+          "periodicidad",
+          "observaciones",
+          "desde",
+          "hasta",
+          "historia",
+          "omitidas"
+        ],
+        "title": "SerieVialRespuesta"
+      },
+      "SeriesVialesRespuesta": {
+        "properties": {
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SerieVialRespuesta"
+            },
+            "type": "array",
+            "title": "Series"
+          },
+          "responsable": {
+            "type": "string",
+            "title": "Responsable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series",
+          "responsable"
+        ],
+        "title": "SeriesVialesRespuesta"
       },
       "SesionRespuesta": {
         "properties": {

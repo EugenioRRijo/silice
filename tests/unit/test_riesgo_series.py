@@ -17,8 +17,11 @@ from aplicacion.riesgo.series import (
     GASOIL_USD,
     SERIES_VIALES,
     MapaSeries,
+    ObservacionCargada,
     historia_mensual,
     importar_serie_csv,
+    observaciones_cargadas,
+    resumen_de_importacion,
 )
 from core import models
 from core.catalog import abrir_sesion, crear_esquema, crear_motor
@@ -200,3 +203,25 @@ def test_el_mapa_es_inmutable_y_se_indexa_por_descripcion():
         mapa.serie_por_insumo = {}  # type: ignore[misc]
     with pytest.raises(TypeError):
         mapa.serie_por_insumo["Otro"] = "X"  # type: ignore[index]
+
+
+def test_lo_cargado_de_una_serie_va_en_orden_de_fecha_y_la_revision_manda(sesion, tmp_path):
+    uno = _csv(
+        tmp_path,
+        "uno.csv",
+        ["GASOIL_USD,2026-02-01,0.32,no,f", "GASOIL_USD,2026-01-01,0.30,si,f"],
+    )
+    dos = _csv(tmp_path, "dos.csv", ["GASOIL_USD,2026-02-01,0.35,no,f"])
+    _importar(sesion, "GASOIL_USD", uno)
+    _importar(sesion, "GASOIL_USD", dos)
+    assert observaciones_cargadas(sesion, "GASOIL_USD") == [
+        ObservacionCargada(date(2026, 1, 1), D("0.30"), True),
+        ObservacionCargada(date(2026, 2, 1), D("0.35"), False),
+    ]
+    assert observaciones_cargadas(sesion, "CEMENTO_ASFALTICO_PPI") == []
+
+
+def test_una_importacion_dice_cuantos_valores_trajo_y_su_rango(sesion, tmp_path):
+    ruta = _csv(tmp_path, "p.csv", [f"GASOIL_USD,2026-0{m}-01,0.3,no,f" for m in (3, 1, 2)])
+    id_ = _importar(sesion, "GASOIL_USD", ruta)
+    assert resumen_de_importacion(sesion, id_) == (3, date(2026, 1, 1), date(2026, 3, 1))
