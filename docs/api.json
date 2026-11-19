@@ -9152,7 +9152,7 @@
           "produccion"
         ],
         "summary": "Registrar Un Movimiento",
-        "description": "Registra una entrada (producción), un despacho o un ajuste por conteo. En el ajuste,\n`cantidad` es el **conteo físico** y se guarda la diferencia con la existencia a esa fecha; si\nno hay diferencia responde 200 con `null`. Un despacho nunca se bloquea por dejar la\nexistencia negativa (RT-S4-2).",
+        "description": "Registra una entrada (producción), un despacho o un ajuste por conteo. En el ajuste,\n`cantidad` es el **conteo físico** y se guarda la diferencia con la existencia a esa fecha,\ntambién cuando es 0: el conteo cierra la existencia del material hasta su fecha. Un despacho\nnunca se bloquea por dejar la existencia negativa (RT-S4-2).",
         "operationId": "registrar_un_movimiento_v1_produccion_movimientos_post",
         "requestBody": {
           "content": {
@@ -9170,21 +9170,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/MovimientoRespuesta"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "title": "Response Registrar Un Movimiento V1 Produccion Movimientos Post"
+                  "$ref": "#/components/schemas/MovimientoRespuesta"
                 }
               }
             }
-          },
-          "200": {
-            "description": "Ajuste sin diferencia: el conteo coincide con la existencia (`null`)."
           },
           "422": {
             "description": "Validation Error",

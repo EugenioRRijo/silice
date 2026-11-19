@@ -94,7 +94,7 @@ function FormularioMovimiento({ tipo, materiales, alRegistrar, reacciones }: Pro
 
     setEnviando(true);
     try {
-      const respuesta = await pedir<MovimientoRespuesta | null>(RUTA_MOVIMIENTOS, {
+      const respuesta = await pedir<MovimientoRespuesta>(RUTA_MOVIMIENTOS, {
         metodo: "POST",
         cuerpo: {
           material_codigo: material.codigo,
@@ -107,7 +107,8 @@ function FormularioMovimiento({ tipo, materiales, alRegistrar, reacciones }: Pro
       const dicha = `${mostrarCantidad(lectura.valor)} ${unidad} de ${material.codigo}`;
       if (tipo === "entrada") setAviso(`Entrada registrada: ${dicha}.`);
       else if (tipo === "despacho") setAviso(`Despacho registrado: ${dicha}.`);
-      else setAviso(respuesta === null ? "El conteo coincide con la existencia: no hizo falta ajustar." : "Conteo registrado.");
+      // El conteo siempre queda registrado (arbitraje 2026-11-18): uno que coincide es un ajuste en 0 y cierra la existencia.
+      else setAviso(/^-?0(?:\.0*)?$/.test(respuesta.cantidad) ? "Conteo registrado: coincide con la existencia, sin diferencia." : "Conteo registrado.");
       setCantidad("");
       setNota("");
       alRegistrar();

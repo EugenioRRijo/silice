@@ -250,7 +250,10 @@ def registrar_ajuste_por_conteo(
     *,
     usuario: str,
     nota: str = "",
-) -> Movimiento | None:
+) -> Movimiento:
+    """Guarda el conteo como un ajuste con la diferencia contra la existencia a `fecha`. Un conteo
+    que coincide tambien se guarda (ajuste en 0, arbitraje 2026-11-18): es el que cierra el pasado
+    del material."""
     if (
         not isinstance(conteo_fisico, Decimal)
         or not conteo_fisico.is_finite()
@@ -266,7 +269,7 @@ def registrar_ajuste_por_conteo(
         )
     diferencia = conteo_fisico - existencia(sesion, material_id, fecha)
     if diferencia == CERO:
-        return None
+        diferencia = CERO  # «0», no «0.0» ni «-0»
     return _registrar(sesion, material_id, fecha, "ajuste", diferencia, usuario=usuario, nota=nota)
 
 
