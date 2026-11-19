@@ -408,8 +408,8 @@ def _choque_de_unidades(computo: str, apu: str) -> str:
     llevar)."""
     return (
         f"el cómputo la mide en «{computo}» y su APU está en «{apu}»: no son la misma unidad, así "
-        f"que su precio no aplicaría a esa cantidad. No se llevó nada: elija una partida que se "
-        f"mida en «{computo}» o corrija el cómputo."
+        f"que su precio no aplicaría a esa cantidad. Elija una partida que se mida en «{computo}» "
+        "o corrija el cómputo."
     )
 
 

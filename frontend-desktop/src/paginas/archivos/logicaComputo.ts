@@ -115,13 +115,19 @@ export function errorSinTipo(codigo: string): string {
   return `Declare si el rendimiento de ${codigo} es estimado o medido.`;
 }
 
+// La cantidad de máquina del cómputo («1.89000», «25.200») sin los ceros del final, que no cambian la cifra: la tabla la
+// lee igual con todos sus decimales que cuentan (re-verificación del 18/11/2026: decimales disparejos).
+export function sinCerosSobrantes(cantidad: string): string {
+  return /^-?\d+\.\d+$/.test(cantidad) ? cantidad.replace(/0+$/, "").replace(/\.$/, "") : cantidad;
+}
+
 export function filasDeItems(items: ItemComputo[]): FilaDensa[] {
   return items.map((i, n) => ({
     id: String(n),
     codigo_partida: i.codigo_partida,
     descripcion: i.descripcion,
     unidad: unidadEscrita(i.unidad),
-    cantidad: i.cantidad,
+    cantidad: sinCerosSobrantes(i.cantidad),
     origen_id: i.origen_id,
     origen_tipo: i.origen_tipo,
     regla: i.regla ?? "",
