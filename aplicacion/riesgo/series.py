@@ -150,7 +150,9 @@ def observaciones_cargadas(sesion: Session, codigo: str) -> list[ObservacionCarg
         select(models.ValorIndice.fecha, models.ValorIndice.valor, models.ValorIndice.provisional)
         .join(models.SerieIndice, models.SerieIndice.id == models.ValorIndice.serie_id)
         .where(models.SerieIndice.codigo == codigo)
-        .order_by(models.ValorIndice.fecha, models.ValorIndice.importacion_id)
+        .order_by(
+            models.ValorIndice.fecha, models.ValorIndice.importacion_id, models.ValorIndice.id
+        )
     ).all()
     por_fecha = {fecha: ObservacionCargada(fecha, valor, prov) for fecha, valor, prov in filas}
     return [por_fecha[fecha] for fecha in sorted(por_fecha)]
@@ -169,9 +171,11 @@ def series_viales_cargadas(sesion: Session) -> list[SerieVialCargada]:
     return [SerieVialCargada(s, observaciones_cargadas(sesion, s.codigo)) for s in SERIES_VIALES]
 
 
-def resumen_de_importacion(sesion: Session, importacion_id: int) -> tuple[int, date, date]:
-    """Cuántos valores trajo una importación y de qué fecha a qué fecha (nunca vacía: una
-    importación sin valores no se guarda)."""
+def resumen_de_importacion(
+    sesion: Session, importacion_id: int
+) -> tuple[int, date | None, date | None]:
+    """Cuántos valores trajo una importación y de qué fecha a qué fecha; sin valores, `(0, None,
+    None)`."""
     cuantos, desde, hasta = sesion.execute(
         select(
             func.count(models.ValorIndice.id),

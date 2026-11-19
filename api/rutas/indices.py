@@ -35,6 +35,7 @@ es SIEMPRE la persona de la sesión (RF-82), nunca el formulario.
 
 from __future__ import annotations
 
+import csv
 import json
 import tempfile
 from collections.abc import Callable
@@ -75,6 +76,7 @@ MENSAJE_DEFINICIONES = "Las definiciones de las series no tienen la forma espera
 MENSAJE_HUELLA = "El archivo no es el que se leyó; léalo de nuevo antes de confirmar."
 MENSAJE_SOLO_CSV = "Solo se acepta un archivo .csv."
 MENSAJE_SIN_FUENTE = "Escriba la fuente: de dónde bajó la serie."
+MENSAJE_FUENTE_CON_CONTROL = "La fuente no puede llevar caracteres de control."
 MENSAJE_SERIE_NO_VIAL = "Esa no es una serie vial: elija {opciones}."
 MENSAJE_YA_ESTABA = (
     "Ya estaba importado: este archivo ya se cargó antes para esta serie; no se escribió nada."
@@ -185,6 +187,7 @@ def _subida(
     extensiones: list[str],
     mensaje_extension: str,
     no_importa: Callable[[object], HTTPException],
+    palabra_limite: str = "limite",
 ) -> tuple[str, bytes]:
     """Lo que se subió: su nombre reducido a un componente válido y su contenido, con tope de
     tamaño. 422 con los mensajes de la pantalla si no tiene nombre, la extensión no es de las
@@ -192,15 +195,16 @@ def _subida(
     try:
         nombre = nombre_seguro(archivo.filename)
     except ValueError:
-        raise HTTPException(422, MENSAJE_SIN_NOMBRE) from None
+        raise HTTPException(422, MENSAJE_SIN_NOMBRE, headers=SIN_CACHE) from None
     if Path(nombre).suffix.lower() not in extensiones:
-        raise HTTPException(422, mensaje_extension)
+        raise HTTPException(422, mensaje_extension, headers=SIN_CACHE)
     archivo.file.seek(0, 2)
     tamano = archivo.file.tell()
     archivo.file.seek(0)
     if tamano > LIMITE_BYTES:
         raise no_importa(
-            f"{nombre}: pesa {tamano / 2**20:.1f} MB; el limite es {LIMITE_BYTES // 2**20} MB"
+            f"{nombre}: pesa {tamano / 2**20:.1f} MB; "
+            f"el {palabra_limite} es {LIMITE_BYTES // 2**20} MB"
         )
     return nombre, archivo.file.read(LIMITE_BYTES + 1)
 
@@ -433,9 +437,12 @@ def importar_serie_vial(
         raise HTTPException(
             422, MENSAJE_SERIE_NO_VIAL.format(opciones=" o ".join(codigos)), headers=SIN_CACHE
         )
-    if not fuente.strip():
+    fuente = fuente.strip()
+    if not fuente:
         raise HTTPException(422, MENSAJE_SIN_FUENTE, headers=SIN_CACHE)
-    nombre, contenido = _subida(archivo, [".csv"], MENSAJE_SOLO_CSV, _no_importo_vial)
+    if any(ord(c) < 32 or ord(c) == 127 for c in fuente):
+        raise HTTPException(422, MENSAJE_FUENTE_CON_CONTROL, headers=SIN_CACHE)
+    nombre, contenido = _subida(archivo, [".csv"], MENSAJE_SOLO_CSV, _no_importo_vial, "límite")
     try:
         with tempfile.TemporaryDirectory() as carpeta:
             ruta = Path(carpeta) / nombre
@@ -459,8 +466,10 @@ def importar_serie_vial(
                 mensaje=MENSAJE_YA_ESTABA,
             )
         cuantos, desde, hasta = series_viales.resumen_de_importacion(sesion, importacion)
+        if desde is None or hasta is None:  # una importación sin valores no se guarda
+            raise ValueError("el archivo no trae valores de la serie")
         sesion.commit()
-    except ValueError as error:  # filas rechazadas, serie ausente, columnas ajenas...
+    except (ValueError, csv.Error) as error:  # filas rechazadas, serie ausente, CSV ilegible...
         sesion.rollback()
         raise _no_importo_vial(error) from None
     except SQLAlchemyError as error:
