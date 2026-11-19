@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-18 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-19 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -24,6 +24,12 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   [plan de desenredo](planes/2026-11-17-plan-desenredo.md), los anexos A.1 a A.9, C9, P7 y A.6. Cada PR se llevó a
   `main` antes de fusionarlo; el árbol de `main` (`e3419e40`) es idéntico al probado en la punta (13.169 pruebas de
   Python, el front, lint, ruff, metas y guardia en verde; CI verde en Ubuntu y Windows).
+- **Arreglos de la prueba en vivo** (PR #123 a #127, fusionados el 2026-11-19 por Claude con la autorización de
+  Eugenio: «te autorizo a fusionar #123 a #127»): el marco (#123), Producción (#124), el presupuesto (#125), Control y
+  la demo (#126) y la documentación (#127: ratificación DS-1 a DS-58, acta DS-59 a DS-66 y la
+  [bitácora de la prueba en vivo](bitacora/2026-11-18-prueba-en-vivo.md)). La suite de la unión de los cuatro dio
+  13.333 pruebas de Python y 4.621 del front en verde (tras corregir dos pruebas viejas); CI verde en Ubuntu y Windows
+  en cada PR. `main` queda en `7c6a3d6e`.
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
@@ -34,11 +40,6 @@ instalador con huella SHA-256 firmada.
 
 | PR o rama | Qué trae | Estado |
 |---|---|---|
-| #123 `feature/vivo-marco` | Prueba en vivo, frente A: obras compartidas en el marco (la barra y «Nueva obra» siguen la carpeta abierta), pendientes de otra carpeta, sección «Contraseña» en la Cuenta | Revisión Claude + Hydrogen arbitradas; re-verificado en vivo; sin fusionar |
-| #124 `feature/vivo-produccion` | Frente D: recetas sin ciclos, el conteo físico cierra el pasado del material (DS-59), reportes sin jerga | Ídem |
-| #125 `feature/vivo-presupuesto` | Frente B: partida sin precio en la lista de la versión con aviso exacto (DS-63), cómputo llevado con su cálculo y su unidad, `calculo_de_regla` sobre `ast` (DS-64), desglose ya guardado | Ídem |
-| #126 `feature/vivo-control` | Frente C: nada del futuro en Control (DS-61), hallazgos de las valuaciones a la vista, costos listados, Riesgo dice qué serie falta, CSV de escenarios (DS-62), la demo se reinicia de verdad (WAL viejo) | Ídem |
-| `docs/prueba-en-vivo-2026-11-18` | Ratificación DS-1 a DS-58, actas DS-59 a DS-66 y [bitácora de la prueba en vivo](bitacora/2026-11-18-prueba-en-vivo.md) | Solo documentación |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
