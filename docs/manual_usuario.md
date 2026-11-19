@@ -1391,11 +1391,18 @@ precios se mueven como en los meses pasados.
 1. Elija la «Versión».
 2. En «Plazo y simulación», revise «Fecha de inicio», «Meses del plazo» (6), «Trayectorias» (2.000),
    «Semilla» (1) y «Meses de historia» (36).
-3. En «Serie que mueve cada insumo», elija la serie de los insumos que la necesiten.
+3. En «Serie que mueve cada insumo», elija la serie de los insumos que la necesiten. En una obra en USD
+   un insumo sin serie queda fijo: si no elige ninguna, el resultado sale igual al total base y lo dice.
 4. Pulse «Proyectar». Verá «Total base», «P50», «P80» y «Reserva para cubrir el P80», y los tres insumos
    que más empujan. «Descargar el informe de riesgo» lo baja en Excel.
 5. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado (tarda cerca de medio
    minuto). La cobertura es un indicador, no una probabilidad.
+
+**Para probarlo con la demostración** (`uv run start.py`, la carpeta `obra_control`, obra «OBRA-GENERADA»,
+en USD): elija «PPI de asfalto…» para «Cemento asfáltico CA-30 (ficticio)» y «Gasoil, precio
+administrado…» para «Gasoil para equipos (ficticio)», y pulse «Proyectar». La tasa y las dos series son
+**ficticias**, didácticas: no son las del BCV, de FRED/BLS ni de la Gaceta. La demo las corre en el
+tiempo para que terminen el mes anterior al de hoy, así siempre hay historia para proyectar.
 
 Al pie, «Mejora de la estimación» compara, al terminar la obra, el costo final con el presupuesto
 original y con la estimación de Sílice. Pulse «Calcular la mejora» y, si quiere, «Descargar el informe
