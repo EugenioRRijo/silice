@@ -26,7 +26,7 @@ from aplicacion.modulos import MENSAJE_APAGADO, MODULOS, NOMBRES, modulos_activo
 #: está apagado.
 CUALQUIER_ROL = exigir_clave_o_sesion(None)
 
-__all__ = ["CUALQUIER_ROL", "ModuloEdificacion", "ModuloVial", "requiere_modulo"]
+__all__ = ["CUALQUIER_ROL", "ModuloEdificacion", "ModuloRiesgo", "ModuloVial", "requiere_modulo"]
 
 
 def requiere_modulo(clave: str) -> Callable[..., None]:
@@ -47,3 +47,4 @@ def requiere_modulo(clave: str) -> Callable[..., None]:
 #: dependencias corren en el orden de la firma: primero quién es, luego si el módulo está activo).
 ModuloVial = Annotated[None, Depends(requiere_modulo("vial"))]
 ModuloEdificacion = Annotated[None, Depends(requiere_modulo("edificacion"))]
+ModuloRiesgo = Annotated[None, Depends(requiere_modulo("riesgo"))]

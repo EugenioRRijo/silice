@@ -14,7 +14,7 @@ from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from adapters.bcv.csv_canonico import leer_csv_canonico
@@ -63,6 +63,14 @@ class MapaSeries:
         object.__setattr__(self, "serie_por_insumo", MappingProxyType(dict(self.serie_por_insumo)))
 
 
+class FilasRechazadasError(ValueError):
+    """El CSV trae filas rechazadas: no se importó nada. `detalle` lista cada una con su motivo."""
+
+    def __init__(self, detalle: str) -> None:
+        super().__init__(f"filas rechazadas, no se importó nada: {detalle}")
+        self.detalle = detalle
+
+
 def importar_serie_csv(
     sesion: Session, codigo: str, ruta: Path, *, fuente: str, responsable: str, hoy: date
 ) -> int | None:
@@ -76,7 +84,7 @@ def importar_serie_csv(
     informe = leer_csv_canonico(ruta, fecha_descarga=hoy)
     if informe.rechazos:
         detalle = "; ".join(f"{r.lugar}: {r.motivo}" for r in informe.rechazos)
-        raise ValueError(f"filas rechazadas, no se importó nada: {detalle}")
+        raise FilasRechazadasError(detalle)
     leida = next((s for s in informe.series if s.clave == codigo), None)
     if leida is None:
         raise ValueError(f"el archivo {ruta.name} no trae la serie {codigo}")
@@ -123,3 +131,56 @@ def historia_mensual(
             fecha.replace(day=1): valor for fecha, valor in sorted(por_fecha.items())
         }
     return historia
+
+
+@dataclass(frozen=True)
+class ObservacionCargada:
+    """Un valor ya guardado de una serie: su fecha, el valor exacto y si es provisional."""
+
+    fecha: date
+    valor: Decimal
+    provisional: bool
+
+
+def observaciones_cargadas(sesion: Session, codigo: str) -> list[ObservacionCargada]:
+    """Todo lo guardado de la serie `codigo`, una observación por fecha y en orden de fecha. Una
+    fecha con dos importaciones (una revisión) muestra la más reciente, como `historia_mensual`.
+    Una serie sin datos da `[]`."""
+    filas = sesion.execute(
+        select(models.ValorIndice.fecha, models.ValorIndice.valor, models.ValorIndice.provisional)
+        .join(models.SerieIndice, models.SerieIndice.id == models.ValorIndice.serie_id)
+        .where(models.SerieIndice.codigo == codigo)
+        .order_by(
+            models.ValorIndice.fecha, models.ValorIndice.importacion_id, models.ValorIndice.id
+        )
+    ).all()
+    por_fecha = {fecha: ObservacionCargada(fecha, valor, prov) for fecha, valor, prov in filas}
+    return [por_fecha[fecha] for fecha in sorted(por_fecha)]
+
+
+@dataclass(frozen=True)
+class SerieVialCargada:
+    """Una serie vial con su definición y todo lo que ya tiene guardado."""
+
+    definicion: DefinicionSerie
+    observaciones: list[ObservacionCargada]
+
+
+def series_viales_cargadas(sesion: Session) -> list[SerieVialCargada]:
+    """Las dos series viales, en el orden de `SERIES_VIALES`, con lo guardado de cada una."""
+    return [SerieVialCargada(s, observaciones_cargadas(sesion, s.codigo)) for s in SERIES_VIALES]
+
+
+def resumen_de_importacion(
+    sesion: Session, importacion_id: int
+) -> tuple[int, date | None, date | None]:
+    """Cuántos valores trajo una importación y de qué fecha a qué fecha; sin valores, `(0, None,
+    None)`."""
+    cuantos, desde, hasta = sesion.execute(
+        select(
+            func.count(models.ValorIndice.id),
+            func.min(models.ValorIndice.fecha),
+            func.max(models.ValorIndice.fecha),
+        ).where(models.ValorIndice.importacion_id == importacion_id)
+    ).one()
+    return cuantos, desde, hasta

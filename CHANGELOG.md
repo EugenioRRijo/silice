@@ -7,6 +7,14 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **Cargar las series del riesgo vial desde la interfaz** (tanda 2026-11-19): «Índices del BCV» trae la sección «Series del
+  riesgo vial» (índice del asfalto y gasoil en USD/l): se elige la serie, se sube su CSV canónico, se ve cuántos valores
+  entraron y de qué fecha a qué fecha (o «Ya estaba importado») y la historia cargada con fechas dd/mm/aaaa y coma decimal.
+  `GET /v1/indices/series-viales` y `POST /v1/indices/series-viales/importar` (rol de administración de precios, la clave de
+  API solo lee; el módulo de riesgo encendido): guardan solo la serie elegida, todo o nada, con la sesión de escritura del
+  caso, y una fila rechazada, una serie ajena o un archivo sin la serie dan un 422 sin escribir. El aviso de «Riesgo de la
+  obra» cuando falta historia dice dónde se carga y ofrece el enlace a quien administra los precios
+  (`aplicacion/riesgo/series.py`, `api/rutas/indices.py`, `paginas/indices/SeriesViales.tsx`; `docs/api.json` regenerado).
 - **Anular un conteo físico** (tanda 2026-11-19): en Producción › Existencias, «Anular conteo» pide el motivo y anula el
   último conteo vigente del material sin borrar nada (un ajuste que lo compensa, con quién, cuándo y el motivo); el
   pasado lo vuelve a cerrar el conteo anterior. `POST /v1/produccion/conteos/{movimiento_id}/anular`, `ultimo_conteo` en

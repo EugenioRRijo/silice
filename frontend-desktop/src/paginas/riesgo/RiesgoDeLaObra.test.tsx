@@ -86,9 +86,9 @@ describe("Riesgo de la obra", () => {
   let usuario: ReturnType<typeof userEvent.setup>;
   const alExpirar = vi.fn();
 
-  function montar() {
+  function montar(sesion: SesionRespuesta = ANA) {
     render(
-      <ContextoAplicacion.Provider value={{ sesion: ANA, proyecto: "7", nombreProyecto: "Vía Demo", caso: null, recargarProyectos: vi.fn(), alExpirar }}>
+      <ContextoAplicacion.Provider value={{ sesion, proyecto: "7", nombreProyecto: "Vía Demo", caso: null, recargarProyectos: vi.fn(), alExpirar }}>
         <MemoryRouter>
           <RiesgoDeLaObra />
         </MemoryRouter>
@@ -354,6 +354,49 @@ describe("Riesgo de la obra", () => {
     const aviso = await screen.findByRole("alert");
     expect(aviso).toHaveTextContent("solo hay 9 meses completos; se necesitan 12");
     expect(screen.queryByRole("region", { name: "Resultado de la proyección" })).toBeNull();
+  });
+
+  // Falta una serie (prueba en vivo del 2026-11-18, hallazgo 4; series viales cargables en «Índices del BCV»): el aviso
+  // trae el nombre de la serie y dónde se carga, y quien administra los precios tiene el enlace a esa pantalla.
+  const FALTA_UNA_SERIE =
+    "Solo hay 5 meses completos de historia en los 36 meses anteriores al inicio (01/2027); se necesitan 12. Falta historia de: " +
+    "«Gasoil, precio administrado» (5 de 36 meses), que se carga en la página «Índices del BCV», sección «Series del riesgo vial».";
+  const ADMIN: SesionRespuesta = { ...ANA, login: "admin", roles: ["administrador"], acciones: ["administrar_precios", "ver_riesgo"] };
+
+  test("si falta una serie, quien administra los precios tiene el enlace a donde se carga", async () => {
+    proyeccion = () => json({ detalle: FALTA_UNA_SERIE }, 422);
+    montar(ADMIN);
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("sección «Series del riesgo vial»");
+    const enlace = await screen.findByRole("link", { name: "Cargar las series en Índices del BCV" });
+    expect(enlace).toHaveAttribute("href", "/precios/indices");
+  });
+
+  test("la comprobación hacia atrás también ofrece el enlace cuando falta una serie", async () => {
+    comprobacion = () => json({ detalle: FALTA_UNA_SERIE }, 422);
+    montar(ADMIN);
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Comprobar hacia atrás" }));
+    expect(await screen.findByRole("link", { name: "Cargar las series en Índices del BCV" })).toBeInTheDocument();
+  });
+
+  test("sin permiso para administrar precios el aviso queda sin enlace (diría 403)", async () => {
+    proyeccion = () => json({ detalle: FALTA_UNA_SERIE }, 422);
+    montar();
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Falta historia de");
+    expect(screen.queryByRole("link", { name: "Cargar las series en Índices del BCV" })).toBeNull();
+  });
+
+  test("un error que no es de series no trae el enlace", async () => {
+    proyeccion = () => json({ detalle: "solo hay 9 meses completos; se necesitan 12" }, 422);
+    montar(ADMIN);
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("link", { name: "Cargar las series en Índices del BCV" })).toBeNull();
   });
 
   // Lo que se ve es de la versión elegida: la proyección y la comprobación de VIA-002 no siguen a la vista al elegir
