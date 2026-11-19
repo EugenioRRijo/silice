@@ -25,7 +25,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, StrictStr
 
-from api.presentacion import redondeado
+from api.presentacion import exacto, redondeado
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from aplicacion.fcas import (
@@ -139,14 +139,14 @@ def _de_la_version(texto: str) -> VersionFcas:
 @router.get("/componentes", response_model=ComponentesFcasRespuesta)
 def componentes_por_defecto() -> ComponentesFcasRespuesta:
     return ComponentesFcasRespuesta(
-        dias_calendario=str(DIAS_CALENDARIO),
-        fcas_version=str(ParametrosCosto().fcas),
+        dias_calendario=exacto(DIAS_CALENDARIO),
+        fcas_version=exacto(ParametrosCosto().fcas),
         componentes=[
             ComponenteFcasRespuesta(
                 id=c.id,
                 nombre=c.nombre,
                 base=c.base,
-                valor=str(c.valor),
+                valor=exacto(c.valor),
                 fuente=c.fuente,
                 a_cotejar=c.a_cotejar,
             )
@@ -174,7 +174,7 @@ def calcular(cuerpo: CalculoFcasEntrada) -> CalculoFcasRespuesta:
     return CalculoFcasRespuesta(
         fcas=redondeado(resultado.fcas, 4),
         fcas_por_dias=redondeado(resultado.fcas_por_dias, 4),
-        dias_pagados=str(resultado.dias_pagados),
+        dias_pagados=exacto(resultado.dias_pagados),
         porcentaje=redondeado(resultado.fcas * 100, 2),
         multiplicador=redondeado(1 + resultado.fcas, 4),
         desglose=[

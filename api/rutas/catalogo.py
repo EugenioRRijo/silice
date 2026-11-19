@@ -10,6 +10,7 @@ from fastapi import APIRouter
 from api.acceso import LEER
 from api.dependencias import SesionDep
 from api.esquemas import InsumoRespuesta, PartidaRespuesta
+from api.presentacion import exacto
 from core.catalog import Catalogo, CatalogoIncompleto
 from core.contracts.dominio import Dominio
 
@@ -34,7 +35,7 @@ def listar_insumos(sesion: SesionDep) -> list[InsumoRespuesta]:
     except CatalogoIncompleto:
         lista = None
     if lista is not None:
-        precios = {precio.insumo_id: str(precio.precio) for precio in lista.precios}
+        precios = {precio.insumo_id: exacto(precio.precio) for precio in lista.precios}
     return [
         InsumoRespuesta(
             codigo=insumo.codigo,
