@@ -111,7 +111,8 @@ def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
     después.
 
     Todo o nada, como `_sembrar_copia`: se siembra en un temporal de la misma carpeta y se publica
-    con `os.replace`. Si algo falla a medias, el temporal (y sus -wal/-shm/-journal) se borra y
+    con `_publicar` (`os.replace` tras borrar el `-wal`/`-shm` viejos del destino, con el servidor
+    detenido). Si algo falla a medias, el temporal (y sus -wal/-shm/-journal) se borra y
     `destino` queda como estaba: sin crear o con la base anterior (arbitraje de
     feature/vivo-control: antes quedaba una base vacía que `preparar_demo` no volvía a sembrar)."""
     from core.catalog.sesion import abrir_sesion, crear_motor
@@ -148,7 +149,7 @@ def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
             motor.dispose()
         for resto in restos[1:]:
             resto.unlink(missing_ok=True)
-        os.replace(temporal, destino)
+        _publicar(temporal, destino)
     finally:
         for resto in restos:
             resto.unlink(missing_ok=True)
@@ -179,9 +180,23 @@ def sellar_caso_copiado(destino: Path) -> None:
         motor.dispose()
 
 
+def _publicar(temporal: Path, destino: Path) -> None:
+    """Publica la base `temporal` como `destino` con `os.replace`, borrando antes el `-wal`, el
+    `-shm` y el `-journal` del destino: los de la corrida anterior quedan si el servidor se cerró
+    sin checkpoint, y SQLite reaplicaría ese WAL viejo sobre la base nueva (la demo «resembrada»
+    traía los datos de antes, con riesgo de corrupción; re-verificación en vivo del 2026-11-18).
+
+    Se hace con el servidor detenido: `start.py` prepara la demo antes de servir, así que nadie
+    tiene abierta la base del destino."""
+    for sufijo in ("-wal", "-shm", "-journal"):
+        destino.with_name(destino.name + sufijo).unlink(missing_ok=True)
+    os.replace(temporal, destino)
+
+
 def _sembrar_copia(origen: Path, destino: Path) -> None:
-    """Todo o nada: copia, sella en un temporal de la misma carpeta y publica con `os.replace`.
-    Si algo falla, el temporal (y sus -wal/-shm/-journal) se borra y `destino` no existe."""
+    """Todo o nada: copia, sella en un temporal de la misma carpeta y publica con `_publicar`
+    (`os.replace` tras borrar el WAL viejo del destino). Si algo falla, el temporal (y sus
+    -wal/-shm/-journal) se borra y `destino` no existe."""
     temporal = destino.with_name(f".{destino.name}.tmp")
     restos = [temporal] + [
         temporal.with_name(temporal.name + s) for s in ("-wal", "-shm", "-journal")
@@ -193,7 +208,7 @@ def _sembrar_copia(origen: Path, destino: Path) -> None:
         sellar_caso_copiado(temporal)
         for resto in restos[1:]:
             resto.unlink(missing_ok=True)
-        os.replace(temporal, destino)
+        _publicar(temporal, destino)
     finally:
         for resto in restos:
             resto.unlink(missing_ok=True)
