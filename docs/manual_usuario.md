@@ -1466,6 +1466,13 @@ que se audita o se abre en el visor: si el libro los pasa, Sílice lo rechaza co
 
 Si no hay nada que objetar, verá «La auditoría terminó y el libro no tiene hallazgos.».
 
+**Descargar PDF de hallazgos.** Con el resultado en pantalla, el botón «Descargar PDF de hallazgos»
+(a la derecha, bajo los indicadores) baja un PDF con el libro, la fecha del libro y la de devolución, si
+cumple o no, los totales del libro frente a los de Sílice y una fila por hallazgo, de la regla a la acción.
+Lleva la misma fecha de devolución con la que se auditó lo que ve. Bajarlo no guarda nada ni agrega una fila
+al historial: la auditoría ya quedó guardada cuando la hizo. Si no se puede preparar, el aviso de error lo
+dice junto al botón.
+
 ### 12.3 El historial
 
 Abra la pestaña «Historial de auditorías» de «Auditar un presupuesto». Filtre por fechas, tipo y
