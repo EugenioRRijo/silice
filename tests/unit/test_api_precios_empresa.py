@@ -54,7 +54,7 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 from tests.fixtures.sin_extra import SinExtra
-from tests.fixtures.transacciones import lo_ultimo_de_cada_una, transacciones_del_caso
+from tests.fixtures.transacciones import transacciones_del_caso
 
 RAIZ = Path(__file__).resolve().parents[2]
 CSV_EMPRESA = RAIZ / "tests" / "fixtures" / "precios_empresa_s1.csv"
@@ -249,7 +249,26 @@ def test_crear_la_lista_no_abre_otra_transaccion_tras_confirmar(_entorno) -> Non
     with transacciones_del_caso(_entorno) as por_sesion:
         r = _crear(navegador, cabeceras, base_id)
     assert r.status_code == 201, r.text
-    assert lo_ultimo_de_cada_una(por_sesion) == ["commit"], por_sesion
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
+
+
+def test_si_armar_la_respuesta_falla_no_queda_la_lista_y_no_culpa_a_la_entrada(
+    _entorno, monkeypatch
+) -> None:
+    """Arbitraje de DS-57: un fallo al leer lo que la respuesta necesita deshace la lista y sale
+    como error del servidor (500), no como un 422 que culpe al archivo."""
+    navegador, cabeceras = _admin()
+    _cargar_referencia(navegador, cabeceras)
+    base_id = _id_de_la_referencia(navegador)
+    antes = _cuantas_listas(_entorno)
+
+    def falla(*_args, **_kwargs):
+        raise ValueError("fallo al armar la respuesta")
+
+    monkeypatch.setattr(ruta, "moneda_de_la_carpeta", falla)
+    r = _crear(navegador, cabeceras, base_id)
+    assert r.status_code == 500, r.text
+    assert _cuantas_listas(_entorno) == antes
 
 
 def test_crea_la_lista_de_la_empresa_con_diez_precios_propios(_entorno) -> None:

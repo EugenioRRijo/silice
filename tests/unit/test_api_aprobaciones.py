@@ -25,8 +25,9 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
+import time
 from collections.abc import Iterator
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -34,8 +35,9 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
 
 from api import caso_web, dependencias
 from api.main import manejar_http_exception
@@ -63,7 +65,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
-from tests.fixtures.transacciones import lo_ultimo_de_cada_una, transacciones_del_caso
+from tests.fixtures.transacciones import transacciones_del_caso
 
 RAIZ = "/v1/aprobaciones"
 ANA = "Ana <ana>"
@@ -610,6 +612,7 @@ def test_un_fallo_de_la_base_es_503_sin_sql(ana, monkeypatch: pytest.MonkeyPatch
 # --- menores del árbitro de T18 -------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("etapa", ["leer_reflejo", "escribir_reflejo"])
 @pytest.mark.parametrize(
     "error",
     [
@@ -619,11 +622,13 @@ def test_un_fallo_de_la_base_es_503_sin_sql(ana, monkeypatch: pytest.MonkeyPatch
     ],
 )
 def test_el_envio_vale_aunque_el_reflejo_falle_y_mias_lo_repone(
-    ana, monkeypatch: pytest.MonkeyPatch, error: Exception
+    ana, monkeypatch: pytest.MonkeyPatch, error: Exception, etapa: str
 ) -> None:
-    """La carpeta ya confirmó el envío: un fallo al reflejar el índice no lo convierte en error;
-    queda en el registro y la próxima lectura lo repone."""
-    real = indice_aprobaciones.reflejar
+    """La carpeta manda: un fallo al leer el reflejo (antes de confirmarla) o al escribirlo en la
+    instalación (después) no convierte el envío en error ni lo deshace; queda en el registro y la
+    próxima lectura lo repone. Es el «todo o nada» de aprobaciones al revés que en las demás rutas
+    (DS-57): lo que se lee antes de confirmar no es la respuesta sino el índice, que se repone."""
+    real = getattr(indice_aprobaciones, etapa)
     llamadas: list[int] = []
 
     def falla_la_primera_vez(*args, **kwargs):
@@ -632,11 +637,138 @@ def test_el_envio_vale_aunque_el_reflejo_falle_y_mias_lo_repone(
             raise error
         return real(*args, **kwargs)
 
-    monkeypatch.setattr(indice_aprobaciones, "reflejar", falla_la_primera_vez)
+    monkeypatch.setattr(indice_aprobaciones, etapa, falla_la_primera_vez)
     enviado = _enviar(ana)
     assert enviado.status_code == 201, enviado.text
+    assert _eventos_en_la_carpeta() == 1
     with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
         assert conexion.execute("SELECT count(*) FROM mp_indice_aprobacion").fetchone() == (0,)
+    assert ana[0].get(f"{RAIZ}/mias").json() == [_fila(1)]
+
+
+def _eventos_en_la_carpeta() -> int:
+    with closing(sqlite3.connect(_vivienda())) as conexion:
+        return conexion.execute("SELECT count(*) FROM mp_aprobacion_evento").fetchone()[0]
+
+
+def _libre(ruta: Path) -> bool:
+    """Si otra conexión puede tomar ya el bloqueo de escritura de `ruta` (sin esperar)."""
+    otra = sqlite3.connect(ruta, timeout=0)
+    try:
+        otra.execute("BEGIN IMMEDIATE")
+        otra.rollback()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        otra.close()
+
+
+def _de(sesion: Session, ruta: Path) -> bool:
+    return Path(sesion.get_bind().url.database).resolve() == Path(ruta).resolve()
+
+
+@contextmanager
+def _bloqueos_al_confirmar() -> Iterator[list[tuple[str, bool]]]:
+    """En cada `commit` sobre la carpeta, si la instalación está libre; en cada `commit` sobre la
+    instalación, si la carpeta lo está. Ninguna petición debe retener las dos a la vez (DS-69): si
+    la carpeta espera a la instalación mientras otra espera a la carpeta, las dos se traban hasta
+    el `busy_timeout` y la segunda da 503."""
+    vistos: list[tuple[str, bool]] = []
+
+    def antes_de_confirmar(sesion: Session) -> None:
+        if _de(sesion, _vivienda()):
+            vistos.append(("carpeta", _libre(config.ruta_instalacion())))
+        elif _de(sesion, config.ruta_instalacion()):
+            vistos.append(("instalacion", _libre(_vivienda())))
+
+    event.listen(Session, "before_commit", antes_de_confirmar)
+    try:
+        yield vistos
+    finally:
+        event.remove(Session, "before_commit", antes_de_confirmar)
+
+
+@contextmanager
+def _un_choque_al_confirmar_la_carpeta() -> Iterator[None]:
+    """El primer `commit` sobre la carpeta choca con otra sesión (`SQLITE_BUSY`): `aprobaciones`
+    deshace y lo intenta otra vez."""
+    hecho: list[int] = []
+
+    def antes_de_confirmar(sesion: Session) -> None:
+        if _de(sesion, _vivienda()) and not hecho:
+            hecho.append(1)
+            origen = sqlite3.OperationalError("database is locked")
+            origen.sqlite_errorname = "SQLITE_BUSY"
+            raise OperationalError("COMMIT", {}, origen)
+
+    event.listen(Session, "before_commit", antes_de_confirmar)
+    try:
+        yield
+    finally:
+        event.remove(Session, "before_commit", antes_de_confirmar)
+
+
+def test_enviar_no_retiene_la_carpeta_y_la_instalacion_a_la_vez(ana) -> None:
+    with _bloqueos_al_confirmar() as vistos:
+        assert _enviar(ana).status_code == 201
+    assert ("carpeta", True) in vistos and ("instalacion", True) in vistos, vistos
+    assert all(libre for _, libre in vistos), vistos
+
+
+def test_dictaminar_no_retiene_la_carpeta_y_la_instalacion_a_la_vez(ana, rita) -> None:
+    _enviar(ana)
+    _abrir(rita, 1)
+    with _bloqueos_al_confirmar() as vistos:
+        assert _dictaminar(rita, 1, "aprobada").status_code == 201
+    assert ("carpeta", True) in vistos and ("instalacion", True) in vistos, vistos
+    assert all(libre for _, libre in vistos), vistos
+
+
+def test_un_choque_al_confirmar_la_carpeta_no_deja_la_instalacion_retenida_ni_sucia(ana) -> None:
+    """Arbitraje de DS-57 (MAYOR 1): si el `commit` de la carpeta choca y se reintenta, la
+    instalación no queda con un reflejo a medias ni con su bloqueo durante el reintento, y el
+    índice termina con lo que la carpeta guardó."""
+    with _bloqueos_al_confirmar() as vistos, _un_choque_al_confirmar_la_carpeta():
+        enviado = _enviar(ana)
+    assert enviado.status_code == 201, enviado.text
+    assert [v for v in vistos if v[0] == "carpeta"] == [("carpeta", True), ("carpeta", True)]
+    assert all(libre for _, libre in vistos), vistos
+    assert _libre(config.ruta_instalacion())
+    assert _eventos_en_la_carpeta() == 1
+    with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
+        filas = conexion.execute("SELECT envio_id, estado FROM mp_indice_aprobacion").fetchall()
+    assert filas == [(1, "en_aprobacion")]
+
+
+def test_con_la_instalacion_ocupada_el_envio_vale_pronto_y_el_indice_se_repone_despues(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Otro escritor toma `instalacion.db` mientras la carpeta guarda el envío: la carpeta confirma
+    sin esperarlo, la escritura del índice se rinde pronto (no los 5 s de `busy_timeout`) y la
+    siguiente lectura lo repone."""
+    real = indice_aprobaciones.leer_reflejo
+    otra = sqlite3.connect(config.ruta_instalacion(), timeout=0)
+
+    def lee_y_otro_toma_la_instalacion(*args, **kwargs):
+        leido = real(*args, **kwargs)
+        otra.execute("BEGIN IMMEDIATE")
+        return leido
+
+    monkeypatch.setattr(indice_aprobaciones, "leer_reflejo", lee_y_otro_toma_la_instalacion)
+    try:
+        inicio = time.monotonic()
+        enviado = _enviar(ana)
+        tardo = time.monotonic() - inicio
+    finally:
+        otra.rollback()
+        otra.close()
+    assert enviado.status_code == 201, enviado.text
+    assert tardo < 4, tardo
+    assert _eventos_en_la_carpeta() == 1
+    with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
+        assert conexion.execute("SELECT count(*) FROM mp_indice_aprobacion").fetchone() == (0,)
+    monkeypatch.undo()
     assert ana[0].get(f"{RAIZ}/mias").json() == [_fila(1)]
 
 
@@ -647,7 +779,7 @@ def test_enviar_no_abre_otra_transaccion_en_la_carpeta_tras_confirmar(ana) -> No
     with transacciones_del_caso(_vivienda()) as por_sesion:
         enviado = _enviar(ana)
     assert enviado.status_code == 201, enviado.text
-    assert lo_ultimo_de_cada_una(por_sesion) == ["commit"], por_sesion
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
     with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
         assert conexion.execute("SELECT count(*) FROM mp_indice_aprobacion").fetchone() == (1,)
 
@@ -658,7 +790,7 @@ def test_dictaminar_no_abre_otra_transaccion_en_la_carpeta_tras_confirmar(ana, r
     with transacciones_del_caso(_vivienda()) as por_sesion:
         dictamen = _dictaminar(rita, 1, "aprobada")
     assert dictamen.status_code == 201, dictamen.text
-    assert lo_ultimo_de_cada_una(por_sesion) == ["commit"], por_sesion
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
     with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
         assert conexion.execute("SELECT estado FROM mp_indice_aprobacion").fetchall() == [
             ("aprobada",)
@@ -776,17 +908,30 @@ def test_una_version_alterada_no_se_envia(ana) -> None:
     assert ana[0].get(f"{RAIZ}/mias").json() == []
 
 
+@pytest.mark.parametrize(
+    ("etapa", "mensaje"),
+    [
+        (
+            "leer_reflejo",
+            "No se pudo leer el reflejo de aprobaciones de vivienda.db antes de confirmar la "
+            "carpeta.",
+        ),
+        (
+            "escribir_reflejo",
+            "No se pudo escribir el índice de aprobaciones de vivienda.db después de confirmar "
+            "la carpeta.",
+        ),
+    ],
+)
 def test_el_fallo_del_reflejo_queda_en_el_registro(
-    ana, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ana, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, etapa, mensaje
 ) -> None:
     def falla(*_args, **_kwargs):
         raise ValueError("un fallo que no es de la base")
 
-    monkeypatch.setattr(indice_aprobaciones, "reflejar", falla)
+    monkeypatch.setattr(indice_aprobaciones, etapa, falla)
     with caplog.at_level(logging.WARNING, logger="api.rutas.aprobaciones"):
         assert _enviar(ana).status_code == 201
     avisos = [r for r in caplog.records if r.name == "api.rutas.aprobaciones"]
-    assert [(r.levelno, r.getMessage()) for r in avisos] == [
-        (logging.WARNING, "No se pudo reflejar el índice de aprobaciones de vivienda.db.")
-    ]
+    assert [(r.levelno, r.getMessage()) for r in avisos] == [(logging.WARNING, mensaje)]
     assert avisos[0].exc_info is not None and avisos[0].exc_info[0] is ValueError
