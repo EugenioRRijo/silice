@@ -545,7 +545,8 @@ def test_una_serie_vial_corta_se_nombra_con_su_cuenta_y_las_completas_no():
     assert mensaje.startswith("Solo hay 5 meses completos de historia")
     assert mensaje.endswith(
         "Falta historia de: «Gasoil, precio administrado (escalones; a cotejar en la Gaceta)» "
-        "(5 de 36 meses), que se importa desde su CSV canónico."
+        "(5 de 36 meses), que se carga en la página «Índices del BCV», sección «Series del riesgo "
+        "vial»."
     )
     assert "PPI" not in mensaje and "Tasa" not in mensaje
 
