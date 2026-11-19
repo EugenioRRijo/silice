@@ -34,7 +34,11 @@ instalador con huella SHA-256 firmada.
 
 | PR o rama | Qué trae | Estado |
 |---|---|---|
-| `feature/vivo-marco`, `-produccion`, `-control`, `-presupuesto` | Arreglos de la prueba en vivo del 2026-11-18 ([bitácora](bitacora/2026-11-18-prueba-en-vivo.md)): un frente por rama, con TDD | En construcción |
+| #123 `feature/vivo-marco` | Prueba en vivo, frente A: obras compartidas en el marco (la barra y «Nueva obra» siguen la carpeta abierta), pendientes de otra carpeta, sección «Contraseña» en la Cuenta | Revisión Claude + Hydrogen arbitradas; re-verificado en vivo; sin fusionar |
+| #124 `feature/vivo-produccion` | Frente D: recetas sin ciclos, el conteo físico cierra el pasado del material (DS-59), reportes sin jerga | Ídem |
+| #125 `feature/vivo-presupuesto` | Frente B: partida sin precio en la lista de la versión con aviso exacto (DS-63), cómputo llevado con su cálculo y su unidad, `calculo_de_regla` sobre `ast` (DS-64), desglose ya guardado | Ídem |
+| #126 `feature/vivo-control` | Frente C: nada del futuro en Control (DS-61), hallazgos de las valuaciones a la vista, costos listados, Riesgo dice qué serie falta, CSV de escenarios (DS-62), la demo se reinicia de verdad (WAL viejo) | Ídem |
+| `docs/prueba-en-vivo-2026-11-18` | Ratificación DS-1 a DS-58, actas DS-59 a DS-66 y [bitácora de la prueba en vivo](bitacora/2026-11-18-prueba-en-vivo.md) | Solo documentación |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -189,6 +193,10 @@ subir nada.
    todas las decisiones simuladas DS-1 a DS-58 del acta, con la DS-48h (guardar solo el desglose, cuando otra persona
    guardó una versión más nueva, pide confirmar igual que una versión). La DS-3 quedó sustituida por A.6 y la DS-23
    (4.4) espera al experimento. La pila #110 a #122 está fusionada (§1).
+
+   **Por ratificar:** las decisiones del árbitro DS-59 a DS-66 (prueba en vivo: el conteo físico cierra el pasado, ciclos de
+   recetas con todas las versiones, valuación futura rechazada, CSV para Excel en español, partida pendiente con aviso en vez
+   de 409, `calculo_de_regla` sobre `ast`, pendiente de otra carpeta, sección «Contraseña»).
 
    **Probado en vivo el 2026-11-18** ([bitácora](bitacora/2026-11-18-prueba-en-vivo.md)): A.6, C9 y P7 funcionan en el
    navegador. La prueba de todas las ventanas dejó hallazgos que se arreglan en las ramas `feature/vivo-*` (§2) y otros

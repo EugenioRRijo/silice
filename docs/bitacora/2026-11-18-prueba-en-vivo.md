@@ -32,26 +32,26 @@ que no se reprodujo.
 | C9 | Dos insumos con la misma descripción y distinta unidad salen en dos filas, cada una con su unidad, también en el CSV |
 | P7 | Cambiar de perfil reinicia las hojas marcadas; el informe nombra las hojas del perfil nuevo |
 
-## 3. Hallazgos que se arreglan (ramas `feature/vivo-*`)
+## 3. Hallazgos que se arreglaron (PR #123 a #126)
 
 | Frente | Gravedad | Hallazgo | Rama |
 |---|---|---|---|
-| A | MAYOR | Tras cambiar de carpeta, «Nueva obra» y la barra lateral siguen en la carpeta anterior hasta recargar (cada `useObras()` tenía su propio estado) | `feature/vivo-marco` |
-| A | MAYOR | «Ver el catálogo» de un pendiente de otra carpeta abre el catálogo de la carpeta activa | `feature/vivo-marco` |
-| A | MAYOR | Nadie puede cambiar su contraseña cuando quiere: el formulario solo aparecía con una clave temporal | `feature/vivo-marco` |
-| A | MENOR | Una sección inexistente de una obra que sí existe decía «Esa obra ya no existe»; el error viejo del tope de la IA seguía a la vista; la pista del usuario no decía la regla del servidor | `feature/vivo-marco` |
-| D | MAYOR | Una receta aceptaba su propio producto como componente y dejaba el mes sin poder calcular el costo por tonelada | `feature/vivo-produccion` |
-| D | MAYOR | En el diálogo de receta, «Código» y «Cantidad por t» se quedaban sin ancho | `feature/vivo-produccion` |
-| D | MAYOR | Un movimiento con fecha anterior a un conteo físico cambiaba la existencia posterior al conteo | `feature/vivo-produccion` |
-| D | MENOR | El registro de un fallo de la base no traía la traza; jerga interna en el Excel del costo de producción | `feature/vivo-produccion` |
-| C | MAYOR | Se aceptaban valuaciones con fecha futura y el «Plan» se medía a esa fecha | `feature/vivo-control` |
-| C | MAYOR | Los hallazgos de una valuación no se veían, y con errores el aviso salía en verde | `feature/vivo-control` |
-| C | MAYOR | Un costo anotado no se podía ver ni anular | `feature/vivo-control` |
-| C | MAYOR | Riesgo no corría en la demo y no decía qué serie faltaba | `feature/vivo-control` |
-| C | MENOR | Mensajes con nombres internos o sin tildes; CSV de Escenarios con punto decimal; «Declararlo precio del corte» sin línea base | `feature/vivo-control` |
-| B | MAYOR | Una partida compuesta en Componer no tiene precio en una versión que ya existe: sus precios van a la lista de hoy | `feature/vivo-presupuesto` |
-| B | MAYOR | Llevar un cómputo CSV a la Hoja perdía el origen y la unidad | `feature/vivo-presupuesto` |
-| B | MENOR | Tras «Ese desglose ya está guardado.» el contador seguía en «1 cambio»; el mensaje del desperdicio decía «entre 0 y 100», cuando 100 no vale; fusionar un plano sin filas decía «Se fusionó» | `feature/vivo-presupuesto` |
+| A | MAYOR | Tras cambiar de carpeta, «Nueva obra» y la barra lateral siguen en la carpeta anterior hasta recargar (cada `useObras()` tenía su propio estado) | #123 `feature/vivo-marco` |
+| A | MAYOR | «Ver el catálogo» de un pendiente de otra carpeta abre el catálogo de la carpeta activa | #123 `feature/vivo-marco` |
+| A | MAYOR | Nadie puede cambiar su contraseña cuando quiere: el formulario solo aparecía con una clave temporal | #123 `feature/vivo-marco` |
+| A | MENOR | Una sección inexistente de una obra que sí existe decía «Esa obra ya no existe»; el error viejo del tope de la IA seguía a la vista; la pista del usuario no decía la regla del servidor | #123 `feature/vivo-marco` |
+| D | MAYOR | Una receta aceptaba su propio producto como componente y dejaba el mes sin poder calcular el costo por tonelada | #124 `feature/vivo-produccion` |
+| D | MAYOR | En el diálogo de receta, «Código» y «Cantidad por t» se quedaban sin ancho | #124 `feature/vivo-produccion` |
+| D | MAYOR | Un movimiento con fecha anterior a un conteo físico cambiaba la existencia posterior al conteo | #124 `feature/vivo-produccion` |
+| D | MENOR | El registro de un fallo de la base no traía la traza; jerga interna en el Excel del costo de producción | #124 `feature/vivo-produccion` |
+| C | MAYOR | Se aceptaban valuaciones con fecha futura y el «Plan» se medía a esa fecha | #126 `feature/vivo-control` |
+| C | MAYOR | Los hallazgos de una valuación no se veían, y con errores el aviso salía en verde | #126 `feature/vivo-control` |
+| C | MAYOR | Un costo anotado no se podía ver ni anular | #126 `feature/vivo-control` |
+| C | MAYOR | Riesgo no corría en la demo y no decía qué serie faltaba | #126 `feature/vivo-control` |
+| C | MENOR | Mensajes con nombres internos o sin tildes; CSV de Escenarios con punto decimal; «Declararlo precio del corte» sin línea base | #126 `feature/vivo-control` |
+| B | MAYOR | Una partida compuesta en Componer no tiene precio en una versión que ya existe: sus precios van a la lista de hoy | #125 `feature/vivo-presupuesto` |
+| B | MAYOR | Llevar un cómputo CSV a la Hoja perdía el origen y la unidad | #125 `feature/vivo-presupuesto` |
+| B | MENOR | Tras «Ese desglose ya está guardado.» el contador seguía en «1 cambio»; el mensaje del desperdicio decía «entre 0 y 100», cuando 100 no vale; fusionar un plano sin filas decía «Se fusionó» | #125 `feature/vivo-presupuesto` |
 
 ## 4. Hallazgos que esperan una decisión o que no se arreglan aquí
 
@@ -77,7 +77,37 @@ que no se reprodujo.
 - **Cosmético:** fechas ISO sueltas, «1 bases», Pareto ordenado al revés, tablas que no caben a 1440 px y claves internas
   («material|1») a la vista. La lista completa está en los informes de cada frente.
 
-## 5. Estado
+## 5. Cómo se cerró
 
-Los arreglos de §3 se construyen con TDD, uno por frente; cada rama abre su PR. La columna «Rama» dice dónde está cada
-uno, y el resultado final queda en [ESTADO](../ESTADO.md).
+- **Arreglos:** un constructor por frente, con TDD: cada defecto tiene su commit con la prueba en rojo antes del verde.
+- **Revisión de cada rama:** una revisión de Claude (silice-rev-pruebas) y una segunda opinión de Hydrogen (Gemini, por
+  `agy`, solo lectura), arbitradas por Claude. Cada hallazgo se verificó en el código antes de corregirlo.
+  - Las dos revisiones encontraron defectos reales en los propios arreglos y se corrigieron en las mismas ramas:
+    - un conteo que coincide con lo teórico no cerraba el pasado;
+    - `calculo_de_regla` asociaba mal las potencias y podía agotar la memoria;
+    - Control no tomaba «hoy» del reloj común;
+    - la siembra de la demo no era atómica.
+  - Las decisiones van en el acta, DS-59 a DS-66.
+- **Re-verificación en vivo:** con el código unido de las cuatro ramas, dos agentes volvieron a reproducir cada hallazgo
+  MAYOR en el navegador.
+  - Quedaron arreglados todos los que se arreglaban en estas ramas: el corte de la Vista general ya se mide a hoy; solo
+    la demo resembrada trajo otra vez valuaciones futuras, por el defecto del `-wal` (punto siguiente).
+  - La re-verificación encontró además un defecto anterior: reiniciar la demo (`start.py --reiniciar-demo`) no la
+    reiniciaba, porque el `-wal` de la corrida anterior se volvía a aplicar sobre la base nueva.
+  - Ese defecto y los menores que salieron (los contadores de pendientes al cambiar de carpeta, el aviso de la receta
+    fuera de la vista, la fusión sin filas anunciada como éxito y el diálogo tras «Ese desglose ya está guardado.»)
+    también se corrigieron con TDD.
+
+### Declarado, no entra en estos PR
+
+- **Anular un costo incurrido:** necesita un expediente de `core/`, porque `instantanea_control` suma todas las filas y
+  `registrar_costo` rechaza los negativos.
+- **Pasar una versión a una lista nueva y revalorar una fila pendiente:** necesita `aplicacion/hoja.py`, que está
+  congelado. Hoy el aviso dice que hay que quitar la fila y agregarla de nuevo.
+- **La hoja «Trazabilidad» del Excel con punto decimal y la fila que dice «sin APU en el catálogo»:** el texto sale de
+  `core/` o de `aplicacion/hoja.py`.
+- **`BEGIN IMMEDIATE` en las escrituras de `instalacion.db`:** evitaría carreras entre leer el conteo y escribir. Es un
+  cambio transversal y va al plan.
+- **Producción:** la anulación auditable de conteos y la mezcla de mezclas del mismo mes en orden topológico.
+- **Otras mejoras:** una página para cargar las series viales, y que Riesgo de la demo muestre algo (la tasa ficticia
+  no mueve una obra en USD).
