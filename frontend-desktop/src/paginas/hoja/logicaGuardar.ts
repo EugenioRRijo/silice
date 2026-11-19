@@ -76,7 +76,8 @@ export function textoDeDesgloseAGuardar(n: number, version: string): string {
 
 // La mezcla (celdas y desgloses): la versión registra solo las celdas; los desgloses se dicen aparte (arbitraje de A.6, DS-48i).
 export function textoDeVersionAGuardar(cambios: number, desgloses: number, version: string): string {
-  const registrados = `Se registrarán ${textoDeCambiosAGuardar(cambios - desgloses)} en una versión nueva (sale de la ${version}).`;
+  const celdas = cambios - desgloses;
+  const registrados = `Se ${celdas === 1 ? "registrará" : "registrarán"} ${textoDeCambiosAGuardar(celdas)} en una versión nueva (sale de la ${version}).`;
   return desgloses > 0 ? `${registrados} Con ella se guarda también el desglose del desperdicio de ${lineas(desgloses)}.` : registrados;
 }
 
