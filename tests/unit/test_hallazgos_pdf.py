@@ -98,9 +98,7 @@ def test_el_texto_de_la_persona_no_se_interpreta_como_marcas():
 def test_sin_hallazgos_el_informe_lo_dice():
     texto = "\n".join(
         _texto(
-            pdf_de_hallazgos(
-                _informe((), veredicto="Cumple", conteo=("0 hallazgos",), totales=())
-            )
+            pdf_de_hallazgos(_informe((), veredicto="Cumple", conteo=("0 hallazgos",), totales=()))
         )
     )
     assert "Cumple" in texto
