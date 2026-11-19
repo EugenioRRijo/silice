@@ -453,6 +453,7 @@ def test_p5_sobre_un_borrador_en_blanco_da_el_total_y_las_cantidades_de_la_memor
     # 3e-B14: el resumen de la fusion cuenta una vez (33 importados, no 68)
     por_tipo = {f["rotulo"]: f["cantidad"] for f in cuerpo["fusion"]["por_tipo"]}
     assert por_tipo["Importado"] == IMPORTADOS_OF001 and por_tipo["Pendiente"] == 0
+    assert cuerpo["entro"] is True
     por_tabla = {f["rotulo"]: f["cantidad"] for f in cuerpo["fusion"]["filas_por_tabla"]}
     assert (por_tabla["Ambientes"], por_tabla["Fuentes"], por_tabla["Puntos"]) == (6, 6, 21)
     assert isinstance(cuerpo["fusion"]["origenes"], int) and cuerpo["fusion"]["origenes"] > 0
@@ -487,6 +488,8 @@ def test_p5_sobre_of001_las_filas_ya_escritas_se_omiten_y_rev_no_sube(planos) ->
     assert cuerpo["rev"] == 0 == _rev(navegador, id_) and cuerpo["resumen"]["cambios"] == 0
     por_tipo = {f["rotulo"]: f["cantidad"] for f in cuerpo["fusion"]["por_tipo"]}
     assert por_tipo["Omitido"] == IMPORTADOS_OF001 and cuerpo["fusion"]["filas_por_tabla"] == []
+    # re-verificación del 2026-11-18: «Importado» cuenta lo que entró (nada), y la respuesta lo dice
+    assert por_tipo["Importado"] == 0 and cuerpo["entro"] is False
     assert _carpetas(planos) == []
     assert _fusionar(navegador, ficha, id_).json() == {"detalle": SIN_IMPORTACION}
     # Prueba en vivo del 2026-11-18: no dice «Se fusionó… use Guardar versión» si no entró nada,
