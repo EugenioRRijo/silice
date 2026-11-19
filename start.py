@@ -123,8 +123,9 @@ def _indice_de_mes(dia: date) -> int:
 def series_viales_corridas(hoy: date) -> str:
     """La muestra ficticia de las series viales, en CSV canónico, con cada fecha corrida los meses
     enteros que hagan falta para que su último mes sea el anterior al de `hoy` (como la tasa
-    didáctica). Los valores no cambian: sus 36 meses cubren siempre la ventana de Riesgo, también
-    cuando la muestra versionada (que termina en una fecha fija) se queda atrás o va por delante."""
+    didáctica). Los valores no cambian: desde el día de la siembra, sus 36 meses cubren de sobra el
+    mínimo de historia para proyectar, también cuando la muestra versionada (que termina en una
+    fecha fija) se queda atrás o va por delante."""
     import csv
     import io
 
@@ -144,7 +145,11 @@ def sembrar_series_viales_didacticas(sesion, hoy: date) -> list[int | None]:
     """Importa las dos series viales ficticias (`series_viales_corridas`) con
     `importar_serie_csv`, la misma importación de una serie real: devuelve el id de cada
     importación, o `None` si esa serie ya tenía el mismo archivo (misma huella). Sin ellas, la obra
-    en USD de la demo no se mueve en Riesgo (prueba en vivo del 2026-11-18). No confirma."""
+    en USD de la demo no se mueve en Riesgo (prueba en vivo del 2026-11-18). No confirma.
+
+    Idempotente dentro del mismo mes (el archivo corrido es el mismo y su huella también) o sobre
+    una base limpia, que es lo que hace `--reiniciar-demo`. Otro mes sobre la misma base importaría
+    otra revisión de la serie (otra huella), como una serie real revisada."""
     import tempfile
 
     from aplicacion.riesgo.series import SERIES_VIALES, importar_serie_csv

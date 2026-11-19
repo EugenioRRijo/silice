@@ -57,11 +57,12 @@ TRAMOS = (1, 2, 4, 5)
 #: `start.py`): ficticios, con un precio de referencia inventado, y su nombre lo dice.
 INSUMO_ASFALTO = "Cemento asfáltico CA-30 (ficticio)"
 INSUMO_GASOIL = "Gasoil para equipos (ficticio)"
-#: (partida, línea) que se añade a cada una: 0,12 t de asfalto a 600 USD/t por m³ en la primera y
-#: 12 l de gasoil a 0,35 USD/l por m³ en la segunda.
+#: (partida, línea) que se añade a cada una: 0,01 t de asfalto a 600 USD/t por m³ en la primera y
+#: 1 l de gasoil a 0,35 USD/l por m³ en la segunda. Pocas: suben la obra un 2 %, así el avance en
+#: dinero de Control de obra casi no cambia, y bastan para que Riesgo muestre su dispersión.
 LINEAS_VIALES = (
-    ("G-0001", LineaMaterial(INSUMO_ASFALTO, "t", D("0.12"), D("600.00"))),
-    ("G-0002", LineaMaterial(INSUMO_GASOIL, "l", D("12"), D("0.35"))),
+    ("G-0001", LineaMaterial(INSUMO_ASFALTO, "t", D("0.01"), D("600.00"))),
+    ("G-0002", LineaMaterial(INSUMO_GASOIL, "l", D("1"), D("0.35"))),
 )
 
 
