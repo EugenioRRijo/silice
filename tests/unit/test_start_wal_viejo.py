@@ -14,8 +14,6 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-import pytest
-
 import start
 
 SUFIJOS = ("-wal", "-shm", "-journal")
@@ -66,8 +64,7 @@ def test_resembrar_la_obra_de_control_borra_el_wal_viejo(tmp_path: Path) -> None
 
 def test_resembrar_un_caso_copiado_borra_el_wal_viejo(tmp_path: Path) -> None:
     origen = start.BASES_PRUEBA / f"{start.CASOS_COPIADOS[0]}.db"
-    if not origen.exists():
-        pytest.skip(f"no está {origen.name}")
+    assert origen.exists(), f"falta la base versionada {origen}"
     destino = tmp_path / origen.name
     _con_wal_viejo(destino)
     assert "viejo" in _tablas_sin_tocar(destino, tmp_path)  # el WAL viejo revive la tabla
