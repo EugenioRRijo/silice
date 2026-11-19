@@ -38,8 +38,16 @@ export function partirClave(clave: string): { partida: string | null; origenes: 
   return { partida: barra < 0 ? null : base.slice(0, barra), origenes, mas, repetido: rep ? rep[2]! : "" };
 }
 
-// La clave de fila del servidor («esp_puntos:P1», «AF-LLAVE|esp_fuentes:F1;esp_puntos:P1#2») como la nombra la persona.
+// La línea de un APU que no se nombra por su insumo: «{partida}|{rubro}|{posición}» (el desglose del desperdicio y el alta o
+// la baja de una línea, `aplicacion/hoja_desperdicio.py` y `aplicacion/hoja.py`). El rubro es el de `hoja._lineas`.
+const LINEA_DE_APU = /^(.+)\|(material|equipo|mano_obra)\|(\d+)$/;
+const NOMBRE_DE_RUBRO: Record<string, string> = { material: "material", equipo: "equipo", mano_obra: "mano de obra" };
+
+// La clave de fila del servidor («esp_puntos:P1», «AF-LLAVE|esp_fuentes:F1;esp_puntos:P1#2», «AF-LLAVE|material|1») como la
+// nombra la persona.
 export function rotuloDeOrigen(origen: string): string {
+  const linea = LINEA_DE_APU.exec(origen);
+  if (linea) return `${linea[1]}, ${NOMBRE_DE_RUBRO[linea[2]!]} n.º ${linea[3]}`;
   const { partida, origenes, mas, repetido } = partirClave(origen);
   const nombres = origenes.map(rotuloDeFila);
   if (partida !== null && partida !== "") nombres.unshift(partida);

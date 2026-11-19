@@ -198,8 +198,8 @@ function BuscarAtipicos({ proyecto, version }: { proyecto: string; version: stri
                       ordenable: false,
                       celda: (f) => <Cifra monto={{ texto: f.porcentaje!, exacto: f.porcentaje_exacto! }} unidad="%" />,
                     },
-                    { clave: "desde", titulo: "Desde", ordenable: false, presentar: fechaCorta },
-                    { clave: "hasta", titulo: "Hasta", ordenable: false, presentar: fechaCorta },
+                    { clave: "desde", titulo: "Desde", ordenable: false, celda: (f) => fechaCorta(f["desde"] ?? "") },
+                    { clave: "hasta", titulo: "Hasta", ordenable: false, celda: (f) => fechaCorta(f["hasta"] ?? "") },
                     { clave: "severidad", titulo: "Severidad", ordenable: false, celda: "severidad" },
                   ]}
                   filas={busqueda.atipicos.variaciones.map((v, i) => ({

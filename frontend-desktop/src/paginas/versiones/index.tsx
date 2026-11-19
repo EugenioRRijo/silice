@@ -13,6 +13,7 @@ import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { rutaDeObra } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import { useNavegarSeguro } from "../../shell/navegarSeguro";
+import { esSoloDesglose } from "../hoja/logicaGuardar";
 import { avisoDeCambiosPendientes } from "../hoja/logicaVersiones";
 import type { AlCrearVersion } from "../hoja/logicaVersiones";
 import { ContextoDeLaHoja, useHojaDeLaObra } from "../hoja/ProveedorDeLaHoja";
@@ -68,7 +69,9 @@ function CuerpoDeVersiones() {
   const cambios = estado.estado === "listo" ? estado.borrador.resumen.cambios : 0;
   const filas = filasDeVersiones(versiones.datos, estados.estado === "listo" ? estados.datos : null, abierta);
   const paso = pasoDeVersiones({ cambios, puedeGuardar: puedeEditar, filas });
-  const guardar = { texto: textoDelBoton("guardar", abierta === null), alPulsar: abrirGuardado, id: ID_GUARDAR };
+  // Anexo A.6: el mismo rótulo que la franja del Presupuesto; lo decide `esSoloDesglose`, como el diálogo.
+  const desgloses = estado.estado === "listo" ? (estado.borrador.resumen.desgloses ?? 0) : 0;
+  const guardar = { texto: textoDelBoton("guardar", abierta === null, esSoloDesglose(abierta === null, cambios, desgloses)), alPulsar: abrirGuardado, id: ID_GUARDAR };
   // «Abrir» lleva al Presupuesto de la obra con la versión pedida; el proveedor la abre (con cambios, pregunta antes).
   const abrir = (version: string) => {
     if (obra === null) return pedirVersion(version);

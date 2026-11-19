@@ -28,7 +28,7 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
       // Cuándo y quién primero, como en un registro de auditoría: al final quedaban fuera de la caja del panel (pasada de
       // navegador del cierre de F4, H5).
       columnas={[
-        { clave: "fecha_hora", titulo: "Fecha y hora", ordenable: false, presentar: fechaEsVe },
+        { clave: "fecha_hora", titulo: "Fecha y hora", ordenable: false, celda: (f) => fechaEsVe(f["fecha_hora"] ?? "") },
         { clave: "responsable", titulo: "Responsable", ordenable: false },
         { clave: "objeto", titulo: "Objeto", ordenable: false },
         {

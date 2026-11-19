@@ -5,6 +5,7 @@ import { useFocoAlCerrar } from "./AgregarPartida";
 import { AprobacionDeVersion } from "./AprobacionDeVersion";
 import { BotonExcel } from "./BotonExcel";
 import { EstadoDelBorrador } from "./EstadoDelBorrador";
+import { esSoloDesglose } from "./logicaGuardar";
 import type { BorradorAbierto } from "./logica";
 import { gravesDe, necesitaLaAprobacion, pasoDelPresupuesto } from "./pasoDelPresupuesto";
 import type { AccionDelPresupuesto, EntradaDelPaso } from "./pasoDelPresupuesto";
@@ -80,6 +81,8 @@ export function FranjaDelPresupuesto({
     puedeEditar,
     puedeEnviar: conPermiso && lectura.estado !== "fallo",
   };
+  // La misma regla que el diálogo de guardar: así el botón dice lo que va a pasar (anexo A.6).
+  const soloDesglose = esSoloDesglose(version === null, resumen.cambios, resumen.desgloses ?? 0);
   const paso = lectura.estado === "leyendo" && necesitaLaAprobacion(entrada) ? null : pasoDelPresupuesto(entrada);
 
   const acciones: Record<AccionDelPresupuesto, () => void> = {
@@ -136,7 +139,7 @@ export function FranjaDelPresupuesto({
             accion={
               paso.accion === null
                 ? undefined
-                : { texto: textoDelBoton(paso.accion, version === null), alPulsar: acciones[paso.accion], id: IDS[paso.accion] }
+                : { texto: textoDelBoton(paso.accion, version === null, soloDesglose), alPulsar: acciones[paso.accion], id: IDS[paso.accion] }
             }
           />
         )}

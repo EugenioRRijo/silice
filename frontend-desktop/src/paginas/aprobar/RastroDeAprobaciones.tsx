@@ -68,7 +68,7 @@ function Contenido({ datos }: { datos: AprobacionesDeObra }) {
               { clave: "version", titulo: "Versión", ordenable: false },
               { clave: "desenlace", titulo: "Desenlace", ordenable: false },
               { clave: "por", titulo: "Quién", ordenable: false },
-              { clave: "el", titulo: "Cuándo", ordenable: false, presentar: fechaEsVe },
+              { clave: "el", titulo: "Cuándo", ordenable: false, celda: (f) => fechaEsVe(f["el"] ?? "") },
               { clave: "notas", titulo: "Notas", ordenable: false },
             ]}
             filas={datos.eventos.map((e) => ({

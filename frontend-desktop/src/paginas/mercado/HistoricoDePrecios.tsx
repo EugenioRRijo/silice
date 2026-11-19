@@ -126,7 +126,7 @@ export function HistoricoDePrecios() {
         <TablaDensa
           etiqueta="Cambios de precio"
           columnas={[
-            { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
+            { clave: "fecha", titulo: "Fecha", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
             { clave: "insumo", titulo: "Insumo" },
             { clave: "precio_anterior", titulo: "Precio anterior", numerica: true, presentar: formatoEsVe },
             { clave: "precio_nuevo", titulo: "Precio nuevo", numerica: true, presentar: formatoEsVe },

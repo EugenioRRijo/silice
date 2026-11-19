@@ -158,7 +158,12 @@ describe("Índices del BCV", () => {
     expect(within(resumen).getByText("Provisionales").nextSibling).toHaveTextContent("1");
     const series = screen.getByRole("table", { name: "Series leídas" });
     expect(within(series).getByText("INDICE-A")).toBeInTheDocument();
-    expect(within(series).getAllByText("2026-01-01")).toHaveLength(3);
+    // Las fechas de cada serie se leen como en el resto de Sílice: dd/mm/aaaa, nunca aaaa-mm-dd (prueba en vivo del 18/11/2026).
+    expect(within(series).getAllByText("01/01/2026")).toHaveLength(3);
+    expect(within(series).getByText("01/02/2026")).toBeInTheDocument();
+    expect(within(series).queryByText(/\d{4}-\d{2}-\d{2}/)).toBeNull();
+    // VD-5: la forma ISO tampoco va en un `title` (`presentar` la pondría como tooltip de la fecha).
+    expect([...series.querySelectorAll("[title]")].map((e) => e.getAttribute("title")).filter((t) => /\d{4}-\d{2}-\d{2}/.test(t ?? ""))).toEqual([]);
     expect(within(screen.getByRole("table", { name: "Filas rechazadas" })).getByText("indices.csv:4")).toBeInTheDocument();
     expect(screen.getByText("Aviso ficticio del lector.")).toBeInTheDocument();
     expect(screen.getByText("Responsable de la importación: Admin de Prueba <admin>")).toBeInTheDocument();

@@ -54,7 +54,7 @@ export function Observaciones({ estudio, alCambiar }: Props) {
 
   const porId = new Map(observaciones.map((o) => [String(o.id), o]));
   const columnas: ColumnaDensa[] = [
-    { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
+    { clave: "fecha", titulo: "Fecha", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
     { clave: "tipo", titulo: "De dónde sale" },
     { clave: "fuente", titulo: "Fuente" },
     {
