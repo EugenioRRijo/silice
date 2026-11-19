@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import os
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from api import caso_web
@@ -165,3 +166,26 @@ def sesion_instalacion_api() -> Iterator[Session]:
 #: enviar la respuesta; con el alcance por omisión correría después y un cliente podría leer antes
 #: del commit.
 SesionInstalacionDep = Annotated[Session, Depends(sesion_instalacion_api, scope="function")]
+
+
+class RespuestaNoArmada(RuntimeError):  # noqa: N818
+    """Falló armar la respuesta con lo escrito y antes del `commit` (DS-57): no se guardó nada y
+    no es culpa de lo enviado. Sale como error del servidor (500), no como el 422 de un
+    `ValueError`."""
+
+
+def sin_culpar_a_la_entrada[T](armar: Callable[[], T]) -> Callable[[], T]:
+    """`armar` para el `antes_de_confirmar` de una función de aplicación: un fallo que no es de la
+    base (que sigue siendo 503) ni una `HTTPException` sale como `RespuestaNoArmada`, para que el
+    `except ValueError` de la ruta no lo tome por un dato malo y culpe a la entrada (arbitraje de
+    DS-57: una `pydantic.ValidationError` es un `ValueError`)."""
+
+    def armada() -> T:
+        try:
+            return armar()
+        except (HTTPException, SQLAlchemyError):
+            raise
+        except Exception as error:
+            raise RespuestaNoArmada("no se pudo armar la respuesta; no se guardó nada") from error
+
+    return armada

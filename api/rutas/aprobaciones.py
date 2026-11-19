@@ -29,8 +29,10 @@ Rutas finas sobre `aplicacion.aprobaciones` (la regla y el rastro, en la carpeta
 
 Las que escriben en la carpeta usan la sesión de escritura (`BEGIN IMMEDIATE`, SL-E12): dos
 dictámenes a la vez se ordenan y el segundo recibe «Este envío ya tiene dictamen o fue retirado.».
-Después de confirmar la carpeta se refleja el índice y se confirma la instalación; si eso falla, la
-respuesta no cambia (lo que vale es la carpeta) y el próximo `GET /pendientes` lo repone.
+El reflejo del índice se lee de la carpeta antes de su `commit` (DS-57) y se escribe en la
+instalación después, en una transacción corta y propia: las dos bases nunca se retienen a la vez
+(DS-69). Si eso falla, la respuesta no cambia (lo que vale es la carpeta) y el próximo
+`GET /pendientes` lo repone.
 
 Errores: `NoSeEncontro` → 404, `DatosInvalidos` → 422, otra `AprobacionInvalida` → 409, con su
 mensaje; el 422 de forma es un mensaje fijo que no repite lo enviado; un fallo de la base, 503 sin
@@ -41,6 +43,8 @@ toda respuesta. Montos como texto. La interfaz dice «obra»; la API conserva `p
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal
@@ -78,6 +82,8 @@ from aplicacion.indice_aprobaciones import FilaIndice
 from aplicacion.mesa import dias_habiles_entre
 from core.catalog import abrir_sesion
 from operacion.base_datos import RutaDeCasoRechazada, listar_casos, resolver_caso
+from operacion.instalacion import sesion_de_instalacion
+from seguridad.base import ESPERA_OCUPADA_MS
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
@@ -294,16 +300,74 @@ def _caso(request: Request) -> str | None:
     return None if ruta is None else ruta.name
 
 
-def _reflejar(instalacion: Session, caso: str | None, sesion: Session) -> None:
-    """Reescribe en el índice las filas de la carpeta y confirma la instalación. Un fallo no
-    cambia la respuesta: la carpeta ya está confirmada y es la que manda."""
+#: Lo que espera la escritura del índice, ya confirmada la carpeta, si otro escribe en la
+#: instalación (DS-69): poco, porque el envío ya está guardado y la próxima lectura lo repone.
+ESPERA_DEL_REFLEJO_MS = 1000
+
+
+@contextmanager
+def _instalacion_inmediata(espera_ms: int = ESPERA_OCUPADA_MS) -> Iterator[Session]:
+    """Una transacción corta y propia de `instalacion.db` que toma su bloqueo de escritura al
+    empezar (`BEGIN IMMEDIATE`, esperando como mucho `espera_ms`): comparar y escribir el índice
+    no se separan. Lo que no se confirme se deshace al cerrar."""
+    with sesion_de_instalacion() as instalacion:
+        conexion = instalacion.connection()
+        conexion.exec_driver_sql(f"PRAGMA busy_timeout={int(espera_ms)}")
+        try:
+            conexion.exec_driver_sql("BEGIN IMMEDIATE")
+        finally:  # la conexión vuelve al grupo con la espera de siempre
+            conexion.exec_driver_sql(f"PRAGMA busy_timeout={ESPERA_OCUPADA_MS}")
+        yield instalacion
+
+
+def _leer_el_reflejo(caso: str | None, sesion: Session) -> indice_aprobaciones.Reflejo | None:
+    """Antes del `commit` de la carpeta al enviar o dictaminar (DS-57): las filas de su índice,
+    leídas en su misma transacción (tras el `commit`, leerla abriría otro `BEGIN IMMEDIATE`). No
+    toca la instalación (DS-69). Un fallo no desdice la carpeta: se registra y la próxima lectura
+    repone el índice (`_reflejar`)."""
+    if caso is None:
+        return None
+    try:
+        return indice_aprobaciones.leer_reflejo(caso, sesion)
+    except Exception:  # noqa: BLE001 (lanzar aquí desharía la carpeta)
+        _registro.warning(
+            "No se pudo leer el reflejo de aprobaciones de %s antes de confirmar la carpeta.",
+            caso,
+            exc_info=True,
+        )
+        return None
+
+
+def _escribir_el_reflejo(reflejo: indice_aprobaciones.Reflejo | None) -> None:
+    """Ya confirmada la carpeta, escribe el reflejo en el índice en una transacción corta y propia
+    de la instalación; uno más nuevo que ya esté escrito no se pisa. Un fallo no cambia la
+    respuesta: la carpeta es la que manda y la próxima lectura repone el índice."""
+    if reflejo is None:
+        return
+    try:
+        with _instalacion_inmediata(ESPERA_DEL_REFLEJO_MS) as instalacion:
+            if indice_aprobaciones.escribir_reflejo(instalacion, reflejo):
+                instalacion.commit()
+    except Exception:  # noqa: BLE001 (la carpeta ya confirmó: ningún fallo aquí la desdice)
+        _registro.warning(
+            "No se pudo escribir el índice de aprobaciones de %s después de confirmar la carpeta.",
+            reflejo.caso,
+            exc_info=True,
+        )
+
+
+def _reflejar(caso: str | None, sesion: Session) -> None:
+    """La reposición de las lecturas: toma el bloqueo de la instalación, lee la carpeta (sin
+    escribir en ella) y reescribe sus filas del índice. Como quien escribe tras confirmar espera
+    ese bloqueo, el último en escribir lee la carpeta más nueva. Un fallo no cambia la respuesta:
+    la carpeta es la que manda."""
     if caso is None:
         return
     try:
-        indice_aprobaciones.reflejar(instalacion, caso, sesion)
-        instalacion.commit()
-    except Exception:  # noqa: BLE001 (la carpeta ya confirmó: ningún fallo aquí la desdice)
-        instalacion.rollback()
+        with _instalacion_inmediata() as instalacion:
+            indice_aprobaciones.reflejar(instalacion, caso, sesion)
+            instalacion.commit()
+    except Exception:  # noqa: BLE001 (el índice es un reflejo: ningún fallo aquí desdice nada)
         _registro.warning(
             "No se pudo reflejar el índice de aprobaciones de %s.", caso, exc_info=True
         )
@@ -362,9 +426,15 @@ def enviar(
     request: Request,
     activa: CuentaQueEdita,
     sesion: SesionDeEscrituraDep,
-    instalacion: SesionInstalacionDep,
 ) -> AprobacionEnvioRespuesta:
     """Envía una versión guardada a aprobación (retira la pendiente de la obra, si había)."""
+    caso = _caso(request)
+    reflejo: indice_aprobaciones.Reflejo | None = None
+
+    def leer_el_reflejo() -> None:
+        nonlocal reflejo
+        reflejo = _leer_el_reflejo(caso, sesion)
+
     try:
         envio = aprobaciones.enviar(
             sesion,
@@ -373,12 +443,13 @@ def enviar(
             nota=peticion.nota,
             usuario=USUARIO_API if activa is None else activa.usuario,
             ahora=ahora(),
+            antes_de_confirmar=leer_el_reflejo,
         )
     except AprobacionInvalida as error:
         raise _http(error) from None
     except SQLAlchemyError:
         raise _sin_base() from None
-    _reflejar(instalacion, _caso(request), sesion)
+    _escribir_el_reflejo(reflejo)
     return AprobacionEnvioRespuesta(id=envio.id, estado="en_aprobacion", retirada=envio.retirada)
 
 
@@ -436,7 +507,7 @@ def por_aprobar(
 ) -> list[AprobacionFilaRespuesta]:
     """Lo que espera dictamen en todas las carpetas, lo más antiguo primero."""
     del activa
-    _reflejar(instalacion, _caso(request), sesion)
+    _reflejar(_caso(request), sesion)
     try:
         return [_fila(f) for f in indice_aprobaciones.pendientes(instalacion)]
     except SQLAlchemyError:
@@ -452,7 +523,7 @@ def mias(
 ) -> list[AprobacionFilaRespuesta]:
     """Las últimas 20 versiones que la cuenta envió a aprobación, con su dictamen."""
     cuenta = _con_cuenta(activa)
-    _reflejar(instalacion, _caso(request), sesion)
+    _reflejar(_caso(request), sesion)
     try:
         return [_fila(f) for f in indice_aprobaciones.de_quien(instalacion, cuenta.usuario)]
     except SQLAlchemyError:
@@ -468,7 +539,7 @@ def resumen(
 ) -> AprobacionCifraRespuesta:
     """La cifra «Por aprobar»: cuántas versiones esperan dictamen y cuánto lleva la más antigua."""
     del activa
-    _reflejar(instalacion, _caso(request), sesion)
+    _reflejar(_caso(request), sesion)
     try:
         filas = indice_aprobaciones.pendientes(instalacion)
     except SQLAlchemyError:
@@ -587,11 +658,17 @@ def dictaminar(
     request: Request,
     activa: CuentaQueAprueba,
     sesion: SesionDeEscrituraDep,
-    instalacion: SesionInstalacionDep,
 ) -> AprobacionDictamenRespuesta:
     """Registra el dictamen sobre el envío (solo con la cuenta de una persona). Con la cadena de
     versiones rota solo se acepta «devuelta»: aprobar, también con observaciones, da 409."""
     cuenta = _con_cuenta(activa)
+    caso = _caso(request)
+    reflejo: indice_aprobaciones.Reflejo | None = None
+
+    def leer_el_reflejo() -> None:
+        nonlocal reflejo
+        reflejo = _leer_el_reflejo(caso, sesion)
+
     try:
         evento = aprobaciones.dictaminar(
             sesion,
@@ -600,10 +677,11 @@ def dictaminar(
             notas=peticion.notas,
             usuario=cuenta.usuario,
             ahora=ahora(),
+            antes_de_confirmar=leer_el_reflejo,
         )
     except AprobacionInvalida as error:
         raise _http(error) from None
     except SQLAlchemyError:
         raise _sin_base() from None
-    _reflejar(instalacion, _caso(request), sesion)
+    _escribir_el_reflejo(reflejo)
     return AprobacionDictamenRespuesta(id=evento, estado=peticion.resultado)

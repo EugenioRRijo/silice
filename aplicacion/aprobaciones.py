@@ -231,11 +231,19 @@ class RastroVerificado:
 
 
 def enviar(
-    sesion: Session, proyecto: str, version: str, *, nota: str, usuario: str, ahora: datetime
+    sesion: Session,
+    proyecto: str,
+    version: str,
+    *,
+    nota: str,
+    usuario: str,
+    ahora: datetime,
+    antes_de_confirmar: Callable[[], None] | None = None,
 ) -> Envio:
     """Envía `version` a aprobación. Si la obra tenía otro envío pendiente, lo retira en la misma
     transacción y `Envio.retirada` lo nombra. Confirma; `AprobacionInvalida` si no se puede;
-    `ValueError` si `ahora` trae zona horaria."""
+    `ValueError` si `ahora` trae zona horaria. `antes_de_confirmar()` corre con el envío ya escrito
+    y antes del `commit` (DS-57); si lanza, no queda nada."""
     _exigir_hora_sin_zona(ahora)
 
     def operacion() -> Envio:
@@ -284,17 +292,25 @@ def enviar(
         )
         return Envio(fila.id, retirada)
 
-    return _escribir(sesion, operacion)
+    return _escribir(sesion, operacion, antes_de_confirmar)
 
 
 def dictaminar(
-    sesion: Session, envio_id: int, *, resultado: str, notas: str, usuario: str, ahora: datetime
+    sesion: Session,
+    envio_id: int,
+    *,
+    resultado: str,
+    notas: str,
+    usuario: str,
+    ahora: datetime,
+    antes_de_confirmar: Callable[[], None] | None = None,
 ) -> int:
     """Registra el dictamen sobre el envío `envio_id` y devuelve el id del evento. Notas
     obligatorias para devolver y para aprobar con observaciones. Confirma; `AprobacionInvalida`
     si el envío no existe, ya está cerrado o el dictamen no es válido; `ValueError` si `ahora`
     trae zona horaria. Con la cadena de versiones rota solo se acepta «devuelta» (devolver no
-    certifica nada); aprobar, también con observaciones, se rechaza hasta repararla."""
+    certifica nada); aprobar, también con observaciones, se rechaza hasta repararla.
+    `antes_de_confirmar()`, como en `enviar`."""
     _exigir_hora_sin_zona(ahora)
 
     def operacion() -> int:
@@ -334,7 +350,7 @@ def dictaminar(
         )
         return fila.id
 
-    return _escribir(sesion, operacion)
+    return _escribir(sesion, operacion, antes_de_confirmar)
 
 
 # --- lecturas -----------------------------------------------------------------------------------
@@ -680,23 +696,31 @@ class _ChoqueDeEscritura(Exception):  # noqa: N818
     """Otra sesión escribió entre la lectura y la escritura de esta."""
 
 
-def _escribir[T](sesion: Session, operacion: Callable[[], T]) -> T:
+def _escribir[T](
+    sesion: Session, operacion: Callable[[], T], antes_de_confirmar: Callable[[], None] | None
+) -> T:
     """Corre `operacion` y confirma, todo o nada. Ante un choque con otra sesión, deshace y lo
     intenta una vez más desde una lectura nueva (que normalmente rechaza con el mensaje de la
-    regla); si vuelve a chocar, `AprobacionInvalida(CHOQUE)`."""
+    regla); si vuelve a chocar, `AprobacionInvalida(CHOQUE)`. `antes_de_confirmar()` corre en cada
+    intento, tras `operacion` y antes del `commit`."""
     try:
-        return _confirmar(sesion, operacion)
+        return _confirmar(sesion, operacion, antes_de_confirmar)
     except _ChoqueDeEscritura:
         pass
     try:
-        return _confirmar(sesion, operacion)
+        return _confirmar(sesion, operacion, antes_de_confirmar)
     except _ChoqueDeEscritura as choque:
         raise AprobacionInvalida(CHOQUE) from choque
 
 
-def _confirmar[T](sesion: Session, operacion: Callable[[], T]) -> T:
+def _confirmar[T](
+    sesion: Session, operacion: Callable[[], T], antes_de_confirmar: Callable[[], None] | None
+) -> T:
     try:
         resultado = operacion()
+        if antes_de_confirmar is not None:
+            sesion.flush()  # un choque al escribir sale aquí, como en el `commit`, y no al leer
+            antes_de_confirmar()
         sesion.commit()
     except (IntegrityError, OperationalError) as error:
         sesion.rollback()

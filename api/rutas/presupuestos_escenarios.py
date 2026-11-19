@@ -22,7 +22,7 @@ from api.esquemas import (
     PendienteRespuesta,
 )
 from api.esquemas_ola2 import EscenariosBaseRespuesta
-from api.presentacion import cifra_presentada
+from api.presentacion import cifra_presentada, exacto
 from api.rutas.presupuestos_ayudas import (
     _CAMPOS_PARAMETROS,
     _buscar_modelo,
@@ -114,7 +114,7 @@ def base_de_escenarios(
         proyecto=modelo.proyecto.nombre,
         moneda=base.moneda,
         total=formatear_decimal(base.total, DECIMALES_PRESENTACION),
-        parametros={nombre: str(getattr(modelo, nombre)) for nombre in _CAMPOS_PARAMETROS},
+        parametros={nombre: exacto(getattr(modelo, nombre)) for nombre in _CAMPOS_PARAMETROS},
         pendientes_base=[
             PendienteRespuesta(**_campos_pendiente(item)) for item in elaboracion.pendientes
         ],

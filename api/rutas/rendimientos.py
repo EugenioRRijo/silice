@@ -29,6 +29,7 @@ from api.esquemas import (
     RendimientosRespuesta,
     decimal_desde_texto,
 )
+from api.presentacion import exacto
 from aplicacion.elaboracion import ejecuciones
 from core.catalog import (
     Catalogo,
@@ -205,7 +206,7 @@ def _veredicto_bosque(valores_previos: list[Decimal], valor: Decimal):
 
 def _a_rendimiento_respuesta(rendimiento: Rendimiento) -> RendimientoRespuesta:
     return RendimientoRespuesta(
-        valor=str(rendimiento.valor),
+        valor=exacto(rendimiento.valor),
         tipo=rendimiento.tipo.value,
         fecha=rendimiento.fecha,
         condiciones=rendimiento.condiciones,
@@ -216,9 +217,9 @@ def _a_rendimiento_respuesta(rendimiento: Rendimiento) -> RendimientoRespuesta:
 def _a_dispersion_respuesta(dispersion: DispersionRendimiento) -> DispersionRespuesta:
     return DispersionRespuesta(
         observaciones=dispersion.observaciones,
-        media=str(dispersion.media),
-        minimo=str(dispersion.minimo),
-        maximo=str(dispersion.maximo),
+        media=exacto(dispersion.media),
+        minimo=exacto(dispersion.minimo),
+        maximo=exacto(dispersion.maximo),
         medidos=dispersion.medidos,
         estimados=dispersion.estimados,
     )
