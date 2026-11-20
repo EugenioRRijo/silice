@@ -591,7 +591,7 @@ def test_una_rec_sin_vertices_va_al_informe_y_no_tumba_la_importacion(agregar):
     r = importar_dxf(p.bytes(), nombre="a.dxf")
     assert r.recorridos == ()
     (item,) = [i for i in tipos(r, TipoItem.NO_RECONOCIDO) if i.tabla == "esp_recorridos"]
-    assert item.mensaje == "polilinea sin vertices: no hay recorrido que medir"
+    assert item.mensaje == "polilínea sin vértices: no hay recorrido que medir"
 
 
 def test_una_rec_cuyo_extremo_coincide_con_dos_puntos_no_se_adivina():
