@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
@@ -437,6 +437,91 @@ def test_tras_confirmar_la_ruta_no_abre_otra_transaccion(
         respuesta = navegador.post(ruta, json={**P, **cuerpo}, headers=cabeceras)
     assert respuesta.status_code == 200, respuesta.text
     assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
+
+
+def _filas_del_caso(tabla: str) -> int:
+    """Las filas de `tabla` en la carpeta del proceso (0 si la tabla aún no existe)."""
+    import sqlite3
+    from contextlib import closing
+
+    with closing(sqlite3.connect(_caso_del_proceso())) as bd:
+        existe = bd.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (tabla,)
+        ).fetchone()
+        return bd.execute(f'SELECT COUNT(*) FROM "{tabla}"').fetchone()[0] if existe else 0
+
+
+@pytest.mark.parametrize(
+    ("fallo", "estado"),
+    [
+        (logica_control.ControlInvalido("No hay línea base vigente al corte."), 422),
+        (RuntimeError("fallo inesperado del cálculo"), 500),
+    ],
+    ids=["control-invalido", "inesperado"],
+)
+def test_si_el_control_al_corte_falla_no_queda_la_valuacion_ni_sus_causas(
+    fallo: Exception,
+    estado: int,
+    _plantillas: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DS-111: el control al corte corre tras escribir la valuación y sus causas (`flush`) y antes
+    del `commit`; si falla, no queda nada (todo o nada) y `_escribir` deshace ante cualquier
+    error, también uno que no es de los datos."""
+    from aplicacion import control_linea_base
+
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    escrito: list[int] = []
+
+    def falla(sesion, *_args, **_kwargs):
+        escrito.append(sesion.scalar(select(func.count()).select_from(models.Valuacion)))
+        raise fallo
+
+    monkeypatch.setattr(control_linea_base, "calcular_el_control", falla)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-01",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "inspector": ob.INSPECTOR,
+        "lineas": [{"partida": "OB-A", "cantidad": "40", "causa": "compra_tardia"}],
+        "fuente": ob.FUENTE,
+    }
+    r = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert r.status_code == estado, r.text
+    assert escrito == [1]  # el cálculo vio la valuación ya escrita en la transacción
+    assert (_filas_del_caso("valuacion"), _filas_del_caso("mp_causa_retraso")) == (0, 0)
+
+
+def test_si_falla_armar_la_descripcion_de_la_linea_base_es_500_y_no_queda(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """DS-111 y DS-57: un fallo al armar la respuesta no es culpa de lo enviado (500, no 422) y
+    deshace la línea base declarada."""
+    _usar(_plantillas, "vacia", tmp_path, monkeypatch)
+
+    def falla(*_args, **_kwargs):
+        raise ValueError("descripción imposible")
+
+    monkeypatch.setattr(logica_control, "describir_linea_base", falla)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "version": "OB-001",
+        "desde": "2026-11-02",
+        "perspectiva": "costo",
+        "inicio": "2026-11-02",
+        "dias_por_periodo": "5",
+        "feriados": "",
+        "fuente": ob.FUENTE,
+    }
+    r = navegador.post("/v1/control/linea-base", json=cuerpo, headers=cabeceras)
+    assert r.status_code == 500, r.text
+    assert "descripción imposible" not in r.text
+    assert _filas_del_caso("linea_base_control") == 0
 
 
 def test_un_fallo_de_la_base_al_registrar_es_el_503_fijo_y_no_un_422_con_el_motor(
