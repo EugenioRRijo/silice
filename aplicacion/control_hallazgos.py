@@ -19,7 +19,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from aplicacion.cifras import texto_de_cifra
-from aplicacion.control_tablas import Hueco, catalogo_de_frases
+from aplicacion.control_tablas import Hueco, catalogo_de_frases, valuacion_del_hallazgo
 from core.budget.control import ResultadoControl
 
 __all__ = ["PLANTILLAS_DE_HALLAZGOS", "hallazgos_de_valuaciones", "mensaje_de_hallazgo"]
@@ -161,12 +161,12 @@ def hallazgos_de_valuaciones(resultado: ResultadoControl) -> list[dict[str, str]
         resultado.informe.hallazgos,
         key=lambda h: _ORDEN.index(h.severidad.name) if h.severidad.name in _ORDEN else 99,
     )
+    claves = [v.clave for v in resultado.instantanea.valuaciones]
     filas = []
     for h in hallazgos:
-        origen = next((o for o in h.origen_ids if o.startswith("valuacion:")), "")
         filas.append(
             {
-                "Valuacion": origen.split(":")[1] if origen else "",
+                "Valuacion": valuacion_del_hallazgo(h.origen_ids, claves) or "",
                 "Regla": h.regla,
                 "Severidad": SEVERIDADES.get(h.severidad.name, h.severidad.name),
                 "Mensaje": mensaje_de_hallazgo(h.descripcion),
