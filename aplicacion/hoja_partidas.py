@@ -413,9 +413,10 @@ def _nodo(nodo: ast.expr, regla: str, parametros: Mapping[str, Decimal]) -> tupl
             and 0 <= exponente.value <= _POTENCIA_MAXIMA
         ):
             raise _NoEsCalculo
+        # la base se revisa siempre: «desconocido**0» o «f(x)**0» no son cálculo, aunque valgan 1
+        texto, precedencia = _nodo(nodo.left, regla, parametros)
         if exponente.value == 0:
             return "1", _ATOMO
-        texto, precedencia = _nodo(nodo.left, regla, parametros)
         base = _entre_parentesis(texto, precedencia, _ATOMO)
         if exponente.value == 1:
             return _escrito(f"({texto})" if precedencia < _ATOMO else base, _ATOMO)
