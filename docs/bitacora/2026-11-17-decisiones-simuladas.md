@@ -215,18 +215,20 @@ encargo final.
 [la bitácora de la auditoría del 2026-11-20](auditoria-agy-2026-11-20.md) y en [ESTADO §5](../ESTADO.md) («Declarado
 fuera de alcance»).
 
-**Notas del escriba** (para el orquestador; no son decisiones):
+**Aclaraciones del orquestador** (no son decisiones):
 
-- **DS-117 y el veredicto B1.** El verificador marcó la ruta `elegir` como falsa para el reabrir la transacción (sale del
-  mapa de identidad). DS-117 se transcribe tal como lo dio el orquestador. Confirmar si se aplica por ese motivo o por otro.
-- **DS-75.** El acta de 2026-11-19 eligió la opción B. Este sprint aplica la opción A solo en la lista de Guardar (DS-97).
-  Ratificar.
-- **Patrón DS-58 (A5).** El encargo lo da por sin arreglar en `elaboracion.py` y `hoja_vial.py`, y lo cita también en
-  `libro_a_la_hoja.py`. La verificación dice que DS-58 ya cerró `libro_a_la_hoja.py:449`. El resumen de ramas incluye A5 en
-  `feature/depurar-logica-1120`. Confirmar qué cubre la unión.
-- **A13.** El resumen dice «sin defecto»; el verificador lo confirma en parte (no rompe el PDF). Se anota así, sin cambio
-  de código (DS-109).
-- **Commit `534b382f`** (`feature/depurar-logica-1120`). El cuerpo del mensaje dice «El resumen de la fusión pasa a ,»;
-  el resumen lo describía como comillas invertidas. Sin reescribir la historia: decisión de Eugenio.
-- **Verificación de §5.7 de ESTADO.** «PDF de este APU» (`frontend-desktop/src/paginas/hoja/BotonPdf.tsx`) y
-  `_codigo_libro` (`aplicacion/libro_a_la_hoja.py:82`) están en el árbol de la unión. Se quitaron de §5.7.
+- **DS-117 y el veredicto B1.** El verificador vio que `elegir` no reabre la transacción porque `SesionDeEscrituraDep`
+  fija `expire_on_commit=False` y lo leído sale del mapa de identidad. La revisión de Neon de la rama (nota 8) mostró que
+  eso depende de esa opción; con una sesión que expira lo leído al confirmar, la ruta sí reabría (rojo b1a607dd). DS-117
+  quita esa dependencia: es robustez, no el defecto de B1.
+- **DS-75.** El 2026-11-19 se eligió B y la A quedó «como mejora». Este sprint hace esa mejora, solo en la lista de
+  Guardar (DS-97); Versiones y Revisar siguen con B.
+- **A5 (patrón de DS-58).** Arreglado en `feature/depurar-logica-1120` (rojo e115e8d4, verde c0e61c57) en
+  `aplicacion/elaboracion.py` y `aplicacion/hoja_vial.py`; `libro_a_la_hoja.py` ya lo tenía desde DS-58. El árbitro
+  anotó (NOTA 5) que el patrón está copiado en esos tres sitios: un ayudante común queda como mejora opcional.
+- **A13.** El verificador lo confirmó en parte; el constructor midió que el PDF sale idéntico byte a byte con o sin
+  sanear, así que no hay defecto y queda una prueba de guarda (DS-109).
+- **Commit `534b382f`** (`feature/depurar-logica-1120`): el shell interpretó unas comillas invertidas y la frase quedó
+  «El resumen de la fusión pasa a ,». Sin reescribir la historia: decisión de Eugenio.
+- **§5.7 de ESTADO.** «PDF de este APU» (`frontend-desktop/src/paginas/hoja/BotonPdf.tsx`) y `_codigo_libro`
+  (`aplicacion/libro_a_la_hoja.py:82`) ya están en el árbol: se quitaron de §5.7.

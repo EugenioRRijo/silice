@@ -304,8 +304,8 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
   la imagen se pierde al exportar. El cero ya no da 500; esto es la parte opcional.
 - Carrera estrecha entre `GET /insumos` y un guardado en vuelo de Riesgo.
 - `aplicacion/revision.py` ronda las 979 líneas; el tope de la guardia es 1000.
-- Patrón de DS-58 (A5, carrera de `nuevo` fuera del cerrojo) en `aplicacion/elaboracion.py` y `aplicacion/hoja_vial.py`:
-  por confirmar que la unión lo cubre (el encargo dice que no; el resumen de ramas lo incluye).
+- El patrón de DS-58 (A5) quedó copiado en `aplicacion/elaboracion.py`, `aplicacion/hoja_vial.py` y
+  `aplicacion/libro_a_la_hoja.py` (nota 5 del árbitro): un ayudante común es una mejora opcional.
 - Sin cambio de código por decisión: DS-100 (C4, cerrar el diálogo de anular conteo) y DS-109 (A13, prueba de guarda).
 - Sin cambio por ser falso positivo: A10, B9 y C7 de la auditoría del 2026-11-20.
 
