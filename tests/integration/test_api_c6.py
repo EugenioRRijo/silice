@@ -510,10 +510,11 @@ def test_importar_comprueba_el_libro_antes_de_tocar_el_caso(
 def test_un_archivo_malo_sobre_un_proyecto_inexistente_es_422(cliente, tmp_path):
     """DS-32 y DS-112: el libro se rechaza antes de mirar la obra, así que un archivo malo gana al
     404 de la obra (como `POST /v1/control/importar`)."""
-    ruta = tmp_path / "presupuesto.csv"
-    ruta.write_text("codigo_partida,cantidad\nTER-01,1\n", encoding="utf-8")
-    r = _importar(cliente, ruta, proyecto="No existe", tipo="text/csv")
+    ruta = tmp_path / "roto.xlsx"
+    ruta.write_bytes(b"PK\x03\x04 no es un libro")
+    r = _importar(cliente, ruta, proyecto="No existe")
     assert r.status_code == 422, r.text
+    assert r.json()["detalle"].startswith("roto.xlsx: no se puede leer como libro de Excel")
 
 
 def _con_moneda(ruta: Path, moneda: str) -> Path:
