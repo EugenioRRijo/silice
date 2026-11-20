@@ -517,6 +517,21 @@ def test_un_archivo_malo_sobre_un_proyecto_inexistente_es_422(cliente, tmp_path)
     assert r.json()["detalle"].startswith("roto.xlsx: no se puede leer como libro de Excel")
 
 
+@pytest.mark.parametrize("nombre", ["presupuesto.csv", "presupuesto.txt"])
+def test_un_archivo_que_no_es_un_libro_sobre_un_proyecto_inexistente_es_422(
+    cliente, tmp_path, nombre
+):
+    """Revisión de la compuerta, punto 7 (DS-112): la extensión también se rechaza antes de mirar
+    la obra, con el mensaje del núcleo."""
+    ruta = tmp_path / nombre
+    ruta.write_text("codigo_partida,cantidad\nTER-01,1\n", encoding="utf-8")
+    r = _importar(cliente, ruta, proyecto="No existe", tipo="text/plain")
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"].startswith(
+        f"{nombre}: el presupuesto de un tercero se importa de un libro .xlsx o .xlsm"
+    )
+
+
 def _con_moneda(ruta: Path, moneda: str) -> Path:
     libro = openpyxl.load_workbook(ruta)
     for fila in libro["Datos"].iter_rows(min_row=2):
