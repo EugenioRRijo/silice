@@ -988,3 +988,60 @@ def test_si_falla_el_borrador_nuevo_que_otro_toco_antes_del_cerrojo_no_se_descar
     assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.parametros == otros
     assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.items_base == ()
     assert _partidas_del_libro() == []
+
+
+class _CerrojoQueCambiaAlSoltar:
+    """El `RLock` del borrador; al soltarlo desde fuera con el libro ya llevado, otra petición
+    cambia el borrador (una sola vez). `despues` devuelve si ya lo cambió."""
+
+    def __init__(self, despues) -> None:
+        import threading
+
+        self._de_verdad = threading.RLock()
+        self._dentro = threading.local()
+        self._despues = despues
+
+    def __enter__(self):
+        self._de_verdad.acquire()
+        self._dentro.n = getattr(self._dentro, "n", 0) + 1
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self._dentro.n -= 1
+        self._de_verdad.release()
+        if self._dentro.n == 0 and self._despues is not None and self._despues():
+            self._despues = None
+
+
+def test_los_precios_de_la_respuesta_son_los_de_lo_llevado_aunque_otro_cambie_el_borrador_despues(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hallazgo 8 (2026-11-20): justo al soltar el cerrojo, otra pestaña cambia los porcentajes
+    del borrador. Los precios de la Hoja y su «casa» con el libro son los de lo que se llevó, no
+    los del borrador que dejó la otra pestaña."""
+    otros = ParametrosCosto(utilidad=Decimal("0.99"))
+    de_verdad = hoja_borradores.crear
+
+    def crear(*args, **kwargs):
+        vivo = de_verdad(*args, **kwargs)
+
+        def otra_pestana() -> bool:
+            if not vivo.borrador.items_base:  # todavía no se llevó el libro
+                return False
+            # lo que deja `hoja_borradores.reemplazar` de otra petición: otro borrador y otro rev
+            vivo.borrador, vivo.rev = replace(vivo.borrador, parametros=otros), vivo.rev + 1
+            return True
+
+        vivo.cerrojo = _CerrojoQueCambiaAlSoltar(otra_pestana)
+        return vivo
+
+    monkeypatch.setattr(hoja_borradores, "crear", crear)
+    r = _llevar(ana)
+    assert r.status_code == 200, r.text
+    assert [(p["precio_hoja"], p["casa"]) for p in r.json()["partidas"]] == [
+        ("2.08", True),
+        ("4.13", False),
+        ("0.81", False),
+        ("809.60", False),
+        ("0.13", False),
+    ]
