@@ -897,3 +897,67 @@ def test_los_cambios_del_borrador_dicen_el_insumo_de_la_linea_del_desglose(_caso
             "insumo": LLAVE,
         },
     ]
+
+
+# --- Veredicto A del 2026-11-20, hallazgos 2 y 3 (la cuenta del desglose tras guardar) -----------
+
+TRAZA_0_8 = TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000"))
+
+
+def _salida_toma(navegador, ficha, id_, rev, rendimiento, materiales, desperdicios=None):
+    """Una edición del APU de EL-SALIDA-TOMA (otra partida de la OF-001) con sus cantidades."""
+    detalle = navegador.get(
+        f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "EL-SALIDA-TOMA"}
+    ).json()["detalle"]
+    cantidades = {g["clave"]: [f["cantidad"] for f in g["filas"]] for g in detalle["grupos"]}
+    cuerpo = {
+        "rev": rev,
+        "rendimiento": rendimiento,
+        "materiales": materiales if materiales is not None else cantidades["materiales"],
+        "equipos": cantidades["equipos"],
+        "mano_obra": cantidades["mano de obra"],
+    }
+    if desperdicios is not None:
+        cuerpo["desperdicios"] = desperdicios
+    return navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/EL-SALIDA-TOMA", json=cuerpo, headers=protegida(ficha)
+    )
+
+
+def test_tras_guardar_el_desglose_no_queda_ningun_cambio_colgado(_caso: Path) -> None:
+    """Hallazgo 2: Ana cambia el desglose de dos partidas (la misma cantidad, 0,8 + 25 % = 1) y,
+    antes de guardar, Componer guarda ese mismo desglose de AF-LLAVE. Guardar escribe solo el de
+    EL-SALIDA-TOMA y la cuenta queda en 0: antes quedaba «1 cambio, 1 desglose» de AF-LLAVE y el
+    segundo Guardar daba 422 «Ese desglose ya está guardado.»."""
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,8"], ["25"]).status_code == 200
+    salida = _salida_toma(navegador, ficha, id_, 1, "10", ["0,8", "0,8"], ["25", "25"])
+    assert salida.status_code == 200, salida.text
+    _con_traza(_caso, TRAZA_0_8)
+    guardado = _guardar(navegador, ficha, id_, salida.json()["resumen"]["rev"])
+    assert guardado.status_code == 200, guardado.text
+    assert guardado.json()["version_nueva"] is False
+    despues = _resumen(navegador, id_)
+    assert (despues["cambios"], despues["desgloses"]) == (0, 0)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_8]
+
+
+def test_aplicar_sin_cambios_no_tapa_ni_borra_lo_que_guarde_componer(_caso: Path) -> None:
+    """Hallazgo 3: «Aplicar» en AF-LLAVE sin cambiar nada (1 pieza, sin desperdicio) no deja
+    trazas en el borrador. Si después Componer guarda 0,8 + 25 % (= 1), la Hoja lo muestra, y
+    guardar la 002 por otra partida no lo borra de la base. Antes, la traza de 0 % del borrador lo
+    tapaba y la versión escribía un guardado vacío encima."""
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    aplicado = _editar(navegador, ficha, id_, cantidades, 0, cantidades["materiales"], [""])
+    assert aplicado.status_code == 200, aplicado.text
+    assert (aplicado.json()["rev"], aplicado.json()["resumen"]["cambios"]) == (0, 0)
+    _con_traza(_caso, TRAZA_0_8)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_8]
+    otra = _salida_toma(navegador, ficha, id_, 0, "12", None)
+    assert otra.status_code == 200, otra.text
+    version = _guardar(navegador, ficha, id_, otra.json()["resumen"]["rev"], "Acta ficticia")
+    assert version.status_code == 200, version.text
+    assert version.json()["version_nueva"] is True
+    assert _trazas(_caso) == [TRAZA_0_8]
