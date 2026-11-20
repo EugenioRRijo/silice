@@ -610,8 +610,8 @@ LLEVAR_SIN_PRECIO = (
 )
 
 
-def _componer_hoy(ruta: Path) -> None:
-    """Componer guarda OBRA-07 y OBRA-08 hoy: sus precios van a «… al 25/10/2026»."""
+def _componer_hoy(ruta: Path, dia: date = HOY) -> None:
+    """Componer guarda OBRA-07 y OBRA-08 hoy (o a `dia`): sus precios van a «… al 25/10/2026»."""
     from aplicacion.composicion import guardar_composicion
     from core.contracts.apu import ComposicionAPU, LineaMaterial
 
@@ -623,7 +623,7 @@ def _componer_hoy(ruta: Path) -> None:
                 apu = ComposicionAPU(
                     codigo, descripcion, unidad, Decimal("40"), materiales=(linea,)
                 )
-                guardado = guardar_composicion(sesion, apu, Dominio.CIVIL, HOY, "prueba")
+                guardado = guardar_composicion(sesion, apu, Dominio.CIVIL, dia, "prueba")
                 assert guardado.motivo is None
             sesion.commit()
     finally:
@@ -694,3 +694,21 @@ def test_si_falla_el_borrador_nuevo_que_otra_pestana_toco_antes_del_cerrojo_no_s
     assert len(creados) == 1
     assert [(b["id"], b["rev"]) for b in _borradores(navegador)] == [(creados[0].id, 1)]
     assert creados[0].borrador.parametros == otros
+
+
+def test_en_una_obra_sin_versiones_llevar_una_partida_sin_valorar_es_409_y_no_lleva_nada(
+    _entorno: Path,
+) -> None:
+    """Hallazgo 7 (DS-105, opción A): sin versiones, el borrador en blanco valora con la lista
+    para armar de la obra a su fecha. OBRA-07 compuesta con fecha posterior (su rendimiento aún
+    no rige) quedaría pendiente: llevar es todo o nada, como con una versión abierta."""
+    _componer_hoy(_entorno, date(2026, 11, 1))
+    navegador, ficha = _ana()
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [_partida("OBRA-07", "3")])
+
+    assert respuesta.status_code == 409, respuesta.text
+    detalle = respuesta.json()["detalle"]
+    assert detalle.startswith("No se llevó nada: 1 partida quedaría pendiente en el Presupuesto")
+    assert "de la obra, que todavía no tiene versiones, al 25/10/2026" in detalle
+    assert _borradores(navegador) == []
