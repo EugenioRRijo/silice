@@ -29,7 +29,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
-from api.main import app
+from api.main import MENSAJE_BASE, app
 from api.rutas import indices as ruta_indices
 from aplicacion.riesgo.proyeccion import (
     SERIE_TASA,
@@ -511,9 +511,10 @@ def test_un_fallo_despues_de_escribir_deshace_todo(
     monkeypatch.setattr(ruta_indices.series_viales, "resumen_de_importacion", falla)
     r = _importar()
     assert r.status_code == estado, r.text
-    assert r.json()["detalle"].startswith(
-        "No se pudo escribir en el caso: " if estado == 503 else "No se importó nada: "
-    )
+    if estado == 503:  # el 503 fijo del manejador común, sin el texto del motor (DS-113)
+        assert r.json() == {"detalle": MENSAJE_BASE}
+    else:
+        assert r.json()["detalle"].startswith("No se importó nada: ")
     assert _conteos(_entorno) == (0, 0, 0)
 
 

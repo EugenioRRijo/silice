@@ -439,6 +439,46 @@ def test_tras_confirmar_la_ruta_no_abre_otra_transaccion(
     assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
 
 
+def test_un_fallo_de_la_base_al_registrar_es_el_503_fijo_y_no_un_422_con_el_motor(
+    _plantillas: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Hallazgo 8 (2026-11-20, DS-113): `_escribir` convertía el fallo de la base en un 422 con
+    el texto del motor («No se pudo escribir en el caso: disk I/O error»): ni es culpa de lo
+    enviado ni puede llevar ese texto (regla C1). Ahora deshace y lo deja al manejador común: 503
+    fijo, y el motor al registro."""
+    import logging
+
+    from api.main import MENSAJE_BASE
+    from aplicacion import control_linea_base
+
+    def falla(*_args, **_kwargs):
+        raise OperationalError(
+            "INSERT INTO secreto VALUES (?)", ("privado",), Exception("disk I/O")
+        )
+
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    monkeypatch.setattr(control_linea_base, "registrar_valuacion", falla)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-01",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "inspector": ob.INSPECTOR,
+        "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+        "fuente": ob.FUENTE,
+    }
+    with caplog.at_level(logging.ERROR, logger="silice.api"):
+        r = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert (r.status_code, r.json()) == (503, {"detalle": MENSAJE_BASE})
+    assert "disk I/O" not in r.text and "INSERT" not in r.text
+    assert "disk I/O" in caplog.text
+
+
 def test_una_valuacion_del_futuro_se_rechaza_con_422_y_un_mensaje_claro() -> None:
     # Prueba en vivo del 2026-11-18, hallazgo 1: un «hasta» posterior a hoy se rechaza.
     navegador, cabeceras = _arma()

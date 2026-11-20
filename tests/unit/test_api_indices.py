@@ -529,8 +529,17 @@ def test_la_clave_de_api_es_403_antes_de_abrir_el_caso(
     assert roto.read_bytes() == contenido
 
 
-def test_un_fallo_de_la_base_no_devuelve_el_sql(monkeypatch, _entorno: Path) -> None:
+def test_un_fallo_de_la_base_es_el_503_fijo_y_el_motor_va_al_registro(
+    monkeypatch, _entorno: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Regla C1 (bitácora 2026-10-20, contrato de rutas): el 503 no lleva el texto del motor
+    (antes «No se pudo escribir en el caso: disk I/O error»); va al registro con su traza, por el
+    manejador común de `api/main.py` (hallazgo 8 del 2026-11-20, DS-113)."""
+    import logging
+
     from sqlalchemy.exc import OperationalError
+
+    from api.main import MENSAJE_BASE
 
     def falla(*_args, **_kwargs):
         raise OperationalError(
@@ -538,10 +547,12 @@ def test_un_fallo_de_la_base_no_devuelve_el_sql(monkeypatch, _entorno: Path) -> 
         )
 
     monkeypatch.setattr(ruta_indices.logica, "confirmar", falla)
-    r = _confirmar()
-    assert r.status_code == 503
-    assert r.json() == {"detalle": "No se pudo escribir en el caso: disk I/O error"}
-    assert PRIVADO not in r.text and "INSERT" not in r.text
+    with caplog.at_level(logging.ERROR, logger="silice.api"):
+        r = _confirmar()
+    assert (r.status_code, r.json()) == (503, {"detalle": MENSAJE_BASE})
+    assert r.headers["cache-control"] == "no-store"
+    assert PRIVADO not in r.text and "INSERT" not in r.text and "disk I/O" not in r.text
+    assert "disk I/O error" in caplog.text
 
 
 # --- huecos de la revision de seguridad -----------------------------------------------------
