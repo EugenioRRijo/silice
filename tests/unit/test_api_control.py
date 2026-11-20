@@ -45,6 +45,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
+from tests.fixtures.transacciones import transacciones_del_caso
 
 P = {"proyecto": ob.NOMBRE}
 FRONT_CONTROL = Path(__file__).resolve().parents[2] / "frontend-desktop/src/paginas/control"
@@ -382,6 +383,60 @@ def test_registrar_devuelve_cada_hallazgo_legible_y_la_lista_los_repite(
     assert (datos["hallazgos"], datos["errores"], datos["detalle"]) == (1, 1, esperado)
     lista = navegador.get("/v1/control/valuaciones", params=P).json()
     assert lista["hallazgos"] == esperado
+
+
+def _caso_del_proceso() -> Path:
+    return Path(dependencias.ruta_de_url(dependencias.url_del_proceso()))
+
+
+@pytest.mark.parametrize(
+    ("plantilla", "ruta", "cuerpo"),
+    [
+        (
+            "solo_linea",
+            "/v1/control/valuaciones",
+            {
+                "numero": "V-01",
+                "desde": "2026-11-02",
+                "hasta": "2026-11-06",
+                "fecha": "2026-11-09",
+                "inspector": ob.INSPECTOR,
+                "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+                "fuente": ob.FUENTE,
+            },
+        ),
+        (
+            "vacia",
+            "/v1/control/linea-base",
+            {
+                "version": "OB-001",
+                "desde": "2026-11-02",
+                "perspectiva": "costo",
+                "inicio": "2026-11-02",
+                "dias_por_periodo": "5",
+                "feriados": "",
+                "fuente": ob.FUENTE,
+            },
+        ),
+    ],
+    ids=["registrar-valuacion", "declarar-linea-base"],
+)
+def test_tras_confirmar_la_ruta_no_abre_otra_transaccion(
+    plantilla: str,
+    ruta: str,
+    cuerpo: dict,
+    _plantillas: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DS-57/DS-70: el control al corte y la descripción de la línea base se arman antes del
+    `commit`; tras él, consultar abriría otro `BEGIN IMMEDIATE` (oráculo de DS-58)."""
+    _usar(_plantillas, plantilla, tmp_path, monkeypatch)
+    navegador, cabeceras = _arma()
+    with transacciones_del_caso(_caso_del_proceso()) as por_sesion:
+        respuesta = navegador.post(ruta, json={**P, **cuerpo}, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
 
 
 def test_una_valuacion_del_futuro_se_rechaza_con_422_y_un_mensaje_claro() -> None:
