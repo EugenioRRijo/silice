@@ -29,7 +29,7 @@ type Carga = { tipo: "cargando" } | { tipo: "listo"; datos: Datos } | { tipo: "e
 type Resultado =
   | { tipo: "ninguno" }
   | { tipo: "enCurso" }
-  | { tipo: "error"; error: unknown }
+  | { tipo: "error"; error: unknown; serie: string }
   | { tipo: "hecho"; respuesta: ImportacionVial };
 type Campo = "fuente" | "fecha" | "archivo";
 const ORDEN_DE_CAMPOS: readonly Campo[] = ["fuente", "fecha", "archivo"];
@@ -108,7 +108,15 @@ export function SeriesViales() {
 
   const datos = carga.tipo === "listo" ? carga.datos : null;
 
+  // Lo que ya se dijo de una importación se refiere a la serie, el archivo, la fuente y la fecha de entonces: si la persona
+  // cambia cualquiera, ese aviso deja de aplicarse y se quita (y una respuesta que llegue tarde se descarta).
+  const soltarResultado = () => {
+    ++consulta.current;
+    setResultado({ tipo: "ninguno" });
+  };
+
   const elegirSerie = (codigo: string) => {
+    soltarResultado();
     setSerie(codigo);
     // Mientras la persona no haya escrito la fuente, sigue a la serie elegida (FRED/BLS o Gaceta Oficial).
     if (!fuenteEscrita) setFuente(datos?.series.find((s) => s.codigo === codigo)?.organismo ?? "");
@@ -127,6 +135,7 @@ export function SeriesViales() {
       return;
     }
     const numero = ++consulta.current;
+    const serieEnviada = serie;
     setResultado({ tipo: "enCurso" });
     pedir<ImportacionVial>(RUTA_IMPORTAR_SERIE_VIAL, {
       metodo: "POST",
@@ -140,10 +149,13 @@ export function SeriesViales() {
       (error: unknown) => {
         if (!montado.current || numero !== consulta.current) return;
         expirada(error);
-        setResultado({ tipo: "error", error });
+        setResultado({ tipo: "error", error, serie: serieEnviada });
       },
     );
   };
+
+  // Con la importación en vuelo nada se puede cambiar: lo que se manda ya salió y su aviso es de esa serie y ese archivo.
+  const enviando = resultado.tipo === "enCurso";
 
   return (
     <section className="silice-indices__formulario" aria-labelledby="indices-series-viales">
@@ -163,6 +175,7 @@ export function SeriesViales() {
               labelText="Serie"
               size="sm"
               value={serie}
+              disabled={enviando}
               onChange={(e) => elegirSerie(e.target.value)}
             >
               {datos.series.map((s) => (
@@ -176,10 +189,12 @@ export function SeriesViales() {
               size="sm"
               required
               maxLength={MAXIMO_FUENTE}
+              disabled={enviando}
               value={fuente}
               invalid={errores.fuente !== undefined}
               invalidText={errores.fuente}
               onChange={(e) => {
+                soltarResultado();
                 setFuenteEscrita(true);
                 setFuente(e.target.value);
                 setErrores((antes) => ({ ...antes, fuente: undefined }));
@@ -193,10 +208,12 @@ export function SeriesViales() {
               size="sm"
               required
               max={hoyIso()}
+              disabled={enviando}
               value={fechaDescarga}
               invalid={errores.fecha !== undefined}
               invalidText={errores.fecha}
               onChange={(e) => {
+                soltarResultado();
                 setFechaDescarga(e.target.value);
                 setErrores((antes) => ({ ...antes, fecha: undefined }));
               }}
@@ -206,7 +223,9 @@ export function SeriesViales() {
             id="series-viales-archivo"
             etiqueta="Suelte aquí el archivo .csv de la serie, o haga clic para elegirlo"
             extensiones={EXTENSIONES_VIALES}
+            deshabilitada={enviando}
             alElegir={(elegido) => {
+              soltarResultado();
               setArchivo(elegido);
               setErrores((antes) => ({ ...antes, archivo: undefined }));
             }}
@@ -219,22 +238,24 @@ export function SeriesViales() {
           )}
           {datos.responsable !== "" && <p className="cds--type-body-compact-01">Responsable de la importación: {datos.responsable}</p>}
           <div className="silice-indices__acciones">
-            <Button type="submit" kind="primary" size="md" disabled={resultado.tipo === "enCurso"}>
+            <Button type="submit" kind="primary" size="md" disabled={enviando}>
               Importar
             </Button>
-            {resultado.tipo === "enCurso" && <InlineLoading description="Importando..." status="active" />}
+            {enviando && <InlineLoading description="Importando..." status="active" />}
           </div>
         </form>
       )}
 
       {/* Cada aviso trae su propio rol (`alert` o `status`): el contenedor no es otra región viva. */}
       <div className="silice-indices__avisos">
-        {resultado.tipo === "error" && <AvisoError error={resultado.error} titulo="No se importó la serie" />}
+        {resultado.tipo === "error" && <AvisoError error={resultado.error} titulo={`No se importó ${resultado.serie}`} />}
         {resultado.tipo === "hecho" && (
           <InlineNotification
             kind={resultado.respuesta.importada ? "success" : "info"}
             role="status"
-            title={resultado.respuesta.importada ? "Importación" : "Ya estaba importado"}
+            title={
+              resultado.respuesta.importada ? `Importación de ${resultado.respuesta.serie}` : `Ya estaba importado en ${resultado.respuesta.serie}`
+            }
             subtitle={resultado.respuesta.mensaje}
             lowContrast
             hideCloseButton
