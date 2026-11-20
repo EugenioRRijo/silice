@@ -7,6 +7,18 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **Sprint 1120b: el mapa de series de Riesgo se guarda y el desperdicio dice quién lo guardó** (2026-11-20; sin fusionar).
+  Riesgo recuerda por versión la serie que mueve cada insumo: al guardar un mapa propio se usa la vez siguiente; sin mapa
+  propio toma el de otra versión de la misma obra, con una nota. Solo una cuenta con permiso de Riesgo lo guarda. En el
+  desperdicio, el desglose dice quién lo guardó (Componer, Hoja y libro llevado), y el rótulo de la lista de Guardar nombra
+  el insumo. Correcciones de la auditoría interna: el simulador no falla con insumos homónimos sin unidad; guardar un
+  desglose ya no deja cambios fantasma ni un 422 al repetir; «Aplicar» sin cambios no tapa desgloses guardados; Control
+  no imputa valuaciones ajenas; Reajuste guarda con un solo reloj y todo o nada; Presupuestos valida el libro antes de
+  bloquear la obra; los índices responden 403 con clave de API o módulo apagado y no muestran el texto del motor; los
+  planos no borran recorridos de otro archivo y cuentan bien las filas al fusionar; un DXF con una polilínea vacía o un
+  libro con una imagen rara ya no tumba la importación. En la interfaz, «Desglose guardado» aparece cuando solo se guardó
+  el desglose, las series viales no se pueden editar mientras suben, una acción en orden no sale si la última escritura
+  fue rechazada y el aviso de una valuación anterior se quita al registrar otra.
 - **Cargar las series del riesgo vial desde la interfaz** (tanda 2026-11-19): «Índices del BCV» trae la sección «Series del
   riesgo vial» (índice del asfalto y gasoil en USD/l): se elige la serie, se sube su CSV canónico, se ve cuántos valores
   entraron y de qué fecha a qué fecha (o «Ya estaba importado») y la historia cargada con fechas dd/mm/aaaa y coma decimal.
