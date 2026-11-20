@@ -8,8 +8,9 @@ Oráculos a mano:
 - guardar lo mismo otra vez responde `guardado: false`;
 - un insumo que la versión no tiene no se precarga y vuelve en `descartados` con motivo «insumo»;
 - la tasa del BCV no se ofrece en una obra en USD: 422 y no queda nada;
-- obra o versión que no existe: 404; la clave de API: 403 (el mapa lo recuerda una cuenta); sin
-  `ver_riesgo`: 403; forma mala: 422 sin eco.
+- obra o versión que no existe: 404; la clave de API: 403 (el mapa lo recuerda una cuenta), también
+  con el módulo apagado (la cuenta se decide antes que el módulo, como en vial); sin `ver_riesgo`:
+  403; forma mala: 422 sin eco, con el mensaje propio del mapa.
 """
 
 from __future__ import annotations
@@ -150,6 +151,19 @@ def test_con_la_clave_de_api_403() -> None:
     assert r.json()["detalle"] == rutas.MENSAJE_MAPA_SOLO_CUENTA
 
 
+def test_con_la_clave_y_el_modulo_apagado_403_antes_que_404(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from api import acceso_modulos
+
+    monkeypatch.setattr(acceso_modulos, "modulos_activos", lambda _instalacion: frozenset())
+    r = cliente_con_clave().put(
+        MAPA_RUTA, json={"proyecto": OBRA, "version": CON_LINEA_BASE, "mapa": MAPA}
+    )
+    assert r.status_code == 403, r.text
+    assert r.json()["detalle"] == rutas.MENSAJE_MAPA_SOLO_CUENTA
+
+
 def test_sin_ver_riesgo_403(monkeypatch: pytest.MonkeyPatch) -> None:
     from seguridad import permisos
 
@@ -177,4 +191,5 @@ def test_forma_mala_422_sin_eco(cambio: dict) -> None:
     cuerpo = {"proyecto": OBRA, "version": CON_LINEA_BASE, "mapa": MAPA, **cambio}
     r = web.cliente.put(MAPA_RUTA, headers=web.cabeceras(), json=cuerpo)
     assert r.status_code == 422, r.text
-    assert r.json() == {"detalle": rutas.MENSAJE_FORMA}
+    assert r.json() == {"detalle": rutas.MENSAJE_MAPA_FORMA}
+    assert rutas.MENSAJE_MAPA_FORMA != rutas.MENSAJE_FORMA

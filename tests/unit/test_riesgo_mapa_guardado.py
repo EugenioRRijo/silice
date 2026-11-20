@@ -10,7 +10,12 @@ Oráculos a mano:
 - precargar deja fuera, y lo dice, el insumo que la versión ya no tiene y la serie que ya no se
   ofrece;
 - una serie que la moneda no admite (la tasa en una obra en USD) no se guarda (ValueError);
-- una base sin las tablas se lee como sin mapa.
+- una base sin las tablas se lee como sin mapa, y el primer guardado las crea;
+- manda el último guardado aunque el reloj del equipo haya retrocedido (orden por `id`, como las
+  otras tablas de solo inserción del caso);
+- el mapa de una obra no se precarga en otra del mismo caso;
+- un insumo vacío o de más de 500 caracteres no se guarda (ValueError);
+- una versión que no existe no deja abierta la transacción (ni el bloqueo de escritura).
 """
 
 from __future__ import annotations
@@ -40,6 +45,7 @@ from tests.fixtures.riesgo_obra import (
     OBRA,
     SENALES,
     SIN_LINEA_BASE,
+    agregar_obra,
     crear_via,
 )
 
@@ -167,3 +173,46 @@ def test_una_base_sin_las_tablas_se_lee_como_sin_mapa(tmp_path: Path) -> None:
             assert mg.ultimo_mapa(sesion, 1) is None
     finally:
         motor.dispose()
+
+
+def test_el_primer_guardado_crea_las_tablas_en_una_base_sin_ellas(tmp_path: Path) -> None:
+    motor = create_engine(f"sqlite:///{(tmp_path / 'sin.db').as_posix()}")
+    try:
+        models.Base.metadata.create_all(motor)
+        with Session(motor) as sesion:
+            guardado = mg.guardar_mapa(
+                sesion, 1, {ASFALTO: PPI}, series_admitidas={PPI}, usuario="Ana", ahora=AHORA
+            )
+            assert guardado is True
+            assert _guardados(sesion) == 1
+    finally:
+        motor.dispose()
+
+
+def test_si_el_reloj_retrocede_manda_el_ultimo_guardado(caso: Session) -> None:
+    _guardar(caso, CON_LINEA_BASE, MAPA, LUEGO)
+    assert _guardar(caso, CON_LINEA_BASE, {GASOIL: GASOIL_USD}, AHORA) is True
+    leido = mg.ultimo_mapa(caso, version_de(caso, OBRA, CON_LINEA_BASE))
+    assert leido is not None and leido.mapa == {GASOIL: GASOIL_USD}
+    assert _guardar(caso, CON_LINEA_BASE, {GASOIL: GASOIL_USD}, AHORA) is False
+    assert _guardados(caso) == 2
+
+
+def test_el_mapa_de_una_obra_no_pasa_a_otra(caso: Session) -> None:
+    agregar_obra(caso, "Otra vía ficticia", "OV-001")
+    caso.commit()
+    _guardar(caso, CON_LINEA_BASE, MAPA)
+    assert mg.ultimo_mapa(caso, version_de(caso, "Otra vía ficticia", "OV-001")) is None
+
+
+@pytest.mark.parametrize("insumo", ["", "x" * 501])
+def test_el_insumo_vacio_o_demasiado_largo_no_se_guarda(caso: Session, insumo: str) -> None:
+    with pytest.raises(ValueError, match="insumo"):
+        _guardar(caso, CON_LINEA_BASE, {insumo: PPI})
+    assert _guardados(caso) == 0
+
+
+def test_la_version_que_no_existe_no_deja_la_transaccion_abierta(caso: Session) -> None:
+    with pytest.raises(VersionInexistente):
+        _guardar(caso, "VR-999", MAPA)
+    assert not caso.in_transaction()

@@ -484,6 +484,8 @@ describe("Riesgo de la obra", () => {
       ),
     ).toBeInTheDocument();
     expect((screen.getByLabelText("Gasoil") as HTMLSelectElement).value).toBe("");
+    // No quedó ninguna serie que precargar: la nota de la precarga no se muestra.
+    expect(screen.queryByText(/Precargado con las series/)).toBeNull();
   });
 
   test("lo elegido a mano manda sobre la precarga y la nota se retira", async () => {
@@ -534,5 +536,79 @@ describe("Riesgo de la obra", () => {
       await screen.findByText("No se pudo recordar la serie de cada insumo para la próxima vez; el resultado no cambia."),
     ).toBeInTheDocument();
     expect(region).toBeInTheDocument();
+  });
+
+  // Revisión de la rama (Neon, 2026-11-20): una precarga que responde con la versión pedida, para ir y volver entre versiones.
+  function conPrecargaPorVersion(mapa_guardado: unknown) {
+    const leer = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://prueba");
+      if (url.pathname === "/v1/riesgo/insumos") return json({ ...INSUMOS, version: url.searchParams.get("version"), mapa_guardado });
+      return leer!(entrada, init);
+    });
+  }
+
+  test("un guardado del mapa no sale hasta que termina el anterior: el último elegido queda como el último", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    let pedidos = 0;
+    guardarMapa = () => (++pedidos === 1 ? new Promise<Response>((resolver) => (soltar = resolver)) : json({ guardado: true }));
+    montar();
+    await usuario.selectOptions(await screen.findByLabelText("Gasoil"), "GASOIL_USD");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    await screen.findByRole("region", { name: "Resultado de la proyección" });
+    await waitFor(() => expect(guardados()).toHaveLength(1));
+    await usuario.selectOptions(screen.getByLabelText("Cemento asfáltico"), "CEMENTO_ASFALTICO_PPI");
+    await usuario.click(screen.getByRole("button", { name: "Comprobar hacia atrás" }));
+    await screen.findByRole("region", { name: "Comprobación hacia atrás" });
+    expect(guardados()).toHaveLength(1);
+    soltar(json({ guardado: true }));
+    await waitFor(() => expect(guardados()).toHaveLength(2));
+    expect(guardados()[1].mapa).toEqual({ Gasoil: "GASOIL_USD", "Cemento asfáltico": "CEMENTO_ASFALTICO_PPI" });
+  });
+
+  test("al volver a una versión vuelve lo recordado, no lo que se tocó sin proyectar", async () => {
+    conPrecargaPorVersion({ mapa: { Gasoil: "GASOIL_USD" }, de_version: "VIA-002", descartados: [] });
+    montar();
+    await usuario.selectOptions(await screen.findByLabelText("Gasoil"), "");
+    await usuario.selectOptions(screen.getByLabelText("Versión"), "VIA-001");
+    await screen.findByText("Precargado con las series que usó la última vez en la versión VIA-002.");
+    await usuario.selectOptions(screen.getByLabelText("Versión"), "VIA-002");
+    await waitFor(() => expect((screen.getByLabelText("Gasoil") as HTMLSelectElement).value).toBe("GASOIL_USD"));
+    expect(screen.getByText("Precargado con las series que usó la última vez en esta versión.")).toBeInTheDocument();
+  });
+
+  test("sin ninguna serie recordada no dice que precargó", async () => {
+    conPrecarga({ mapa: {}, de_version: "VIA-002", descartados: [] });
+    montar();
+    await screen.findByLabelText("Gasoil");
+    expect(screen.queryByText(/Precargado con las series/)).toBeNull();
+  });
+
+  test("el aviso de lo que no se precargó se retira al elegir a mano", async () => {
+    conPrecarga({
+      mapa: { Gasoil: "GASOIL_USD" },
+      de_version: "VIA-002",
+      descartados: [{ insumo: "Flete viejo", serie: "GASOIL_USD", motivo: "insumo" }],
+    });
+    montar();
+    await usuario.selectOptions(await screen.findByLabelText("Cemento asfáltico"), "CEMENTO_ASFALTICO_PPI");
+    expect(screen.queryByText(/No se precargó la serie/)).toBeNull();
+  });
+
+  test("guardado el mapa propio, se retiran la nota de la otra versión y el aviso de lo descartado", async () => {
+    conPrecarga({
+      mapa: { "Cemento asfáltico": "CEMENTO_ASFALTICO_PPI" },
+      de_version: "VIA-001",
+      descartados: [{ insumo: "Flete viejo", serie: "GASOIL_USD", motivo: "insumo" }],
+    });
+    montar();
+    await screen.findByText("Precargado con las series que usó la última vez en la versión VIA-001.");
+    expect(screen.getByText(/No se precargó la serie de 1 insumo/)).toBeInTheDocument();
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    await screen.findByRole("region", { name: "Resultado de la proyección" });
+    await waitFor(() => expect(guardados()).toHaveLength(1));
+    await waitFor(() => expect(screen.queryByText(/Precargado con las series/)).toBeNull());
+    expect(screen.queryByText(/No se precargó la serie/)).toBeNull();
+    expect((screen.getByLabelText("Cemento asfáltico") as HTMLSelectElement).value).toBe("CEMENTO_ASFALTICO_PPI");
   });
 });
