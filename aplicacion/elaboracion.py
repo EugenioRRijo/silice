@@ -639,7 +639,10 @@ def llevar_a_la_hoja(
         sesion, huella, caso, proyecto, responsable=responsable, hoy=hoy
     )
     with vivo.cerrojo:
-        antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano)
+        antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano, vivo.importaciones)
+        # Nuevo y sin tocar (`rev` nace en 0): si otra petición lo cambió entre la elección y el
+        # cerrojo, en un fallo se restaura `antes` (lo suyo) en vez de descartarlo (DS-58).
+        nuevo = nuevo and vivo.rev == 0
         try:
             for partida in partidas:
                 calculo, nota = _calculo_y_nota(partida)
@@ -666,7 +669,7 @@ def llevar_a_la_hoja(
             if nuevo:
                 hoja_borradores.descartar(huella, vivo.id)
             else:
-                vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano = antes
+                vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano, vivo.importaciones = antes
             raise
     return vivo.id
 
