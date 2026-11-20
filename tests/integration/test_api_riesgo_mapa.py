@@ -15,28 +15,22 @@ Oráculos a mano:
 
 from __future__ import annotations
 
-from datetime import date
 from pathlib import Path
 
 import pytest
 
-from api import caso_web, dependencias
 from api.rutas import riesgo as rutas
 from aplicacion.riesgo.proyeccion import SERIE_TASA
-from operacion import config
-from seguridad import cuentas
 from tests.fixtures.produccion_api import Web, cliente_con_clave
 from tests.fixtures.riesgo_obra import (
-    ARCHIVO,
     ASFALTO,
     CON_LINEA_BASE,
     GASOIL,
     MAPA,
     OBRA,
     SIN_LINEA_BASE,
-    crear_via,
 )
-from tests.fixtures.sesion_web import copiar_instalacion, plantilla_con_cuentas
+from tests.fixtures.riesgo_web import en_la_via, instalacion_con_la_via, plantillas_de_la_via
 
 MAPA_RUTA = "/v1/riesgo/mapa"
 INSUMOS = "/v1/riesgo/insumos"
@@ -44,31 +38,13 @@ INSUMOS = "/v1/riesgo/insumos"
 
 @pytest.fixture(scope="module")
 def _plantillas(tmp_path_factory) -> dict[str, Path]:
-    carpeta = tmp_path_factory.mktemp("plantilla_riesgo_mapa")
-    return {"instalacion": plantilla_con_cuentas(carpeta), "via": crear_via(carpeta / ARCHIVO)}
+    return plantillas_de_la_via(tmp_path_factory.mktemp("plantilla_riesgo_mapa"))
 
 
 @pytest.fixture(autouse=True)
 def _instalacion_de_la_prueba(_plantillas: dict[str, Path], monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.delenv(dependencias.VARIABLE_BASE, raising=False)
-    copiar_instalacion(_plantillas["instalacion"])
-    casos = config.carpeta_casos()
-    casos.mkdir(parents=True, exist_ok=True)
-    (casos / ARCHIVO).write_bytes(_plantillas["via"].read_bytes())
-    dependencias.cerrar_motores()
-    caso_web.olvidar_todo()
-    monkeypatch.setattr(rutas, "hoy", lambda: date(2026, 10, 31))
-    yield
-    caso_web.olvidar_todo()
-    dependencias.cerrar_motores()
-    cuentas.FRENO.reiniciar()
-
-
-def _en_la_via(login: str = "ana") -> Web:
-    web = Web(login)
-    elegida = web.post("/v1/casos/actual", json={"nombre": ARCHIVO})
-    assert elegida.status_code == 200, elegida.text
-    return web
+    with instalacion_con_la_via(_plantillas, monkeypatch):
+        yield
 
 
 def _guardar(web: Web, mapa: dict, version: str = CON_LINEA_BASE, **otros):
@@ -83,11 +59,11 @@ def _precarga(web: Web, version: str) -> dict | None:
 
 
 def test_sin_nada_guardado_no_hay_precarga() -> None:
-    assert _precarga(_en_la_via(), CON_LINEA_BASE) is None
+    assert _precarga(en_la_via(), CON_LINEA_BASE) is None
 
 
 def test_lo_guardado_vuelve_en_los_insumos_de_la_version() -> None:
-    web = _en_la_via()
+    web = en_la_via()
     r = _guardar(web, MAPA)
     assert r.status_code == 200, r.text
     assert r.json() == {"guardado": True}
@@ -99,7 +75,7 @@ def test_lo_guardado_vuelve_en_los_insumos_de_la_version() -> None:
 
 
 def test_la_version_sin_mapa_propio_toma_el_de_la_obra() -> None:
-    web = _en_la_via()
+    web = en_la_via()
     assert _guardar(web, {ASFALTO: MAPA[ASFALTO]}).status_code == 200
     assert _precarga(web, SIN_LINEA_BASE) == {
         "mapa": {ASFALTO: MAPA[ASFALTO]},
@@ -109,13 +85,13 @@ def test_la_version_sin_mapa_propio_toma_el_de_la_obra() -> None:
 
 
 def test_guardar_lo_mismo_no_guarda_otra_vez() -> None:
-    web = _en_la_via()
+    web = en_la_via()
     assert _guardar(web, MAPA).json() == {"guardado": True}
     assert _guardar(web, MAPA).json() == {"guardado": False}
 
 
 def test_el_insumo_que_no_esta_se_descarta_y_se_dice() -> None:
-    web = _en_la_via()
+    web = en_la_via()
     assert _guardar(web, {**MAPA, "Insumo retirado": MAPA[GASOIL]}).status_code == 200
     assert _precarga(web, CON_LINEA_BASE) == {
         "mapa": MAPA,
@@ -125,7 +101,7 @@ def test_el_insumo_que_no_esta_se_descarta_y_se_dice() -> None:
 
 
 def test_la_serie_que_la_moneda_no_admite_422_y_no_guarda() -> None:
-    web = _en_la_via()
+    web = en_la_via()
     r = _guardar(web, {ASFALTO: SERIE_TASA})
     assert r.status_code == 422, r.text
     assert "no se ofrece" in r.json()["detalle"]
@@ -133,7 +109,7 @@ def test_la_serie_que_la_moneda_no_admite_422_y_no_guarda() -> None:
 
 
 def test_obra_o_version_que_no_existe_404() -> None:
-    web = _en_la_via()
+    web = en_la_via()
     assert _guardar(web, MAPA, version="NO-HAY").status_code == 404
     r = web.cliente.put(
         MAPA_RUTA,
@@ -167,7 +143,7 @@ def test_con_la_clave_y_el_modulo_apagado_403_antes_que_404(
 def test_sin_ver_riesgo_403(monkeypatch: pytest.MonkeyPatch) -> None:
     from seguridad import permisos
 
-    web = _en_la_via("ana")
+    web = en_la_via("ana")
     monkeypatch.setitem(
         permisos.PERMISOS,
         permisos.Accion.VER_RIESGO,
@@ -187,7 +163,7 @@ def test_sin_ver_riesgo_403(monkeypatch: pytest.MonkeyPatch) -> None:
     ],
 )
 def test_forma_mala_422_sin_eco(cambio: dict) -> None:
-    web = _en_la_via()
+    web = en_la_via()
     cuerpo = {"proyecto": OBRA, "version": CON_LINEA_BASE, "mapa": MAPA, **cambio}
     r = web.cliente.put(MAPA_RUTA, headers=web.cabeceras(), json=cuerpo)
     assert r.status_code == 422, r.text
