@@ -222,9 +222,9 @@ subir nada.
    navegador. La prueba de todas las ventanas dejó hallazgos que se arreglan en las ramas `feature/vivo-*` (§2) y otros
    que esperan una decisión (bitácora, §4).
 15. **Sprint 1120b (2026-11-20; Eugenio presente al arrancar y delegó «según nuestra metodología»)**: las decisiones
-   DS-90 a DS-127 del [acta](bitacora/2026-11-17-decisiones-simuladas.md) quedan **por ratificar**. El resumen del sprint no
-   trae cómo se revierte cada una. Hay dos puntos que confirmar: DS-75 (§5.8: la opción A se aplicó solo en la lista de
-   Guardar) y DS-117 (`elegir_opcion`, que la auditoría de Neon dio por falsa para el reabrir la transacción). Además:
+   DS-90 a DS-127 del [acta](bitacora/2026-11-17-decisiones-simuladas.md) quedan **por ratificar**. Cada una se revierte
+   con el `git revert` de su verde. DS-75 (la opción A, solo en la lista de Guardar) y DS-117 (robustez de
+   `elegir_opcion`, no el defecto de B1) se explican en las «Aclaraciones del orquestador» del acta. Además:
    - **Hook `block-libros-al-repo`:** dispara en falso con `sed` y `grep` de solo lectura. Hay que revisar la regla
      (`.claude/hookify.*.local.md`). Mientras, leer con Read o Grep en vez de rodear el bloqueo.
    - **Commit `534b382f`** (`feature/depurar-logica-1120`): el cuerpo del mensaje tiene una frase cortada («El resumen de
