@@ -448,6 +448,16 @@ def _sin_datos_minimos(v: Verificacion) -> Verificacion:
     )
 
 
+def _texto_minimo(manifiesto: dict, clave: str) -> str:
+    """El campo `clave` del manifiesto si es un texto con algo escrito; si no, `ValueError` (o
+    `KeyError` si falta): un `null`, un número u objeto o un texto vacío no identifican la obra,
+    la versión ni el paquete, y con `str()` se registrarían como «None» o «»."""
+    valor = manifiesto[clave]
+    if not isinstance(valor, str) or not valor.strip():
+        raise ValueError(clave)
+    return valor
+
+
 def recibir(
     datos: bytes,
     nombre: str,
@@ -473,7 +483,7 @@ def recibir(
         # mira antes de la salida temprana de un alterado sin cadena, que tampoco se registra.
         try:
             _emitido(v.manifiesto)
-            str(v.manifiesto["proyecto"])
+            _texto_minimo(v.manifiesto, "proyecto")
         except (KeyError, ValueError, TypeError):
             return Recibido(_sin_datos_minimos(v), 0, Path(), False, (), "")
     if not v.legible or v.cadena is None or v.manifiesto is None:
@@ -481,7 +491,11 @@ def recibir(
     m = v.manifiesto
     try:
         emitido = _emitido(m)
-        proyecto, codigo, paquete_id = str(m["proyecto"]), str(m["codigo"]), str(m["paquete_id"])
+        proyecto, codigo, paquete_id = (
+            _texto_minimo(m, "proyecto"),
+            _texto_minimo(m, "codigo"),
+            _texto_minimo(m, "paquete_id"),
+        )
         eslabones = [[e["codigo"], e["huella_eslabon"]] for e in v.cadena["eslabones"]]
     except (KeyError, ValueError, TypeError):
         return Recibido(_sin_datos_minimos(v), 0, Path(), False, (), "")
