@@ -13,7 +13,7 @@ import { rutaDeObra } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { esSoloDesglose } from "../hoja/logicaGuardar";
-import { AvisoDeGuardado } from "../hoja/AvisoDeGuardado";
+import { AvisoDeGuardado } from "../../comun/AvisoDeGuardado";
 import { avisoDeCambiosPendientes } from "../hoja/logicaVersiones";
 import type { AlCrearVersion } from "../hoja/logicaVersiones";
 import { ContextoDeLaHoja, useHojaDeLaObra } from "../hoja/ProveedorDeLaHoja";

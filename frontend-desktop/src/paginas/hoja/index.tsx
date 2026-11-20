@@ -5,7 +5,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
-import { AvisoDeGuardado } from "./AvisoDeGuardado";
+import { AvisoDeGuardado } from "../../comun/AvisoDeGuardado";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
 import { SIN_VERSIONES, TITULO, esBorradorAusente, versionesOfrecidas } from "./logica";
 import type { BorradorAbierto, PestanaId, Resumen } from "./logica";
