@@ -1,8 +1,9 @@
 // Lógica pura de la edición del APU y del cambio de insumo (rebanada 3c-3: E6, E7 y E8 del diseño §4.4). Todo lo que
 // escribe la persona viaja como texto, tal cual; el servidor valida con los mensajes de la clásica. Aquí no se convierte
 // nada a número.
+import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { enteroDeDigitos } from "./logica";
-import type { DetalleApu, Monto } from "./logica";
+import type { DesgloseGuardado, DetalleApu, Monto } from "./logica";
 
 const rutaDelBorrador = (id: string) => `/v1/hoja/borradores/${id}`;
 
@@ -256,4 +257,16 @@ export function conLineaQuitada(edicion: EdicionDeApu, grupo: string, indice: nu
     cantidades: { ...edicion.cantidades, [grupo]: (edicion.cantidades[grupo] ?? []).filter((_, i) => i !== indice) },
     desperdicios: grupo === "materiales" ? edicion.desperdicios.filter((_, i) => i !== indice) : edicion.desperdicios,
   };
+}
+
+// Acta DS-48g, opción A: la línea que dice quién guardó el desglose que se ve y cuándo, en es-VE. Sin responsable no
+// se inventa un nombre: se dice por qué no consta.
+export function textoDelDesgloseGuardado({ responsable, fecha_hora }: DesgloseGuardado): string {
+  const cuando = fechaEsVe(fecha_hora);
+  const quien = responsable?.trim() ?? "";
+  if (quien !== "") return `Desglose del desperdicio guardado por ${quien} el ${cuando}.`;
+  return (
+    `Desglose del desperdicio guardado el ${cuando}. No consta quién lo guardó: se guardó antes de que Sílice lo ` +
+    "anotara o desde una integración sin cuenta."
+  );
 }

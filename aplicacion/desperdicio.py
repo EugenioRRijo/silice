@@ -11,7 +11,9 @@ concepto en el contrato, opción A, esta traza es exactamente lo que se migrarí
   desperdicio)`).
 - **La traza** (`TrazaDesperdicio`: la neta, el porcentaje y la cantidad que resultó) se guarda
   aparte, en la base del caso (`aplicacion/tablas_desperdicio.py`), por partida y en cada guardado
-  de su composición (`guardar_trazas`; manda el último, `trazas_vigentes`).
+  de su composición (`guardar_trazas`; manda el último, `trazas_vigentes`). Cada guardado lleva su
+  hora y su responsable, la cuenta de la sesión (`Nombre <login>`, RF-82; acta DS-48g, opción A):
+  `quien_guardo_el_desglose`. Con la clave de API, o lo guardado antes de la columna, es nulo.
 - **Sin desincronizarse** (riesgo del diseño §12): una traza solo vale para la línea cuya cantidad
   guardada sigue siendo la que resultó (`con_desperdicio`). Si la cantidad cambió por otro camino,
   la traza ya no se muestra: Sílice nunca dice «0,50 + 4 %» de una cantidad que no es 0,52.
@@ -26,6 +28,7 @@ Sin FastAPI ni Streamlit; `Decimal` siempre.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -44,6 +47,7 @@ from aplicacion.tablas_desperdicio import (
 
 __all__ = [
     "CLAVE",
+    "GuardadoDelDesglose",
     "TrazaDesperdicio",
     "aplicar_desperdicio",
     "cantidad_con_desperdicio",
@@ -52,6 +56,7 @@ __all__ = [
     "leyenda",
     "neta_y_porcentaje",
     "porcentaje_escrito",
+    "quien_guardo_el_desglose",
     "trazas_de_las_filas",
     "trazas_por_fila",
     "trazas_vigentes",
@@ -60,6 +65,15 @@ __all__ = [
 #: La clave del porcentaje en una fila de materiales de Componer.
 CLAVE = "desperdicio"
 _CIEN = Decimal(100)
+
+
+@dataclass(frozen=True, slots=True)
+class GuardadoDelDesglose:
+    """Quién guardó el desglose vigente de una partida y cuándo (acta DS-48g). `responsable` es
+    `None` si no se sabe: lo guardado antes de anotarlo o con la clave de API, sin cuenta."""
+
+    responsable: str | None
+    fecha_hora: datetime
 
 
 def leyenda(traza: TrazaDesperdicio) -> str:
@@ -204,16 +218,24 @@ def trazas_de_las_filas(
 
 
 def guardar_trazas(
-    sesion: Session, partida: str, trazas: Sequence[TrazaDesperdicio], *, ahora: datetime
+    sesion: Session,
+    partida: str,
+    trazas: Sequence[TrazaDesperdicio],
+    *,
+    ahora: datetime,
+    responsable: str | None = None,
 ) -> None:
     """Registra el guardado de la composición de `partida` con sus `trazas` (puede no traer
-    ninguna: así la anterior deja de valer). **No confirma**: el `commit` es de quien guarda la
+    ninguna: así la anterior deja de valer), su hora y su `responsable` (la cuenta de la sesión,
+    `Nombre <login>`; `None` sin cuenta). **No confirma**: el `commit` es de quien guarda la
     composición, en la misma transacción."""
     if not trazas and not hay_tablas_de_desperdicio(sesion):
         return  # nada que dejar ni que anular
     if not hay_tablas_de_desperdicio(sesion):
         crear_esquema_desperdicio(sesion.connection())
-    guardado = GuardadoDeDesperdicio(partida_codigo=partida, fecha_hora=ahora)
+    guardado = GuardadoDeDesperdicio(
+        partida_codigo=partida, fecha_hora=ahora, responsable=responsable
+    )
     sesion.add(guardado)
     sesion.flush()
     for orden, traza in enumerate(trazas, start=1):
@@ -231,20 +253,37 @@ def guardar_trazas(
     sesion.flush()
 
 
-def trazas_vigentes(sesion: Session, partida: str) -> list[TrazaDesperdicio]:
-    """Las trazas del último guardado de la composición de `partida`, en orden; vacío si no hay."""
+def _ultimo_guardado(sesion: Session, partida: str) -> GuardadoDeDesperdicio | None:
+    """El último guardado de la composición de `partida` (manda el último), o `None`."""
     if not hay_tablas_de_desperdicio(sesion):
-        return []
-    ultimo = sesion.scalars(
-        select(GuardadoDeDesperdicio.id)
+        return None
+    return sesion.scalars(
+        select(GuardadoDeDesperdicio)
         .where(GuardadoDeDesperdicio.partida_codigo == partida)
         .order_by(GuardadoDeDesperdicio.id.desc())
     ).first()
+
+
+def quien_guardo_el_desglose(sesion: Session, partida: str) -> GuardadoDelDesglose | None:
+    """El responsable y la hora del último guardado de `partida` si dejó desglose (alguna línea con
+    desperdicio); `None` si no hay guardado o si el último no trae ninguna (no hay desglose)."""
+    ultimo = _ultimo_guardado(sesion, partida)
+    if ultimo is None:
+        return None
+    linea = sesion.scalars(
+        select(LineaConDesperdicio.id).where(LineaConDesperdicio.guardado_id == ultimo.id)
+    ).first()
+    return None if linea is None else GuardadoDelDesglose(ultimo.responsable, ultimo.fecha_hora)
+
+
+def trazas_vigentes(sesion: Session, partida: str) -> list[TrazaDesperdicio]:
+    """Las trazas del último guardado de la composición de `partida`, en orden; vacío si no hay."""
+    ultimo = _ultimo_guardado(sesion, partida)
     if ultimo is None:
         return []
     lineas = sesion.scalars(
         select(LineaConDesperdicio)
-        .where(LineaConDesperdicio.guardado_id == ultimo)
+        .where(LineaConDesperdicio.guardado_id == ultimo.id)
         .order_by(LineaConDesperdicio.orden)
     )
     return [

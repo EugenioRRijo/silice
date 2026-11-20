@@ -150,8 +150,9 @@ def cambios_del_borrador(
     id: IdDeBorrador, request: Request, activa: CuentaQueVe
 ) -> CambiosHojaRespuesta:
     """E9: la lista de cambios entre la versión abierta y el borrador (la que cuenta
-    `resumen.cambios`), con el `rev` con que se calculó."""
-    return cambios_a_respuesta(*hoja_edicion.cambios_del_borrador(_vivo(request, activa, id)))
+    `resumen.cambios`), con el `rev` con que se calculó. Cada uno trae `insumo`: el de la línea
+    del APU que nombra su clave (`{partida}|{rubro}|{n}`; nulo en otra clave, acta DS-75)."""
+    return cambios_a_respuesta(*hoja_edicion.cambios_con_insumo(_vivo(request, activa, id)))
 
 
 @router.get("/borradores/{id}/vistas/espacio", response_model=VistaEspacioRespuesta)

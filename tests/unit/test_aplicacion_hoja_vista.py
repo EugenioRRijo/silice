@@ -31,6 +31,7 @@ from adapters.espacio.origen import OrigenMedida, TipoOrigen
 from aplicacion import hoja, hoja_vista
 from aplicacion.desperdicio import TrazaDesperdicio
 from aplicacion.hoja_borradores import Registro
+from aplicacion.hoja_desperdicio import DesperdicioDeLinea
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import Severidad
 from tests.fixtures import caso_of001
@@ -787,7 +788,7 @@ def test_el_detalle_trae_la_neta_y_el_porcentaje_de_la_linea_con_traza(_of001):
     d = hoja_vista.vista_apu(_vivo(_of001), partida="AF-LLAVE", trazas=trazas).detalle
     assert pedidas == ["AF-LLAVE"]
     assert d.desperdicios == (
-        hoja_vista.DesperdicioDeLinea(fila=1, texto="0,8 + 25 %", neta="0,8", porcentaje="25"),
+        DesperdicioDeLinea(fila=1, texto="0,8 + 25 %", neta="0,8", porcentaje="25"),
     )
     # la cantidad de la celda no cambia: sigue siendo la que calcula el núcleo
     assert d.grupos[0].filas[0]["cantidad"] == "1"

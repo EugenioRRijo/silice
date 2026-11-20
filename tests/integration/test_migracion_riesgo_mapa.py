@@ -53,11 +53,12 @@ def _instantanea(ruta: Path) -> dict:
         motor.dispose()
 
 
-def test_la_cabeza_del_caso_es_esta_revision() -> None:
+def test_la_revision_esta_en_la_unica_linea_del_caso() -> None:
+    """Fue la cabeza hasta `caso_0024_desperdicio_responsable` (acta DS-48g), que cuelga de ella."""
     from operacion.base_datos import _guion
 
     guion = _guion(Destino.CASO)
-    assert guion.get_heads() == [REVISION]
+    assert len(guion.get_heads()) == 1
     assert guion.get_revision(REVISION).down_revision == ANTERIOR
 
 

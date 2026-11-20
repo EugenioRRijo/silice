@@ -8,8 +8,11 @@ precargar Componer con lo que se tecleó. `MetaData` propia, sin clave foránea 
 `aplicacion/tablas_vial.py`); las cifras con `DecimalExacto` (texto, nunca `float`).
 
 - `apu_desperdicio_guardado`: un guardado de la composición de una partida (por su código), con su
-  hora. **Solo inserción**: guardar otra vez es otra fila y al leer manda el último; un guardado sin
-  desperdicio deja su fila sin líneas, y así la traza anterior deja de valer.
+  hora y su `responsable` (`Nombre <login>` de la sesión, RF-82; revisión
+  `caso_0024_desperdicio_responsable`, acta DS-48g). **Solo inserción**: guardar otra vez es otra
+  fila y al leer manda el último; un guardado sin desperdicio deja su fila sin líneas, y así la
+  traza anterior deja de valer. Lo guardado antes de la columna, o con la clave de API (sin
+  cuenta), tiene el responsable en nulo.
 - `apu_desperdicio`: las líneas con desperdicio de ese guardado, en orden.
 
 Una base que todavía no tiene las tablas se lee como sin trazas y las tablas se crean al guardar la
@@ -50,6 +53,7 @@ class GuardadoDeDesperdicio(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     partida_codigo: Mapped[str] = mapped_column(String(64), nullable=False)
     fecha_hora: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    responsable: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
 
 class LineaConDesperdicio(Base):

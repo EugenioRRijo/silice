@@ -758,6 +758,15 @@ def test_llevar_otra_vez_no_escribe_otra_traza(ana) -> None:
     assert _guardados_de_desperdicio() == antes
 
 
+def test_la_traza_del_libro_lleva_la_cuenta_que_lo_llevo(ana) -> None:
+    """Mejora de A.6 (acta DS-48g, opción A): el guardado de la traza que deja el libro lleva su
+    responsable (`Nombre <login>`, RF-82), como el de Componer y el de la Hoja."""
+    assert _llevar(ana).status_code == 200
+    with closing(sqlite3.connect(config.carpeta_casos() / "via.db")) as conexion:
+        filas = conexion.execute("SELECT responsable FROM apu_desperdicio_guardado").fetchall()
+    assert filas == [("Ana <ana>",)]
+
+
 def test_la_variante_lleva_su_propia_traza(ana) -> None:
     navegador, _ = ana
     _llevar(ana)

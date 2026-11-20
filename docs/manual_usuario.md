@@ -732,6 +732,14 @@ sigue siendo la misma y el aviso dice, por ejemplo, «Se guardó el desglose del
 cambió, así que la versión V-005 sigue siendo la misma.». Si además cambió alguna cantidad o rendimiento, el botón
 sigue diciendo «Guardar versión…»: nace una versión nueva con esos cambios y el desglose se guarda junto con ella.
 
+**Quién guardó el desglose.** Cada guardado del desglose (desde la Hoja, desde Componer o al llevar un libro a la
+Hoja) anota la cuenta que lo hizo y la hora. Bajo la tabla «Materiales» de la pestaña APU, cuando alguna línea muestra
+el desglose que está guardado, una línea lo dice, por ejemplo «Desglose del desperdicio guardado por Ana Pérez <ana> el
+13/11/2026 09:00.». Si el desglose se guardó antes de que Sílice lo anotara, o desde una integración sin cuenta, dice
+la hora y que no consta quién lo guardó; nunca pone un nombre que no esté guardado. Si alguna línea muestra un desglose
+suyo aún sin guardar, esa línea no aparece; vuelve al guardarlo. Pulsar «Aplicar» sin tocar el desperdicio (por ejemplo,
+para cambiar solo el rendimiento) no cuenta como un desglose suyo: sigue valiendo el guardado.
+
 **La primera versión de una obra larga.** Al guardar la primera versión, Sílice arma el plan de trabajo desde los
 rendimientos. El plan admite hasta 500 períodos: si por días no cabe, lo arma por semanas (de 5 días hábiles) y, si
 tampoco, por meses (de 20 días hábiles), y el mensaje de guardado lo dice, por ejemplo «El plan por días tendría 700

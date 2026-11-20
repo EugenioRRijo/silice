@@ -598,3 +598,35 @@ def test_editar_solo_el_desglose_cuenta_como_cambio_y_sube_el_rev(base):
     assert sin_desglose.rev == 2
     assert hoja_edicion.cambios_del_borrador(sin_desglose) == (2, [])
     assert hoja_vista.resumen(sin_desglose).desgloses == 0
+
+
+# --- el insumo de la clave de una línea (acta DS-75, opción A) -----------------------------------
+
+
+def test_la_clave_de_una_linea_se_nombra_con_su_insumo():
+    """«{partida}|{rubro}|{n}» (el alta, la baja y el desglose del desperdicio) dice el insumo de
+    esa línea: el del borrador de ahora y, si la línea sale (baja), el de antes. Otra clave, una
+    posición que no existe o una partida que no está, no tiene insumo."""
+    base = _borrador(COMPOSICIONES)
+    agregada = _borrador({**COMPOSICIONES, "OBRA-02": _premezclado()})
+    sin_equipo = _borrador(
+        {**COMPOSICIONES, "OBRA-02": hoja_lineas_apu.quitar_linea(CONCRETO, "equipo", 0)}
+    )
+    alta = CambioEditado("apu", "OBRA-02|material|2", "alta", "", "Concreto premezclado")
+    baja = CambioEditado("apu", "OBRA-02|equipo|1", "baja", "Mezcladora de concreto", "")
+    desglose = CambioEditado("apu", "OBRA-02|material|1", "desperdicio", "", "0,8 + 25 %")
+    obrero = CambioEditado("apu", "OBRA-02|mano_obra|1", "desperdicio", "", "")
+    insumo = hoja_lineas_apu.insumo_de_la_clave
+    assert insumo(base, agregada, alta) == "Concreto premezclado"
+    assert insumo(base, sin_equipo, baja) == "Mezcladora de concreto"
+    assert insumo(base, base, desglose) == CONCRETO.materiales[0].descripcion
+    assert insumo(base, base, obrero) == CONCRETO.mano_obra[0].descripcion
+    for otra in (
+        CambioEditado("apu", "OBRA-02", "rendimiento", "6", "7"),
+        CambioEditado("apu", "OBRA-02|Cemento gris", "cantidad", "1", "2"),
+        CambioEditado("apu", "OBRA-02|material|9", "alta", "", "x"),
+        CambioEditado("apu", "OBRA-02|material|0", "alta", "", "x"),
+        CambioEditado("apu", "NO-ESTA|material|1", "alta", "", "x"),
+        CambioEditado("parametro", "fcas", "valor", "6", "7"),
+    ):
+        assert insumo(base, agregada, otra) is None, otra

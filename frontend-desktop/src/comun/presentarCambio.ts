@@ -7,9 +7,10 @@ import { rotuloDeOrigen } from "./rotuloDeOrigen";
 import { rotuloDeParametro, valorDeCambio } from "./rotulos";
 import { ROTULOS_DE_COLUMNA } from "./rotulosDeColumna";
 
-// La clave de la fila del registro: un parámetro tiene su rótulo; lo demás es un renglón o una fila del metraje.
-export function presentarClave(objeto: string, clave: string): string {
-  return objeto === "parametro" ? rotuloDeParametro(clave) : rotuloDeOrigen(clave);
+// La clave de la fila del registro: un parámetro tiene su rótulo; lo demás es un renglón o una fila del metraje. `insumo`
+// (DS-75) nombra la línea de un APU cuando el servidor lo manda.
+export function presentarClave(objeto: string, clave: string, insumo?: string | null): string {
+  return objeto === "parametro" ? rotuloDeParametro(clave) : rotuloDeOrigen(clave, insumo);
 }
 
 // El alta o la baja de una fila de metraje lleva el resumen «clave=valor; clave=valor» (`_resumen_de_fila`,

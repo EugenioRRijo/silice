@@ -15,7 +15,9 @@ de la pagina clasica, copiados a mano.
 
 from __future__ import annotations
 
+import sqlite3
 from collections.abc import Iterator
+from contextlib import closing
 from decimal import Decimal
 from pathlib import Path
 
@@ -573,6 +575,37 @@ def test_guardar_un_desperdicio_mal_escrito_es_422(api: TestClient) -> None:
     respuesta = _guardar_desp(api, {**LIGANTE, "desperdicio": "cuatro"})
     assert respuesta.status_code == 422
     assert "el desperdicio «cuatro» no se entiende como número" in respuesta.json()["detalle"]
+
+
+def _responsables(ruta: Path) -> list[str | None]:
+    with closing(sqlite3.connect(f"file:{ruta.as_posix()}?mode=ro", uri=True)) as bd:
+        return [
+            f[0] for f in bd.execute("SELECT responsable FROM apu_desperdicio_guardado ORDER BY id")
+        ]
+
+
+def test_guardar_desde_la_sesion_anota_quien_guardo_la_traza(caso: Path) -> None:
+    """Mejora de A.6 (acta DS-48g, opción A): la traza que deja Componer lleva la cuenta de la
+    sesión (`Nombre <login>`, RF-82), como la de la Hoja."""
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = navegador.post(
+        "/v1/composicion/guardar",
+        json=_cuerpo_desp(
+            LIGANTE,
+            fecha="2026-05-01",
+            condiciones="condiciones ficticias de la prueba del desperdicio",
+        ),
+        headers=protegida(ficha),
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    assert _responsables(caso) == ["Ana <ana>"]
+
+
+def test_guardar_con_la_clave_de_api_no_tiene_cuenta_que_anotar(
+    caso: Path, api: TestClient
+) -> None:
+    assert _guardar_desp(api, LIGANTE).status_code == 200
+    assert _responsables(caso) == [None]
 
 
 # --- parámetros del precio unitario (RF-200, ola 2 del 2026-11-13) -----------------------------

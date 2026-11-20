@@ -35,9 +35,10 @@ from adapters.espacio.modelo import (
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja, hoja_desperdicio
 from aplicacion.cifras import texto_de_cifra
-from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje
+from aplicacion.desperdicio import GuardadoDelDesglose
 from aplicacion.frentes import frente_de
 from aplicacion.hoja_borradores import BorradorVivo
+from aplicacion.hoja_desperdicio import DesperdicioDeLinea, GuardadoDePartida, TrazasDePartida
 from aplicacion.hoja_partidas import (
     PREFIJO_A_MANO,
     PREFIJO_TRAMO,
@@ -542,23 +543,6 @@ class MetricasDeApu:
 
 
 @dataclass(frozen=True, slots=True)
-class DesperdicioDeLinea:
-    """La neta y el porcentaje de desperdicio de una fila de Materiales (desde 1), «0,50 + 4 %»
-    (F5 vial, punto 1). La cantidad de la fila ya los incluye: esto solo la explica. `neta` y
-    `porcentaje`, con coma decimal, son lo que siembra los campos de la Hoja (2026-11-13)."""
-
-    fila: int
-    texto: str
-    neta: str
-    porcentaje: str
-
-
-#: Las trazas vigentes del desperdicio de una partida, por su código (la ruta las lee de la base
-#: del caso con `aplicacion.desperdicio.trazas_vigentes`).
-TrazasDePartida = Callable[[str], Sequence[TrazaDesperdicio]]
-
-
-@dataclass(frozen=True, slots=True)
 class DetalleDeApu:
     codigo: str
     descripcion: str
@@ -570,6 +554,7 @@ class DetalleDeApu:
     estados: tuple[str, ...]
     solo_lectura_insumos: bool
     desperdicios: tuple[DesperdicioDeLinea, ...] = ()
+    desglose_guardado: GuardadoDelDesglose | None = None  # quién guardó el de la base (DS-48g)
 
 
 @dataclass(frozen=True, slots=True)
@@ -586,6 +571,7 @@ def _detalle_de_apu(
     resultado: hoja.ResultadoHoja,
     codigo: str,
     trazas: TrazasDePartida | None = None,
+    guardado: GuardadoDePartida | None = None,
 ) -> DetalleDeApu:
     borrador = vivo.borrador
     composicion = borrador.composiciones[codigo]
@@ -605,6 +591,12 @@ def _detalle_de_apu(
         r.precio_unitario,
     )
     cierre = hoja.filas_de_cierre(r, borrador.parametros, presupuesto.moneda)
+    desperdicios, desglose_guardado = hoja_desperdicio.desglose_de_la_vista(
+        tablas[0],
+        hoja_desperdicio.trazas_del_borrador(vivo, codigo),
+        trazas(codigo) if trazas is not None else (),
+        lambda: guardado(codigo) if guardado is not None else None,
+    )
     return DetalleDeApu(
         codigo=codigo,
         descripcion=composicion.descripcion,
@@ -633,19 +625,8 @@ def _detalle_de_apu(
             if fila["partida"] == codigo and fila["estado"] != hoja.TEXTO_OK
         ),
         solo_lectura_insumos=vivo.abierta is None,
-        desperdicios=tuple(
-            DesperdicioDeLinea(
-                fila,
-                neta_y_porcentaje(traza),
-                texto_de_cifra(traza.cantidad_neta),
-                texto_de_cifra(traza.desperdicio_pct),
-            )
-            for fila, traza in hoja_desperdicio.desgloses_visibles(
-                tablas[0],
-                hoja_desperdicio.trazas_del_borrador(vivo, codigo),
-                trazas(codigo) if trazas is not None else (),
-            )
-        ),
+        desperdicios=desperdicios,
+        desglose_guardado=desglose_guardado,
     )
 
 
@@ -655,6 +636,7 @@ def vista_apu(
     partida: str | None = None,
     buscar: str | None = None,
     trazas: TrazasDePartida | None = None,
+    guardado: GuardadoDePartida | None = None,
 ) -> VistaApu:
     """La pestana APU en lectura (P:1488-1738): la lista de partidas valoradas (con su buscador),
     la seleccionada y su detalle: tres rubros con subtotal, cierre paso a paso y metricas.
@@ -665,7 +647,8 @@ def vista_apu(
 
     Con `trazas`, el detalle trae la neta y el porcentaje de desperdicio de cada material cuya
     descripción, unidad y cantidad son las de una traza vigente de la partida (F5 vial, punto 1).
-    Las que la Hoja dejó en el borrador (aún sin guardar) van antes (`hoja_desperdicio.unir`)."""
+    Las que la Hoja dejó en el borrador (aún sin guardar) van antes (`hoja_desperdicio.unir`).
+    Con `guardado`, dice quién guardó el desglose de la base que se ve (acta DS-48g)."""
     resultado, _ = calculo(vivo)
     valoradas = resultado.elaboracion.presupuesto.partidas
     codigos = list(dict.fromkeys(p.item.codigo_partida for p in valoradas))
@@ -680,7 +663,7 @@ def vista_apu(
         partidas=tuple(PartidaDeLista(c, descripciones.get(c, "")) for c in visibles),
         sin_coincidencias=sin_coincidencias,
         seleccionada=seleccionada,
-        detalle=_detalle_de_apu(vivo, resultado, seleccionada, trazas),
+        detalle=_detalle_de_apu(vivo, resultado, seleccionada, trazas, guardado),
         vacio_mensaje=None,
     )
 

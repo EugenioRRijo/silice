@@ -44,10 +44,14 @@ const LINEA_DE_APU = /^(.+)\|(material|equipo|mano_obra)\|(\d+)$/;
 const NOMBRE_DE_RUBRO: Record<string, string> = { material: "material", equipo: "equipo", mano_obra: "mano de obra" };
 
 // La clave de fila del servidor («esp_puntos:P1», «AF-LLAVE|esp_fuentes:F1;esp_puntos:P1#2», «AF-LLAVE|material|1») como la
-// nombra la persona.
-export function rotuloDeOrigen(origen: string): string {
+// nombra la persona. La línea de un APU lleva detrás su `insumo` si el servidor lo manda (acta DS-75): «AF-LLAVE, material
+// n.º 1: Llave de paso…»; sin él (Versiones y Revisar, que leen el registro guardado), solo su posición.
+export function rotuloDeOrigen(origen: string, insumo?: string | null): string {
   const linea = LINEA_DE_APU.exec(origen);
-  if (linea) return `${linea[1]}, ${NOMBRE_DE_RUBRO[linea[2]!]} n.º ${linea[3]}`;
+  if (linea) {
+    const posicion = `${linea[1]}, ${NOMBRE_DE_RUBRO[linea[2]!]} n.º ${linea[3]}`;
+    return insumo ? `${posicion}: ${insumo}` : posicion;
+  }
   const { partida, origenes, mas, repetido } = partirClave(origen);
   const nombres = origenes.map(rotuloDeFila);
   if (partida !== null && partida !== "") nombres.unshift(partida);

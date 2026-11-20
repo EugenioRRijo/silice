@@ -192,9 +192,12 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
       detalle: {
         ...base,
         desperdicios: [{ fila: 1, texto: "0,8 + 25 %", neta: "0,8", porcentaje: "25" }],
+        desglose_guardado: { responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-13T09:00:00" },
       },
     });
     await irAApu();
+    // acta DS-48g, opción A: quién guardó el desglose que se ve, bajo la tabla de Materiales
+    expect(screen.getByText("Desglose del desperdicio guardado por Ana Pérez <ana> el 13/11/2026 09:00.")).toBeTruthy();
     const materiales = screen.getByRole("table", { name: /^Materiales/ });
     expect(within(materiales).getByRole("columnheader", { name: "Desperdicio (%)" })).toBeTruthy();
     expect(within(materiales).getByRole("columnheader", { name: "Cantidad con desperdicio" })).toBeTruthy();

@@ -3760,7 +3760,7 @@
           "composicion"
         ],
         "summary": "Guardar",
-        "description": "Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación\n(UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del\ndesperdicio (F5 vial) se guarda en la misma transacción.",
+        "description": "Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación\n(UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del\ndesperdicio (F5 vial) se guarda en la misma transacción, con la cuenta de la sesión como su\nresponsable (acta DS-48g; con la clave de API no hay cuenta y queda en nulo).",
         "operationId": "guardar_v1_composicion_guardar_post",
         "requestBody": {
           "content": {
@@ -7825,7 +7825,7 @@
           "hoja"
         ],
         "summary": "Cambios Del Borrador",
-        "description": "E9: la lista de cambios entre la versión abierta y el borrador (la que cuenta\n`resumen.cambios`), con el `rev` con que se calculó.",
+        "description": "E9: la lista de cambios entre la versión abierta y el borrador (la que cuenta\n`resumen.cambios`), con el `rev` con que se calculó. Cada uno trae `insumo`: el de la línea\ndel APU que nombra su clave (`{partida}|{rubro}|{n}`; nulo en otra clave, acta DS-75).",
         "operationId": "cambios_del_borrador_v1_hoja_borradores__id__cambios_get",
         "parameters": [
           {
@@ -16053,6 +16053,17 @@
           "despues": {
             "type": "string",
             "title": "Despues"
+          },
+          "insumo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insumo"
           }
         },
         "type": "object",
@@ -18612,6 +18623,33 @@
         ],
         "title": "Desglose"
       },
+      "DesgloseGuardadoRespuesta": {
+        "properties": {
+          "responsable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "responsable",
+          "fecha_hora"
+        ],
+        "title": "DesgloseGuardadoRespuesta",
+        "description": "Quién guardó el desglose del desperdicio que la pestaña muestra de la base y cuándo (acta\nDS-48g, opción A). `responsable` (`Nombre <login>`) es nulo si no consta: lo guardado antes de\nanotarlo, o con la clave de API, sin cuenta."
+      },
       "DesperdicioDeFila": {
         "properties": {
           "fila": {
@@ -18764,6 +18802,16 @@
             "type": "array",
             "title": "Desperdicios",
             "default": []
+          },
+          "desglose_guardado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesgloseGuardadoRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
