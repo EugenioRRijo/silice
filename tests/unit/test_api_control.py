@@ -966,6 +966,37 @@ def test_elegir_una_opcion_crea_la_version_y_deja_la_decision_con_el_responsable
     assert [(d["Version"], "<ana>" in d["Responsable"]) for d in decisiones] == [(codigo, True)]
 
 
+def test_elegir_no_consulta_tras_confirmar_aunque_la_sesion_expire_al_confirmar() -> None:
+    """Revisión de la compuerta, punto 8 (DS-117): el código de la versión nueva se lee antes del
+    `commit`. Hoy no se nota solo porque `SesionDeEscrituraDep` fija `expire_on_commit=False`;
+    con la sesión por omisión (que expira lo leído al confirmar) la lectura tras el `commit`
+    abría otro `BEGIN IMMEDIATE` (oráculo de DS-58)."""
+    from core.catalog import abrir_sesion_de_escritura
+
+    def sesion_que_expira():
+        url = dependencias.url_del_proceso()  # la carpeta de la prueba (sin selector de caso)
+        with abrir_sesion_de_escritura(dependencias.obtener_motor(url)) as sesion:
+            yield sesion  # `expire_on_commit` queda en True, el de SQLAlchemy
+
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "objetivo": "",
+        "horas_previas": "0",
+        "opcion": "cuadrillas",
+        "fuente": "reunion de obra",
+        "declaracion_independencia": "",
+    }
+    app.dependency_overrides[dependencias.sesion_de_escritura_api] = sesion_que_expira
+    try:
+        with transacciones_del_caso(_caso_del_proceso()) as por_sesion:
+            r = navegador.post("/v1/control/recuperacion/elegir", json=cuerpo, headers=cabeceras)
+    finally:
+        app.dependency_overrides.pop(dependencias.sesion_de_escritura_api, None)
+    assert r.status_code == 200, r.text
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
+
+
 def test_en_el_corte_de_la_memoria_solo_paralelo_no_aplica() -> None:
     """El escenario de la fixture garantiza que hay opciones que aplican (oraculo a mano, memoria
     de OB-S2 §1 y `tests/integration/test_contexto_de_recuperacion.py`)."""
