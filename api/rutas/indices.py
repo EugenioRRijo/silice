@@ -329,13 +329,8 @@ def confirmar(
         )
     except ValueError as error:
         raise HTTPException(422, f"No se guardo nada: {_corto(error)}") from None
-    except SQLAlchemyError as error:
-        motor = getattr(error, "orig", None)
-        # `orig` es el mensaje del motor, sin el SQL ni sus parámetros.
-        raise HTTPException(
-            503,
-            f"No se pudo escribir en el caso: {_corto(motor or 'error de base')}",
-        ) from None
+    # Un `SQLAlchemyError` sigue al manejador común (`api/main.py`): 503 fijo, el motor al
+    # registro con su traza (regla C1, DS-113). La sesión de escritura deshace al cerrarse.
     return ConfirmacionRespuesta(mensajes=mensajes)
 
 
@@ -472,14 +467,10 @@ def importar_serie_vial(
     except (ValueError, csv.Error) as error:  # filas rechazadas, serie ausente, CSV ilegible...
         sesion.rollback()
         raise _no_importo_vial(error) from None
-    except SQLAlchemyError as error:
+    except SQLAlchemyError:
+        # 503 fijo del manejador común (`api/main.py`), el motor al registro (regla C1, DS-113)
         sesion.rollback()
-        motor = getattr(error, "orig", None)
-        raise HTTPException(
-            503,
-            f"No se pudo escribir en el caso: {_corto(motor or 'error de base')}",
-            headers=SIN_CACHE,
-        ) from None
+        raise
     return ImportacionVialRespuesta(
         serie=serie,
         importada=True,
