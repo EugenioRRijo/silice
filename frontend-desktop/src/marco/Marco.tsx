@@ -106,7 +106,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const [generacion, setGeneracion] = useState(0);
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
   // Lo que la instalación apagó (plan vial, Tarea 19): no se ofrece ni se abre.
-  const { apagados: modulosApagados, recargar: recargarModulos } = useModulos();
+  const { apagados: modulosApagados, leidos: modulosLeidos, recargar: recargarModulos } = useModulos();
 
   // Un recorrido en curso, la pregunta de salida abierta, los formularios sucios y el diálogo «Nueva obra» no
   // sobreviven a la sesión.
@@ -329,7 +329,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       proyecto,
       nombreProyecto,
       caso: casos?.actual ?? null,
-      modulosApagados,
+      // `undefined` mientras no se sabe: las pantallas que dependen de un módulo encendido esperan (`useModulos`).
+      modulosApagados: modulosLeidos ? modulosApagados : undefined,
       recargarModulos,
       recargarProyectos: recargarObras,
       elegirObra,
@@ -343,7 +344,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, nombreProyecto, casos, modulosApagados, recargarModulos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, alCambiarContrasena, almacen, crearHoja],
+    [sesion, proyecto, nombreProyecto, casos, modulosApagados, modulosLeidos, recargarModulos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, alCambiarContrasena, almacen, crearHoja],
   );
 
   let obraDeLaSesion: ObraDeLaSesion = null;

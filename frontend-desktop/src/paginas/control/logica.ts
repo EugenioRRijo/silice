@@ -514,7 +514,9 @@ export function useAccion(alExpirar: () => void, alTerminar?: () => void) {
     },
     [alExpirar, alTerminar],
   );
-  return { estado, ejecutar };
+  // Deja la acción como si no se hubiera hecho (sin su error ni su éxito): para un intento que ni siquiera sale.
+  const limpiar = useCallback(() => setEstado((actual) => (actual.error === null && actual.exito === "" ? actual : { enviando: false, error: null, exito: "" })), []);
+  return { estado, ejecutar, limpiar };
 }
 
 // Como `useCarga`, pero mientras vuelve a pedir tras una escritura deja a la vista lo último que llego: asi el

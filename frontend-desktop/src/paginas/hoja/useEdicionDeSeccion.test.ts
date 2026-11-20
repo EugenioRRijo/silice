@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { pedir } from "../../api/cliente";
+import { ErrorDeApi, pedir } from "../../api/cliente";
 import { esperarEnvios } from "./envioPendiente";
 import type { RespuestaDeEdicion, Resumen } from "./logica";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
@@ -14,10 +14,12 @@ const pedirFalso = vi.mocked(pedir);
 // Una respuesta que el servidor todavía no dio: la prueba decide cuándo llega.
 function enEspera() {
   let contestar: (valor: RespuestaDeEdicion) => void = () => undefined;
-  const promesa = new Promise<RespuestaDeEdicion>((resolver) => {
+  let rechazar: (error: unknown) => void = () => undefined;
+  const promesa = new Promise<RespuestaDeEdicion>((resolver, rechazo) => {
     contestar = resolver;
+    rechazar = rechazo;
   });
-  return { promesa, contestar };
+  return { promesa, contestar, rechazar };
 }
 
 // Un resumen ficticio: el motor solo lee `rev` y se lo pasa a la página tal cual.
@@ -104,5 +106,82 @@ describe("useEdicionDeSeccion: lo escrito durante una acción, con la pestaña y
     });
     expect(esperado).toBe(true);
     expect(await espera).toEqual([resumen(5), resumen(6)]);
+  });
+});
+
+describe("useEdicionDeSeccion: una acción en orden tras un rechazo de lo escrito", () => {
+  // La edición que sale primero se acepta, pero lo escrito mientras iba (la vuelta de repetición) lo rechaza el servidor:
+  // la acción no debe salir ni borrar el aviso del rechazo.
+  test("no sale si lo último escrito fue rechazado (422) en la vuelta de repetición", async () => {
+    vi.useFakeTimers();
+    const put1 = enEspera();
+    const put2 = enEspera();
+    const accion = enEspera();
+    pedirFalso.mockReturnValueOnce(put1.promesa).mockReturnValueOnce(put2.promesa).mockReturnValueOnce(accion.promesa);
+    const { result } = montar();
+
+    act(() => result.current.cambiar(() => "2"));
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(pedirFalso).toHaveBeenCalledTimes(1);
+    act(() => result.current.cambiar(() => "abc"));
+    let respuesta: Promise<Resumen | null> = Promise.resolve(null);
+    act(() => {
+      respuesta = result.current.accionarEnOrden((rev) => ({ ruta: `/v1/hoja/borradores/${BORRADOR}/apu/X/insumo`, metodo: "POST", cuerpo: { rev } }));
+    });
+    await act(async () => {
+      put1.contestar({ rev: 5, resumen: resumen(5) });
+      await vaciarMicrotareas();
+    });
+    expect(pedirFalso).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      put2.rechazar(new ErrorDeApi(422, "La cantidad no es un número."));
+      await vaciarMicrotareas();
+    });
+    let devuelto: Resumen | null | undefined;
+    await act(async () => {
+      accion.contestar({ rev: 6, resumen: resumen(6) });
+      await vaciarMicrotareas();
+      devuelto = await respuesta;
+    });
+    expect(pedirFalso).toHaveBeenCalledTimes(2);
+    expect(devuelto).toBeNull();
+    expect(result.current.error?.tipo).toBe("rechazo");
+  });
+
+  test("sí sale cuando lo escrito se aceptó en todas las vueltas", async () => {
+    vi.useFakeTimers();
+    const put1 = enEspera();
+    const put2 = enEspera();
+    const accion = enEspera();
+    pedirFalso.mockReturnValueOnce(put1.promesa).mockReturnValueOnce(put2.promesa).mockReturnValueOnce(accion.promesa);
+    const { result } = montar();
+
+    act(() => result.current.cambiar(() => "2"));
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    act(() => result.current.cambiar(() => "3"));
+    let respuesta: Promise<Resumen | null> = Promise.resolve(null);
+    act(() => {
+      respuesta = result.current.accionarEnOrden((rev) => ({ ruta: `/v1/hoja/borradores/${BORRADOR}/apu/X/insumo`, metodo: "POST", cuerpo: { rev } }));
+    });
+    await act(async () => {
+      put1.contestar({ rev: 5, resumen: resumen(5) });
+      await vaciarMicrotareas();
+    });
+    await act(async () => {
+      put2.contestar({ rev: 6, resumen: resumen(6) });
+      await vaciarMicrotareas();
+    });
+    expect(pedirFalso).toHaveBeenCalledTimes(3);
+    let devuelto: Resumen | null | undefined;
+    await act(async () => {
+      accion.contestar({ rev: 7, resumen: resumen(7) });
+      await vaciarMicrotareas();
+      devuelto = await respuesta;
+    });
+    expect(devuelto).toEqual(resumen(7));
   });
 });

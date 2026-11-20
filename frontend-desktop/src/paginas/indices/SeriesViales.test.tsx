@@ -95,7 +95,7 @@ const YA_ESTABA: ImportacionVial = {
 describe("Series del riesgo vial", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let leer: () => Response;
-  let importar: () => Response;
+  let importar: () => Response | Promise<Response>;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -218,11 +218,48 @@ describe("Series del riesgo vial", () => {
     const usuario = await elegirArchivo();
     await usuario.click(screen.getByRole("button", { name: "Importar" }));
     expect(await screen.findByText(YA_ESTABA.mensaje)).toBeInTheDocument();
-    expect(screen.queryByText("Importación")).not.toBeInTheDocument();
-    expect(screen.getByText("Ya estaba importado")).toBeInTheDocument();
+    expect(screen.queryByText(/^Importación/)).not.toBeInTheDocument();
+    expect(screen.getByText("Ya estaba importado en PPI de asfalto de EE. UU. (ficticio)")).toBeInTheDocument();
     expect(llamadas("/v1/indices/series-viales")).toHaveLength(1); // no escribió nada: no hay nada que releer
     const aviso = screen.getAllByRole("status").find((e) => e.textContent?.includes("Ya estaba importado"));
     expect(aviso).toBeDefined();
+  });
+
+  test("mientras se importa no se puede cambiar la serie, la fuente, la fecha ni el archivo", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    importar = () => new Promise<Response>((resolver) => (soltar = resolver));
+    montar();
+    const usuario = await elegirArchivo();
+    await usuario.click(screen.getByRole("button", { name: "Importar" }));
+    expect(await screen.findByText("Importando...")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Serie" })).toBeDisabled();
+    expect(screen.getByLabelText(/Fuente de la serie/)).toBeDisabled();
+    expect(screen.getByLabelText("Fecha de descarga")).toBeDisabled();
+    expect(document.querySelector('input[type="file"]')).toBeDisabled();
+    soltar(json(IMPORTADA));
+    expect(await screen.findByText(IMPORTADA.mensaje)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Serie" })).toBeEnabled();
+    expect(document.querySelector('input[type="file"]')).toBeEnabled();
+  });
+
+  test("el aviso de lo importado nombra la serie y se quita si la persona cambia de serie", async () => {
+    montar();
+    const usuario = await elegirArchivo();
+    await usuario.click(screen.getByRole("button", { name: "Importar" }));
+    expect(await screen.findByText("Importación de PPI de asfalto de EE. UU. (ficticio)")).toBeInTheDocument();
+    await usuario.selectOptions(screen.getByRole("combobox", { name: "Serie" }), "GASOIL_USD");
+    expect(screen.queryByText("Importación de PPI de asfalto de EE. UU. (ficticio)")).not.toBeInTheDocument();
+    expect(screen.queryByText(IMPORTADA.mensaje)).not.toBeInTheDocument();
+  });
+
+  test("el error de importar nombra la serie y se quita si la persona elige otro archivo", async () => {
+    importar = () => json({ detalle: "No se importó nada: filas rechazadas." }, 422);
+    montar();
+    const usuario = await elegirArchivo();
+    await usuario.click(screen.getByRole("button", { name: "Importar" }));
+    expect(await alertaConTexto()).toHaveTextContent("No se importó PPI de asfalto de EE. UU. (ficticio)");
+    await usuario.upload(document.querySelector('input[type="file"]') as HTMLInputElement, new File(["x"], "otra.csv"));
+    expect(screen.queryByText(/No se importó nada: filas rechazadas/)).not.toBeInTheDocument();
   });
 
   test("una fila rechazada muestra el detalle del servidor y deja el archivo para corregirlo", async () => {

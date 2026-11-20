@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect, useState } from "react";
 import { Link, MemoryRouter, useLocation, useNavigate } from "react-router";
@@ -378,6 +378,40 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
     await u.type(screen.getByRole("combobox", { name: "Buscar una obra, sección o pantalla" }), "existencias");
     await u.keyboard("{Enter}");
     await waitFor(() => expect(ruta()).toBe("/produccion/existencias"));
+  });
+});
+
+// Una pantalla que solo se monta con su módulo encendido (Series del riesgo vial) no puede tomar «todavía no se leyó» por
+// «ninguno apagado»: el marco le da `undefined` hasta que vuelve `GET /v1/modulos` y la lista después.
+describe("Marco: los módulos apagados que ve una pantalla", () => {
+  function PaginaDeModulos() {
+    const { modulosApagados } = useAplicacion();
+    return (
+      <>
+        <h1>Presupuesto</h1>
+        <p>{`módulos: ${modulosApagados === undefined ? "sin leer" : modulosApagados.join(", ") || "ninguno apagado"}`}</p>
+      </>
+    );
+  }
+
+  test("mientras la lectura va en vuelo la pantalla ve undefined y al resolver ve la lista", async () => {
+    instalar(enSur);
+    const base = servidor.fetchFalso;
+    let contestar: (r: Response) => void = () => undefined;
+    const retenida = new Promise<Response>((resolver) => (contestar = resolver));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+        if (String(entrada) === "/v1/modulos" && (init?.method ?? "GET") === "GET") return retenida;
+        return base(entrada, init);
+      }),
+    );
+    montar({ en: "/obra/Carpeta%20Sur.db/3/presupuesto", paginas: ligeras({ hoja: PaginaDeModulos }) });
+    expect(await screen.findByText("módulos: sin leer")).toBeInTheDocument();
+    await act(async () => {
+      contestar(json({ modulos: [{ clave: "riesgo", nombre: "riesgo", activo: false, cambiado_por: null, cambiado_el: null }] }));
+    });
+    expect(await screen.findByText("módulos: riesgo")).toBeInTheDocument();
   });
 });
 

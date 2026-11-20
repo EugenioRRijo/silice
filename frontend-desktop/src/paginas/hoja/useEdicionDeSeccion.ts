@@ -67,6 +67,8 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     temporizador: null as ReturnType<typeof setTimeout> | null,
     enVuelo: false,
     volver: false,
+    // Si la última escritura mandada fue rechazada (se pone al empezar cada vuelta y al fallar).
+    ultimoFallo: false,
     bloqueado: false,
     // Lo que se está mandando ahora (para esperarlo antes de una acción que no puede adelantarse).
     envioEnCurso: null as Promise<Resumen | null> | null,
@@ -106,6 +108,7 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
       try {
         do {
           m.volver = false;
+          m.ultimoFallo = false;
           const enviado = m.estado;
           const peticion = construir(m.rev, enviado);
           frase = peticion.frase ?? actuales.current.frase;
@@ -121,6 +124,7 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
       } catch (e) {
         if (repetir) m.volver = false;
         fallo = true;
+        m.ultimoFallo = true;
         // Si una vuelta anterior ya se aceptó, `aceptado` es lo último que el servidor tiene; si no, sigue en null.
         if (e instanceof ErrorDeApi && e.estado === 401) {
           perdido = true;
@@ -203,7 +207,8 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
         previo = await enviarEdicion();
       }
       while (m.enVuelo && m.envioEnCurso !== null) previo = await m.envioEnCurso;
-      if (previo === null) return null;
+      // `previo` puede ser el resumen de una vuelta anterior ya aceptada: si la última escritura falló, tampoco sale.
+      if (previo === null || (previo !== undefined && m.ultimoFallo)) return null;
       return mandar((rev) => peticion(rev), false);
     },
     [mandar, enviarEdicion],
