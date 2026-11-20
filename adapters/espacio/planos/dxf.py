@@ -690,7 +690,7 @@ class _Lector:
                 continue
             if not vertices:  # sin extremos que emparejar: `_recorrido` no puede medirla
                 self._no_reconocido(
-                    "esp_recorridos", e, "polilinea sin vertices: no hay recorrido que medir"
+                    "esp_recorridos", e, "polilínea sin vértices: no hay recorrido que medir"
                 )
                 continue
             if cerrada or (len(vertices) >= 4 and vertices[0] == vertices[-1]):
