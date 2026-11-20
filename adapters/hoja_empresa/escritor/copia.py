@@ -363,8 +363,20 @@ def _imagenes(ws: Any, h: HojaSalida) -> None:
 
 
 def tamano_imagen(datos: bytes) -> tuple[int, int] | None:
-    """Ancho y alto en píxeles de un PNG, GIF o JPEG, leídos de la cabecera (sin Pillow)."""
+    """Ancho y alto en píxeles de un PNG, GIF o JPEG, leídos de la cabecera (sin Pillow). `None`
+    si la cabecera no lo dice o dice un lado en cero (un PNG sin el IHDR primero, un JPEG cuyo
+    primer SOF es 0×0): la imagen se copia sin escala en vez de dividir por cero (hallazgo 5 del
+    2026-11-20)."""
+    tamano = _tamano_de_la_cabecera(datos)
+    if tamano is None or tamano[0] <= 0 or tamano[1] <= 0:
+        return None
+    return tamano
+
+
+def _tamano_de_la_cabecera(datos: bytes) -> tuple[int, int] | None:
     if datos[:8] == b"\x89PNG\r\n\x1a\n" and len(datos) >= 24:
+        if datos[12:16] != b"IHDR":  # la norma PNG lo exige primero; si no, no se adivina
+            return None
         return int.from_bytes(datos[16:20], "big"), int.from_bytes(datos[20:24], "big")
     if datos[:6] in (b"GIF87a", b"GIF89a") and len(datos) >= 10:
         return int.from_bytes(datos[6:8], "little"), int.from_bytes(datos[8:10], "little")
