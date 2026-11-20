@@ -306,8 +306,8 @@ def leer(
 
 @router.post("/confirmar", response_model=ConfirmacionRespuesta)
 def confirmar(
+    activa: Annotated[SesionActiva, SOLO_CUENTA],  # antes que la sesión: sin permiso no se abre
     sesion: SesionDeEscrituraDep,
-    activa: Annotated[SesionActiva, SOLO_CUENTA],
     tipo: Annotated[str, Form(max_length=20)],
     archivo: Annotated[UploadFile, File()],
     fecha_descarga: Annotated[date, Form()],
@@ -420,9 +420,9 @@ def _mensaje_de_importacion(cuantos: int, desde: date, hasta: date) -> str:
 
 @router.post("/series-viales/importar", response_model=ImportacionVialRespuesta)
 def importar_serie_vial(
-    sesion: SesionDeEscrituraDep,
-    activa: Annotated[SesionActiva, SOLO_CUENTA],
+    activa: Annotated[SesionActiva, SOLO_CUENTA],  # antes que la sesión: sin permiso no se abre
     _modulo: ModuloRiesgo,
+    sesion: SesionDeEscrituraDep,
     serie: Annotated[str, Form(max_length=40)],
     archivo: Annotated[UploadFile, File()],
     fecha_descarga: Annotated[date, Form()],
@@ -597,9 +597,9 @@ def ver_en_usd(sesion: SesionDep, peticion: EnUsdPeticion, response: Response) -
 
 @router.post("/en-usd/confirmar", response_model=ConfirmacionRespuesta)
 def confirmar_en_usd(
+    activa: Annotated[SesionActiva, SOLO_CUENTA],  # antes que la sesión: sin permiso no se abre
     sesion: SesionDeEscrituraDep,
     peticion: EnUsdConfirmacion,
-    activa: Annotated[SesionActiva, SOLO_CUENTA],
     response: Response,
 ) -> ConfirmacionRespuesta:
     """Guarda la serie en USD si sus valores son los que se revisaron; el responsable es la
