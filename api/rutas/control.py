@@ -46,7 +46,12 @@ from sqlalchemy.orm import Session
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.archivos import guardar_subida
-from api.dependencias import USUARIO_SIN_CLAVE, SesionDeEscrituraDep, SesionDep
+from api.dependencias import (
+    USUARIO_SIN_CLAVE,
+    SesionDeEscrituraDep,
+    SesionDep,
+    sin_culpar_a_la_entrada,
+)
 from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
 from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
 from api.esquemas_partidas import RenglonesDelContratoRespuesta, renglones_a_respuesta
@@ -300,10 +305,11 @@ def declarar_linea_base(
     sesion: SesionDeEscrituraDep, peticion: DeclararLineaBase, activa: Activa
 ) -> DescripcionRespuesta:
     """Declara la línea base de control (RF-72)."""
-    peticion.proyecto = _existe(sesion, peticion.proyecto)
-    logica.declarar_linea_base(
+    nombre = peticion.proyecto = _existe(sesion, peticion.proyecto)
+    # La descripción se arma antes del `commit` (DS-57, DS-70).
+    descripcion = logica.declarar_linea_base(
         sesion,
-        peticion.proyecto,
+        nombre,
         peticion.version,
         desde=peticion.desde,
         perspectiva=peticion.perspectiva,
@@ -312,8 +318,11 @@ def declarar_linea_base(
         feriados=peticion.feriados,
         fuente=peticion.fuente,
         responsable=_responsable(activa),
+        antes_de_confirmar=sin_culpar_a_la_entrada(
+            lambda: logica.describir_linea_base(sesion, nombre)
+        ),
     )
-    return DescripcionRespuesta(descripcion=logica.describir_linea_base(sesion, peticion.proyecto))
+    return DescripcionRespuesta(descripcion=descripcion)
 
 
 class ValorDeParametro(BaseModel):

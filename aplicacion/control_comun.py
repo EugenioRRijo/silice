@@ -9,6 +9,7 @@ Salió de `aplicacion/control.py` sin cambios (tarea 4.3 del plan de desenredo);
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -109,11 +110,19 @@ def _exigir_texto(texto: str, mensaje: str) -> None:
         raise ControlInvalido(mensaje)
 
 
-def _escribir(sesion: Session, accion):
-    """Corre `accion`, confirma si sale bien y deshace si no; todo error sale como
-    `ControlInvalido`."""
+def _escribir(sesion: Session, accion, antes_de_confirmar: Callable[[], object] | None = None):
+    """Corre `accion`, confirma si sale bien y deshace si no; todo error de los datos o de la base
+    sale como `ControlInvalido`, y cualquier otro se relanza tras deshacer.
+
+    `antes_de_confirmar()`, si se da, corre con lo de `accion` ya escrito (`flush`) y antes del
+    `commit`, en la misma transacción, y lo que devuelve es lo que devuelve esta (patrón de DS-70:
+    la API arma ahí su respuesta; tras el `commit`, consultar abriría otro `BEGIN IMMEDIATE`,
+    DS-57). Si lanza, no queda nada escrito."""
     try:
         resultado = accion()
+        if antes_de_confirmar is not None:
+            sesion.flush()
+            resultado = antes_de_confirmar()
         sesion.commit()
         return resultado
     except ControlInvalido:
@@ -132,3 +141,6 @@ def _escribir(sesion: Session, accion):
         raise ControlInvalido(
             f"No se pudo escribir en el caso: {getattr(error, 'orig', error)}"
         ) from error
+    except BaseException:
+        sesion.rollback()
+        raise

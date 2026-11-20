@@ -12,7 +12,7 @@ Salió de `aplicacion/control.py` sin cambios (tarea 4.3 del plan de desenredo);
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
@@ -171,7 +171,7 @@ def dias_por_periodo_del_plan(sesion: Session, proyecto: str, version: str) -> D
     return dias_de_las_etiquetas([etiqueta for etiqueta, _ in plan])
 
 
-def declarar_linea_base(
+def declarar_linea_base[T](
     sesion: Session,
     proyecto: str,
     version: str,
@@ -183,10 +183,12 @@ def declarar_linea_base(
     feriados: str,
     fuente: str,
     responsable: str,
-) -> None:
+    antes_de_confirmar: Callable[[], T] | None = None,
+) -> T | None:
     """Declara la línea base de control (RF-72) desde los textos de la pantalla. Los feriados van
     separados por comas o saltos de línea, en AAAA-MM-DD. Sin `dias_por_periodo` (en blanco), los
-    del plan de la versión (`dias_por_periodo_del_plan`, RF-196)."""
+    del plan de la versión (`dias_por_periodo_del_plan`, RF-196). `antes_de_confirmar`, como en
+    `_escribir`: lo que devuelve es lo que devuelve esta (la API arma ahí su respuesta, DS-70)."""
     _exigir_texto(fuente, _SIN_FUENTE_DE_LINEA_BASE)
     if not dias_por_periodo.strip():
         dias_por_periodo = str(dias_por_periodo_del_plan(sesion, proyecto, version).dias)
@@ -213,7 +215,8 @@ def declarar_linea_base(
             responsable=responsable,
         )
 
-    _escribir(sesion, accion)
+    armado = _escribir(sesion, accion, antes_de_confirmar)
+    return armado if antes_de_confirmar is not None else None
 
 
 def lineas_desde_filas(filas: Sequence[Mapping[str, object]]) -> list[LineaValuacion]:
@@ -289,8 +292,13 @@ def registrar_y_controlar(
         )
         guardar_causas(sesion, valuacion.id, causas, valuacion.fecha_hora)
 
-    _escribir(sesion, accion)
-    return calcular_el_control(sesion, proyecto, catalogo, corte=fin, precios=precios)
+    # El control al corte se calcula antes del `commit` (DS-57, DS-70): tras él, consultar abriría
+    # otro `BEGIN IMMEDIATE`. Si el cálculo falla, la valuación tampoco queda (todo o nada).
+    return _escribir(
+        sesion,
+        accion,
+        lambda: calcular_el_control(sesion, proyecto, catalogo, corte=fin, precios=precios),
+    )
 
 
 def anular(sesion: Session, valuacion_id: int, *, motivo: str, responsable: str) -> None:
