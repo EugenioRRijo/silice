@@ -484,6 +484,38 @@ def test_importar_sobre_un_proyecto_inexistente_es_404(cliente, tmp_path):
     assert r.status_code == 404
 
 
+def test_importar_comprueba_el_libro_antes_de_tocar_el_caso(
+    cliente, sesion, tmp_path, proyecto_tercero, monkeypatch
+):
+    """DS-32 (como `POST /listas-precios` y `POST /v1/control/importar`): con
+    `SesionDeEscrituraDep` la primera consulta abre `BEGIN IMMEDIATE`; si la ruta preguntara por
+    la obra antes de inspeccionar el libro (hasta 20 MiB), quien guarda en el caso esperaría todo
+    ese rato. Oráculo: mientras se inspecciona, la sesión de la petición no tiene transacción."""
+    from api.rutas import presupuestos as ruta_presupuestos
+
+    comprobar = ruta_presupuestos.comprobar_libro_legible
+    en_transaccion: list[bool] = []
+
+    def comprobar_y_mirar(archivo: Path) -> None:
+        en_transaccion.append(sesion.in_transaction())
+        comprobar(archivo)
+
+    monkeypatch.setattr(ruta_presupuestos, "comprobar_libro_legible", comprobar_y_mirar)
+    sesion.commit()  # el alta del proyecto ya se confirmó: la sesión compartida queda limpia
+    r = _importar(cliente, escribir_presupuesto_tabular(tmp_path))
+    assert r.status_code == 201, r.text
+    assert en_transaccion == [False]
+
+
+def test_un_archivo_malo_sobre_un_proyecto_inexistente_es_422(cliente, tmp_path):
+    """DS-32 y DS-112: el libro se rechaza antes de mirar la obra, así que un archivo malo gana al
+    404 de la obra (como `POST /v1/control/importar`)."""
+    ruta = tmp_path / "presupuesto.csv"
+    ruta.write_text("codigo_partida,cantidad\nTER-01,1\n", encoding="utf-8")
+    r = _importar(cliente, ruta, proyecto="No existe", tipo="text/csv")
+    assert r.status_code == 422, r.text
+
+
 def _con_moneda(ruta: Path, moneda: str) -> Path:
     libro = openpyxl.load_workbook(ruta)
     for fila in libro["Datos"].iter_rows(min_row=2):
