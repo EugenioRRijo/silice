@@ -24,7 +24,10 @@ calcular nada nuevo:
 - **El inicio**: el declarado; si no se declara, la fecha de inicio del calendario de la última
   línea base de control de esa versión; sin ninguno de los dos, se niega.
 
-Nada se guarda: proyectar y comprobar son cálculos de consulta.
+Nada se guarda: proyectar y comprobar son cálculos de consulta. Lo único que se guarda es el mapa
+de series que la pantalla recuerda (`guardar_mapa_de_la_obra`, mejora de la DS-81), y se guarda
+aparte, en su propia petición; `insumos_de_la_obra` lo devuelve como precarga
+(`aplicacion.riesgo.mapa_guardado`).
 """
 
 from __future__ import annotations
@@ -32,7 +35,7 @@ from __future__ import annotations
 import json
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field, replace
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -45,7 +48,9 @@ from aplicacion.costo_propio import (
     CalculoGuardado,
     descripcion_de_costo_propio,
 )
+from aplicacion.riesgo import mapa_guardado
 from aplicacion.riesgo.comprobacion import Comprobacion, comprobar_hacia_atras
+from aplicacion.riesgo.mapa_guardado import MapaPrecargado
 from aplicacion.riesgo.proyeccion import (
     SERIE_TASA,
     ParametrosProyeccion,
@@ -73,6 +78,7 @@ __all__ = [
     "ProyeccionDeLaObra",
     "SerieOfrecida",
     "comprobar_obra",
+    "guardar_mapa_de_la_obra",
     "insumos_de_la_obra",
     "mapa_con_variantes",
     "mezclas_publicadas",
@@ -331,6 +337,7 @@ class InsumosDeLaObra:
     mezclas: dict[str, int]
     series: list[SerieOfrecida]
     inicio_linea_base: date | None
+    mapa_guardado: MapaPrecargado | None = None
 
 
 def insumos_de_la_obra(
@@ -343,17 +350,55 @@ def insumos_de_la_obra(
     descripciones = _descripciones(v.composiciones)
     moneda = v.presupuesto.moneda
     mezclas = mezclas_publicadas(sesion_ins, sesion_caso, descripciones, moneda)
+    insumos = [d for d in descripciones if d not in mezclas.recetas]
+    componentes = sorted(
+        {mezclas.componente_original.get(c, c) for c in mezclas.precio_de_componente}
+    )
+    series = _series_ofrecidas(moneda)
+    guardado = mapa_guardado.ultimo_mapa(sesion_caso, v.id)
     return InsumosDeLaObra(
         proyecto=v.proyecto,
         version=codigo,
         moneda=moneda,
-        insumos=[d for d in descripciones if d not in mezclas.recetas],
-        componentes=sorted(
-            {mezclas.componente_original.get(c, c) for c in mezclas.precio_de_componente}
-        ),
+        insumos=insumos,
+        componentes=componentes,
         mezclas=mezclas.calculos,
-        series=_series_ofrecidas(moneda),
+        series=series,
         inicio_linea_base=inicio_de_la_linea_base(sesion_caso, v.id),
+        mapa_guardado=None
+        if guardado is None
+        else mapa_guardado.precargar(
+            guardado, {*insumos, *componentes}, {s.codigo for s in series}
+        ),
+    )
+
+
+def guardar_mapa_de_la_obra(
+    sesion_caso: Session,
+    proyecto: str,
+    codigo: str,
+    mapa: Mapping[str, str],
+    *,
+    usuario: str,
+    ahora: datetime,
+) -> bool:
+    """Recuerda `mapa` como el último de la versión (`mapa_guardado.guardar_mapa`); las series, las
+    que admite su moneda. No carga el presupuesto: solo la versión y su moneda, para no retener el
+    bloqueo de escritura del caso más de lo necesario. `VersionInexistente` (404) si no existe; en
+    ese caso, como en cualquier fallo, deshace: no deja abierta la transacción ni el bloqueo."""
+    try:
+        version_id = version_de(sesion_caso, proyecto, codigo)
+        moneda = sesion_caso.get(models.Presupuesto, version_id).moneda
+    except BaseException:
+        sesion_caso.rollback()
+        raise
+    return mapa_guardado.guardar_mapa(
+        sesion_caso,
+        version_id,
+        mapa,
+        series_admitidas={s.codigo for s in _series_ofrecidas(moneda)},
+        usuario=usuario,
+        ahora=ahora,
     )
 
 

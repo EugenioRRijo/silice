@@ -10699,6 +10699,48 @@
         }
       }
     },
+    "/v1/riesgo/mapa": {
+      "put": {
+        "tags": [
+          "riesgo"
+        ],
+        "summary": "Guardar El Mapa",
+        "description": "Recuerda el mapa de series que se usó en la versión (no calcula nada).",
+        "operationId": "guardar_el_mapa_v1_riesgo_mapa_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MapaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapaGuardadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/riesgo/proyeccion": {
       "post": {
         "tags": [
@@ -18452,6 +18494,29 @@
         ],
         "title": "DemarcacionRespuesta"
       },
+      "DescartadoRespuesta": {
+        "properties": {
+          "insumo": {
+            "type": "string",
+            "title": "Insumo"
+          },
+          "serie": {
+            "type": "string",
+            "title": "Serie"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insumo",
+          "serie",
+          "motivo"
+        ],
+        "title": "DescartadoRespuesta"
+      },
       "DescartarEntrada": {
         "properties": {
           "ahora": {
@@ -22546,6 +22611,16 @@
               }
             ],
             "title": "Inicio Linea Base"
+          },
+          "mapa_guardado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MapaRecordadoRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -22557,7 +22632,8 @@
           "componentes",
           "mezclas",
           "series",
-          "inicio_linea_base"
+          "inicio_linea_base",
+          "mapa_guardado"
         ],
         "title": "InsumosRespuesta"
       },
@@ -23615,6 +23691,86 @@
           "hallazgos"
         ],
         "title": "LoteDeHallazgos"
+      },
+      "MapaEntrada": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "mapa": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "propertyNames": {
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "type": "object",
+            "maxProperties": 500,
+            "title": "Mapa"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "mapa"
+        ],
+        "title": "MapaEntrada"
+      },
+      "MapaGuardadoRespuesta": {
+        "properties": {
+          "guardado": {
+            "type": "boolean",
+            "title": "Guardado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "guardado"
+        ],
+        "title": "MapaGuardadoRespuesta"
+      },
+      "MapaRecordadoRespuesta": {
+        "properties": {
+          "mapa": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Mapa"
+          },
+          "de_version": {
+            "type": "string",
+            "title": "De Version"
+          },
+          "descartados": {
+            "items": {
+              "$ref": "#/components/schemas/DescartadoRespuesta"
+            },
+            "type": "array",
+            "title": "Descartados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mapa",
+          "de_version",
+          "descartados"
+        ],
+        "title": "MapaRecordadoRespuesta"
       },
       "MaterialEntrada": {
         "properties": {

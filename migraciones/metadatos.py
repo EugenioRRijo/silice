@@ -23,6 +23,7 @@ from aplicacion.tablas_mercado import METADATA_MERCADO
 from aplicacion.tablas_modulos import METADATA_MODULOS
 from aplicacion.tablas_obra import METADATA_OBRA
 from aplicacion.tablas_procura import METADATA_PROCURA
+from aplicacion.tablas_riesgo import METADATA_RIESGO
 from aplicacion.tablas_vial import METADATA_VIAL
 from asistente.registro import METADATA_IA
 from core.models import Base
@@ -47,6 +48,7 @@ METADATAS_CASO: tuple[MetaData, ...] = (
     METADATA_DESPERDICIO,
     METADATA_VIAL,
     METADATA_IMPORTACIONES,
+    METADATA_RIESGO,
 )
 METADATAS_INSTALACION: tuple[MetaData, ...] = (
     BaseSeguridad.metadata,

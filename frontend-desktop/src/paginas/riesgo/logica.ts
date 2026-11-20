@@ -1,7 +1,7 @@
 // Lo que la pantalla «Riesgo de la obra» lee de lo tecleado y cómo escribe lo que llega. No calcula ningún monto: los
 // percentiles, la reserva y la cobertura los manda el servidor, exactos; aquí solo se redondean a centésimas para leerlos.
 import { ErrorDeApi } from "../../api/cliente";
-import type { PedidoDeProyeccion } from "../../api/riesgo";
+import type { Descartado, MapaRecordado, PedidoDeProyeccion } from "../../api/riesgo";
 import { leerCifra } from "../../indicadores/cifraEscrita";
 import { centesimasEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
 
@@ -97,3 +97,25 @@ export function rutaDelInformeDeRiesgo(pedido: PedidoDeProyeccion): string {
   if (pedido.inicio !== null) consulta.set("inicio", pedido.inicio);
   return `/v1/riesgo/reportes/riesgo?${consulta.toString()}`;
 }
+
+// La nota bajo «Serie que mueve cada insumo» cuando el selector viene precargado con lo que Sílice recordó (DS-90); null si
+// no quedó ninguna serie que precargar (se guardó sin series o todo lo guardado se descartó).
+export function notaDeLaPrecarga(recordado: MapaRecordado, version: string): string | null {
+  if (Object.keys(recordado.mapa).length === 0) return null;
+  return recordado.de_version === version
+    ? "Precargado con las series que usó la última vez en esta versión."
+    : `Precargado con las series que usó la última vez en la versión ${recordado.de_version}.`;
+}
+
+// Lo recordado que no se precargó y por qué (DS-92): el insumo ya no está en la versión o su serie ya no se ofrece.
+export function avisoDeDescartados(descartados: readonly Descartado[]): string | null {
+  if (descartados.length === 0) return null;
+  const cuantos = descartados.length === 1 ? "1 insumo" : `${descartados.length} insumos`;
+  const motivos = descartados.map((d) =>
+    d.motivo === "insumo" ? `«${d.insumo}» ya no está en esta versión` : `«${d.insumo}»: la serie que tenía ya no se ofrece`,
+  );
+  return `No se precargó la serie de ${cuantos}: ${motivos.join("; ")}.`;
+}
+
+// Si no se pudo recordar el mapa, se dice sin estorbar: el resultado ya está y no depende de ello.
+export const SIN_RECORDAR = "No se pudo recordar la serie de cada insumo para la próxima vez; el resultado no cambia.";

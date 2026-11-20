@@ -917,3 +917,19 @@ Los conteos son los de **todos** los hallazgos de la auditoría y reparten sin r
 informativos + atipicos` = total). `hallazgos` guarda a lo sumo 500, en el orden en que llegaron, como una lista JSON de
 objetos con exactamente cinco claves (`regla`, `hoja`, `celda`, `severidad`, `mensaje`); el mensaje se corta a 500
 caracteres. El orden del historial es `fecha_hora` descendente y, a igual fecha, `id` descendente.
+
+## 11. Serie que mueve cada insumo en «Riesgo de la obra» (base del caso, revisión `caso_0023_riesgo_mapa`)
+
+Mejora de la DS-81 (DS-90 a DS-93). Vive en el caso: qué serie mueve cada insumo es una elección sobre la obra. El
+modelo está en `aplicacion/tablas_riesgo.py` (`METADATA_RIESGO`, registrada en `METADATAS_CASO`), sin clave foránea a
+`core.models`, y solo lo lee y escribe `aplicacion/riesgo/mapa_guardado.py`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `riesgo_mapa_guardado` | `id` PK, `version_id` (el `id` del presupuesto de la versión), `usuario` (200), `fecha_hora` | índice `ix_riesgo_mapa_guardado_version`; sin clave única: cada guardado es otra fila |
+| `riesgo_mapa_serie` | `id` PK, `guardado_id` (el guardado al que pertenece), `riesgo_mapa_serie.insumo` (500; la descripción en el APU o el código del componente), `riesgo_mapa_serie.serie` (40; el código de la serie) | índice `ix_riesgo_mapa_serie_guardado` |
+
+Solo inserción: al leer manda el último guardado de la versión (`id` descendente, como las otras tablas de solo
+inserción del caso; no depende del reloj del equipo); sin uno propio, el último de otra versión de la misma obra. Un guardado sin filas en `riesgo_mapa_serie` es un mapa vacío. Guardar
+el mismo mapa que ya era el último de la versión no escribe nada. Al guardar se validan las series contra las que admite
+la moneda y el largo de cada insumo (de 1 a 500 caracteres); los insumos que la versión ya no tiene se filtran al leer.

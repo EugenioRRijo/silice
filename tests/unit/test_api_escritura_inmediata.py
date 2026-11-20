@@ -64,6 +64,9 @@ QUE_ESCRIBEN = [
     ("POST", "/v1/revision/dictamen"),
     # Tarea A.9 (DS-49, DS-53): el cerrojo del borrador antes del bloqueo de escritura.
     ("POST", "/v1/hoja/libro"),
+    # Mejora de la DS-81 (DS-91): el mapa de series que recuerda Riesgo, en una ruta aparte de la
+    # proyeccion para no retener el bloqueo de escritura durante el Monte Carlo.
+    ("PUT", "/v1/riesgo/mapa"),
 ]
 
 _BORRADOR = "/v1/hoja/borradores/{id}"
