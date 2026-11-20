@@ -12,17 +12,18 @@ Datos FICTICIOS. Oráculos a mano: 2 × 1,05 = 2,10; 0,50 × 1,04 = 0,52; 0,60 �
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
 
-from aplicacion.desperdicio import TrazaDesperdicio
+from aplicacion.desperdicio import GuardadoDelDesglose, TrazaDesperdicio
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja import Borrador
 from aplicacion.hoja_desperdicio import (
     MENSAJE_DESPERDICIOS,
     con_desperdicio_en_materiales,
+    desglose_de_la_vista,
     por_guardar,
     unir,
 )
@@ -165,3 +166,45 @@ def test_una_linea_sin_porcentaje_deja_sin_desglose_la_vigente_de_la_misma_canti
     vigentes = {"VIA-01": [DE_COMPONER]}
     # la partida escribe un guardado sin trazas: la de Componer deja de valer para esa cantidad
     assert por_guardar(borrador, {"VIA-01": trazas}, vigentes.__getitem__) == {"VIA-01": []}
+
+
+# --- a quién se atribuye el desglose que se ve (revisión de Neon, hallazgo 2) ---------------------
+
+FILAS = [
+    {"descripcion": "Tubo ficticio", "unidad": "m", "cantidad": "1"},
+    {"descripcion": "Codo ficticio", "unidad": "pieza", "cantidad": "2"},
+]
+TUBO_RITA = TrazaDesperdicio("Tubo ficticio", "m", D("0.8"), D("25"), D("1"))
+CODO_RITA = TrazaDesperdicio("Codo ficticio", "pieza", D("1.6"), D("25"), D("2"))
+CODO_ANA = TrazaDesperdicio("Codo ficticio", "pieza", D("1.25"), D("60"), D("2"))
+DE_RITA = GuardadoDelDesglose("Rita <rita>", datetime(2026, 11, 20, 9))
+
+
+def test_una_tabla_con_un_desglose_sin_guardar_no_se_atribuye_a_quien_guardo_la_base():
+    """El tubo muestra el desglose de Rita y el codo uno de Ana aún sin guardar: lo que se ve no
+    es lo que guardó Rita, así que no se dice «guardado por Rita»."""
+    lineas, guardado = desglose_de_la_vista(
+        FILAS, [CODO_ANA], [TUBO_RITA, CODO_RITA], lambda: DE_RITA
+    )
+    assert [x.fila for x in lineas] == [1, 2]
+    assert guardado is None
+
+
+def test_el_desglose_del_borrador_igual_al_de_la_base_sigue_siendo_de_quien_lo_guardo():
+    """Si el borrador trae el mismo desglose que la base (Componer guardó ese mismo), lo que se ve
+    es lo guardado: se dice quién lo guardó."""
+    lineas, guardado = desglose_de_la_vista(FILAS, [TUBO_RITA], [TUBO_RITA], lambda: DE_RITA)
+    assert [x.fila for x in lineas] == [1]
+    assert guardado == DE_RITA
+
+
+def test_todo_de_la_base_se_atribuye_y_sin_desglose_no_se_lee_quien():
+    leido: list[int] = []
+
+    def quien() -> GuardadoDelDesglose:
+        leido.append(1)
+        return DE_RITA
+
+    assert desglose_de_la_vista(FILAS, [], [TUBO_RITA, CODO_RITA], quien)[1] == DE_RITA
+    assert desglose_de_la_vista(FILAS, [], [], quien) == ((), None)
+    assert leido == [1]

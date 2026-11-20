@@ -961,3 +961,71 @@ def test_aplicar_sin_cambios_no_tapa_ni_borra_lo_que_guarde_componer(_caso: Path
     assert version.status_code == 200, version.text
     assert version.json()["version_nueva"] is True
     assert _trazas(_caso) == [TRAZA_0_8]
+
+
+# --- Revisión de Neon del 2026-11-20, hallazgo 1: el navegador manda `desperdicios` siempre ------
+#
+# La pestaña APU manda un porcentaje por material en cada «Aplicar» (`logicaApu.ts`), aunque solo
+# cambie el rendimiento. Lo que coincide con la base (un 0 % donde la base no tiene desglose, o el
+# mismo desglose que la vigente) no es un cambio y no se anota en el borrador.
+
+def _rendimiento_y_desglose(navegador, ficha, id_, cantidades, rev, rendimiento, materiales, pct):
+    return navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/AF-LLAVE",
+        json={
+            "rev": rev,
+            "rendimiento": rendimiento,
+            "materiales": materiales,
+            "desperdicios": pct,
+            "equipos": cantidades["equipos"],
+            "mano_obra": cantidades["mano de obra"],
+        },
+        headers=protegida(ficha),
+    )
+
+
+def test_cambiar_solo_el_rendimiento_no_tapa_ni_borra_lo_que_guarde_componer(_caso: Path) -> None:
+    """Sin desglose en la base, Ana cambia solo el rendimiento (20 -> 25; el navegador manda «»
+    de porcentaje). Componer guarda después 0,8 + 25 % (= 1): la Hoja lo muestra y guardar la 002
+    no lo borra de la base."""
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = _rendimiento_y_desglose(navegador, ficha, id_, cantidades, 0, "25", ["1"], [""])
+    assert editado.status_code == 200, editado.text
+    _con_traza(_caso, TRAZA_0_8)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_8]
+    version = _guardar(navegador, ficha, id_, editado.json()["rev"], "Acta ficticia")
+    assert version.status_code == 200, version.text
+    assert _trazas(_caso) == [TRAZA_0_8]
+
+
+def test_reenviar_el_desglose_vigente_no_lo_copia_al_borrador(_caso: Path) -> None:
+    """Con 0,8 + 25 % en la base, Ana cambia solo el rendimiento (el navegador reenvía 0,8 y 25).
+    La línea sigue diciendo quién guardó el desglose; si después Componer lo cambia a 0,625 + 60 %,
+    la Hoja muestra el nuevo y guardar la 002 no lo pisa con el viejo."""
+    _con_traza(_caso, TRAZA_0_8)
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = _rendimiento_y_desglose(navegador, ficha, id_, cantidades, 0, "25", ["0,8"], ["25"])
+    assert editado.status_code == 200, editado.text
+    assert editado.json()["apu"]["detalle"]["desglose_guardado"] is not None
+    _con_traza(_caso, TRAZA_0_625)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_625]
+    version = _guardar(navegador, ficha, id_, editado.json()["rev"], "Acta ficticia")
+    assert version.status_code == 200, version.text
+    assert _trazas(_caso) == [TRAZA_0_625]
+
+
+def test_deshacer_el_desglose_hasta_el_de_la_base_lo_quita_del_borrador(_caso: Path) -> None:
+    """0,8 + 25 % -> 0,625 + 60 % -> 0,8 + 25 %: no queda nada que guardar, la línea vuelve a
+    decir quién guardó el desglose y lo que Componer guarde después se ve y no se pisa."""
+    _con_traza(_caso, TRAZA_0_8)
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"]).status_code == 200
+    vuelta = _editar(navegador, ficha, id_, cantidades, 1, ["0,8"], ["25"])
+    assert vuelta.status_code == 200, vuelta.text
+    assert vuelta.json()["resumen"]["cambios"] == 0
+    assert vuelta.json()["apu"]["detalle"]["desglose_guardado"] is not None
+    _con_traza(_caso, TRAZA_0_625)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_625]

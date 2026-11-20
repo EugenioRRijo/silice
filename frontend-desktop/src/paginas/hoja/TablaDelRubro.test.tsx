@@ -163,6 +163,12 @@ describe("TablaDelRubro: el desperdicio de los materiales", () => {
     ).toBeTruthy();
   });
 
+  test("un responsable en blanco no se muestra como nombre", () => {
+    pintar({ desperdicios: [TRAZA], desgloseGuardado: { responsable: "   ", fecha_hora: "2026-11-13T09:00:00" } });
+    expect(screen.getByText(/No consta quién lo guardó/)).toBeTruthy();
+    expect(screen.queryByText(/guardado por/)).toBeNull();
+  });
+
   test("sin desglose guardado que se vea, no hay línea de quién lo guardó", () => {
     pintar({ desperdicios: [TRAZA] });
     expect(screen.queryByText(/Desglose del desperdicio guardado/)).toBeNull();
