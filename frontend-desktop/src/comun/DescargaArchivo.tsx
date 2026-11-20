@@ -16,6 +16,8 @@ interface Props {
   kind?: "primary" | "secondary" | "tertiary" | "ghost";
   // Tamano del boton: "sm" (32 px, densidad de las tablas) o "md".
   size?: "sm" | "md";
+  // Id del texto que explica que baja el boton: el lector de pantalla lo lee como su descripcion.
+  descripcionId?: string;
 }
 
 // Guarda un blob en la carpeta de descargas. El enlace se crea y se descarta sin tocar la pagina.
@@ -39,6 +41,7 @@ export function DescargaArchivo({
   alExpirar,
   kind = "tertiary",
   size = "md",
+  descripcionId,
 }: Props) {
   const [bajando, setBajando] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -74,7 +77,15 @@ export function DescargaArchivo({
 
   return (
     <div className="silice-descarga">
-      <Button ref={boton} kind={kind} size={size} renderIcon={Download} disabled={bajando} onClick={() => void bajar()}>
+      <Button
+        ref={boton}
+        kind={kind}
+        size={size}
+        renderIcon={Download}
+        disabled={bajando}
+        aria-describedby={descripcionId}
+        onClick={() => void bajar()}
+      >
         {bajando ? "Descargando…" : etiqueta}
       </Button>
       <AvisoError error={error} titulo="No se pudo descargar" alCerrar={() => setError(null)} />

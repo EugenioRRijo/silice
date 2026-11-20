@@ -124,6 +124,11 @@ muestre algo en la demostración y el botón «Descargar PDF de hallazgos» (P2,
 rojo/verde, revisión de Claude (silice-rev-pruebas) y de Neon (Gemini 4 por `agy`, solo lectura), arbitradas por Claude:
 `feature/pdf-hallazgos`, `feature/riesgo-demo` y `feature/series-viales`. **Por ratificar.**
 
+**Quién eligió la P2.** Eugenio no la eligió: el Word decía «si no respondes, lo construyo como A» y Claude la
+construyó el mismo día, sin darle tiempo a responder. Eugenio la revisó el 2026-11-19 y la **conservó**, con dos
+cambios: el botón se llama solo «Descargar PDF» y debajo una línea dice qué baja («Un informe de esta auditoría para
+entregar a quien hizo el libro…»), que el lector de pantalla lee como su descripción.
+
 **Corrección de una premisa del Word del 2026-11-19.** La pregunta P2 suponía que el PDF de hallazgos ya existía y que
 solo faltaba el botón. No existía: la rama lo construye completo (`aplicacion/hallazgos_pdf.py` y la ruta
 `POST /v1/libros/auditoria/pdf`).

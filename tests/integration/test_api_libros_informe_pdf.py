@@ -1,5 +1,5 @@
-"""`POST /v1/libros/auditoria/pdf`: el informe de hallazgos de un libro en PDF (decisión P2 de
-Eugenio, 2026-11-19; UC-25).
+"""`POST /v1/libros/auditoria/pdf`: el informe de hallazgos de un libro en PDF (P2 del Word del
+2026-11-19, elegida por Claude con Eugenio ausente y conservada por él; UC-25).
 
 La ruta recibe lo mismo que `/v1/libros/auditoria` (el libro y la fecha de devolución), vuelve a
 auditar con la misma fecha (misma fecha, mismo resultado) y responde el PDF del informe. No guarda

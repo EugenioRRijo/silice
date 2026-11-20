@@ -36,8 +36,9 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   físico (#131) y las escrituras de la instalación con `BEGIN IMMEDIATE` por ruta, con el acta DS-67 a DS-76 (#132).
   CI verde en Ubuntu y Windows en cada PR. `main` queda en `e085ad64`.
 - **Ola del 2026-11-19** (PR #133 a #135, fusionados por Claude con la misma autorización: «sigue con lo siguiente
-  cuando terminen»): «Descargar PDF de hallazgos» en el Visor (#133), Riesgo en la obra de la demo (#134) y la carga de
-  las series viales en Índices del BCV, con la unión de la ola y el acta DS-77 a DS-89 (#135).
+  cuando terminen»): el PDF de hallazgos en el Visor (#133; el botón se llama «Descargar PDF» por pedido de
+  Eugenio), Riesgo en la obra de la demo (#134) y la carga de las series viales en Índices del BCV, con la unión de la
+  ola y el acta DS-77 a DS-89 (#135).
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
@@ -279,8 +280,8 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
      descripción del insumo en el rótulo cambia el contrato de la API (DS-75).
    - **4.4, L5 y L7:** entran en el próximo recongelado del experimento.
    - **Ola 5:** salir de los ciclos, con `Catalogo.rendimiento_vigente` en `core/`. Espera el aval del tutor.
-9. **Ola del 2026-11-19** (acta DS-77 a DS-89): **hecho** el botón «Descargar PDF de hallazgos» del Visor (manual
-   §12.2), la carga de las series viales en Índices del BCV (manual §9.4) con el enlace desde Riesgo, y la obra de la
+9. **Ola del 2026-11-19** (acta DS-77 a DS-89): **hecho** el botón «Descargar PDF» del Visor, con una línea que dice qué
+   baja (manual §12.2; Eugenio lo conservó y pidió ese nombre), la carga de las series viales en Índices del BCV (manual §9.4) con el enlace desde Riesgo, y la obra de la
    demostración con asfalto y gasoil, cuyas series se siembran corridas hasta el mes anterior (manual §10.6). Quedan
    como mejora: guardar en el caso qué serie mueve cada insumo (DS-81, necesita migración) y, si Eugenio quiere ver más
    movimiento en Riesgo, una obra aparte para él (hoy la reserva de la demo es pequeña, unos 74 USD, para no

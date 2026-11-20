@@ -1,4 +1,7 @@
-"""El informe de hallazgos de la auditoría de un libro en PDF (decisión P2 de Eugenio, 2026-11-19).
+"""El informe de hallazgos de la auditoría de un libro en PDF (botón «Descargar PDF» del visor).
+
+P2 del Word del 2026-11-19: la eligió Claude con Eugenio ausente (acta DS-77); Eugenio la
+conservó ese día y pidió el nombre corto del botón con una línea que diga qué baja.
 
 Dos pasos, como `aplicacion.presupuesto_pdf`:
 

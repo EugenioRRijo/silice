@@ -8,7 +8,8 @@ import { alertaConTexto } from "../test/ayudas";
 import { crearHojaFalsa } from "./hojaFalsa";
 import { Visor } from "./Visor";
 
-// Decision P2 (2026-11-19): «Descargar PDF de hallazgos» en el resultado de la auditoria de un libro. El servidor
+// P2 del Word del 2026-11-19 (la eligio Claude con Eugenio ausente; Eugenio la conservo ese dia y pidio que el boton se
+// llame solo «Descargar PDF», con una linea que explique que baja): el PDF de hallazgos del resultado. El servidor
 // dibuja el PDF (POST /v1/libros/auditoria/pdf con el mismo libro y la misma fecha de devolucion que la pantalla); la
 // interfaz solo lo pide y lo guarda.
 const replica = { ...oraculo, sha256: "a".repeat(64) } as unknown as LibroVisualRespuesta;
@@ -37,9 +38,9 @@ const auditoria: LibroAuditadoRespuesta = {
 const json = (cuerpo: unknown, estado = 200) =>
   new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
 
-const BOTON = { name: "Descargar PDF de hallazgos" };
+const BOTON = { name: "Descargar PDF" };
 
-describe("Visor: Descargar PDF de hallazgos", () => {
+describe("Visor: Descargar PDF (hallazgos de la auditoria)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const crearHoja = vi.fn(async () => crearHojaFalsa("PORTADA"));
   const crearUrl = vi.fn(() => "blob:falso");
@@ -88,6 +89,16 @@ describe("Visor: Descargar PDF de hallazgos", () => {
     responderAuditoria();
     await abrir();
     expect(screen.getByRole("button", BOTON)).toBeEnabled();
+  });
+
+  test("una linea junto al boton explica que baja, y el lector de pantalla la lee como su descripcion", async () => {
+    responderAuditoria();
+    await abrir();
+    const explicacion =
+      "Un informe de esta auditoría para entregar a quien hizo el libro: los totales y cada hallazgo, con su celda y qué " +
+      "corregir. No guarda nada.";
+    expect(screen.getByText(explicacion)).toBeVisible();
+    expect(screen.getByRole("button", BOTON)).toHaveAccessibleDescription(explicacion);
   });
 
   test("al pulsarlo pide el PDF a la ruta del servidor con el libro y la fecha del resultado y lo guarda", async () => {
