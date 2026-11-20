@@ -510,8 +510,8 @@ def _anotar_en_el_registro(
     vivo: BorradorVivo, archivo: str, usuario: str, resumen: hoja.ResumenDeFusion
 ) -> None:
     """Deja el plano fusionado en el registro de la obra: «33 filas en el espacio; 2 sin
-    reconocer», con los conteos de la fusion (lo importado y lo no reconocido)."""
-    cuentas = dict(resumen.por_tipo)
+    reconocer», con los conteos de la fusion (lo que entró, sin lo omitido, y lo no reconocido)."""
+    cuentas = dict(_conteos_reales(resumen.por_tipo))
     texto = importaciones.resumen_de_plano(
         filas=cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.IMPORTADO], 0),
         sin_reconocer=cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.NO_RECONOCIDO], 0),
@@ -616,22 +616,50 @@ def _mensaje_sin_filas(fusion: Fusion) -> str:
     )
 
 
-def _por_tipo(por_tipo: Sequence[tuple[str, int]]) -> list[dict]:
+def _conteos_reales(por_tipo: Sequence[tuple[str, int]]) -> list[tuple[str, int]]:
     """Los conteos de la fusión con «Importado» contando lo que de verdad entró: lo que leyó el
     plano menos lo omitido, que el lector contó como importado (re-verificación del 18/11/2026:
-    «Importado 33» junto a «Omitido 33» cuando no entró nada)."""
+    «Importado 33» junto a «Omitido 33» cuando no entró nada). Lo usan la pantalla, el mensaje y
+    el registro de importaciones de la obra."""
     cuentas = dict(por_tipo)
     importado = hoja.ROTULOS_DEL_INFORME[TipoItem.IMPORTADO]
     omitido = cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.OMITIDO], 0)
-    return [
-        {"rotulo": r, "cantidad": max(n - omitido, 0) if r == importado else n} for r, n in por_tipo
-    ]
+    return [(r, max(n - omitido, 0) if r == importado else n) for r, n in por_tipo]
+
+
+def _por_tipo(por_tipo: Sequence[tuple[str, int]]) -> list[dict]:
+    """`_conteos_reales` con las claves de la API."""
+    return [{"rotulo": r, "cantidad": n} for r, n in _conteos_reales(por_tipo)]
+
+
+def _mensaje_de_exito(fusion: Fusion) -> str:
+    """Lo que entró: por tabla si no se omitió nada; si se omitieron filas, cuántas de las del
+    plano entraron y cuántas no (las cifras por tabla serían las del plano, no las que entraron)."""
+    filas = fusion.resultado.filas
+    rotulos = hoja.ROTULOS_DEL_INFORME
+    leidas = dict(fusion.resumen.por_tipo).get(rotulos[TipoItem.IMPORTADO], 0)
+    omitidas = dict(fusion.resumen.por_tipo).get(rotulos[TipoItem.OMITIDO], 0)
+    if omitidas:
+        entraron = dict(_conteos_reales(fusion.resumen.por_tipo))[rotulos[TipoItem.IMPORTADO]]
+        lo_que_entro = (
+            f"entraron {entraron} de las {leidas} filas del plano; las otras {omitidas} se "
+            "omitieron (el informe de abajo dice por qué)."
+        )
+    else:
+        lo_que_entro = (
+            f"{filas['esp_ambientes']} ambientes, {filas['esp_fuentes']} fuentes y "
+            f"{filas['esp_puntos']} puntos."
+        )
+    return (
+        f"Se fusionó «{fusion.resultado.archivo}» con el borrador de la hoja: {lo_que_entro} "
+        "Revise las filas en las tablas de abajo; la auditoría las evalúa como a las demás. "
+        "Todavía no se guardó ninguna versión: use Guardar versión cuando esté conforme."
+    )
 
 
 def vista_de_fusion(fusion: Fusion) -> dict:
     """El informe de la ultima fusion (P:1480-1485) y el mensaje de exito (P:1367-1373) o, si no
     entró ninguna fila, el que lo dice (`_mensaje_sin_filas`)."""
-    filas = fusion.resultado.filas
     return {
         "entro": fusion.entro,
         "fusion": {
@@ -642,13 +670,5 @@ def vista_de_fusion(fusion: Fusion) -> dict:
             "origenes": fusion.resumen.origenes,
         },
         "informe": filas_del_informe(fusion.informe),
-        "mensaje": _mensaje_sin_filas(fusion)
-        if not fusion.entro
-        else (
-            f"Se fusionó «{fusion.resultado.archivo}» con el borrador de la hoja: "
-            f"{filas['esp_ambientes']} ambientes, {filas['esp_fuentes']} fuentes y "
-            f"{filas['esp_puntos']} puntos. Revise las filas en las tablas de abajo; la auditoría "
-            "las evalúa como a las demás. Todavía no se guardó ninguna versión: use Guardar "
-            "versión cuando esté conforme."
-        ),
+        "mensaje": _mensaje_sin_filas(fusion) if not fusion.entro else _mensaje_de_exito(fusion),
     }
