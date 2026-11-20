@@ -24,7 +24,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from aplicacion.simulador import PASO_DE_PRESENTACION, simular  # noqa: E402
+from aplicacion.simulador import PASO_DE_PRESENTACION, precios_vigentes, simular  # noqa: E402
 from core.catalog import Catalogo, abrir_sesion, crear_motor  # noqa: E402
 from scripts.seed import RUTA_POR_DEFECTO  # noqa: E402
 
@@ -65,17 +65,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         with abrir_sesion(motor) as sesion:
-            catalogo = Catalogo(sesion)
-            lista = catalogo.lista_vigente()
-
-            precios_dict = {}
-            for precio_insumo in lista.precios:
-                insumo = precio_insumo.insumo
-                precios_dict[(insumo.descripcion, insumo.unidad)] = (
-                    insumo.tipo.value,
-                    precio_insumo.precio,
-                )
-
+            precios_dict = precios_vigentes(Catalogo(sesion))
             filas = simular(precios_dict, argumentos.variacion_max, argumentos.semilla, solo)
 
             ruta_salida = Path(argumentos.salida)

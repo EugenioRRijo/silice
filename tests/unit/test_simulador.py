@@ -104,8 +104,12 @@ def _catalogo_con_homonimos_de_unidad_nula():
 def test_homonimos_sin_unidad_no_revientan_ni_se_pisan():
     """Hallazgo 1: con unidad nula el orden fallaba (500) y el equipo quedaba pisado por la mano
     de obra homonima. Salen los tres insumos, la unidad nula como texto vacio."""
-    with abrir_sesion(_catalogo_con_homonimos_de_unidad_nula()) as sesion:
-        filas = simular_desde_catalogo(sesion, "0", 1, None)
+    motor = _catalogo_con_homonimos_de_unidad_nula()
+    try:
+        with abrir_sesion(motor) as sesion:
+            filas = simular_desde_catalogo(sesion, "0", 1, None)
+    finally:
+        motor.dispose()
     assert sorted(filas) == [
         ("equipo", "Transporte", "", Decimal("10.00")),
         ("mano_obra", "Transporte", "", Decimal("10.00")),
