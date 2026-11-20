@@ -394,9 +394,9 @@ def _serie_vial(serie: series_viales.SerieVialCargada) -> SerieVialRespuesta:
 
 @router.get("/series-viales", response_model=SeriesVialesRespuesta)
 def leer_series_viales(
-    sesion: SesionDep,
     activa: Annotated[SesionActiva | None, ADMINISTRAR],
     _modulo: ModuloRiesgo,
+    sesion: SesionDep,  # después del permiso y del módulo: sin ellos no se abre el caso
     response: Response,
 ) -> SeriesVialesRespuesta:
     """Las series viales con su definición y su historia cargada. No escribe nada."""
