@@ -738,14 +738,23 @@ def test_e9_lista_cada_celda_en_el_orden_apu_cantidad_parametro() -> None:
             "campo": "rendimiento",
             "antes": "20",
             "despues": "10",
+            "insumo": None,  # el rendimiento no es una línea del APU (DS-75)
         },
-        {"objeto": "cantidad", "clave": LLAVE, "campo": "cantidad", "antes": "3", "despues": "5"},
+        {
+            "objeto": "cantidad",
+            "clave": LLAVE,
+            "campo": "cantidad",
+            "antes": "3",
+            "despues": "5",
+            "insumo": None,
+        },
         {
             "objeto": "parametro",
             "clave": "administracion",
             "campo": "valor",
             "antes": "0.15",
             "despues": "0.20",
+            "insumo": None,
         },
     ]
     assert len(cuerpo["cambios"]) == _resumen(navegador, id_)["cambios"] == 3
