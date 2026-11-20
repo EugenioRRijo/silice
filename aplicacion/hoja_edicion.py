@@ -498,6 +498,10 @@ def editar_apu(
         editado = cambiar_borrador(sesion, huella, id, rev, construir)
         if trazas is None:
             return editado
+        if not otro_desglose and editado.rev == rev and partida not in editado.desperdicios:
+            # «Aplicar» sin cambiar nada (veredicto A, hallazgo 3): unas trazas de 0 % taparían el
+            # desglose que Componer guarde después y la versión siguiente lo borraría de la base
+            return editado
         if otro_desglose:  # la composicion quedo igual: el reemplazo sube el rev y vacia la cache
             editado = hoja_borradores.reemplazar(huella, id, editado.borrador, rev)
         elif editado.vigentes_del_desperdicio.get(partida) != vigentes:

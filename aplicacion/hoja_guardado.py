@@ -341,16 +341,23 @@ def _desglose(
             abierta.borrador, borrador, vivo.desperdicios, de_la_base
         )
         raise HojaInvalida(DESGLOSE_YA_GUARDADO)
-    # lo que la version abierta muestra ahora: contra eso se cuenta lo que quede por guardar
+    # lo que la version abierta muestra ahora (la base releida y lo escrito): contra eso se cuenta
+    # lo que quede por guardar. Sin la base releida, una partida cuyo mismo desglose guardo otra
+    # persona o Componer seguia contada contra las vigentes viejas (veredicto A, hallazgo 2)
     vivo.vigentes_del_desperdicio = {
         **vivo.vigentes_del_desperdicio,
+        **de_la_base,
         **{codigo: tuple(trazas) for codigo, trazas in escritas.items()},
     }
     # lo escrito ya esta en la base: si se quedara en el borrador, taparia lo que Componer guarde
-    # despues de esa partida y la version siguiente lo reescribiria sin contarlo como cambio
-    vivo.desperdicios = {
-        codigo: trazas for codigo, trazas in vivo.desperdicios.items() if codigo not in escritas
-    }
+    # despues de esa partida y la version siguiente lo reescribiria sin contarlo como cambio; lo
+    # que ya coincide con la base sobra igual (`sin_lo_de_la_base`, como cuando no se escribe)
+    vivo.desperdicios = hoja_desperdicio.sin_lo_de_la_base(
+        abierta.borrador,
+        borrador,
+        {c: t for c, t in vivo.desperdicios.items() if c not in escritas},
+        vivo.vigentes_del_desperdicio,
+    )
     lineas = plural(desgloses, "línea", "líneas")
     return Guardado(
         codigo=abierta.codigo,
