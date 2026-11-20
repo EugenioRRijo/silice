@@ -395,7 +395,7 @@ describe("Marco: los módulos apagados que ve una pantalla", () => {
   }
 
   test("mientras la lectura va en vuelo la pantalla ve undefined y al resolver ve la lista", async () => {
-    instalar();
+    instalar(enSur);
     const base = servidor.fetchFalso;
     let contestar: (r: Response) => void = () => undefined;
     const retenida = new Promise<Response>((resolver) => (contestar = resolver));
@@ -406,7 +406,7 @@ describe("Marco: los módulos apagados que ve una pantalla", () => {
         return base(entrada, init);
       }),
     );
-    montar({ en: "/obra/empresa/3/presupuesto", paginas: ligeras({ hoja: PaginaDeModulos }) });
+    montar({ en: "/obra/Carpeta%20Sur.db/3/presupuesto", paginas: ligeras({ hoja: PaginaDeModulos }) });
     expect(await screen.findByText("módulos: sin leer")).toBeInTheDocument();
     await act(async () => {
       contestar(json({ modulos: [{ clave: "riesgo", nombre: "riesgo", activo: false, cambiado_por: null, cambiado_el: null }] }));
