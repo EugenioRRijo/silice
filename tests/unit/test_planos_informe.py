@@ -392,12 +392,14 @@ def test_un_recorrido_de_antes_sin_archivo_en_el_id_se_sustituye_y_no_se_duplica
     )
 
 
-def test_un_recorrido_de_antes_de_otro_punto_con_el_mismo_handle_no_se_borra():
-    """Hallazgo 3 (2026-11-20): el `REC-<handle>` de una hoja de antes solo se sustituye si es del
-    mismo dueño (punto y circuito ya traducidos). Otro archivo con el mismo *handle* para otro
-    punto deja los dos y lo dice."""
-    antes = replace(fusionar(Espacio(), basico())[0], recorridos=(rec("REC-1"),))
-    otro = resultado(
+AVISO_DE_COLISION = (
+    "REC-1@b.dxf: agregado; REC-1 (de una hoja anterior, mismo identificador en el plano) es de "
+    "otro punto o circuito y se conserva"
+)
+
+
+def _otro_plano_con_el_mismo_identificador() -> ResultadoImportacion:
+    return resultado(
         *(
             (fila, replace(o, referencia={**dict(o.referencia), "archivo": "b.dxf"}))
             for fila, o in (
@@ -409,14 +411,68 @@ def test_un_recorrido_de_antes_de_otro_punto_con_el_mismo_handle_no_se_borra():
         archivo="b.dxf",
         recorridos=(rec("REC-1@b.dxf", punto_id="P9"),),
     )
+
+
+def _recorridos_del_informe(informe) -> list[tuple[TipoItem, str]]:
+    return [(i.tipo, i.mensaje) for i in informe if i.tabla == "esp_recorridos"]
+
+
+def test_un_recorrido_de_antes_de_otro_punto_con_el_mismo_handle_no_se_borra():
+    """Hallazgo 3 (2026-11-20): el `REC-<handle>` de una hoja de antes solo se sustituye si es del
+    mismo dueño (punto y circuito ya traducidos). Otro archivo con el mismo *handle* para otro
+    punto deja los dos y lo dice, sin la palabra interna «handle» (revisión, punto 5). Al
+    reimportar ese archivo, el aviso no se repite."""
+    antes = replace(fusionar(Espacio(), basico())[0], recorridos=(rec("REC-1"),))
+    otro = _otro_plano_con_el_mismo_identificador()
     espacio, informe = fusionar(antes, otro)
     assert sorted(r.id for r in espacio.recorridos) == ["REC-1", "REC-1@b.dxf"]
-    ultimo = [i for i in informe if i.tabla == "esp_recorridos"][-1]
-    assert (ultimo.tipo, ultimo.mensaje) == (
-        TipoItem.IMPORTADO,
-        "REC-1@b.dxf: agregado; REC-1 (de una hoja anterior, mismo handle) es de otro punto o "
-        "circuito y se conserva",
+    assert _recorridos_del_informe(informe)[-1] == (TipoItem.IMPORTADO, AVISO_DE_COLISION)
+    otra_vez, informe = fusionar(espacio, otro)
+    assert sorted(r.id for r in otra_vez.recorridos) == ["REC-1", "REC-1@b.dxf"]
+    assert _recorridos_del_informe(informe) == [(TipoItem.IMPORTADO, "REC-1@b.dxf: actualizado")]
+
+
+def _circuito(id_: str, numero: int) -> Circuito:
+    return Circuito(
+        id=id_,
+        tablero="F1",
+        numero=numero,
+        conductores=(1, 1, 1),
+        calibre="12 AWG",
+        puntos_maximos=6,
     )
+
+
+def _de_circuito(id_: str, circuito: str) -> Recorrido:
+    return Recorrido(
+        id=id_, modo=ModoRecorrido.DECLARADO, circuito_id=circuito, tramos=rec(id_).tramos
+    )
+
+
+@pytest.mark.parametrize(
+    ("circuito_nuevo", "quedan", "mensaje"),
+    [
+        ("C1", ["REC-1@a.dxf"], "REC-1@a.dxf: actualizado (antes REC-1)"),
+        (
+            "C2",
+            ["REC-1", "REC-1@a.dxf"],
+            "REC-1@a.dxf: agregado; REC-1 (de una hoja anterior, mismo identificador en el plano) "
+            "es de otro punto o circuito y se conserva",
+        ),
+    ],
+    ids=["mismo-circuito", "otro-circuito"],
+)
+def test_el_recorrido_de_antes_se_empareja_tambien_por_su_circuito(circuito_nuevo, quedan, mensaje):
+    circuitos = (_circuito("C1", 1), _circuito("C2", 2))
+    hoja = fusionar(Espacio(), replace(basico(), circuitos=circuitos))[0]
+    de_antes = _de_circuito("REC-1", "C1")
+    nuevo = _de_circuito("REC-1@a.dxf", circuito_nuevo)
+    espacio, informe = fusionar(
+        replace(hoja, recorridos=(de_antes,)),
+        replace(basico(), circuitos=circuitos, recorridos=(nuevo,)),
+    )
+    assert sorted(r.id for r in espacio.recorridos) == quedan
+    assert _recorridos_del_informe(informe)[-1] == (TipoItem.IMPORTADO, mensaje)
 
 
 def test_la_fusion_no_deja_referencias_colgadas():
