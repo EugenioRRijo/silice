@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aplicacion.tablas_riesgo import (
+    LARGO_INSUMO,
     LARGO_USUARIO,
     GuardadoDeMapa,
     SerieDeInsumo,
@@ -85,7 +86,7 @@ def _ultimo_de_la_version(sesion: Session, version_id: int) -> GuardadoDeMapa | 
     return sesion.scalars(
         select(GuardadoDeMapa)
         .where(GuardadoDeMapa.version_id == version_id)
-        .order_by(GuardadoDeMapa.fecha_hora.desc(), GuardadoDeMapa.id.desc())
+        .order_by(GuardadoDeMapa.id.desc())
     ).first()
 
 
@@ -98,7 +99,7 @@ def ultimo_mapa(sesion: Session, version_id: int) -> MapaGuardado | None:
         select(GuardadoDeMapa, models.Presupuesto.codigo)
         .join(models.Presupuesto, models.Presupuesto.id == GuardadoDeMapa.version_id)
         .where(GuardadoDeMapa.version_id == version_id)
-        .order_by(GuardadoDeMapa.fecha_hora.desc(), GuardadoDeMapa.id.desc())
+        .order_by(GuardadoDeMapa.id.desc())
     ).first()
     if fila is None:
         proyecto_id = sesion.scalar(
@@ -108,7 +109,7 @@ def ultimo_mapa(sesion: Session, version_id: int) -> MapaGuardado | None:
             select(GuardadoDeMapa, models.Presupuesto.codigo)
             .join(models.Presupuesto, models.Presupuesto.id == GuardadoDeMapa.version_id)
             .where(models.Presupuesto.proyecto_id == proyecto_id)
-            .order_by(GuardadoDeMapa.fecha_hora.desc(), GuardadoDeMapa.id.desc())
+            .order_by(GuardadoDeMapa.id.desc())
         ).first()
     if fila is None:
         return None
@@ -148,7 +149,9 @@ def guardar_mapa(
     que ya era su último. `ValueError` si una serie no está en `series_admitidas` o el usuario es
     demasiado largo; en cualquier fallo no queda nada."""
     try:
-        for serie in mapa.values():
+        for insumo, serie in mapa.items():
+            if not insumo or len(insumo) > LARGO_INSUMO:
+                raise ValueError(f"cada insumo lleva entre 1 y {LARGO_INSUMO} caracteres")
             if serie not in series_admitidas:
                 raise ValueError(
                     f"La serie «{serie[:40]}» no se ofrece para esta versión: "

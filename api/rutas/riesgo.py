@@ -45,7 +45,7 @@ decimal**, igual que en el resto de la API (la coma es cosa del front, `cifraEsc
 que no es decimal, un costo real que no es positivo o una estimación negativa es 422 con
 `{"detalle": ...}`. Un cuerpo o una consulta sin la forma esperada es 422 con un mensaje fijo que
 no repite lo enviado (`_RutaRiesgo`, como `_RutaVial`): `MENSAJE_MEJORA` en `/mejora` y
-`MENSAJE_FORMA` en las demás.
+`MENSAJE_MAPA_FORMA` en `PUT /mapa` y `MENSAJE_FORMA` en las demás.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ from pydantic import (
     ValidationError,
 )
 
-from api.acceso_modulos import requiere_modulo
+from api.acceso_modulos import ModuloRiesgo
 from api.admin_acceso import cuenta_con
 from api.dependencias import SesionDeEscrituraDep, SesionDep, SesionInstalacionDep
 from api.presentacion import exacto, monto
@@ -92,6 +92,10 @@ MENSAJE_MEJORA = (
     "Envíe el costo final real, el presupuesto original y la estimación de Sílice, cada uno como "
     "texto con punto decimal, por ejemplo 1250.50."
 )
+MENSAJE_MAPA_FORMA = (
+    "El mapa no tiene la forma esperada: envíe la obra, la versión y el mapa como pares de insumo "
+    "y código de serie, en texto, con 500 insumos a lo sumo."
+)
 MENSAJE_MAPA_SOLO_CUENTA = (
     "La serie de cada insumo la recuerda una cuenta: la clave de API no puede guardarla."
 )
@@ -103,15 +107,16 @@ class _RutaRiesgo(RutaSinCache, RutaSinEco):
     mensaje_por_omision = MENSAJE_FORMA
 
 
-router = APIRouter(
-    prefix="/v1/riesgo",
-    tags=["riesgo"],
-    dependencies=[Depends(VER_RIESGO), Depends(requiere_modulo("riesgo"))],
-    route_class=_RutaRiesgo,
-)
+# Como en vial: la acción y el módulo se comprueban en cada ruta, la acción primero (`LEER`, o la
+# cuenta en `PUT /mapa`) y luego el módulo (`ModuloRiesgo`): sin entrar, 401; sin el rol o con la
+# clave de API donde hace falta una cuenta, 403; con el acceso y el módulo apagado, 404 (D-V-4).
+router = APIRouter(prefix="/v1/riesgo", tags=["riesgo"], route_class=_RutaRiesgo)
+
+LEER = Depends(VER_RIESGO)
 
 __all__ = [
     "MENSAJE_FORMA",
+    "MENSAJE_MAPA_FORMA",
     "MENSAJE_MAPA_SOLO_CUENTA",
     "MENSAJE_MEJORA",
     "VER_RIESGO",
@@ -144,9 +149,9 @@ def _decimal(nombre: str, texto: str) -> Decimal:
     return Decimal(texto.strip())
 
 
-@router.post("/mejora", response_model=MejoraRespuesta)
+@router.post("/mejora", response_model=MejoraRespuesta, dependencies=[LEER])
 @sin_eco(MENSAJE_MEJORA)
-def informe_de_mejora(cuerpo: MejoraEntrada) -> MejoraRespuesta:
+def informe_de_mejora(_modulo: ModuloRiesgo, cuerpo: MejoraEntrada) -> MejoraRespuesta:
     real = _decimal("costo_final_real", cuerpo.costo_final_real)
     original = _decimal("presupuesto_original", cuerpo.presupuesto_original)
     silice = _decimal("estimacion_silice", cuerpo.estimacion_silice)
@@ -311,9 +316,13 @@ Proyecto = Annotated[str, Query(min_length=1, max_length=500)]
 Version = Annotated[str, Query(min_length=1, max_length=40)]
 
 
-@router.get("/insumos", response_model=InsumosRespuesta)
+@router.get("/insumos", response_model=InsumosRespuesta, dependencies=[LEER])
 def insumos_de_la_obra(
-    sesion: SesionDep, instalacion: SesionInstalacionDep, proyecto: Proyecto, version: Version
+    _modulo: ModuloRiesgo,
+    sesion: SesionDep,
+    instalacion: SesionInstalacionDep,
+    proyecto: Proyecto,
+    version: Version,
 ) -> InsumosRespuesta:
     """Los insumos de la versión y las series que puede seguir cada uno."""
     datos = obra.insumos_de_la_obra(sesion, instalacion, proyecto, version)
@@ -349,8 +358,12 @@ CuentaDelRiesgo = Annotated[
 
 
 @router.put("/mapa", response_model=MapaGuardadoRespuesta)
+@sin_eco(MENSAJE_MAPA_FORMA)
 def guardar_el_mapa(
-    activa: CuentaDelRiesgo, cuerpo: MapaEntrada, sesion: SesionDeEscrituraDep
+    activa: CuentaDelRiesgo,
+    _modulo: ModuloRiesgo,
+    cuerpo: MapaEntrada,
+    sesion: SesionDeEscrituraDep,
 ) -> MapaGuardadoRespuesta:
     """Recuerda el mapa de series que se usó en la versión (no calcula nada)."""
     guardado = obra.guardar_mapa_de_la_obra(
@@ -359,9 +372,12 @@ def guardar_el_mapa(
     return MapaGuardadoRespuesta(guardado=guardado)
 
 
-@router.post("/proyeccion", response_model=ProyeccionRespuesta)
+@router.post("/proyeccion", response_model=ProyeccionRespuesta, dependencies=[LEER])
 def proyeccion_de_la_obra(
-    cuerpo: ProyeccionEntrada, sesion: SesionDep, instalacion: SesionInstalacionDep
+    _modulo: ModuloRiesgo,
+    cuerpo: ProyeccionEntrada,
+    sesion: SesionDep,
+    instalacion: SesionInstalacionDep,
 ) -> ProyeccionRespuesta:
     """La proyección del riesgo de precios de la versión (no guarda nada)."""
     r = obra.proyectar_obra(
@@ -397,9 +413,12 @@ def proyeccion_de_la_obra(
     )
 
 
-@router.post("/comprobacion", response_model=ComprobacionRespuesta)
+@router.post("/comprobacion", response_model=ComprobacionRespuesta, dependencies=[LEER])
 def comprobacion_de_la_obra(
-    cuerpo: ComprobacionEntrada, sesion: SesionDep, instalacion: SesionInstalacionDep
+    _modulo: ModuloRiesgo,
+    cuerpo: ComprobacionEntrada,
+    sesion: SesionDep,
+    instalacion: SesionInstalacionDep,
 ) -> ComprobacionRespuesta:
     """La comprobación hacia atrás de la versión con cortes móviles (no guarda nada)."""
     r = obra.comprobar_obra(
@@ -486,8 +505,10 @@ def _libro(contenido: bytes, tipo: str, *partes: str) -> Response:
     "/reportes/{tipo}",
     response_class=Response,
     responses={200: {"content": {TIPO_XLSX: {}}, "description": "El libro .xlsx del reporte."}},
+    dependencies=[LEER],
 )
 def descargar_reporte(
+    _modulo: ModuloRiesgo,
     tipo: str,
     sesion: SesionDep,
     instalacion: SesionInstalacionDep,

@@ -929,7 +929,7 @@ modelo está en `aplicacion/tablas_riesgo.py` (`METADATA_RIESGO`, registrada en 
 | `riesgo_mapa_guardado` | `id` PK, `version_id` (el `id` del presupuesto de la versión), `usuario` (200), `fecha_hora` | índice `ix_riesgo_mapa_guardado_version`; sin clave única: cada guardado es otra fila |
 | `riesgo_mapa_serie` | `id` PK, `guardado_id` (el guardado al que pertenece), `riesgo_mapa_serie.insumo` (500; la descripción en el APU o el código del componente), `riesgo_mapa_serie.serie` (40; el código de la serie) | índice `ix_riesgo_mapa_serie_guardado` |
 
-Solo inserción: al leer manda el último guardado de la versión (`fecha_hora` y luego `id`, descendentes); sin uno
-propio, el último de otra versión de la misma obra. Un guardado sin filas en `riesgo_mapa_serie` es un mapa vacío. Guardar
-el mismo mapa que ya era el último de la versión no escribe nada. Las series se validan al guardar contra las que admite
-la moneda; los insumos se filtran al leer.
+Solo inserción: al leer manda el último guardado de la versión (`id` descendente, como las otras tablas de solo
+inserción del caso; no depende del reloj del equipo); sin uno propio, el último de otra versión de la misma obra. Un guardado sin filas en `riesgo_mapa_serie` es un mapa vacío. Guardar
+el mismo mapa que ya era el último de la versión no escribe nada. Al guardar se validan las series contra las que admite
+la moneda y el largo de cada insumo (de 1 a 500 caracteres); los insumos que la versión ya no tiene se filtran al leer.

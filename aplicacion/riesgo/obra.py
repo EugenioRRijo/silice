@@ -384,9 +384,14 @@ def guardar_mapa_de_la_obra(
 ) -> bool:
     """Recuerda `mapa` como el último de la versión (`mapa_guardado.guardar_mapa`); las series, las
     que admite su moneda. No carga el presupuesto: solo la versión y su moneda, para no retener el
-    bloqueo de escritura del caso más de lo necesario. `VersionInexistente` (404) si no existe."""
-    version_id = version_de(sesion_caso, proyecto, codigo)
-    moneda = sesion_caso.get(models.Presupuesto, version_id).moneda
+    bloqueo de escritura del caso más de lo necesario. `VersionInexistente` (404) si no existe; en
+    ese caso, como en cualquier fallo, deshace: no deja abierta la transacción ni el bloqueo."""
+    try:
+        version_id = version_de(sesion_caso, proyecto, codigo)
+        moneda = sesion_caso.get(models.Presupuesto, version_id).moneda
+    except BaseException:
+        sesion_caso.rollback()
+        raise
     return mapa_guardado.guardar_mapa(
         sesion_caso,
         version_id,

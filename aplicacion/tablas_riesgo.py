@@ -6,7 +6,8 @@ elección sobre la obra y se queda en su carpeta de trabajo. `MetaData` propia, 
 
 - `riesgo_mapa_guardado`: un guardado del mapa de una versión (`version_id` es el `id` del
   presupuesto), con quién y cuándo. **Solo inserción**: guardar otro mapa es otra fila; al leer
-  manda el último. Un guardado sin filas es un mapa vacío (la persona no eligió ninguna serie).
+  manda el último (`id` descendente). Un guardado sin filas es un mapa vacío (la persona no eligió
+  ninguna serie).
 - `riesgo_mapa_serie`: las parejas insumo y serie de ese guardado (`insumo` es la descripción del
   insumo en el APU o el código del componente de la receta, como en `MapaSeries`).
 
