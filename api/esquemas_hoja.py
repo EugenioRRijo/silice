@@ -827,6 +827,7 @@ class CambioHojaRespuesta(BaseModel):
     campo: str
     antes: str
     despues: str
+    insumo: str | None = None  # el de la línea de una clave «{partida}|{rubro}|{n}» (DS-75)
 
 
 class CambiosHojaRespuesta(BaseModel):
@@ -834,7 +835,9 @@ class CambiosHojaRespuesta(BaseModel):
     cambios: list[CambioHojaRespuesta]
 
 
-def cambios_a_respuesta(rev: int, cambios: list[CambioEditado]) -> CambiosHojaRespuesta:
+def cambios_a_respuesta(
+    rev: int, cambios: list[tuple[CambioEditado, str | None]]
+) -> CambiosHojaRespuesta:
     return CambiosHojaRespuesta(
         rev=rev,
         cambios=[
@@ -844,8 +847,9 @@ def cambios_a_respuesta(rev: int, cambios: list[CambioEditado]) -> CambiosHojaRe
                 campo=c.campo,
                 antes=c.valor_anterior,
                 despues=c.valor_nuevo,
+                insumo=insumo,
             )
-            for c in cambios
+            for c, insumo in cambios
         ],
     )
 

@@ -7825,7 +7825,7 @@
           "hoja"
         ],
         "summary": "Cambios Del Borrador",
-        "description": "E9: la lista de cambios entre la versión abierta y el borrador (la que cuenta\n`resumen.cambios`), con el `rev` con que se calculó.",
+        "description": "E9: la lista de cambios entre la versión abierta y el borrador (la que cuenta\n`resumen.cambios`), con el `rev` con que se calculó. Cada uno trae `insumo`: el de la línea\ndel APU que nombra su clave (`{partida}|{rubro}|{n}`; nulo en otra clave, acta DS-75).",
         "operationId": "cambios_del_borrador_v1_hoja_borradores__id__cambios_get",
         "parameters": [
           {
@@ -16011,6 +16011,17 @@
           "despues": {
             "type": "string",
             "title": "Despues"
+          },
+          "insumo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insumo"
           }
         },
         "type": "object",

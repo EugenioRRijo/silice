@@ -92,6 +92,7 @@ __all__ = [
     "borradores_para_retomar",
     "cambiar_borrador",
     "cambiar_insumo_de_linea",
+    "cambios_con_insumo",
     "cambios_del_borrador",
     "candidatos_de_insumo",
     "completar",
@@ -785,6 +786,19 @@ def cambios_del_borrador(vivo: BorradorVivo) -> tuple[int, list[hoja.CambioEdita
     with vivo.cerrojo:
         _, cambios = hoja_vista.calculo(vivo)
         return vivo.rev, list(cambios)
+
+
+def cambios_con_insumo(
+    vivo: BorradorVivo,
+) -> tuple[int, list[tuple[hoja.CambioEditado, str | None]]]:
+    """Los de `cambios_del_borrador`, cada uno con el insumo de la línea que nombra su clave
+    (`hoja_lineas_apu.insumo_de_la_clave`; acta DS-75): lo que dice «Cambios que se guardan»."""
+    with vivo.cerrojo:
+        rev, cambios = cambios_del_borrador(vivo)
+        base = vivo.abierta.borrador if vivo.abierta is not None else vivo.borrador
+        return rev, [
+            (c, hoja_lineas_apu.insumo_de_la_clave(base, vivo.borrador, c)) for c in cambios
+        ]
 
 
 def borradores_abiertos(huella: str, caso: str) -> list[BorradorVivo]:

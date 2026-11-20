@@ -12,6 +12,8 @@ export interface CambioDeVersion {
   campo: string;
   antes: string;
   despues: string;
+  // Acta DS-75: el insumo de la línea del APU que nombra la clave («{partida}|{rubro}|{n}»); null en otra clave.
+  insumo?: string | null;
 }
 
 export interface GuardadoRespuesta {

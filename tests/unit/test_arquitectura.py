@@ -1773,7 +1773,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "scripts/probar_precios_maprex.py": 1222,
     "scripts/anonimizar_libro.py": 1163,
     "scripts/informe_ti001.py": 1102,
-    "api/esquemas_hoja.py": 1038,
+    "api/esquemas_hoja.py": 1042,
     "aplicacion/hoja_vista.py": 1033,
 }
 
