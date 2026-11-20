@@ -392,6 +392,33 @@ def test_un_recorrido_de_antes_sin_archivo_en_el_id_se_sustituye_y_no_se_duplica
     )
 
 
+def test_un_recorrido_de_antes_de_otro_punto_con_el_mismo_handle_no_se_borra():
+    """Hallazgo 3 (2026-11-20): el `REC-<handle>` de una hoja de antes solo se sustituye si es del
+    mismo dueño (punto y circuito ya traducidos). Otro archivo con el mismo *handle* para otro
+    punto deja los dos y lo dice."""
+    antes = replace(fusionar(Espacio(), basico())[0], recorridos=(rec("REC-1"),))
+    otro = resultado(
+        *(
+            (fila, replace(o, referencia={**dict(o.referencia), "archivo": "b.dxf"}))
+            for fila, o in (
+                ambiente("PATIO", "A9"),
+                fuente("F9", "F9H", ambiente_id="PATIO"),
+                punto("P9", "P9H", ambiente_id="PATIO", fuente_id="F9"),
+            )
+        ),
+        archivo="b.dxf",
+        recorridos=(rec("REC-1@b.dxf", punto_id="P9"),),
+    )
+    espacio, informe = fusionar(antes, otro)
+    assert sorted(r.id for r in espacio.recorridos) == ["REC-1", "REC-1@b.dxf"]
+    ultimo = [i for i in informe if i.tabla == "esp_recorridos"][-1]
+    assert (ultimo.tipo, ultimo.mensaje) == (
+        TipoItem.IMPORTADO,
+        "REC-1@b.dxf: agregado; REC-1 (de una hoja anterior, mismo handle) es de otro punto o "
+        "circuito y se conserva",
+    )
+
+
 def test_la_fusion_no_deja_referencias_colgadas():
     primero, _ = fusionar(Espacio(), basico())
     r2 = resultado(ambiente(ancho="5"), fuente(x="1"), punto(y="2"), punto("P9", "P9H"))
