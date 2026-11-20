@@ -499,11 +499,18 @@ def fusionar(sesion: Session, vivo: BorradorVivo, rev: int, *, usuario: str = ""
         IMPORTACIONES.quitar(vivo.id)
         resultado: ResultadoImportacion = hechas["resultado"]  # type: ignore[assignment]
         informe: tuple[ItemInforme, ...] = hechas["informe"]  # type: ignore[assignment]
-        resumen = hoja.resumen_de_la_fusion(resultado, informe)
+        resumen = resumen_de_la_fusion(resultado, informe)
         entro = fundido.rev != rev
         if entro:
             _anotar_en_el_registro(fundido, str(hechas["archivo"]), usuario, resumen)
     return Fusion(fundido, resultado, informe, resumen, entro)
+
+
+def resumen_de_la_fusion(
+    resultado: ResultadoImportacion, informe: Sequence[ItemInforme]
+) -> hoja.ResumenDeFusion:
+    """Las cuentas de la fusión que se muestran y se anotan (`hoja.resumen_de_la_fusion`)."""
+    return hoja.resumen_de_la_fusion(resultado, informe)
 
 
 def _anotar_en_el_registro(
