@@ -1209,7 +1209,9 @@ variación mensual) y el gasoil en USD por litro («GASOIL_USD»).
    aaaa-mm-dd, valor con punto decimal y `si` o `no` en «provisional»).
 4. Pulse «Importar». Sílice guarda solo la serie elegida, todo o nada: si una fila no sirve, no se importa nada y
    el aviso dice cuál fila y por qué. Si va bien, dice cuántos valores entraron y de qué fecha a qué fecha; si el
-   mismo archivo ya se había cargado para esa serie, dice «Ya estaba importado» y no escribe nada.
+   mismo archivo ya se había cargado para esa serie, dice «Ya estaba importado en» y el nombre de la serie, y no
+   escribe nada. Mientras la importación va en curso la serie, la fuente, la fecha y el archivo no se pueden cambiar; si
+   después cambia cualquiera de ellos, el aviso se quita, porque ya no corresponde a lo que se ve.
 5. Debajo de cada serie queda su historia cargada (fecha, valor y si es provisional). Un archivo que trae las
    dos series se importa una vez por cada una. Para corregir un valor, importe un archivo con la corrección: la
    revisión más reciente manda y la anterior queda en el historial.
