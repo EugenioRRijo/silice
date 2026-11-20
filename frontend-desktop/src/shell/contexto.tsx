@@ -13,7 +13,9 @@ export interface Aplicacion {
   // Carpeta de trabajo (el caso en la API, la base de datos) en uso, o null mientras carga o si la API no lo informa.
   caso: CasoRespuesta | null;
   // Las especialidades que la instalacion apago (`GET /v1/modulos`, plan vial Tarea 19): sus pantallas no se ofrecen ni se
-  // abren. Sin esta lista (pruebas, o la API no la dio) no se oculta nada: la API sigue cortando.
+  // abren. `undefined`: la lectura sigue en curso (o es una prueba sin módulos); las pantallas que solo se montan con su
+  // módulo encendido esperan, y las demás no ocultan nada (la API sigue cortando). `[]`: se leyó y no hay ninguno apagado, o
+  // la lectura falló (un fallo no esconde pantallas que sí funcionan).
   modulosApagados?: readonly string[];
   // Vuelve a leer lo apagado; Administracion › Especialidades lo llama al encender o apagar una.
   recargarModulos?: () => void;
