@@ -531,7 +531,9 @@ class EnUsdRespuesta(BaseModel):
 
 
 def _en_usd(funcion):
-    """Los errores de `aplicacion.indices_usd` con su código: 404, 409 o 422; nunca el SQL."""
+    """Los errores de `aplicacion.indices_usd` con su código: 404, 409 o 422; nunca el SQL. Un
+    `SQLAlchemyError` sigue al manejador común (`api/main.py`): 503 fijo, el motor al registro
+    (regla C1, DS-113); `indices_usd` ya deshace lo suyo."""
     try:
         return funcion()
     except indices_usd.SerieInexistente as error:
@@ -540,8 +542,6 @@ def _en_usd(funcion):
         raise HTTPException(409, _corto(error), headers=SIN_CACHE) from None
     except ValueError as error:
         raise HTTPException(422, _corto(error), headers=SIN_CACHE) from None
-    except SQLAlchemyError:
-        raise HTTPException(503, "No se pudo leer o escribir el caso.", headers=SIN_CACHE) from None
 
 
 @router.get("/en-usd/origenes", response_model=OrigenesRespuesta)
