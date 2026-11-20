@@ -168,6 +168,27 @@ def test_solo_el_administrador_carga_las_series_viales(login: str) -> None:
         assert (r.status_code, r.json()) == (403, {"detalle": MENSAJE_PERMISO})
 
 
+def test_con_el_modulo_apagado_las_dos_rutas_son_404_antes_de_abrir_el_caso(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Revisión de la compuerta, punto 4 (DS-116): el módulo se resuelve antes que la sesión del
+    caso. Con el módulo apagado y un caso roto, el administrador recibe el 404 del módulo (y el
+    caso no se abre ni se migra), no el 503 del caso."""
+    navegador, ficha = _admin()
+    apagado = navegador.put("/v1/modulos/riesgo", json={"activo": False}, headers=protegida(ficha))
+    assert apagado.status_code == 200, apagado.text
+    roto = tmp_path / "roto.db"
+    contenido = b"esto no es una base sqlite " * 100
+    roto.write_bytes(contenido)
+    dependencias.cerrar_motores()
+    monkeypatch.setenv(dependencias.VARIABLE_BASE, f"sqlite:///{roto.as_posix()}")
+    esperado = {"detalle": "El módulo riesgo está apagado en esta instalación."}
+    leer = navegador.get("/v1/indices/series-viales")
+    escribir = _importar(cuenta=(navegador, ficha))
+    assert [(r.status_code, r.json()) for r in (leer, escribir)] == [(404, esperado)] * 2
+    assert roto.read_bytes() == contenido
+
+
 def test_con_el_modulo_de_riesgo_apagado_las_dos_rutas_son_404() -> None:
     navegador, ficha = _admin()
     apagado = navegador.put("/v1/modulos/riesgo", json={"activo": False}, headers=protegida(ficha))
