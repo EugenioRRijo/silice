@@ -209,6 +209,29 @@ describe("Pestaña de valuaciones", () => {
     expect(await screen.findByText("Valuación registrada: corte 13/11/2026, sin hallazgos en la revisión.")).toBeInTheDocument();
   });
 
+  // Un segundo intento que no pasa la revisión local no puede dejar a la vista el resultado del intento anterior.
+  test("un segundo registro con una cantidad inválida quita el aviso y los hallazgos del primero", async () => {
+    registro = {
+      corte: "2026-11-13",
+      hallazgos: 1,
+      errores: 1,
+      detalle: [{ valuacion: "V-03", regla: "R14", severidad: "Error", mensaje: "La valuación V-03 no tiene inspector." }],
+    };
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(await screen.findByText(/la revisión encontró 1 error/)).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" })).toBeInTheDocument();
+    await u.clear(screen.getByLabelText("Cantidad 1"));
+    await u.type(screen.getByLabelText("Cantidad 1"), "abc");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(screen.getByLabelText("Cantidad 1")).toBeInvalid();
+    expect(screen.queryByText(/Valuación registrada/)).toBeNull();
+    expect(screen.queryByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" })).toBeNull();
+  });
+
   test("los hallazgos de las valuaciones guardadas se leen junto a la tabla", async () => {
     hallazgosDeLaLista = [{ valuacion: "V-02", regla: "R14", severidad: "Error", mensaje: "La valuación V-02 no tiene inspector." }];
     montar();
