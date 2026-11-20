@@ -15,6 +15,7 @@ espacios que la preceden, nada mas).
 from __future__ import annotations
 
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -125,3 +126,39 @@ def test_el_comienzo_de_la_raiz_basta_aunque_no_haya_marca_ni_raiz_entera(
 def test_un_mensaje_sin_rutas_queda_igual(tmp_path) -> None:
     mensaje = "a.dxf: no se pudo leer como DXF (DXFStructureError: el archivo esta vacio)."
     assert hoja_plano._sin_rutas(_rechazo(mensaje), tmp_path / "x").mensaje == mensaje
+
+
+# --- lo que de verdad entró de un plano con filas omitidas (hallazgo 6, 2026-11-20) -------------
+
+
+def _fusion_con_omitidas(importado: int, omitido: int):
+    """Una fusión ficticia: el lector cuenta lo omitido también como importado."""
+    rotulos = hoja.ROTULOS_DEL_INFORME
+    resumen = SimpleNamespace(
+        por_tipo=((rotulos[TipoItem.IMPORTADO], importado), (rotulos[TipoItem.OMITIDO], omitido)),
+        filas_por_tabla=(),
+        origenes=1,
+    )
+    omitidas = tuple(
+        ItemInforme(TipoItem.OMITIDO, "esp_puntos", f"H{n}", f"P-{n}", "Ya estaba igual.")
+        for n in range(omitido)
+    )
+    resultado = SimpleNamespace(
+        archivo="plano.dxf", filas={"esp_ambientes": 3, "esp_fuentes": 0, "esp_puntos": 30}
+    )
+    return SimpleNamespace(resultado=resultado, resumen=resumen, informe=omitidas, entro=True)
+
+
+def test_el_registro_cuenta_lo_que_entro_y_no_lo_omitido() -> None:
+    fusion = _fusion_con_omitidas(33, 30)
+    vivo = SimpleNamespace(importaciones=())
+    hoja_plano._anotar_en_el_registro(vivo, "plano.dxf", "ana", fusion.resumen)
+    assert vivo.importaciones[0].resumen == "3 filas en el espacio"
+
+
+def test_el_mensaje_de_una_fusion_con_omitidas_dice_cuantas_entraron() -> None:
+    mensaje = hoja_plano.vista_de_fusion(_fusion_con_omitidas(33, 30))["mensaje"]
+    assert mensaje.startswith(
+        "Se fusionó «plano.dxf» con el borrador de la hoja: entraron 3 de las 33 filas del plano; "
+        "las otras 30 se omitieron (el informe de abajo dice por qué). "
+    )
