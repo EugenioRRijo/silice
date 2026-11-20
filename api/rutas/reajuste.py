@@ -336,9 +336,7 @@ def guardar(
     # Un solo reloj y un solo bloqueo (DS-110): el estado que decide `reemplaza_a` y el que se
     # responde son los del estudio que se guarda.
     dia = ahora().date()
-    clausula, periodos, resultado = _preparar(
-        sesion, peticion, activa, dia, en_la_transaccion=True
-    )
+    clausula, periodos, resultado = _preparar(sesion, peticion, activa, dia, en_la_transaccion=True)
     responsable = peticion.responsable.strip() or _quien(activa)
     opciones = {
         "fecha_calculo": dia,
