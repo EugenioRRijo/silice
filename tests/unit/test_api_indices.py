@@ -493,6 +493,42 @@ def test_confirmar_con_clave_de_api_es_403_y_no_escribe(_entorno: Path) -> None:
     assert _responsables(_entorno) == set()
 
 
+@pytest.mark.parametrize(
+    ("ruta", "envio"),
+    [
+        (
+            "/v1/indices/confirmar",
+            {"data": _campos(), "files": {"archivo": ("indices.csv", CSV)}},
+        ),
+        ("/v1/indices/en-usd/confirmar", {"json": {}}),
+        (
+            "/v1/indices/series-viales/importar",
+            {
+                "data": {"serie": "X", "fuente": FUENTE, "fecha_descarga": FECHA},
+                "files": {"archivo": ("s.csv", b"a,b\n")},
+            },
+        ),
+    ],
+    ids=["confirmar", "en-usd", "series-viales"],
+)
+def test_la_clave_de_api_es_403_antes_de_abrir_el_caso(
+    ruta: str, envio: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hallazgo 7 (2026-11-20): la cuenta y el módulo se resuelven antes que la sesión del caso,
+    como en `vial.py` y `presupuestos.py`. Con un caso roto, la clave de API recibía el 503 del
+    caso (tras intentar migrarlo) en vez del 403 de su permiso."""
+    roto = tmp_path / "roto.db"
+    contenido = b"esto no es una base sqlite " * 100
+    roto.write_bytes(contenido)
+    dependencias.cerrar_motores()
+    monkeypatch.setenv(dependencias.VARIABLE_BASE, f"sqlite:///{roto.as_posix()}")
+    navegador = cliente(app)
+    navegador.headers[CABECERA] = crear_clave_de_prueba()
+    r = navegador.post(ruta, **envio)
+    assert (r.status_code, r.json()) == (403, {"detalle": MENSAJE_SOLO_CUENTA})
+    assert roto.read_bytes() == contenido
+
+
 def test_un_fallo_de_la_base_no_devuelve_el_sql(monkeypatch, _entorno: Path) -> None:
     from sqlalchemy.exc import OperationalError
 
