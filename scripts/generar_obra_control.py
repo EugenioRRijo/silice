@@ -15,7 +15,7 @@ de control) para medir el camino completo. Mismas entradas, misma obra, byte a b
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -53,6 +53,17 @@ FUENTE = "generador determinista (datos ficticios)"
 RESPONSABLE = "Residente Ficticio"
 #: Fracciones exactas: el plan de cada partida reparte 1 en tramos iguales de 1, 2, 4 o 5 períodos.
 TRAMOS = (1, 2, 4, 5)
+#: Los dos insumos que siguen una serie vial en Riesgo (`generar(insumos_viales=True)`, la demo de
+#: `start.py`): ficticios, con un precio de referencia inventado, y su nombre lo dice.
+INSUMO_ASFALTO = "Cemento asfáltico CA-30 (ficticio)"
+INSUMO_GASOIL = "Gasoil para equipos (ficticio)"
+#: (partida, línea) que se añade a cada una: 0,01 t de asfalto a 600 USD/t por m³ en la primera y
+#: 1 l de gasoil a 0,35 USD/l por m³ en la segunda. Pocas: suben la obra un 2 %, así el avance en
+#: dinero de Control de obra casi no cambia, y bastan para que Riesgo muestre su dispersión.
+LINEAS_VIALES = (
+    ("G-0001", LineaMaterial(INSUMO_ASFALTO, "t", D("0.01"), D("600.00"))),
+    ("G-0002", LineaMaterial(INSUMO_GASOIL, "l", D("1"), D("0.35"))),
+)
 
 
 @dataclass(frozen=True)
@@ -106,11 +117,16 @@ def generar(
     valuaciones: int = 26,
     semilla: int = 0,
     inicio: date = INICIO,
+    *,
+    insumos_viales: bool = False,
 ) -> ObraGenerada:
     """La obra de `partidas` partidas con valuaciones semanales hasta la semana `valuaciones`.
 
     `inicio` (un lunes) es el de la obra; cambiarlo solo corre las fechas, las cantidades son las
-    mismas (la demo lo usa para que ninguna valuación quede en el futuro). El corte es el viernes
+    mismas (la demo lo usa para que ninguna valuación quede en el futuro). Con `insumos_viales`, las
+    dos primeras partidas llevan además el asfalto y el gasoil de `LINEAS_VIALES`, los insumos que
+    Riesgo mueve con las series viales en un presupuesto en USD; las cantidades y las valuaciones
+    son las mismas (no se tira ningún número más al azar). El corte es el viernes
     de la última semana valuada. Cada valuación cubre una semana exacta y
     avanza lo planificado de esa semana por un factor entre 0,70 y 1,10 (sin pasar de lo
     presupuestado)."""
@@ -118,6 +134,11 @@ def generar(
         raise ValueError("las valuaciones semanales deben caber en el plan")
     rng = random.Random(semilla)
     composiciones = {_codigo(n): _composicion(rng, _codigo(n)) for n in range(1, partidas + 1)}
+    if insumos_viales:
+        for codigo, linea in LINEAS_VIALES:
+            if codigo in composiciones:
+                apu = composiciones[codigo]
+                composiciones[codigo] = replace(apu, materiales=(*apu.materiales, linea))
     cantidades = {codigo: D(rng.randint(50, 500)) for codigo in composiciones}
     items = [
         ItemComputo(

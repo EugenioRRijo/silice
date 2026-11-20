@@ -7,7 +7,8 @@
 
 Siembra en `data/casos/` (carpeta de datos de desarrollo, no versionada) cinco casos DIDÁCTICOS,
 todos ficticios (NORMAS.md §1): `demo`, `of001`, `ti001`, `s1` (copias de las bases de prueba de
-la 0.6.0) y `obra_control` (una obra generada con valuaciones y costos para Control de obra).
+la 0.6.0) y `obra_control` (una obra generada con valuaciones y costos para Control de obra, y
+con la tasa y las series viales didácticas, también ficticias, para Riesgo).
 Nunca toca `data/apu.db`. Un solo proceso (Uvicorn, `api.main:app`) sirve la API y la interfaz
 de React (`/app/`, compilada con `npm run build` en frontend-desktop) y escucha solo en 127.0.0.1.
 """
@@ -105,10 +106,75 @@ def sembrar_tasa_didactica(sesion, inicio: date, hoy: date) -> None:
     )
 
 
+#: La muestra versionada de las dos series viales, FICTICIA (`data/samples/vial/README.md`).
+MUESTRA_DE_SERIES_VIALES = RAIZ / "data" / "samples" / "vial" / "series_ficticias.csv"
+#: Con qué nombre se importa la muestra corrida: la importación guarda el nombre del archivo.
+ARCHIVO_DE_LAS_SERIES_DE_LA_DEMO = "series_viales_FICTICIAS_didacticas_de_la_demo.csv"
+FUENTE_DE_LAS_SERIES_DE_LA_DEMO = (
+    "series viales ficticias didácticas de la demo de Sílice: no son el PPI de asfalto de FRED/BLS "
+    "ni el precio del gasoil de la Gaceta (NORMAS.md §1)"
+)
+
+
+def _indice_de_mes(dia: date) -> int:
+    return dia.year * 12 + dia.month - 1
+
+
+def series_viales_corridas(hoy: date) -> str:
+    """La muestra ficticia de las series viales, en CSV canónico, con cada fecha corrida los meses
+    enteros que hagan falta para que su último mes sea el anterior al de `hoy` (como la tasa
+    didáctica). Los valores no cambian: desde el día de la siembra, sus 36 meses cubren de sobra el
+    mínimo de historia para proyectar, también cuando la muestra versionada (que termina en una
+    fecha fija) se queda atrás o va por delante."""
+    import csv
+    import io
+
+    filas = list(csv.DictReader(io.StringIO(MUESTRA_DE_SERIES_VIALES.read_text(encoding="utf-8"))))
+    ultimo = max(_indice_de_mes(date.fromisoformat(f["fecha"])) for f in filas)
+    corrimiento = _indice_de_mes(hoy) - 1 - ultimo
+    salida = io.StringIO()
+    escritor = csv.DictWriter(salida, fieldnames=list(filas[0]), lineterminator="\n")
+    escritor.writeheader()
+    for fila in filas:
+        indice = _indice_de_mes(date.fromisoformat(fila["fecha"])) + corrimiento
+        escritor.writerow({**fila, "fecha": date(indice // 12, indice % 12 + 1, 1).isoformat()})
+    return salida.getvalue()
+
+
+def sembrar_series_viales_didacticas(sesion, hoy: date) -> list[int | None]:
+    """Importa las dos series viales ficticias (`series_viales_corridas`) con
+    `importar_serie_csv`, la misma importación de una serie real: devuelve el id de cada
+    importación, o `None` si esa serie ya tenía el mismo archivo (misma huella). Sin ellas, la obra
+    en USD de la demo no se mueve en Riesgo (prueba en vivo del 2026-11-18). No confirma.
+
+    Idempotente dentro del mismo mes (el archivo corrido es el mismo y su huella también) o sobre
+    una base limpia, que es lo que hace `--reiniciar-demo`. Otro mes sobre la misma base importaría
+    otra revisión de la serie (otra huella), como una serie real revisada."""
+    import tempfile
+
+    from aplicacion.riesgo.series import SERIES_VIALES, importar_serie_csv
+
+    with tempfile.TemporaryDirectory() as carpeta:
+        ruta = Path(carpeta) / ARCHIVO_DE_LAS_SERIES_DE_LA_DEMO
+        ruta.write_text(series_viales_corridas(hoy), encoding="utf-8", newline="")
+        return [
+            importar_serie_csv(
+                sesion,
+                serie.codigo,
+                ruta,
+                fuente=FUENTE_DE_LAS_SERIES_DE_LA_DEMO,
+                responsable="script:start",
+                hoy=hoy,
+            )
+            for serie in SERIES_VIALES
+        ]
+
+
 def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
     """Una obra pequeña con valuaciones y costos registrados, para la pantalla Control de obra.
     Sus fechas van hasta la semana de `hoy` (por defecto, el reloj, leído una sola vez), nunca
-    después.
+    después. Trae también lo que Riesgo necesita para que la obra (en USD) se mueva: la tasa y las
+    dos series viales, ficticias, y el asfalto y el gasoil en dos partidas (manual, §10.6).
 
     Todo o nada, como `_sembrar_copia`: se siembra en un temporal de la misma carpeta y se publica
     con `_publicar` (`os.replace` tras borrar el `-wal`/`-shm` viejos del destino, con el servidor
@@ -135,7 +201,12 @@ def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
         preparar_base(temporal)
         inicio = inicio_de_la_demo(dia)
         obra = generar(
-            partidas=12, periodos=10, valuaciones=VALUACIONES_DE_LA_DEMO, semilla=7, inicio=inicio
+            partidas=12,
+            periodos=10,
+            valuaciones=VALUACIONES_DE_LA_DEMO,
+            semilla=7,
+            inicio=inicio,
+            insumos_viales=True,
         )
         motor = crear_motor(f"sqlite:///{temporal.resolve().as_posix()}")
         try:
@@ -144,6 +215,7 @@ def sembrar_obra_control(destino: Path, *, hoy: date | None = None) -> None:
                 registrar_valuacion_de(sesion, obra.valuaciones[-1])
                 registrar_costo_de(sesion, obra.costos[-1])
                 sembrar_tasa_didactica(sesion, inicio, dia)
+                sembrar_series_viales_didacticas(sesion, dia)
                 sesion.commit()
         finally:
             motor.dispose()

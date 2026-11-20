@@ -171,7 +171,12 @@ def test_la_demo_de_control_trae_historia_didactica_de_la_tasa_para_riesgo(tmp_p
             historia = historia_para_proyectar(sesion, MapaSeries({}), p)
             completos = meses_completos(historia, [SERIE_TASA], p)
             assert len(completos) >= int(MINIMO_DE_MESES.valor)
-            (importacion,) = sesion.scalars(select(models.ImportacionIndice))
+            # la de la tasa (las series viales ficticias tienen las suyas: test_riesgo_de_la_demo)
+            (importacion,) = sesion.scalars(
+                select(models.ImportacionIndice)
+                .join(models.SerieIndice)
+                .where(models.SerieIndice.codigo == SERIE_TASA)
+            )
             assert "ficticia" in importacion.fuente and "didáctica" in importacion.fuente
             # ninguna observación es del futuro
             assert all(v.fecha <= hoy for v in sesion.scalars(select(models.ValorIndice)))
