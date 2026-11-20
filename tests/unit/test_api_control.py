@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
@@ -45,6 +45,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
+from tests.fixtures.transacciones import transacciones_del_caso
 
 P = {"proyecto": ob.NOMBRE}
 FRONT_CONTROL = Path(__file__).resolve().parents[2] / "frontend-desktop/src/paginas/control"
@@ -382,6 +383,185 @@ def test_registrar_devuelve_cada_hallazgo_legible_y_la_lista_los_repite(
     assert (datos["hallazgos"], datos["errores"], datos["detalle"]) == (1, 1, esperado)
     lista = navegador.get("/v1/control/valuaciones", params=P).json()
     assert lista["hallazgos"] == esperado
+
+
+def _caso_del_proceso() -> Path:
+    return Path(dependencias.ruta_de_url(dependencias.url_del_proceso()))
+
+
+@pytest.mark.parametrize(
+    ("plantilla", "ruta", "cuerpo"),
+    [
+        (
+            "solo_linea",
+            "/v1/control/valuaciones",
+            {
+                "numero": "V-01",
+                "desde": "2026-11-02",
+                "hasta": "2026-11-06",
+                "fecha": "2026-11-09",
+                "inspector": ob.INSPECTOR,
+                "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+                "fuente": ob.FUENTE,
+            },
+        ),
+        (
+            "vacia",
+            "/v1/control/linea-base",
+            {
+                "version": "OB-001",
+                "desde": "2026-11-02",
+                "perspectiva": "costo",
+                "inicio": "2026-11-02",
+                "dias_por_periodo": "5",
+                "feriados": "",
+                "fuente": ob.FUENTE,
+            },
+        ),
+    ],
+    ids=["registrar-valuacion", "declarar-linea-base"],
+)
+def test_tras_confirmar_la_ruta_no_abre_otra_transaccion(
+    plantilla: str,
+    ruta: str,
+    cuerpo: dict,
+    _plantillas: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DS-57/DS-70: el control al corte y la descripción de la línea base se arman antes del
+    `commit`; tras él, consultar abriría otro `BEGIN IMMEDIATE` (oráculo de DS-58)."""
+    _usar(_plantillas, plantilla, tmp_path, monkeypatch)
+    navegador, cabeceras = _arma()
+    with transacciones_del_caso(_caso_del_proceso()) as por_sesion:
+        respuesta = navegador.post(ruta, json={**P, **cuerpo}, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
+
+
+def _filas_del_caso(tabla: str) -> int:
+    """Las filas de `tabla` en la carpeta del proceso (0 si la tabla aún no existe)."""
+    import sqlite3
+    from contextlib import closing
+
+    with closing(sqlite3.connect(_caso_del_proceso())) as bd:
+        existe = bd.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (tabla,)
+        ).fetchone()
+        return bd.execute(f'SELECT COUNT(*) FROM "{tabla}"').fetchone()[0] if existe else 0
+
+
+@pytest.mark.parametrize(
+    ("fallo", "estado"),
+    [
+        (logica_control.ControlInvalido("No hay línea base vigente al corte."), 422),
+        (RuntimeError("fallo inesperado del cálculo"), 500),
+    ],
+    ids=["control-invalido", "inesperado"],
+)
+def test_si_el_control_al_corte_falla_no_queda_la_valuacion_ni_sus_causas(
+    fallo: Exception,
+    estado: int,
+    _plantillas: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DS-111: el control al corte corre tras escribir la valuación y sus causas (`flush`) y antes
+    del `commit`; si falla, no queda nada (todo o nada) y `_escribir` deshace ante cualquier
+    error, también uno que no es de los datos."""
+    from aplicacion import control_linea_base
+
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    escrito: list[int] = []
+
+    def falla(sesion, *_args, **_kwargs):
+        escrito.append(sesion.scalar(select(func.count()).select_from(models.Valuacion)))
+        raise fallo
+
+    monkeypatch.setattr(control_linea_base, "calcular_el_control", falla)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-01",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "inspector": ob.INSPECTOR,
+        "lineas": [{"partida": "OB-A", "cantidad": "40", "causa": "compra_tardia"}],
+        "fuente": ob.FUENTE,
+    }
+    r = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert r.status_code == estado, r.text
+    assert escrito == [1]  # el cálculo vio la valuación ya escrita en la transacción
+    assert (_filas_del_caso("valuacion"), _filas_del_caso("mp_causa_retraso")) == (0, 0)
+
+
+def test_si_falla_armar_la_descripcion_de_la_linea_base_es_500_y_no_queda(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """DS-111 y DS-57: un fallo al armar la respuesta no es culpa de lo enviado (500, no 422) y
+    deshace la línea base declarada."""
+    _usar(_plantillas, "vacia", tmp_path, monkeypatch)
+
+    def falla(*_args, **_kwargs):
+        raise ValueError("descripción imposible")
+
+    monkeypatch.setattr(logica_control, "describir_linea_base", falla)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "version": "OB-001",
+        "desde": "2026-11-02",
+        "perspectiva": "costo",
+        "inicio": "2026-11-02",
+        "dias_por_periodo": "5",
+        "feriados": "",
+        "fuente": ob.FUENTE,
+    }
+    r = navegador.post("/v1/control/linea-base", json=cuerpo, headers=cabeceras)
+    assert r.status_code == 500, r.text
+    assert "descripción imposible" not in r.text
+    assert _filas_del_caso("linea_base_control") == 0
+
+
+def test_un_fallo_de_la_base_al_registrar_es_el_503_fijo_y_no_un_422_con_el_motor(
+    _plantillas: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Hallazgo 8 (2026-11-20, DS-113): `_escribir` convertía el fallo de la base en un 422 con
+    el texto del motor («No se pudo escribir en el caso: disk I/O error»): ni es culpa de lo
+    enviado ni puede llevar ese texto (regla C1). Ahora deshace y lo deja al manejador común: 503
+    fijo, y el motor al registro."""
+    import logging
+
+    from api.main import MENSAJE_BASE
+    from aplicacion import control_linea_base
+
+    def falla(*_args, **_kwargs):
+        raise OperationalError(
+            "INSERT INTO secreto VALUES (?)", ("privado",), Exception("disk I/O")
+        )
+
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    monkeypatch.setattr(control_linea_base, "registrar_valuacion", falla)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-01",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "inspector": ob.INSPECTOR,
+        "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+        "fuente": ob.FUENTE,
+    }
+    with caplog.at_level(logging.ERROR, logger="silice.api"):
+        r = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert (r.status_code, r.json()) == (503, {"detalle": MENSAJE_BASE})
+    assert "disk I/O" not in r.text and "INSERT" not in r.text
+    assert "disk I/O" in caplog.text
 
 
 def test_una_valuacion_del_futuro_se_rechaza_con_422_y_un_mensaje_claro() -> None:
@@ -784,6 +964,37 @@ def test_elegir_una_opcion_crea_la_version_y_deja_la_decision_con_el_responsable
     codigo = respuesta.json()["version"]
     decisiones = navegador.get("/v1/control/calculo", params=P).json()["decisiones"]
     assert [(d["Version"], "<ana>" in d["Responsable"]) for d in decisiones] == [(codigo, True)]
+
+
+def test_elegir_no_consulta_tras_confirmar_aunque_la_sesion_expire_al_confirmar() -> None:
+    """Revisión de la compuerta, punto 8 (DS-117): el código de la versión nueva se lee antes del
+    `commit`. Hoy no se nota solo porque `SesionDeEscrituraDep` fija `expire_on_commit=False`;
+    con la sesión por omisión (que expira lo leído al confirmar) la lectura tras el `commit`
+    abría otro `BEGIN IMMEDIATE` (oráculo de DS-58)."""
+    from core.catalog import abrir_sesion_de_escritura
+
+    def sesion_que_expira():
+        url = dependencias.url_del_proceso()  # la carpeta de la prueba (sin selector de caso)
+        with abrir_sesion_de_escritura(dependencias.obtener_motor(url)) as sesion:
+            yield sesion  # `expire_on_commit` queda en True, el de SQLAlchemy
+
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "objetivo": "",
+        "horas_previas": "0",
+        "opcion": "cuadrillas",
+        "fuente": "reunion de obra",
+        "declaracion_independencia": "",
+    }
+    app.dependency_overrides[dependencias.sesion_de_escritura_api] = sesion_que_expira
+    try:
+        with transacciones_del_caso(_caso_del_proceso()) as por_sesion:
+            r = navegador.post("/v1/control/recuperacion/elegir", json=cuerpo, headers=cabeceras)
+    finally:
+        app.dependency_overrides.pop(dependencias.sesion_de_escritura_api, None)
+    assert r.status_code == 200, r.text
+    assert por_sesion.confirmo and por_sesion.tras_el_ultimo_commit() == [], por_sesion
 
 
 def test_en_el_corte_de_la_memoria_solo_paralelo_no_aplica() -> None:

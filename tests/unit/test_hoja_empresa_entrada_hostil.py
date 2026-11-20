@@ -85,6 +85,71 @@ def test_jpeg_sano_sigue_dando_su_tamano():
     assert _con_tope(tamano_imagen, b"\xff\xd8" + app0 + sof + b"\x00" * 9) == (64, 48)
 
 
+# --- 1b. Imágenes cuya cabecera no da el tamaño que ve Pillow (hallazgo 5, 2026-11-20) ----------
+
+
+def _png(ancho: int = 4, alto: int = 3) -> bytes:
+    from PIL import Image as PILImage
+
+    flujo = io.BytesIO()
+    PILImage.new("RGB", (ancho, alto), (200, 10, 10)).save(flujo, "PNG")
+    return flujo.getvalue()
+
+
+def _png_con_texto_antes_del_ihdr() -> bytes:
+    """Un trozo `tEXt` antes del IHDR: Pillow lo abre (4×3), pero los bytes 16:24 son ceros."""
+    import struct
+    import zlib
+
+    valido = _png()
+    datos = b"\x00" * 13
+    trozo = (
+        struct.pack(">I", len(datos))
+        + b"tEXt"
+        + datos
+        + struct.pack(">I", zlib.crc32(b"tEXt" + datos))
+    )
+    return valido[:8] + trozo + valido[8:]
+
+
+def _jpeg_con_un_sof_en_cero() -> bytes:
+    """Dos SOF: el primero dice 0×0 y Pillow toma el último (4×3)."""
+    from PIL import Image as PILImage
+
+    flujo = io.BytesIO()
+    PILImage.new("RGB", (4, 3), (10, 200, 10)).save(flujo, "JPEG")
+    j = flujo.getvalue()
+    i = j.find(b"\xff\xc0")
+    sof = j[i : i + 2 + int.from_bytes(j[i + 2 : i + 4], "big")]
+    return j[:i] + sof[:5] + b"\x00\x00\x00\x00" + sof[9:] + j[i:]
+
+
+def test_una_cabecera_sin_tamano_valido_no_da_un_tamano_en_cero():
+    assert tamano_imagen(_png()) == (4, 3)
+    assert tamano_imagen(_png_con_texto_antes_del_ihdr()) is None
+    assert tamano_imagen(_jpeg_con_un_sof_en_cero()) is None
+    assert tamano_imagen(b"GIF89a" + b"\x00" * 4) is None  # GIF de 0×0
+
+
+def test_una_imagen_con_la_cabecera_manipulada_se_copia_sin_escala_y_sin_dividir_por_cero():
+    """Antes `_imagenes` dividía el ancho de Pillow entre el 0 de la cabecera: la devolución daba
+    500 y se perdía. Ahora la imagen se copia sin escala."""
+    from openpyxl.drawing.image import Image as XlImage
+
+    from adapters.hoja_empresa.escritor.copia import _imagenes
+
+    for datos in (_png_con_texto_antes_del_ihdr(), _jpeg_con_un_sof_en_cero()):
+        libro = openpyxl.Workbook()
+        libro.active.add_image(XlImage(io.BytesIO(datos)), "B2")
+        flujo = io.BytesIO()
+        libro.save(flujo)
+        hoja = openpyxl.load_workbook(io.BytesIO(flujo.getvalue())).active
+        salida = SimpleNamespace(imagenes=[])
+        _imagenes(hoja, salida)
+        (imagen,) = salida.imagenes
+        assert "x_scale" not in imagen.opciones and "y_scale" not in imagen.opciones
+
+
 # --- 2. Rangos de fórmula sin cota (`=SUM(G1:G10000000)`) ---------------------------------------
 
 

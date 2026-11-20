@@ -319,6 +319,48 @@ def test_un_parcial_se_ofrece_y_el_cerrado_lo_reemplaza(monkeypatch, _entorno: P
     assert nuevos == []  # el parcial ya tiene quien lo reemplace
 
 
+def test_guardar_retiene_el_bloqueo_entre_el_calculo_previo_y_el_guardado(
+    monkeypatch, _entorno: Path
+) -> None:
+    """El cálculo previo de `guardar` se deshace con un SAVEPOINT, no con un `rollback`: el
+    `BEGIN IMMEDIATE` sigue tomado y nadie escribe en medio (oráculo: otra conexión sin espera)."""
+    original = ruta_reajuste.logica.calcular
+    tomado: list[bool] = []
+
+    def calcular_y_probar(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        with closing(sqlite3.connect(_entorno, timeout=0)) as otra:
+            try:
+                otra.execute("BEGIN IMMEDIATE")
+                tomado.append(True)
+                otra.execute("ROLLBACK")
+            except sqlite3.OperationalError:
+                tomado.append(False)
+        return resultado
+
+    monkeypatch.setattr(ruta_reajuste.logica, "calcular", calcular_y_probar)
+    r = _post("guardar", fuente="f")
+    assert r.status_code == 200, r.text
+    assert tomado == [False]
+    assert _filas_de("estudio_reajuste", _entorno) == 1  # el cálculo previo no dejó un estudio
+
+
+def test_guardar_responde_el_estado_que_guardo(monkeypatch, _entorno: Path) -> None:
+    """Un solo reloj por petición: si `ahora` cambiara entre el cálculo previo y el guardado,
+    respondería «parcial al corte» y guardaría «cerrado»."""
+    relojes = iter([A_MITAD, CIERRE, CIERRE])
+    monkeypatch.setattr(ruta_reajuste, "ahora", lambda: next(relojes))
+    r = _post("guardar", fuente="f")
+    assert r.status_code == 200, r.text
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            guardado = sesion.scalars(select(models.EstudioReajuste.estado)).one()
+    finally:
+        motor.dispose()
+    assert (r.json()["estado"], guardado) == ("parcial al corte", "parcial al corte")
+
+
 # --- Excel ----------------------------------------------------------------------------------
 
 

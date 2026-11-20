@@ -9,11 +9,10 @@ Salió de `aplicacion/control.py` sin cambios (tarea 4.3 del plan de desenredo);
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.budget.valuaciones import LineaBaseInvalidada
@@ -110,11 +109,21 @@ def _exigir_texto(texto: str, mensaje: str) -> None:
         raise ControlInvalido(mensaje)
 
 
-def _escribir(sesion: Session, accion):
-    """Corre `accion`, confirma si sale bien y deshace si no; todo error sale como
-    `ControlInvalido`."""
+def _escribir(sesion: Session, accion, antes_de_confirmar: Callable[[], object] | None = None):
+    """Corre `accion`, confirma si sale bien y deshace si no; un error de los datos sale como
+    `ControlInvalido` (422) y cualquier otro se relanza tras deshacer. Un fallo de la base
+    (`SQLAlchemyError`) no es culpa de lo enviado ni puede mostrar el texto del motor (regla C1):
+    sigue al manejador común de la API, que lo registra y responde el 503 fijo (DS-113).
+
+    `antes_de_confirmar()`, si se da, corre con lo de `accion` ya escrito (`flush`) y antes del
+    `commit`, en la misma transacción, y lo que devuelve es lo que devuelve esta (patrón de DS-70:
+    la API arma ahí su respuesta; tras el `commit`, consultar abriría otro `BEGIN IMMEDIATE`,
+    DS-57). Si lanza, no queda nada escrito."""
     try:
         resultado = accion()
+        if antes_de_confirmar is not None:
+            sesion.flush()
+            resultado = antes_de_confirmar()
         sesion.commit()
         return resultado
     except ControlInvalido:
@@ -128,11 +137,9 @@ def _escribir(sesion: Session, accion):
         raise ControlInvalido(
             str(error.args[0] if isinstance(error, KeyError) else error)
         ) from error
-    except SQLAlchemyError as error:
+    except BaseException:
         sesion.rollback()
-        raise ControlInvalido(
-            f"No se pudo escribir en el caso: {getattr(error, 'orig', error)}"
-        ) from error
+        raise
 
 
 _PREFIJO_VALUACION = "valuacion:"

@@ -94,10 +94,11 @@ def elegir_opcion(
     declaracion_independencia: str = "",
 ) -> str:
     """UC-20 5 y 6: crea la versión de la opción elegida y guarda la decisión. Devuelve el código de
-    la versión nueva."""
-    decision = _escribir(
-        sesion,
-        lambda: aplicar_decision(
+    la versión nueva, leído antes del `commit` (DS-57, DS-117): tras él, una sesión que expira lo
+    leído abriría otra transacción."""
+
+    def accion() -> str:
+        decision = aplicar_decision(
             sesion,
             resultado,
             opcion,
@@ -105,6 +106,7 @@ def elegir_opcion(
             fuente=fuente,
             responsable=responsable,
             declaracion_independencia=declaracion_independencia,
-        ),
-    )
-    return sesion.get(models.Presupuesto, decision.version_resultante_id).codigo
+        )
+        return sesion.get(models.Presupuesto, decision.version_resultante_id).codigo
+
+    return _escribir(sesion, accion)

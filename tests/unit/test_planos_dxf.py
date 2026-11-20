@@ -575,6 +575,25 @@ def test_la_rec_plana_se_empareja_por_planta_y_la_electrica_va_al_circuito_del_p
     assert (rec.circuito_id, rec.punto_id) == ("C1", None)
 
 
+@pytest.mark.parametrize(
+    "agregar",
+    [
+        lambda m: m.add_polyline3d([], dxfattribs={"layer": "REC-DATOS"}),
+        lambda m: m.add_polyline2d([], dxfattribs={"layer": "REC-DATOS"}),
+    ],
+    ids=["polyline3d", "polyline2d"],
+)
+def test_una_rec_sin_vertices_va_al_informe_y_no_tumba_la_importacion(agregar):
+    """Hallazgo 6 (2026-11-20): una POLYLINE vacía en una capa REC-* lanzaba `IndexError` (500),
+    contra el «Nunca lanza» de `importar_dxf`."""
+    p = _con_punto_de_datos()
+    agregar(p.msp)
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert r.recorridos == ()
+    (item,) = [i for i in tipos(r, TipoItem.NO_RECONOCIDO) if i.tabla == "esp_recorridos"]
+    assert item.mensaje == "polilínea sin vértices: no hay recorrido que medir"
+
+
 def test_una_rec_cuyo_extremo_coincide_con_dos_puntos_no_se_adivina():
     p = plano_base()
     p.bloque("PTO-DATOS", 2, 2, id="A", altura="0.3")

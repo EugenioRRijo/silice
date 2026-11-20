@@ -438,9 +438,15 @@ class _Fusion:
             final = replace(r, punto_id=punto, circuito_id=circuito)
             estado = "actualizado" if r.id in self.recorridos else "agregado"
             antes = self._de_antes(r.id)
-            if antes is not None:
+            if antes is not None and _mismo_dueno(self.recorridos[antes], final):
                 del self.recorridos[antes]
                 estado = f"actualizado (antes {antes})"
+            elif antes is not None and r.id not in self.recorridos:
+                # el aviso, solo la primera vez: al reimportar el mismo archivo ya se dio
+                estado += (
+                    f"; {antes} (de una hoja anterior, mismo identificador en el plano) es de otro "
+                    "punto o circuito y se conserva"
+                )
             self.recorridos[r.id] = final
             nuevos[r.id] = final
             self._item(TipoItem.IMPORTADO, "esp_recorridos", "", r.id, f"{r.id}: {estado}")
@@ -482,6 +488,13 @@ class _Fusion:
             sobrescrituras=self.actual.sobrescrituras,
         )
         return espacio, (*self.del_lector, *self.informe)
+
+
+def _mismo_dueno(antes: Recorrido, nuevo: Recorrido) -> bool:
+    """True si el `REC-<handle>` de una hoja de antes es del mismo punto y circuito que el nuevo
+    (ya traducidos a la hoja): el *handle* solo es unico dentro de su archivo, y otro plano puede
+    repetirlo para otro dueño (hallazgo 3 del 2026-11-20)."""
+    return (antes.punto_id, antes.circuito_id) == (nuevo.punto_id, nuevo.circuito_id)
 
 
 #: Lo que el lector informa de una fila y deja de valer si la fusion la omite.

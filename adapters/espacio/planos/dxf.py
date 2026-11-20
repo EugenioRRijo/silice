@@ -688,6 +688,11 @@ class _Lector:
             vertices, cerrada, _, es_3d = _geometria(e)
             if not self._finita("esp_recorridos", e, vertices, "polilinea"):
                 continue
+            if not vertices:  # sin extremos que emparejar: `_recorrido` no puede medirla
+                self._no_reconocido(
+                    "esp_recorridos", e, "polilínea sin vértices: no hay recorrido que medir"
+                )
+                continue
             if cerrada or (len(vertices) >= 4 and vertices[0] == vertices[-1]):
                 self._no_reconocido(
                     "esp_recorridos", e, "polilinea cerrada: un recorrido es abierto"
