@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import tempfile
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from aplicacion.composicion import ComposicionInvalida, decimal_desde_texto, texto_de_celda
 from aplicacion.control import Hueco, PartidasDeUnaVersion, catalogo_de_frases
@@ -389,17 +391,29 @@ def calcular(
     Con `en_la_transaccion` el calculo se deshace con un SAVEPOINT y la transaccion de quien llama
     sigue abierta, con su `BEGIN IMMEDIATE`: la de la ruta que guarda despues bajo el mismo
     bloqueo (nadie escribe entre lo que se calculo y lo que se guarda). Sin el, se deshace la
-    transaccion entera, como en la sesion comun de las rutas que solo calculan."""
+    transaccion entera, como en la sesion comun de las rutas que solo calculan.
+
+    Si falla (DS-115): una transaccion que abrio este calculo (no habia otra) se deshace entera y
+    suelta el bloqueo; una de quien llama se deja abierta, deshecho solo el SAVEPOINT. Sale la
+    excepcion original, aunque deshacer el SAVEPOINT tambien falle."""
     if not en_la_transaccion:
         try:
             return _calcular(sesion, proyecto, codigo, clausula, periodos, fecha_calculo)
         finally:
             sesion.rollback()
+    abierta = sesion.in_transaction()
     punto = sesion.begin_nested()
     try:
-        return _calcular(sesion, proyecto, codigo, clausula, periodos, fecha_calculo)
-    finally:
-        punto.rollback()
+        resultado = _calcular(sesion, proyecto, codigo, clausula, periodos, fecha_calculo)
+    except BaseException:
+        if not abierta:
+            sesion.rollback()
+        elif punto.is_active:
+            with suppress(SQLAlchemyError):
+                punto.rollback()
+        raise
+    punto.rollback()
+    return resultado
 
 
 def _calcular(sesion, proyecto, codigo, clausula, periodos, fecha_calculo) -> ResultadoEstudio:
