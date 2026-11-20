@@ -42,6 +42,7 @@ from xml.sax.saxutils import escape
 from aplicacion import frentes, hoja_vista
 from aplicacion.cifras import CifraInvalida, cifra_escrita, texto_de_cifra
 from aplicacion.hoja_borradores import BorradorVivo
+from aplicacion.hoja_desperdicio import DesperdicioDeLinea, TrazasDePartida
 from aplicacion.hoja_vista import FilaDePresupuesto, Monto
 from aplicacion.impuestos import ALICUOTA_IVA, con_iva
 from aplicacion.plural import plural
@@ -288,7 +289,7 @@ def _parametros(vivo: BorradorVivo) -> str:
 
 
 def _tabla(
-    grupo: hoja_vista.GrupoDeApu, desperdicios: Sequence[hoja_vista.DesperdicioDeLinea]
+    grupo: hoja_vista.GrupoDeApu, desperdicios: Sequence[DesperdicioDeLinea]
 ) -> TablaDeApu:
     """Un rubro del APU. En Materiales con alguna traza, como la pestaña APU: «Cantidad» es la
     neta de la línea con traza, y tras ella van «Desperdicio (%)» y «Cantidad con desperdicio» (la
@@ -332,7 +333,7 @@ def documento_de_la_hoja(
     *,
     partida: str | None = None,
     agrupar: Agrupador = sin_agrupar,
-    trazas: hoja_vista.TrazasDePartida | None = None,
+    trazas: TrazasDePartida | None = None,
 ) -> DocumentoPdf:
     """El documento del borrador vivo: el presupuesto y un APU por partida valorada; con
     `partida`, solo su APU (`PartidaSinApu` si no tiene uno valorado). Todo bajo el cerrojo del
