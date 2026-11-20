@@ -177,8 +177,9 @@ function Registrar({
     });
     setErrores(nuevos);
     setErroresDePartida(fuera);
-    if (Object.keys(nuevos).length > 0 || Object.keys(fuera).length > 0) return;
+    // Cada intento empieza sin el resultado del anterior, también el que no pasa la revisión local y no llega a salir.
     setRegistro(null);
+    if (Object.keys(nuevos).length > 0 || Object.keys(fuera).length > 0) return;
     void ejecutar(async () => {
       const r = await pedir<RegistroDeValuacion>("/v1/control/valuaciones", {
         metodo: "POST",
