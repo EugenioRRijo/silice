@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -208,3 +209,18 @@ def test_todo_de_la_base_se_atribuye_y_sin_desglose_no_se_lee_quien():
     assert desglose_de_la_vista(FILAS, [], [TUBO_RITA, CODO_RITA], quien)[1] == DE_RITA
     assert desglose_de_la_vista(FILAS, [], [], quien) == ((), None)
     assert leido == [1]
+
+
+def test_los_tipos_del_desperdicio_de_la_vista_se_importan_de_su_modulo():
+    """DS-98 los movió de la vista a `aplicacion/hoja_desperdicio.py`: quien los usa los importa de
+    allí y no por la reexportación de la vista (revisión de Neon, hallazgo 6)."""
+    raiz = Path(__file__).resolve().parents[2]
+    nombres = ("DesperdicioDeLinea", "TrazasDePartida", "GuardadoDePartida")
+    usos = sorted(
+        f"{ruta.relative_to(raiz).as_posix()}: {nombre}"
+        for carpeta in ("aplicacion", "api", "tests")
+        for ruta in (raiz / carpeta).rglob("*.py")
+        for nombre in nombres
+        if "hoja_vista." + nombre in ruta.read_text(encoding="utf-8")
+    )
+    assert usos == []
