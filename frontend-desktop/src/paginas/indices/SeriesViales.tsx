@@ -115,6 +115,9 @@ export function SeriesViales() {
     setResultado({ tipo: "ninguno" });
   };
 
+  // Cómo se nombra una serie ante la persona (su nombre; el código solo si la lista no la trae).
+  const nombreDe = (codigo: string) => datos?.series.find((s) => s.codigo === codigo)?.nombre ?? codigo;
+
   const elegirSerie = (codigo: string) => {
     soltarResultado();
     setSerie(codigo);
@@ -129,8 +132,7 @@ export function SeriesViales() {
     setErrores(falta);
     const primero = ORDEN_DE_CAMPOS.find((c) => falta[c] !== undefined);
     if (primero !== undefined || archivo === null) {
-      ++consulta.current;
-      setResultado({ tipo: "ninguno" });
+      soltarResultado();
       if (primero !== undefined) setFoco((antes) => ({ campo: primero, intento: (antes?.intento ?? 0) + 1 }));
       return;
     }
@@ -248,13 +250,15 @@ export function SeriesViales() {
 
       {/* Cada aviso trae su propio rol (`alert` o `status`): el contenedor no es otra región viva. */}
       <div className="silice-indices__avisos">
-        {resultado.tipo === "error" && <AvisoError error={resultado.error} titulo={`No se importó ${resultado.serie}`} />}
+        {resultado.tipo === "error" && <AvisoError error={resultado.error} titulo={`No se importó ${nombreDe(resultado.serie)}`} />}
         {resultado.tipo === "hecho" && (
           <InlineNotification
             kind={resultado.respuesta.importada ? "success" : "info"}
             role="status"
             title={
-              resultado.respuesta.importada ? `Importación de ${resultado.respuesta.serie}` : `Ya estaba importado en ${resultado.respuesta.serie}`
+              resultado.respuesta.importada
+                ? `Importación de ${nombreDe(resultado.respuesta.serie)}`
+                : `Ya estaba importado en ${nombreDe(resultado.respuesta.serie)}`
             }
             subtitle={resultado.respuesta.mensaje}
             lowContrast
