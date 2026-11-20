@@ -395,6 +395,38 @@ describe("Versiones: la franja del paso", () => {
     expect(within(franja).getByRole("button", { name: "Guardar versión…" })).toBeInTheDocument();
   });
 
+  test("al guardar solo el desglose del desperdicio el aviso dice «Desglose guardado», no «Versión guardada»", async () => {
+    cambiosAlAbrir = 1;
+    desglosesAlAbrir = 1;
+    const base = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const camino = new URL(String(entrada), "http://silice.local").pathname;
+      const metodo = init?.method ?? "GET";
+      if (camino.endsWith("/cambios")) {
+        return json({ rev: 1, cambios: [{ objeto: "apu", clave: "AF-LLAVE|material|1", campo: "desperdicio", antes: "0,8 + 25 %", despues: "0,625 + 60 %" }] });
+      }
+      if (camino.endsWith("/guardar") && metodo === "POST") {
+        return json({ codigo: "VIV-002", proyecto: "3", cambios: 0, total: { texto: "1234.50", exacto: "1234.5" }, primera: false, mensaje: "x", version_nueva: false, desgloses: 1 });
+      }
+      if (/^\/v1\/hoja\/borradores\/[^/]+$/.test(camino) && metodo === "GET") {
+        cambiosAlAbrir = 0;
+        desglosesAlAbrir = 0;
+        const b = borrador("VIV-002");
+        return json({ id: b.id, base: b.base, resumen: b.resumen });
+      }
+      return base(entrada, init);
+    });
+    const u = montar();
+    const franja = await screen.findByRole("region", { name: "Siguiente paso" });
+    await u.click(within(franja).getByRole("button", { name: "Guardar el desglose…" }));
+    const dialogo = await screen.findByRole("dialog");
+    await u.click(within(dialogo).getByRole("button", { name: "Guardar el desglose" }));
+    const aviso = await screen.findByText(/Se guardó el desglose del desperdicio de 1 línea/);
+    const notificacion = aviso.closest("[role='status']") as HTMLElement;
+    expect(within(notificacion).getByText("Desglose guardado")).toBeInTheDocument();
+    expect(within(notificacion).queryByText("Versión guardada")).toBeNull();
+  });
+
   test("con la vigente en aprobación dice que espera dictamen, sin botón", async () => {
     aprobaciones = () =>
       json({
