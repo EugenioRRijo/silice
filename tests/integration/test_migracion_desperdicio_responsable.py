@@ -70,15 +70,25 @@ def test_subir_agrega_la_columna_y_lo_guardado_antes_queda_sin_responsable(tmp_p
 
 
 def test_bajar_quita_solo_la_columna_y_conserva_las_filas(tmp_path: Path) -> None:
+    """Bajar deja el esquema completo de la base (tablas, columnas e índices) como estaba antes
+    de subir, con las filas, también la de un guardado con responsable (revisión de Neon, 5)."""
     ruta = tmp_path / "caso.db"
     aplicar_revisiones(ruta, Destino.CASO, ANTERIOR)
     columnas_antes = _columnas(ruta)
+    esquema_antes = _instantanea(ruta)
     aplicar_revisiones(ruta, Destino.CASO, REVISION)
     _con_un_guardado(ruta)
+    with closing(sqlite3.connect(ruta)) as conexion:
+        conexion.execute(
+            f"INSERT INTO {TABLA} (partida_codigo, fecha_hora, responsable) VALUES "
+            "('AF-TUB', '2026-11-20 10:00:00.000000', 'Ana <ana>')"
+        )
+        conexion.commit()
     filas = _filas(ruta)
     deshacer_revisiones(ruta, Destino.CASO, ANTERIOR)
     assert leer_estado(ruta).revision == ANTERIOR
     assert _columnas(ruta) == columnas_antes
+    assert _instantanea(ruta) == esquema_antes
     assert _filas(ruta) == filas
     aplicar_revisiones(ruta, Destino.CASO, REVISION)
     assert "responsable" in {c[0] for c in _columnas(ruta)}

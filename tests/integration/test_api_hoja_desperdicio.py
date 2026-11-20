@@ -941,6 +941,10 @@ def test_tras_guardar_el_desglose_no_queda_ningun_cambio_colgado(_caso: Path) ->
     despues = _resumen(navegador, id_)
     assert (despues["cambios"], despues["desgloses"]) == (0, 0)
     assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_8]
+    # la traza de AF-LLAVE salió del borrador: lo que Componer guarde después se ve (revisión de
+    # Neon, hallazgo 4: sin esto, dejarla en `vivo.desperdicios` seguía en verde)
+    _con_traza(_caso, TRAZA_0_625)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_625]
 
 
 def test_aplicar_sin_cambios_no_tapa_ni_borra_lo_que_guarde_componer(_caso: Path) -> None:

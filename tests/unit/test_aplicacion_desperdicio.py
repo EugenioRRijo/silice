@@ -137,7 +137,7 @@ def test_las_trazas_se_guardan_y_manda_el_ultimo_guardado(sesion: Session):
 def test_el_guardado_dice_quien_lo_hizo_y_cuando(sesion: Session):
     """Mejora de A.6 (acta DS-48g, opción A): cada guardado de la traza lleva su responsable
     (`Nombre <login>`, RF-82) y su hora; manda el último, como con las trazas."""
-    assert quien_guardo_el_desglose(sesion, "VIA-01") is None  # sin tablas ni guardados
+    assert quien_guardo_el_desglose(sesion, "VIA-01") is None  # sin guardados
     guardar_trazas(
         sesion, "VIA-01", [TRAZA], ahora=datetime(2026, 11, 6, 9), responsable="Ana <ana>"
     )
@@ -215,3 +215,15 @@ def test_los_bordes_que_se_aceptan_son_0_y_menos_de_100(texto: str, valor: str):
     from aplicacion.desperdicio import porcentaje_escrito
 
     assert porcentaje_escrito(texto, "En Materiales, fila 1") == Decimal(valor)
+
+
+def test_una_base_sin_las_tablas_del_desperdicio_no_tiene_desglose(tmp_path: Path):
+    """Una base que todavía no tiene las tablas (sin migrar ni guardar ninguna traza) se lee como
+    sin trazas ni responsable, sin error (revisión de Neon, nota 8)."""
+    motor = crear_motor(f"sqlite:///{(tmp_path / 'vacia.db').as_posix()}")
+    try:
+        with abrir_sesion(motor) as vacia:
+            assert quien_guardo_el_desglose(vacia, "VIA-01") is None
+            assert trazas_vigentes(vacia, "VIA-01") == []
+    finally:
+        motor.dispose()
