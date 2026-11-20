@@ -154,3 +154,81 @@ no se tocó), y una mutación del pie del PDF sobrevive porque el ancho la prote
 corregido: el aviso de «obra en USD sin series» depende ahora de si la persona eligió alguna serie (`conSeries`), no de
 que `contribucion` venga vacía, y la prueba de la demo cubre enero, el 29 de febrero y fin de mes, y cuenta las
 importaciones.
+
+## Sprint 1120b (2026-11-20)
+
+Eugenio estuvo presente al arrancar el sprint («arrancamos con ese orden») y delegó en el orquestador «según nuestra
+metodología». Estas decisiones las tomó el orquestador con él delante, no en su ausencia: por eso **no son simuladas**
+en el sentido de la regla del 2026-10-30. Quedan **por ratificar**. El resumen del sprint no trae opciones simuladas ni
+cómo se revierte cada una; la tabla recoge cada decisión tal como quedó anotada.
+
+**Numeración.** DS-90 a DS-126. No se usaron **DS-118, DS-119, DS-123 y DS-124** (saltados). DS-103b es un subnúmero que
+anotó el orquestador. DS-115 a DS-117 estaban abiertos en el resumen como «DS-115+»; el orquestador los completó en el
+encargo final.
+
+**Dónde se tocó.** Cinco ramas, todas desde `main` 859f62b4: `feature/riesgo-mapa-guardado`,
+`feature/desperdicio-responsable`, `feature/depurar-logica-1120`, `feature/depurar-front-1120` y
+`feature/depurar-api-1120`. Unidas en `union/sprint-1120b` (punta `e7f7c2dd`).
+
+| # | Ámbito | Decisión |
+|---|---|---|
+| DS-90 | Riesgo | El mapa de series se ata a la versión. Sin mapa propio toma el último de otra versión de la misma obra, con nota. Un mapa propio vacío manda. Lo elegido a mano manda sobre lo precargado. |
+| DS-91 | Riesgo | Se guarda en ruta aparte (`PUT /v1/riesgo/mapa`) solo tras un cálculo bueno. Solo inserción: manda el último (por id). Guardar lo mismo no escribe. |
+| DS-92 | Riesgo | Lo que ya no vale se filtra y se dice. Una serie sin historia sí se precarga. Las series se validan contra la moneda al guardar (422). |
+| DS-93 | Riesgo | Solo una cuenta con `ver_riesgo` guarda; con clave de API, 403. |
+| DS-94 | Riesgo | Guardado el mapa propio, se retiran la nota de precarga y el aviso de descartados. Los PUT van en cola. El módulo se comprueba en cada ruta después del acceso. |
+| DS-95 | Desperdicio | El responsable se anota en Componer, Hoja y libro llevado. Con clave de API queda nulo. |
+| DS-96 | Desperdicio | «Quién guardó» va bajo Materiales, como texto de ayuda. |
+| DS-97 | Desperdicio | El rótulo «AF-LLAVE, material n.º 1: \<insumo\>» aparece solo en la lista de Guardar (E9). Versiones y Revisar siguen sin insumo (mejora). |
+| DS-98 | Desperdicio | Los tipos pasan a `aplicacion/hoja_desperdicio.py` y los esquemas a `api/esquemas_hoja_desperdicio.py`; `MODULOS_GRANDES` baja. |
+| DS-99 | Desperdicio | Criterio de «Aplicar sin cambios» (hallazgo A3). |
+| DS-100 | Interfaz | `DialogoAnularConteo` igual que `DialogoAnular`: sin cambio (C4). |
+| DS-101 | Interfaz | La acción en orden no sale si la última escritura falló; el error queda a la vista (C1). |
+| DS-102 | Interfaz | Aviso común `AvisoDeGuardado`: «Desglose guardado» si no hubo versión (C2). |
+| DS-103 | Interfaz | Campos deshabilitados durante la importación; el aviso se quita al cambiar algo (C3). |
+| DS-103b | Interfaz | (Orquestador) El aviso nombra la serie por su nombre legible, no por su código. |
+| DS-104 | Interfaz | `useModulos` expone `leidos`; el marco publica `undefined` hasta leer (C6). |
+| DS-105 | Lógica | El borrador en blanco también avisa de partidas sin valorar (opción A) (A7). |
+| DS-106 | Simulador | Clave `(insumo, unidad o "", tipo)`; los homónimos del mismo tipo siguen en una fila (CSV canónico) (A1). |
+| DS-107 | Control | Entre claves de valuación que casan como prefijo gana la más larga (A4). |
+| DS-108 | Planos | Sin omitidas se conservan las cifras por tabla; con omitidas, el total que entró y el omitido. |
+| DS-109 | PDF | Sin cambio de código (prueba de guarda) (A13). |
+| DS-110 | Reajuste | Cálculo previo y guardado bajo el mismo bloqueo (savepoint) y un solo reloj (B2). |
+| DS-111 | Control | Si el control al corte falla tras registrar, no se guarda nada (todo o nada). Fallo al describir la línea base = 500. |
+| DS-112 | Presupuestos | Libro roto sobre obra inexistente = 422, como DS-32 (B4). |
+| DS-113 | API | Fallo de la base = 503 fijo del manejador común (`MENSAJE_BASE`); el motor solo va al registro. En Control pasa de 422 a 503 (B8). |
+| DS-114 | Planos | Un `REC-<handle>` de una hoja anterior solo se sustituye si es del mismo punto y circuito; si no, se conservan los dos y el informe lo dice (B3). |
+| DS-115 | Reajuste | Si el cálculo abrió él mismo la transacción y falla, la deshace entera y suelta el bloqueo. Si la abrió quien llama, solo deshace su savepoint (B2). |
+| DS-116 | Índices | `GET /v1/indices/series-viales` resuelve la sesión del caso después del permiso y del módulo (B7). |
+| DS-117 | Control | `elegir_opcion` lee el código de la versión dentro de la misma escritura, antes del commit (B1). Ver la nota del escriba. |
+| DS-120 | Desperdicio | «Guardado por» solo si todo lo que se ve es lo guardado. |
+| DS-121 | Desperdicio | El borrador solo anota lo que cambia frente a la base (`anotables`). |
+| DS-122 | Desperdicio | La vista APU se relee con un contador del proveedor tras guardar solo el desglose. |
+| DS-125 | Planos | «N filas en el espacio» cuenta solo filas del plano; si no entró ninguna, se dice qué cambió (A6). |
+| DS-126 | Planos | Lo leído por el lector se separa recorriendo el informe en orden (sin duplicar `_DEL_LECTOR`). |
+
+**Arbitraje final.** El árbitro Claude xhigh dio la unión por **aprobada con correcciones**: el docstring E501 de
+`tests/integration/test_migracion_apu_desperdicio.py` y la guía de migraciones (`04180142`), y las pruebas de la fila
+«Proyectar» de F8 restauradas (`e7f7c2dd`).
+
+**Declarado sin arreglar.** Lo que no se arregló, con su motivo, está en
+[la bitácora de la auditoría del 2026-11-20](auditoria-agy-2026-11-20.md) y en [ESTADO §5](../ESTADO.md) («Declarado
+fuera de alcance»).
+
+**Aclaraciones del orquestador** (no son decisiones):
+
+- **DS-117 y el veredicto B1.** El verificador vio que `elegir` no reabre la transacción porque `SesionDeEscrituraDep`
+  fija `expire_on_commit=False` y lo leído sale del mapa de identidad. La revisión de Neon de la rama (nota 8) mostró que
+  eso depende de esa opción; con una sesión que expira lo leído al confirmar, la ruta sí reabría (rojo b1a607dd). DS-117
+  quita esa dependencia: es robustez, no el defecto de B1.
+- **DS-75.** El 2026-11-19 se eligió B y la A quedó «como mejora». Este sprint hace esa mejora, solo en la lista de
+  Guardar (DS-97); Versiones y Revisar siguen con B.
+- **A5 (patrón de DS-58).** Arreglado en `feature/depurar-logica-1120` (rojo e115e8d4, verde c0e61c57) en
+  `aplicacion/elaboracion.py` y `aplicacion/hoja_vial.py`; `libro_a_la_hoja.py` ya lo tenía desde DS-58. El árbitro
+  anotó (NOTA 5) que el patrón está copiado en esos tres sitios: un ayudante común queda como mejora opcional.
+- **A13.** El verificador lo confirmó en parte; el constructor midió que el PDF sale idéntico byte a byte con o sin
+  sanear, así que no hay defecto y queda una prueba de guarda (DS-109).
+- **Commit `534b382f`** (`feature/depurar-logica-1120`): el shell interpretó unas comillas invertidas y la frase quedó
+  «El resumen de la fusión pasa a ,». Sin reescribir la historia: decisión de Eugenio.
+- **§5.7 de ESTADO.** «PDF de este APU» (`frontend-desktop/src/paginas/hoja/BotonPdf.tsx`) y `_codigo_libro`
+  (`aplicacion/libro_a_la_hoja.py:82`) ya están en el árbol: se quitaron de §5.7.

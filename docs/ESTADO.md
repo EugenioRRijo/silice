@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-19 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-20 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -50,6 +50,7 @@ instalador con huella SHA-256 firmada.
 | PR o rama | Qué trae | Estado |
 |---|---|---|
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
+| `union/sprint-1120b` (punta `e7f7c2dd`) | Unión de cinco ramas del sprint 1120b, con el re-encadenado de la migración 0024 sobre la 0023 y las correcciones del árbitro (`04180142`, `e7f7c2dd`): `feature/riesgo-mapa-guardado` (Riesgo recuerda por versión la serie que mueve cada insumo; migración 0023), `feature/desperdicio-responsable` (quién guardó el desglose; migración 0024), `feature/depurar-logica-1120`, `feature/depurar-front-1120` y `feature/depurar-api-1120` (hallazgos de la auditoría de Neon del 2026-11-20) | **Por subir**: sin push ni PR. Las ramas sueltas no traen el re-encadenado de la 0024: se fusiona la unión, no ellas. Fusión solo con autorización de Eugenio |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
 autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada tarea de la tanda tuvo su árbol
@@ -220,6 +221,14 @@ subir nada.
    **Probado en vivo el 2026-11-18** ([bitácora](bitacora/2026-11-18-prueba-en-vivo.md)): A.6, C9 y P7 funcionan en el
    navegador. La prueba de todas las ventanas dejó hallazgos que se arreglan en las ramas `feature/vivo-*` (§2) y otros
    que esperan una decisión (bitácora, §4).
+15. **Sprint 1120b (2026-11-20; Eugenio presente al arrancar y delegó «según nuestra metodología»)**: las decisiones
+   DS-90 a DS-126 del [acta](bitacora/2026-11-17-decisiones-simuladas.md) quedan **por ratificar**. El resumen del sprint no
+   trae cómo se revierte cada una. Hay dos puntos que confirmar: DS-75 (§5.8: la opción A se aplicó solo en la lista de
+   Guardar) y DS-117 (`elegir_opcion`, que la auditoría de Neon dio por falsa para el reabrir la transacción). Además:
+   - **Hook `block-libros-al-repo`:** dispara en falso con `sed` y `grep` de solo lectura. Hay que revisar la regla
+     (`.claude/hookify.*.local.md`). Mientras, leer con Read o Grep en vez de rodear el bloqueo.
+   - **Commit `534b382f`** (`feature/depurar-logica-1120`): el cuerpo del mensaje tiene una frase cortada («El resumen de
+     la fusión pasa a ,»). Reescribir la historia espera decisión de Eugenio.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
@@ -269,30 +278,45 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
 7. **Lo que dejó la ola 2** (bitácoras de cada línea, §4; [árbitro](bitacora/arbitrajes/ola2-claude-xhigh.md)):
    expedientes de `core/` propuestos, no aplicados (aval del tutor): `Catalogo.cargar_composicion` y la colección de
    precios de la lista en la misma sesión (línea 3, hoy esquivado en `aplicacion/libro_a_la_hoja.py`), y el saldo por
-   renglón de las valuaciones (`origen_id` en `LineaValuacion` y `PartidaBase`, línea 1 §8). Mejoras anotadas: el
-   botón «PDF de este APU» en la pestaña APU (la ruta ya lo admite), guardar `_codigo_libro` en el renglón llevado, y la
+   renglón de las valuaciones (`origen_id` en `LineaValuacion` y `PartidaBase`, línea 1 §8). Mejora anotada: la
    defensa de `patron_banda` sigue siendo una heurística (lo peor que acepta es cúbico).
 8. **Lo que dejaron los anexos, A.6 y A.9** (2026-11-18, actas DS-52, DS-57 y DS-48):
    - **Hecho el 2026-11-19** (tanda técnica, acta DS-67 a DS-76): DS-52 (los `Decimal` de `api/rutas/` pasan por
      `exacto`), DS-57 (las rutas arman su respuesta antes del `commit`; aprobaciones escribe su índice después, sin
      retener la carpeta), el botón «Guardar el desglose…» de la franja y de Versiones, el rótulo «AF-LLAVE, material
-     n.º 1» y el manual. Queda de A.6: una traza sin responsable necesita una migración de `casos/*.db`, y mostrar la
-     descripción del insumo en el rótulo cambia el contrato de la API (DS-75).
+     n.º 1» y el manual. **Hecho en el sprint 1120b** (2026-11-20, `feature/desperdicio-responsable`): DS-48g, quién guardó el desglose
+     (migración `caso_0024_desperdicio_responsable`), y DS-75 en su opción A, el insumo en el rótulo, solo en la lista de
+     Guardar (DS-97). Queda como mejora: «Versiones» y «Revisar» siguen sin el insumo. El acta de 2026-11-19 había elegido
+     la opción B para DS-75: por ratificar.
    - **4.4, L5 y L7:** entran en el próximo recongelado del experimento.
    - **Ola 5:** salir de los ciclos, con `Catalogo.rendimiento_vigente` en `core/`. Espera el aval del tutor.
 9. **Ola del 2026-11-19** (acta DS-77 a DS-89): **hecho** el botón «Descargar PDF» del Visor, con una línea que dice qué
    baja (manual §12.2; Eugenio lo conservó y pidió ese nombre), la carga de las series viales en Índices del BCV (manual §9.4) con el enlace desde Riesgo, y la obra de la
-   demostración con asfalto y gasoil, cuyas series se siembran corridas hasta el mes anterior (manual §10.6). Quedan
-   como mejora: guardar en el caso qué serie mueve cada insumo (DS-81, necesita migración) y, si Eugenio quiere ver más
-   movimiento en Riesgo, una obra aparte para él (hoy la reserva de la demo es pequeña, unos 74 USD, para no
+   demostración con asfalto y gasoil, cuyas series se siembran corridas hasta el mes anterior (manual §10.6). **Hecho en el sprint 1120b**
+   (2026-11-20, `feature/riesgo-mapa-guardado`, DS-90 a DS-94): el caso guarda por versión la serie que mueve cada insumo
+   (migración `caso_0023_riesgo_mapa`). Queda como mejora, si Eugenio quiere ver más movimiento en Riesgo, una obra aparte para él (hoy la reserva de la demo es pequeña, unos 74 USD, para no
    desequilibrar Control).
+
+### Declarado fuera de alcance (sprint 1120b, 2026-11-20)
+
+- Tildes en `adapters/espacio/planos/`: el módulo entero va sin tildes.
+- JPEG del aviso de imágenes (B5): el relleno `0xFF` y los marcadores sin longitud desincronizan el lector y la escala de
+  la imagen se pierde al exportar. El cero ya no da 500; esto es la parte opcional.
+- Carrera estrecha entre `GET /insumos` y un guardado en vuelo de Riesgo.
+- `aplicacion/revision.py` ronda las 979 líneas; el tope de la guardia es 1000.
+- El patrón de DS-58 (A5) quedó copiado en `aplicacion/elaboracion.py`, `aplicacion/hoja_vial.py` y
+  `aplicacion/libro_a_la_hoja.py` (nota 5 del árbitro): un ayudante común es una mejora opcional.
+- Sin cambio de código por decisión: DS-100 (C4, cerrar el diálogo de anular conteo) y DS-109 (A13, prueba de guarda).
+- Sin cambio por ser falso positivo: A10, B9 y C7 de la auditoría del 2026-11-20.
 
 ## 6. Auditorías en paralelo
 
 Cuando otro agente (por ejemplo, Antigravity) audita a la vez, sus hallazgos van a
 `bitacora/auditoria-agy-AAAA-MM-DD.md` y el orquestador escribe al lado el veredicto (confirmado,
 falso positivo o ya resuelto en una rama). Lista abierta:
-[bitacora/auditoria-agy-2026-11-04.md](bitacora/auditoria-agy-2026-11-04.md).
+[bitacora/auditoria-agy-2026-11-04.md](bitacora/auditoria-agy-2026-11-04.md) y
+[bitacora/auditoria-agy-2026-11-20.md](bitacora/auditoria-agy-2026-11-20.md) (Neon sobre el diff `5f910132..main`, con los
+diez detalles del 2026-11-04 resueltos).
 
 En la otra dirección, el orquestador le encarga trabajo a Antigravity con el subagente
 `silice-antigravity` (`.claude/agents/silice-antigravity.md`), que llama a
