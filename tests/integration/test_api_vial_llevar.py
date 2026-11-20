@@ -22,6 +22,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
+from dataclasses import replace
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -38,7 +39,7 @@ from aplicacion import hoja_borradores, hoja_sin_valorar, hoja_vial
 from core import models
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import Dominio
-from core.contracts.apu import ComposicionAPU, LineaMaterial
+from core.contracts.apu import ComposicionAPU, LineaMaterial, ParametrosCosto
 from operacion import config
 from operacion.base_datos import preparar_base
 from operacion.instalacion import sesion_de_instalacion
@@ -341,8 +342,11 @@ def test_si_falla_el_borrador_nuevo_que_otra_pestana_toco_antes_del_cerrojo_no_s
     assert _importar(ana, MUESTRA.read_bytes()).status_code == 200
     assert _borradores(navegador) == []
 
-    def otra_pestana(vivo: hoja_borradores.BorradorVivo) -> None:
-        hoja_borradores.reemplazar(vivo.huella, vivo.id, vivo.borrador, vivo.rev)
+    otros = ParametrosCosto(utilidad=Decimal("0.20"))
+
+    def otra_pestana(vivo: hoja_borradores.BorradorVivo) -> None:  # cambia los porcentajes
+        nuevo = replace(vivo.borrador, parametros=otros)
+        hoja_borradores.reemplazar(vivo.huella, vivo.id, nuevo, vivo.rev)
 
     def sin_valorar(*_args, **_kwargs):
         raise hoja_sin_valorar.PartidasSinValorar("Una partida quedaría pendiente.")
@@ -354,6 +358,8 @@ def test_si_falla_el_borrador_nuevo_que_otra_pestana_toco_antes_del_cerrojo_no_s
     assert respuesta.status_code == 409, respuesta.text
     assert len(creados) == 1
     assert [(b["id"], b["rev"]) for b in _borradores(navegador)] == [(creados[0].id, 1)]
+    vivo = creados[0]
+    assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.parametros == otros
 
 
 # --- la versión que se ve es la del borrador (ronda 2) --------------------------------------------
