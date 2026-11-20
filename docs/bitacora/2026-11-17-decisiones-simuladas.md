@@ -162,7 +162,7 @@ metodología». Estas decisiones las tomó el orquestador con él delante, no en
 en el sentido de la regla del 2026-10-30. Quedan **por ratificar**. El resumen del sprint no trae opciones simuladas ni
 cómo se revierte cada una; la tabla recoge cada decisión tal como quedó anotada.
 
-**Numeración.** DS-90 a DS-126. No se usaron **DS-118, DS-119, DS-123 y DS-124** (saltados). DS-103b es un subnúmero que
+**Numeración.** DS-90 a DS-127. No se usaron **DS-118, DS-119, DS-123 y DS-124** (saltados). DS-103b es un subnúmero que
 anotó el orquestador. DS-115 a DS-117 estaban abiertos en el resumen como «DS-115+»; el orquestador los completó en el
 encargo final.
 
@@ -206,6 +206,7 @@ encargo final.
 | DS-122 | Desperdicio | La vista APU se relee con un contador del proveedor tras guardar solo el desglose. |
 | DS-125 | Planos | «N filas en el espacio» cuenta solo filas del plano; si no entró ninguna, se dice qué cambió (A6). |
 | DS-126 | Planos | Lo leído por el lector se separa recorriendo el informe en orden (sin duplicar `_DEL_LECTOR`). |
+| DS-127 | Paquete | `apu_desperdicio_guardado` (con `responsable` desde `caso_0024`) no viaja en el paquete: va entre `TABLAS_QUE_NO_VIAJAN`, como las de MP-7, sin cambiar lo que hoy se exporta. Hacerla viajar sería un anexo propio (decisión aparte). Salió de la suite completa de la unión. |
 
 **Arbitraje final.** El árbitro Claude xhigh dio la unión por **aprobada con correcciones**: el docstring E501 de
 `tests/integration/test_migracion_apu_desperdicio.py` y la guía de migraciones (`04180142`), y las pruebas de la fila

@@ -222,7 +222,7 @@ subir nada.
    navegador. La prueba de todas las ventanas dejó hallazgos que se arreglan en las ramas `feature/vivo-*` (§2) y otros
    que esperan una decisión (bitácora, §4).
 15. **Sprint 1120b (2026-11-20; Eugenio presente al arrancar y delegó «según nuestra metodología»)**: las decisiones
-   DS-90 a DS-126 del [acta](bitacora/2026-11-17-decisiones-simuladas.md) quedan **por ratificar**. El resumen del sprint no
+   DS-90 a DS-127 del [acta](bitacora/2026-11-17-decisiones-simuladas.md) quedan **por ratificar**. El resumen del sprint no
    trae cómo se revierte cada una. Hay dos puntos que confirmar: DS-75 (§5.8: la opción A se aplicó solo en la lista de
    Guardar) y DS-117 (`elegir_opcion`, que la auditoría de Neon dio por falsa para el reabrir la transacción). Además:
    - **Hook `block-libros-al-repo`:** dispara en falso con `sed` y `grep` de solo lectura. Hay que revisar la regla
