@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from aplicacion.composicion import ComposicionInvalida
 from aplicacion.desperdicio import (
+    GuardadoDelDesglose,
     TrazaDesperdicio,
     aplicar_desperdicio,
     cantidad_con_desperdicio,
@@ -27,6 +28,7 @@ from aplicacion.desperdicio import (
     guardar_trazas,
     leyenda,
     neta_y_porcentaje,
+    quien_guardo_el_desglose,
     trazas_de_las_filas,
     trazas_vigentes,
 )
@@ -130,6 +132,44 @@ def test_las_trazas_se_guardan_y_manda_el_ultimo_guardado(sesion: Session):
     guardar_trazas(sesion, "VIA-01", [], ahora=datetime(2026, 11, 6, 10))
     sesion.commit()
     assert trazas_vigentes(sesion, "VIA-01") == []
+
+
+def test_el_guardado_dice_quien_lo_hizo_y_cuando(sesion: Session):
+    """Mejora de A.6 (acta DS-48g, opción A): cada guardado de la traza lleva su responsable
+    (`Nombre <login>`, RF-82) y su hora; manda el último, como con las trazas."""
+    assert quien_guardo_el_desglose(sesion, "VIA-01") is None  # sin tablas ni guardados
+    guardar_trazas(
+        sesion, "VIA-01", [TRAZA], ahora=datetime(2026, 11, 6, 9), responsable="Ana <ana>"
+    )
+    sesion.commit()
+    assert quien_guardo_el_desglose(sesion, "VIA-01") == GuardadoDelDesglose(
+        "Ana <ana>", datetime(2026, 11, 6, 9)
+    )
+    assert quien_guardo_el_desglose(sesion, "OTRA") is None
+    guardar_trazas(
+        sesion, "VIA-01", [TRAZA], ahora=datetime(2026, 11, 6, 10), responsable="Rita <rita>"
+    )
+    sesion.commit()
+    assert quien_guardo_el_desglose(sesion, "VIA-01") == GuardadoDelDesglose(
+        "Rita <rita>", datetime(2026, 11, 6, 10)
+    )
+
+
+def test_un_guardado_sin_responsable_lo_dice_con_nulo(sesion: Session):
+    """Lo guardado antes de la columna (o por la clave de API, sin cuenta) no sabe quién fue."""
+    guardar_trazas(sesion, "VIA-01", [TRAZA], ahora=datetime(2026, 11, 6, 9))
+    sesion.commit()
+    assert quien_guardo_el_desglose(sesion, "VIA-01") == GuardadoDelDesglose(
+        None, datetime(2026, 11, 6, 9)
+    )
+
+
+def test_un_guardado_sin_lineas_no_tiene_desglose_que_atribuir(sesion: Session):
+    """Guardar sin desperdicio deja la partida sin traza vigente: no hay desglose de quién."""
+    guardar_trazas(sesion, "VIA-01", [TRAZA], ahora=datetime(2026, 11, 6, 9), responsable="A <a>")
+    guardar_trazas(sesion, "VIA-01", [], ahora=datetime(2026, 11, 6, 10), responsable="B <b>")
+    sesion.commit()
+    assert quien_guardo_el_desglose(sesion, "VIA-01") is None
 
 
 def _por_fila(filas, trazas) -> list[tuple[int, str]]:
