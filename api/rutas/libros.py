@@ -549,8 +549,8 @@ UsuarioDep = Annotated[str, Depends(_usuario)]
 
 
 def _ahora() -> datetime:
-    """La hora en que queda la fila del historial. Solo la usa el historial: el informe nunca
-    depende del reloj (misma petición, misma respuesta)."""
+    """La hora en que queda la fila del historial y la fecha de emisión del PDF de hallazgos. La
+    auditoría nunca depende del reloj (misma petición, misma respuesta)."""
     return datetime.now().replace(microsecond=0)
 
 

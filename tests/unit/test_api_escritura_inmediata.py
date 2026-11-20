@@ -86,6 +86,7 @@ SOLO_LEEN_EL_CASO: dict[tuple[str, str], str] = {
     ("POST", "/v1/auditorias"): "audita el documento enviado",
     ("POST", "/v1/libros/auditoria"): "guarda el resultado en instalacion.db, no en el caso",
     ("POST", "/v1/libros/devolucion"): "devuelve el libro anotado",
+    ("POST", "/v1/libros/auditoria/pdf"): "el informe de la auditoria en PDF; no guarda nada",
     ("POST", "/v1/simulador"): "simula sobre la lista, en memoria",
     ("POST", "/v1/simulador/csv"): "la misma simulacion, en CSV",
     ("POST", "/v1/similares"): "propone partidas parecidas",

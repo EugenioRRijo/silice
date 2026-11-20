@@ -53,6 +53,22 @@ body {
   border-block-end: 1px solid var(--silice-divisor);
 }
 
+// El boton del PDF de hallazgos, a la derecha y debajo de la franja; su aviso de error ocupa el ancho entero.
+.visor__descarga {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0;
+
+  // el aviso de error baja debajo del boton y ocupa el ancho entero, sin apretarlo
+  .silice-descarga {
+    justify-items: end;
+    max-inline-size: 100%;
+  }
+}
+
 .visor__fecha {
   flex: none;
   inline-size: 20rem;

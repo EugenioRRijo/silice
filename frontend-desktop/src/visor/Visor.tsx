@@ -21,6 +21,7 @@ import { ControlZoomHoja } from "./ControlZoomHoja";
 import { UniverGrid } from "./UniverGrid";
 import { useAtajosZoom, useZoomHoja } from "./useZoomHoja";
 import { CampoTexto } from "../comun/CampoTexto";
+import { DescargaArchivo } from "../comun/DescargaArchivo";
 
 // Univer es pesado: se baja en un archivo aparte y solo cuando hay un libro que dibujar.
 const crearHojaUniver: CrearHojaVisor = (contenedor, libro, zoomInicial) =>
@@ -341,6 +342,25 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
           partidasConOmision={auditoria.partidas_con_omision}
           rotuloMeta="Según Sílice"
         />
+      )}
+
+      {/* El informe de hallazgos en PDF (decision P2): el servidor lo dibuja con el mismo libro y la fecha con la que se
+          audito lo que se ve. Solo hay boton cuando hay resultado; la `key` es el resultado (libro y fecha): con otro resultado el
+          boton arranca limpio y no arrastra el error de antes. */}
+      {fase === "listo" && auditoria && archivo && (
+        <div className="visor__descarga">
+          <DescargaArchivo
+            key={`${auditoria.libro.sha256}-${auditoria.fecha_devolucion ?? fecha}`}
+            ruta="/v1/libros/auditoria/pdf"
+            metodo="POST"
+            cuerpo={cuerpoDeLibro(archivo, auditoria.fecha_devolucion ?? fecha)}
+            etiqueta="Descargar PDF de hallazgos"
+            nombrePorOmision="hallazgos.pdf"
+            alExpirar={alExpirar}
+            kind="tertiary"
+            size="sm"
+          />
+        </div>
       )}
 
       {ranuraCabecera === undefined && <div className="visor__barra">{controles}</div>}
