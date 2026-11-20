@@ -24,6 +24,7 @@ from aplicacion.control_comun import (
     NO_DISPONIBLE,
     _indice,
     _monto,
+    _valuacion_del_hallazgo,
 )
 from aplicacion.control_corte import ultimo_corte
 from aplicacion.impuestos import ResumenImpuestos, con_iva
@@ -48,26 +49,6 @@ from core.verification.texto import formatear_decimal
 _ORDEN = {"ERROR": 3, "ADVERTENCIA": 2, "INFO": 1}
 
 
-_PREFIJO_VALUACION = "valuacion:"
-
-
-def valuacion_del_hallazgo(origen_ids: Sequence[str], claves: Sequence[str]) -> str | None:
-    """La clave de la valuación que cita un hallazgo de R13-R14, o `None` si no cita ninguna.
-
-    El núcleo cita `valuacion:<clave>` o `valuacion:<clave>:<código>`; un R13 de una partida no
-    programada cita solo el origen de la partida, sin ese prefijo. La clave se coteja contra las
-    valuaciones registradas (`claves`) porque puede llevar «:» por dentro («VAL:01»): casa entera o
-    seguida de «:», y entre dos que casan gana la más larga."""
-    for origen in origen_ids:
-        if not origen.startswith(_PREFIJO_VALUACION):
-            continue
-        resto = origen.removeprefix(_PREFIJO_VALUACION)
-        casan = [c for c in claves if resto == c or resto.startswith(f"{c}:")]
-        if casan:
-            return max(casan, key=len)
-    return None
-
-
 def estado_de_valuaciones(resultado: ResultadoControl) -> dict[str, str]:
     """Por clave de valuación, el peor hallazgo de R13-R14 (columna Estado, como RF-55). Un
     hallazgo que no cita una valuación registrada (R13 de una partida no programada) no marca
@@ -75,7 +56,7 @@ def estado_de_valuaciones(resultado: ResultadoControl) -> dict[str, str]:
     claves = [v.clave for v in resultado.instantanea.valuaciones]
     peores: dict[str, tuple[int, str]] = {}
     for hallazgo in resultado.informe.hallazgos:
-        clave = valuacion_del_hallazgo(hallazgo.origen_ids, claves)
+        clave = _valuacion_del_hallazgo(hallazgo.origen_ids, claves)
         if clave is None:
             continue
         rango = _ORDEN.get(hallazgo.severidad.name, 0)
