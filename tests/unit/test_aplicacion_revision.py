@@ -598,3 +598,31 @@ def test_la_ultima_recibida_solo_se_formatea_si_la_cola_es_un_dia_iso() -> None:
     assert revision.banner_de_version(corta, fecha=revision.fecha_es).endswith(
         "de esta obra: versión 004 del 2026-1."
     )
+
+
+@pytest.mark.parametrize(
+    "campos",
+    [
+        {"proyecto": None},
+        {"proyecto": ""},
+        {"proyecto": "   "},
+        {"proyecto": {"x": 1}},
+        {"codigo": None},
+        {"paquete_id": 5},
+    ],
+    ids=["obra_nula", "obra_vacia", "obra_en_blanco", "obra_objeto", "codigo_nulo", "id_numero"],
+)
+def test_un_manifiesto_con_obra_codigo_o_id_que_no_son_texto_es_rechazado(mundo, campos) -> None:
+    """Hallazgo 12 (2026-11-20): un manifiesto manipulado con la obra nula o vacía (o el código o
+    el identificador que no son texto) no se registra bajo «None» ni bajo «»: es «rechazado» con el
+    mensaje de los datos mínimos."""
+    datos = con_manifiesto(paquete(par=PAR, presupuesto=_documento(), anexos={}), **campos)
+    a = _analizar(mundo, datos)
+    v = a.recibido.verificacion
+    assert (v.estado, v.detalle) == (
+        "rechazado",
+        "El manifiesto o la cadena no traen los datos mínimos de un paquete.",
+    )
+    assert a.reauditoria is None and a.recibido.paquete_id == 0
+    caso, _, _ = mundo
+    assert caso.execute(select(paq.paq_recibido)).all() == []
