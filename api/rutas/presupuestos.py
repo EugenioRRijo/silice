@@ -50,7 +50,7 @@ from api.esquemas_ola2 import (
     RevaloracionRespuesta,
     exigir_codigo,
 )
-from api.rutas.listas import _elegidos, comprobar_libro_legible
+from api.rutas.listas import SUFIJOS_EXCEL, _elegidos, comprobar_libro_legible
 from api.rutas.presupuestos_ayudas import (
     _QUIEN_EDITA,
     MAX_PENDIENTES_CON_PROPUESTAS,
@@ -89,7 +89,6 @@ from core.budget import (
     importar_presupuesto,
     leer_presupuesto_tabular,
 )
-from core.budget.importacion import SUFIJOS_IMPORTABLES
 from core.catalog import Catalogo, CatalogoIncompleto, insumos_desconocidos
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
@@ -272,8 +271,10 @@ def importar_presupuesto_de_tercero(
     """
     with tempfile.TemporaryDirectory() as directorio:
         ruta = guardar_subida(directorio, archivo)
-        if ruta.suffix.lower() not in SUFIJOS_IMPORTABLES:
-            leer_presupuesto_tabular(ruta)  # rechaza el sufijo con su mensaje, sin leer nada
+        # los sufijos importables del núcleo son los de Excel (`SUFIJOS_IMPORTABLES`); sin
+        # entrar al núcleo por dentro, el rechazo y su mensaje son los de `leer_presupuesto_tabular`
+        if ruta.suffix.lower() not in SUFIJOS_EXCEL:
+            leer_presupuesto_tabular(ruta)  # rechaza el sufijo antes de leer nada
         comprobar_libro_legible(ruta)
         destino = _proyecto(sesion, proyecto)
         try:
