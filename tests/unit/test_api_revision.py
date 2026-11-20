@@ -365,6 +365,17 @@ def test_quien_revisa_y_figura_como_emisor_ve_el_aviso() -> None:
     )
 
 
+def test_un_paquete_rechazado_por_sus_datos_minimos_no_trae_banner_de_version() -> None:
+    """Revisión del 2026-11-20: un manifiesto con el código nulo es «rechazado» (datos mínimos) y
+    el banner de versión decía «Versión None del …». Un rechazado no lo lleva."""
+    sin_firma = paquete(par=None, presupuesto=_documento(), anexos={})
+    navegador, ficha = _rita()
+    cuerpo = _subir(navegador, ficha, con_manifiesto(sin_firma, codigo=None)).json()
+    assert (cuerpo["estado"], cuerpo["legible"]) == ("rechazado", False)
+    assert cuerpo["banner_version"] is None
+    assert _filas("paq_recibido") == []
+
+
 def test_un_archivo_de_mas_del_tope_es_413_sin_guardar_nada(monkeypatch) -> None:
     monkeypatch.setattr(ruta_revision, "TOPE_PAQUETE", 10)
     navegador, ficha = _rita()
