@@ -441,10 +441,11 @@ class _Fusion:
             if antes is not None and _mismo_dueno(self.recorridos[antes], final):
                 del self.recorridos[antes]
                 estado = f"actualizado (antes {antes})"
-            elif antes is not None:
+            elif antes is not None and r.id not in self.recorridos:
+                # el aviso, solo la primera vez: al reimportar el mismo archivo ya se dio
                 estado += (
-                    f"; {antes} (de una hoja anterior, mismo handle) es de otro punto o circuito "
-                    "y se conserva"
+                    f"; {antes} (de una hoja anterior, mismo identificador en el plano) es de otro "
+                    "punto o circuito y se conserva"
                 )
             self.recorridos[r.id] = final
             nuevos[r.id] = final
