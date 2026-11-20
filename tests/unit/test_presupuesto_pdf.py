@@ -330,6 +330,17 @@ def test_un_sustituto_suelto_en_una_celda_corta_del_apu_tampoco_rompe_el_pdf():
     assert "Cemento" in "\n".join(_texto(pdf_en_bytes(documento)))
 
 
+def test_un_control_en_una_celda_corta_del_apu_sale_como_en_la_tabla_del_presupuesto():
+    """Hallazgo 13 (2026-11-20): la tabla del Presupuesto cambia un carácter de control por «�»
+    (`_limpio`); la del APU lo dejaba pasar crudo a la página (se leía un nulo en su lugar)."""
+    base = _documento(1)
+    (apu,) = base.apus
+    tabla = replace(apu.tablas[0], filas=(("Cemento", "sa" + chr(1) + "co", "7,5", "10,20"),))
+    documento = replace(base, apus=(replace(apu, tablas=(tabla, *apu.tablas[1:])),))
+    lineas = "\n".join(_texto(pdf_en_bytes(documento))).splitlines()
+    assert [ln for ln in lineas if "Cemento" in ln] == ["Cemento sa" + chr(0xFFFD) + "co 7,5 10,20"]
+
+
 def test_las_cifras_del_apu_se_leen_con_coma_decimal_y_punto_de_miles(_of001):
     """Hallazgo de Hydrogen (2026-11-13): las celdas del APU ya vienen en es-VE («1.000», «10,5»);
     leerlas con `Decimal` daba 1 por 1.000 y dejaba «10,5» sin sus dos decimales."""
