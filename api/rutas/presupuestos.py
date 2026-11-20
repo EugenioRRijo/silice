@@ -87,7 +87,9 @@ from core.budget import (
     exportar_excel,
     guardar_presupuesto,
     importar_presupuesto,
+    leer_presupuesto_tabular,
 )
+from core.budget.importacion import SUFIJOS_IMPORTABLES
 from core.catalog import Catalogo, CatalogoIncompleto, insumos_desconocidos
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
@@ -261,14 +263,17 @@ def importar_presupuesto_de_tercero(
     proyecto inexistente es 404. Un archivo que no es XLSX o está mal formado (con archivo, hoja y
     fila), un código de partida que ya está en el catálogo, un código de presupuesto repetido en el
     proyecto o una moneda distinta de la de la lista vigente a su fecha son 422, sin escribir nada.
-    El libro se inspecciona antes de la primera consulta (DS-32, DS-112): la sesión de escritura
-    toma el bloqueo en ella y nadie debe esperar la lectura de hasta 20 MiB; por eso un archivo
-    malo sobre una obra inexistente es 422, no 404. El presupuesto del tercero no tiene ítems
+    El archivo (su extensión y, si es un libro, la guardia y los topes) se inspecciona antes de la
+    primera consulta (DS-32, DS-112): la sesión de escritura toma el bloqueo en ella y nadie debe
+    esperar la lectura de hasta 20 MiB; por eso un archivo malo sobre una obra inexistente es
+    422, no 404. El presupuesto del tercero no tiene ítems
     pendientes: todo renglón trae su APU. Se declara antes de las rutas con `{codigo}` para que
     `importar` no se lea como un código.
     """
     with tempfile.TemporaryDirectory() as directorio:
         ruta = guardar_subida(directorio, archivo)
+        if ruta.suffix.lower() not in SUFIJOS_IMPORTABLES:
+            leer_presupuesto_tabular(ruta)  # rechaza el sufijo con su mensaje, sin leer nada
         comprobar_libro_legible(ruta)
         destino = _proyecto(sesion, proyecto)
         try:
