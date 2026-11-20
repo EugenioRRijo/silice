@@ -97,7 +97,14 @@ COBERTURA_MP7 = {
     "mp_precio_objetivo": _OBJETIVO,
     "mp_precio_corte": _PRECIO_DEL_CORTE,
 }
-TODA_COBERTURA = {**COBERTURA, **COBERTURA_MP7}
+#: El guardado del desglose del desperdicio (DS-48g, `caso_0024`): tampoco es de RF-82, va aparte.
+COBERTURA_DESPERDICIO = {
+    "apu_desperdicio_guardado": (
+        "tests/integration/test_api_hoja_desperdicio.py::"
+        "test_guardar_solo_el_desglose_anota_la_cuenta_de_la_sesion"
+    ),
+}
+TODA_COBERTURA = {**COBERTURA, **COBERTURA_MP7, **COBERTURA_DESPERDICIO}
 
 #: Las tablas que nombra RF-82 en la ERS (docs/ERS.md, RF-82), copiadas a mano: la lista de los
 #: metadatos no puede tener menos.
