@@ -521,6 +521,9 @@ def test_la_regla_del_computo_se_escribe_como_calculo(regla, parametros, calculo
         ("a if a else b", {"a": "1", "b": "2"}),
         ("True + 1", {}),
         ("a.real", {"a": "2"}),
+        # hallazgo 11 (2026-11-20): el exponente 0 no salta la revisión de la base
+        ("desconocido**0", {}),
+        ("f(x)**0", {"x": "2"}),
     ],
     ids=[
         "potencia_no_entera",
@@ -536,6 +539,8 @@ def test_la_regla_del_computo_se_escribe_como_calculo(regla, parametros, calculo
         "condicional",
         "booleano",
         "atributo",
+        "potencia_0_de_un_parametro_que_falta",
+        "potencia_0_de_una_funcion",
     ],
 )
 def test_una_regla_que_no_son_las_cuatro_operaciones_no_da_calculo(regla, parametros) -> None:
