@@ -218,8 +218,8 @@ describe("Series del riesgo vial", () => {
     const usuario = await elegirArchivo();
     await usuario.click(screen.getByRole("button", { name: "Importar" }));
     expect(await screen.findByText(YA_ESTABA.mensaje)).toBeInTheDocument();
-    expect(screen.queryByText("Importación")).not.toBeInTheDocument();
-    expect(screen.getByText("Ya estaba importado en CEMENTO_ASFALTICO_PPI")).toBeInTheDocument();
+    expect(screen.queryByText(/^Importación/)).not.toBeInTheDocument();
+    expect(screen.getByText("Ya estaba importado en PPI de asfalto de EE. UU. (ficticio)")).toBeInTheDocument();
     expect(llamadas("/v1/indices/series-viales")).toHaveLength(1); // no escribió nada: no hay nada que releer
     const aviso = screen.getAllByRole("status").find((e) => e.textContent?.includes("Ya estaba importado"));
     expect(aviso).toBeDefined();
@@ -246,9 +246,9 @@ describe("Series del riesgo vial", () => {
     montar();
     const usuario = await elegirArchivo();
     await usuario.click(screen.getByRole("button", { name: "Importar" }));
-    expect(await screen.findByText("Importación de CEMENTO_ASFALTICO_PPI")).toBeInTheDocument();
+    expect(await screen.findByText("Importación de PPI de asfalto de EE. UU. (ficticio)")).toBeInTheDocument();
     await usuario.selectOptions(screen.getByRole("combobox", { name: "Serie" }), "GASOIL_USD");
-    expect(screen.queryByText("Importación de CEMENTO_ASFALTICO_PPI")).not.toBeInTheDocument();
+    expect(screen.queryByText("Importación de PPI de asfalto de EE. UU. (ficticio)")).not.toBeInTheDocument();
     expect(screen.queryByText(IMPORTADA.mensaje)).not.toBeInTheDocument();
   });
 
@@ -257,7 +257,7 @@ describe("Series del riesgo vial", () => {
     montar();
     const usuario = await elegirArchivo();
     await usuario.click(screen.getByRole("button", { name: "Importar" }));
-    expect(await alertaConTexto()).toHaveTextContent("No se importó CEMENTO_ASFALTICO_PPI");
+    expect(await alertaConTexto()).toHaveTextContent("No se importó PPI de asfalto de EE. UU. (ficticio)");
     await usuario.upload(document.querySelector('input[type="file"]') as HTMLInputElement, new File(["x"], "otra.csv"));
     expect(screen.queryByText(/No se importó nada: filas rechazadas/)).not.toBeInTheDocument();
   });
