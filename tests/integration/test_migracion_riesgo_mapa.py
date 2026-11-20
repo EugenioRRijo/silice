@@ -101,9 +101,8 @@ def test_bajar_quita_solo_las_dos_tablas_y_lo_de_antes_queda(tmp_path: Path) -> 
     assert _tablas(ruta) == antes
     assert leer_estado(ruta).revision == ANTERIOR
     with closing(sqlite3.connect(ruta)) as conexion:
-        assert conexion.execute("SELECT partida_codigo FROM apu_desperdicio_guardado").fetchall() == [
-            ("P-1",)
-        ]
+        filas = conexion.execute("SELECT partida_codigo FROM apu_desperdicio_guardado").fetchall()
+    assert filas == [("P-1",)]
     aplicar_revisiones(ruta, Destino.CASO, REVISION)
     assert set(TABLAS) <= _tablas(ruta)
 

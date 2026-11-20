@@ -3,8 +3,8 @@ DS-93). Datos FICTICIOS (`tests/fixtures/riesgo_obra.py`: la obra «Vía Fictici
 con VR-001 y VR-002 y los insumos «Cemento asfáltico», «Gasoil» y «Señalización»).
 
 Oráculos a mano:
-- guardar y leer da lo mismo; guardar otra vez manda el último; guardar lo mismo que ya era el último
-  de la versión no agrega un guardado (devuelve False);
+- guardar y leer da lo mismo; guardar otra vez manda el último; guardar lo mismo que ya era el
+  último de la versión no agrega un guardado (devuelve False);
 - una versión sin mapa propio toma el último guardado de otra versión de la misma obra, y dice de
   cuál; con mapa propio (aunque esté vacío) manda el suyo;
 - precargar deja fuera, y lo dice, el insumo que la versión ya no tiene y la serie que ya no se
