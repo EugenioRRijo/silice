@@ -1,6 +1,7 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { InlineLoading } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { ErrorDeApi } from "../../api/cliente";
 import { comprobarObra, proyectarObra } from "../../api/riesgo";
 import type {
@@ -18,7 +19,8 @@ import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
 import { useCarga } from "../../comun/useCarga";
-import { CAMPOS_INICIALES, ROTULOS, SIN_INICIO, leerCampos, pideLaFechaDeInicio, rutaDelInformeDeRiesgo } from "./logica";
+import { CAMPOS_INICIALES, ROTULOS, SIN_INICIO, faltaCargarSeries, leerCampos, pideLaFechaDeInicio, rutaDelInformeDeRiesgo } from "./logica";
+import { rutaOPendientes } from "../../marco/espacios";
 import type { Campos } from "./logica";
 import { MejoraDeLaEstimacion } from "./MejoraDeLaEstimacion";
 import { CamposDeProyectar, ParametrosDelRiesgo } from "./ParametrosDelRiesgo";
@@ -41,7 +43,7 @@ function rutaDeInsumos(proyecto: string, version: string): string {
 // la pantalla solo lee lo tecleado (coma decimal, punto de miles) y escribe lo que llega en centésimas. Al pie, la
 // mejora de la estimación (Tarea 15), que no lee la obra: se ofrece aunque no haya una abierta.
 export default function RiesgoDeLaObra() {
-  const { nombreProyecto, alExpirar } = useAplicacion();
+  const { nombreProyecto, alExpirar, sesion } = useAplicacion();
   const nombre = nombreProyecto ?? null;
   const versiones = useCarga<VersionesRespuesta>(nombre === null ? null : rutaDeVersiones(nombre), alExpirar);
   const ofrecidas = versiones.estado === "listo" ? versionesOfrecidas(versiones.datos.versiones) : [];
@@ -236,6 +238,14 @@ export default function RiesgoDeLaObra() {
           {errorVisible !== null && (
             <div ref={cajaDelError} tabIndex={-1}>
               <AvisoError error={errorVisible} titulo="No se pudo calcular el riesgo" />
+              {/* Falta una serie: quien administra los precios la carga en «Índices del BCV» (sin permiso la API diría 403). */}
+              {faltaCargarSeries(errorVisible) && sesion.acciones.includes("administrar_precios") && (
+                <p className="riesgo-nota cds--type-body-compact-01">
+                  <Link className="cds--link" to={rutaOPendientes("indices")}>
+                    Cargar las series en Índices del BCV
+                  </Link>
+                </p>
+              )}
             </div>
           )}
           {proyeccion.estado === "listo" && (

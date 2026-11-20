@@ -126,7 +126,8 @@ empresa; cada fila lo dice en su columna `fuente`. Sirven para la forma, no para
 Formato: el CSV canónico de series (`serie,fecha,valor,provisional,fuente`; punto decimal; fecha `AAAA-MM-DD`,
 primer día del mes). El PPI se declara **índice** (proxy internacional, solo se usa su variación mensual); el gasoil
 es una serie en **escalones** (precio administrado, «a cotejar en la Gaceta»). Las series reales se importan solo
-en local, nunca al repositorio.
+en local, nunca al repositorio. Desde la interfaz, este archivo se carga en «Índices del BCV», sección «Series del
+riesgo vial»: una vez por cada serie (elija la serie y suba el mismo `.csv`).
 
 La demostración (`start.py`, carpeta `obra_control`) importa esta muestra en Riesgo **corrida en meses enteros**
 para que su último mes sea el anterior al del día en que se siembra (`start.series_viales_corridas`): los valores no

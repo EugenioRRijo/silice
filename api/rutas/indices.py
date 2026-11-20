@@ -16,6 +16,11 @@ administrador) con sesión o clave de API y trabajan sobre el caso de la sesión
   de un contrato en USD. `ver` no escribe y trae una muestra de la cuenta (primer y último mes);
   `confirmar` exige la huella que `ver` devolvió (409 si los datos cambiaron).
 
+- `GET /series-viales` y `POST /series-viales/importar` (multipart): las dos series de precios del
+  riesgo vial (`aplicacion.riesgo.series.SERIES_VIALES`) con su historia cargada, y la importación
+  de una de ellas desde su CSV canónico (todo o nada; el mismo archivo dos veces no escribe nada).
+  Piden además el módulo «Riesgo» encendido (404 si no): son los datos que ese módulo proyecta.
+
 Sin estado en el servidor: el informe no se guarda entre «leer» y «confirmar»; el cliente reenvía
 el archivo y la ruta lo vuelve a leer, así que lo que se guarda es siempre lo que el archivo dice.
 El contenido de lo que se sube nunca se confía: el nombre se reduce a su último componente válido
@@ -30,8 +35,10 @@ es SIEMPRE la persona de la sesión (RF-82), nunca el formulario.
 
 from __future__ import annotations
 
+import csv
 import json
 import tempfile
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 from typing import Annotated
@@ -44,15 +51,17 @@ from adapters.bcv.informe import InformeImportacion
 from adapters.bcv.libro import LIMITE_BYTES
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.lector import comprobar_topes_del_libro
+from api.acceso_modulos import ModuloRiesgo
 from api.admin_acceso import administrar
 from api.archivos import nombre_seguro
 from api.dependencias import SesionDeEscrituraDep, SesionDep
-from api.presentacion import cifra_presentada
+from api.presentacion import cifra_presentada, exacto_sin_ceros
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
 from aplicacion import indices as logica
 from aplicacion import indices_usd
 from aplicacion.cifras import texto_de_cifra
+from aplicacion.riesgo import series as series_viales
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
@@ -65,7 +74,16 @@ MENSAJE_EXTENSION = "Solo se aceptan archivos .xls, .xlsx o .csv."
 MENSAJE_SIN_NOMBRE = "El archivo subido no trae un nombre utilizable"
 MENSAJE_DEFINICIONES = "Las definiciones de las series no tienen la forma esperada."
 MENSAJE_HUELLA = "El archivo no es el que se leyó; léalo de nuevo antes de confirmar."
+MENSAJE_SOLO_CSV = "Solo se acepta un archivo .csv."
+MENSAJE_SIN_FUENTE = "Escriba la fuente: de dónde bajó la serie."
+MENSAJE_FUENTE_CON_CONTROL = "La fuente no puede llevar caracteres de control."
+MENSAJE_SERIE_NO_VIAL = "Esa no es una serie vial: elija {opciones}."
+MENSAJE_YA_ESTABA = (
+    "Ya estaba importado: este archivo ya se cargó antes para esta serie; no se escribió nada."
+)
 EXTENSIONES = [".xls", ".xlsx", ".csv"]
+MAXIMO_HISTORIA_VIAL = 240  # los últimos valores de cada serie; el total viaja aparte
+MAXIMO_DETALLE_VIAL = 1500
 MAXIMO_RECHAZOS = 500  # el informe cuenta todos; la lista que viaja se acota
 MAXIMO_MENSAJE = 500
 MAXIMO_DEFINICIONES = 50
@@ -146,13 +164,49 @@ def _lee_xls() -> bool:
         return True
 
 
-def _corto(error: object) -> str:
+def _corto(error: object, maximo: int = MAXIMO_MENSAJE) -> str:
     texto = str(error)
-    return texto if len(texto) <= MAXIMO_MENSAJE else texto[: MAXIMO_MENSAJE - 1] + "…"
+    return texto if len(texto) <= maximo else texto[: maximo - 1] + "…"
 
 
 def _no_importa(motivo: object) -> HTTPException:
     return HTTPException(422, f"No se importo nada: {_corto(motivo)}")
+
+
+def _no_importo_vial(motivo: object) -> HTTPException:
+    """Un 422 de las series viales: lo que dice el lector o la importación, en una frase."""
+    if isinstance(motivo, series_viales.FilasRechazadasError):
+        motivo = f"filas rechazadas: {motivo.detalle}"
+    texto = _corto(motivo, MAXIMO_DETALLE_VIAL)
+    punto = "" if texto.endswith(".") else "."
+    return HTTPException(422, f"No se importó nada: {texto}{punto}", headers=SIN_CACHE)
+
+
+def _subida(
+    archivo: UploadFile,
+    extensiones: list[str],
+    mensaje_extension: str,
+    no_importa: Callable[[object], HTTPException],
+    palabra_limite: str = "limite",
+) -> tuple[str, bytes]:
+    """Lo que se subió: su nombre reducido a un componente válido y su contenido, con tope de
+    tamaño. 422 con los mensajes de la pantalla si no tiene nombre, la extensión no es de las
+    admitidas o pesa de más."""
+    try:
+        nombre = nombre_seguro(archivo.filename)
+    except ValueError:
+        raise HTTPException(422, MENSAJE_SIN_NOMBRE, headers=SIN_CACHE) from None
+    if Path(nombre).suffix.lower() not in extensiones:
+        raise HTTPException(422, mensaje_extension, headers=SIN_CACHE)
+    archivo.file.seek(0, 2)
+    tamano = archivo.file.tell()
+    archivo.file.seek(0)
+    if tamano > LIMITE_BYTES:
+        raise no_importa(
+            f"{nombre}: pesa {tamano / 2**20:.1f} MB; "
+            f"el {palabra_limite} es {LIMITE_BYTES // 2**20} MB"
+        )
+    return nombre, archivo.file.read(LIMITE_BYTES + 1)
 
 
 def _leer_archivo(
@@ -161,20 +215,7 @@ def _leer_archivo(
     """Guarda la subida en una carpeta temporal y la lee. 422 con los mensajes de la pantalla."""
     if tipo not in logica.TIPOS:
         raise HTTPException(422, MENSAJE_TIPO)
-    try:
-        nombre = nombre_seguro(archivo.filename)
-    except ValueError:
-        raise HTTPException(422, MENSAJE_SIN_NOMBRE) from None
-    if Path(nombre).suffix.lower() not in EXTENSIONES:
-        raise HTTPException(422, MENSAJE_EXTENSION)
-    archivo.file.seek(0, 2)
-    tamano = archivo.file.tell()
-    archivo.file.seek(0)
-    if tamano > LIMITE_BYTES:
-        raise _no_importa(
-            f"{nombre}: pesa {tamano / 2**20:.1f} MB; el limite es {LIMITE_BYTES // 2**20} MB"
-        )
-    contenido = archivo.file.read(LIMITE_BYTES + 1)
+    nombre, contenido = _subida(archivo, EXTENSIONES, MENSAJE_EXTENSION, _no_importa)
     try:
         if nombre.lower().endswith(".xlsx"):
             verificar_archivo(contenido, nombre)
@@ -296,6 +337,157 @@ def confirmar(
             f"No se pudo escribir en el caso: {_corto(motor or 'error de base')}",
         ) from None
     return ConfirmacionRespuesta(mensajes=mensajes)
+
+
+# --- Las series del riesgo vial (cemento asfáltico y gasoil) ------------------------------
+
+
+class ObservacionVialRespuesta(BaseModel):
+    fecha: date
+    valor: str = Field(description="El valor exacto, con punto decimal.")
+    provisional: bool
+
+
+class SerieVialRespuesta(BaseModel):
+    codigo: str
+    nombre: str
+    organismo: str
+    unidad: str
+    periodicidad: str
+    observaciones: int
+    desde: str
+    hasta: str
+    historia: list[ObservacionVialRespuesta]
+    omitidas: int = Field(description="Valores más antiguos que no viajan (solo los últimos).")
+
+
+class SeriesVialesRespuesta(BaseModel):
+    series: list[SerieVialRespuesta]
+    responsable: str
+
+
+class ImportacionVialRespuesta(BaseModel):
+    serie: str
+    importada: bool
+    observaciones: int | None
+    desde: date | None
+    hasta: date | None
+    mensaje: str
+
+
+def _serie_vial(serie: series_viales.SerieVialCargada) -> SerieVialRespuesta:
+    definicion, cargadas = serie.definicion, serie.observaciones
+    visibles = cargadas[-MAXIMO_HISTORIA_VIAL:]
+    return SerieVialRespuesta(
+        codigo=definicion.codigo,
+        nombre=definicion.nombre,
+        organismo=definicion.organismo,
+        unidad=definicion.unidad,
+        periodicidad=definicion.periodicidad,
+        observaciones=len(cargadas),
+        desde=cargadas[0].fecha.isoformat() if cargadas else "",
+        hasta=cargadas[-1].fecha.isoformat() if cargadas else "",
+        historia=[
+            ObservacionVialRespuesta(
+                fecha=o.fecha, valor=exacto_sin_ceros(o.valor), provisional=o.provisional
+            )
+            for o in visibles
+        ],
+        omitidas=len(cargadas) - len(visibles),
+    )
+
+
+@router.get("/series-viales", response_model=SeriesVialesRespuesta)
+def leer_series_viales(
+    sesion: SesionDep,
+    activa: Annotated[SesionActiva | None, ADMINISTRAR],
+    _modulo: ModuloRiesgo,
+    response: Response,
+) -> SeriesVialesRespuesta:
+    """Las series viales con su definición y su historia cargada. No escribe nada."""
+    response.headers.update(SIN_CACHE)
+    return SeriesVialesRespuesta(
+        series=[_serie_vial(s) for s in series_viales.series_viales_cargadas(sesion)],
+        responsable="" if activa is None else activa.usuario,
+    )
+
+
+def _mensaje_de_importacion(cuantos: int, desde: date, hasta: date) -> str:
+    if cuantos == 1:
+        return f"Se importó 1 valor, el {desde:%d/%m/%Y}."
+    return f"Se importaron {cuantos} valores del {desde:%d/%m/%Y} al {hasta:%d/%m/%Y}."
+
+
+@router.post("/series-viales/importar", response_model=ImportacionVialRespuesta)
+def importar_serie_vial(
+    sesion: SesionDeEscrituraDep,
+    activa: Annotated[SesionActiva, SOLO_CUENTA],
+    _modulo: ModuloRiesgo,
+    serie: Annotated[str, Form(max_length=40)],
+    archivo: Annotated[UploadFile, File()],
+    fecha_descarga: Annotated[date, Form()],
+    fuente: Annotated[str, Form(max_length=500)],
+    response: Response,
+) -> ImportacionVialRespuesta:
+    """Importa SOLO la serie elegida del CSV canónico: todo o nada, y el mismo archivo dos veces
+    no escribe nada. El responsable es la persona de la sesión (RF-82)."""
+    response.headers.update(SIN_CACHE)
+    codigos = [s.codigo for s in series_viales.SERIES_VIALES]
+    if serie not in codigos:
+        raise HTTPException(
+            422, MENSAJE_SERIE_NO_VIAL.format(opciones=" o ".join(codigos)), headers=SIN_CACHE
+        )
+    fuente = fuente.strip()
+    if not fuente:
+        raise HTTPException(422, MENSAJE_SIN_FUENTE, headers=SIN_CACHE)
+    if any(ord(c) < 32 or ord(c) == 127 for c in fuente):
+        raise HTTPException(422, MENSAJE_FUENTE_CON_CONTROL, headers=SIN_CACHE)
+    nombre, contenido = _subida(archivo, [".csv"], MENSAJE_SOLO_CSV, _no_importo_vial, "límite")
+    try:
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = Path(carpeta) / nombre
+            ruta.write_bytes(contenido)
+            importacion = series_viales.importar_serie_csv(
+                sesion,
+                serie,
+                ruta,
+                fuente=fuente,
+                responsable=activa.usuario,  # RF-82: siempre la persona de la sesión
+                hoy=fecha_descarga,
+            )
+        if importacion is None:
+            sesion.rollback()
+            return ImportacionVialRespuesta(
+                serie=serie,
+                importada=False,
+                observaciones=None,
+                desde=None,
+                hasta=None,
+                mensaje=MENSAJE_YA_ESTABA,
+            )
+        cuantos, desde, hasta = series_viales.resumen_de_importacion(sesion, importacion)
+        if desde is None or hasta is None:  # una importación sin valores no se guarda
+            raise ValueError("el archivo no trae valores de la serie")
+        sesion.commit()
+    except (ValueError, csv.Error) as error:  # filas rechazadas, serie ausente, CSV ilegible...
+        sesion.rollback()
+        raise _no_importo_vial(error) from None
+    except SQLAlchemyError as error:
+        sesion.rollback()
+        motor = getattr(error, "orig", None)
+        raise HTTPException(
+            503,
+            f"No se pudo escribir en el caso: {_corto(motor or 'error de base')}",
+            headers=SIN_CACHE,
+        ) from None
+    return ImportacionVialRespuesta(
+        serie=serie,
+        importada=True,
+        observaciones=cuantos,
+        desde=desde,
+        hasta=hasta,
+        mensaje=_mensaje_de_importacion(cuantos, desde, hasta),
+    )
 
 
 # --- Un índice en USD (RF-214) ------------------------------------------------------------

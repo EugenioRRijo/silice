@@ -30,6 +30,14 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   [bitácora de la prueba en vivo](bitacora/2026-11-18-prueba-en-vivo.md)). La suite de la unión de los cuatro dio
   13.333 pruebas de Python y 4.621 del front en verde (tras corregir dos pruebas viejas); CI verde en Ubuntu y Windows
   en cada PR. `main` queda en `7c6a3d6e`.
+- **Estado y tanda técnica del 2026-11-19** (PR #128 a #132, fusionados por Claude con la autorización de Eugenio:
+  «fusiona el #128 y sigue con lo que puedes hacer sin mí» y «cuando terminen abre los PR y fusionalos»): esta página
+  (#128), la deuda de presentación DS-52 y DS-57 (#129), el pulido de la prueba en vivo (#130), anular el último conteo
+  físico (#131) y las escrituras de la instalación con `BEGIN IMMEDIATE` por ruta, con el acta DS-67 a DS-76 (#132).
+  CI verde en Ubuntu y Windows en cada PR. `main` queda en `e085ad64`.
+- **Ola del 2026-11-19** (PR #133 a #135, fusionados por Claude con la misma autorización: «sigue con lo siguiente
+  cuando terminen»): «Descargar PDF de hallazgos» en el Visor (#133), Riesgo en la obra de la demo (#134) y la carga de
+  las series viales en Índices del BCV, con la unión de la ola y el acta DS-77 a DS-89 (#135).
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
@@ -201,8 +209,12 @@ subir nada.
    2026-11-19, DS-67 a DS-76 (escrituras de la instalación con `BEGIN IMMEDIATE` solo en las rutas que deciden, cifras
    exactas sin notación científica, respuestas armadas antes del `commit`, índice de aprobaciones sin retener la carpeta,
    anular el último conteo físico, mezcla de mezclas en orden topológico, gráficos en el orden de su tabla, rótulo del
-   desglose y fechas de las tablas). El Word «Decisiones pendientes de Eugenio - 2026-11-19.docx» de su Escritorio
-   reúne todo lo que espera su respuesta.
+   desglose y fechas de las tablas), y las de la ola del 2026-11-19, DS-77 a DS-89 (PDF de hallazgos re-auditando el
+   libro, sin fila en el historial, en el Visor y con el reloj del servidor; series de la demo corridas hasta el mes
+   anterior y con poco asfalto y gasoil; carga de las series viales dentro de Índices, en un paso, una serie por
+   archivo, con el módulo Riesgo y fuente y fecha obligatorias). El Word «Decisiones pendientes de Eugenio -
+   2026-11-19.docx» de su Escritorio reúne todo lo que espera su respuesta. La P2 de ese Word partía de una premisa
+   falsa: el PDF de hallazgos no existía y se construyó entero (acta DS-77).
 
    **Probado en vivo el 2026-11-18** ([bitácora](bitacora/2026-11-18-prueba-en-vivo.md)): A.6, C9 y P7 funcionan en el
    navegador. La prueba de todas las ventanas dejó hallazgos que se arreglan en las ramas `feature/vivo-*` (§2) y otros
@@ -267,6 +279,12 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
      descripción del insumo en el rótulo cambia el contrato de la API (DS-75).
    - **4.4, L5 y L7:** entran en el próximo recongelado del experimento.
    - **Ola 5:** salir de los ciclos, con `Catalogo.rendimiento_vigente` en `core/`. Espera el aval del tutor.
+9. **Ola del 2026-11-19** (acta DS-77 a DS-89): **hecho** el botón «Descargar PDF de hallazgos» del Visor (manual
+   §12.2), la carga de las series viales en Índices del BCV (manual §9.4) con el enlace desde Riesgo, y la obra de la
+   demostración con asfalto y gasoil, cuyas series se siembran corridas hasta el mes anterior (manual §10.6). Quedan
+   como mejora: guardar en el caso qué serie mueve cada insumo (DS-81, necesita migración) y, si Eugenio quiere ver más
+   movimiento en Riesgo, una obra aparte para él (hoy la reserva de la demo es pequeña, unos 74 USD, para no
+   desequilibrar Control).
 
 ## 6. Auditorías en paralelo
 

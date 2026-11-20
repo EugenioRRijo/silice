@@ -186,10 +186,12 @@ def meses_completos(
     ]
 
 
-#: Dónde se carga cada serie que interviene (prueba en vivo del 2026-11-18, hallazgo 4). Las viales
-#: no tienen todavía una página: se importan desde su CSV canónico (`series.importar_serie_csv`).
+#: Dónde se carga cada serie que interviene (prueba en vivo del 2026-11-18, hallazgo 4). La tasa y
+#: las dos viales se cargan en la misma página; las viales, en su propia sección.
 DONDE_SE_CARGA_LA_TASA = "que se carga en la página «Índices del BCV»"
-DONDE_SE_CARGA_UNA_VIAL = "que se importa desde su CSV canónico"
+DONDE_SE_CARGA_UNA_VIAL = (
+    "que se carga en la página «Índices del BCV», sección «Series del riesgo vial»"
+)
 
 
 def _nombre_de_serie(codigo: str) -> str:

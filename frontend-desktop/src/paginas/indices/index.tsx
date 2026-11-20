@@ -28,6 +28,7 @@ import type { Confirmacion, Contexto, Definicion, Informe, Lectura } from "./log
 import "./indices.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { EnUsd } from "./EnUsd";
+import { SeriesViales } from "./SeriesViales";
 
 type CargaContexto =
   | { tipo: "cargando" }
@@ -52,7 +53,7 @@ type EstadoConfirmacion =
 // los mensajes de cada serie, que se muestran tal cual. «Confirmar» vuelve a enviar el archivo leído (la API no
 // guarda el informe entre una y otra) con su huella, y la API comprueba que sea el mismo.
 export default function PaginaIndices() {
-  const { alExpirar } = useAplicacion();
+  const { alExpirar, modulosApagados } = useAplicacion();
   const [carga, setCarga] = useState<CargaContexto>({ tipo: "cargando" });
   const [tipo, setTipo] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);
@@ -243,6 +244,9 @@ export default function PaginaIndices() {
 
       {/* RF-214: un índice mensual en bolívares expresado en USD, para el reajuste de un contrato en dólares. */}
       {contexto && <EnUsd />}
+
+      {/* Las dos series que proyecta «Riesgo de la obra»: solo si ya se sabe que el módulo de riesgo está encendido. */}
+      {contexto && modulosApagados !== undefined && !modulosApagados.includes("riesgo") && <SeriesViales />}
     </div>
   );
 }

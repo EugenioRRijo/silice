@@ -55,6 +55,7 @@ QUE_ESCRIBEN = [
     ("POST", "/v1/reajuste/guardar"),
     ("POST", "/v1/indices/confirmar"),
     ("POST", "/v1/indices/en-usd/confirmar"),
+    ("POST", "/v1/indices/series-viales/importar"),
     ("POST", "/v1/precios-empresa/listas"),
     ("POST", "/v1/precios-empresa/referencia"),
     ("PUT", "/v1/vial/tramos"),
