@@ -613,10 +613,10 @@ def test_la_ultima_recibida_solo_se_formatea_si_la_cola_es_un_dia_iso() -> None:
     ids=["obra_nula", "obra_vacia", "obra_en_blanco", "obra_objeto", "codigo_nulo", "id_numero"],
 )
 def test_un_manifiesto_con_obra_codigo_o_id_que_no_son_texto_es_rechazado(mundo, campos) -> None:
-    """Hallazgo 12 (2026-11-20): un manifiesto manipulado con la obra nula o vacía (o el código o
-    el identificador que no son texto) no se registra bajo «None» ni bajo «»: es «rechazado» con el
-    mensaje de los datos mínimos."""
-    datos = con_manifiesto(paquete(par=PAR, presupuesto=_documento(), anexos={}), **campos)
+    """Hallazgo 12 (2026-11-20): un paquete sin firma (legible, con su cadena) cuyo manifiesto trae
+    la obra nula o vacía, o el código o el identificador que no son texto, se registraba bajo
+    «None» o «»; ahora es «rechazado» con el mensaje de los datos mínimos y no se registra."""
+    datos = con_manifiesto(paquete(presupuesto=_documento(), anexos={}), **campos)
     a = _analizar(mundo, datos)
     v = a.recibido.verificacion
     assert (v.estado, v.detalle) == (
