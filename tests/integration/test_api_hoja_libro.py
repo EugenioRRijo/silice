@@ -47,6 +47,7 @@ from core.contracts.apu import ParametrosCosto
 from operacion import config
 from operacion.base_datos import preparar_base
 from tests.fixtures.carpeta_aprobaciones import OBRA, guardar_version, sembrar_vivienda
+from tests.fixtures.carrera import con_cerrojo_que_cambia
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.hoja_versiones_api import registrar_tasa_en
@@ -910,42 +911,6 @@ def test_llevar_el_libro_consulta_el_caso_fuera_del_bucle_de_eventos(
 # un hilo lo pide desde fuera y antes de tomarlo, hace lo que haría esa otra petición.
 
 
-class _CerrojoQueCambia:
-    """El `RLock` del borrador; la primera toma desde fuera corre antes `entretanto`."""
-
-    def __init__(self, entretanto) -> None:
-        import threading
-
-        self._de_verdad = threading.RLock()
-        self._entretanto = entretanto
-
-    def __enter__(self):
-        if self._entretanto is not None:
-            hacer, self._entretanto = self._entretanto, None
-            hacer()
-        self._de_verdad.acquire()
-        return self
-
-    def __exit__(self, *_exc) -> None:
-        self._de_verdad.release()
-
-
-def _con_cerrojo_que_cambia(monkeypatch: pytest.MonkeyPatch, entretanto) -> list:
-    """Los borradores que se crean llevan `_CerrojoQueCambia(entretanto(vivo))`; devuelve la lista
-    de los creados."""
-    creados: list = []
-    de_verdad = hoja_borradores.crear
-
-    def crear(*args, **kwargs):
-        vivo = de_verdad(*args, **kwargs)
-        vivo.cerrojo = _CerrojoQueCambia(lambda: entretanto(vivo))
-        creados.append(vivo)
-        return vivo
-
-    monkeypatch.setattr(hoja_borradores, "crear", crear)
-    return creados
-
-
 def _en_via(escribir) -> None:
     """Escribe en la obra sin versiones con otra conexión y confirma (otra petición)."""
     motor = crear_motor(f"sqlite:///{(config.carpeta_casos() / 'via.db').as_posix()}")
@@ -989,7 +954,7 @@ def test_lo_que_cambio_antes_del_cerrojo_se_vuelve_a_mirar_bajo_el(
     """La elección vio la obra sin versiones y en Bs; bajo el cerrojo ya no lo está: 409, el
     borrador nuevo se descarta y el catálogo no recibe ningún APU del libro."""
     navegador, _ = ana
-    creados = _con_cerrojo_que_cambia(monkeypatch, lambda _vivo: _en_via(entretanto))
+    creados = con_cerrojo_que_cambia(monkeypatch, lambda _vivo: _en_via(entretanto))
     r = _llevar(ana)
     assert len(creados) == 1
     assert r.status_code == 409, r.text
@@ -1011,7 +976,7 @@ def test_si_falla_el_borrador_nuevo_que_otro_toco_antes_del_cerrojo_no_se_descar
         nuevo = replace(vivo.borrador, parametros=otros)
         hoja_borradores.reemplazar(vivo.huella, vivo.id, nuevo, vivo.rev)
 
-    creados = _con_cerrojo_que_cambia(monkeypatch, otra_peticion)
+    creados = con_cerrojo_que_cambia(monkeypatch, otra_peticion)
     with monkeypatch.context() as m:
         _que_falle(m)
         r = _llevar(ana)

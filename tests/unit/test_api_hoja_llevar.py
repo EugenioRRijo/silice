@@ -21,6 +21,7 @@ import shutil
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -38,10 +39,12 @@ from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion
 from aplicacion.proyectos import resolver_proyecto
 from core.catalog import abrir_sesion, crear_motor
 from core.contracts import Dominio, ItemComputo
+from core.contracts.apu import ParametrosCosto
 from core.contracts.item_computo import OrigenTipo
 from operacion import config
 from tests.fixtures.app_de_prueba import app_con
 from tests.fixtures.carpeta_bs_con_obras import CASA_USD, VIVIENDA, carpeta_en_bs
+from tests.fixtures.carrera import con_cerrojo_que_cambia
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
     MENSAJE_PERMISO,
@@ -658,3 +661,36 @@ def test_llevar_partidas_sin_precio_en_la_version_es_409_con_todas_y_no_lleva_na
     assert respuesta.json() == {"detalle": LLEVAR_SIN_PRECIO}
     assert (_resumen(navegador, id_), _filas(navegador, id_)) == antes
     assert [b["id"] for b in _borradores(navegador)] == [id_]
+
+
+def test_si_falla_el_borrador_nuevo_que_otra_pestana_toco_antes_del_cerrojo_no_se_descarta(
+    _entorno: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hallazgo 5 (la carrera de DS-58): llevar abre el borrador de la obra; antes de que tome su
+    cerrojo, otra pestaña de la misma ficha lo cambia. Si llevar falla (409, partida sin valorar),
+    el borrador queda con lo de la otra pestaña en vez de descartarse."""
+    navegador, ficha = _ana()
+    blanco = _abierto(navegador, ficha)
+    assert _agregar(navegador, ficha, blanco, 0, "OBRA-04", "140").status_code == 200
+    guardado = navegador.post(
+        f"/v1/hoja/borradores/{blanco}/guardar",
+        json={"rev": 1, "fuente": "Medicion ficticia", "codigo": "VIV-001"},
+        headers=protegida(ficha),
+    )
+    assert guardado.status_code == 200, guardado.text
+    _componer_hoy(_entorno)  # OBRA-07 sin precio en la lista de la versión: llevar da 409
+    assert _borradores(navegador) == []
+    otros = ParametrosCosto(utilidad=Decimal("0.20"))
+
+    def otra_pestana(vivo: hoja_borradores.BorradorVivo) -> None:
+        hoja_borradores.reemplazar(
+            vivo.huella, vivo.id, replace(vivo.borrador, parametros=otros), vivo.rev
+        )
+
+    creados = con_cerrojo_que_cambia(monkeypatch, otra_pestana)
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [_partida("OBRA-07", "3")])
+
+    assert respuesta.status_code == 409, respuesta.text
+    assert len(creados) == 1
+    assert [(b["id"], b["rev"]) for b in _borradores(navegador)] == [(creados[0].id, 1)]
+    assert creados[0].borrador.parametros == otros
