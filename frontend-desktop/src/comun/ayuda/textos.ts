@@ -468,6 +468,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
     parrafos: [
       "Cuánto puede subir el presupuesto si los precios se mueven como en los meses pasados: «Proyectar» simula muchas trayectorias y da el P50, el P80 y la reserva para cubrir el P80. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado.",
       "Si a una serie le falta historia, el aviso la nombra; quien administra los precios la carga en «Índices del BCV» (sección «Series del riesgo vial»).",
+      "Sílice recuerda en la obra la serie que eligió para cada insumo cuando «Proyectar» o «Comprobar hacia atrás» sale bien. Al volver, el selector viene con lo último que usó en esa versión o, si la versión no tiene nada propio, en otra versión de la obra, y la nota lo dice; lo que ya no vale (un insumo que ya no está o una serie que ya no se ofrece) no se precarga y se avisa.",
     ],
     terminos: ["p50-p80", "indices-bcv"],
   },

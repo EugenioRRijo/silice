@@ -1414,7 +1414,12 @@ precios se mueven como en los meses pasados.
    una serie no tiene historia suficiente (hacen falta al menos 12 meses completos), «Proyectar» lo dice,
    nombra la serie y cuántos meses tiene; quien administra los precios encuentra ahí el enlace «Cargar las
    series en Índices del BCV» (sección 9.4, «Series del riesgo vial»; la tasa del BCV se carga en la misma
-   página).
+   página). Sílice recuerda lo que elija: cuando «Proyectar» o «Comprobar hacia atrás» sale bien, guarda
+   en la obra la serie de cada insumo. Al volver, el selector viene precargado con lo último que usó en esa
+   versión («Precargado con las series que usó la última vez en esta versión») o, si la versión todavía no
+   tiene nada propio, en otra versión de la obra (la nota dice cuál). Un insumo que ya no está en la
+   versión o una serie que ya no se ofrece no se precarga, y una línea dice cuáles. Lo que cambie a mano
+   manda sobre lo precargado. Si no se pudo recordar, el resultado queda igual y una línea lo dice.
 4. Pulse «Proyectar». Verá «Total base», «P50», «P80» y «Reserva para cubrir el P80», y los tres insumos
    que más empujan. «Descargar el informe de riesgo» lo baja en Excel.
 5. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado (tarda cerca de medio

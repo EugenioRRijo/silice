@@ -13,6 +13,9 @@ interface Props {
   insumos: InsumosDeLaObra;
   mapa: MapaDeSeries;
   alElegirSerie: (insumo: string, serie: string) => void;
+  // De dónde viene lo precargado (DS-90) y lo recordado que no se precargó (DS-92); null si no hay nada que decir.
+  nota?: string | null;
+  aviso?: string | null;
 }
 
 const SIN_SERIE = "";
@@ -59,7 +62,7 @@ export function CamposDeProyectar({ campos, errores, alCambiar, insumos }: Props
 // Los parámetros de la proyección (D-V-3) y la serie que mueve cada insumo. Un insumo sin serie sigue a la tasa del BCV
 // en un presupuesto en Bs y queda fijo en uno en USD (lo dice el servidor en los supuestos). Las cifras se escriben con
 // punto de miles: «2.000».
-export function ParametrosDelRiesgo({ campos, errores, alCambiar, insumos, mapa, alElegirSerie }: Props): JSX.Element {
+export function ParametrosDelRiesgo({ campos, errores, alCambiar, insumos, mapa, alElegirSerie, nota = null, aviso = null }: Props): JSX.Element {
   const numero = (clave: Exclude<keyof Campos, "inicio">) => (
     <CampoTexto
       id={`riesgo-${clave}`}
@@ -84,6 +87,8 @@ export function ParametrosDelRiesgo({ campos, errores, alCambiar, insumos, mapa,
       <fieldset className="riesgo-series">
         <legend className="cds--type-heading-compact-01">Serie que mueve cada insumo</legend>
         {conSerie.length === 0 && <p className="riesgo-nota cds--type-body-compact-01">Esta versión no tiene insumos.</p>}
+        {nota !== null && <p className="riesgo-nota cds--type-helper-text-01">{nota}</p>}
+        {aviso !== null && <p className="riesgo-nota cds--type-body-compact-01">{aviso}</p>}
         {conSerie.map((insumo, i) => (
           <Select
             key={insumo}

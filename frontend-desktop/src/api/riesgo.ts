@@ -1,6 +1,7 @@
 // El riesgo de precios de una obra (`/v1/riesgo`, plan vial Tarea 16). Los montos llegan como texto decimal con punto,
 // exactos: la pantalla los redondea al presentarlos. Los parámetros de la proyección van como enteros JSON (la coma y el
-// punto de miles se leen antes de enviar, con `leerCifra`). Proyectar y comprobar no guardan nada.
+// punto de miles se leen antes de enviar, con `leerCifra`). Proyectar y comprobar no guardan nada; la serie que mueve cada
+// insumo se recuerda aparte (`guardarMapa`, mejora de la DS-81) y vuelve precargada en los insumos (`mapa_guardado`).
 import { pedir } from "./cliente";
 
 const RUTA = "/v1/riesgo";
@@ -26,10 +27,25 @@ export interface InsumosDeLaObra {
   mezclas: MezclaUsada[];
   series: SerieOfrecida[];
   inicio_linea_base: string | null;
+  // Lo último que se usó en esta versión o, sin nada propio, en otra versión de la obra (`de_version`); null si nada.
+  mapa_guardado?: MapaRecordado | null;
 }
 
 // Insumo (descripción en el APU o código del componente) -> código de la serie que lo mueve.
 export type MapaDeSeries = Record<string, string>;
+
+// Una pareja guardada que no se precargó: el insumo ya no está en la versión o su serie ya no se ofrece.
+export interface Descartado {
+  insumo: string;
+  serie: string;
+  motivo: "insumo" | "serie";
+}
+
+export interface MapaRecordado {
+  mapa: MapaDeSeries;
+  de_version: string;
+  descartados: Descartado[];
+}
 
 export interface PedidoDeProyeccion {
   proyecto: string;
@@ -97,6 +113,12 @@ export function proyectarObra(pedido: PedidoDeProyeccion): Promise<ProyeccionDeL
 // Con 500 trayectorias por corte tarda del orden de medio minuto en una obra mediana: la pantalla avisa mientras espera.
 export function comprobarObra(pedido: PedidoDeComprobacion): Promise<ComprobacionDeLaObra> {
   return pedir<ComprobacionDeLaObra>(`${RUTA}/comprobacion`, { metodo: "POST", cuerpo: pedido });
+}
+
+// Recuerda en el caso el mapa usado en la versión, para precargarlo al volver. Va aparte del cálculo (DS-91): la pantalla
+// lo manda después de una proyección o comprobación que salió bien. Solo con la sesión de una cuenta.
+export function guardarMapa(pedido: { proyecto: string; version: string; mapa: MapaDeSeries }): Promise<{ guardado: boolean }> {
+  return pedir<{ guardado: boolean }>(`${RUTA}/mapa`, { metodo: "PUT", cuerpo: pedido });
 }
 
 // El informe de mejora de la estimación (Tarea 15): las tres cifras como texto con punto decimal (la pantalla ya leyó la
