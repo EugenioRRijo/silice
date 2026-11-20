@@ -1,6 +1,6 @@
 import { FileUploaderButton, FileUploaderDropContainer, SkeletonPlaceholder, SkeletonText, Tab, Tabs } from "@carbon/react";
 import { InlineNotification, TabList } from "../comun/carbonEs";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ErrorDeApi, pedir } from "../api/cliente";
@@ -43,6 +43,10 @@ interface Props {
 type Fase = "vacio" | "cargando" | "listo";
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
+// Lo que baja «Descargar PDF», dicho junto al boton (el nombre corto lo pidio Eugenio el 2026-11-19).
+export const EXPLICACION_DEL_PDF =
+  "Un informe de esta auditoría para entregar a quien hizo el libro: los totales y cada hallazgo, con su celda y qué " +
+  "corregir. No guarda nada.";
 
 // Fecha de hoy en la zona del usuario (no en UTC: a las 8 p. m. en Caracas ya seria mañana).
 function hoyISO(): string {
@@ -109,6 +113,7 @@ function Esqueleto() {
 }
 
 export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraCabecera }: Props) {
+  const idExplicacionPdf = useId();
   const [propio] = useState(crearAlmacen);
   const alm = almacen ?? propio;
   const [guardado] = useState(() => alm.leer());
@@ -344,7 +349,9 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
         />
       )}
 
-      {/* El informe de hallazgos en PDF (decision P2): el servidor lo dibuja con el mismo libro y la fecha con la que se
+      {/* El informe de hallazgos en PDF (P2 del Word del 2026-11-19, que eligio Claude con Eugenio ausente; Eugenio la
+          conservo y pidio el nombre corto «Descargar PDF» con una linea que diga que baja): el servidor lo dibuja con el
+          mismo libro y la fecha con la que se
           audito lo que se ve. Solo hay boton cuando hay resultado; la `key` es el resultado (libro y fecha): con otro resultado el
           boton arranca limpio y no arrastra el error de antes. */}
       {fase === "listo" && auditoria && archivo && (
@@ -354,12 +361,16 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
             ruta="/v1/libros/auditoria/pdf"
             metodo="POST"
             cuerpo={cuerpoDeLibro(archivo, auditoria.fecha_devolucion ?? fecha)}
-            etiqueta="Descargar PDF de hallazgos"
+            etiqueta="Descargar PDF"
             nombrePorOmision="hallazgos.pdf"
             alExpirar={alExpirar}
             kind="tertiary"
             size="sm"
+            descripcionId={idExplicacionPdf}
           />
+          <p id={idExplicacionPdf} className="visor__descarga-nota cds--type-helper-text-01">
+            {EXPLICACION_DEL_PDF}
+          </p>
         </div>
       )}
 

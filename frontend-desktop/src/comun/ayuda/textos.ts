@@ -332,7 +332,7 @@ export const GUIAS: readonly Guia[] = [
           "Suelte el libro .xlsx en la zona de arriba y pulse «Auditar con recorrido guiado» (Sílice lo acompaña paso a paso) o «Auditar por mi cuenta».",
           "Se abre «Libro de la empresa». Revise la «Fecha de devolución»: es la fecha con la que se audita, y con la misma fecha el mismo libro da siempre el mismo resultado.",
           "Compare el total del libro con el «Según Sílice» y revise los hallazgos, de los críticos a los informativos; elija uno para ver su celda marcada en el libro. «Filtrar por severidad» deja ver solo los de una gravedad.",
-          "Si quiere llevarse el resultado, pulse «Descargar PDF de hallazgos» (a la derecha, bajo los indicadores): baja un PDF con el libro, las fechas, los totales y cada hallazgo.",
+          "Si quiere llevarse el resultado, pulse «Descargar PDF» (a la derecha, bajo los indicadores): baja un informe para entregar a quien hizo el libro, con las fechas, los totales y cada hallazgo con su celda y qué corregir.",
           "El libro no se modifica ni se guarda. El resumen y los hallazgos quedan en «Historial de auditorías», donde «Ver el detalle» los vuelve a mostrar.",
         ],
       },
@@ -523,7 +523,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
   libros: {
     titulo: "Libro de la empresa",
     parrafos: [
-      "El libro tal como es, con las celdas de cada hallazgo marcadas y, a la derecha, la lista de hallazgos por severidad: elija uno para ver su celda. La «Fecha de devolución» es la fecha con la que se audita. «Descargar PDF de hallazgos» baja el resultado en un PDF.",
+      "El libro tal como es, con las celdas de cada hallazgo marcadas y, a la derecha, la lista de hallazgos por severidad: elija uno para ver su celda. La «Fecha de devolución» es la fecha con la que se audita. «Descargar PDF» baja el resultado en un informe para entregar a quien hizo el libro.",
     ],
     guia: "auditar",
     terminos: ["libro", "hallazgo", "precio-atipico"],

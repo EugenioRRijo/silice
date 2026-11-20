@@ -1,9 +1,9 @@
-"""`POST /v1/libros/auditoria/pdf`: el informe de hallazgos de un libro en PDF (UC-25; decisión P2
-de Eugenio, 2026-11-19).
+"""`POST /v1/libros/auditoria/pdf`: el informe de hallazgos de un libro en PDF (UC-25; P2 del Word
+del 2026-11-19, elegida por Claude con Eugenio ausente y conservada por él, acta DS-77).
 
 Recibe lo mismo que `POST /v1/libros/auditoria` (el libro `.xlsx` y la `fecha_devolucion`), audita
 de nuevo con esa fecha (misma fecha, mismo resultado) y responde el PDF que dibuja
-`aplicacion.hallazgos_pdf`. Es la ruta que sirve el botón «Descargar PDF de hallazgos» del visor de
+`aplicacion.hallazgos_pdf`. Es la ruta que sirve el botón «Descargar PDF» del visor de
 «Libro de la empresa».
 
 No guarda nada: ni el libro ni el PDF (RNF-28), y tampoco deja una fila nueva en el historial: la

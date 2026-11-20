@@ -1,4 +1,5 @@
-"""El informe de hallazgos de la auditoría de un libro en PDF (decisión P2 de Eugenio, 2026-11-19).
+"""El informe de hallazgos de la auditoría de un libro en PDF (botón «Descargar PDF» del visor; P2
+del Word del 2026-11-19, elegida por Claude con Eugenio ausente y conservada por él).
 
 `pdf_de_hallazgos` dibuja un `InformeDeHallazgos` FICTICIO construido aquí. El oráculo es el texto
 que extrae pdfplumber (otra biblioteca, no la que escribe el PDF): cada cifra con coma decimal y
