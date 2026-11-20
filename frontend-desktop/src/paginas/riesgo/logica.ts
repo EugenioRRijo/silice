@@ -98,8 +98,10 @@ export function rutaDelInformeDeRiesgo(pedido: PedidoDeProyeccion): string {
   return `/v1/riesgo/reportes/riesgo?${consulta.toString()}`;
 }
 
-// La nota bajo «Serie que mueve cada insumo» cuando el selector viene precargado con lo que Sílice recordó (DS-90).
-export function notaDeLaPrecarga(recordado: MapaRecordado, version: string): string {
+// La nota bajo «Serie que mueve cada insumo» cuando el selector viene precargado con lo que Sílice recordó (DS-90); null si
+// no quedó ninguna serie que precargar (se guardó sin series o todo lo guardado se descartó).
+export function notaDeLaPrecarga(recordado: MapaRecordado, version: string): string | null {
+  if (Object.keys(recordado.mapa).length === 0) return null;
   return recordado.de_version === version
     ? "Precargado con las series que usó la última vez en esta versión."
     : `Precargado con las series que usó la última vez en la versión ${recordado.de_version}.`;
