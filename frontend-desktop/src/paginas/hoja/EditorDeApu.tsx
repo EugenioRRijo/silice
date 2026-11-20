@@ -369,12 +369,12 @@ export function EditorDeApu({
   alAceptar: (r: Resumen) => void;
   alAusente: () => void;
 }): JSX.Element {
-  const { refrescar, reabrirNuevo } = useHojaDeLaObra();
+  const { refrescar, reabrirNuevo, relecturasDelDesglose } = useHojaDeLaObra();
   // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
   const [lecturas, setLecturas] = useState(0);
   const alRelectura = useCallback(() => setLecturas((n) => n + 1), []);
   return (
-    <VistaCarga<VistaApu> ruta={rutaDeVista(borrador.id, "apu", { partida })} etiqueta="APU" alAusente={alAusente} recarga={lecturas}>
+    <VistaCarga<VistaApu> ruta={rutaDeVista(borrador.id, "apu", { partida })} etiqueta="APU" alAusente={alAusente} recarga={lecturas + relecturasDelDesglose}>
       {(vista, actualizando) =>
         vista.detalle !== null && vista.detalle.codigo === partida ? (
           <div className="silice-hoja__apu-en-panel" aria-busy={actualizando}>

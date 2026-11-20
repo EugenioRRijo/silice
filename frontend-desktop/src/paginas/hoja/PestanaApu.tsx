@@ -35,7 +35,7 @@ export function PestanaApu(props: Props) {
   const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
   const [escrito, setEscrito] = useState("");
   const [buscar, setBuscar] = useState("");
-  const { partidaElegida, elegirPartida } = useHojaDeLaObra();
+  const { partidaElegida, elegirPartida, relecturasDelDesglose } = useHojaDeLaObra();
   const partida = partidaElegida ?? undefined;
   // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
   const [lecturas, setLecturas] = useState(0);
@@ -51,7 +51,7 @@ export function PestanaApu(props: Props) {
       ruta={rutaDeVista(props.id, "apu", { partida, buscar })}
       etiqueta="APU"
       alAusente={props.alAusente}
-      recarga={lecturas}
+      recarga={lecturas + relecturasDelDesglose}
     >
       {(vista, actualizando) => (
         <>

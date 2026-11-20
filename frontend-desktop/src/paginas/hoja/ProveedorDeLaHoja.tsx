@@ -66,6 +66,9 @@ export interface HojaDeLaObra extends PestanaDeLaHoja {
   // Abre otra versión; con cambios, pregunta antes («Descartar los cambios»).
   pedirVersion: (codigo: string) => void;
   refrescar: () => Promise<void>;
+  // Sube cada vez que se guardó solo el desglose (o el servidor dijo que ya estaba guardado): la vista APU se vuelve a
+  // leer, porque el borrador sigue siendo el mismo y su línea «Desglose del desperdicio guardado por…» cambió (DS-122).
+  relecturasDelDesglose: number;
   aplicar: (r: Resumen) => void;
   reabrirNuevo: () => void;
   descartarCambios: () => Promise<void>;
@@ -187,13 +190,18 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     recargarFicha?.();
     recargarProyectos();
   }, [recargarFicha, recargarProyectos]);
+  const [relecturasDelDesglose, setRelecturasDelDesglose] = useState(0);
+  const refrescarTrasElDesglose = useCallback(async () => {
+    await refrescar();
+    setRelecturasDelDesglose((n) => n + 1);
+  }, [refrescar]);
   const { guardado, exito, quitarExito, cancelarYDevolverFoco, abrirDesdeElGuardado, alCrearVersion, devolverFocoA } = useGuardadoDeLaPagina({
     proyecto,
     id: estado.estado === "listo" ? estado.borrador.id : null,
     rev: estado.estado === "listo" ? estado.borrador.resumen.rev : 0,
     alExpirar,
     cerrarGuardado,
-    refrescarBorrador: refrescar,
+    refrescarBorrador: refrescarTrasElDesglose,
     recargarVersiones,
     olvidarOfertas,
     elegirVersion,
@@ -297,6 +305,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     existente,
     pedirVersion,
     refrescar,
+    relecturasDelDesglose,
     aplicar,
     reabrirNuevo,
     descartarCambios,

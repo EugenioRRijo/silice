@@ -263,7 +263,8 @@ export function conLineaQuitada(edicion: EdicionDeApu, grupo: string, indice: nu
 // se inventa un nombre: se dice por qué no consta.
 export function textoDelDesgloseGuardado({ responsable, fecha_hora }: DesgloseGuardado): string {
   const cuando = fechaEsVe(fecha_hora);
-  if (responsable !== null) return `Desglose del desperdicio guardado por ${responsable} el ${cuando}.`;
+  const quien = responsable?.trim() ?? "";
+  if (quien !== "") return `Desglose del desperdicio guardado por ${quien} el ${cuando}.`;
   return (
     `Desglose del desperdicio guardado el ${cuando}. No consta quién lo guardó: se guardó antes de que Sílice lo ` +
     "anotara o desde una integración sin cuenta."

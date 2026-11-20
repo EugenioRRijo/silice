@@ -62,6 +62,7 @@ __all__ = [
     "DesperdicioDeLinea",
     "GuardadoDePartida",
     "TrazasDePartida",
+    "anotables",
     "cambios_de_desglose",
     "cambios_del_borrador",
     "con_desperdicio_en_materiales",
@@ -202,9 +203,32 @@ def desglose_de_la_vista(
         )
         for fila, traza in visibles
     )
-    # `unir` deja fuera la vigente igual a una propia: la que no es propia sale de la base
-    de_la_base = any(traza not in propias for _, traza in visibles)
+    # solo si todo lo que se ve es lo guardado: una línea con un desglose del borrador aún sin
+    # guardar no es de quien guardó la base (revisión de Neon, hallazgo 2; acta DS-120)
+    de_la_base = bool(visibles) and all(traza in vigentes for _, traza in visibles)
     return lineas, guardado() if de_la_base else None
+
+
+def anotables(
+    trazas: Sequence[TrazaDesperdicio], vigentes: Sequence[TrazaDesperdicio]
+) -> tuple[TrazaDesperdicio, ...]:
+    """De las `trazas` de una edición, las que cambian algo frente a las `vigentes` de la partida:
+    un 0 % de una línea que tiene desglose en la base (se le quita) y un desglose que no es igual
+    al vigente. El navegador manda un porcentaje por material en cada «Aplicar» (también si solo
+    cambió el rendimiento): un 0 % donde la base no tiene desglose, o el mismo desglose que ya está
+    guardado, no se anota en el borrador; si se anotara, taparía lo que Componer guarde después y
+    la versión siguiente lo borraría (revisión de Neon, hallazgo 1; acta DS-121)."""
+    con_desglose = {_clave(v) for v in vigentes}
+    guardados = {(_clave(v), v.cantidad_neta, v.desperdicio_pct) for v in vigentes}
+    return tuple(
+        t
+        for t in trazas
+        if (t.desperdicio_pct.is_zero() and _clave(t) in con_desglose)
+        or (
+            not t.desperdicio_pct.is_zero()
+            and (_clave(t), t.cantidad_neta, t.desperdicio_pct) not in guardados
+        )
+    )
 
 
 def cambios_de_desglose(
