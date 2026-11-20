@@ -171,17 +171,17 @@ def _registro(fusion: hoja_plano.Fusion) -> str:
 
 
 def test_con_un_ambiente_a_mano_las_cifras_de_la_fusion_cuentan_lo_que_entro_una_vez() -> None:
-    """BAN-01 escrito a mano: se omiten el ambiente, su fuente y sus 5 puntos (7 de las 33 filas;
-    entran 26). Las filas por tabla cuentan solo la fusión: 5 ambientes, 5 fuentes, 16 puntos y
-    los 2 circuitos (antes se sumaba también lo del lector: 10, 8, 34)."""
+    """BAN-01 escrito a mano: se omiten el ambiente, sus 2 fuentes y sus 4 puntos (7 de las 33
+    filas, según la memoria; entran 26). Las filas por tabla cuentan solo la fusión: 5 ambientes,
+    4 fuentes, 17 puntos y los 2 circuitos (antes se sumaba también lo del lector: 10, 8, 34)."""
     fusion = _fusion_sobre(_a_mano_con_solo("BAN-01"))
     vista = hoja_plano.vista_de_fusion(fusion)
     por_tipo = {f["rotulo"]: f["cantidad"] for f in vista["fusion"]["por_tipo"]}
     assert (por_tipo["Importado"], por_tipo["Omitido"]) == (26, 7)
     assert vista["fusion"]["filas_por_tabla"] == [
         {"rotulo": "Ambientes", "cantidad": 5},
-        {"rotulo": "Fuentes", "cantidad": 5},
-        {"rotulo": "Puntos", "cantidad": 16},
+        {"rotulo": "Fuentes", "cantidad": 4},
+        {"rotulo": "Puntos", "cantidad": 17},
         {"rotulo": "Circuitos", "cantidad": 2},
     ]
     assert vista["mensaje"].startswith(

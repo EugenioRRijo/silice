@@ -55,6 +55,7 @@ __all__ = [
     "nueva",
     "registrar_al_guardar",
     "resumen_de_computo",
+    "cambios_de_plano",
     "resumen_de_plano",
 ]
 
@@ -95,10 +96,32 @@ def _plural(n: int, singular: str, plural: str) -> str:
     return f"{n} {singular if n == 1 else plural}"
 
 
-def resumen_de_plano(*, filas: int, sin_reconocer: int) -> str:
-    """«34 filas en el espacio; 2 sin reconocer» (lo no reconocido solo si lo hay)."""
-    texto = f"{_plural(filas, 'fila', 'filas')} en el espacio"
-    return f"{texto}; {sin_reconocer} sin reconocer" if sin_reconocer else texto
+def cambios_de_plano(*, circuitos: int = 0, desaparecidas: int = 0) -> list[str]:
+    """Lo que una fusión cambia sin traer filas: «2 circuitos nuevos», «1 fila marcada: ya no
+    está en el plano» (solo lo que hay)."""
+    cambios = []
+    if circuitos:
+        cambios.append(_plural(circuitos, "circuito nuevo", "circuitos nuevos"))
+    if desaparecidas:
+        marcadas = _plural(desaparecidas, "fila marcada: ya no está", "filas marcadas: ya no están")
+        cambios.append(f"{marcadas} en el plano")
+    return cambios
+
+
+def resumen_de_plano(
+    *, filas: int, sin_reconocer: int, circuitos: int = 0, desaparecidas: int = 0
+) -> str:
+    """«34 filas en el espacio; 2 sin reconocer» (lo no reconocido solo si lo hay). Si no entró
+    ninguna fila, lo que sí cambió: «no entró ninguna fila; 2 circuitos nuevos»
+    (`cambios_de_plano`)."""
+    if filas:
+        partes = [f"{_plural(filas, 'fila', 'filas')} en el espacio"]
+    else:
+        cambios = cambios_de_plano(circuitos=circuitos, desaparecidas=desaparecidas)
+        partes = ["no entró ninguna fila", *cambios]
+    if sin_reconocer:
+        partes.append(f"{sin_reconocer} sin reconocer")
+    return "; ".join(partes)
 
 
 def resumen_de_computo(partidas: int) -> str:

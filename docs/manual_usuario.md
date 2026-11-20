@@ -1021,7 +1021,8 @@ Un archivo `.csv` en la misma zona abre «Cargar cómputo». Los pasos y el form
 
 La tabla «Registro de importaciones» guarda cada archivo importado en la obra, con «Nombre», «Tipo»
 («Plano .dxf», «Plano .ifc» o «Cómputo .csv»), «Fecha y hora», «Quién», «Qué produjo» (por ejemplo «34
-filas en el espacio; 2 sin reconocer» o «18 partidas llevadas») y «Versión» (el código, o «sin guardar»).
+filas en el espacio; 2 sin reconocer», «no entró ninguna fila; 2 circuitos nuevos» si del plano solo
+entraron sus circuitos, o «18 partidas llevadas») y «Versión» (el código, o «sin guardar»).
 
 Haga clic en el nombre del archivo para ver su informe en el panel lateral.
 
