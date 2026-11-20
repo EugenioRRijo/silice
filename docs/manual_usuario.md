@@ -728,7 +728,7 @@ Verá «Versión guardada» y, por ejemplo, «Se guardó la versión V-005 con 3
 **Si solo cambió el desglose del desperdicio.** Cuando lo único pendiente es el desglose del desperdicio de un
 material (la misma cantidad, con otra neta y otro porcentaje, sección 4.11), el botón de la franja y el diálogo dicen
 «Guardar el desglose…» y «Guardar el desglose». Guardar el desglose no pide fuente y no crea versión: la versión abierta
-sigue siendo la misma y el aviso dice, por ejemplo, «Se guardó el desglose del desperdicio de 1 línea. La cantidad no
+sigue siendo la misma y el aviso, titulado «Desglose guardado» (en la Hoja y en Versiones), dice, por ejemplo, «Se guardó el desglose del desperdicio de 1 línea. La cantidad no
 cambió, así que la versión V-005 sigue siendo la misma.». Si además cambió alguna cantidad o rendimiento, el botón
 sigue diciendo «Guardar versión…»: nace una versión nueva con esos cambios y el desglose se guarda junto con ella.
 
