@@ -43,8 +43,8 @@ def _columnas(ruta: Path, tabla: str) -> list[tuple[str, str, bool]]:
 
 
 def test_la_revision_esta_en_la_unica_linea_del_caso() -> None:
-    """Fue la cabeza hasta que llegaron las siguientes (entre ellas `caso_0024_desperdicio_responsable`,
-    acta DS-48g)."""
+    """Fue la cabeza hasta que llegaron las siguientes (entre ellas
+    `caso_0024_desperdicio_responsable`, acta DS-48g)."""
     from operacion.base_datos import _guion
 
     guion = _guion(Destino.CASO)

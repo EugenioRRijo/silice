@@ -33,7 +33,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -75,6 +75,7 @@ from aplicacion.desperdicio import (
 )
 from aplicacion.listas_para_armar import SinListaParaArmar
 from core.contracts import Dominio, ModalidadManoObra, ParametrosCosto, ResultadoAPU
+from seguridad.sesiones import SesionActiva
 
 #: El 422 de forma de `guardar` y `prever`: fijo, sin repetir lo enviado.
 MENSAJE_FORMA_PREVER = (
@@ -498,10 +499,15 @@ def similares(
 
 @router.post("/guardar", response_model=GuardadoRespuesta, dependencies=EDITAR)
 @sin_eco(MENSAJE_FORMA_PREVER)
-def guardar(sesion: SesionDeEscrituraDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
+def guardar(
+    sesion: SesionDeEscrituraDep,
+    peticion: PeticionGuardar,
+    activa: Annotated[SesionActiva | None, EDITAR[0]],
+) -> GuardadoRespuesta:
     """Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación
     (UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del
-    desperdicio (F5 vial) se guarda en la misma transacción."""
+    desperdicio (F5 vial) se guarda en la misma transacción, con la cuenta de la sesión como su
+    responsable (acta DS-48g; con la clave de API no hay cuenta y queda en nulo)."""
     try:
         materiales, trazas = _materiales(peticion.materiales)
         parametros_pedidos = _parametros(peticion)
@@ -538,7 +544,8 @@ def guardar(sesion: SesionDeEscrituraDep, peticion: PeticionGuardar) -> Guardado
         )
     # la hora solo fecha el rastro de la traza; no entra en ninguna cifra
     ahora = datetime.now().replace(microsecond=0)
-    guardar_trazas(sesion, peticion.codigo.strip(), trazas, ahora=ahora)
+    responsable = activa.usuario if activa is not None else None
+    guardar_trazas(sesion, peticion.codigo.strip(), trazas, ahora=ahora, responsable=responsable)
     sesion.commit()
     return GuardadoRespuesta(
         precio_unitario=resultado.precio_unitario,

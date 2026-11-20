@@ -229,6 +229,13 @@ export interface DesperdicioDeApu {
   porcentaje: string;
 }
 
+// Acta DS-48g: quién guardó el desglose del desperdicio que se ve de la base y cuándo (ISO del servidor). `responsable`
+// («Nombre <login>») es null si no consta: lo guardado antes de anotarlo o desde una integración sin cuenta.
+export interface DesgloseGuardado {
+  responsable: string | null;
+  fecha_hora: string;
+}
+
 export interface DetalleApu {
   codigo: string;
   descripcion: string;
@@ -242,6 +249,8 @@ export interface DetalleApu {
   // F5 vial: la neta, el porcentaje y la traza de desperdicio por fila de Materiales (desde 1),
   // escritos por el servidor.
   desperdicios: DesperdicioDeApu[];
+  // Ausente o null: ninguna línea muestra un desglose guardado (o todas muestran el del borrador, aún sin guardar).
+  desglose_guardado?: DesgloseGuardado | null;
 }
 
 export interface VistaApu {

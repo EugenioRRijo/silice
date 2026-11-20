@@ -9,7 +9,8 @@ edita la neta y el porcentaje, nunca el producto (riesgo del diseño §12), como
   borrador (`BorradorVivo.desperdicios`, en memoria): editar no escribe en la base, y descartar el
   borrador no deja nada.
 - **Al mirar**, la vista usa primero las trazas del borrador y después las vigentes de la base
-  (`unir`), con la misma regla de emparejado de siempre (descripción, unidad y cantidad).
+  (`unir`), con la misma regla de emparejado de siempre (descripción, unidad y cantidad), y dice
+  quién guardó el desglose de la base que muestra (`desglose_de_la_vista`, acta DS-48g).
 - **Al guardar la versión** (`guardar_con_la_version`, en la misma transacción que la versión), la
   traza del borrador que sigue casando con su línea se escribe como un guardado nuevo de la
   partida, **unida a las vigentes** (`por_guardar`): la traza vive por código de partida, así que
@@ -29,7 +30,7 @@ nunca se muestra un desglose falso.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -37,9 +38,10 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm import Session
 
 from aplicacion import hoja
-from aplicacion.cifras import BLANCOS
+from aplicacion.cifras import BLANCOS, texto_de_cifra
 from aplicacion.composicion import ComposicionInvalida
 from aplicacion.desperdicio import (
+    GuardadoDelDesglose,
     TrazaDesperdicio,
     cantidad_con_desperdicio,
     guardar_trazas,
@@ -57,10 +59,14 @@ if TYPE_CHECKING:
 __all__ = [
     "CAMPO_DESGLOSE",
     "MENSAJE_DESPERDICIOS",
+    "DesperdicioDeLinea",
+    "GuardadoDePartida",
+    "TrazasDePartida",
     "cambios_de_desglose",
     "cambios_del_borrador",
     "con_desperdicio_en_materiales",
     "cuantos_desgloses",
+    "desglose_de_la_vista",
     "desgloses_visibles",
     "es_de_desglose",
     "guardar_con_la_version",
@@ -82,6 +88,25 @@ MENSAJE_DESPERDICIOS = (
 CAMPO_DESGLOSE = "desperdicio"
 
 _CERO = Decimal(0)
+
+#: Las trazas vigentes del desperdicio de una partida, por su código (la ruta las lee de la base
+#: del caso con `aplicacion.desperdicio.trazas_vigentes`).
+TrazasDePartida = Callable[[str], Sequence[TrazaDesperdicio]]
+#: Quién guardó el desglose vigente de una partida, por su código (la ruta lo lee de la base del
+#: caso con `aplicacion.desperdicio.quien_guardo_el_desglose`).
+GuardadoDePartida = Callable[[str], GuardadoDelDesglose | None]
+
+
+@dataclass(frozen=True, slots=True)
+class DesperdicioDeLinea:
+    """La neta y el porcentaje de desperdicio de una fila de Materiales (desde 1), «0,50 + 4 %»
+    (F5 vial, punto 1). La cantidad de la fila ya los incluye: esto solo la explica. `neta` y
+    `porcentaje`, con coma decimal, son lo que siembra los campos de la Hoja (2026-11-13)."""
+
+    fila: int
+    texto: str
+    neta: str
+    porcentaje: str
 
 
 def con_desperdicio_en_materiales(
@@ -155,6 +180,31 @@ def desgloses_visibles(
     """El número de fila (desde 1) y la traza de cada fila de materiales que la Hoja muestra con
     desglose: las `propias` del borrador antes que las `vigentes` de la partida (`unir`)."""
     return trazas_de_las_filas(filas, unir(propias, vigentes))
+
+
+def desglose_de_la_vista(
+    filas: Sequence[Mapping[str, str]],
+    propias: Sequence[TrazaDesperdicio],
+    vigentes: Sequence[TrazaDesperdicio],
+    guardado: Callable[[], GuardadoDelDesglose | None],
+) -> tuple[tuple[DesperdicioDeLinea, ...], GuardadoDelDesglose | None]:
+    """Lo que la pestaña APU dice del desperdicio de las `filas` de materiales: la neta y el
+    porcentaje de cada una con desglose (`desgloses_visibles`) y quién guardó el de la base
+    (`guardado`, que solo se lee entonces) si alguna muestra uno de las `vigentes`. Si todas
+    muestran el del borrador, aún sin guardar, no hay responsable que decir (acta DS-48g)."""
+    visibles = desgloses_visibles(filas, propias, vigentes)
+    lineas = tuple(
+        DesperdicioDeLinea(
+            fila,
+            neta_y_porcentaje(traza),
+            texto_de_cifra(traza.cantidad_neta),
+            texto_de_cifra(traza.desperdicio_pct),
+        )
+        for fila, traza in visibles
+    )
+    # `unir` deja fuera la vigente igual a una propia: la que no es propia sale de la base
+    de_la_base = any(traza not in propias for _, traza in visibles)
+    return lineas, guardado() if de_la_base else None
 
 
 def cambios_de_desglose(
@@ -253,16 +303,22 @@ def por_guardar(
 
 
 def guardar_con_la_version(
-    sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador, *, ahora: datetime
+    sesion: Session,
+    vivo: BorradorVivo,
+    borrador: hoja.Borrador,
+    *,
+    ahora: datetime,
+    responsable: str,
 ) -> dict[str, list[TrazaDesperdicio]]:
-    """Escribe en `sesion` las trazas del borrador que `por_guardar` pide y las devuelve por
-    partida. **Sin `commit`**: va en la transacción de la versión (`hoja_guardado`), o sola si
-    solo cambió el desglose (anexo A.6), y quien guarda confirma o deshace todo junto."""
+    """Escribe en `sesion` las trazas del borrador que `por_guardar` pide, con su `responsable` (la
+    cuenta de la sesión, acta DS-48g), y las devuelve por partida. **Sin `commit`**: va en la
+    transacción de la versión (`hoja_guardado`), o sola si solo cambió el desglose (anexo A.6), y
+    quien guarda confirma o deshace todo junto."""
     pendientes = por_guardar(
         borrador, vivo.desperdicios, lambda codigo: trazas_vigentes(sesion, codigo)
     )
     for codigo, trazas in pendientes.items():
-        guardar_trazas(sesion, codigo, trazas, ahora=ahora)
+        guardar_trazas(sesion, codigo, trazas, ahora=ahora, responsable=responsable)
     return pendientes
 
 

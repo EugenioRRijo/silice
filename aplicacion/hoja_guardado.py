@@ -213,7 +213,8 @@ def guardar(
         elif codigo is not None:
             raise HojaInvalida(CODIGO_SOLO_PRIMERA)
         elif _solo_desglose(vivo, borrador):
-            return _desglose(sesion, vivo, borrador, confirmar_version_mas_nueva)  # sigue abierto
+            # sigue abierto
+            return _desglose(sesion, vivo, borrador, responsable, confirmar_version_mas_nueva)
         else:
             guardado = _version(
                 sesion, vivo, borrador, fuente, responsable, confirmar_version_mas_nueva
@@ -248,7 +249,9 @@ def _version(
             vivo, borrador, hoja_desperdicio.vigentes_de_la_base(sesion, vivo)
         )
         # 2026-11-13: las trazas del desperdicio que dejo la Hoja, en esta misma transaccion
-        hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
+        hoja_desperdicio.guardar_con_la_version(
+            sesion, vivo, borrador, ahora=_ahora(), responsable=responsable
+        )
         with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
             guardada = hoja.guardar_version(
                 sesion, Catalogo(sesion), abierta, borrador, fuente=fuente, responsable=responsable
@@ -298,7 +301,7 @@ def _cuantos_desgloses(
 
 
 def _desglose(
-    sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador, confirmar: bool
+    sesion: Session, vivo: BorradorVivo, borrador: hoja.Borrador, responsable: str, confirmar: bool
 ) -> Guardado:
     """Escribe las trazas del borrador sin crear version (anexo A.6): la version abierta, el
     `rev` y el borrador quedan como estaban, salvo la cuenta de cambios, que se vacia. Si al
@@ -320,7 +323,9 @@ def _desglose(
                 raise DesgloseSobreVersionMasNueva(mas_nueva, abierta.codigo)
         de_la_base = hoja_desperdicio.vigentes_de_la_base(sesion, vivo)
         desgloses = _cuantos_desgloses(vivo, borrador, de_la_base)
-        escritas = hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
+        escritas = hoja_desperdicio.guardar_con_la_version(
+            sesion, vivo, borrador, ahora=_ahora(), responsable=responsable
+        )
         guardo = bool(desgloses and escritas)
         if guardo:
             sesion.commit()
@@ -389,7 +394,9 @@ def _primera(
         except hoja.ApuSinPreciosDeLaLista as error:
             raise SinListaDeLaObra(str(error)) from None
         borrador, aviso_del_plan = _con_plan_que_cabe(sesion, borrador, lista)
-        hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
+        hoja_desperdicio.guardar_con_la_version(
+            sesion, vivo, borrador, ahora=_ahora(), responsable=responsable
+        )
         with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
             guardada = hoja.crear_primera_version(
                 sesion,

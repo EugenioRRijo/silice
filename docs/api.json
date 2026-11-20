@@ -3760,7 +3760,7 @@
           "composicion"
         ],
         "summary": "Guardar",
-        "description": "Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación\n(UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del\ndesperdicio (F5 vial) se guarda en la misma transacción.",
+        "description": "Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación\n(UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del\ndesperdicio (F5 vial) se guarda en la misma transacción, con la cuenta de la sesión como su\nresponsable (acta DS-48g; con la clave de API no hay cuenta y queda en nulo).",
         "operationId": "guardar_v1_composicion_guardar_post",
         "requestBody": {
           "content": {
@@ -18547,6 +18547,33 @@
         ],
         "title": "Desglose"
       },
+      "DesgloseGuardadoRespuesta": {
+        "properties": {
+          "responsable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "responsable",
+          "fecha_hora"
+        ],
+        "title": "DesgloseGuardadoRespuesta",
+        "description": "Quién guardó el desglose del desperdicio que la pestaña muestra de la base y cuándo (acta\nDS-48g, opción A). `responsable` (`Nombre <login>`) es nulo si no consta: lo guardado antes de\nanotarlo, o con la clave de API, sin cuenta."
+      },
       "DesperdicioDeFila": {
         "properties": {
           "fila": {
@@ -18699,6 +18726,16 @@
             "type": "array",
             "title": "Desperdicios",
             "default": []
+          },
+          "desglose_guardado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesgloseGuardadoRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

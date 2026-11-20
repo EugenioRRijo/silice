@@ -208,6 +208,7 @@ export function EditorDelDetalle({
               soloLectura={!puedeEditar}
               conDesperdicio={g.clave === "materiales"}
               desperdicios={g.clave === "materiales" ? detalle.desperdicios : undefined}
+              desgloseGuardado={g.clave === "materiales" ? (detalle.desglose_guardado ?? null) : null}
               alCambiar={(indice, texto) => edicion.cambiar((previo) => cambiarCantidadDeLinea(previo, g.clave, indice, texto))}
               alRestaurar={(indice) =>
                 edicion.cambiar((previo) =>
