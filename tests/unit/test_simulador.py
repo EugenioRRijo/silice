@@ -110,7 +110,7 @@ def test_homonimos_sin_unidad_no_revientan_ni_se_pisan():
             filas = simular_desde_catalogo(sesion, "0", 1, None)
     finally:
         motor.dispose()
-    assert sorted(filas) == [
+    assert filas == [  # en el orden de la simulación: insumo, unidad (la vacía primero), tipo
         ("equipo", "Transporte", "", Decimal("10.00")),
         ("mano_obra", "Transporte", "", Decimal("10.00")),
         ("material", "Transporte", "viaje", Decimal("10.00")),
