@@ -283,3 +283,26 @@ def test_la_clave_de_api_ve_pero_no_confirma() -> None:
         headers=clave,
     )
     assert confirmar.status_code == 403
+
+
+def test_un_fallo_de_la_base_es_el_503_fijo_y_el_motor_va_al_registro(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Revisión de la compuerta, punto 3 (DS-113): `_en_usd` respondía «No se pudo leer o escribir
+    el caso.» sin registrar el fallo; ahora lo deja al manejador común de `api/main.py`."""
+    import logging
+
+    from sqlalchemy.exc import OperationalError
+
+    from api.main import MENSAJE_BASE
+
+    def falla(*_args, **_kwargs):
+        raise OperationalError("SELECT secreto FROM tabla_interna", {}, Exception("disco lleno"))
+
+    navegador, _ = con_cuenta(app, "admin")
+    monkeypatch.setattr(indices_usd, "origenes", falla)
+    with caplog.at_level(logging.ERROR, logger="silice.api"):
+        r = navegador.get("/v1/indices/en-usd/origenes")
+    assert (r.status_code, r.json()) == (503, {"detalle": MENSAJE_BASE})
+    assert r.headers["cache-control"] == "no-store"
+    assert "tabla_interna" not in r.text and "disco lleno" in caplog.text
