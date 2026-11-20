@@ -208,6 +208,15 @@ def test_los_resumenes_se_escriben_en_singular_y_plural() -> None:
         m.resumen_de_plano(filas=34, sin_reconocer=2) == "34 filas en el espacio; 2 sin reconocer"
     )
     assert m.resumen_de_plano(filas=1, sin_reconocer=0) == "1 fila en el espacio"
+    # revisión del 2026-11-20: si no entró ninguna fila, lo que sí cambió
+    assert (
+        m.resumen_de_plano(filas=0, sin_reconocer=0, circuitos=2, desaparecidas=1)
+        == "no entró ninguna fila; 2 circuitos nuevos; 1 fila marcada: ya no está en el plano"
+    )
+    assert (
+        m.resumen_de_plano(filas=3, sin_reconocer=0, circuitos=2, desaparecidas=1)
+        == "3 filas en el espacio"
+    )
     assert m.resumen_de_computo(18) == "18 partidas llevadas"
     assert m.resumen_de_computo(1) == "1 partida llevada"
 

@@ -15,12 +15,17 @@ espacios que la preceden, nada mas).
 from __future__ import annotations
 
 import time
+from dataclasses import replace
+from datetime import date
+from types import SimpleNamespace
 
 import pytest
 
+from adapters.espacio import Espacio
 from adapters.espacio.planos import ItemInforme, TipoItem
 from aplicacion import hoja, hoja_plano
-from tests.fixtures.planos_de_la_hoja import DXF_OF001
+from tests.fixtures.espacio_of001 import espacio_of001
+from tests.fixtures.planos_de_la_hoja import DXF_OF001, of001_declarado
 
 CLAVES = ("tipo", "referencia", "fila", "mensaje")
 
@@ -125,3 +130,97 @@ def test_el_comienzo_de_la_raiz_basta_aunque_no_haya_marca_ni_raiz_entera(
 def test_un_mensaje_sin_rutas_queda_igual(tmp_path) -> None:
     mensaje = "a.dxf: no se pudo leer como DXF (DXFStructureError: el archivo esta vacio)."
     assert hoja_plano._sin_rutas(_rechazo(mensaje), tmp_path / "x").mensaje == mensaje
+
+
+# --- lo que de verdad entró de un plano con filas omitidas (hallazgo 6 y revisión, 2026-11-20) ----
+#
+# Fusiones reales (`hoja.fusionar_plano`) del DXF de OF-001 sobre un borrador cuyo espacio ya tiene
+# filas escritas a mano con los mismos `id`: esas filas del plano se omiten («su id ya lo usa otra
+# fila de la hoja»). Oráculos a mano desde la memoria: 6 ambientes, 6 fuentes y 21 puntos (33).
+
+
+def _fusion_sobre(espacio) -> hoja_plano.Fusion:
+    leido = of001_declarado()
+    borrador, informe = hoja.fusionar_plano(
+        hoja.Borrador(fecha=date(2026, 10, 5), espacio=espacio), leido
+    )
+    assert borrador.espacio != espacio  # algo entró: el borrador cambia
+    resumen = hoja_plano.resumen_de_la_fusion(leido, informe)
+    return hoja_plano.Fusion(SimpleNamespace(), leido, informe, resumen, True)
+
+
+def _a_mano_con_solo(ambiente_id: str):
+    """El espacio de OF-001 escrito a mano con un solo ambiente (y su origen)."""
+    oficina = espacio_of001()
+    (ambiente,) = [a for a in oficina.ambientes if a.id == ambiente_id]
+    origenes = tuple(o for o in oficina.origenes if o.id == ambiente.origen_id)
+    return Espacio(ambientes=(ambiente,), origenes=origenes)
+
+
+def _a_mano_sin_circuitos():
+    """Todo OF-001 escrito a mano, sin circuitos: del plano solo entran sus dos circuitos."""
+    oficina = espacio_of001()
+    puntos = tuple(replace(p, circuito_id=None) for p in oficina.puntos)
+    return replace(oficina, puntos=puntos, circuitos=(), recorridos=())
+
+
+def _registro(fusion: hoja_plano.Fusion) -> str:
+    vivo = SimpleNamespace(importaciones=())
+    hoja_plano._anotar_en_el_registro(vivo, "plano.dxf", "ana", fusion.resumen)
+    return vivo.importaciones[0].resumen
+
+
+def test_con_un_ambiente_a_mano_las_cifras_de_la_fusion_cuentan_lo_que_entro_una_vez() -> None:
+    """BAN-01 escrito a mano: se omiten el ambiente, sus 2 fuentes y sus 4 puntos (7 de las 33
+    filas, según la memoria; entran 26). Las filas por tabla cuentan solo la fusión: 5 ambientes,
+    4 fuentes, 17 puntos y los 2 circuitos (antes se sumaba también lo del lector: 10, 8, 34)."""
+    fusion = _fusion_sobre(_a_mano_con_solo("BAN-01"))
+    vista = hoja_plano.vista_de_fusion(fusion)
+    por_tipo = {f["rotulo"]: f["cantidad"] for f in vista["fusion"]["por_tipo"]}
+    assert (por_tipo["Importado"], por_tipo["Omitido"]) == (26, 7)
+    assert vista["fusion"]["filas_por_tabla"] == [
+        {"rotulo": "Ambientes", "cantidad": 5},
+        {"rotulo": "Fuentes", "cantidad": 4},
+        {"rotulo": "Puntos", "cantidad": 17},
+        {"rotulo": "Circuitos", "cantidad": 2},
+    ]
+    assert vista["mensaje"].startswith(
+        "Se fusionó «of001.dxf» con el borrador de la hoja: entraron 26 de las 33 filas del "
+        "plano; las otras 7 se omitieron (el informe de abajo dice por qué). "
+    )
+    assert _registro(fusion) == "26 filas en el espacio"
+
+
+def test_si_solo_entran_los_circuitos_el_mensaje_y_el_registro_dicen_eso() -> None:
+    """Todo OF-001 escrito a mano sin circuitos: las 33 filas se omiten y entran C1 y C2. El
+    mensaje no dice «entraron 0 de las 33 filas» ni el registro «0 filas en el espacio»."""
+    fusion = _fusion_sobre(_a_mano_sin_circuitos())
+    mensaje = hoja_plano.vista_de_fusion(fusion)["mensaje"]
+    assert mensaje.startswith(
+        "Se fusionó «of001.dxf» con el borrador de la hoja: no entró ninguna de las 33 filas del "
+        "plano: se omitieron (el informe de abajo dice por qué). Sí cambió: 2 circuitos nuevos. "
+    )
+    assert _registro(fusion) == "no entró ninguna fila; 2 circuitos nuevos"
+
+
+def _con_cuentas(importado: int, omitido: int) -> hoja_plano.Fusion:
+    """Una fusión ficticia con sus cuentas ya hechas (las de `resumen_de_la_fusion`)."""
+    rotulos = hoja.ROTULOS_DEL_INFORME
+    leidas = tuple(
+        ItemInforme(TipoItem.IMPORTADO, "esp_puntos", f"H{n}", f"P-{n}", "leída")
+        for n in range(importado + omitido)
+    )
+    resumen = SimpleNamespace(
+        por_tipo=((rotulos[TipoItem.IMPORTADO], importado), (rotulos[TipoItem.OMITIDO], omitido)),
+        filas_por_tabla=(),
+        origenes=1,
+    )
+    resultado = SimpleNamespace(archivo="plano.dxf", informe=leidas, filas={})
+    return hoja_plano.Fusion(SimpleNamespace(), resultado, leidas, resumen, True)
+
+
+def test_el_mensaje_concuerda_en_singular() -> None:
+    mensaje = hoja_plano.vista_de_fusion(_con_cuentas(1, 1))["mensaje"]
+    assert ": entró 1 de las 2 filas del plano; la otra se omitió (el informe" in mensaje
+
+

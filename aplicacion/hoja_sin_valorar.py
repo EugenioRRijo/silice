@@ -31,6 +31,7 @@ from core.catalog import Catalogo
 from core.catalog.errores import CatalogoIncompleto
 
 __all__ = [
+    "DE_LA_OBRA_SIN_VERSIONES",
     "DE_NUEVO",
     "INSUMOS_POR_PARTIDA",
     "PartidasSinValorar",
@@ -163,10 +164,19 @@ def _insumos(descripciones: Sequence[str]) -> str:
     return nombradas if resto <= 0 else f"{nombradas} y {resto} más"
 
 
+#: Lo que se dice de la lista cuando el borrador está en blanco (la obra aún sin versiones): la
+#: Hoja valora con la lista para armar de la obra (`hoja_edicion.lista_para_completar`).
+DE_LA_OBRA_SIN_VERSIONES = "de la obra, que todavía no tiene versiones"
+
+
+def _de_quien(version: str | None) -> str:
+    return f"de la versión {version}" if version is not None else DE_LA_OBRA_SIN_VERSIONES
+
+
 def mensaje_sin_valorar(
     faltas: Sequence[SinValorar],
     lista: models.ListaPrecios,
-    version: str,
+    version: str | None,
     fecha: date,
     otras_listas: Sequence[str],
     *,
@@ -180,12 +190,13 @@ def mensaje_sin_valorar(
 
     `inicio` abre el mensaje («No se llevó nada: 2 partidas quedarían pendientes en el
     Presupuesto»); `cierre` lo termina. `componer_con` es la fecha con que guardar en Componer deja
-    los precios en `lista` (`fecha_para_componer`), o `None`."""
+    los precios en `lista` (`fecha_para_componer`), o `None`. `version` es `None` en un borrador
+    en blanco: la lista es la de la obra (`DE_LA_OBRA_SIN_VERSIONES`)."""
     sin_precio = [f for f in faltas if f.sin_precio]
     como = ", sin precio," if sin_precio else ""
     partes = [
-        f"{inicio}{como} porque el Presupuesto arma cada APU con la lista «{lista.nombre}» de la "
-        f"versión {version}, al {fecha:%d/%m/%Y}, y con ella no {se_valora}."
+        f"{inicio}{como} porque el Presupuesto arma cada APU con la lista «{lista.nombre}» "
+        f"{_de_quien(version)}, al {fecha:%d/%m/%Y}, y con ella no {se_valora}."
     ]
     if sin_precio:
         detalle = "; ".join(f"«{f.codigo}» ({_insumos(f.sin_precio)})" for f in sin_precio)
@@ -254,7 +265,7 @@ def explicar(
     sesion: Session,
     faltan: Sequence[str],
     lista: models.ListaPrecios,
-    version: str,
+    version: str | None,
     fecha: date,
     *,
     vigente: Vigente,

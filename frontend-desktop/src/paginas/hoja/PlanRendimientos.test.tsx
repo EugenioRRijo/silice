@@ -10,7 +10,7 @@ import type { Resumen, VistaPlan } from "./logica";
 // Tarea 21 (MP-7): «Plan desde los rendimientos» en la pestaña Plan y curva. Contrato de la ruta:
 // `POST /v1/hoja/borradores/{id}/plan/rendimientos` con `{rev, cuadrillas: {codigo: "1"}, paralelas: [codigo], unidad: "dia" | "mes" |
 // "semana"}` → `{rev, resumen, plan, avisos}`. Datos ficticios de la vivienda (OBRA-01 a OBRA-03); los textos de los avisos
-// son los del plan («{código} tiene cantidad 0.», «{código} no tiene rendimiento: se le asignó 1 día.»).
+// son los del plan («{código} tiene cantidad 0.», «{código} está pendiente (sin valorar): no entró al plan.»).
 configure({ asyncUtilTimeout: 5000 });
 
 vi.mock("../../comun/GraficoCarbon", () => ({
@@ -173,7 +173,7 @@ describe("Hoja: plan desde los rendimientos (Tarea 21)", () => {
         rev: (cuerpo.rev as number) + 1,
         resumen: resumen((cuerpo.rev as number) + 1),
         plan: vista,
-        avisos: ["OBRA-02 tiene cantidad 0.", "OBRA-99 no tiene rendimiento: se le asignó 1 día."],
+        avisos: ["OBRA-02 tiene cantidad 0.", "OBRA-99 está pendiente (sin valorar): no entró al plan."],
       });
     montar();
     await screen.findByRole("region", { name: "Plan desde los rendimientos" });
@@ -181,7 +181,7 @@ describe("Hoja: plan desde los rendimientos (Tarea 21)", () => {
     const avisos = await screen.findByRole("status", { name: "Avisos del plan" });
     expect(within(avisos).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "OBRA-02 tiene cantidad 0.",
-      "OBRA-99 no tiene rendimiento: se le asignó 1 día.",
+      "OBRA-99 está pendiente (sin valorar): no entró al plan.",
     ]);
     // Una sola región viva: dentro de la de los avisos no hay otra (ni log, ni status, ni alert).
     expect(avisos.querySelectorAll('[role="log"], [role="status"], [role="alert"], [aria-live]')).toHaveLength(0);

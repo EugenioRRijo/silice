@@ -9,6 +9,7 @@ Salió de `aplicacion/control.py` sin cambios (tarea 4.3 del plan de desenredo);
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -132,3 +133,23 @@ def _escribir(sesion: Session, accion):
         raise ControlInvalido(
             f"No se pudo escribir en el caso: {getattr(error, 'orig', error)}"
         ) from error
+
+
+_PREFIJO_VALUACION = "valuacion:"
+
+
+def _valuacion_del_hallazgo(origen_ids: Sequence[str], claves: Sequence[str]) -> str | None:
+    """La clave de la valuación que cita un hallazgo de R13-R14, o `None` si no cita ninguna.
+
+    El núcleo cita `valuacion:<clave>` o `valuacion:<clave>:<código>`; un R13 de una partida no
+    programada cita solo el origen de la partida, sin ese prefijo. La clave se coteja contra las
+    valuaciones registradas (`claves`) porque puede llevar «:» por dentro («VAL:01»): casa entera o
+    seguida de «:», y entre dos que casan gana la más larga."""
+    for origen in origen_ids:
+        if not origen.startswith(_PREFIJO_VALUACION):
+            continue
+        resto = origen.removeprefix(_PREFIJO_VALUACION)
+        casan = [c for c in claves if resto == c or resto.startswith(f"{c}:")]
+        if casan:
+            return max(casan, key=len)
+    return None

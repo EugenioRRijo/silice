@@ -47,6 +47,7 @@ from core.contracts.apu import ParametrosCosto
 from operacion import config
 from operacion.base_datos import preparar_base
 from tests.fixtures.carpeta_aprobaciones import OBRA, guardar_version, sembrar_vivienda
+from tests.fixtures.carrera import con_cerrojo_que_cambia
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.hoja_versiones_api import registrar_tasa_en
@@ -919,42 +920,6 @@ def test_llevar_el_libro_consulta_el_caso_fuera_del_bucle_de_eventos(
 # un hilo lo pide desde fuera y antes de tomarlo, hace lo que haría esa otra petición.
 
 
-class _CerrojoQueCambia:
-    """El `RLock` del borrador; la primera toma desde fuera corre antes `entretanto`."""
-
-    def __init__(self, entretanto) -> None:
-        import threading
-
-        self._de_verdad = threading.RLock()
-        self._entretanto = entretanto
-
-    def __enter__(self):
-        if self._entretanto is not None:
-            hacer, self._entretanto = self._entretanto, None
-            hacer()
-        self._de_verdad.acquire()
-        return self
-
-    def __exit__(self, *_exc) -> None:
-        self._de_verdad.release()
-
-
-def _con_cerrojo_que_cambia(monkeypatch: pytest.MonkeyPatch, entretanto) -> list:
-    """Los borradores que se crean llevan `_CerrojoQueCambia(entretanto(vivo))`; devuelve la lista
-    de los creados."""
-    creados: list = []
-    de_verdad = hoja_borradores.crear
-
-    def crear(*args, **kwargs):
-        vivo = de_verdad(*args, **kwargs)
-        vivo.cerrojo = _CerrojoQueCambia(lambda: entretanto(vivo))
-        creados.append(vivo)
-        return vivo
-
-    monkeypatch.setattr(hoja_borradores, "crear", crear)
-    return creados
-
-
 def _en_via(escribir) -> None:
     """Escribe en la obra sin versiones con otra conexión y confirma (otra petición)."""
     motor = crear_motor(f"sqlite:///{(config.carpeta_casos() / 'via.db').as_posix()}")
@@ -998,7 +963,7 @@ def test_lo_que_cambio_antes_del_cerrojo_se_vuelve_a_mirar_bajo_el(
     """La elección vio la obra sin versiones y en Bs; bajo el cerrojo ya no lo está: 409, el
     borrador nuevo se descarta y el catálogo no recibe ningún APU del libro."""
     navegador, _ = ana
-    creados = _con_cerrojo_que_cambia(monkeypatch, lambda _vivo: _en_via(entretanto))
+    creados = con_cerrojo_que_cambia(monkeypatch, lambda _vivo: _en_via(entretanto))
     r = _llevar(ana)
     assert len(creados) == 1
     assert r.status_code == 409, r.text
@@ -1020,7 +985,7 @@ def test_si_falla_el_borrador_nuevo_que_otro_toco_antes_del_cerrojo_no_se_descar
         nuevo = replace(vivo.borrador, parametros=otros)
         hoja_borradores.reemplazar(vivo.huella, vivo.id, nuevo, vivo.rev)
 
-    creados = _con_cerrojo_que_cambia(monkeypatch, otra_peticion)
+    creados = con_cerrojo_que_cambia(monkeypatch, otra_peticion)
     with monkeypatch.context() as m:
         _que_falle(m)
         r = _llevar(ana)
@@ -1032,3 +997,60 @@ def test_si_falla_el_borrador_nuevo_que_otro_toco_antes_del_cerrojo_no_se_descar
     assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.parametros == otros
     assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.items_base == ()
     assert _partidas_del_libro() == []
+
+
+class _CerrojoQueCambiaAlSoltar:
+    """El `RLock` del borrador; al soltarlo desde fuera con el libro ya llevado, otra petición
+    cambia el borrador (una sola vez). `despues` devuelve si ya lo cambió."""
+
+    def __init__(self, despues) -> None:
+        import threading
+
+        self._de_verdad = threading.RLock()
+        self._dentro = threading.local()
+        self._despues = despues
+
+    def __enter__(self):
+        self._de_verdad.acquire()
+        self._dentro.n = getattr(self._dentro, "n", 0) + 1
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self._dentro.n -= 1
+        self._de_verdad.release()
+        if self._dentro.n == 0 and self._despues is not None and self._despues():
+            self._despues = None
+
+
+def test_los_precios_de_la_respuesta_son_los_de_lo_llevado_aunque_otro_cambie_el_borrador_despues(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hallazgo 8 (2026-11-20): justo al soltar el cerrojo, otra pestaña cambia los porcentajes
+    del borrador. Los precios de la Hoja y su «casa» con el libro son los de lo que se llevó, no
+    los del borrador que dejó la otra pestaña."""
+    otros = ParametrosCosto(utilidad=Decimal("0.99"))
+    de_verdad = hoja_borradores.crear
+
+    def crear(*args, **kwargs):
+        vivo = de_verdad(*args, **kwargs)
+
+        def otra_pestana() -> bool:
+            if not vivo.borrador.items_base:  # todavía no se llevó el libro
+                return False
+            # lo que deja `hoja_borradores.reemplazar` de otra petición: otro borrador y otro rev
+            vivo.borrador, vivo.rev = replace(vivo.borrador, parametros=otros), vivo.rev + 1
+            return True
+
+        vivo.cerrojo = _CerrojoQueCambiaAlSoltar(otra_pestana)
+        return vivo
+
+    monkeypatch.setattr(hoja_borradores, "crear", crear)
+    r = _llevar(ana)
+    assert r.status_code == 200, r.text
+    assert [(p["precio_hoja"], p["casa"]) for p in r.json()["partidas"]] == [
+        ("2.08", True),
+        ("4.13", False),
+        ("0.81", False),
+        ("809.60", False),
+        ("0.13", False),
+    ]

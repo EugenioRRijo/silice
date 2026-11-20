@@ -315,6 +315,9 @@ def llevar_tramos_a_la_hoja(
 
     with vivo.cerrojo:
         antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano)
+        # Nuevo y sin tocar (`rev` nace en 0): si otra petición lo cambió entre la elección y el
+        # cerrojo, en un fallo se restaura `antes` (lo suyo) en vez de descartarlo (DS-58).
+        nuevo = nuevo and vivo.rev == 0
         try:
             if vivo.version != version:  # otra ventana abrió otro borrador entretanto
                 raise hoja_borradores.RevDesactualizado(vivo.id)

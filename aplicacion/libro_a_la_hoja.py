@@ -521,6 +521,7 @@ def llevar_libro_a_la_hoja(
                 ),
             )
             sesion.commit()
+            llevado = vivo.borrador  # fuera del cerrojo otra petición puede cambiarlo
         except BaseException:
             sesion.rollback()
             if nuevo:
@@ -530,7 +531,7 @@ def llevar_libro_a_la_hoja(
             raise
     precios = {
         p.item.codigo_partida: p.resultado.precio_unitario
-        for p in hoja.elaborar_borrador(vivo.borrador).elaboracion.presupuesto.partidas
+        for p in hoja.elaborar_borrador(llevado).elaboracion.presupuesto.partidas
     }
     tolerancia = Decimal(TOLERANCIA_PRECIO.valor)
     partidas = []

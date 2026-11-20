@@ -13,6 +13,7 @@ from contextlib import contextmanager
 import pytest
 from sqlalchemy import Engine, event
 
+from aplicacion import hoja_borradores
 from seguridad.base import OPCION_INMEDIATA
 
 
@@ -79,3 +80,40 @@ def begins_de_escritura() -> Iterator[list[str]]:
         yield visto
     finally:
         event.remove(Engine, "begin", al_comenzar)
+
+
+class CerrojoQueCambia:
+    """El `RLock` de un borrador vivo; la primera toma desde fuera corre antes `entretanto` (lo que
+    haría otra petición entre la elección del borrador y su cerrojo, DS-53 y DS-58)."""
+
+    def __init__(self, entretanto: Callable[[], object] | None) -> None:
+        self._de_verdad = threading.RLock()
+        self._entretanto = entretanto
+
+    def __enter__(self):
+        if self._entretanto is not None:
+            hacer, self._entretanto = self._entretanto, None
+            hacer()
+        self._de_verdad.acquire()
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self._de_verdad.release()
+
+
+def con_cerrojo_que_cambia(
+    monkeypatch: pytest.MonkeyPatch, entretanto: Callable[[hoja_borradores.BorradorVivo], object]
+) -> list[hoja_borradores.BorradorVivo]:
+    """Los borradores que se crean llevan `CerrojoQueCambia(entretanto(vivo))`; devuelve la lista
+    de los creados."""
+    creados: list[hoja_borradores.BorradorVivo] = []
+    de_verdad = hoja_borradores.crear
+
+    def crear(*args, **kwargs):
+        vivo = de_verdad(*args, **kwargs)
+        vivo.cerrojo = CerrojoQueCambia(lambda: entretanto(vivo))
+        creados.append(vivo)
+        return vivo
+
+    monkeypatch.setattr(hoja_borradores, "crear", crear)
+    return creados

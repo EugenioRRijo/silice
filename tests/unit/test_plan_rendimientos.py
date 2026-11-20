@@ -64,6 +64,9 @@ OBRA = "Vivienda Demo 80 m2"
 ANA = "Ana <ana>"
 CODIGOS = ["OBRA-01", "OBRA-02", "OBRA-03", "OBRA-04", "OBRA-05", "OBRA-06"]
 SIN_RENDIMIENTO = "OBRA-99 no tiene rendimiento: se le asignó 1 día."
+#: En el plan del borrador la partida pendiente no ocupa días: el aviso de `duraciones` («se le
+#: asignó 1 día») ahí era falso (hallazgo 9, 2026-11-20).
+PENDIENTE_FUERA = "OBRA-99 está pendiente (sin valorar): no entró al plan."
 CANTIDAD_CERO = "OBRA-02 tiene cantidad 0."
 CUADRILLAS_INVALIDAS = "Las cuadrillas de OBRA-04 deben ser un número entero de 1 a 99."
 PARTIDA_AJENA = (
@@ -304,7 +307,7 @@ def test_en_la_hoja_una_partida_pendiente_no_reserva_el_dia_1_y_conserva_su_avis
     assert [e for e, _ in plan] == _dias(4)
     assert _fracciones(plan, "OBRA-01") == dict.fromkeys(_dias(4), D("0.25"))
     assert "OBRA-99" not in {c for _, reparto in plan for c, _ in reparto}
-    assert avisos == [SIN_RENDIMIENTO]
+    assert avisos == [PENDIENTE_FUERA]
     assert hoja.ajustar_plan(plan, ["OBRA-01"]) == plan
 
 

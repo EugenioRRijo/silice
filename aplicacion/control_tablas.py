@@ -24,6 +24,7 @@ from aplicacion.control_comun import (
     NO_DISPONIBLE,
     _indice,
     _monto,
+    _valuacion_del_hallazgo,
 )
 from aplicacion.control_corte import ultimo_corte
 from aplicacion.impuestos import ResumenImpuestos, con_iva
@@ -49,10 +50,15 @@ _ORDEN = {"ERROR": 3, "ADVERTENCIA": 2, "INFO": 1}
 
 
 def estado_de_valuaciones(resultado: ResultadoControl) -> dict[str, str]:
-    """Por clave de valuación, el peor hallazgo de R13-R14 (columna Estado, como RF-55)."""
+    """Por clave de valuación, el peor hallazgo de R13-R14 (columna Estado, como RF-55). Un
+    hallazgo que no cita una valuación registrada (R13 de una partida no programada) no marca
+    ninguna."""
+    claves = [v.clave for v in resultado.instantanea.valuaciones]
     peores: dict[str, tuple[int, str]] = {}
     for hallazgo in resultado.informe.hallazgos:
-        clave = hallazgo.origen_ids[0].split(":")[1]
+        clave = _valuacion_del_hallazgo(hallazgo.origen_ids, claves)
+        if clave is None:
+            continue
         rango = _ORDEN.get(hallazgo.severidad.name, 0)
         texto = f"{hallazgo.severidad.name}: {hallazgo.regla}"
         if clave not in peores or rango > peores[clave][0]:

@@ -499,22 +499,63 @@ def fusionar(sesion: Session, vivo: BorradorVivo, rev: int, *, usuario: str = ""
         IMPORTACIONES.quitar(vivo.id)
         resultado: ResultadoImportacion = hechas["resultado"]  # type: ignore[assignment]
         informe: tuple[ItemInforme, ...] = hechas["informe"]  # type: ignore[assignment]
-        resumen = hoja.resumen_de_la_fusion(resultado, informe)
+        resumen = resumen_de_la_fusion(resultado, informe)
         entro = fundido.rev != rev
         if entro:
             _anotar_en_el_registro(fundido, str(hechas["archivo"]), usuario, resumen)
     return Fusion(fundido, resultado, informe, resumen, entro)
 
 
+def _cuantos_del_lector(leido: Sequence[ItemInforme], informe: Sequence[ItemInforme]) -> int:
+    """Cuántos ítems del principio de `informe` (el de la fusión) son lo que dijo el lector.
+
+    La fusión devuelve lo del lector y detrás lo suyo; de lo del lector retira lo de cada fila que
+    omite (`adapters.espacio.planos.informe._Fusion._omitir`), así que esa primera parte es `leido`
+    con huecos, en su orden: se recorre `leido` y se avanza mientras el informe coincide."""
+    cuantos = 0
+    for item in leido:
+        if cuantos < len(informe) and informe[cuantos] == item:
+            cuantos += 1
+    return cuantos
+
+
+def resumen_de_la_fusion(
+    resultado: ResultadoImportacion, informe: Sequence[ItemInforme]
+) -> hoja.ResumenDeFusion:
+    """Las cuentas de la fusión que se muestran y se anotan (`hoja.resumen_de_la_fusion`), con lo
+    del lector que de verdad quedó: «Importado» son las filas del plano que entraron (sin las
+    omitidas) y las filas por tabla, lo propio de la fusión contado una vez.
+
+    Revisión del 2026-11-20: `hoja.resumen_de_la_fusion` separa lo propio de la fusión solo si
+    el informe empieza con lo que leyó el lector entero; con una fila omitida eso deja de pasar y
+    contaba también lo del lector (las filas por tabla salían dobles). Se le pasa lo que quedó."""
+    quedo = tuple(informe[: _cuantos_del_lector(resultado.informe, informe)])
+    return hoja.resumen_de_la_fusion(replace(resultado, informe=quedo), informe)
+
+
+def _cuenta(resumen: hoja.ResumenDeFusion, tipo: TipoItem) -> int:
+    return dict(resumen.por_tipo).get(hoja.ROTULOS_DEL_INFORME[tipo], 0)
+
+
+def _lo_que_cambio(resumen: hoja.ResumenDeFusion) -> dict[str, int]:
+    """Lo que cambió en el espacio sin ser una fila del plano: circuitos nuevos (el rótulo de
+    `hoja.resumen_de_la_fusion` para `esp_circuitos`) y filas marcadas porque ya no están."""
+    return {
+        "circuitos": dict(resumen.filas_por_tabla).get("Circuitos", 0),
+        "desaparecidas": _cuenta(resumen, TipoItem.DESAPARECIDO),
+    }
+
+
 def _anotar_en_el_registro(
     vivo: BorradorVivo, archivo: str, usuario: str, resumen: hoja.ResumenDeFusion
 ) -> None:
     """Deja el plano fusionado en el registro de la obra: «33 filas en el espacio; 2 sin
-    reconocer», con los conteos de la fusion (lo importado y lo no reconocido)."""
-    cuentas = dict(resumen.por_tipo)
+    reconocer», con las filas que entraron (sin las omitidas) o, si no entró ninguna, lo que sí
+    cambió (`importaciones.resumen_de_plano`)."""
     texto = importaciones.resumen_de_plano(
-        filas=cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.IMPORTADO], 0),
-        sin_reconocer=cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.NO_RECONOCIDO], 0),
+        filas=_cuenta(resumen, TipoItem.IMPORTADO),
+        sin_reconocer=_cuenta(resumen, TipoItem.NO_RECONOCIDO),
+        **_lo_que_cambio(resumen),
     )
     try:
         imp = importaciones.nueva("plano", archivo, usuario, texto)
@@ -617,21 +658,54 @@ def _mensaje_sin_filas(fusion: Fusion) -> str:
 
 
 def _por_tipo(por_tipo: Sequence[tuple[str, int]]) -> list[dict]:
-    """Los conteos de la fusión con «Importado» contando lo que de verdad entró: lo que leyó el
-    plano menos lo omitido, que el lector contó como importado (re-verificación del 18/11/2026:
-    «Importado 33» junto a «Omitido 33» cuando no entró nada)."""
-    cuentas = dict(por_tipo)
-    importado = hoja.ROTULOS_DEL_INFORME[TipoItem.IMPORTADO]
-    omitido = cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.OMITIDO], 0)
-    return [
-        {"rotulo": r, "cantidad": max(n - omitido, 0) if r == importado else n} for r, n in por_tipo
-    ]
+    """Los conteos de la fusión (`resumen_de_la_fusion`) con las claves de la API."""
+    return [{"rotulo": r, "cantidad": n} for r, n in por_tipo]
+
+
+def _filas_que_entraron(entraron: int, leidas: int) -> str:
+    """«entraron 3 de las 33 filas del plano; las otras 30 se omitieron» o, si no entró ninguna,
+    «no entró ninguna de las 33 filas del plano: se omitieron», en singular cuando toca."""
+    omitidas = leidas - entraron
+    if entraron == 0:
+        if leidas == 1:
+            return "no entró la fila del plano: se omitió"
+        return f"no entró ninguna de las {leidas} filas del plano: se omitieron"
+    verbo = "entró" if entraron == 1 else "entraron"
+    resto = "la otra se omitió" if omitidas == 1 else f"las otras {omitidas} se omitieron"
+    return f"{verbo} {entraron} de las {leidas} filas del plano; {resto}"
+
+
+def _mensaje_de_exito(fusion: Fusion) -> str:
+    """Lo que entró: por tabla si no se omitió nada; si se omitieron filas, cuántas de las del
+    plano entraron y cuántas no (las cifras por tabla del lector serían las del plano); si no entró
+    ninguna fila, lo que sí cambió (circuitos nuevos, filas que ya no están)."""
+    filas = fusion.resultado.filas
+    entraron = _cuenta(fusion.resumen, TipoItem.IMPORTADO)
+    leidas = sum(1 for i in fusion.resultado.informe if i.tipo is TipoItem.IMPORTADO)
+    if entraron and entraron == leidas:
+        lo_que_entro = (
+            f"{filas['esp_ambientes']} ambientes, {filas['esp_fuentes']} fuentes y "
+            f"{filas['esp_puntos']} puntos."
+        )
+    else:
+        lo_que_entro = (
+            f"{_filas_que_entraron(entraron, leidas)} (el informe de abajo dice por qué)."
+            if leidas
+            else "el plano no trajo filas nuevas."
+        )
+        cambios = importaciones.cambios_de_plano(**_lo_que_cambio(fusion.resumen))
+        if not entraron and cambios:
+            lo_que_entro += f" Sí cambió: {' y '.join(cambios)}."
+    return (
+        f"Se fusionó «{fusion.resultado.archivo}» con el borrador de la hoja: {lo_que_entro} "
+        "Revise las filas en las tablas de abajo; la auditoría las evalúa como a las demás. "
+        "Todavía no se guardó ninguna versión: use Guardar versión cuando esté conforme."
+    )
 
 
 def vista_de_fusion(fusion: Fusion) -> dict:
     """El informe de la ultima fusion (P:1480-1485) y el mensaje de exito (P:1367-1373) o, si no
     entró ninguna fila, el que lo dice (`_mensaje_sin_filas`)."""
-    filas = fusion.resultado.filas
     return {
         "entro": fusion.entro,
         "fusion": {
@@ -642,13 +716,5 @@ def vista_de_fusion(fusion: Fusion) -> dict:
             "origenes": fusion.resumen.origenes,
         },
         "informe": filas_del_informe(fusion.informe),
-        "mensaje": _mensaje_sin_filas(fusion)
-        if not fusion.entro
-        else (
-            f"Se fusionó «{fusion.resultado.archivo}» con el borrador de la hoja: "
-            f"{filas['esp_ambientes']} ambientes, {filas['esp_fuentes']} fuentes y "
-            f"{filas['esp_puntos']} puntos. Revise las filas en las tablas de abajo; la auditoría "
-            "las evalúa como a las demás. Todavía no se guardó ninguna versión: use Guardar "
-            "versión cuando esté conforme."
-        ),
+        "mensaje": _mensaje_sin_filas(fusion) if not fusion.entro else _mensaje_de_exito(fusion),
     }
