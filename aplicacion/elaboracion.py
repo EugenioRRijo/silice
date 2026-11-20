@@ -466,23 +466,24 @@ def _validar(sesion: Session, partidas: Sequence[PartidaParaLlevar]) -> None:
 def _sin_valorar(
     sesion: Session, vivo: BorradorVivo, codigos: Sequence[str], **textos: str
 ) -> str | None:
-    """Qué dice la Hoja de las partidas `codigos` que quedaron sin APU (PENDIENTE) en la versión
-    abierta de `vivo`: qué insumos no tienen precio en su lista, en qué listas están, qué
-    rendimiento falta y qué hacer (`hoja_sin_valorar`, con la política de rendimiento vigente de
-    este módulo). `None` si todas se valoran o el borrador está en blanco (se valora con la lista
-    para armar, donde escribe Componer)."""
-    if vivo.abierta is None:
-        return None
-    faltan = sorted(set(codigos) - set(vivo.borrador.composiciones))
+    """Qué dice la Hoja de las partidas `codigos` que quedaron sin APU (PENDIENTE) en el borrador
+    `vivo`: qué insumos no tienen precio en su lista, en qué listas están, qué rendimiento falta y
+    qué hacer (`hoja_sin_valorar`, con la política de rendimiento vigente de este módulo). La lista
+    es la de `hoja_edicion.lista_para_completar`, la misma con que la Hoja armó el APU: la de la
+    versión abierta o, en blanco, la lista para armar de la obra a la fecha del borrador (DS-105).
+    `None` si todas se valoran. El borrador y su versión se leen juntos bajo su cerrojo."""
+    with vivo.cerrojo:
+        borrador, abierta = vivo.borrador, vivo.abierta
+    faltan = sorted(set(codigos) - set(borrador.composiciones))
     if not faltan:
         return None
-    lista, _valoracion = hoja_edicion.lista_para_completar(sesion, vivo, vivo.borrador.fecha)
+    lista, _valoracion = hoja_edicion.lista_para_completar(sesion, vivo, borrador.fecha)
     return hoja_sin_valorar.explicar(
         sesion,
         faltan,
         lista,
-        vivo.abierta.codigo,
-        vivo.borrador.fecha,
+        abierta.codigo if abierta is not None else None,
+        borrador.fecha,
         vigente=es_rendimiento_vigente,
         **textos,
     )
