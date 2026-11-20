@@ -382,8 +382,27 @@ def calcular(
     periodos: Sequence[PeriodoDeclarado],
     *,
     fecha_calculo: date,
+    en_la_transaccion: bool = False,
 ) -> ResultadoEstudio:
-    """UC-18 3-5 en memoria (ver el docstring del modulo): nada queda escrito."""
+    """UC-18 3-5 en memoria (ver el docstring del modulo): nada queda escrito.
+
+    Con `en_la_transaccion` el calculo se deshace con un SAVEPOINT y la transaccion de quien llama
+    sigue abierta, con su `BEGIN IMMEDIATE`: la de la ruta que guarda despues bajo el mismo
+    bloqueo (nadie escribe entre lo que se calculo y lo que se guarda). Sin el, se deshace la
+    transaccion entera, como en la sesion comun de las rutas que solo calculan."""
+    if not en_la_transaccion:
+        try:
+            return _calcular(sesion, proyecto, codigo, clausula, periodos, fecha_calculo)
+        finally:
+            sesion.rollback()
+    punto = sesion.begin_nested()
+    try:
+        return _calcular(sesion, proyecto, codigo, clausula, periodos, fecha_calculo)
+    finally:
+        punto.rollback()
+
+
+def _calcular(sesion, proyecto, codigo, clausula, periodos, fecha_calculo) -> ResultadoEstudio:
     try:
         estudio = guardar_estudio(
             sesion,
@@ -399,8 +418,6 @@ def calcular(
         raise
     except ValueError as error:
         raise HojaInvalida(f"No se pudo calcular: {con_tildes_de_reajuste(str(error))}") from error
-    finally:
-        sesion.rollback()
 
 
 def guardar(
