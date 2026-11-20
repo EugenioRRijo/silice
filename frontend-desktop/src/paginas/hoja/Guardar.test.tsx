@@ -393,7 +393,16 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     alCambios = () =>
       json({
         rev: 3,
-        cambios: [{ objeto: "apu", clave: "AF-LLAVE|material|1", campo: "desperdicio", antes: "0,8 + 25 %", despues: "0,625 + 60 %" }],
+        cambios: [
+          {
+            objeto: "apu",
+            clave: "AF-LLAVE|material|1",
+            campo: "desperdicio",
+            antes: "0,8 + 25 %",
+            despues: "0,625 + 60 %",
+            insumo: "Llave de paso ficticia",
+          },
+        ],
       });
     alGuardar = () =>
       json({
@@ -415,7 +424,8 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
     expect(within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual([
       "APU",
-      "AF-LLAVE, material n.º 1", // la clave de una línea del APU se presenta así (rotuloDeOrigen), sin la barra interna
+      // la clave de una línea del APU se presenta así (rotuloDeOrigen), sin la barra interna y con su insumo (DS-75)
+      "AF-LLAVE, material n.º 1: Llave de paso ficticia",
       "Desperdicio",
       "0,8 + 25 %",
       "0,625 + 60 %",

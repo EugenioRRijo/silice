@@ -864,3 +864,36 @@ def test_un_desglose_sin_guardar_no_se_atribuye_al_de_la_base(_caso: Path) -> No
     assert editado.status_code == 200, editado.text
     assert editado.json()["apu"]["detalle"]["desglose_guardado"] is None
     assert _detalle_de(navegador, id_)["desglose_guardado"] is None
+
+
+# --- El rótulo de la línea del desglose dice su insumo (acta DS-75, opción A) ---------------------
+
+
+def test_los_cambios_del_borrador_dicen_el_insumo_de_la_linea_del_desglose(_caso: Path) -> None:
+    """`GET .../cambios` AÑADE `insumo` (sin quitar ni renombrar nada): el del desglose de la
+    llave es su descripción; el del rendimiento, que no es una línea, es nulo."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"]).status_code == 200
+    assert _editar_rendimiento(navegador, ficha, id_, cantidades, 1, "25").status_code == 200
+    cambios = navegador.get(f"/v1/hoja/borradores/{id_}/cambios")
+    assert cambios.status_code == 200, cambios.text
+    assert cambios.json()["cambios"] == [
+        {
+            "objeto": "apu",
+            "clave": "AF-LLAVE",
+            "campo": "rendimiento",
+            "antes": "20",
+            "despues": "25",
+            "insumo": None,
+        },
+        {
+            "objeto": "apu",
+            "clave": "AF-LLAVE|material|1",
+            "campo": "desperdicio",
+            "antes": "0,8 + 25 %",
+            "despues": "0,625 + 60 %",
+            "insumo": LLAVE,
+        },
+    ]
