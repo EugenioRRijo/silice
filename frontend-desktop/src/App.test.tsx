@@ -78,6 +78,8 @@ describe("App", () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Entrar" });
     const banner = screen.getByRole("banner");
+    expect(banner).toHaveClass("silice-marco-barra");
+    expect(within(banner).getByRole("link", { name: "Portada" })).toHaveAttribute("href", "/");
     expect(within(banner).getByRole("group", { name: "Tamaño de letra" })).toBeInTheDocument();
     expect(within(banner).queryByRole("button", { name: /^Cuenta de/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
