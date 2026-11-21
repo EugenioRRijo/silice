@@ -292,4 +292,33 @@ describe("El presupuesto por frente", () => {
     const edicion = fetchFalso.mock.calls.find(([, o]) => o?.method === "PUT")!;
     expect(JSON.parse(String(edicion[1]?.body))).toEqual({ rev: 3, filas: [{ clave: "VF-001|libro:FRENTE A!E4", frente: "Norte" }] });
   });
+
+  test("poner el frente espera los envíos pendientes del borrador y manda el rev más alto que contestaron", async () => {
+    const { registrarVaciador } = await import("./envioPendiente");
+    const soltar = registrarVaciador(ID, () =>
+      Promise.resolve({
+        rev: 6,
+        moneda: "Bs",
+        total: VISTA.total,
+        cambios: 1,
+        pendientes_catalogo: 0,
+        hallazgos: [],
+        hay_plan: true,
+        version_mas_nueva: null,
+        guardado_como: null,
+      }),
+    );
+    try {
+      montar();
+      await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
+      await screen.findByRole("table", { name: "Presupuesto por frente" });
+      await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+      await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
+      await waitFor(() => expect(fetchFalso.mock.calls.some(([, o]) => o?.method === "PUT")).toBe(true));
+      const edicion = fetchFalso.mock.calls.find(([, o]) => o?.method === "PUT")!;
+      expect(JSON.parse(String(edicion[1]?.body))).toEqual({ rev: 6, filas: [{ clave: "VF-001|libro:FRENTE A!E4", frente: "Norte" }] });
+    } finally {
+      soltar();
+    }
+  });
 });
