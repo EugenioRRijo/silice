@@ -192,11 +192,12 @@ body {
 header.cds--header.silice-marco-barra {
   background: var(--silice-marco);
   border-block-end: 3px solid var(--silice-acento);
-  color: var(--silice-sobre-marco);
+  color: var(--cds-text-on-color);
 
   .cds--header__name,
-  .cds--header__name:hover {
-    color: var(--silice-sobre-marco);
+  .cds--header__name:hover,
+  a.cds--header__name {
+    color: var(--cds-text-on-color);
   }
 }
 
@@ -205,19 +206,25 @@ header.cds--header.silice-marco-barra {
   align-items: center;
   min-block-size: 3rem;
   padding-inline: 1rem;
-  color: var(--silice-sobre-marco);
+  color: var(--cds-text-on-color);
   text-decoration: none;
   font-size: 0.875rem;
   transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 
   &:hover {
-    background: var(--silice-marco-hover, var(--cds-background-inverse-hover));
+    background: var(--cds-background-inverse-hover);
+    color: var(--cds-text-on-color);
   }
 }
 
 .silice-marco-barra .silice-letra__etiqueta,
 .silice-marco-barra .silice-letra__opcion {
-  color: var(--silice-sobre-marco);
+  color: var(--cds-text-on-color);
+}
+
+.silice-marco-barra .silice-letra__opcion[aria-pressed="true"] {
+  color: var(--silice-texto);
+  background: var(--cds-layer);
 }
 
 .silice-entrada__texto {
