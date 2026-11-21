@@ -323,18 +323,25 @@ describe("Precios de la empresa", () => {
         201,
       );
     montar(vi.fn(), SESION_ARMA);
-    const usuario = await llenarYEnviar("USD");
-    expect(await screen.findByText(/se dio de alta 1 insumo nuevo en el catálogo/)).toBeInTheDocument();
-    const altas = screen.getByRole("table", { name: "Insumos dados de alta en el catálogo" });
-    expect(within(altas).getByText("Bloque de prueba")).toBeInTheDocument();
-    expect(screen.getAllByText(/«Arena de prueba» viene en saco/).length).toBeGreaterThan(0);
-    await usuario.click(screen.getByRole("button", { name: "Usarla como lista para armar" }));
-    await waitFor(() => expect(llamadas("/v1/carpeta/lista-para-armar", "POST")).toHaveLength(1));
-    const [, opciones] = llamadas("/v1/carpeta/lista-para-armar", "POST")[0];
-    expect(JSON.parse(String(opciones?.body))).toEqual({ desde: "empresa", lista_id: 9 });
-    expect(
-      await screen.findByText("Lista para armar creada: Empresa ficticia 2026-10-05 al 13/11/2026. Ya puede componer con ella."),
-    ).toBeInTheDocument();
+    const aviso = vi.fn();
+    window.addEventListener("silice:cambio-de-carpeta", aviso);
+    try {
+      const usuario = await llenarYEnviar("USD");
+      expect(await screen.findByText(/se dio de alta 1 insumo nuevo en el catálogo/)).toBeInTheDocument();
+      const altas = screen.getByRole("table", { name: "Insumos dados de alta en el catálogo" });
+      expect(within(altas).getByText("Bloque de prueba")).toBeInTheDocument();
+      expect(screen.getAllByText(/«Arena de prueba» viene en saco/).length).toBeGreaterThan(0);
+      await usuario.click(screen.getByRole("button", { name: "Usarla como lista para armar" }));
+      await waitFor(() => expect(llamadas("/v1/carpeta/lista-para-armar", "POST")).toHaveLength(1));
+      const [, opciones] = llamadas("/v1/carpeta/lista-para-armar", "POST")[0];
+      expect(JSON.parse(String(opciones?.body))).toEqual({ desde: "empresa", lista_id: 9 });
+      expect(
+        await screen.findByText("Lista para armar creada: Empresa ficticia 2026-10-05 al 13/11/2026. Ya puede componer con ella."),
+      ).toBeInTheDocument();
+      expect(aviso).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("silice:cambio-de-carpeta", aviso);
+    }
   });
 
   // Pasada en navegador de la ola 2 (D9b): una lista en Bs sobre una carpeta en USD ofrecía el botón y solo al pulsarlo
