@@ -30,6 +30,7 @@ import pytest
 
 from api import caso_web, dependencias
 from api.main import app
+from api.rutas import carpeta as rutas_carpeta
 from aplicacion.tablas_carpeta import CarpetaDeTrabajo
 from core import models
 from core.catalog import abrir_sesion, crear_motor
@@ -75,8 +76,13 @@ def _plantilla(tmp_path_factory) -> Path:
 
 @pytest.fixture(autouse=True)
 def _entorno(_plantilla: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    """La instalación con cuentas y el caso por defecto vacío (sin lista ni moneda)."""
+    """La instalación con cuentas y el caso por defecto vacío (sin lista ni moneda).
+
+    El reloj de la ruta queda en `HOY`: el nombre de la lista lleva la fecha, y una suite que
+    cruza la medianoche entre la importación del módulo y la petición daba «al 21/11» frente a
+    «al 20/11» (CI de Windows del PR #137, 1 h 26 min)."""
     monkeypatch.delenv(dependencias.VARIABLE_BASE, raising=False)
+    monkeypatch.setattr(rutas_carpeta, "ahora", lambda: datetime.combine(HOY, datetime.min.time()))
     copiar_instalacion(_plantilla)
     ruta = config.ruta_caso_por_defecto()
     ruta.parent.mkdir(parents=True, exist_ok=True)
