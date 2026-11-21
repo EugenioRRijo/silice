@@ -85,6 +85,20 @@ def test_jpeg_sano_sigue_dando_su_tamano():
     assert _con_tope(tamano_imagen, b"\xff\xd8" + app0 + sof + b"\x00" * 9) == (64, 48)
 
 
+def test_jpeg_con_relleno_ff_y_sof_ce_cf_da_su_tamano():
+    """L3: bytes de relleno 0xFF antes de la marca y marcadores SOF 0xCE/0xCF se leen bien."""
+    app0 = b"\xff\xff\xe0\x00\x10" + b"JFIF\x00" + b"\x00" * 9
+    for marcador in (0xCE, 0xCF):
+        sof = (
+            bytes([0xFF, 0xFF, marcador])
+            + b"\x00\x11\x08"
+            + (48).to_bytes(2, "big")
+            + (64).to_bytes(2, "big")
+            + b"\x03"
+        )
+        assert _con_tope(tamano_imagen, b"\xff\xd8" + app0 + sof + b"\x00" * 9) == (64, 48)
+
+
 # --- 1b. Imágenes cuya cabecera no da el tamaño que ve Pillow (hallazgo 5, 2026-11-20) ----------
 
 
