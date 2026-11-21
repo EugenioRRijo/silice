@@ -7,6 +7,10 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **Portada independiente, acceso jerárquico y depuración `ola-1121`** (2026-11-21; en `.worktrees/tanda`):
+  - **Portada (`GET /`, `api/portada.py`)**: página de inicio autocontenida (HTML5 + CSS3 Carbon g10, cero scripts inline ni URLs externas) con CTA principal **«Descargar el sistema Sílice»** (`#descargar`), bloque de **Ambiente de escritorio propio** y enlace **«Probar inicio de sesión web»** hacia `/app/`.
+  - **Login jerárquico y cuentas (`App.tsx`, `Entrar.tsx`, `Cuentas.tsx`)**: cabecera oscura `.silice-marco-barra` en pre-sesión con enlace `Portada`, conmutador **«Acceso de usuario (Arma / Revisa)»** vs **«Administrador Master»**, selección rápida de cuentas en tabla y soporte de roles en `puedeCrear`.
+  - **Depuración Operación, Lógica y Frontend (O1–O4, L1–L3, F1–F7)**: restauración atómica y códigos `503`/`404` en respaldos, `BaseOcupada` → `503`, autenticación sin bloqueo Argon2, recepción de paquetes atómica (`aplicacion/revision.py` < 1.000 líneas), cuantización `Decimal` ≥ 27 cifras, parser JPEG con relleno `0xFF` y SOF `0xCE`/`0xCF`, salida limpia de `demostracion.db`, vaciado de ediciones pendientes antes de guardar/frentes, formato `es-VE` en Control/Actualización/Mercado/Simulador, recarga de aprobaciones/cadena en Versiones, aviso de carpeta en Precios de empresa y limpieza de estado en Tramos, Auditoría APU por hoja y Visor.
 - **Sprint 1120b: el mapa de series de Riesgo se guarda y el desperdicio dice quién lo guardó** (2026-11-20; sin fusionar).
   Riesgo recuerda por versión la serie que mueve cada insumo: al guardar un mapa propio se usa la vez siguiente; sin mapa
   propio toma el de otra versión de la misma obra, con una nota. Solo una cuenta con permiso de Riesgo lo guarda. En el

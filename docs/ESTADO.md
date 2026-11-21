@@ -1,10 +1,15 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-20 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-21 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
 de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia.md §5](metodologia.md)).
+
+> **En integración (`ola-1121/verificacion`, `.worktrees/tanda`):** reunidos los 4 carriles sobre `origin/main` (`df91d176`):
+> `feature/vivo-1121-operacion` (O1–O4), `feature/vivo-1121-logica` (L1–L3), `feature/vivo-1121-front` (F1–F7) y
+> `feature/portada-y-acceso-master` (portada independiente en `GET /` con CTA «Descargar el sistema Sílice», cabecera
+> oscura pre-sesión, conmutador `Acceso de usuario (Arma / Revisa)` vs `Administrador Master` y selección rápida en `Cuentas`).
 
 ## 1. Qué hay en `main`
 
