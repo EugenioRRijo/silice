@@ -324,7 +324,7 @@ describe("Precios de la empresa", () => {
       );
     montar(vi.fn(), SESION_ARMA);
     const aviso = vi.fn();
-    window.addEventListener("silice:cambio-de-carpeta", aviso);
+    window.addEventListener("silice:cambio-de-la-carpeta", aviso);
     try {
       const usuario = await llenarYEnviar("USD");
       expect(await screen.findByText(/se dio de alta 1 insumo nuevo en el catálogo/)).toBeInTheDocument();

@@ -10,6 +10,7 @@ import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { MONEDAS } from "../../comun/monedas";
 import { useAplicacion } from "../../shell/contexto";
+import { avisarCambioDeLaCarpeta } from "../../shell/ListaDeLaCarpeta";
 import {
   AYUDA,
   COLUMNAS_DESCONOCIDOS,
@@ -238,7 +239,10 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
   const usarParaArmar = (listaId: number) => {
     setParaArmar({ tipo: "enviando" });
     pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo: { desde: "empresa", lista_id: listaId } }).then(
-      (carpeta) => setParaArmar({ tipo: "listo", nombre: carpeta.lista?.nombre ?? "" }),
+      (carpeta) => {
+        avisarCambioDeLaCarpeta();
+        setParaArmar({ tipo: "listo", nombre: carpeta.lista?.nombre ?? "" });
+      },
       (error: unknown) => {
         alExpirar(error);
         setParaArmar({ tipo: "error", error });
