@@ -370,7 +370,7 @@ def entrar(
                 caso_web.olvidar(sesiones.huella_de(anterior))  # puede ser otra persona
             ficha = sesiones.abrir(sesion, usuario, momento)
             activa = sesiones.validar(sesion, ficha, momento)
-    except ErrorDeBase as error:
+    except (ErrorDeBase, cuentas.BaseOcupada) as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     if activa is None:  # la cuenta cambió entre las dos lecturas: no hay sesión que dar
         raise HTTPException(status_code=401, detail=MENSAJE_SIN_SESION)
