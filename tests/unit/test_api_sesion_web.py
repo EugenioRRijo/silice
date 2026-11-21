@@ -648,6 +648,16 @@ def test_la_ficha_no_aparece_en_respuestas_ni_registros() -> None:
     assert ficha not in texto
 
 
+def test_entrar_con_base_ocupada_responde_503(monkeypatch: pytest.MonkeyPatch) -> None:
+    def ocupada(*_a, **_k):
+        raise cuentas.BaseOcupada(cuentas.MENSAJE_BASE_OCUPADA)
+
+    monkeypatch.setattr(cuentas, "autenticar", ocupada)
+    respuesta = _entrar(_cliente(), "ana")
+    assert respuesta.status_code == 503
+    assert respuesta.json() == {"detalle": cuentas.MENSAJE_BASE_OCUPADA}
+
+
 @pytest.mark.usefixtures("_sin_dormir")
 def test_el_freno_global_no_guarda_lo_tecleado_que_no_es_un_usuario() -> None:
     """El evento `bloqueo` del 429 usa la misma clave que `autenticar`: marcador, no el texto."""
