@@ -19,7 +19,6 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
   useTituloDelDocumento("Entrar");
   const [login, setLogin] = useState("");
   const [contrasena, setContrasena] = useState("");
-  const [modo, setModo] = useState<"usuario" | "master">("usuario");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [intentado, setIntentado] = useState(false);
@@ -41,69 +40,34 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
   return (
     <main className="silice-entrada silice-entrada--dividida">
       <div className="silice-entrada__rejilla">
-        <aside className="silice-entrada__contexto">
-          <div className="silice-entrada__encabezado-contexto">
-            <h2 className="cds--type-heading-03">Acceso a Sílice</h2>
-            <p className="silice-entrada__subtitulo cds--type-body-compact-01">
-              Ambiente de prueba web conectado al nodo local antes del empaquetado de escritorio.
+        <aside className="silice-entrada__marca-panel">
+          <div className="silice-entrada__sello">S</div>
+          <div className="silice-entrada__marca-cuerpo">
+            <h2 className="cds--type-heading-04">Sílice</h2>
+            <p className="silice-entrada__marca-texto">
+              Ingeniería de costos, presupuestos APU y auditoría forense de libros Excel sobre base
+              local verificable.
             </p>
           </div>
-          <div className="silice-entrada__modos" role="group" aria-label="Modo de acceso">
-            <button
-              type="button"
-              className="silice-entrada__modo"
-              aria-pressed={modo === "usuario"}
-              onClick={() => setModo("usuario")}
-            >
-              Acceso de usuario (Arma / Revisa)
-            </button>
-            <button
-              type="button"
-              className="silice-entrada__modo"
-              aria-pressed={modo === "master"}
-              onClick={() => setModo("master")}
-            >
-              Administrador Master
-            </button>
-          </div>
-          {modo === "usuario" ? (
-            <dl className="silice-entrada__fichas">
-              <div className="silice-entrada__ficha">
-                <dt className="silice-entrada__clave">[ROL ARMA]</dt>
-                <dd className="silice-entrada__valor">
-                  Elabora presupuestos, edita APU, guarda versiones y ejecuta simulaciones.
-                </dd>
-              </div>
-              <div className="silice-entrada__ficha">
-                <dt className="silice-entrada__clave">[ROL REVISA]</dt>
-                <dd className="silice-entrada__valor">
-                  Audita libros Excel, verifica trazabilidad y aprueba o devuelve entregas.
-                </dd>
-              </div>
-            </dl>
-          ) : (
-            <dl className="silice-entrada__fichas">
-              <div className="silice-entrada__ficha">
-                <dt className="silice-entrada__clave">Almacenamiento: SQLite local</dt>
-                <dd className="silice-entrada__valor">Aislamiento por carpeta de trabajo.</dd>
-              </div>
-              <div className="silice-entrada__ficha">
-                <dt className="silice-entrada__clave">Gobernanza: Cuentas y roles</dt>
-                <dd className="silice-entrada__valor">Alta, asignación combinada y desbloqueo.</dd>
-              </div>
-              <div className="silice-entrada__ficha">
-                <dt className="silice-entrada__clave">Integridad: SHA-256 + Argon2id</dt>
-                <dd className="silice-entrada__valor">Cadena de sellos y credenciales verificables.</dd>
-              </div>
-            </dl>
-          )}
+          <dl className="silice-entrada__fichas">
+            <div className="silice-entrada__ficha">
+              <dt className="silice-entrada__clave">Acceso único</dt>
+              <dd className="silice-entrada__valor">
+                Usuario y contraseña para cuentas operativas o administrador de la instalación.
+              </dd>
+            </div>
+            <div className="silice-entrada__ficha">
+              <dt className="silice-entrada__clave">Entorno local</dt>
+              <dd className="silice-entrada__valor">
+                Sesión de prueba web conectada al servidor SQLite local.
+              </dd>
+            </div>
+          </dl>
         </aside>
         <section className="silice-entrada__panel">
           <h1 className="cds--type-heading-04">Entrar</h1>
           <p className="silice-entrada__texto cds--type-body-compact-01">
-            {modo === "master"
-              ? "Consola raíz para administrar cuentas, respaldos e instalación."
-              : "Entre con su cuenta de Sílice para trabajar y auditar presupuestos de obra."}
+            Entre con su usuario y contraseña de Sílice.
           </p>
           {aviso && <p className="silice-entrada__aviso cds--type-body-compact-01">{aviso}</p>}
           <Form className="silice-entrada__formulario" onSubmit={enviar} noValidate>

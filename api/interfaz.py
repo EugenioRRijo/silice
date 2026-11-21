@@ -82,8 +82,10 @@ class InterfazNueva:
 
 
 def portada(_request: Request) -> Response:
-    """`GET /` → portada independiente de Sílice en HTML+CSS autocontenido, con la misma CSP."""
-    return con_cabeceras(HTMLResponse(PORTADA_HTML))
+    """`GET /` → portada compilada por Vite (`DIST/portada.html`) o respaldo autocontenido."""
+    compilada = DIST / "portada.html"
+    html = compilada.read_text(encoding="utf-8") if compilada.is_file() else PORTADA_HTML
+    return con_cabeceras(HTMLResponse(html))
 
 
 def redirigir(_request: Request) -> Response:

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sílice — Suite de Ingeniería de Costos y Auditoría APU</title>
+    <link rel="icon" href="/app/silice.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="barra">
+      <div class="barra__interior">
+        <a class="marca" href="/">
+          <span class="marca__sello" aria-hidden="true">S</span>
+          <span class="marca__texto">
+            <strong>Sílice</strong>
+            <span>Desktop Suite</span>
+          </span>
+        </a>
+        <nav class="nav" aria-label="Navegación principal">
+          <a class="nav__enlace" href="#suite">La suite</a>
+          <a class="nav__enlace" href="#capacidades">Arquitectura</a>
+          <a class="nav__enlace" href="#descargar">Descargar</a>
+        </nav>
+        <div class="barra__acciones">
+          <a class="btn btn--fantasma" href="/app/">Probar web (/app/)</a>
+          <a class="btn btn--acento" href="#descargar">Descargar el sistema Sílice</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-titulo">
+        <div class="hero__resplandor" aria-hidden="true"></div>
+        <div class="contenedor hero__contenido">
+          <div class="hero__texto">
+            <h1 id="hero-titulo" class="hero__titulo">
+              El entorno de escritorio para presupuestos verificables, celda por celda.
+            </h1>
+            <p class="hero__bajada">
+              Sílice unifica análisis de precios unitarios, control de valuaciones y auditoría
+              forense de libros Excel sobre aritmética decimal exacta en tu propio equipo.
+            </p>
+            <div class="hero__acciones">
+              <a class="btn btn--acento btn--grande" href="#descargar">
+                <span>Descargar el sistema Sílice</span>
+                <span aria-hidden="true">↓</span>
+              </a>
+              <a class="btn btn--borde btn--grande" href="/app/">
+                <span>Probar inicio de sesión web</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+            <p class="hero__nota">
+              Windows 10/11 x64 · Base SQLite local por carpeta · El acceso web (/app/) funciona
+              como entorno de prueba antes del empaquetado de escritorio.
+            </p>
+          </div>
+
+          <section id="suite" class="ventana" aria-label="Vista interactiva de Sílice Desktop">
+            <div class="ventana__barra">
+              <div class="ventana__controles" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <span class="ventana__ruta">Sílice Desktop · clinica_drenaje.db · v1.2</span>
+              <span class="ventana__estado">SQLite WAL · SHA-256 íntegro</span>
+            </div>
+
+            <div class="ventana__cuerpo">
+              <aside class="ventana__lateral" role="tablist" aria-label="Módulos de Sílice">
+                <button type="button" class="modulo activo" role="tab" aria-selected="true" data-modulo="forense">
+                  <span class="modulo__nombre">Auditoría Forense</span>
+                  <span class="modulo__sub">Inspección Excel L1–L7</span>
+                </button>
+                <button type="button" class="modulo" role="tab" aria-selected="false" data-modulo="apu">
+                  <span class="modulo__nombre">Presupuesto APU</span>
+                  <span class="modulo__sub">Composición Decimal</span>
+                </button>
+                <button type="button" class="modulo" role="tab" aria-selected="false" data-modulo="control">
+                  <span class="modulo__nombre">Control EVM</span>
+                  <span class="modulo__sub">Valuaciones y frentes</span>
+                </button>
+                <button type="button" class="modulo" role="tab" aria-selected="false" data-modulo="cantera">
+                  <span class="modulo__nombre">Cantera y Áridos</span>
+                  <span class="modulo__sub">Costos horarios y masa</span>
+                </button>
+              </aside>
+
+              <div class="ventana__lienzo" id="panel-modulo" role="tabpanel"></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="capacidades" class="capacidades" aria-labelledby="cap-titulo">
+        <div class="contenedor">
+          <div class="encabezado-seccion">
+            <h2 id="cap-titulo">Diseñado para ingeniería real, sin redondeos ni nube obligatoria</h2>
+            <p>
+              Cada cálculo corre en aritmética decimal exacta sobre archivos locales bajo tu control.
+            </p>
+          </div>
+
+          <div class="rejilla-cap">
+            <article class="cap">
+              <h3>Aritmética Decimal inmutable</h3>
+              <p>
+                Cálculo exacto sin punto flotante binario, redondeo oficial a dos decimales y
+                formato venezolano con coma decimal y punto de miles en toda cifra.
+              </p>
+            </article>
+            <article class="cap">
+              <h3>Auditoría forense sobre libro original</h3>
+              <p>
+                Lee fórmulas y valores en paralelo sin alterar el archivo fuente. Detecta celdas
+                quemadas, fórmulas rotas y variaciones atípicas al instante.
+              </p>
+            </article>
+            <article class="cap">
+              <h3>Control de obra y valuaciones</h3>
+              <p>
+                Seguimiento por frentes, cálculo de costo estimado al cierre, punto de equilibrio y
+                reajuste con series históricas del BCV e índices viales.
+              </p>
+            </article>
+            <article class="cap">
+              <h3>Gobernanza y roles en nodo local</h3>
+              <p>
+                Cuenta única de administrador y cuentas operativas por roles (Arma y Revisa) con
+                respaldos atómicos y cadena de sellos SHA-256 por versión.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="descargar" class="descarga" aria-labelledby="descarga-titulo">
+        <div class="contenedor descarga__rejilla">
+          <div class="descarga__escritorio">
+            <h2 id="descarga-titulo">Descargar el sistema Sílice</h2>
+            <p class="descarga__lead">
+              Ejecuta Sílice como aplicación de escritorio propia en Windows con servidor local
+              aislado, sin dependencias externas ni suscripciones en la nube.
+            </p>
+            <dl class="descarga__specs">
+              <div>
+                <dt>Plataforma</dt>
+                <dd>Windows 10 / 11 (x64)</dd>
+              </div>
+              <div>
+                <dt>Almacenamiento</dt>
+                <dd>SQLite local por carpeta</dd>
+              </div>
+              <div>
+                <dt>Telemetría</dt>
+                <dd>Cero conexiones salientes</dd>
+              </div>
+            </dl>
+            <div class="descarga__botones">
+              <a class="btn btn--acento btn--grande" href="/app/">
+                <span>Abrir instalador / consola local</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="descarga__web">
+            <h3>Ambiente de prueba web</h3>
+            <p>
+              Mientras cerramos el empaquetado final de escritorio, puedes entrar al entorno web de
+              prueba para validar el inicio de sesión único, administración de cuentas y auditorías.
+            </p>
+            <a class="btn btn--borde" href="/app/">
+              <span>Probar inicio de sesión web (/app/)</span>
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pie">
+      <div class="contenedor pie__interior">
+        <span>Sílice Desktop Suite · Ingeniería de costos y auditoría APU</span>
+        <a href="/app/">Acceso web de prueba (/app/) →</a>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/portada/main.ts"></script>
+  </body>
+</html>
