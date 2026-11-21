@@ -6,6 +6,7 @@ import {
   diasValidos,
   enumeracion,
   rutaDelEstudio,
+  sinTasaDelDia,
   textoDeAfectados,
 } from "./logica";
 
@@ -127,6 +128,19 @@ describe("la cotización de un precio", () => {
     expect(cotizacionEsVe("")).toBe("");
     expect(cotizacionEsVe("COT-17 · Ferretería Demo")).toBe("COT-17 · Ferretería Demo");
     expect(cotizacionEsVe("2026-11-18")).toBe("2026-11-18");
+  });
+});
+
+describe("F7: días con punto de miles y conteos en es-VE", () => {
+  test("diasValidos acepta formato es-VE como 3.650", () => {
+    expect(diasValidos("3.650")).toBe(true);
+    expect(diasValidos("1.000")).toBe(true);
+    expect(diasValidos("3.651")).toBe(false);
+  });
+
+  test("deObservaciones y sinTasaDelDia formatean >= 1000 con punto de miles", () => {
+    expect(deObservaciones(1000)).toBe("de 1.000 observaciones");
+    expect(sinTasaDelDia(1250)).toContain("1.250 observaciones");
   });
 });
 

@@ -295,4 +295,14 @@ describe("Tramos de la vía", () => {
     montar();
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());
   });
+
+  test("F7: cambiar de versión limpia avisos y errores previos", async () => {
+    montar();
+    await screen.findByRole("button", { name: /Llevar al presupuesto/i });
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole("button", { name: /Llevar al presupuesto/i }));
+    expect(await screen.findByText(/Se llevaron/i)).toBeInTheDocument();
+    await usuario.selectOptions(screen.getByLabelText("Versión"), "VIA-001");
+    await waitFor(() => expect(screen.queryByText(/Se llevaron/i)).toBeNull());
+  });
 });
