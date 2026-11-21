@@ -42,6 +42,12 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
     <main className="silice-entrada silice-entrada--dividida">
       <div className="silice-entrada__rejilla">
         <aside className="silice-entrada__contexto">
+          <div className="silice-entrada__encabezado-contexto">
+            <h2 className="cds--type-heading-03">Acceso a Sílice</h2>
+            <p className="silice-entrada__subtitulo cds--type-body-compact-01">
+              Ambiente de prueba web conectado al nodo local antes del empaquetado de escritorio.
+            </p>
+          </div>
           <div className="silice-entrada__modos" role="group" aria-label="Modo de acceso">
             <button
               type="button"
@@ -61,36 +67,45 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
             </button>
           </div>
           {modo === "usuario" ? (
-            <div className="silice-entrada__detalle">
-              <p className="cds--type-label-01">Operación por roles asignados</p>
-              <ul className="silice-entrada__lista">
-                <li>
-                  <strong>[ROL ARMA]</strong> Elabora presupuestos, edita APU, guarda versiones y ejecuta simulaciones.
-                </li>
-                <li>
-                  <strong>[ROL REVISA]</strong> Audita libros Excel, verifica trazabilidad y aprueba o devuelve entregas.
-                </li>
-              </ul>
-            </div>
+            <dl className="silice-entrada__fichas">
+              <div className="silice-entrada__ficha">
+                <dt className="silice-entrada__clave">[ROL ARMA]</dt>
+                <dd className="silice-entrada__valor">
+                  Elabora presupuestos, edita APU, guarda versiones y ejecuta simulaciones.
+                </dd>
+              </div>
+              <div className="silice-entrada__ficha">
+                <dt className="silice-entrada__clave">[ROL REVISA]</dt>
+                <dd className="silice-entrada__valor">
+                  Audita libros Excel, verifica trazabilidad y aprueba o devuelve entregas.
+                </dd>
+              </div>
+            </dl>
           ) : (
-            <div className="silice-entrada__detalle">
-              <p className="cds--type-label-01">Consola de administración local</p>
-              <ul className="silice-entrada__lista">
-                <li>Almacenamiento: SQLite local</li>
-                <li>Gobernanza: Cuentas y roles</li>
-                <li>Integridad: SHA-256 + Argon2id</li>
-              </ul>
-            </div>
+            <dl className="silice-entrada__fichas">
+              <div className="silice-entrada__ficha">
+                <dt className="silice-entrada__clave">Almacenamiento: SQLite local</dt>
+                <dd className="silice-entrada__valor">Aislamiento por carpeta de trabajo.</dd>
+              </div>
+              <div className="silice-entrada__ficha">
+                <dt className="silice-entrada__clave">Gobernanza: Cuentas y roles</dt>
+                <dd className="silice-entrada__valor">Alta, asignación combinada y desbloqueo.</dd>
+              </div>
+              <div className="silice-entrada__ficha">
+                <dt className="silice-entrada__clave">Integridad: SHA-256 + Argon2id</dt>
+                <dd className="silice-entrada__valor">Cadena de sellos y credenciales verificables.</dd>
+              </div>
+            </dl>
           )}
         </aside>
         <section className="silice-entrada__panel">
           <h1 className="cds--type-heading-04">Entrar</h1>
           <p className="silice-entrada__texto cds--type-body-compact-01">
             {modo === "master"
-              ? "Acceso de consola raíz para administrar cuentas, respaldos e instalación."
-              : "Entre con su cuenta de Sílice para ver y auditar el libro de presupuesto de la empresa."}
+              ? "Consola raíz para administrar cuentas, respaldos e instalación."
+              : "Entre con su cuenta de Sílice para trabajar y auditar presupuestos de obra."}
           </p>
-          {aviso && <p className="silice-entrada__texto cds--type-body-compact-01">{aviso}</p>}
+          {aviso && <p className="silice-entrada__aviso cds--type-body-compact-01">{aviso}</p>}
           <Form className="silice-entrada__formulario" onSubmit={enviar} noValidate>
             <CampoTexto
               id="entrar-usuario"
@@ -120,14 +135,16 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
                 lowContrast
               />
             )}
-            <Button type="submit" disabled={enviando}>
-              {enviando ? "Entrando…" : "Entrar"}
-            </Button>
-            {alRecuperar && (
-              <Button kind="ghost" size="sm" type="button" onClick={alRecuperar}>
-                Perdí el acceso de administrador
+            <div className="silice-entrada__acciones">
+              <Button type="submit" disabled={enviando} className="silice-entrada__enviar">
+                {enviando ? "Entrando…" : "Entrar"}
               </Button>
-            )}
+              {alRecuperar && (
+                <Button kind="ghost" size="sm" type="button" onClick={alRecuperar}>
+                  Perdí el acceso de administrador
+                </Button>
+              )}
+            </div>
           </Form>
         </section>
       </div>

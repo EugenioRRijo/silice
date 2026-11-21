@@ -169,25 +169,24 @@ def test_portada_en_raiz_sirve_html_autocontenido_con_csp_y_sin_urls_externas(
 
     html = respuesta.text
     assert "Presupuestos de obra verificables, celda por celda." in html
-    assert "SISTEMA LOCAL DE ANÁLISIS DE PRECIOS UNITARIOS · ARITMÉTICA EXACTA" in html
     assert "Iniciar sesión en Sílice" in html
     assert 'href="/app/"' in html
     for fragmento in (
-        "Cálculo exacto en Decimal (sin float)",
-        "Bases SQLite locales por carpeta",
-        "Cero telemetría externa",
-        "HOJA: PLAN DE PAGOS · Inspección forense",
+        "Decimal exacto",
+        "SQLite local",
+        "Sin telemetría",
+        "PLAN DE PAGOS · Inspección forense",
         "1.740,89 USD",
         "1.586,61 USD",
         "PRESUPUESTO!F12",
         "VALUACIONES!J48",
         "COVENIN!C104",
-        "01 / Núcleo APU Multidominio",
-        "02 / Auditoría Forense Excel L1–L7",
-        "03 / Control de Obra y Valor Ganado IBCS",
-        "04 / Moneda, Índices BCV y Riesgo ML",
-        "05 / Producción de Cantera y Áridos",
-        "06 / Gobernanza Local SHA-256 y Respaldos",
+        "Núcleo APU multidominio",
+        "Auditoría forense Excel",
+        "Control de obra y valor ganado",
+        "Moneda, índices BCV y riesgo",
+        "Producción de cantera y áridos",
+        "Gobernanza local y respaldos",
         "Administrador Master",
         "Rol Arma",
         "Rol Revisa",

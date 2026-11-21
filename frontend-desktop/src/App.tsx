@@ -29,7 +29,7 @@ function CabeceraSinMarco({ nombre, alSalir }: { nombre?: string; alSalir: () =>
         Sílice
       </HeaderName>
       <HeaderGlobalBar>
-        <a className="silice-sin-marco__portada cds--header__action" href="/">
+        <a className="silice-sin-marco__portada" href="/">
           Portada
         </a>
         <TamanoLetra />
