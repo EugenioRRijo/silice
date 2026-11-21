@@ -81,6 +81,10 @@ class ContrasenaInvalida(ValueError):  # noqa: N818
     """La contraseña no cumple la política (10 a 128, distinta del usuario, no común)."""
 
 
+class BaseOcupada(ValueError):  # noqa: N818
+    """Venció `busy_timeout` al tomar el bloqueo de escritura (`BEGIN IMMEDIATE`)."""
+
+
 class FrenoGlobal:
     """Espera progresiva por fallos de todo el proceso (no de un login): 20 en 10 minutos y
     cada intento nuevo espera 1, 2, 4... s, hasta 60 s. Estado del proceso, no de un usuario
@@ -159,7 +163,7 @@ def _tomar_escritura(session: Session) -> None:
             conexion.exec_driver_sql("BEGIN IMMEDIATE")
         except OperationalError as error:  # venció `busy_timeout`: otra escritura no termina
             session.rollback()
-            raise ValueError(MENSAJE_BASE_OCUPADA) from error
+            raise BaseOcupada(MENSAJE_BASE_OCUPADA) from error
 
 
 def _huella(contrasena: str) -> str:

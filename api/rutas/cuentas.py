@@ -199,6 +199,8 @@ def _actuar(
                 resultado = accion(bd, actor)
             except ErrorDeBase:
                 raise  # hereda de ValueError: va antes que los errores esperados (503, no 422)
+            except cuentas.BaseOcupada as error:
+                raise HTTPException(status_code=503, detail=str(error)) from error
             except ERRORES_ESPERADOS as error:
                 raise HTTPException(status_code=_estado(error), detail=str(error)) from None
             destino = resultado
