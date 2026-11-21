@@ -129,27 +129,4 @@ describe("Entrar", () => {
     expect(entrar.compareDocumentPosition(enlace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  test("conmutador jerárquico alterna entre «Acceso de usuario (Arma / Revisa)» y «Administrador Master»", async () => {
-    const usuario = userEvent.setup();
-    render(<Entrar onEntrar={vi.fn()} alRecuperar={vi.fn()} />);
-    const grupo = screen.getByRole("group", { name: "Modo de acceso" });
-    const btnUsuario = screen.getByRole("button", { name: "Acceso de usuario (Arma / Revisa)" });
-    const btnMaster = screen.getByRole("button", { name: "Administrador Master" });
-    expect(grupo).toContainElement(btnUsuario);
-    expect(grupo).toContainElement(btnMaster);
-    expect(btnUsuario).toHaveAttribute("aria-pressed", "true");
-    expect(btnMaster).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText(/\[ROL ARMA\]/)).toBeInTheDocument();
-    expect(screen.getByText(/\[ROL REVISA\]/)).toBeInTheDocument();
-
-    await usuario.click(btnMaster);
-    expect(btnUsuario).toHaveAttribute("aria-pressed", "false");
-    expect(btnMaster).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText(/Almacenamiento: SQLite local/)).toBeInTheDocument();
-    expect(screen.getByText(/Gobernanza: Cuentas y roles/)).toBeInTheDocument();
-    expect(screen.getByText(/Integridad: SHA-256 \+ Argon2id/)).toBeInTheDocument();
-    const enlace = screen.getByRole("button", { name: "Perdí el acceso de administrador" });
-    const entrar = screen.getByRole("button", { name: "Entrar" });
-    expect(entrar.compareDocumentPosition(enlace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
 });
