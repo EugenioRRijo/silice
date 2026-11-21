@@ -238,6 +238,12 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     [alExpirar],
   );
 
+  // El aviso es de la pantalla en que se dio: al navegar a otra se cierra. Se ajusta durante el dibujo, sin efecto.
+  // Salvo el de un cambio de carpeta que la persona pidió para ir a una herramienta (`abrirDePendiente`) o al volver
+  // de una obra de demostración: ese aviso dice dónde está trabajando ahora y sobrevive a esa navegación (incluida la
+  // redirección de `/` a la Vista general).
+  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<string | null>(null);
+
   // «Volver a la carpeta de la empresa» desde la marca de la demostración.
   const volver = useCallback(() => {
     const enObraDeDemo =
@@ -261,11 +267,6 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       });
   }, [volverALaEmpresa, fallo, ubicacion.pathname, navegar]);
 
-  // El aviso es de la pantalla en que se dio: al navegar a otra se cierra. Se ajusta durante el dibujo, sin efecto.
-  // Salvo el de un cambio de carpeta que la persona pidió para ir a una herramienta (`abrirDePendiente`) o al volver
-  // de una obra de demostración: ese aviso dice dónde está trabajando ahora y sobrevive a esa navegación (incluida la
-  // redirección de `/` a la Vista general).
-  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<string | null>(null);
   const [rutaDelAviso, setRutaDelAviso] = useState(ubicacion.pathname);
   if (rutaDelAviso !== ubicacion.pathname) {
     setRutaDelAviso(ubicacion.pathname);
