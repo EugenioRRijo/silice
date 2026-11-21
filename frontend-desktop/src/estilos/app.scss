@@ -49,73 +49,169 @@ body {
 }
 
 .silice-entrada--dividida {
-  max-inline-size: 64rem;
-  margin-inline: auto;
+  max-inline-size: none;
+  margin-block-start: 0;
+  min-block-size: calc(100dvh - 3rem);
+  place-items: center;
+  padding: 4.5rem 1.5rem 2.5rem;
 }
 
 .silice-entrada__rejilla {
+  inline-size: 100%;
+  max-inline-size: 58rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: minmax(18rem, 0.92fr) minmax(20rem, 1.08fr);
   border: 1px solid var(--cds-border-subtle);
   background: var(--cds-layer);
+  box-shadow: 0 12px 32px rgba(22, 22, 22, 0.06);
+
+  @media (max-width: 48rem) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .silice-entrada__contexto {
   display: grid;
   align-content: start;
-  gap: 1.25rem;
-  padding: 2rem;
-  background: var(--silice-fondo);
+  gap: 1.5rem;
+  padding: 2.25rem;
+  background: var(--cds-layer-accent, #f7f3f2);
   border-inline-end: 1px solid var(--cds-border-subtle);
+
+  @media (max-width: 48rem) {
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--cds-border-subtle);
+  }
+}
+
+.silice-entrada__encabezado-contexto {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.silice-entrada__subtitulo {
+  color: var(--silice-texto-secundario);
+  margin: 0;
 }
 
 .silice-entrada__panel {
   display: grid;
   align-content: start;
   gap: 1rem;
-  padding: 2rem;
+  padding: 2.25rem;
+}
+
+.silice-entrada__formulario {
+  display: grid;
+  gap: 1rem;
+  margin-block-start: 0.25rem;
+}
+
+.silice-entrada__acciones {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  margin-block-start: 0.5rem;
+}
+
+.silice-entrada__enviar {
+  inline-size: 100%;
+  max-inline-size: 100%;
+  justify-content: space-between;
+}
+
+.silice-entrada__aviso {
+  padding: 0.75rem 1rem;
+  background: var(--cds-layer-accent, #f7f3f2);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--silice-texto);
 }
 
 .silice-entrada__modos {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border: 1px solid var(--cds-border-strong);
+  padding: 0.25rem;
+  background: var(--cds-border-subtle);
+  gap: 0.25rem;
 }
 
 .silice-entrada__modo {
-  padding: 0.625rem 0.75rem;
+  min-block-size: 2.75rem;
+  padding: 0.5rem 0.75rem;
   border: 0;
   background: transparent;
-  color: var(--silice-texto);
+  color: var(--silice-texto-secundario);
   font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
   text-align: start;
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1), color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+
+  &:hover {
+    color: var(--silice-texto);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
 
   &[aria-pressed="true"] {
-    background: var(--silice-marco);
-    color: var(--silice-sobre-marco);
-    box-shadow: inset 0 -3px 0 var(--silice-acento);
+    background: var(--cds-layer);
+    color: var(--silice-texto);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(22, 22, 22, 0.08), inset 0 -2px 0 var(--silice-marco);
   }
 }
 
-.silice-entrada__lista {
+.silice-entrada__fichas {
+  margin: 0;
   display: grid;
-  gap: 0.5rem;
-  margin: 0.5rem 0 0;
-  padding-inline-start: 1.25rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+}
+
+.silice-entrada__ficha {
+  padding: 0.875rem 0;
+  border-block-end: 1px solid var(--cds-border-subtle);
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-entrada__clave {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--silice-texto);
+}
+
+.silice-entrada__valor {
+  margin: 0;
+  font-size: 0.8125rem;
   color: var(--silice-texto-secundario);
+}
+
+header.cds--header.silice-marco-barra {
+  background: var(--silice-marco);
+  border-block-end: 3px solid var(--silice-acento);
+  color: var(--silice-sobre-marco);
+
+  .cds--header__name,
+  .cds--header__name:hover {
+    color: var(--silice-sobre-marco);
+  }
 }
 
 .silice-sin-marco__portada {
   display: inline-flex;
   align-items: center;
-  padding-inline: 0.875rem;
+  min-block-size: 3rem;
+  padding-inline: 1rem;
   color: var(--silice-sobre-marco);
   text-decoration: none;
   font-size: 0.875rem;
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 
   &:hover {
-    text-decoration: underline;
+    background: var(--silice-marco-hover, var(--cds-background-inverse-hover));
   }
 }
 
