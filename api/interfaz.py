@@ -18,12 +18,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from starlette.exceptions import HTTPException as ErrorHttp
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
 
+from api.portada import PORTADA_HTML
 from operacion.config import RAIZ
 
 PREFIJO = "/app"
@@ -80,12 +81,18 @@ class InterfazNueva:
         await con_cabeceras(respuesta)(scope, receive, send)
 
 
+def portada(_request: Request) -> Response:
+    """`GET /` → portada independiente de Sílice en HTML+CSS autocontenido, con la misma CSP."""
+    return con_cabeceras(HTMLResponse(PORTADA_HTML))
+
+
 def redirigir(_request: Request) -> Response:
     """`/app` → `/app/` (307), con las mismas cabeceras."""
     return con_cabeceras(RedirectResponse(f"{PREFIJO}/", status_code=307))
 
 
 def montar(app: FastAPI) -> None:
-    """Registra `/app` (fuera del esquema OpenAPI y sin clave: es estático y público)."""
+    """Registra `/` y `/app` (fuera del esquema OpenAPI y sin clave: son estáticos y públicos)."""
+    app.add_route("/", portada, methods=["GET", "HEAD"], include_in_schema=False)
     app.add_route(PREFIJO, redirigir, methods=["GET", "HEAD"], include_in_schema=False)
     app.mount(PREFIJO, InterfazNueva(), name="interfaz")

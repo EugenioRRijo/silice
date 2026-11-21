@@ -408,4 +408,13 @@ describe("Auditar un libro con un APU por hoja", () => {
     await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
     expect(await screen.findByText(/no tiene ninguna hoja de APU/)).toBeInTheDocument();
   });
+
+  test("F7: elegir un nuevo libro limpia el informe anterior y el botón de llevar", async () => {
+    conLlevar();
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} obra="Vía ficticia" puedeLlevar />);
+    await auditarLosDos();
+    expect(screen.getByRole("button", { name: /Llevar el libro a la Hoja/ })).toBeInTheDocument();
+    await usuario.upload(campos()[0], new File(["y"], "nuevo.xlsx"));
+    expect(screen.queryByRole("button", { name: /Llevar el libro a la Hoja/ })).toBeNull();
+  });
 });

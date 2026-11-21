@@ -192,6 +192,9 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
   async function elegirPresupuesto(archivo: File) {
     const numero = ++lecturaDeHojas.current;
     setPresupuesto(archivo);
+    setInforme(null);
+    setAuditado(null);
+    setError(null);
     setHojasDelPresupuesto(null);
     setMarcadas(null);
     setLeyendoHojas(true);
@@ -271,7 +274,12 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
         id="auditoria-apu-libro"
         etiqueta="Suelte aquí el .xlsx de los APU (una hoja por partida), o haga clic para elegirlo"
         extensiones={[".xlsx"]}
-        alElegir={setLibro}
+        alElegir={(archivo) => {
+          setLibro(archivo);
+          setInforme(null);
+          setAuditado(null);
+          setError(null);
+        }}
         deshabilitada={auditando}
       />
       <SubidaArchivo
@@ -316,7 +324,14 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
       </div>
       <AvisoError error={error} titulo="No se auditó el libro" />
       {informe && <Informe informe={informe} />}
-      {informe && auditado && puedeLlevar && <LlevarALaHoja auditado={auditado} obra={obra} alExpirar={alExpirar} />}
+      {informe && auditado && puedeLlevar && (
+        <LlevarALaHoja
+          key={`${auditado.libro.name}-${auditado.presupuesto?.name ?? ""}-${auditado.hojas.join("|")}`}
+          auditado={auditado}
+          obra={obra}
+          alExpirar={alExpirar}
+        />
+      )}
     </section>
   );
 }

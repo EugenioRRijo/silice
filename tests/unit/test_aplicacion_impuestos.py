@@ -39,3 +39,12 @@ def test_con_otra_alicuota_y_cero() -> None:
 
 def test_el_subtotal_se_presenta_a_dos_decimales() -> None:
     assert con_iva(D("1586.61")) == ResumenImpuestos(D("1586.61"), D("253.86"), D("1840.47"))
+
+
+def test_con_iva_no_falla_con_un_subtotal_de_27_o_mas_cifras_enteras() -> None:
+    """L2: un monto con >= 27 cifras enteras no lanza `decimal.InvalidOperation` al cuantizar."""
+    grande = D("9" * 30 + ".5")
+    resumen = con_iva(grande)
+    assert resumen.subtotal == D("9" * 30 + ".50")
+    assert resumen.iva == D("159999999999999999999999999999.92")
+    assert resumen.total == D("1159999999999999999999999999999.42")

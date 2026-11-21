@@ -626,3 +626,62 @@ def test_un_manifiesto_con_obra_codigo_o_id_que_no_son_texto_es_rechazado(mundo,
     assert a.reauditoria is None and a.recibido.paquete_id == 0
     caso, _, _ = mundo
     assert caso.execute(select(paq.paq_recibido)).all() == []
+
+
+def test_precios_de_lista_solo_consulta_las_referencias_de_esa_lista(mundo) -> None:
+    """L1: `precios_de_lista` filtra `ReferenciaPrecio` por `PrecioInsumo.lista_id` en SQL en vez
+    de cargar toda la tabla de referencias de todas las listas."""
+    from sqlalchemy import event
+
+    from aplicacion import revision
+
+    caso, _, _ = mundo
+    arena = caso.scalars(select(models.Insumo).where(models.Insumo.codigo == "MAT-001")).one()
+    cemento = caso.scalars(select(models.Insumo).where(models.Insumo.codigo == "EQU-001")).one()
+
+    lista_1 = models.ListaPrecios(
+        nombre="Lista 1", moneda="USD", fecha_vigencia=date(2026, 11, 5), origen=""
+    )
+    precio_1 = models.PrecioInsumo(insumo=arena, precio=Decimal("16.00"))
+    lista_1.precios.append(precio_1)
+
+    lista_2 = models.ListaPrecios(
+        nombre="Lista 2", moneda="USD", fecha_vigencia=date(2026, 11, 6), origen=""
+    )
+    precio_2 = models.PrecioInsumo(insumo=cemento, precio=Decimal("99.00"))
+    lista_2.precios.append(precio_2)
+
+    caso.add_all([lista_1, lista_2])
+    caso.flush()
+    caso.add_all(
+        [
+            models.ReferenciaPrecio(precio_id=precio_1.id, referencia="REF-L1"),
+            models.ReferenciaPrecio(precio_id=precio_2.id, referencia="REF-L2"),
+        ]
+    )
+    caso.commit()
+
+    consultas: list[tuple[str, object]] = []
+
+    def capturar(_conn, _cursor, statement, parameters, _context, _executemany) -> None:
+        if "referencia_precio" in statement.lower():
+            consultas.append((statement, parameters))
+
+    motor = caso.get_bind()
+    event.listen(motor, "before_cursor_execute", capturar)
+    try:
+        resultado = revision.precios_de_lista(caso, lista_1)
+    finally:
+        event.remove(motor, "before_cursor_execute", capturar)
+
+    assert len(resultado) == 1
+    assert (resultado[0].codigo_insumo, resultado[0].referencia, resultado[0].precio) == (
+        "MAT-001",
+        "REF-L1",
+        Decimal("16.00"),
+    )
+    assert len(consultas) == 1
+    sql, params = consultas[0]
+    with motor.connect() as conn:
+        filas = conn.exec_driver_sql(sql, params).all()
+    assert len(filas) == 1 and filas[0][1] == "REF-L1"

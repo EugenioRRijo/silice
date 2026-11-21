@@ -499,3 +499,15 @@ def test_dos_descargas_en_frio_a_la_vez_registran_la_letra_una_sola_vez(monkeypa
             if fuente is not None:
                 pdfmetrics._fonts[nombre] = fuente  # noqa: SLF001
     assert sorted(registros) == ["SiliceVera", "SiliceVera-Negrita"]
+
+
+def test_dinero_y_celda_del_pdf_no_fallan_con_montos_de_27_o_mas_cifras_enteras():
+    """L2: `_dinero` y `_celda` en `presupuesto_pdf` cuantizan con precisión ampliada."""
+    from aplicacion import presupuesto_pdf
+
+    grande = D("1" + "0" * 29 + ".125")
+    assert presupuesto_pdf._dinero(grande) == "100.000.000.000.000.000.000.000.000.000,13"
+    assert (
+        presupuesto_pdf._celda("precio", "100.000.000.000.000.000.000.000.000.000,5")
+        == "100.000.000.000.000.000.000.000.000.000,50"
+    )

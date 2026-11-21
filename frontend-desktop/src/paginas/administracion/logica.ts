@@ -128,8 +128,8 @@ export function errorDeUsuario(login: string): string | null {
   return login.trim() === "" || usuarioValido(login) ? null : TEXTO_USUARIO_INVALIDO;
 }
 
-export function puedeCrear(login: string, nombre: string, clave: string): boolean {
-  return usuarioValido(login) && nombre.trim() !== "" && contrasenaValida(clave);
+export function puedeCrear(login: string, nombre: string, clave: string, roles?: readonly string[]): boolean {
+  return usuarioValido(login) && nombre.trim() !== "" && contrasenaValida(clave) && (roles === undefined || roles.length > 0);
 }
 export const AVISO_TEMPORAL = "La persona deberá cambiar la contraseña al entrar.";
 

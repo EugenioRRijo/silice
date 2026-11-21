@@ -320,6 +320,23 @@ export default function Cuentas() {
               { clave: "nombre", titulo: "Nombre" },
               { clave: "roles", titulo: "Roles" },
               { clave: "activa", titulo: "Activa" },
+              {
+                clave: "accion",
+                titulo: "Acción",
+                ordenable: false,
+                celda: (f) => (
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const cuenta = cuentas.find((c) => c.login === String(f.usuario));
+                      if (cuenta) setElegidaId(cuenta.id);
+                    }}
+                  >
+                    Elegir
+                  </Button>
+                ),
+              },
             ]}
             filas={filasDeCuentas(cuentas)}
             vacio={{ titulo: "Todavía no hay cuentas." }}

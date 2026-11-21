@@ -145,9 +145,11 @@ describe("logica de Administracion", () => {
     expect(textoDelRespaldo(juego)).toBe(texto);
   });
 
-  test("crear exige usuario, nombre y contrasena valida", () => {
+  test("crear exige usuario, nombre, contrasena valida y al menos un rol cuando se indica", () => {
     const buena = "a".repeat(10);
     expect(puedeCrear("ana", "Ana", buena)).toBe(true);
+    expect(puedeCrear("ana", "Ana", buena, ["arma"])).toBe(true);
+    expect(puedeCrear("ana", "Ana", buena, [])).toBe(false);
     expect(puedeCrear(" ", "Ana", buena)).toBe(false);
     expect(puedeCrear("ana", "  ", buena)).toBe(false);
     expect(puedeCrear("ana", "Ana", "corta")).toBe(false);

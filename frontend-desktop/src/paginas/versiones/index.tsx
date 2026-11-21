@@ -61,6 +61,12 @@ function CuerpoDeVersiones() {
   const obra = useContext(ContextoDeLaObra);
   const navegar = useNavegarSeguro();
   const [enPanel, setEnPanel] = useState<string | null>(null);
+  const [refresco, setRefresco] = useState(0);
+  const alCrearYRefrescar: AlCrearVersion = async (...args) => {
+    await alCrearVersion(...args);
+    estados.recargar();
+    setRefresco((n) => n + 1);
+  };
 
   if (versiones.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las versiones" />;
   if (versiones.estado === "error") return <AvisoError error={versiones.error} />;
@@ -90,7 +96,7 @@ function CuerpoDeVersiones() {
           <EstadoVacio titulo={T.sinVersiones} descripcion={puedeEditar ? T.sinVersionesDescripcion : undefined} />
         ) : (
           <>
-            <EstadoDeLaCadena proyecto={proyecto} />
+            <EstadoDeLaCadena key={`${proyecto}-${refresco}`} proyecto={proyecto} />
             {puedeRestaurar && cambios > 0 && <p className="cds--type-helper-text-01">{avisoDeCambiosPendientes("restaurar", cambios)}</p>}
             <TablaDeVersiones
               proyecto={proyecto}
@@ -98,7 +104,7 @@ function CuerpoDeVersiones() {
               restaurar={puedeRestaurar && cambios === 0}
               alAbrir={abrir}
               alVerCambios={setEnPanel}
-              alCrearVersion={alCrearVersion}
+              alCrearVersion={alCrearYRefrescar}
             />
             {estados.estado === "fallo" && <p className="cds--type-helper-text-01">{T.sinEstados}</p>}
           </>

@@ -153,3 +153,52 @@ def test_la_csp_no_permite_unsafe_eval_ni_anfitriones_externos() -> None:
     assert directivas["object-src"] == ["'none'"]
     assert directivas["frame-ancestors"] == ["'none'"]
     assert directivas["base-uri"] == ["'none'"]
+
+
+def test_portada_en_raiz_sirve_html_autocontenido_con_csp_y_sin_urls_externas(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`GET /` entrega la portada independiente de Sílice incluso sin `dist` compilado, con CSP,
+    `Cache-Control: no-cache`, enlaces a `/app/`, cero scripts inline y cero URLs externas."""
+    monkeypatch.setattr(interfaz, "DIST", tmp_path / "no-existe")
+    respuesta = _cliente().get("/")
+    assert respuesta.status_code == 200
+    assert respuesta.headers["content-type"].startswith("text/html")
+    _cabeceras_de_seguridad(respuesta)
+    assert respuesta.headers["cache-control"] == "no-cache"
+
+    html = respuesta.text
+    assert "Presupuestos de obra verificables, celda por celda." in html
+    assert "SISTEMA LOCAL DE ANÁLISIS DE PRECIOS UNITARIOS · ARITMÉTICA EXACTA" in html
+    assert "Iniciar sesión en Sílice" in html
+    assert 'href="/app/"' in html
+    for fragmento in (
+        "Cálculo exacto en Decimal (sin float)",
+        "Bases SQLite locales por carpeta",
+        "Cero telemetría externa",
+        "HOJA: PLAN DE PAGOS · Inspección forense",
+        "1.740,89 USD",
+        "1.586,61 USD",
+        "PRESUPUESTO!F12",
+        "VALUACIONES!J48",
+        "COVENIN!C104",
+        "01 / Núcleo APU Multidominio",
+        "02 / Auditoría Forense Excel L1–L7",
+        "03 / Control de Obra y Valor Ganado IBCS",
+        "04 / Moneda, Índices BCV y Riesgo ML",
+        "05 / Producción de Cantera y Áridos",
+        "06 / Gobernanza Local SHA-256 y Respaldos",
+        "Administrador Master",
+        "Rol Arma",
+        "Rol Revisa",
+    ):
+        assert fragmento in html, fragmento
+
+    assert "<script" not in html.lower()
+    assert "http://" not in html and "https://" not in html
+
+    cabecera = _cliente().head("/")
+    assert cabecera.status_code == 200
+    _cabeceras_de_seguridad(cabecera)
+    assert "/" not in app.openapi()["paths"]
+    assert _cliente(ip="8.8.8.8").get("/").status_code == 403
