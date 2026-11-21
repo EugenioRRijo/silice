@@ -728,9 +728,17 @@ Verá «Versión guardada» y, por ejemplo, «Se guardó la versión V-005 con 3
 **Si solo cambió el desglose del desperdicio.** Cuando lo único pendiente es el desglose del desperdicio de un
 material (la misma cantidad, con otra neta y otro porcentaje, sección 4.11), el botón de la franja y el diálogo dicen
 «Guardar el desglose…» y «Guardar el desglose». Guardar el desglose no pide fuente y no crea versión: la versión abierta
-sigue siendo la misma y el aviso dice, por ejemplo, «Se guardó el desglose del desperdicio de 1 línea. La cantidad no
+sigue siendo la misma y el aviso, titulado «Desglose guardado» (en la Hoja y en Versiones), dice, por ejemplo, «Se guardó el desglose del desperdicio de 1 línea. La cantidad no
 cambió, así que la versión V-005 sigue siendo la misma.». Si además cambió alguna cantidad o rendimiento, el botón
 sigue diciendo «Guardar versión…»: nace una versión nueva con esos cambios y el desglose se guarda junto con ella.
+
+**Quién guardó el desglose.** Cada guardado del desglose (desde la Hoja, desde Componer o al llevar un libro a la
+Hoja) anota la cuenta que lo hizo y la hora. Bajo la tabla «Materiales» de la pestaña APU, cuando alguna línea muestra
+el desglose que está guardado, una línea lo dice, por ejemplo «Desglose del desperdicio guardado por Ana Pérez <ana> el
+13/11/2026 09:00.». Si el desglose se guardó antes de que Sílice lo anotara, o desde una integración sin cuenta, dice
+la hora y que no consta quién lo guardó; nunca pone un nombre que no esté guardado. Si alguna línea muestra un desglose
+suyo aún sin guardar, esa línea no aparece; vuelve al guardarlo. Pulsar «Aplicar» sin tocar el desperdicio (por ejemplo,
+para cambiar solo el rendimiento) no cuenta como un desglose suyo: sigue valiendo el guardado.
 
 **La primera versión de una obra larga.** Al guardar la primera versión, Sílice arma el plan de trabajo desde los
 rendimientos. El plan admite hasta 500 períodos: si por días no cabe, lo arma por semanas (de 5 días hábiles) y, si
@@ -1021,7 +1029,8 @@ Un archivo `.csv` en la misma zona abre «Cargar cómputo». Los pasos y el form
 
 La tabla «Registro de importaciones» guarda cada archivo importado en la obra, con «Nombre», «Tipo»
 («Plano .dxf», «Plano .ifc» o «Cómputo .csv»), «Fecha y hora», «Quién», «Qué produjo» (por ejemplo «34
-filas en el espacio; 2 sin reconocer» o «18 partidas llevadas») y «Versión» (el código, o «sin guardar»).
+filas en el espacio; 2 sin reconocer», «no entró ninguna fila; 2 circuitos nuevos» si del plano solo
+entraron sus circuitos, o «18 partidas llevadas») y «Versión» (el código, o «sin guardar»).
 
 Haga clic en el nombre del archivo para ver su informe en el panel lateral.
 
@@ -1209,7 +1218,9 @@ variación mensual) y el gasoil en USD por litro («GASOIL_USD»).
    aaaa-mm-dd, valor con punto decimal y `si` o `no` en «provisional»).
 4. Pulse «Importar». Sílice guarda solo la serie elegida, todo o nada: si una fila no sirve, no se importa nada y
    el aviso dice cuál fila y por qué. Si va bien, dice cuántos valores entraron y de qué fecha a qué fecha; si el
-   mismo archivo ya se había cargado para esa serie, dice «Ya estaba importado» y no escribe nada.
+   mismo archivo ya se había cargado para esa serie, dice «Ya estaba importado en» y el nombre de la serie, y no
+   escribe nada. Mientras la importación va en curso la serie, la fuente, la fecha y el archivo no se pueden cambiar; si
+   después cambia cualquiera de ellos, el aviso se quita, porque ya no corresponde a lo que se ve.
 5. Debajo de cada serie queda su historia cargada (fecha, valor y si es provisional). Un archivo que trae las
    dos series se importa una vez por cada una. Para corregir un valor, importe un archivo con la corrección: la
    revisión más reciente manda y la anterior queda en el historial.
@@ -1414,7 +1425,12 @@ precios se mueven como en los meses pasados.
    una serie no tiene historia suficiente (hacen falta al menos 12 meses completos), «Proyectar» lo dice,
    nombra la serie y cuántos meses tiene; quien administra los precios encuentra ahí el enlace «Cargar las
    series en Índices del BCV» (sección 9.4, «Series del riesgo vial»; la tasa del BCV se carga en la misma
-   página).
+   página). Sílice recuerda lo que elija: cuando «Proyectar» o «Comprobar hacia atrás» sale bien, guarda
+   en la obra la serie de cada insumo. Al volver, el selector viene precargado con lo último que usó en esa
+   versión («Precargado con las series que usó la última vez en esta versión») o, si la versión todavía no
+   tiene nada propio, en otra versión de la obra (la nota dice cuál). Un insumo que ya no está en la
+   versión o una serie que ya no se ofrece no se precarga, y una línea dice cuáles. Lo que cambie a mano
+   manda sobre lo precargado. Si no se pudo recordar, el resultado queda igual y una línea lo dice.
 4. Pulse «Proyectar». Verá «Total base», «P50», «P80» y «Reserva para cubrir el P80», y los tres insumos
    que más empujan. «Descargar el informe de riesgo» lo baja en Excel.
 5. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado (tarda cerca de medio

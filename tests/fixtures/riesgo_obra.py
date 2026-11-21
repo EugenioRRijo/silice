@@ -22,6 +22,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aplicacion.riesgo.series import CEMENTO_ASFALTICO_PPI, GASOIL_USD
@@ -177,3 +178,11 @@ def crear_via(ruta: Path) -> Path:
     finally:
         motor.dispose()
     return ruta
+
+
+def agregar_obra(sesion: Session, nombre: str, codigo: str) -> None:
+    """Otra obra en el mismo caso, con una versión como las de la vía (pruebas de aislamiento)."""
+    lista = sesion.scalars(
+        select(models.ListaPrecios).where(models.ListaPrecios.nombre == "Lista USD ficticia")
+    ).one()
+    _version(sesion, crear_proyecto(sesion, nombre, dominio=Dominio.CIVIL), lista, codigo)

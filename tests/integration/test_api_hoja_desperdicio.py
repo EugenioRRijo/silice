@@ -99,9 +99,11 @@ def _detalle(login: str) -> dict:
         headers=protegida(ficha),
     )
     assert abierto.status_code == 201, abierto.text
-    vista = navegador.get(
-        f"/v1/hoja/borradores/{abierto.json()['id']}/vistas/apu", params={"partida": "AF-LLAVE"}
-    )
+    return _detalle_de(navegador, abierto.json()["id"])
+
+
+def _detalle_de(navegador, id_) -> dict:
+    vista = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "AF-LLAVE"})
     assert vista.status_code == 200, vista.text
     return vista.json()["detalle"]
 
@@ -787,3 +789,247 @@ def test_guardar_el_desglose_quitado_deja_la_partida_sin_trazas(_caso: Path) -> 
     assert guardado.status_code == 200, guardado.text
     assert guardado.json()["version_nueva"] is False
     assert _trazas(_caso) == []
+
+
+# --- Quién guardó el desglose (mejora de A.6, acta DS-48g, opción A) ----------------------------
+#
+# `apu_desperdicio_guardado.responsable` (migración `caso_0024`) guarda la cuenta que escribió la
+# traza: la de la sesión (`Nombre <login>`, RF-82), como el registro de cambios de una versión.
+# La pestaña APU lo dice en `detalle.desglose_guardado` cuando alguna línea muestra el desglose
+# que está en la base; lo guardado antes de la columna sale con `responsable: null`.
+
+ANA = "Ana <ana>"
+
+
+def _responsables(ruta: Path) -> list[str | None]:
+    with closing(sqlite3.connect(f"file:{ruta.as_posix()}?mode=ro", uri=True)) as bd:
+        return [
+            f[0] for f in bd.execute("SELECT responsable FROM apu_desperdicio_guardado ORDER BY id")
+        ]
+
+
+def test_sin_desglose_no_hay_quien_lo_guardo(_caso: Path) -> None:
+    assert _detalle("ana")["desglose_guardado"] is None
+
+
+def test_un_desglose_de_antes_de_la_columna_no_sabe_quien_lo_guardo(_caso: Path) -> None:
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    assert _detalle("ana")["desglose_guardado"] == {
+        "responsable": None,
+        "fecha_hora": "2026-11-13T09:00:00",
+    }
+
+
+def test_guardar_solo_el_desglose_anota_la_cuenta_de_la_sesion(_caso: Path) -> None:
+    """Ana guarda solo el desglose (sin versión): la fila nueva lleva «Ana <ana>», su borrador y
+    otro borrador de la 001 lo dicen, y la de antes sigue sin responsable."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"]).status_code == 200
+    guardado = _guardar(navegador, ficha, id_, 1)
+    assert guardado.status_code == 200, guardado.text
+    assert _responsables(_caso) == [None, ANA]
+    propio = _detalle_de(navegador, id_)["desglose_guardado"]
+    assert propio["responsable"] == ANA
+    assert datetime.fromisoformat(propio["fecha_hora"]) > datetime(2026, 11, 13, 9)
+    otro, ficha_otro = con_cuenta(app, "rita")
+    abierto = otro.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": NOMBRE_OF001, "version": "001"},
+        headers=protegida(ficha_otro),
+    )
+    assert abierto.status_code == 201, abierto.text
+    assert _detalle_de(otro, abierto.json()["id"])["desglose_guardado"] == propio
+
+
+def test_guardar_la_version_con_el_desglose_tambien_anota_la_cuenta(_caso: Path) -> None:
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = _editar(navegador, ficha, id_, cantidades, 0, ["2"], ["5"])
+    assert editado.status_code == 200, editado.text
+    version = _guardar(navegador, ficha, id_, 1, "Acta ficticia de obra")
+    assert version.status_code == 200, version.text
+    assert _responsables(_caso) == [None, ANA]
+
+
+def test_un_desglose_sin_guardar_no_se_atribuye_al_de_la_base(_caso: Path) -> None:
+    """La línea muestra el desglose del borrador (0,625 + 60 %), no el de la base: no hay
+    responsable que decir de lo que todavía no se guardó."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"])
+    assert editado.status_code == 200, editado.text
+    assert editado.json()["apu"]["detalle"]["desglose_guardado"] is None
+    assert _detalle_de(navegador, id_)["desglose_guardado"] is None
+
+
+# --- El rótulo de la línea del desglose dice su insumo (acta DS-75, opción A) ---------------------
+
+
+def test_los_cambios_del_borrador_dicen_el_insumo_de_la_linea_del_desglose(_caso: Path) -> None:
+    """`GET .../cambios` AÑADE `insumo` (sin quitar ni renombrar nada): el del desglose de la
+    llave es su descripción; el del rendimiento, que no es una línea, es nulo."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"]).status_code == 200
+    assert _editar_rendimiento(navegador, ficha, id_, cantidades, 1, "25").status_code == 200
+    cambios = navegador.get(f"/v1/hoja/borradores/{id_}/cambios")
+    assert cambios.status_code == 200, cambios.text
+    assert cambios.json()["cambios"] == [
+        {
+            "objeto": "apu",
+            "clave": "AF-LLAVE",
+            "campo": "rendimiento",
+            "antes": "20",
+            "despues": "25",
+            "insumo": None,
+        },
+        {
+            "objeto": "apu",
+            "clave": "AF-LLAVE|material|1",
+            "campo": "desperdicio",
+            "antes": "0,8 + 25 %",
+            "despues": "0,625 + 60 %",
+            "insumo": LLAVE,
+        },
+    ]
+
+
+# --- Veredicto A del 2026-11-20, hallazgos 2 y 3 (la cuenta del desglose tras guardar) -----------
+
+TRAZA_0_8 = TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000"))
+
+
+def _salida_toma(navegador, ficha, id_, rev, rendimiento, materiales, desperdicios=None):
+    """Una edición del APU de EL-SALIDA-TOMA (otra partida de la OF-001) con sus cantidades."""
+    detalle = navegador.get(
+        f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "EL-SALIDA-TOMA"}
+    ).json()["detalle"]
+    cantidades = {g["clave"]: [f["cantidad"] for f in g["filas"]] for g in detalle["grupos"]}
+    cuerpo = {
+        "rev": rev,
+        "rendimiento": rendimiento,
+        "materiales": materiales if materiales is not None else cantidades["materiales"],
+        "equipos": cantidades["equipos"],
+        "mano_obra": cantidades["mano de obra"],
+    }
+    if desperdicios is not None:
+        cuerpo["desperdicios"] = desperdicios
+    return navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/EL-SALIDA-TOMA", json=cuerpo, headers=protegida(ficha)
+    )
+
+
+def test_tras_guardar_el_desglose_no_queda_ningun_cambio_colgado(_caso: Path) -> None:
+    """Hallazgo 2: Ana cambia el desglose de dos partidas (la misma cantidad, 0,8 + 25 % = 1) y,
+    antes de guardar, Componer guarda ese mismo desglose de AF-LLAVE. Guardar escribe solo el de
+    EL-SALIDA-TOMA y la cuenta queda en 0: antes quedaba «1 cambio, 1 desglose» de AF-LLAVE y el
+    segundo Guardar daba 422 «Ese desglose ya está guardado.»."""
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,8"], ["25"]).status_code == 200
+    salida = _salida_toma(navegador, ficha, id_, 1, "10", ["0,8", "0,8"], ["25", "25"])
+    assert salida.status_code == 200, salida.text
+    _con_traza(_caso, TRAZA_0_8)
+    guardado = _guardar(navegador, ficha, id_, salida.json()["resumen"]["rev"])
+    assert guardado.status_code == 200, guardado.text
+    assert guardado.json()["version_nueva"] is False
+    despues = _resumen(navegador, id_)
+    assert (despues["cambios"], despues["desgloses"]) == (0, 0)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_8]
+    # la traza de AF-LLAVE salió del borrador: lo que Componer guarde después se ve (revisión de
+    # Neon, hallazgo 4: sin esto, dejarla en `vivo.desperdicios` seguía en verde)
+    _con_traza(_caso, TRAZA_0_625)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_625]
+
+
+def test_aplicar_sin_cambios_no_tapa_ni_borra_lo_que_guarde_componer(_caso: Path) -> None:
+    """Hallazgo 3: «Aplicar» en AF-LLAVE sin cambiar nada (1 pieza, sin desperdicio) no deja
+    trazas en el borrador. Si después Componer guarda 0,8 + 25 % (= 1), la Hoja lo muestra, y
+    guardar la 002 por otra partida no lo borra de la base. Antes, la traza de 0 % del borrador lo
+    tapaba y la versión escribía un guardado vacío encima."""
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    aplicado = _editar(navegador, ficha, id_, cantidades, 0, cantidades["materiales"], [""])
+    assert aplicado.status_code == 200, aplicado.text
+    assert (aplicado.json()["rev"], aplicado.json()["resumen"]["cambios"]) == (0, 0)
+    _con_traza(_caso, TRAZA_0_8)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_8]
+    otra = _salida_toma(navegador, ficha, id_, 0, "12", None)
+    assert otra.status_code == 200, otra.text
+    version = _guardar(navegador, ficha, id_, otra.json()["resumen"]["rev"], "Acta ficticia")
+    assert version.status_code == 200, version.text
+    assert version.json()["version_nueva"] is True
+    assert _trazas(_caso) == [TRAZA_0_8]
+
+
+# --- Revisión de Neon del 2026-11-20, hallazgo 1: el navegador manda `desperdicios` siempre ------
+#
+# La pestaña APU manda un porcentaje por material en cada «Aplicar» (`logicaApu.ts`), aunque solo
+# cambie el rendimiento. Lo que coincide con la base (un 0 % donde la base no tiene desglose, o el
+# mismo desglose que la vigente) no es un cambio y no se anota en el borrador.
+
+def _rendimiento_y_desglose(navegador, ficha, id_, cantidades, rev, rendimiento, materiales, pct):
+    return navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/AF-LLAVE",
+        json={
+            "rev": rev,
+            "rendimiento": rendimiento,
+            "materiales": materiales,
+            "desperdicios": pct,
+            "equipos": cantidades["equipos"],
+            "mano_obra": cantidades["mano de obra"],
+        },
+        headers=protegida(ficha),
+    )
+
+
+def test_cambiar_solo_el_rendimiento_no_tapa_ni_borra_lo_que_guarde_componer(_caso: Path) -> None:
+    """Sin desglose en la base, Ana cambia solo el rendimiento (20 -> 25; el navegador manda «»
+    de porcentaje). Componer guarda después 0,8 + 25 % (= 1): la Hoja lo muestra y guardar la 002
+    no lo borra de la base."""
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = _rendimiento_y_desglose(navegador, ficha, id_, cantidades, 0, "25", ["1"], [""])
+    assert editado.status_code == 200, editado.text
+    _con_traza(_caso, TRAZA_0_8)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_8]
+    version = _guardar(navegador, ficha, id_, editado.json()["rev"], "Acta ficticia")
+    assert version.status_code == 200, version.text
+    assert _trazas(_caso) == [TRAZA_0_8]
+
+
+def test_reenviar_el_desglose_vigente_no_lo_copia_al_borrador(_caso: Path) -> None:
+    """Con 0,8 + 25 % en la base, Ana cambia solo el rendimiento (el navegador reenvía 0,8 y 25).
+    La línea sigue diciendo quién guardó el desglose; si después Componer lo cambia a 0,625 + 60 %,
+    la Hoja muestra el nuevo y guardar la 002 no lo pisa con el viejo."""
+    _con_traza(_caso, TRAZA_0_8)
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = _rendimiento_y_desglose(navegador, ficha, id_, cantidades, 0, "25", ["0,8"], ["25"])
+    assert editado.status_code == 200, editado.text
+    assert editado.json()["apu"]["detalle"]["desglose_guardado"] is not None
+    _con_traza(_caso, TRAZA_0_625)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_625]
+    version = _guardar(navegador, ficha, id_, editado.json()["rev"], "Acta ficticia")
+    assert version.status_code == 200, version.text
+    assert _trazas(_caso) == [TRAZA_0_625]
+
+
+def test_deshacer_el_desglose_hasta_el_de_la_base_lo_quita_del_borrador(_caso: Path) -> None:
+    """0,8 + 25 % -> 0,625 + 60 % -> 0,8 + 25 %: no queda nada que guardar, la línea vuelve a
+    decir quién guardó el desglose y lo que Componer guarde después se ve y no se pisa."""
+    _con_traza(_caso, TRAZA_0_8)
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    assert _editar(navegador, ficha, id_, cantidades, 0, ["0,625"], ["60"]).status_code == 200
+    vuelta = _editar(navegador, ficha, id_, cantidades, 1, ["0,8"], ["25"])
+    assert vuelta.status_code == 200, vuelta.text
+    assert vuelta.json()["resumen"]["cambios"] == 0
+    assert vuelta.json()["apu"]["detalle"]["desglose_guardado"] is not None
+    _con_traza(_caso, TRAZA_0_625)
+    assert _detalle_de(navegador, id_)["desperdicios"] == [LLAVE_0_625]

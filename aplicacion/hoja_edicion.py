@@ -50,6 +50,7 @@ from aplicacion.desperdicio import TrazaDesperdicio, trazas_vigentes
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
 from aplicacion.hoja_desperdicio import (
+    anotables,
     con_desperdicio_en_materiales,
     desgloses_visibles,
     trazas_del_borrador,
@@ -92,6 +93,7 @@ __all__ = [
     "borradores_para_retomar",
     "cambiar_borrador",
     "cambiar_insumo_de_linea",
+    "cambios_con_insumo",
     "cambios_del_borrador",
     "candidatos_de_insumo",
     "completar",
@@ -483,8 +485,9 @@ def editar_apu(
             rendimiento,
         )
         if desperdicios is not None:
-            nueva, trazas = con_desperdicio_en_materiales(nueva, desperdicios)
+            nueva, enviadas = con_desperdicio_en_materiales(nueva, desperdicios)
             vigentes = tuple(trazas_vigentes(sesion, partida))
+            trazas = anotables(enviadas, vigentes)  # lo que ya es de la base no se anota
         if nueva == actual:
             if trazas is not None:
                 otro_desglose = _otro_desglose(vivo, partida, actual, trazas, vigentes)
@@ -497,12 +500,26 @@ def editar_apu(
         editado = cambiar_borrador(sesion, huella, id, rev, construir)
         if trazas is None:
             return editado
+        if not trazas and partida not in editado.desperdicios:
+            # todo lo enviado es lo de la base («Aplicar» sin tocar el desglose; veredicto A,
+            # hallazgo 3, y revisión de Neon, hallazgo 1): nada que anotar en el borrador
+            return editado
         if otro_desglose:  # la composicion quedo igual: el reemplazo sube el rev y vacia la cache
             editado = hoja_borradores.reemplazar(huella, id, editado.borrador, rev)
         elif editado.vigentes_del_desperdicio.get(partida) != vigentes:
             editado.calculo = None  # la cuenta de cambios se hace contra otras vigentes
-        editado.desperdicios = {**editado.desperdicios, partida: trazas}
-        editado.vigentes_del_desperdicio = {**editado.vigentes_del_desperdicio, partida: vigentes}
+        if trazas:
+            editado.desperdicios = {**editado.desperdicios, partida: trazas}
+            editado.vigentes_del_desperdicio = {
+                **editado.vigentes_del_desperdicio,
+                partida: vigentes,
+            }
+        else:  # el desglose volvio a ser el de la base: sale del borrador
+            editado.calculo = None
+            editado.desperdicios = {c: t for c, t in editado.desperdicios.items() if c != partida}
+            editado.vigentes_del_desperdicio = {
+                c: t for c, t in editado.vigentes_del_desperdicio.items() if c != partida
+            }
         return editado
 
 
@@ -785,6 +802,19 @@ def cambios_del_borrador(vivo: BorradorVivo) -> tuple[int, list[hoja.CambioEdita
     with vivo.cerrojo:
         _, cambios = hoja_vista.calculo(vivo)
         return vivo.rev, list(cambios)
+
+
+def cambios_con_insumo(
+    vivo: BorradorVivo,
+) -> tuple[int, list[tuple[hoja.CambioEditado, str | None]]]:
+    """Los de `cambios_del_borrador`, cada uno con el insumo de la línea que nombra su clave
+    (`hoja_lineas_apu.insumo_de_la_clave`; acta DS-75): lo que dice «Cambios que se guardan»."""
+    with vivo.cerrojo:
+        rev, cambios = cambios_del_borrador(vivo)
+        base = vivo.abierta.borrador if vivo.abierta is not None else vivo.borrador
+        return rev, [
+            (c, hoja_lineas_apu.insumo_de_la_clave(base, vivo.borrador, c)) for c in cambios
+        ]
 
 
 def borradores_abiertos(huella: str, caso: str) -> list[BorradorVivo]:

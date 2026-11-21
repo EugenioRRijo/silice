@@ -306,8 +306,8 @@ def leer(
 
 @router.post("/confirmar", response_model=ConfirmacionRespuesta)
 def confirmar(
+    activa: Annotated[SesionActiva, SOLO_CUENTA],  # antes que la sesión: sin permiso no se abre
     sesion: SesionDeEscrituraDep,
-    activa: Annotated[SesionActiva, SOLO_CUENTA],
     tipo: Annotated[str, Form(max_length=20)],
     archivo: Annotated[UploadFile, File()],
     fecha_descarga: Annotated[date, Form()],
@@ -329,13 +329,8 @@ def confirmar(
         )
     except ValueError as error:
         raise HTTPException(422, f"No se guardo nada: {_corto(error)}") from None
-    except SQLAlchemyError as error:
-        motor = getattr(error, "orig", None)
-        # `orig` es el mensaje del motor, sin el SQL ni sus parámetros.
-        raise HTTPException(
-            503,
-            f"No se pudo escribir en el caso: {_corto(motor or 'error de base')}",
-        ) from None
+    # Un `SQLAlchemyError` sigue al manejador común (`api/main.py`): 503 fijo, el motor al
+    # registro con su traza (regla C1, DS-113). La sesión de escritura deshace al cerrarse.
     return ConfirmacionRespuesta(mensajes=mensajes)
 
 
@@ -399,9 +394,9 @@ def _serie_vial(serie: series_viales.SerieVialCargada) -> SerieVialRespuesta:
 
 @router.get("/series-viales", response_model=SeriesVialesRespuesta)
 def leer_series_viales(
-    sesion: SesionDep,
     activa: Annotated[SesionActiva | None, ADMINISTRAR],
     _modulo: ModuloRiesgo,
+    sesion: SesionDep,  # después del permiso y del módulo: sin ellos no se abre el caso
     response: Response,
 ) -> SeriesVialesRespuesta:
     """Las series viales con su definición y su historia cargada. No escribe nada."""
@@ -420,9 +415,9 @@ def _mensaje_de_importacion(cuantos: int, desde: date, hasta: date) -> str:
 
 @router.post("/series-viales/importar", response_model=ImportacionVialRespuesta)
 def importar_serie_vial(
-    sesion: SesionDeEscrituraDep,
-    activa: Annotated[SesionActiva, SOLO_CUENTA],
+    activa: Annotated[SesionActiva, SOLO_CUENTA],  # antes que la sesión: sin permiso no se abre
     _modulo: ModuloRiesgo,
+    sesion: SesionDeEscrituraDep,
     serie: Annotated[str, Form(max_length=40)],
     archivo: Annotated[UploadFile, File()],
     fecha_descarga: Annotated[date, Form()],
@@ -472,14 +467,10 @@ def importar_serie_vial(
     except (ValueError, csv.Error) as error:  # filas rechazadas, serie ausente, CSV ilegible...
         sesion.rollback()
         raise _no_importo_vial(error) from None
-    except SQLAlchemyError as error:
+    except SQLAlchemyError:
+        # 503 fijo del manejador común (`api/main.py`), el motor al registro (regla C1, DS-113)
         sesion.rollback()
-        motor = getattr(error, "orig", None)
-        raise HTTPException(
-            503,
-            f"No se pudo escribir en el caso: {_corto(motor or 'error de base')}",
-            headers=SIN_CACHE,
-        ) from None
+        raise
     return ImportacionVialRespuesta(
         serie=serie,
         importada=True,
@@ -540,7 +531,9 @@ class EnUsdRespuesta(BaseModel):
 
 
 def _en_usd(funcion):
-    """Los errores de `aplicacion.indices_usd` con su código: 404, 409 o 422; nunca el SQL."""
+    """Los errores de `aplicacion.indices_usd` con su código: 404, 409 o 422; nunca el SQL. Un
+    `SQLAlchemyError` sigue al manejador común (`api/main.py`): 503 fijo, el motor al registro
+    (regla C1, DS-113); `indices_usd` ya deshace lo suyo."""
     try:
         return funcion()
     except indices_usd.SerieInexistente as error:
@@ -549,8 +542,6 @@ def _en_usd(funcion):
         raise HTTPException(409, _corto(error), headers=SIN_CACHE) from None
     except ValueError as error:
         raise HTTPException(422, _corto(error), headers=SIN_CACHE) from None
-    except SQLAlchemyError:
-        raise HTTPException(503, "No se pudo leer o escribir el caso.", headers=SIN_CACHE) from None
 
 
 @router.get("/en-usd/origenes", response_model=OrigenesRespuesta)
@@ -597,9 +588,9 @@ def ver_en_usd(sesion: SesionDep, peticion: EnUsdPeticion, response: Response) -
 
 @router.post("/en-usd/confirmar", response_model=ConfirmacionRespuesta)
 def confirmar_en_usd(
+    activa: Annotated[SesionActiva, SOLO_CUENTA],  # antes que la sesión: sin permiso no se abre
     sesion: SesionDeEscrituraDep,
     peticion: EnUsdConfirmacion,
-    activa: Annotated[SesionActiva, SOLO_CUENTA],
     response: Response,
 ) -> ConfirmacionRespuesta:
     """Guarda la serie en USD si sus valores son los que se revisaron; el responsable es la

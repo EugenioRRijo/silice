@@ -15,14 +15,20 @@ línea base: su costo directo unitario, su duración y el término de la obra po
 tocar el núcleo). Cada partida se mide sola: el efecto es el de cambiar SOLO su APU en la línea
 base.
 
+`insumo_de_la_clave` nombra la línea de una clave `{partida}|{rubro}|{n}` (el alta, la baja y el
+desglose del desperdicio) con la descripción de su insumo, para la lista de cambios que se guardan
+(acta DS-75, opción A).
+
 Sin FastAPI ni Streamlit (RM-1); `Decimal` siempre.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -52,6 +58,10 @@ from core.contracts.apu import (
 from core.contracts.presupuesto import Presupuesto
 from core.costing.motor import calcular_apu
 
+if TYPE_CHECKING:
+    from aplicacion import hoja
+    from core.budget import CambioEditado
+
 __all__ = [
     "MENSAJE_SIN_VERSION",
     "MENSAJE_TIPO",
@@ -62,12 +72,16 @@ __all__ = [
     "SinVersionGuardada",
     "agregar_linea",
     "antes_y_despues",
+    "insumo_de_la_clave",
     "linea_base_de",
     "quitar_linea",
 ]
 
 #: El campo de la composición de cada tipo de línea, como los llama el catálogo.
 _CAMPOS = {"material": "materiales", "equipo": "equipos", "mano_obra": "mano_obra"}
+#: La clave de una línea del APU que no se nombra por su insumo (`hoja._cambios_de_tramo` y
+#: `hoja_desperdicio.cambios_de_desglose`); la lee igual `rotuloDeOrigen` en la interfaz.
+_CLAVE_DE_LINEA = re.compile(r"^(?P<partida>.+)\|(?P<tipo>material|equipo|mano_obra)\|(?P<n>\d+)$")
 
 MENSAJE_TIPO = "El tipo de línea debe ser material, equipo o mano de obra."
 MENSAJE_UNA_LINEA = "Un APU necesita al menos una línea."
@@ -107,6 +121,24 @@ def _rubro(composicion: ComposicionAPU, tipo: str) -> tuple:
     if tipo not in _CAMPOS:
         raise HojaInvalida(MENSAJE_TIPO)
     return getattr(composicion, _CAMPOS[tipo])
+
+
+def insumo_de_la_clave(
+    base: hoja.Borrador, actual: hoja.Borrador, cambio: CambioEditado
+) -> str | None:
+    """La descripción del insumo de la línea que nombra la clave `{partida}|{rubro}|{n}` de
+    `cambio` (n desde 1): la de `actual` o, si el cambio es su `baja` (ya no está), la de `base`.
+    `None` para otra clave, otro objeto o una línea que no existe."""
+    linea = _CLAVE_DE_LINEA.match(cambio.clave) if cambio.objeto == "apu" else None
+    if linea is None:
+        return None
+    borrador = base if cambio.campo == "baja" else actual
+    composicion = borrador.composiciones.get(linea["partida"])
+    indice = int(linea["n"]) - 1
+    if composicion is None or indice < 0:
+        return None
+    lineas = getattr(composicion, _CAMPOS[linea["tipo"]])
+    return lineas[indice].descripcion if indice < len(lineas) else None
 
 
 def _modalidad(texto: str | None) -> ModalidadManoObra:

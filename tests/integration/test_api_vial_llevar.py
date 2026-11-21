@@ -22,6 +22,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
+from dataclasses import replace
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -34,16 +35,17 @@ from api import caso_web, dependencias
 from api.main import app
 from api.rutas import hoja as rutas_hoja
 from api.rutas import vial as rutas
-from aplicacion import hoja_borradores
+from aplicacion import hoja_borradores, hoja_sin_valorar, hoja_vial
 from core import models
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import Dominio
-from core.contracts.apu import ComposicionAPU, LineaMaterial
+from core.contracts.apu import ComposicionAPU, LineaMaterial, ParametrosCosto
 from operacion import config
 from operacion.base_datos import preparar_base
 from operacion.instalacion import sesion_de_instalacion
 from tests.fixtures import costo_propio as cp
 from tests.fixtures.carpeta_aprobaciones import FECHA, OBRA, guardar_version, sembrar_vivienda
+from tests.fixtures.carrera import con_cerrojo_que_cambia
 from tests.fixtures.produccion_api import cliente_con_clave
 from tests.fixtures.sesion_web import (
     MENSAJE_PERMISO,
@@ -328,6 +330,36 @@ def test_el_riego_a_mano_y_el_llevado_de_los_tramos_dan_vr8_en_la_auditoria(ana)
     viales = [h for h in informe["hallazgos"] if h["regla"].startswith("VR")]
     assert [(h["regla"], h["origen"]) for h in viales] == [("VR8", ["tramo:T1:capa:2", "a-mano:1"])]
     assert "el presupuesto suma 17.520 m2" in viales[0]["descripcion"]
+
+
+def test_si_falla_el_borrador_nuevo_que_otra_pestana_toco_antes_del_cerrojo_no_se_descarta(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hallazgo 5 (la carrera de DS-58): llevar los tramos abre el borrador de la obra; antes de
+    que tome su cerrojo, otra pestaña de la misma ficha lo cambia. Si llevar falla (409), el
+    borrador queda con lo de la otra pestaña en vez de descartarse."""
+    navegador, _ = ana
+    assert _importar(ana, MUESTRA.read_bytes()).status_code == 200
+    assert _borradores(navegador) == []
+
+    otros = ParametrosCosto(utilidad=Decimal("0.20"))
+
+    def otra_pestana(vivo: hoja_borradores.BorradorVivo) -> None:  # cambia los porcentajes
+        nuevo = replace(vivo.borrador, parametros=otros)
+        hoja_borradores.reemplazar(vivo.huella, vivo.id, nuevo, vivo.rev)
+
+    def sin_valorar(*_args, **_kwargs):
+        raise hoja_sin_valorar.PartidasSinValorar("Una partida quedaría pendiente.")
+
+    creados = con_cerrojo_que_cambia(monkeypatch, otra_pestana)
+    monkeypatch.setattr(hoja_vial, "_valorado", sin_valorar)
+    respuesta = _llevar(ana)
+
+    assert respuesta.status_code == 409, respuesta.text
+    assert len(creados) == 1
+    assert [(b["id"], b["rev"]) for b in _borradores(navegador)] == [(creados[0].id, 1)]
+    vivo = creados[0]
+    assert hoja_borradores.obtener(vivo.huella, vivo.id).borrador.parametros == otros
 
 
 # --- la versión que se ve es la del borrador (ronda 2) --------------------------------------------

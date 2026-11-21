@@ -286,8 +286,9 @@ def plan_del_borrador(
     La curva exige que cada partida valorada sume 1 (`core.budget.curva`): las que se quedaron
     fuera del plan por tener cantidad 0 (monto 0) van enteras al último período, sin alargar el
     plan. Sin ningún período, van a un primer período. Una partida pendiente (sin composición)
-    no entra al plan, solo su aviso: al guardar, `hoja.ajustar_plan` la quita, y si hubiera
-    reservado un día el plan guardado empezaría en «Dia 2».
+    no entra al plan, solo su aviso («… está pendiente (sin valorar): no entró al plan.»): al
+    guardar, `hoja.ajustar_plan` la quita, y si hubiera reservado un día el plan guardado
+    empezaría en «Dia 2».
     """
     lista = duraciones(items, composiciones, cuadrillas or {})
     plan = plan_por_rendimientos(
@@ -303,7 +304,15 @@ def plan_del_borrador(
             plan[-1] = (etiqueta, (*reparto, *fuera))
         else:
             plan.append((_etiqueta(1, unidad), fuera))
-    return plan, [d.aviso for d in lista if d.aviso]
+    return plan, [_aviso_del_borrador(d, composiciones) for d in lista if d.aviso]
+
+
+def _aviso_del_borrador(duracion: Duracion, composiciones: Mapping[str, ComposicionAPU]) -> str:
+    """El aviso de `duraciones`, salvo el de una pendiente con cantidad: aquí no se le asigna un
+    día, queda fuera del plan (`_valoradas`), y el aviso lo dice."""
+    if duracion.codigo not in composiciones and duracion.dias != CERO:
+        return f"{duracion.codigo} está pendiente (sin valorar): no entró al plan."
+    return duracion.aviso
 
 
 def plan_que_cabe(

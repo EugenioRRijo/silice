@@ -157,3 +157,48 @@ def test_el_aviso_de_un_indice_en_bs_lleva_su_salida_en_el_excel_y_en_la_tabla()
     assert total[0] == "Total" and total[-1] == esperado
     (fila,) = reajuste.filas_lado_a_lado(resultado)
     assert list(fila.values())[-1] == esperado
+
+
+@pytest.mark.parametrize("abierta", [False, True], ids=["sin-transaccion", "con-transaccion"])
+def test_calcular_en_la_transaccion_que_falla_no_deja_el_bloqueo_que_abrio(tmp_path, abierta):
+    """Revisión de la compuerta, punto 2 (DS-115): con `en_la_transaccion`, si `calcular` abrió
+    él mismo la transacción (`BEGIN IMMEDIATE`) y falla, la cierra; si ya estaba abierta, la deja
+    como estaba (es de quien llama). La excepción original es la que sale."""
+    import sqlite3
+    from contextlib import closing
+
+    from core.catalog import abrir_sesion_de_escritura
+
+    ruta = tmp_path / "r.db"
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    crear_esquema(motor)
+    with abrir_sesion(motor) as sesion:
+        sembrar(sesion)
+        sesion.commit()
+    clausula = reajuste.clausula_desde_textos(CAMPOS, COMPONENTES)
+    periodos = reajuste.periodos_desde_filas(PERIODOS, EJECUTADO)
+    try:
+        with abrir_sesion_de_escritura(motor) as sesion:
+            if abierta:
+                sesion.connection()  # quien llama ya tomó el bloqueo
+            with pytest.raises(HojaInvalida, match="no tiene una versión '009'"):
+                reajuste.calcular(
+                    sesion,
+                    NOMBRE,
+                    "009",
+                    clausula,
+                    periodos,
+                    fecha_calculo=date(2027, 3, 5),
+                    en_la_transaccion=True,
+                )
+            assert sesion.in_transaction() is abierta
+            with closing(sqlite3.connect(ruta, timeout=0)) as otra:
+                try:
+                    otra.execute("BEGIN IMMEDIATE")
+                    otra.execute("ROLLBACK")
+                    libre = True
+                except sqlite3.OperationalError:
+                    libre = False
+            assert libre is not abierta
+    finally:
+        motor.dispose()

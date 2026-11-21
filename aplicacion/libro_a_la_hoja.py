@@ -295,6 +295,7 @@ def _al_catalogo(
     fecha: date,
     dominio: Dominio,
     archivo: str,
+    responsable: str,
 ) -> tuple[str, bool]:
     """El código con que el APU queda en el catálogo y si entró nuevo (ver la cabecera, punto 1)."""
     catalogo = Catalogo(sesion)
@@ -309,25 +310,27 @@ def _al_catalogo(
             # comparar otra partida), no los vería. Expediente de `core/` propuesto en la bitácora.
             sesion.expire(lista, ["precios"])
             _referenciar(sesion, codigo, lista, apu, archivo)
-            _trazar(sesion, codigo, apu)
+            _trazar(sesion, codigo, apu, responsable)
             return codigo, True
         if _misma(catalogo, composicion, fecha, lista):
-            _trazar(sesion, codigo, apu)
+            _trazar(sesion, codigo, apu, responsable)
             return codigo, False
     raise LibroSinRenglones(f"La partida «{base}» ya tiene demasiadas variantes en el catálogo.")
 
 
-def _trazar(sesion: Session, codigo: str, apu: ApuDelLibro) -> None:
+def _trazar(sesion: Session, codigo: str, apu: ApuDelLibro, responsable: str) -> None:
     """La traza del desperdicio del APU, unida a la vigente de `codigo` (la de otra línea se
-    conserva; la de la misma línea, manda la del libro). Sin `commit`: va con el catálogo. Si la
-    unión es ya la vigente (llevar otra vez), no escribe nada."""
+    conserva; la de la misma línea, manda la del libro), con quien lleva el libro como su
+    `responsable` (acta DS-48g). Sin `commit`: va con el catálogo. Si la unión es ya la vigente
+    (llevar otra vez), no escribe nada."""
     if not apu.trazas:
         return
     antes = trazas_vigentes(sesion, codigo)
     unidas = unir(apu.trazas, antes)
     if unidas != antes:
         # la hora solo fecha el rastro de la traza; no entra en ninguna cifra (como Componer)
-        guardar_trazas(sesion, codigo, unidas, ahora=datetime.now().replace(microsecond=0))
+        ahora = datetime.now().replace(microsecond=0)
+        guardar_trazas(sesion, codigo, unidas, ahora=ahora, responsable=responsable)
 
 
 def _referenciar(
@@ -472,7 +475,7 @@ def llevar_libro_a_la_hoja(
             codigos: dict[int, tuple[str, bool]] = {}
             for apu in usados:
                 codigos[id(apu)] = _al_catalogo(
-                    sesion, apu, lista, vivo.borrador.fecha, dominio, libro.archivo
+                    sesion, apu, lista, vivo.borrador.fecha, dominio, libro.archivo, responsable
                 )
             items = [
                 con_frente(
@@ -518,6 +521,7 @@ def llevar_libro_a_la_hoja(
                 ),
             )
             sesion.commit()
+            llevado = vivo.borrador  # fuera del cerrojo otra petición puede cambiarlo
         except BaseException:
             sesion.rollback()
             if nuevo:
@@ -527,7 +531,7 @@ def llevar_libro_a_la_hoja(
             raise
     precios = {
         p.item.codigo_partida: p.resultado.precio_unitario
-        for p in hoja.elaborar_borrador(vivo.borrador).elaboracion.presupuesto.partidas
+        for p in hoja.elaborar_borrador(llevado).elaboracion.presupuesto.partidas
     }
     tolerancia = Decimal(TOLERANCIA_PRECIO.valor)
     partidas = []

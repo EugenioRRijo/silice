@@ -253,7 +253,7 @@ export const GUIAS: readonly Guia[] = [
       {
         titulo: "Guardar y descargar",
         pasos: [
-          "Lo que cambia queda en el borrador. Cuando esté listo, pulse «Guardar versión…» (la primera vez, «Guardar primera versión…») en la franja de arriba, escriba de dónde salen los datos y confirme: nace una versión. Si lo único que cambió es el desglose del desperdicio de un material (la misma cantidad, con otra neta y otro porcentaje), el botón de la franja dice «Guardar el desglose…» y el del diálogo «Guardar el desglose»: guarda ese desglose, no pide la fuente y no crea versión; la versión abierta sigue siendo la misma.",
+          "Lo que cambia queda en el borrador. Cuando esté listo, pulse «Guardar versión…» (la primera vez, «Guardar primera versión…») en la franja de arriba, escriba de dónde salen los datos y confirme: nace una versión. Si lo único que cambió es el desglose del desperdicio de un material (la misma cantidad, con otra neta y otro porcentaje), el botón de la franja dice «Guardar el desglose…» y el del diálogo «Guardar el desglose»: guarda ese desglose, no pide la fuente y no crea versión; la versión abierta sigue siendo la misma. Bajo la tabla «Materiales» del APU, una línea dice quién guardó el desglose que se ve y cuándo (si no consta quién, lo dice).",
           "«Descargar Excel», al lado de la franja, baja el presupuesto en Excel; «Descargar PDF», en un PDF listo para imprimir o enviar, con el APU de cada partida después del presupuesto.",
           "Si las cantidades vienen de un archivo, en «Archivos y planos» pulse «Subir plano o cómputo»: un plano .dxf o .ifc, o un cómputo .csv que se lleva con «Llevar al presupuesto». Después guarde la versión igual.",
         ],
@@ -468,6 +468,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
     parrafos: [
       "Cuánto puede subir el presupuesto si los precios se mueven como en los meses pasados: «Proyectar» simula muchas trayectorias y da el P50, el P80 y la reserva para cubrir el P80. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado.",
       "Si a una serie le falta historia, el aviso la nombra; quien administra los precios la carga en «Índices del BCV» (sección «Series del riesgo vial»).",
+      "Sílice recuerda en la obra la serie que eligió para cada insumo cuando «Proyectar» o «Comprobar hacia atrás» sale bien. Al volver, el selector viene con lo último que usó en esa versión o, si la versión no tiene nada propio, en otra versión de la obra, y la nota lo dice; lo que ya no vale (un insumo que ya no está o una serie que ya no se ofrece) no se precarga y se avisa.",
     ],
     terminos: ["p50-p80", "indices-bcv"],
   },

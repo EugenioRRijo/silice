@@ -44,3 +44,28 @@ def dxf_sin_unidad(destino: Path) -> Path:
     documento.header["$INSUNITS"] = 0
     documento.saveas(destino)
     return destino
+
+
+def of001_declarado():
+    """El DXF de OF-001 leído, con la altura de la memoria en sus ambientes y sus circuitos C1 y C2
+    declarados como los de `espacio_of001`: listo para fusionar (lo que hace la Hoja antes de
+    «Fusionar»)."""
+    from aplicacion import hoja
+    from tests.fixtures.espacio_of001 import espacio_of001
+
+    leido = hoja.leer_plano(DXF_OF001)
+    con_alturas = hoja.cargar_alturas_desde_texto(
+        leido, {a.id: altura_de_la_memoria() for a in leido.ambientes}
+    )
+    return hoja.declarar_circuitos_desde_texto(
+        con_alturas,
+        {
+            c.id: (
+                str(c.conductores[0]),
+                str(c.conductores[1]),
+                str(c.conductores[2]),
+                str(c.puntos_maximos),
+            )
+            for c in espacio_of001().circuitos
+        },
+    )

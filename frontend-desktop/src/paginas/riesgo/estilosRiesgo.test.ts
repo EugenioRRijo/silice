@@ -40,3 +40,10 @@ describe("fila «Proyectar» de Riesgo: campos alineados por su caja de entrada"
     expect(cuerpo).toMatch(/margin-block-start:\s*1\.5rem/);
   });
 });
+
+// jsdom no calcula el diseño: aquí solo se comprueba que la regla esté escrita.
+describe("estilos de Riesgo de la obra", () => {
+  test("las notas bajo «Serie que mueve cada insumo» ocupan toda la fila de la grilla, no una celda de 14rem", () => {
+    expect(regla(".riesgo-series .riesgo-nota")).toMatch(/grid-column:\s*1 \/ -1/);
+  });
+});

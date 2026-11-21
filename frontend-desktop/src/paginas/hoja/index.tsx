@@ -5,6 +5,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
+import { AvisoDeGuardado } from "../../comun/AvisoDeGuardado";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
 import { SIN_VERSIONES, TITULO, esBorradorAusente, versionesOfrecidas } from "./logica";
 import type { BorradorAbierto, PestanaId, Resumen } from "./logica";
@@ -193,14 +194,7 @@ function CuerpoDeLaHoja() {
   return (
     <div className="silice-hoja__contenido" inert={inerte}>
       {exito !== null && exito.proyecto === proyecto && (
-        <InlineNotification
-          kind="success"
-          role="status"
-          lowContrast
-          title={exito.titulo ?? "Versión guardada"}
-          subtitle={exito.texto}
-          onCloseButtonClick={quitarExito}
-        />
+        <AvisoDeGuardado exito={exito} alCerrar={quitarExito} />
       )}
       {ofrecidos.length > 0 && (
         <OfertaDeRetomarVista

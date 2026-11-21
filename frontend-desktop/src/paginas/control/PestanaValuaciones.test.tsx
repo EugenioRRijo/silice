@@ -56,6 +56,7 @@ describe("Pestaña de valuaciones", () => {
   let informe: (cuerpo: FormData) => Response | Promise<Response>;
   let importar: () => Response | Promise<Response>;
   let registro: unknown;
+  let estadoDelRegistro: number;
   let hallazgosDeLaLista: Valuaciones["hallazgos"];
   let costos: Record<string, string>[];
 
@@ -82,13 +83,14 @@ describe("Pestaña de valuaciones", () => {
     informe = () => json({ informe: ["sin novedades"] });
     importar = () => json({ importadas: 1 });
     registro = { corte: "2026-11-13", hallazgos: 0, errores: 0, detalle: [] };
+    estadoDelRegistro = 200;
     hallazgosDeLaLista = [];
     costos = [];
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       const metodo = init?.method ?? "GET";
       if (url.startsWith("/v1/control/valuaciones?") && metodo === "GET") return json({ ...valuaciones(anulables), hallazgos: hallazgosDeLaLista });
-      if (url === "/v1/control/valuaciones" && metodo === "POST") return json(registro);
+      if (url === "/v1/control/valuaciones" && metodo === "POST") return json(registro, estadoDelRegistro);
       if (url.startsWith("/v1/control/costos?") && metodo === "GET") return json({ filas: costos });
       const anular = /^\/v1\/control\/valuaciones\/(\d+)\/anular$/.exec(url);
       if (anular && metodo === "POST") {
@@ -207,6 +209,46 @@ describe("Pestaña de valuaciones", () => {
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
     await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
     expect(await screen.findByText("Valuación registrada: corte 13/11/2026, sin hallazgos en la revisión.")).toBeInTheDocument();
+  });
+
+  // Un segundo intento que no pasa la revisión local no puede dejar a la vista el resultado del intento anterior.
+  test("un segundo registro con una cantidad inválida quita el aviso y los hallazgos del primero", async () => {
+    registro = {
+      corte: "2026-11-13",
+      hallazgos: 1,
+      errores: 1,
+      detalle: [{ valuacion: "V-03", regla: "R14", severidad: "Error", mensaje: "La valuación V-03 no tiene inspector." }],
+    };
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(await screen.findByText(/la revisión encontró 1 error/)).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" })).toBeInTheDocument();
+    await u.clear(screen.getByLabelText("Cantidad 1"));
+    await u.type(screen.getByLabelText("Cantidad 1"), "abc");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(screen.getByLabelText("Cantidad 1")).toBeInvalid();
+    expect(screen.queryByText(/Valuación registrada/)).toBeNull();
+    expect(screen.queryByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" })).toBeNull();
+  });
+
+  // Lo mismo con un intento que el servidor rechazó: su error no sigue a la vista junto a los campos marcados del siguiente.
+  test("un segundo registro inválido quita también el error del servidor del primero", async () => {
+    registro = { detalle: "Ya existe una valuación con ese número." };
+    estadoDelRegistro = 422;
+    const u = montar();
+    await screen.findByLabelText("Valuación");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(await screen.findByText("Ya existe una valuación con ese número.")).toBeInTheDocument();
+    await u.clear(screen.getByLabelText("Cantidad 1"));
+    await u.type(screen.getByLabelText("Cantidad 1"), "abc");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(screen.getByLabelText("Cantidad 1")).toBeInvalid();
+    expect(screen.queryByText("Ya existe una valuación con ese número.")).toBeNull();
   });
 
   test("los hallazgos de las valuaciones guardadas se leen junto a la tabla", async () => {

@@ -945,3 +945,26 @@ def test_seguir_el_consejo_y_volver_a_agregar_la_valora(_entorno: Path) -> None:
     assert otra.status_code == 200, otra.text
     assert otra.json()["aviso"] is None
     assert otra.json()["resumen"]["pendientes_catalogo"] == 0
+
+
+def test_en_un_borrador_en_blanco_una_partida_sin_valorar_tambien_trae_su_aviso(
+    _entorno: Path,
+) -> None:
+    """Hallazgo 7 (DS-105, opción A): en una obra sin versiones la Hoja valora con la lista para
+    armar de la obra a la fecha del borrador. Una partida compuesta en Componer con una fecha
+    posterior (su rendimiento aún no rige) entra «Pendiente»; antes, sin versión abierta, no se
+    decía por qué."""
+    _componer_hoy(_entorno, date(2026, 11, 1))
+    navegador, ficha = _ana()
+    blanco = _abierto(navegador, ficha)
+
+    respuesta = _agregar(navegador, ficha, blanco, codigo="OBRA-07", cantidad="3")
+
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert cuerpo["resumen"]["pendientes_catalogo"] == 1
+    aviso = cuerpo["aviso"]
+    assert aviso is not None
+    assert aviso.startswith("La partida «OBRA-07» queda pendiente en el Presupuesto")
+    assert "de la obra, que todavía no tiene versiones, al 25/10/2026" in aviso
+    assert "Sin rendimiento registrado al 25/10/2026 o antes: «OBRA-07»." in aviso

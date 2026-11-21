@@ -251,6 +251,7 @@ def test_agregar_concreto_premezclado_a_obra_02_sube_el_costo_directo_en_99_75()
                 "campo": "alta",
                 "antes": "",
                 "despues": "Concreto premezclado",
+                "insumo": "Concreto premezclado",  # el de la línea de la clave (DS-75)
             }
         ],
     }

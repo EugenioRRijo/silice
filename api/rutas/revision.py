@@ -422,7 +422,7 @@ def revisar_paquete(
         legible=v.legible,
         banner_version=(
             logica.banner_de_version(a.recibido, logica.fecha_es)
-            if v.manifiesto is not None
+            if v.legible and v.manifiesto is not None  # un rechazado no dice «Versión None»
             else None
         ),
         ayuda_registro=logica.ayuda_de_registro(v),

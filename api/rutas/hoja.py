@@ -52,6 +52,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date
+from functools import partial
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
@@ -117,7 +118,7 @@ from aplicacion import (
     hoja_vista,
     importaciones,
 )
-from aplicacion.desperdicio import trazas_vigentes
+from aplicacion.desperdicio import quien_guardo_el_desglose, trazas_vigentes
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo, RevDesactualizado
@@ -313,12 +314,10 @@ def _mas_nueva(vivo: BorradorVivo, vigente: str | None) -> str | None:
 def _vista_apu(
     sesion, vivo: BorradorVivo, partida: str | None, buscar: str | None = None
 ) -> hoja_vista.VistaApu:
-    """La vista del APU (R7) con el desperdicio de sus materiales (F5 vial, punto 1), la misma en
-    la lectura y en la respuesta de cada edición (E6 y las líneas): la traza vigente se lee de la
-    base del caso y vale solo para la línea cuya cantidad sigue siendo la que resultó."""
-    return hoja_vista.vista_apu(
-        vivo, partida, buscar, trazas=lambda codigo: trazas_vigentes(sesion, codigo)
-    )
+    """La vista del APU (R7) con el desperdicio de la base del caso y quién guardó el desglose que
+    se ve (F5 vial, punto 1; DS-48g), la misma al leer y en cada edición (E6 y las líneas)."""
+    trazas, guardado = partial(trazas_vigentes, sesion), partial(quien_guardo_el_desglose, sesion)
+    return hoja_vista.vista_apu(vivo, partida, buscar, trazas=trazas, guardado=guardado)
 
 
 def _respuesta(sesion, vivo: BorradorVivo) -> dict:

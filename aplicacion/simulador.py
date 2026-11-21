@@ -39,8 +39,20 @@ MENSAJE_VARIACION_TOPE = f"La variacion maxima no puede pasar de {VARIACION_MAXI
 FilaSimulada = tuple[str, str, str, Decimal]
 
 
+#: La clave de una fila de la lista: `(insumo, unidad)` o `(insumo, unidad, tipo)`. La de tres es la
+#: que arma `precios_vigentes`: dos insumos homonimos de distinto tipo (un equipo y una mano de obra
+#: sin unidad) no se pisan. La unidad puede ser `None` (la columna admite nulo).
+ClavePrecio = tuple[str, str | None] | tuple[str, str | None, str]
+
+
+def _orden(par: tuple[ClavePrecio, tuple[str, Decimal]]) -> tuple[str, str, str]:
+    """Orden estable de la simulacion: insumo, unidad (la nula como texto vacio) y tipo."""
+    clave, (tipo, _precio) = par
+    return clave[0], clave[1] or "", tipo
+
+
 def simular(
-    precios: dict[tuple[str, str], tuple[str, Decimal]],
+    precios: dict[ClavePrecio, tuple[str, Decimal]],
     variacion_max: Decimal,
     semilla: int,
     solo: set[str] | None,
@@ -48,7 +60,7 @@ def simular(
     """Aplica variaciones deterministas a una lista de precios.
 
     Args:
-        precios: {(insumo, unidad): (tipo, precio_decimal)}
+        precios: {(insumo, unidad[, tipo]): (tipo, precio_decimal)}; la unidad nula sale como ""
         variacion_max: porcentaje máximo de variación (ej: Decimal("10") para ±10%)
         semilla: número para reproducibilidad
         solo: conjunto de nombres de insumos a incluir; None para todos
@@ -60,7 +72,8 @@ def simular(
     pb_max = int(variacion_max * 100)  # puntos básicos
 
     resultados = []
-    for (insumo, unidad), (tipo, precio) in sorted(precios.items()):
+    for clave, (tipo, precio) in sorted(precios.items(), key=_orden):
+        insumo, unidad = clave[0], clave[1] or ""
         if solo is not None and insumo not in solo:
             continue
 
@@ -118,11 +131,16 @@ def insumos_de_texto(insumos: str | Sequence[str] | None) -> set[str] | None:
     return {i.strip() for i in partes if i.strip()}
 
 
-def precios_vigentes(catalogo: Catalogo) -> dict[tuple[str, str], tuple[str, Decimal]]:
-    """`{(insumo, unidad): (tipo, precio)}` de la lista vigente, tal como espera `simular()`."""
+def precios_vigentes(catalogo: Catalogo) -> dict[ClavePrecio, tuple[str, Decimal]]:
+    """`{(insumo, unidad, tipo): (tipo, precio)}` de la lista vigente, tal como espera `simular()`.
+
+    El tipo va en la clave para que un equipo y una mano de obra homonimos no se pisen."""
     lista = catalogo.lista_vigente()
     return {
-        (precio.insumo.descripcion, precio.insumo.unidad): (precio.insumo.tipo, precio.precio)
+        (precio.insumo.descripcion, precio.insumo.unidad or "", precio.insumo.tipo): (
+            precio.insumo.tipo,
+            precio.precio,
+        )
         for precio in lista.precios
     }
 

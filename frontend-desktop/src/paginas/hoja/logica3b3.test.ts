@@ -33,6 +33,12 @@ describe("lógica de la hoja, 3b-3", () => {
     expect(rotuloDeOrigen("AF-LLAVE|esp_puntos:P1")).toBe("AF-LLAVE, Punto P1");
     expect(rotuloDeOrigen("AF-LLAVE|esp_puntos:P1#2")).toBe("AF-LLAVE, Punto P1 (2)");
     expect(rotuloDeOrigen("AF-LLAVE")).toBe("AF-LLAVE");
+    // acta DS-75, opción A: la línea de un APU dice su insumo si el servidor lo manda; sin él, como antes
+    expect(rotuloDeOrigen("AF-LLAVE|material|1", "Llave de paso ficticia")).toBe(
+      "AF-LLAVE, material n.º 1: Llave de paso ficticia",
+    );
+    expect(rotuloDeOrigen("AF-LLAVE|mano_obra|2", null)).toBe("AF-LLAVE, mano de obra n.º 2");
+    expect(rotuloDeOrigen("AF-LLAVE|esp_puntos:P1", "Llave")).toBe("AF-LLAVE, Punto P1");
   });
 
   test("una clave con varios orígenes unidos por «;» nombra cada uno en palabras (clave real de R14)", () => {

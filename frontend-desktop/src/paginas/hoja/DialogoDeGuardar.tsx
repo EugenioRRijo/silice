@@ -91,7 +91,7 @@ function ListaDeCambios({ cambios, primera }: { cambios: CambiosDelModal; primer
             {visibles.map((c, i) => (
               <TableRow key={i}>
                 <TableCell>{rotuloDeObjeto(c.objeto)}</TableCell>
-                <TableCell title={c.clave}>{presentarClave(c.objeto, c.clave)}</TableCell>
+                <TableCell title={c.clave}>{presentarClave(c.objeto, c.clave, c.insumo)}</TableCell>
                 <TableCell>{rotuloDeCampo(c.campo)}</TableCell>
                 <TableCell>{presentarValor(c.campo, c.antes, c.clave)}</TableCell>
                 <TableCell>{presentarValor(c.campo, c.despues, c.clave)}</TableCell>

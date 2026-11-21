@@ -2,7 +2,6 @@ import { Button } from "@carbon/react";
 import { useContext, useState } from "react";
 import { nombreDeEstado } from "../../comun/aprobacion";
 import { AvisoError } from "../../comun/AvisoError";
-import { InlineNotification } from "../../comun/carbonEs";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { FranjaDelPaso } from "../../comun/FranjaDelPaso";
@@ -14,6 +13,7 @@ import { rutaDeObra } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { esSoloDesglose } from "../hoja/logicaGuardar";
+import { AvisoDeGuardado } from "../../comun/AvisoDeGuardado";
 import { avisoDeCambiosPendientes } from "../hoja/logicaVersiones";
 import type { AlCrearVersion } from "../hoja/logicaVersiones";
 import { ContextoDeLaHoja, useHojaDeLaObra } from "../hoja/ProveedorDeLaHoja";
@@ -83,14 +83,7 @@ function CuerpoDeVersiones() {
     <div className="silice-con-panel" inert={hoja.inerte}>
       <div className="silice-versiones__contenido">
         {hoja.exito !== null && hoja.exito.proyecto === proyecto && (
-          <InlineNotification
-            kind="success"
-            role="status"
-            lowContrast
-            title="Versión guardada"
-            subtitle={hoja.exito.texto}
-            onCloseButtonClick={hoja.quitarExito}
-          />
+          <AvisoDeGuardado exito={hoja.exito} alCerrar={hoja.quitarExito} />
         )}
         {paso !== null && <FranjaDelPaso tipo="siguiente" texto={paso.texto} accion={paso.accion === null ? undefined : guardar} />}
         {filas.length === 0 ? (

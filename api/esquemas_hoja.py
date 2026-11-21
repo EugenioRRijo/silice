@@ -17,6 +17,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
 from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
+from api.esquemas_hoja_desperdicio import DesgloseGuardadoRespuesta, DesperdicioLineaRespuesta
 from api.presentacion import exacto_sin_ceros
 from aplicacion.entrega import EstadoDeLaCadena
 from aplicacion.hoja import CambioEditado, FilaInsumo, FilaVersion
@@ -330,17 +331,6 @@ class MetricasApuRespuesta(BaseModel):
     precio_unitario: MontoHojaRespuesta
 
 
-class DesperdicioLineaRespuesta(BaseModel):
-    """La neta y el porcentaje de desperdicio de la fila `fila` (desde 1) de Materiales, «0,50 +
-    4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye. `neta` y `porcentaje`, con
-    coma decimal, siembran los campos de la Hoja, que los edita (2026-11-13)."""
-
-    fila: int
-    texto: str
-    neta: str
-    porcentaje: str
-
-
 class DetalleApuRespuesta(BaseModel):
     codigo: str
     descripcion: str
@@ -352,6 +342,7 @@ class DetalleApuRespuesta(BaseModel):
     estados: list[str]
     solo_lectura_insumos: bool
     desperdicios: list[DesperdicioLineaRespuesta] = []
+    desglose_guardado: DesgloseGuardadoRespuesta | None = None
 
 
 class VistaApuRespuesta(BaseModel):
@@ -836,6 +827,7 @@ class CambioHojaRespuesta(BaseModel):
     campo: str
     antes: str
     despues: str
+    insumo: str | None = None  # el de la línea de una clave «{partida}|{rubro}|{n}» (DS-75)
 
 
 class CambiosHojaRespuesta(BaseModel):
@@ -843,7 +835,9 @@ class CambiosHojaRespuesta(BaseModel):
     cambios: list[CambioHojaRespuesta]
 
 
-def cambios_a_respuesta(rev: int, cambios: list[CambioEditado]) -> CambiosHojaRespuesta:
+def cambios_a_respuesta(
+    rev: int, cambios: list[tuple[CambioEditado, str | None]]
+) -> CambiosHojaRespuesta:
     return CambiosHojaRespuesta(
         rev=rev,
         cambios=[
@@ -853,8 +847,9 @@ def cambios_a_respuesta(rev: int, cambios: list[CambioEditado]) -> CambiosHojaRe
                 campo=c.campo,
                 antes=c.valor_anterior,
                 despues=c.valor_nuevo,
+                insumo=insumo,
             )
-            for c in cambios
+            for c, insumo in cambios
         ],
     )
 

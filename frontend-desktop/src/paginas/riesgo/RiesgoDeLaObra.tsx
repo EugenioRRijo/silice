@@ -3,7 +3,7 @@ import { InlineLoading } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ErrorDeApi } from "../../api/cliente";
-import { comprobarObra, proyectarObra } from "../../api/riesgo";
+import { comprobarObra, guardarMapa, proyectarObra } from "../../api/riesgo";
 import type {
   ComprobacionDeLaObra,
   InsumosDeLaObra,
@@ -19,7 +19,18 @@ import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
 import { useCarga } from "../../comun/useCarga";
-import { CAMPOS_INICIALES, ROTULOS, SIN_INICIO, faltaCargarSeries, leerCampos, pideLaFechaDeInicio, rutaDelInformeDeRiesgo } from "./logica";
+import {
+  CAMPOS_INICIALES,
+  ROTULOS,
+  SIN_INICIO,
+  SIN_RECORDAR,
+  avisoDeDescartados,
+  faltaCargarSeries,
+  leerCampos,
+  notaDeLaPrecarga,
+  pideLaFechaDeInicio,
+  rutaDelInformeDeRiesgo,
+} from "./logica";
 import { rutaOPendientes } from "../../marco/espacios";
 import type { Campos } from "./logica";
 import { MejoraDeLaEstimacion } from "./MejoraDeLaEstimacion";
@@ -41,7 +52,8 @@ function rutaDeInsumos(proyecto: string, version: string): string {
 // «Riesgo de la obra»: la proyección del riesgo de precios de una versión (P50, P80, la reserva y los insumos que más
 // empujan) y su comprobación hacia atrás (cobertura y número de cortes). Todo lo calcula el servidor con semilla fija;
 // la pantalla solo lee lo tecleado (coma decimal, punto de miles) y escribe lo que llega en centésimas. Al pie, la
-// mejora de la estimación (Tarea 15), que no lee la obra: se ofrece aunque no haya una abierta.
+// mejora de la estimación (Tarea 15), que no lee la obra: se ofrece aunque no haya una abierta. La serie que mueve cada
+// insumo se recuerda en el caso (mejora de la DS-81): al volver, el selector viene precargado con lo último que se usó.
 export default function RiesgoDeLaObra() {
   const { nombreProyecto, alExpirar, sesion } = useAplicacion();
   const nombre = nombreProyecto ?? null;
@@ -54,9 +66,20 @@ export default function RiesgoDeLaObra() {
 
   const [campos, setCampos] = useState<Campos>(CAMPOS_INICIALES);
   const [errores, setErrores] = useState<Partial<Record<keyof Campos, string>>>({});
-  // El mapa es de la versión que se ve: al cambiar de versión empieza vacío.
+  // El mapa es de la versión que se ve: al cambiar de versión empieza con lo que Sílice recordó de ella (DS-90) o vacío;
+  // lo que se elige a mano manda sobre lo recordado.
   const [mapaDe, setMapaDe] = useState<{ version: string | null; mapa: MapaDeSeries }>({ version: null, mapa: {} });
-  const mapa = mapaDe.version === version ? mapaDe.mapa : {};
+  const recordado = insumos.estado === "listo" && insumos.datos.version === version ? (insumos.datos.mapa_guardado ?? null) : null;
+  const editado = mapaDe.version === version;
+  const mapa = editado ? mapaDe.mapa : (recordado?.mapa ?? {});
+  // El mapa no se pudo recordar en el caso: se dice sin estorbar, el resultado ya está.
+  const [sinRecordar, setSinRecordar] = useState(false);
+  // La versión cuyo mapa propio ya se guardó desde que se eligió: la nota de la precarga y el aviso de lo descartado se
+  // retiran, porque lo que se ve ya es lo recordado de esa versión (DS-94).
+  const [guardadoEn, setGuardadoEn] = useState<string | null>(null);
+  const precargaVigente = !editado && guardadoEn !== version ? recordado : null;
+  // Los guardados del mapa van uno detrás de otro: uno viejo nunca confirma después de uno nuevo (DS-94).
+  const colaDeGuardado = useRef<Promise<void>>(Promise.resolve());
   const [proyeccion, setProyeccion] = useState<Pedido<ProyeccionDeLaObra>>(NADA);
   // Lo que se pidió en la última proyección: el informe en Excel se baja con lo mismo.
   const [proyectado, setProyectado] = useState<PedidoDeProyeccion | null>(null);
@@ -104,6 +127,10 @@ export default function RiesgoDeLaObra() {
     setProyeccion(NADA);
     setComprobacion(NADA);
     setProyectado(null);
+    setSinRecordar(false);
+    // Lo que se tocó sin proyectar en la versión anterior no se guarda: al volver, vuelve lo recordado.
+    setMapaDe({ version: null, mapa: {} });
+    setGuardadoEn(null);
   }
 
   function marcarInicio(texto: string) {
@@ -111,13 +138,30 @@ export default function RiesgoDeLaObra() {
     setEnfocarInicio((n) => n + 1);
   }
 
-  async function pedir<T>(fijar: (p: Pedido<T>) => void, llamar: () => Promise<T>) {
+  // Recuerda el mapa que se acaba de usar con éxito, en una petición aparte del cálculo (DS-91), en la cola de guardados.
+  function recordar(mio: number, pedido: { proyecto: string; version: string; mapa: MapaDeSeries }) {
+    const enviar = async () => {
+      try {
+        await guardarMapa(pedido);
+        if (mio === turno.current) setGuardadoEn(pedido.version);
+      } catch (razon) {
+        if (mio !== turno.current) return;
+        if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
+        setSinRecordar(true);
+      }
+    };
+    colaDeGuardado.current = colaDeGuardado.current.then(enviar);
+  }
+
+  async function pedir<T>(fijar: (p: Pedido<T>) => void, llamar: () => Promise<T>, recordarMapa: { proyecto: string; version: string; mapa: MapaDeSeries }) {
     const mio = ++turno.current;
     fijar({ estado: "cargando" });
+    setSinRecordar(false);
     try {
       const datos = await llamar();
       if (mio !== turno.current) return;
       fijar({ estado: "listo", datos });
+      recordar(mio, recordarMapa);
     } catch (razon) {
       if (mio !== turno.current) return;
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
@@ -145,7 +189,7 @@ export default function RiesgoDeLaObra() {
     const inicio = campos.inicio === "" ? null : campos.inicio;
     const pedido = { proyecto: nombre, version, inicio, meses, trayectorias, semilla, ventana_meses: ventana, mapa };
     setProyectado(pedido);
-    void pedir(setProyeccion, () => proyectarObra(pedido));
+    void pedir(setProyeccion, () => proyectarObra(pedido), { proyecto: nombre, version, mapa });
   }
 
   function comprobar() {
@@ -158,7 +202,7 @@ export default function RiesgoDeLaObra() {
     const { meses, porCorte, semilla, ventana } = lectura.valores;
     setProyeccion((p) => (p.estado === "error" ? NADA : p));
     const pedido = { proyecto: nombre, version, meses, trayectorias_por_corte: porCorte, semilla, ventana_meses: ventana, mapa };
-    void pedir(setComprobacion, () => comprobarObra(pedido));
+    void pedir(setComprobacion, () => comprobarObra(pedido), { proyecto: nombre, version, mapa });
   }
 
   const ocupado = proyeccion.estado === "cargando" || comprobacion.estado === "cargando";
@@ -199,6 +243,8 @@ export default function RiesgoDeLaObra() {
                 insumos={insumos.datos}
                 mapa={mapa}
                 alElegirSerie={elegirSerie}
+                nota={precargaVigente !== null && version !== null ? notaDeLaPrecarga(precargaVigente, version) : null}
+                aviso={precargaVigente !== null ? avisoDeDescartados(precargaVigente.descartados) : null}
               />
               <fieldset className="riesgo-seccion">
                 <legend className="cds--type-heading-compact-01">Proyectar</legend>
@@ -267,6 +313,11 @@ export default function RiesgoDeLaObra() {
             </ResultadoDeLaProyeccion>
           )}
           {comprobacion.estado === "listo" && <ResultadoDeLaComprobacion datos={comprobacion.datos} region={regionComprobacion} />}
+          {sinRecordar && (
+            <p className="riesgo-nota cds--type-body-compact-01" role="status">
+              {SIN_RECORDAR}
+            </p>
+          )}
         </>
       )}
       <MejoraDeLaEstimacion

@@ -22,6 +22,7 @@ lo enviado (`RutaSinEco`). «Responsable» en blanco es la persona de la sesión
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -154,8 +155,16 @@ def _quien(activa: SesionActiva | None) -> str:
     return "" if activa is None else activa.usuario
 
 
-def _preparar(sesion, p: EstudioPeticion, activa: SesionActiva | None):
-    """Cláusula, periodos y resultado en memoria (nada queda escrito). `HojaInvalida` → 422."""
+def _preparar(
+    sesion,
+    p: EstudioPeticion,
+    activa: SesionActiva | None,
+    fecha: date,
+    *,
+    en_la_transaccion: bool = False,
+):
+    """Cláusula, periodos y resultado en memoria (nada queda escrito). `HojaInvalida` → 422.
+    `en_la_transaccion`: la de `guardar`, que escribe después sin soltar el bloqueo."""
     campos = p.clausula.model_dump()
     campos["responsable"] = campos["responsable"].strip() or _quien(activa)
     try:
@@ -165,7 +174,13 @@ def _preparar(sesion, p: EstudioPeticion, activa: SesionActiva | None):
         else:
             periodos = logica.periodos_desde_filas(p.periodos, p.ejecutado)
         resultado = logica.calcular(
-            sesion, p.proyecto, p.version, clausula, periodos, fecha_calculo=ahora().date()
+            sesion,
+            p.proyecto,
+            p.version,
+            clausula,
+            periodos,
+            fecha_calculo=fecha,
+            en_la_transaccion=en_la_transaccion,
         )
     except HojaInvalida as error:
         raise HTTPException(422, str(error)) from None
@@ -286,7 +301,7 @@ def calcular(
     activa: Annotated[SesionActiva | None, REAJUSTAR],
 ) -> CalculoRespuesta:
     response.headers.update(SIN_CACHE)
-    _, _, resultado = _preparar(sesion, peticion, activa)
+    _, _, resultado = _preparar(sesion, peticion, activa, ahora().date())
     return _respuesta(sesion, peticion, resultado)
 
 
@@ -318,10 +333,13 @@ def guardar(
     activa: Annotated[SesionActiva | None, REAJUSTAR],
 ) -> GuardadoRespuesta:
     response.headers.update(SIN_CACHE)
-    clausula, periodos, resultado = _preparar(sesion, peticion, activa)
+    # Un solo reloj y un solo bloqueo (DS-110): el estado que decide `reemplaza_a` y el que se
+    # responde son los del estudio que se guarda.
+    dia = ahora().date()
+    clausula, periodos, resultado = _preparar(sesion, peticion, activa, dia, en_la_transaccion=True)
     responsable = peticion.responsable.strip() or _quien(activa)
     opciones = {
-        "fecha_calculo": ahora().date(),
+        "fecha_calculo": dia,
         "fuente": peticion.fuente,
         "responsable": responsable,
         "reemplaza_a": peticion.reemplaza_a if resultado.estado is EstadoEstudio.CERRADO else None,
@@ -348,7 +366,7 @@ def excel(
     peticion: EstudioPeticion,
     activa: Annotated[SesionActiva | None, REAJUSTAR],
 ) -> Response:
-    _, periodos, resultado = _preparar(sesion, peticion, activa)
+    _, periodos, resultado = _preparar(sesion, peticion, activa, ahora().date())
     try:
         contenido = logica.excel_en_bytes(
             sesion, peticion.proyecto, peticion.version, resultado, periodos

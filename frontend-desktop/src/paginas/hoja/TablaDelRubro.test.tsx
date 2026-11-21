@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { TablaDelRubro } from "./TablaDelRubro";
-import type { DesperdicioDeApu, GrupoApu } from "./logica";
+import type { DesgloseGuardado, DesperdicioDeApu, GrupoApu } from "./logica";
 import { sembrarApu } from "./logicaApu";
 import type { UbicacionDeApu } from "./logicaApu";
 
@@ -37,8 +37,10 @@ function pintar({
   ubicacion = null,
   conDesperdicio = true,
   soloLectura = false,
+  desgloseGuardado = null,
 }: {
   desperdicios?: DesperdicioDeApu[];
+  desgloseGuardado?: DesgloseGuardado | null;
   cantidades?: string[];
   porcentajes?: string[];
   ubicacion?: UbicacionDeApu | null;
@@ -61,6 +63,7 @@ function pintar({
         soloLectura={soloLectura}
         conDesperdicio={conDesperdicio}
         desperdicios={desperdicios}
+        desgloseGuardado={desgloseGuardado}
         alCambiar={vi.fn()}
         alRestaurar={vi.fn()}
         alCambiarDesperdicio={vi.fn()}
@@ -141,5 +144,33 @@ describe("TablaDelRubro: el desperdicio de los materiales", () => {
     expect(fila2).toHaveFocus();
     await u.keyboard("{ArrowUp}");
     expect(fila1).toHaveFocus();
+  });
+
+  // Acta DS-48g, opción A: cada guardado del desglose lleva quién y cuándo; lo de antes de anotarlo, o lo de una
+  // integración sin cuenta, no tiene nombre y la tabla lo dice sin inventarlo.
+  test("bajo la tabla dice quién guardó el desglose y cuándo, en es-VE", () => {
+    pintar({ desperdicios: [TRAZA], desgloseGuardado: { responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-13T09:00:00" } });
+    expect(screen.getByText("Desglose del desperdicio guardado por Ana Pérez <ana> el 13/11/2026 09:00.")).toBeTruthy();
+  });
+
+  test("un desglose guardado sin responsable lo dice sin inventar un nombre", () => {
+    pintar({ desperdicios: [TRAZA], desgloseGuardado: { responsable: null, fecha_hora: "2026-11-13T09:00:00" } });
+    expect(
+      screen.getByText(
+        "Desglose del desperdicio guardado el 13/11/2026 09:00. No consta quién lo guardó: se guardó antes de que " +
+          "Sílice lo anotara o desde una integración sin cuenta.",
+      ),
+    ).toBeTruthy();
+  });
+
+  test("un responsable en blanco no se muestra como nombre", () => {
+    pintar({ desperdicios: [TRAZA], desgloseGuardado: { responsable: "   ", fecha_hora: "2026-11-13T09:00:00" } });
+    expect(screen.getByText(/No consta quién lo guardó/)).toBeTruthy();
+    expect(screen.queryByText(/guardado por/)).toBeNull();
+  });
+
+  test("sin desglose guardado que se vea, no hay línea de quién lo guardó", () => {
+    pintar({ desperdicios: [TRAZA] });
+    expect(screen.queryByText(/Desglose del desperdicio guardado/)).toBeNull();
   });
 });

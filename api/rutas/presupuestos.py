@@ -50,7 +50,7 @@ from api.esquemas_ola2 import (
     RevaloracionRespuesta,
     exigir_codigo,
 )
-from api.rutas.listas import _elegidos, comprobar_libro_legible
+from api.rutas.listas import SUFIJOS_EXCEL, _elegidos, comprobar_libro_legible
 from api.rutas.presupuestos_ayudas import (
     _QUIEN_EDITA,
     MAX_PENDIENTES_CON_PROPUESTAS,
@@ -87,6 +87,7 @@ from core.budget import (
     exportar_excel,
     guardar_presupuesto,
     importar_presupuesto,
+    leer_presupuesto_tabular,
 )
 from core.catalog import Catalogo, CatalogoIncompleto, insumos_desconocidos
 from core.verification.informe import DECIMALES_PRESENTACION
@@ -261,13 +262,21 @@ def importar_presupuesto_de_tercero(
     proyecto inexistente es 404. Un archivo que no es XLSX o está mal formado (con archivo, hoja y
     fila), un código de partida que ya está en el catálogo, un código de presupuesto repetido en el
     proyecto o una moneda distinta de la de la lista vigente a su fecha son 422, sin escribir nada.
-    El presupuesto del tercero no tiene ítems pendientes: todo renglón trae su APU. Se declara
-    antes de las rutas con `{codigo}` para que `importar` no se lea como un código.
+    El archivo (su extensión y, si es un libro, la guardia y los topes) se inspecciona antes de la
+    primera consulta (DS-32, DS-112): la sesión de escritura toma el bloqueo en ella y nadie debe
+    esperar la lectura de hasta 20 MiB; por eso un archivo malo sobre una obra inexistente es
+    422, no 404. El presupuesto del tercero no tiene ítems
+    pendientes: todo renglón trae su APU. Se declara antes de las rutas con `{codigo}` para que
+    `importar` no se lea como un código.
     """
-    destino = _proyecto(sesion, proyecto)
     with tempfile.TemporaryDirectory() as directorio:
         ruta = guardar_subida(directorio, archivo)
+        # los sufijos importables del núcleo son los de Excel (`SUFIJOS_IMPORTABLES`); sin
+        # entrar al núcleo por dentro, el rechazo y su mensaje son los de `leer_presupuesto_tabular`
+        if ruta.suffix.lower() not in SUFIJOS_EXCEL:
+            leer_presupuesto_tabular(ruta)  # rechaza el sufijo antes de leer nada
         comprobar_libro_legible(ruta)
+        destino = _proyecto(sesion, proyecto)
         try:
             resultado = importar_presupuesto(
                 sesion, ruta, destino, usuario=USUARIO_SIN_CLAVE if quien is None else quien.usuario

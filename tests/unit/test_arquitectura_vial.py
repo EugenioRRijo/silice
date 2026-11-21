@@ -40,15 +40,14 @@ def test_un_modulo_activable_no_se_importa_a_si_mismo_desde_el_otro() -> None:
     assert hallados == []
 
 
-def test_los_routers_de_produccion_y_riesgo_exigen_el_modulo() -> None:
-    """Producción y riesgo declaran `requiere_modulo` en el router (el rol también es del router);
-    vial lo declara por ruta, después de la acción (ver más abajo)."""
-    from api.rutas import produccion, produccion_planta, riesgo
+def test_los_routers_de_produccion_exigen_el_modulo() -> None:
+    """Producción declara `requiere_modulo` en el router (el rol también es del router); vial y
+    riesgo lo declaran por ruta, después de la acción (ver más abajo)."""
+    from api.rutas import produccion, produccion_planta
 
     for router, clave in (
         (produccion.router, "produccion"),
         (produccion_planta.router, "produccion"),
-        (riesgo.router, "riesgo"),
     ):
         nombres = [d.dependency.__name__ for d in router.dependencies]
         assert f"requiere_modulo_{clave}" in nombres, (clave, nombres)
@@ -73,6 +72,24 @@ def test_cada_ruta_vial_comprueba_el_modulo_despues_del_acceso() -> None:
         assert "requiere_modulo_vial" in nombres, (r.path, nombres)
         antes = nombres[: nombres.index("requiere_modulo_vial")]
         assert any("editar_hoja" in n for n in antes), (r.path, nombres)
+
+
+def test_cada_ruta_de_riesgo_comprueba_el_modulo_despues_del_acceso() -> None:
+    """Revisión del mapa recordado (DS-94): como vial, el router de riesgo no comprueba nada y cada
+    ruta pide primero `ver_riesgo` (con clave o sesión, o la cuenta en `PUT /mapa`) y luego el
+    módulo; así la clave de API recibe 403 en `PUT /mapa` aunque el módulo esté apagado."""
+    from fastapi.routing import APIRoute
+
+    from api.rutas import riesgo
+
+    assert [d.dependency.__name__ for d in riesgo.router.dependencies] == []
+    rutas = [r for r in riesgo.router.routes if isinstance(r, APIRoute)]
+    assert len(rutas) == 6
+    for r in rutas:
+        nombres = _dependencias_de(r)
+        assert "requiere_modulo_riesgo" in nombres, (r.path, nombres)
+        antes = nombres[: nombres.index("requiere_modulo_riesgo")]
+        assert any("ver_riesgo" in n for n in antes), (r.path, nombres)
 
 
 def test_las_rutas_de_planos_comprueban_edificacion() -> None:

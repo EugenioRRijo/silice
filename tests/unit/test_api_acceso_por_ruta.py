@@ -322,6 +322,7 @@ TABLA = {
     ("POST", "/v1/riesgo/proyeccion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("POST", "/v1/riesgo/comprobacion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("GET", "/v1/riesgo/insumos"): VER_RIESGO,  # plan vial T16; solo lee
+    ("PUT", "/v1/riesgo/mapa"): VER_RIESGO,  # mejora de la DS-81; solo con sesion (403 con clave)
     ("GET", "/v1/modulos"): CUALQUIERA,  # plan vial T19; el marco oculta lo apagado
     ("PUT", "/v1/modulos/{clave}"): MODULOS,  # plan vial T19; solo con sesion
     ("GET", "/v1/riesgo/reportes/{tipo}"): VER_RIESGO,  # plan vial T21; descarga un xlsx

@@ -21,6 +21,7 @@ import shutil
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -38,10 +39,12 @@ from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion
 from aplicacion.proyectos import resolver_proyecto
 from core.catalog import abrir_sesion, crear_motor
 from core.contracts import Dominio, ItemComputo
+from core.contracts.apu import ParametrosCosto
 from core.contracts.item_computo import OrigenTipo
 from operacion import config
 from tests.fixtures.app_de_prueba import app_con
 from tests.fixtures.carpeta_bs_con_obras import CASA_USD, VIVIENDA, carpeta_en_bs
+from tests.fixtures.carrera import con_cerrojo_que_cambia
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
     MENSAJE_PERMISO,
@@ -607,8 +610,8 @@ LLEVAR_SIN_PRECIO = (
 )
 
 
-def _componer_hoy(ruta: Path) -> None:
-    """Componer guarda OBRA-07 y OBRA-08 hoy: sus precios van a «… al 25/10/2026»."""
+def _componer_hoy(ruta: Path, dia: date = HOY) -> None:
+    """Componer guarda OBRA-07 y OBRA-08 hoy (o a `dia`): sus precios van a «… al 25/10/2026»."""
     from aplicacion.composicion import guardar_composicion
     from core.contracts.apu import ComposicionAPU, LineaMaterial
 
@@ -620,7 +623,7 @@ def _componer_hoy(ruta: Path) -> None:
                 apu = ComposicionAPU(
                     codigo, descripcion, unidad, Decimal("40"), materiales=(linea,)
                 )
-                guardado = guardar_composicion(sesion, apu, Dominio.CIVIL, HOY, "prueba")
+                guardado = guardar_composicion(sesion, apu, Dominio.CIVIL, dia, "prueba")
                 assert guardado.motivo is None
             sesion.commit()
     finally:
@@ -658,3 +661,54 @@ def test_llevar_partidas_sin_precio_en_la_version_es_409_con_todas_y_no_lleva_na
     assert respuesta.json() == {"detalle": LLEVAR_SIN_PRECIO}
     assert (_resumen(navegador, id_), _filas(navegador, id_)) == antes
     assert [b["id"] for b in _borradores(navegador)] == [id_]
+
+
+def test_si_falla_el_borrador_nuevo_que_otra_pestana_toco_antes_del_cerrojo_no_se_descarta(
+    _entorno: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hallazgo 5 (la carrera de DS-58): llevar abre el borrador de la obra; antes de que tome su
+    cerrojo, otra pestaña de la misma ficha lo cambia. Si llevar falla (409, partida sin valorar),
+    el borrador queda con lo de la otra pestaña en vez de descartarse."""
+    navegador, ficha = _ana()
+    blanco = _abierto(navegador, ficha)
+    assert _agregar(navegador, ficha, blanco, 0, "OBRA-04", "140").status_code == 200
+    guardado = navegador.post(
+        f"/v1/hoja/borradores/{blanco}/guardar",
+        json={"rev": 1, "fuente": "Medicion ficticia", "codigo": "VIV-001"},
+        headers=protegida(ficha),
+    )
+    assert guardado.status_code == 200, guardado.text
+    _componer_hoy(_entorno)  # OBRA-07 sin precio en la lista de la versión: llevar da 409
+    assert _borradores(navegador) == []
+    otros = ParametrosCosto(utilidad=Decimal("0.20"))
+
+    def otra_pestana(vivo: hoja_borradores.BorradorVivo) -> None:
+        hoja_borradores.reemplazar(
+            vivo.huella, vivo.id, replace(vivo.borrador, parametros=otros), vivo.rev
+        )
+
+    creados = con_cerrojo_que_cambia(monkeypatch, otra_pestana)
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [_partida("OBRA-07", "3")])
+
+    assert respuesta.status_code == 409, respuesta.text
+    assert len(creados) == 1
+    assert [(b["id"], b["rev"]) for b in _borradores(navegador)] == [(creados[0].id, 1)]
+    assert creados[0].borrador.parametros == otros
+
+
+def test_en_una_obra_sin_versiones_llevar_una_partida_sin_valorar_es_409_y_no_lleva_nada(
+    _entorno: Path,
+) -> None:
+    """Hallazgo 7 (DS-105, opción A): sin versiones, el borrador en blanco valora con la lista
+    para armar de la obra a su fecha. OBRA-07 compuesta con fecha posterior (su rendimiento aún
+    no rige) quedaría pendiente: llevar es todo o nada, como con una versión abierta."""
+    _componer_hoy(_entorno, date(2026, 11, 1))
+    navegador, ficha = _ana()
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [_partida("OBRA-07", "3")])
+
+    assert respuesta.status_code == 409, respuesta.text
+    detalle = respuesta.json()["detalle"]
+    assert detalle.startswith("No se llevó nada: 1 partida quedaría pendiente en el Presupuesto")
+    assert "de la obra, que todavía no tiene versiones, al 25/10/2026" in detalle
+    assert _borradores(navegador) == []

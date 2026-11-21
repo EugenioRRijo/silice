@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { informeAuditoria, vistaEspacio, vistaParametros } from "./datosDePrueba";
+import { informeAuditoria, vistaApu, vistaEspacio, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import { versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
@@ -96,6 +96,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
   let alVivo: () => Response;
   let alCambios: () => Response;
   let alGuardar: (cuerpo: Record<string, unknown>) => Response | Promise<Response>;
+  let alApu: () => Response;
   let proyectoActual = "OF-001";
 
   beforeEach(() => {
@@ -111,6 +112,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     };
     alCambios = () => json({ rev: 3, cambios: CAMBIOS });
     alGuardar = () => json({ codigo: "003", proyecto: "OF-001", cambios: 2, total: m("2703.86"), primera: false, mensaje: "x" });
+    alApu = () => json(vistaApu());
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = new URL(String(ruta), "http://silice.local");
       const metodo = init?.method ?? "GET";
@@ -126,6 +128,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
       const propio = /^\/v1\/hoja\/borradores\/([^/]+)$/.exec(camino);
       if (propio && metodo === "GET") return alVivo();
       if (propio && metodo === "DELETE") return new Response(null, { status: 204 });
+      if (camino.endsWith("/vistas/apu")) return alApu();
       if (camino.endsWith("/vistas/espacio")) return json(vistaEspacio());
       if (camino.endsWith("/vistas/parametros")) return json(vistaParametros());
       if (camino.endsWith("/vistas/auditoria")) return json(informeAuditoria());
@@ -393,7 +396,16 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     alCambios = () =>
       json({
         rev: 3,
-        cambios: [{ objeto: "apu", clave: "AF-LLAVE|material|1", campo: "desperdicio", antes: "0,8 + 25 %", despues: "0,625 + 60 %" }],
+        cambios: [
+          {
+            objeto: "apu",
+            clave: "AF-LLAVE|material|1",
+            campo: "desperdicio",
+            antes: "0,8 + 25 %",
+            despues: "0,625 + 60 %",
+            insumo: "Llave de paso ficticia",
+          },
+        ],
       });
     alGuardar = () =>
       json({
@@ -415,7 +427,8 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
     expect(within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual([
       "APU",
-      "AF-LLAVE, material n.º 1", // la clave de una línea del APU se presenta así (rotuloDeOrigen), sin la barra interna
+      // la clave de una línea del APU se presenta así (rotuloDeOrigen), sin la barra interna y con su insumo (DS-75)
+      "AF-LLAVE, material n.º 1: Llave de paso ficticia",
       "Desperdicio",
       "0,8 + 25 %",
       "0,625 + 60 %",
@@ -440,6 +453,30 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     await within(region).findByText(/Versión 002 · Sin cambios sin guardar/);
     expect(aperturas().map((a) => a.version)).toEqual(["002"]);
     expect(borrados()).toHaveLength(0);
+  });
+
+  test("DS-48g: tras guardar solo el desglose, la pestaña APU se vuelve a leer y dice quién lo guardó", async () => {
+    alAbrir = () => borrador("002", { cambios: 1, desgloses: 1 });
+    alGuardar = () =>
+      json({ codigo: "002", proyecto: "OF-001", cambios: 0, total: m("2703.86"), primera: false, mensaje: "x", version_nueva: false, desgloses: 1 });
+    let guardadoPor: { responsable: string | null; fecha_hora: string } | null = null;
+    alApu = () => {
+      const base = vistaApu();
+      return json({ ...base, detalle: { ...base.detalle!, desglose_guardado: guardadoPor } });
+    };
+    montar();
+    await screen.findByRole("region", { name: "Estado del borrador" });
+    await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
+    await screen.findByRole("table", { name: /^Materiales/ });
+    expect(screen.queryByText(/Desglose del desperdicio guardado/)).toBeNull();
+    const dialogo = await abrirModal("Guardar el desglose…");
+    guardadoPor = { responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-20T10:00:00" };
+    alVivo = () => {
+      const b = borrador("002", { cambios: 0, desgloses: 0 });
+      return json({ id: ID, base: b.base, resumen: b.resumen });
+    };
+    fireEvent.click(confirmar(dialogo, "Guardar el desglose"));
+    expect(await screen.findByText("Desglose del desperdicio guardado por Ana Pérez <ana> el 20/11/2026 10:00.")).toBeInTheDocument();
   });
 
   test("A.6 (prueba en vivo): si el desglose ya estaba guardado (422), el borrador se vuelve a leer y no queda «1 cambio sin guardar»", async () => {

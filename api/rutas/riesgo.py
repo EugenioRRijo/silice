@@ -15,6 +15,15 @@
   decimales), cuántos cayeron dentro y `n_cortes`. Lleva su propio `trayectorias_por_corte`, 500
   por omisión: con 2.000 tarda varias veces más (bitácora de la fase C). Lee la historia hasta el
   último día del mes anterior a hoy.
+- `PUT /mapa` `{proyecto, version, mapa}` → `{guardado}`: recuerda en el caso el mapa que se usó en
+  la versión (mejora de la DS-81, DS-90 a DS-93). La pantalla lo manda **aparte**, después de una
+  proyección o comprobación que salió bien: así ninguna ruta de cálculo retiene el bloqueo de
+  escritura del caso durante el Monte Carlo (DS-91; lo que pasó con la instalación, DS-68). Solo la
+  sesión de una cuenta con `ver_riesgo` (la clave de API, 403, DS-93); `BEGIN IMMEDIATE`
+  (`SesionDeEscrituraDep`). Una serie que la moneda no admite, 422; `guardado: false` si el mapa
+  ya era el último de la versión. `GET /insumos` lo devuelve en `mapa_guardado`: el de la versión
+  o, sin él, el último de otra versión de la obra (`de_version`), sin lo que ya no vale
+  (`descartados`).
 
 - `GET /reportes/{tipo}` → un libro .xlsx (Tarea 21, `aplicacion.reportes_viales`) con una hoja de
   portada que dice de dónde sale cada cifra. `riesgo`: `proyecto`, `version`, `mapa` (un objeto
@@ -23,11 +32,12 @@
   `costo_final_real`, `presupuesto_original` y `estimacion_silice` como texto con punto decimal.
   Mismo acceso que el resto (`ver_riesgo`), solo lee y no deja caché; tipo que no existe, 404.
 
-Proyección y comprobación calculan y no guardan nada: leen la carpeta del caso (`SesionDep`) y la
-instalación (el cálculo publicado de la mezcla propia). Montos como **texto con punto decimal,
-exactos** (`format(x, "f")`, sin exponente); la pantalla redondea al presentar. Errores del cálculo
-(pocos meses, serie que no se admite, falta de tasa, sin inicio): 422 con el mensaje; obra o versión
-que no existe: 404. Los números enteros de la forma van como enteros JSON.
+Proyección y comprobación calculan y no guardan nada (el mapa se guarda con `PUT /mapa`): leen la
+carpeta del caso (`SesionDep`) y la instalación (el cálculo publicado de la mezcla propia). Montos
+como **texto con punto decimal, exactos** (`format(x, "f")`, sin exponente); la pantalla redondea
+al presentar. Errores del cálculo (pocos meses, serie que no se admite, falta de tasa, sin inicio):
+422 con el mensaje; obra o versión que no existe: 404. Los números enteros de la forma van como
+enteros JSON.
 
 Acceso: `Accion.VER_RIESGO` (arma, revisa y administrador), con clave de API o sesión web (cookie
 más `X-Silice-CSRF` y `Origin`, porque el método escribe). Las cifras entran como **texto con punto
@@ -35,7 +45,7 @@ decimal**, igual que en el resto de la API (la coma es cosa del front, `cifraEsc
 que no es decimal, un costo real que no es positivo o una estimación negativa es 422 con
 `{"detalle": ...}`. Un cuerpo o una consulta sin la forma esperada es 422 con un mensaje fijo que
 no repite lo enviado (`_RutaRiesgo`, como `_RutaVial`): `MENSAJE_MEJORA` en `/mejora` y
-`MENSAJE_FORMA` en las demás.
+`MENSAJE_MAPA_FORMA` en `PUT /mapa` y `MENSAJE_FORMA` en las demás.
 """
 
 from __future__ import annotations
@@ -56,8 +66,9 @@ from pydantic import (
     ValidationError,
 )
 
-from api.acceso_modulos import requiere_modulo
-from api.dependencias import SesionDep, SesionInstalacionDep
+from api.acceso_modulos import ModuloRiesgo
+from api.admin_acceso import cuenta_con
+from api.dependencias import SesionDeEscrituraDep, SesionDep, SesionInstalacionDep
 from api.presentacion import exacto, monto
 from api.rutas.hoja_exportar import TIPO_XLSX
 from api.sesion_web import ahora, exigir_clave_o_sesion
@@ -65,8 +76,10 @@ from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import reportes_viales
 from aplicacion.riesgo import obra
+from aplicacion.riesgo.mapa_guardado import MapaPrecargado
 from aplicacion.riesgo.mejora import mejora_de_estimacion
 from seguridad.permisos import Accion
+from seguridad.sesiones import SesionActiva
 
 VER_RIESGO = exigir_clave_o_sesion(Accion.VER_RIESGO)
 
@@ -79,6 +92,13 @@ MENSAJE_MEJORA = (
     "Envíe el costo final real, el presupuesto original y la estimación de Sílice, cada uno como "
     "texto con punto decimal, por ejemplo 1250.50."
 )
+MENSAJE_MAPA_FORMA = (
+    "El mapa no tiene la forma esperada: envíe la obra, la versión y el mapa como pares de insumo "
+    "y código de serie, en texto, con 500 insumos a lo sumo."
+)
+MENSAJE_MAPA_SOLO_CUENTA = (
+    "La serie de cada insumo la recuerda una cuenta: la clave de API no puede guardarla."
+)
 
 
 class _RutaRiesgo(RutaSinCache, RutaSinEco):
@@ -87,14 +107,22 @@ class _RutaRiesgo(RutaSinCache, RutaSinEco):
     mensaje_por_omision = MENSAJE_FORMA
 
 
-router = APIRouter(
-    prefix="/v1/riesgo",
-    tags=["riesgo"],
-    dependencies=[Depends(VER_RIESGO), Depends(requiere_modulo("riesgo"))],
-    route_class=_RutaRiesgo,
-)
+# Como en vial: la acción y el módulo se comprueban en cada ruta, la acción primero (`LEER`, o la
+# cuenta en `PUT /mapa`) y luego el módulo (`ModuloRiesgo`): sin entrar, 401; sin el rol o con la
+# clave de API donde hace falta una cuenta, 403; con el acceso y el módulo apagado, 404 (D-V-4).
+router = APIRouter(prefix="/v1/riesgo", tags=["riesgo"], route_class=_RutaRiesgo)
 
-__all__ = ["MENSAJE_FORMA", "MENSAJE_MEJORA", "VER_RIESGO", "hoy", "router"]
+LEER = Depends(VER_RIESGO)
+
+__all__ = [
+    "MENSAJE_FORMA",
+    "MENSAJE_MAPA_FORMA",
+    "MENSAJE_MAPA_SOLO_CUENTA",
+    "MENSAJE_MEJORA",
+    "VER_RIESGO",
+    "hoy",
+    "router",
+]
 
 #: Un decimal con punto, sin exponente, NaN ni infinito (lo mismo que el resto de la API).
 _DECIMAL = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
@@ -121,9 +149,9 @@ def _decimal(nombre: str, texto: str) -> Decimal:
     return Decimal(texto.strip())
 
 
-@router.post("/mejora", response_model=MejoraRespuesta)
+@router.post("/mejora", response_model=MejoraRespuesta, dependencies=[LEER])
 @sin_eco(MENSAJE_MEJORA)
-def informe_de_mejora(cuerpo: MejoraEntrada) -> MejoraRespuesta:
+def informe_de_mejora(_modulo: ModuloRiesgo, cuerpo: MejoraEntrada) -> MejoraRespuesta:
     real = _decimal("costo_final_real", cuerpo.costo_final_real)
     original = _decimal("presupuesto_original", cuerpo.presupuesto_original)
     silice = _decimal("estimacion_silice", cuerpo.estimacion_silice)
@@ -194,6 +222,18 @@ class MezclaRespuesta(BaseModel):
     calculo: int  # el n.º del cálculo publicado del que sale su receta
 
 
+class DescartadoRespuesta(BaseModel):
+    insumo: str
+    serie: str
+    motivo: str  # «insumo»: la versión ya no lo tiene; «serie»: ya no se ofrece
+
+
+class MapaRecordadoRespuesta(BaseModel):
+    mapa: dict[str, str]
+    de_version: str  # la versión en que se guardó (otra, si esta no tiene el suyo)
+    descartados: list[DescartadoRespuesta]
+
+
 class InsumosRespuesta(BaseModel):
     proyecto: str
     version: str
@@ -203,6 +243,17 @@ class InsumosRespuesta(BaseModel):
     mezclas: list[MezclaRespuesta]
     series: list[SerieRespuesta]
     inicio_linea_base: date | None
+    mapa_guardado: MapaRecordadoRespuesta | None  # nulo: nada recordado en la obra
+
+
+class MapaEntrada(_Estricto):
+    proyecto: Texto
+    version: VersionCodigo
+    mapa: Mapa
+
+
+class MapaGuardadoRespuesta(BaseModel):
+    guardado: bool  # false: era el mismo que el último de la versión, no se escribió nada
 
 
 class ContribucionRespuesta(BaseModel):
@@ -265,9 +316,13 @@ Proyecto = Annotated[str, Query(min_length=1, max_length=500)]
 Version = Annotated[str, Query(min_length=1, max_length=40)]
 
 
-@router.get("/insumos", response_model=InsumosRespuesta)
+@router.get("/insumos", response_model=InsumosRespuesta, dependencies=[LEER])
 def insumos_de_la_obra(
-    sesion: SesionDep, instalacion: SesionInstalacionDep, proyecto: Proyecto, version: Version
+    _modulo: ModuloRiesgo,
+    sesion: SesionDep,
+    instalacion: SesionInstalacionDep,
+    proyecto: Proyecto,
+    version: Version,
 ) -> InsumosRespuesta:
     """Los insumos de la versión y las series que puede seguir cada uno."""
     datos = obra.insumos_de_la_obra(sesion, instalacion, proyecto, version)
@@ -280,12 +335,49 @@ def insumos_de_la_obra(
         mezclas=_mezclas(datos.mezclas),
         series=[SerieRespuesta(codigo=s.codigo, nombre=s.nombre) for s in datos.series],
         inicio_linea_base=datos.inicio_linea_base,
+        mapa_guardado=_precarga(datos.mapa_guardado),
     )
 
 
-@router.post("/proyeccion", response_model=ProyeccionRespuesta)
+def _precarga(precarga: MapaPrecargado | None) -> MapaRecordadoRespuesta | None:
+    if precarga is None:
+        return None
+    return MapaRecordadoRespuesta(
+        mapa=precarga.mapa,
+        de_version=precarga.de_version,
+        descartados=[
+            DescartadoRespuesta(insumo=d.insumo, serie=d.serie, motivo=d.motivo)
+            for d in precarga.descartados
+        ],
+    )
+
+
+CuentaDelRiesgo = Annotated[
+    SesionActiva, Depends(cuenta_con(Accion.VER_RIESGO, MENSAJE_MAPA_SOLO_CUENTA))
+]
+
+
+@router.put("/mapa", response_model=MapaGuardadoRespuesta)
+@sin_eco(MENSAJE_MAPA_FORMA)
+def guardar_el_mapa(
+    activa: CuentaDelRiesgo,
+    _modulo: ModuloRiesgo,
+    cuerpo: MapaEntrada,
+    sesion: SesionDeEscrituraDep,
+) -> MapaGuardadoRespuesta:
+    """Recuerda el mapa de series que se usó en la versión (no calcula nada)."""
+    guardado = obra.guardar_mapa_de_la_obra(
+        sesion, cuerpo.proyecto, cuerpo.version, cuerpo.mapa, usuario=activa.usuario, ahora=ahora()
+    )
+    return MapaGuardadoRespuesta(guardado=guardado)
+
+
+@router.post("/proyeccion", response_model=ProyeccionRespuesta, dependencies=[LEER])
 def proyeccion_de_la_obra(
-    cuerpo: ProyeccionEntrada, sesion: SesionDep, instalacion: SesionInstalacionDep
+    _modulo: ModuloRiesgo,
+    cuerpo: ProyeccionEntrada,
+    sesion: SesionDep,
+    instalacion: SesionInstalacionDep,
 ) -> ProyeccionRespuesta:
     """La proyección del riesgo de precios de la versión (no guarda nada)."""
     r = obra.proyectar_obra(
@@ -321,9 +413,12 @@ def proyeccion_de_la_obra(
     )
 
 
-@router.post("/comprobacion", response_model=ComprobacionRespuesta)
+@router.post("/comprobacion", response_model=ComprobacionRespuesta, dependencies=[LEER])
 def comprobacion_de_la_obra(
-    cuerpo: ComprobacionEntrada, sesion: SesionDep, instalacion: SesionInstalacionDep
+    _modulo: ModuloRiesgo,
+    cuerpo: ComprobacionEntrada,
+    sesion: SesionDep,
+    instalacion: SesionInstalacionDep,
 ) -> ComprobacionRespuesta:
     """La comprobación hacia atrás de la versión con cortes móviles (no guarda nada)."""
     r = obra.comprobar_obra(
@@ -410,8 +505,10 @@ def _libro(contenido: bytes, tipo: str, *partes: str) -> Response:
     "/reportes/{tipo}",
     response_class=Response,
     responses={200: {"content": {TIPO_XLSX: {}}, "description": "El libro .xlsx del reporte."}},
+    dependencies=[LEER],
 )
 def descargar_reporte(
+    _modulo: ModuloRiesgo,
     tipo: str,
     sesion: SesionDep,
     instalacion: SesionInstalacionDep,

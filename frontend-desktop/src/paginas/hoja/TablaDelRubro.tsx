@@ -5,7 +5,8 @@ import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { TablaPaginada } from "./TablaPaginada";
 import { enteroDeDigitos } from "./logica";
-import type { DesperdicioDeApu, GrupoApu } from "./logica";
+import type { DesgloseGuardado, DesperdicioDeApu, GrupoApu } from "./logica";
+import { textoDelDesgloseGuardado } from "./logicaApu";
 import type { EdicionDeApu, LineaApu, UbicacionDeApu } from "./logicaApu";
 
 // Una tabla del APU por rubro (materiales, equipos, mano de obra) con su subtotal. Sale de `PestanaApu.tsx` en la Tarea 7
@@ -45,6 +46,7 @@ export function TablaDelRubro({
   alCambiarInsumo,
   conDesperdicio = false,
   desperdicios = [],
+  desgloseGuardado = null,
   alCambiarDesperdicio,
   alRestaurarDesperdicio,
 }: {
@@ -66,6 +68,8 @@ export function TablaDelRubro({
   conDesperdicio?: boolean;
   // F5 vial: la neta, el porcentaje y la traza de cada fila (desde 1) que el servidor reconoce como de su desperdicio.
   desperdicios?: DesperdicioDeApu[];
+  // Acta DS-48g: quién guardó el desglose de la base que muestra la tabla (null: ninguno).
+  desgloseGuardado?: DesgloseGuardado | null;
   alCambiarDesperdicio?: (indice: number, texto: string) => void;
   alRestaurarDesperdicio?: (indice: number) => void;
 }) {
@@ -208,6 +212,7 @@ export function TablaDelRubro({
           filas={grupo.filas.map((f, i) => ({ ...f, id: `${grupo.clave}-${i}`, n: String(i + 1) }))}
         />
       )}
+      {desgloseGuardado && <p className="cds--type-helper-text-01">{textoDelDesgloseGuardado(desgloseGuardado)}</p>}
       <p className="cds--type-body-compact-01">
         <span>Subtotal de {grupo.rotulo.toLowerCase()}:</span> <Cifra monto={grupo.subtotal} unidad={moneda} />
       </p>

@@ -48,7 +48,7 @@ SILICE_DATOS/              # en desarrollo, data/ del repositorio (en .gitignore
 | `ins_0010_modulo.py` | `modulo_cambio` |
 | `ins_0011_receta_ligante.py` | `prod_receta_componente.es_ligante` (cabeza actual) |
 
-Las del caso viven en `migraciones/caso/versions/` (`caso_0001` a `caso_0022` hoy). Antes de numerar una nueva, mira
+Las del caso viven en `migraciones/caso/versions/` (`caso_0001` a `caso_0024` hoy). Antes de numerar una nueva, mira
 la cabeza con `alembic heads` o en la carpeta: este cuadro puede quedarse atrás.
 
 ---

@@ -1,5 +1,11 @@
+from datetime import date
 from decimal import Decimal
 
+from sqlalchemy import create_engine
+
+from aplicacion.simulador import simular_desde_catalogo
+from core import models
+from core.catalog import abrir_sesion, crear_esquema
 from scripts.simular_lista import simular
 
 PRECIOS = {
@@ -64,4 +70,61 @@ def test_filtro_solo_incluye_todos_los_homonimos():
     assert filas == [
         ("material", "Arena lavada", "m3", Decimal("30.93")),
         ("material", "Arena lavada", "saco", Decimal("4.15")),
+    ]
+
+
+def _catalogo_con_homonimos_de_unidad_nula():
+    """Lista vigente ficticia: un material con unidad y un equipo y una mano de obra homonimos
+    sin unidad (la columna admite nulo, lo habitual en equipos y mano de obra)."""
+    motor = create_engine("sqlite://")
+    crear_esquema(motor)
+    with abrir_sesion(motor) as sesion:
+        lista = models.ListaPrecios(
+            nombre="L", moneda="USD", fecha_vigencia=date(2026, 1, 1), origen="prueba"
+        )
+        sesion.add(lista)
+        sesion.flush()
+        for codigo, tipo, unidad in [
+            ("MAT-001", "material", "viaje"),
+            ("EQU-001", "equipo", None),
+            ("MO-001", "mano_obra", None),
+        ]:
+            insumo = models.Insumo(
+                codigo=codigo, tipo=tipo, descripcion="Transporte", unidad=unidad
+            )
+            sesion.add(insumo)
+            sesion.flush()
+            sesion.add(
+                models.PrecioInsumo(lista_id=lista.id, insumo_id=insumo.id, precio=Decimal("10"))
+            )
+        sesion.commit()
+    return motor
+
+
+def test_homonimos_sin_unidad_no_revientan_ni_se_pisan():
+    """Hallazgo 1: con unidad nula el orden fallaba (500) y el equipo quedaba pisado por la mano
+    de obra homonima. Salen los tres insumos, la unidad nula como texto vacio."""
+    motor = _catalogo_con_homonimos_de_unidad_nula()
+    try:
+        with abrir_sesion(motor) as sesion:
+            filas = simular_desde_catalogo(sesion, "0", 1, None)
+    finally:
+        motor.dispose()
+    assert filas == [  # en el orden de la simulación: insumo, unidad (la vacía primero), tipo
+        ("equipo", "Transporte", "", Decimal("10.00")),
+        ("mano_obra", "Transporte", "", Decimal("10.00")),
+        ("material", "Transporte", "viaje", Decimal("10.00")),
+    ]
+
+
+def test_la_clave_con_tipo_tolera_la_unidad_nula():
+    """`simular` acepta la clave con tipo y una unidad nula sin romper el orden."""
+    precios = {
+        ("Transporte", "viaje", "material"): ("material", Decimal("10")),
+        ("Transporte", None, "equipo"): ("equipo", Decimal("20")),
+    }
+    filas = simular(precios, Decimal("0"), semilla=1, solo=None)
+    assert filas == [
+        ("equipo", "Transporte", "", Decimal("20.00")),
+        ("material", "Transporte", "viaje", Decimal("10.00")),
     ]

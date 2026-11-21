@@ -42,10 +42,14 @@ def _columnas(ruta: Path, tabla: str) -> list[tuple[str, str, bool]]:
     return [(f[1], f[2], not f[3]) for f in filas]
 
 
-def test_la_cabeza_del_caso_es_esta_revision() -> None:
+def test_la_revision_esta_en_la_unica_linea_del_caso() -> None:
+    """Fue la cabeza hasta que llegaron las siguientes: `caso_0023_riesgo_mapa` (DS-81), que
+    cuelga de ella, y `caso_0024_desperdicio_responsable` (DS-48g), que cuelga de la 0023."""
     from operacion.base_datos import _guion
 
-    assert _guion(Destino.CASO).get_heads() == [REVISION]
+    guion = _guion(Destino.CASO)
+    assert len(guion.get_heads()) == 1
+    assert guion.get_revision(REVISION).down_revision == ANTERIOR
 
 
 def test_subir_crea_las_dos_tablas(tmp_path: Path) -> None:
@@ -82,9 +86,9 @@ def test_la_migrada_es_la_del_modelo(tmp_path: Path) -> None:
         crear_esquema_desperdicio(motor)
     finally:
         motor.dispose()
-    de_la_migracion, del_modelo = _instantanea(migrada), _instantanea(creada)
-    for tabla in TABLAS:
-        assert de_la_migracion[tabla] == del_modelo[tabla]
+    # la de las líneas; la del guardado ganó `responsable` en la 0024, que la compara con el modelo
+    # (`test_migracion_desperdicio_responsable.py`)
+    assert _instantanea(migrada)["apu_desperdicio"] == _instantanea(creada)["apu_desperdicio"]
 
 
 def test_bajar_quita_solo_las_dos_tablas(tmp_path: Path) -> None:
