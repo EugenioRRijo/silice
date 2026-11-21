@@ -8,7 +8,7 @@ decimales con `ROUND_HALF_UP` (NORMAS.md §2).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 
 from adapters.espacio.especialidades import Constante
 
@@ -33,7 +33,9 @@ class ResumenImpuestos:
 
 
 def _centimos(valor: Decimal) -> Decimal:
-    return valor.quantize(_CENTIMO, rounding=ROUND_HALF_UP)
+    with localcontext() as contexto:
+        contexto.prec = max(60, len(valor.as_tuple().digits) + 10)
+        return valor.quantize(_CENTIMO, rounding=ROUND_HALF_UP)
 
 
 def con_iva(
@@ -41,6 +43,10 @@ def con_iva(
 ) -> ResumenImpuestos:
     """El IVA de `subtotal` a `alicuota` (fracción: 0,16 es 16 %). El total suma las cifras ya
     redondeadas, así lo que se lee en pantalla cuadra."""
-    base = _centimos(subtotal)
-    iva = _centimos(subtotal * alicuota)
-    return ResumenImpuestos(base, iva, base + iva)
+    with localcontext() as contexto:
+        contexto.prec = max(
+            60, len(subtotal.as_tuple().digits) + len(alicuota.as_tuple().digits) + 10
+        )
+        base = _centimos(subtotal)
+        iva = _centimos(subtotal * alicuota)
+        return ResumenImpuestos(base, iva, base + iva)
