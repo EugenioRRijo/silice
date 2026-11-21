@@ -195,8 +195,8 @@ describe("Actualizar precios", () => {
     expect(ruta).toBe("/listas-precios/vista-previa");
     expect(opciones?.method).toBe("POST");
     expect((opciones?.body as FormData).get("archivo")).toBeInstanceOf(File);
-    const uno = screen.getByRole("checkbox", { name: "1. Tornillo ficticio (material, u), precio 1.50" });
-    const dos = screen.getByRole("checkbox", { name: "2. Arandela ficticia (material, u), precio 0.25" });
+    const uno = screen.getByRole("checkbox", { name: "1. Tornillo ficticio (material, u), precio 1,50" });
+    const dos = screen.getByRole("checkbox", { name: "2. Arandela ficticia (material, u), precio 0,25" });
     expect(uno).not.toBeChecked();
     expect(dos).not.toBeChecked();
     expect(screen.getByRole("button", { name: "Revalorar presupuesto" })).toBeEnabled();
