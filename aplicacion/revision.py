@@ -25,8 +25,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import tempfile
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -35,7 +37,6 @@ from typing import Any
 
 from openpyxl import Workbook
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from aplicacion.subidas import nombre_seguro
@@ -75,6 +76,7 @@ from core.budget.importacion import (
     HOJA_PRESUPUESTO,
     leer_presupuesto_tabular,
 )
+from core.catalog.sesion import OPCION_INMEDIATA
 from core.verification import REGLAS, auditar
 from core.verification.texto import formatear_decimal
 from paquete import modelo as paq
@@ -241,6 +243,8 @@ def precios_de_lista(session: Session, lista: models.ListaPrecios) -> list[Preci
     referencias = dict(
         session.execute(
             select(models.ReferenciaPrecio.precio_id, models.ReferenciaPrecio.referencia)
+            .join(models.PrecioInsumo, models.PrecioInsumo.id == models.ReferenciaPrecio.precio_id)
+            .where(models.PrecioInsumo.lista_id == lista.id)
         ).all()
     )
     return [
@@ -458,6 +462,34 @@ def _texto_minimo(manifiesto: dict, clave: str) -> str:
     return valor
 
 
+def _como_ya_recibido(
+    v: Verificacion, existente: Mapping[str, Any], m: Mapping[str, Any], anexos_huellas, previos
+) -> Recibido:
+    ant = evaluar_anterioridad(m, v.cadena, anexos_huellas, v.sha256, previos)
+    return Recibido(
+        v,
+        existente["id"],
+        Path(existente["ruta"]),
+        True,
+        (*v.avisos, *ant.avisos),
+        ant.ultima_recibida,
+        existente["fecha"].date().isoformat(),
+    )
+
+
+def _tomar_escritura_inmediata(caso: Session) -> None:
+    """Cierra la instantánea diferida (si la sesión no es ya inmediata) y abre `BEGIN IMMEDIATE`."""
+    bind = caso.get_bind()
+    if bind.get_execution_options().get(OPCION_INMEDIATA, False):
+        return
+    if caso.in_transaction():
+        caso.rollback()
+    conn = caso.connection()
+    if conn.connection.dbapi_connection.isolation_level is None:
+        conn.exec_driver_sql("ROLLBACK")
+        conn.exec_driver_sql("BEGIN IMMEDIATE")
+
+
 def recibir(
     datos: bytes,
     nombre: str,
@@ -475,12 +507,8 @@ def recibir(
         datos, buscar_empresa=_buscar_empresa(instalacion), recibido_en=ahora, mi_empresa=mi_empresa
     )
     if v.cadena is not None and not _cadena_legible(v.cadena):
-        # Un alterado cuya cadena tiene otra forma se audita igual, pero sin cadena que leer: como
-        # el alterado por integridad, no se registra (no hay eslabones que atar al dictamen).
         v = replace(v, cadena=None)
     if v.legible and v.manifiesto is not None:
-        # Sin fecha de emisión no hay a qué día reauditar, y sin obra no hay con qué comparar: se
-        # mira antes de la salida temprana de un alterado sin cadena, que tampoco se registra.
         try:
             _emitido(v.manifiesto)
             _texto_minimo(v.manifiesto, "proyecto")
@@ -499,27 +527,27 @@ def recibir(
         eslabones = [[e["codigo"], e["huella_eslabon"]] for e in v.cadena["eslabones"]]
     except (KeyError, ValueError, TypeError):
         return Recibido(_sin_datos_minimos(v), 0, Path(), False, (), "")
-    existente = paq.buscar_por_huella(caso, v.sha256)
     huella_clave = str(m.get("huella_clave") or "")
-    previos = paq.paquetes_del_proyecto(caso, proyecto, huella_clave)
     anexos_huellas = _huellas_de_anexos(v.archivos)
-    anterioridad = evaluar_anterioridad(m, v.cadena, anexos_huellas, v.sha256, previos)
-    avisos = (*v.avisos, *anterioridad.avisos)
-    if existente is not None:
-        return Recibido(
-            v,
-            existente["id"],
-            Path(existente["ruta"]),
-            True,
-            avisos,
-            anterioridad.ultima_recibida,
-            existente["fecha"].date().isoformat(),
-        )
+    if (existente := paq.buscar_por_huella(caso, v.sha256)) is not None:
+        previos = paq.paquetes_del_proyecto(caso, proyecto, huella_clave)
+        return _como_ya_recibido(v, existente, m, anexos_huellas, previos)
     carpeta_paquetes.mkdir(parents=True, exist_ok=True)
     archivo = _nombre_de_archivo(nombre)
     ruta = carpeta_paquetes / f"{v.sha256}-{archivo}"
-    ruta.write_bytes(datos)
+    tmp = carpeta_paquetes / f".{v.sha256}-{archivo}.{uuid.uuid4().hex}.tmp"
+    tmp.write_bytes(datos)
+    creado_por_esta_llamada = False
     try:
+        _tomar_escritura_inmediata(caso)
+        existente = paq.buscar_por_huella(caso, v.sha256)
+        previos = paq.paquetes_del_proyecto(caso, proyecto, huella_clave)
+        if existente is not None:
+            caso.rollback()
+            tmp.unlink(missing_ok=True)
+            return _como_ya_recibido(v, existente, m, anexos_huellas, previos)
+        anterioridad = evaluar_anterioridad(m, v.cadena, anexos_huellas, v.sha256, previos)
+        avisos = (*v.avisos, *anterioridad.avisos)
         identificador = paq.registrar_recibido(
             caso,
             archivo=archivo,
@@ -539,25 +567,18 @@ def recibir(
             recibido_por=revisor,
             fecha=ahora,
         )
+        if not ruta.exists():
+            os.replace(tmp, ruta)
+            creado_por_esta_llamada = True
+        else:
+            tmp.unlink(missing_ok=True)
         caso.commit()
-    except IntegrityError:
-        # Carrera: otra recepción del mismo archivo lo registró entre la búsqueda por huella y la
-        # inserción (UNIQUE de `huella_archivo`). Se relee lo registrado: es «ya recibido».
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        if creado_por_esta_llamada:
+            ruta.unlink(missing_ok=True)
         caso.rollback()
-        existente = paq.buscar_por_huella(caso, v.sha256)
-        if existente is None:
-            raise
-        if Path(existente["ruta"]) != ruta:
-            ruta.unlink(missing_ok=True)  # la copia de esta petición, con otro nombre, sobra
-        return Recibido(
-            v,
-            existente["id"],
-            Path(existente["ruta"]),
-            True,
-            avisos,
-            anterioridad.ultima_recibida,
-            existente["fecha"].date().isoformat(),
-        )
+        raise
     return Recibido(v, identificador, ruta, False, avisos, anterioridad.ultima_recibida)
 
 
@@ -718,16 +739,8 @@ def tablas_de_revision(
         TablaExportable(
             "Cambios",
             (
-                "Versión",
-                "Objeto",
-                "Clave",
-                "Campo",
-                "Antes",
-                "Después",
-                "Fuente",
-                "Responsable",
-                "Fecha",
-                "Marca",
+                "Versión", "Objeto", "Clave", "Campo", "Antes",
+                "Después", "Fuente", "Responsable", "Fecha", "Marca",
             ),
             tuple(tuple(c[k] for k in _CAMPOS_DE_CAMBIO) for c in cambios),
         ),
