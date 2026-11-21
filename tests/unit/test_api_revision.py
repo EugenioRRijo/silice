@@ -771,3 +771,80 @@ def test_un_excel_externo_con_una_celda_lejana_es_422_con_el_aviso_del_lector() 
         "20.000. Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV). Se "
         "rechaza por seguridad: borre lo que sobra al final de la hoja y guárdelo de nuevo."
     )
+
+
+@pytest.mark.parametrize(
+    ("ruta", "extra"),
+    [
+        ("/v1/revision/paquete", {}),
+        ("/v1/revision/contra-lista", {"lista": "1"}),
+        ("/v1/revision/excel", {"tipo": "presupuesto"}),
+    ],
+)
+def test_escritura_concurrente_durante_revision_no_da_503_por_busy_snapshot(
+    _entorno: Path, monkeypatch, ruta: str, extra: dict[str, str]
+) -> None:
+    """L1: si otro escritor confirma en la base entre la lectura diferida (`BEGIN`) y el registro
+    de `recibir()`, promover la transacción a `BEGIN IMMEDIATE` evita `SQLITE_BUSY_SNAPSHOT` (503).
+    """
+    from paquete import modelo
+
+    navegador, ficha = _rita()
+    datos = _firmado()
+    real = modelo.buscar_por_huella
+    ya_escribio = False
+
+    def escritor_en_medio(sesion, huella):
+        nonlocal ya_escribio
+        res = real(sesion, huella)
+        if not ya_escribio:
+            ya_escribio = True
+            with closing(sqlite3.connect(_entorno)) as otro:
+                otro.execute(
+                    "INSERT INTO proyecto (nombre, descripcion, dominio) VALUES (?, ?, ?)",
+                    ("Obra concurrente", "", "civil"),
+                )
+                otro.commit()
+        return res
+
+    monkeypatch.setattr(modelo, "buscar_por_huella", escritor_en_medio)
+    r = _subir(navegador, ficha, datos, ruta, **extra)
+    assert r.status_code == 200, r.text
+    assert len(_filas("paq_recibido")) == 1
+
+
+def test_dos_subidas_concurrentes_del_mismo_paquete_no_dan_503_ni_dejan_temporales(
+    _entorno: Path, monkeypatch
+) -> None:
+    """L1: dos POST simultáneos con el mismo paquete nuevo esperan su turno con `BEGIN IMMEDIATE`,
+    no se pisan el archivo y no dejan ni 503 ni archivos temporales."""
+    from paquete import modelo
+    from tests.fixtures.carrera import dos_a_la_vez
+
+    uno, ficha_1 = _rita()
+    otro, ficha_2 = _rita()
+    datos = _firmado()
+
+    respuestas = dos_a_la_vez(
+        monkeypatch,
+        modelo,
+        "buscar_por_huella",
+        lambda: _subir(uno, ficha_1, datos),
+        lambda: _subir(otro, ficha_2, datos),
+    )
+    assert [r.status_code for r in respuestas] == [200, 200], [r.text for r in respuestas]
+    assert len(_filas("paq_recibido")) == 1
+    carpeta = config.carpeta_datos() / "paquetes"
+    archivos = list(carpeta.iterdir())
+    assert len(archivos) == 1 and not archivos[0].name.endswith(".tmp")
+
+
+def test_dictamen_con_paquete_nuevo_funciona_con_sesion_de_escritura() -> None:
+    """L1: `POST /v1/revision/dictamen` ya entra con `SesionDeEscrituraDep`; recibir un paquete
+    nuevo en esa sesión no falla ni rompe el dictamen."""
+    navegador, ficha = _rita()
+    datos = _firmado()
+    r = _subir(navegador, ficha, datos, "/v1/revision/dictamen", resultado="conforme")
+    assert r.status_code == 200, r.text
+    assert len(_filas("paq_recibido")) == 1
+    assert len(_filas("paq_dictamen")) == 1

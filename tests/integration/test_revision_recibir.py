@@ -329,3 +329,122 @@ def test_la_empresa_propia_para_revisar_da_su_nombre_y_la_huella_de_su_clave(mun
     clave = empresas.generar_clave(bd, "una clave de firma larga y unica", "admin", AHORA)
     assert revision.empresa_propia_para_revisar(bd) == (EMPRESA, clave.huella)
     assert len(clave.huella) == 64
+
+
+def test_un_error_operacional_al_registrar_no_deja_archivo_huerfano_ni_temporal(
+    mundo, monkeypatch
+) -> None:
+    """L1: un `OperationalError` en el INSERT no deja `{sha256}-{archivo}` ni temporales en disco."""
+    from sqlalchemy.exc import OperationalError
+
+    caso, _, carpeta = mundo
+
+    def falla_insert(*_args, **_kwargs):
+        raise OperationalError("INSERT", {}, Exception("disk I/O error"))
+
+    monkeypatch.setattr(paq, "registrar_recibido", falla_insert)
+    with pytest.raises(OperationalError):
+        _recibir(mundo, _paquete(DESPUES, "005", ID_1))
+    assert _recibidos(caso) == 0
+    assert not carpeta.exists() or list(carpeta.iterdir()) == []
+
+
+def test_un_fallo_al_confirmar_borra_el_archivo_si_lo_creo_y_no_si_ya_existia(
+    mundo, monkeypatch
+) -> None:
+    """L1: si `commit` falla tras publicar el archivo nuevo, se limpia; si `ruta` ya existía, no."""
+    from sqlalchemy.exc import OperationalError
+
+    caso, _, carpeta = mundo
+    datos = _paquete(DESPUES, "005", ID_1)
+    sha = hashlib.sha256(datos).hexdigest()
+    ruta_destino = carpeta / f"{sha}-a.silice"
+
+    real_commit = caso.commit
+
+    def falla_commit() -> None:
+        raise OperationalError("COMMIT", {}, Exception("commit fallido"))
+
+    # Caso 1: `ruta_destino` no existía -> esta llamada la crea y debe limpiarla al fallar commit.
+    monkeypatch.setattr(caso, "commit", falla_commit)
+    with pytest.raises(OperationalError):
+        _recibir(mundo, datos)
+    assert _recibidos(caso) == 0
+    assert list(carpeta.iterdir()) == []
+
+    # Caso 2: `ruta_destino` ya existía de antes -> no debe borrarse ni dejar temporales.
+    monkeypatch.setattr(caso, "commit", real_commit)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    ruta_destino.write_bytes(b"archivo previo")
+    monkeypatch.setattr(caso, "commit", falla_commit)
+    with pytest.raises(OperationalError):
+        _recibir(mundo, datos)
+    assert _recibidos(caso) == 0
+    assert [p.name for p in carpeta.iterdir()] == [ruta_destino.name]
+    assert ruta_destino.read_bytes() == b"archivo previo"
+
+
+def test_recibir_un_paquete_ya_recibido_no_toma_bloqueo_de_escritura(mundo) -> None:
+    """L1: si el SHA-256 ya está registrado, `recibir` sale por ruta de solo lectura sin esperar
+    ni tomar `BEGIN IMMEDIATE`, aunque otro escritor mantenga el bloqueo de escritura."""
+    import sqlite3
+
+    caso, _, carpeta = mundo
+    datos = _paquete(DESPUES, "005", ID_1)
+    primero = _recibir(mundo, datos)
+
+    ruta_db = Path(caso.get_bind().url.database)
+    escritor = sqlite3.connect(ruta_db, isolation_level=None)
+    try:
+        escritor.execute("BEGIN IMMEDIATE")
+        otra = _recibir(mundo, datos)
+    finally:
+        escritor.execute("ROLLBACK")
+        escritor.close()
+
+    assert otra.ya_recibido and otra.paquete_id == primero.paquete_id
+    assert len(list(carpeta.iterdir())) == 1
+
+
+def test_recibir_en_sesion_en_memoria_sin_oyente_de_begin(tmp_path: Path) -> None:
+    """L1: compatibilidad con motores `:memory:` de `conftest.py` (sin `_comenzar`)."""
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.orm import Session
+    from sqlalchemy.pool import StaticPool
+
+    from core.catalog.sesion import _activar_claves_foraneas
+
+    motor = create_engine(
+        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
+    )
+    event.listen(motor, "connect", _activar_claves_foraneas)
+    paq.crear_esquema_paquete(motor)
+    try:
+        with Session(motor) as caso, instalacion(tmp_path / "revisor") as bd:
+            bd.add(
+                EmpresaRegistrada(
+                    empresa=EMPRESA,
+                    rif="J-00000000-0",
+                    publica=PAR.publica,
+                    huella=firma.huella_completa(PAR.publica),
+                    estado="activa",
+                    comprobada_con="Ana, por teléfono",
+                    metodo="telefono",
+                    fecha_comprobacion=AHORA,
+                    registrada_por="admin",
+                )
+            )
+            bd.commit()
+            r = revision.recibir(
+                _paquete(DESPUES, "005", ID_1),
+                "mem.silice",
+                caso=caso,
+                instalacion=bd,
+                carpeta_paquetes=tmp_path / "paquetes",
+                revisor="Luis <luis>",
+                ahora=RECIBIDO,
+            )
+            assert not r.ya_recibido and r.paquete_id > 0
+            assert _recibidos(caso) == 1
+    finally:
+        motor.dispose()
