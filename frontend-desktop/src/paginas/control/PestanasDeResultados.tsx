@@ -2,7 +2,7 @@ import { Button, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carb
 import { InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
@@ -262,13 +262,13 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
             <li>{`Término por el índice: ${t.indice}`}</li>
             <li>{`Término por el plan reproyectado: ${t.reproyectado}`}</li>
             <li>{`Término del plan base: ${t.plan_base}`}</li>
-            <li>{`EAC (sistema): ${t.eac_sistema}`}</li>
+            <li>{`EAC (sistema): ${formatoMontoEsVe(t.eac_sistema)}`}</li>
           </ul>
         )}
         {calculo.motivo_termino && <p className="silice-control__nota cds--type-helper-text-01">{calculo.motivo_termino}</p>}
         <p className="cds--type-body-compact-01">
           {calculo.equilibrio
-            ? `Punto de equilibrio proyectado: ${calculo.equilibrio.punto} (${calculo.equilibrio.mensaje})`
+            ? `Punto de equilibrio proyectado: ${formatoMontoEsVe(calculo.equilibrio.punto)} (${calculo.equilibrio.mensaje})`
             : "Punto de equilibrio proyectado: no disponible (perspectiva precio o AC/EAC)."}
         </p>
         <p className="silice-control__nota cds--type-helper-text-01">{calculo.estudios}</p>
