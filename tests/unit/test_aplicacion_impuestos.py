@@ -46,5 +46,5 @@ def test_con_iva_no_falla_con_un_subtotal_de_27_o_mas_cifras_enteras() -> None:
     grande = D("9" * 30 + ".5")
     resumen = con_iva(grande)
     assert resumen.subtotal == D("9" * 30 + ".50")
-    assert resumen.iva == D("160000000000000000000000000000.08")
-    assert resumen.total == resumen.subtotal + resumen.iva
+    assert resumen.iva == D("159999999999999999999999999999.92")
+    assert resumen.total == D("1159999999999999999999999999999.42")

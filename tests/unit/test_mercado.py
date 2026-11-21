@@ -538,4 +538,4 @@ def test_centimos_propuesta_y_margen_no_fallan_con_montos_de_27_o_mas_cifras() -
     )
     prop = propuesta("cobro", est, piso=Decimal("1" + "0" * 29 + ".121"))
     assert prop.precio == Decimal("1" + "0" * 29 + ".13")
-    assert margen(Decimal("1" + "0" * 30), Decimal("1")) == Decimal("1" + "0" * 32 + ".0")
+    assert margen(Decimal("1" + "0" * 30), Decimal("1")) == Decimal("9" * 30 + "00.0")
