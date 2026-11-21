@@ -476,8 +476,8 @@ def _dos_administradores(tmp_path: Path):
 
 @pytest.mark.parametrize("operacion", ["desactivar", "quitar el rol"])
 def test_una_base_ocupada_da_un_mensaje_y_no_una_traza(tmp_path: Path, operacion: str) -> None:
-    """Si otra conexión retiene el bloqueo de escritura y vence la espera, es un `ValueError`
-    con mensaje (422 en la API), no un `OperationalError` (500)."""
+    """Si otra conexión retiene el bloqueo de escritura y vence la espera, es un `BaseOcupada`
+    (subclase de `ValueError`) con mensaje (503 en la API), no un `OperationalError` (500)."""
     from sqlalchemy import text
 
     from seguridad.base import abrir_sesion
@@ -490,7 +490,7 @@ def test_una_base_ocupada_da_un_mensaje_y_no_una_traza(tmp_path: Path, operacion
         with abrir_sesion(motor) as bd:
             actor = bd.get(Usuario, id_a)
             bd.execute(text("PRAGMA busy_timeout=100"))
-            with pytest.raises(ValueError, match="La base está ocupada; reintente"):
+            with pytest.raises(cuentas.BaseOcupada, match="La base está ocupada; reintente"):
                 if operacion == "desactivar":
                     cuentas.desactivar(bd, actor, id_b, AHORA)
                 else:
