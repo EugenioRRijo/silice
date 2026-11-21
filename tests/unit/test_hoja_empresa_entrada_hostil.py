@@ -69,8 +69,9 @@ def _jpeg_con_relleno() -> bytes:
 
 
 def test_jpeg_que_se_acaba_tras_una_marca_no_cuelga():
-    for datos in (b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe0\x00", _jpeg_con_relleno()):
+    for datos in (b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe0\x00"):
         assert _con_tope(tamano_imagen, datos) is None
+    assert _con_tope(tamano_imagen, _jpeg_con_relleno()) == (16, 16)
 
 
 def test_jpeg_con_largo_menor_que_dos_no_cuelga():
