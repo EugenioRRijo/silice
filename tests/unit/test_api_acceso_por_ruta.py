@@ -482,8 +482,12 @@ def test_fuera_de_las_rutas_de_la_api_solo_hay_documentacion_y_la_interfaz() -> 
         if not isinstance(ruta, APIRoute) and not hasattr(ruta, "original_router")
     }
     documentacion = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
-    permitidas = {(Route, camino) for camino in documentacion} | {(Route, "/app"), (Mount, "/app")}
-    assert otras <= permitidas and (Mount, "/app") in otras
+    permitidas = {(Route, camino) for camino in documentacion} | {
+        (Route, "/"),
+        (Route, "/app"),
+        (Mount, "/app"),
+    }
+    assert otras <= permitidas and (Mount, "/app") in otras and (Route, "/") in otras
 
 
 @pytest.mark.parametrize(("metodo", "ruta"), PARES, ids=[f"{m} {r}" for m, r in PARES])
