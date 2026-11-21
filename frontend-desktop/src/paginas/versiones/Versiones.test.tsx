@@ -502,6 +502,15 @@ describe("Versiones: restaurar", () => {
       por_omision: "VIV-003",
       versiones: [fila("VIV-003", "2026-10-22", "restaurada", "VIV-001", true, 0), { ...VIV_002, vigente: false }, VIV_001],
     };
+    aprobaciones = () =>
+      json({
+        rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
+        fases: "VIV-001 devuelta",
+        versiones: { "VIV-001": estado("devuelta"), "VIV-002": estado("guardada"), "VIV-003": estado("guardada") },
+        eventos: [],
+        ultima_aprobada: null,
+      });
+    cadena = () => json({ ...CADENA_INTEGRA, mensaje: "Cadena íntegra: 3 versiones" });
     await u.click(within(dialogo).getByRole("button", { name: "Restaurar" }));
     expect(await screen.findByText("La versión VIV-001 se restauró como la versión VIV-003 (la vigente).")).toBeInTheDocument();
     const restaurados = fetchFalso.mock.calls
@@ -509,6 +518,8 @@ describe("Versiones: restaurar", () => {
       .map(([, init]) => JSON.parse(String(init?.body)) as unknown);
     expect(restaurados).toEqual([{ proyecto: "3", version: "VIV-001", fuente: "La VIV-002 salió con un error" }]);
     await waitFor(async () => expect((await celdas()).map((c) => c[0])).toEqual(["VIV-003 (abierta)", "VIV-002", "VIV-001"]));
+    await waitFor(async () => expect((await celdas())[0]![5]).toBe("Guardada"));
+    expect(await screen.findByText("Cadena íntegra: 3 versiones")).toBeInTheDocument();
   });
 
   test("con cambios sin guardar no se ofrece restaurar y se dice por qué", async () => {
