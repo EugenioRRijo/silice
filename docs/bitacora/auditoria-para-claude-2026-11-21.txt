@@ -1,0 +1,69 @@
+AUDITORIA DE ENTREGA PARA CLAUDE CODE — OLA 1121 + PORTADA Y ACCESO
+Fecha: 2026-11-21
+Autor: Antigravity (trabajo por bloques sobre origin/main df91d176)
+Rama integrada: ola-1121/verificacion (.worktrees/tanda)
+
+========================================================================
+1. VERIFICACION DE INTEGRIDAD (NADA BORRADO / NUCLEO INTACTO)
+========================================================================
+- `git -C .worktrees/tanda diff --summary origin/main..HEAD`:
+  0 archivos eliminados (`delete mode`: ninguno).
+  4 archivos nuevos creados:
+    - api/portada.py (respaldo HTML/CSS autocontenido para GET / sin dist)
+    - frontend-desktop/portada.html (entrada Vite multipagina de portada)
+    - frontend-desktop/src/portada/main.ts (interactividad TS de ventana desktop)
+    - frontend-desktop/src/portada/portada.scss (estilos oscuros de suite desktop)
+- `scripts/guardia_nucleo.py --base origin/main`: OK (core/ y aplicacion/hoja.py intactos).
+- `scripts/meta_datos.py`: 4/4 metas OK (D1-D4).
+
+========================================================================
+2. DETALLE POR BLOQUE Y RAMA
+========================================================================
+
+[BLOQUE 1] .worktrees/s4g -> feature/vivo-1121-operacion (8 commits, O1-O4)
+- d27d2811 / d8abff8a (O1): restauracion atomica en operacion/respaldo.py sin perder eventos.
+- ec435499 / 5be95700 (O2): api/rutas/admin_instalacion.py devuelve 503 ante BaseOcupada y 404 si respaldo no existe.
+- 84004fcc / 87b520fc (O3): api/rutas/cuentas.py devuelve 503 ante BaseOcupada.
+- f76d0155 / e2d83097 (O4): seguridad/cuentas.py y api/rutas/sesion.py liberan conexion antes de Argon2 y toleran colision en inicializacion.
+- Verificacion observada: 430 pytest (-W error), ruff check ., guardia_nucleo.py.
+
+[BLOQUE 2] .worktrees/s2mi2 -> feature/vivo-1121-logica (6 commits, L1-L3)
+- 11db2738 / 12032651 (L1): aplicacion/revision.py y api/rutas/revision.py reciben paquetes atomicos con BEGIN IMMEDIATE y filtro ReferenciaPrecio (< 1000 lineas: 992 lineas).
+- 756c60f3 / 6003974b / 205dbc76 (L2): localcontext en _centimos (aplicacion/impuestos.py, mercado.py, conciliacion.py, presupuesto_pdf.py, cifras.py) para montos >= 27 cifras.
+- fbd23df7 / e5df9a3b (L3): adapters/hoja_empresa/escritor/copia.py soporta relleno 0xFF y marcadores SOF 0xCE/0xCF en JPEG.
+- Verificacion observada: 311 pytest (-W error), ruff check ., guardia_nucleo.py.
+
+[BLOQUE 3] .worktrees/s2m5 -> feature/vivo-1121-front (12 commits, F1-F7)
+- 70b27d9e / e203bc44 / 8524f9f4 (F1): salir de obra de demostracion navega a inicio sin reabrir demostracion.db (Marco.tsx; rutaQueConservaElAviso declarada antes de volver para cumplir React Compiler).
+- 35f87c88 / 33ac1f3a (F2): vaciar ediciones pendientes del borrador antes de guardar o asignar frente (hoja/*).
+- 18907f71 / 5c70cf04 (F3): formato es-VE para eac_sistema y punto de equilibrio en Control.
+- f26bbe0a / caae20a4 (F4): formato es-VE para precio de insumo desconocido en Actualizacion.
+- 1392989c / 5bf6f6bd (F5): refresca aprobaciones y cadena de sellos al crear o restaurar version (Versiones).
+- 9149f30d / 282da335 (F6): avisa cambio de carpeta (silice:cambio-de-la-carpeta) al fijar lista para armar en PreciosEmpresa.
+- 4e6133c9 / c90f0227 (F7): formato es-VE en Mercado (3.650 dias y conteos), tilde en Simulador, limpieza de avisos en Tramos y AuditarApuPorHoja, y cambio de fecha / aviso_historial en Visor.tsx + api/tipos.ts.
+- Verificacion observada: suites Vitest afectadas (incl. Marco.test.tsx 178 tests, Market/Tramos/AuditarApuPorHoja/Visor/Simulador/PreciosEmpresa/Versiones), npm run lint, npm run build, npm run dist, npm run muerto (knip OK).
+
+[BLOQUE 4] .worktrees/s2m3 -> feature/portada-y-acceso-master (commits hasta 2fb4c14e)
+- 973f644b / 9474d7e0 / e95b342b / bdcc1b79 (T1): portada independiente en GET / con respaldo api/portada.py y entrada principal Vite TS/SCSS (frontend-desktop/portada.html, src/portada/main.ts, src/portada/portada.scss) servida desde dist/portada.html cuando esta compilada (api/interfaz.py, vite.config.ts). Incluye ventana interactiva de Silice Desktop (Auditoria Forense, Presupuesto APU, Control EVM, Cantera y Aridos), CTA "Descargar el sistema Silice" y enlace "Probar inicio de sesion web" (/app/).
+- 494180bf / edb00bf9 / da6329a0 (T2): cabecera oscura .silice-marco-barra en pre-sesion (#393939 + #fddc69, contraste blanco --cds-text-on-color en app.scss), enlace "Portada" en App.tsx y login estandar unico en Entrar.tsx (panel de marca Silice a la izquierda + formulario unico Usuario/Contrasena + recuperacion secundaria "Perdi el acceso de administrador", segun indicacion expresa de Eugenio de no usar pestañas de rol).
+- 27bdda22 / 81dbaa8e (T3): seleccion rapida de cuenta ("Elegir") en tabla de administracion/Cuentas.tsx y soporte opcional de roles en puedeCrear (administracion/logica.ts).
+- 2fb4c14e: registro de src/portada/main.ts en frontend-desktop/knip.json.
+- Verificacion observada:
+  - Python: pytest tests/unit/test_api_interfaz.py (16 passed), tests/unit/test_api_acceso_por_ruta.py, tests/unit/test_arquitectura.py (455 passed), ruff check . (All checks passed!).
+  - Frontend: Entrar.test.tsx (13 passed), App.test.tsx (24 passed), Administracion.test.tsx (39 passed), logica.test.ts (41 passed), estilosMarco.test.ts (9 passed), estilosLetra.test.ts (8 passed), npm run lint (tsc exit 0, eslint exit 0), npm run build, npm run dist (145 archivos, 10147164 bytes), npm run muerto (knip OK).
+
+========================================================================
+3. INTEGRACION Y VERIFICACION EN .worktrees/tanda (ola-1121/verificacion)
+========================================================================
+- Fusion limpia de las 4 ramas + docs/ESTADO.md y CHANGELOG.md (eb1ff5bb).
+- Verificacion combinada en .worktrees/tanda:
+  - 860 pruebas Python (-W error), ruff check ., meta_datos.py (4/4), guardia_nucleo.py (OK).
+  - npm run lint, npm run build, npm run dist, npm run muerto (knip OK).
+  - Prueba en vivo en Chrome (127.0.0.1:8612): portada / y login /app/ con 0 errores de consola y cambio dinamico de pestanas en ventana desktop.
+
+========================================================================
+4. PENDIENTES PARA CIERRE / PR
+========================================================================
+1. Confirmar aprobacion final de Eugenio tras su revision en vivo en http://127.0.0.1:8612/.
+2. Apagar el demonio local de Uvicorn en 127.0.0.1:8612 cuando ya no se necesite.
+3. Si Claude/Eugenio lo aprueban, correr suite completa en Windows/CI y hacer push de las ramas para abrir PRs hacia main.
