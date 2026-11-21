@@ -89,3 +89,8 @@ def test_una_ficha_que_no_tiene_la_forma_de_un_juego_se_salta(tmp_path: Path, fi
     assert [(j.nombre, j.motivo, j.bases) for j in juegos] == [
         ("20261012-100000-manual", "manual", 2)
     ]
+
+
+def test_zip_del_juego_falla_si_la_carpeta_no_existe(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        instalacion.zip_del_juego(tmp_path / "no-existe")
