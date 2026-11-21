@@ -37,6 +37,7 @@ ADMIN = Depends(administrar(Accion.ADMINISTRAR_RED_Y_API))
 EN_EL_EQUIPO = Depends(administrar_en_el_equipo(Sensible.CLAVE_DE_API))
 MENSAJE_SIN_JUEGO = "No hay un respaldo con ese nombre."
 MENSAJE_SIN_EVENTO = "No hay un archivo de eventos perdidos pendiente con ese nombre."
+MENSAJE_ZIP_ILEGIBLE = "No se pudo leer el respaldo para descargarlo."
 
 
 class Juego(BaseModel):
@@ -90,7 +91,10 @@ def ver(request: Request) -> InstalacionRespuesta:
 @router.post("/respaldos", response_model=RespaldoCreado, dependencies=[ADMIN])
 def respaldar() -> RespaldoCreado:
     """Un juego manual de la instalación y de todos los casos (no se poda nunca)."""
-    return RespaldoCreado(nombre=base_datos.respaldar_todo().name)
+    try:
+        return RespaldoCreado(nombre=base_datos.respaldar_todo().name)
+    except base_datos.ErrorDeBase as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @router.get(
@@ -103,8 +107,14 @@ def bajar(nombre: str) -> Response:
     juego = next((j for j in logica.juegos_de_respaldo() if j.nombre == nombre), None)
     if juego is None:
         raise HTTPException(status_code=404, detail=MENSAJE_SIN_JUEGO)
+    try:
+        contenido = logica.zip_del_juego(juego.carpeta)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=MENSAJE_SIN_JUEGO) from None
+    except OSError:
+        raise HTTPException(status_code=503, detail=MENSAJE_ZIP_ILEGIBLE) from None
     return Response(
-        content=logica.zip_del_juego(juego.carpeta),
+        content=contenido,
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{juego.nombre}.zip"'},
     )
