@@ -202,3 +202,16 @@ def test_portada_en_raiz_sirve_html_autocontenido_con_csp_y_sin_urls_externas(
     _cabeceras_de_seguridad(cabecera)
     assert "/" not in app.openapi()["paths"]
     assert _cliente(ip="8.8.8.8").get("/").status_code == 403
+
+
+def test_portada_destaca_descarga_escritorio_y_acceso_web_de_prueba(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`GET /` presenta el botón principal «Descargar el sistema Sílice» para el ambiente de
+    escritorio propio y distingue el inicio de sesión en `/app/` como ambiente web de prueba."""
+    monkeypatch.setattr(interfaz, "DIST", tmp_path / "no-existe")
+    html = _cliente().get("/").text
+    assert "Descargar el sistema Sílice" in html
+    assert 'href="#descargar"' in html
+    assert "ambiente de prueba web" in html.lower()
+    assert "ambiente de escritorio propio" in html.lower()
