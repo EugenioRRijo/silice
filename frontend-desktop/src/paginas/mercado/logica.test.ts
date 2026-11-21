@@ -34,8 +34,8 @@ describe("textos del estudio de mercado", () => {
   });
 
   test("la ventana de dias va de 1 a 3.650, entera y sin ceros a la izquierda", () => {
-    for (const bueno of ["1", "30", "90", "365", "3650"]) expect(diasValidos(bueno), bueno).toBe(true);
-    for (const malo of ["", "0", "-5", "3651", "9999", "12,5", "1.000", "090", "abc", " 90"]) {
+    for (const bueno of ["1", "30", "90", "365", "1.000", "3650"]) expect(diasValidos(bueno), bueno).toBe(true);
+    for (const malo of ["", "0", "-5", "3651", "9999", "12,5", "090", "abc", " 90"]) {
       expect(diasValidos(malo), malo).toBe(false);
     }
   });

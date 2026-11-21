@@ -98,6 +98,14 @@ export default function Tramos() {
     }
   }
 
+  function cambiarVersion(nueva: string) {
+    setElegida(nueva);
+    setAviso(null);
+    setError(null);
+    setLlevados(null);
+    setErrorAlLlevar(null);
+  }
+
   return (
     <div className="vial silice-pagina">
       <h1 className="cds--type-heading-04">Tramos de la vía</h1>
@@ -109,7 +117,7 @@ export default function Tramos() {
       {versiones.estado === "listo" && ofrecidas.length === 0 && <EstadoVacio titulo={SIN_VERSIONES} />}
       {version !== null && (
         <>
-          <Select id="tramos-version" labelText="Versión" value={version} onChange={(e) => setElegida(e.target.value)}>
+          <Select id="tramos-version" labelText="Versión" value={version} onChange={(e) => cambiarVersion(e.target.value)}>
             {ofrecidas.map((v) => (
               <SelectItem key={v.codigo} value={v.codigo} text={v.codigo} />
             ))}

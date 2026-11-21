@@ -15,7 +15,7 @@ import { AnotarObservacion } from "./AnotarObservacion";
 import { Cifras } from "./Cifras";
 import { Observaciones } from "./Observaciones";
 import { UsarPrecio } from "./UsarPrecio";
-import { DIAS_POR_OMISION, buscadorDeInsumos, describirError, diasValidos, rutaDelEstudio } from "./logica";
+import { DIAS_POR_OMISION, buscadorDeInsumos, describirError, diasValidos, normalizarDias, rutaDelEstudio } from "./logica";
 import type { Estudio, Lado } from "./logica";
 
 interface Elegido {
@@ -127,7 +127,7 @@ export function EstudioDelLado({ lado }: { lado: Lado }) {
       return;
     }
     setDiasMalos(false);
-    setDias(limpio);
+    setDias(normalizarDias(limpio));
     setVersion((v) => v + 1);
   }
 
