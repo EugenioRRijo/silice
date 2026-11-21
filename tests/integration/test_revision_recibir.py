@@ -334,7 +334,7 @@ def test_la_empresa_propia_para_revisar_da_su_nombre_y_la_huella_de_su_clave(mun
 def test_un_error_operacional_al_registrar_no_deja_archivo_huerfano_ni_temporal(
     mundo, monkeypatch
 ) -> None:
-    """L1: un `OperationalError` en el INSERT no deja `{sha256}-{archivo}` ni temporales en disco."""
+    """L1: un `OperationalError` en el INSERT no deja `{sha256}-{archivo}` ni temporales."""
     from sqlalchemy.exc import OperationalError
 
     caso, _, carpeta = mundo
