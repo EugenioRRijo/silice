@@ -119,6 +119,60 @@ PORTADA_HTML = """<!doctype html>
     .cta--barra:hover {
       background-color: #f1c21b;
     }
+    .cta--secundario {
+      background-color: var(--cds-layer-01);
+      color: var(--cds-text-primary);
+      border-color: var(--cds-marco);
+    }
+    .cta--secundario:hover {
+      background-color: #e5e5e5;
+    }
+    .hero__acciones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .descarga {
+      background-color: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-inline-start: 4px solid var(--cds-acento);
+      padding: 1.75rem 2rem;
+      display: grid;
+      gap: 1.25rem;
+    }
+    .descarga__rejilla {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+      gap: 1rem;
+    }
+    .descarga__caja {
+      border: 1px solid var(--cds-border-subtle);
+      background-color: var(--cds-bg);
+      padding: 1.25rem;
+      display: grid;
+      align-content: start;
+      gap: 0.75rem;
+    }
+    .descarga__caja--prueba {
+      background-color: var(--cds-layer-lateral);
+    }
+    .descarga__titulo {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .descarga__texto {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--cds-text-secondary);
+    }
+    .descarga__meta {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--cds-text-primary);
+    }
     .contenedor {
       max-inline-size: 84rem;
       margin: 0 auto;
@@ -383,7 +437,11 @@ PORTADA_HTML = """<!doctype html>
           miles y trazabilidad criptográfica en su equipo.
         </p>
         <div class="hero__acciones">
-          <a class="cta" href="/app/">
+          <a class="cta" href="#descargar">
+            <span>Descargar el sistema Sílice</span>
+            <span aria-hidden="true">↓</span>
+          </a>
+          <a class="cta cta--secundario" href="/app/">
             <span>Iniciar sesión en Sílice</span>
             <span aria-hidden="true">→</span>
           </a>
@@ -531,6 +589,45 @@ PORTADA_HTML = """<!doctype html>
             hallazgos celda por celda en solo lectura y emite dictámenes de aprobación o
             devolución con huella verificable.
           </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="descargar" class="descarga" aria-labelledby="descargar-titulo">
+      <div>
+        <p class="etiqueta-tecnica">ENTREGA DEL PRODUCTO · ESCRITORIO PROPIO Y PRUEBA WEB</p>
+        <h2 id="descargar-titulo" class="seccion-titulo">
+          Descargar el sistema Sílice o probar el acceso web
+        </h2>
+      </div>
+      <div class="descarga__rejilla">
+        <article class="descarga__caja">
+          <h3 class="descarga__titulo">Ambiente de escritorio propio</h3>
+          <p class="descarga__texto">
+            Ejecución nativa autocontenida en Windows sin navegador externo: servidor local
+            aislado, base SQLite por carpeta y verificación SHA-256 en su equipo.
+          </p>
+          <p class="descarga__meta">Paquete: Sílice Desktop · Windows x64 · Enclave local</p>
+          <div>
+            <a class="cta" href="/app/">
+              <span>Abrir instalador / consola local</span>
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </article>
+        <article class="descarga__caja descarga__caja--prueba">
+          <h3 class="descarga__titulo">Ambiente de prueba web (/app/)</h3>
+          <p class="descarga__texto">
+            Entorno web de validación para probar el inicio de sesión jerárquico (Usuario
+            Arma/Revisa y Administrador Master) antes del empaquetado final de escritorio.
+          </p>
+          <p class="descarga__meta">Ruta: /app/ · Acceso de prueba en servidor local</p>
+          <div>
+            <a class="cta cta--secundario" href="/app/">
+              <span>Probar inicio de sesión web</span>
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
         </article>
       </div>
     </section>
