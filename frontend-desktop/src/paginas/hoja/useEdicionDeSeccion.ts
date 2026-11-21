@@ -3,7 +3,7 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 import { mensajeDeError } from "../../comun/errores";
 import { PAUSA_DE_EDICION_MS, esBorradorAusente, mensajeDeRechazo } from "./logica";
 import type { RespuestaDeEdicion, Resumen } from "./logica";
-import { registrarEnvio } from "./envioPendiente";
+import { registrarEnvio, registrarVaciador } from "./envioPendiente";
 import { claseDeConflicto } from "./logicaSecciones";
 
 export type EnvioDeSeccion = "quieto" | "pendiente" | "enviando";
@@ -227,6 +227,21 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     while (m.enVuelo && m.envioEnCurso !== null) await m.envioEnCurso;
     return m.rev;
   }, [enviarEdicion]);
+
+  // Mientras la pestaña está abierta, quien guarde o ponga un frente puede vaciar la pausa de 400 ms y esperar lo que va en vuelo.
+  useEffect(() => {
+    const m = motor.current;
+    return registrarVaciador(opciones.borrador, async () => {
+      let ultimo: Resumen | null = null;
+      if (m.temporizador !== null) {
+        clearTimeout(m.temporizador);
+        m.temporizador = null;
+        ultimo = await enviarEdicion();
+      }
+      while (m.enVuelo && m.envioEnCurso !== null) ultimo = await m.envioEnCurso;
+      return ultimo;
+    });
+  }, [opciones.borrador, enviarEdicion]);
 
   // Al irse de la pestaña con una edición esperando la pausa, se manda en seguida para no perderla.
   useEffect(() => {

@@ -10,6 +10,7 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { esBorradorAusente } from "./logica";
 import type { Monto, Resumen } from "./logica";
+import { esperarEnvios } from "./envioPendiente";
 
 // Libro por frentes (ola 2, línea 3, 2026-11-13): el presupuesto agrupado por frente (una estación, un tramo, un sector),
 // como lo trae el libro de la empresa con una hoja de presupuesto por frente. El subtotal de cada frente y el total general
@@ -146,9 +147,11 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
     setOcupado(true);
     const pedido = ++ultimo.current;
     try {
+      const resumenes = await esperarEnvios(id);
+      const revVigente = resumenes.reduce((mayor, res) => (res !== null && res.rev > mayor ? res.rev : mayor), rev);
       const r = await pedir<{ rev: number; resumen: Resumen; frentes: VistaFrentes }>(`/v1/hoja/borradores/${id}/frentes`, {
         metodo: "PUT",
-        cuerpo: { rev, filas: [{ clave: elegido, frente }] },
+        cuerpo: { rev: revVigente, filas: [{ clave: elegido, frente }] },
       });
       setFrente("");
       // Si mientras tanto se pidió la vista de un `rev` posterior, esta respuesta ya es vieja: la Hoja va por delante.
