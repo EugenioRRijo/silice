@@ -45,6 +45,83 @@ body {
   gap: 1rem;
   max-inline-size: 36rem;
   padding: 2rem 1rem;
+  margin-block-start: 3rem;
+}
+
+.silice-entrada--dividida {
+  max-inline-size: 64rem;
+  margin-inline: auto;
+}
+
+.silice-entrada__rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+}
+
+.silice-entrada__contexto {
+  display: grid;
+  align-content: start;
+  gap: 1.25rem;
+  padding: 2rem;
+  background: var(--silice-fondo);
+  border-inline-end: 1px solid var(--cds-border-subtle);
+}
+
+.silice-entrada__panel {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.silice-entrada__modos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--cds-border-strong);
+}
+
+.silice-entrada__modo {
+  padding: 0.625rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--silice-texto);
+  font: inherit;
+  cursor: pointer;
+  text-align: start;
+
+  &[aria-pressed="true"] {
+    background: var(--silice-marco);
+    color: var(--silice-sobre-marco);
+    box-shadow: inset 0 -3px 0 var(--silice-acento);
+  }
+}
+
+.silice-entrada__lista {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding-inline-start: 1.25rem;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-sin-marco__portada {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 0.875rem;
+  color: var(--silice-sobre-marco);
+  text-decoration: none;
+  font-size: 0.875rem;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.silice-marco-barra .silice-letra__etiqueta,
+.silice-marco-barra .silice-letra__opcion {
+  color: var(--silice-sobre-marco);
 }
 
 .silice-entrada__texto {
