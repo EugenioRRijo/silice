@@ -64,6 +64,9 @@ const URL_EXTERNA = /(?:https?|wss?):\/\/([^\s/'"`)\\<>?#:]+)/gi;
 // sola barra y no coincide.
 const URL_SIN_ESQUEMA_CSS = /(?:url\(\s*|@import\s+)['"]?\/\/([^\s/'")\\<>?#:]+)/gi;
 const URL_SIN_ESQUEMA_HTML = /\b(?:src|href)\s*=\s*['"]\/\/([^\s/'">\\<?#:]+)/gi;
+// La portada web de pruebas (portada.html y sus recursos portada-*.js/css) la agrega solo `npm run build:portada`; el
+// dist del instalador no la lleva.
+const ARCHIVO_DE_PORTADA = /(^|[\\/])(portada\.html|portada-[^\\/]*\.(js|css))$/;
 
 function* archivos(carpeta) {
   for (const nombre of readdirSync(carpeta)) {
@@ -84,6 +87,9 @@ export function verificarDist(carpeta) {
     const contenido = readFileSync(ruta);
     bytes += contenido.length;
     cuenta += 1;
+    if (ARCHIVO_DE_PORTADA.test(ruta)) {
+      problemas.push(`${ruta}: la portada web de pruebas no va en el instalador; compile con npm run build, no con npm run build:portada`);
+    }
     const texto = contenido.toString("latin1");
     const vistos = new Set();
     const extension = ruta.slice(ruta.lastIndexOf(".")).toLowerCase();
