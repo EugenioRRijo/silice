@@ -86,8 +86,10 @@ _A_METROS = {"mm": Decimal("0.001"), "cm": Decimal("0.01"), "m": Decimal(1)}
 
 
 def normalizar(texto: str) -> str:
-    """Espacios colapsados y coma decimal como punto: lo unico que la cita literal tolera."""
-    return re.sub(r"(?<=\d),(?=\d)", ".", " ".join(texto.split()))
+    """Espacios colapsados, punto de miles fuera y coma decimal como punto (NORMAS: «1.200» es
+    1200 y «1.234,56» es 1234.56): lo unico que la cita literal tolera."""
+    sin_miles = re.sub(r"(?<=\d)\.(?=\d{3}(?!\d))", "", " ".join(texto.split()))
+    return re.sub(r"(?<=\d),(?=\d)", ".", sin_miles)
 
 
 def numeros_de(texto: str) -> set[Decimal]:
