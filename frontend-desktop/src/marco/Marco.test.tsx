@@ -443,7 +443,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
     expect(cabecera).not.toHaveTextContent("de trabajo");
     expect(cabecera).toHaveTextContent("Versión: 002");
     expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
-    expect(screen.queryByText(/Carpeta activa:/)).toBeNull();
+    expect(await screen.findByText("Carpeta activa: Carpeta Sur")).toBeInTheDocument();
     expect(await screen.findByText("Obras / Galpón Sur")).toBeInTheDocument();
     expect(document.title).toBe("Presupuesto · Galpón Sur · Sílice");
   });

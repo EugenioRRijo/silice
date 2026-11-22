@@ -39,18 +39,37 @@ describe("BarraSuperior: marca", () => {
   });
 });
 
-describe("BarraSuperior: contexto limpio y modo ventana dedicada", () => {
-  it("no trae migas de navegacion ni expone el chip tecnico Carpeta activa", () => {
-    pintar({ en: "/obra/a.db/1/presupuesto", carpeta: "s1" });
+describe("BarraSuperior: la carpeta activa, el contexto y el modo ventana dedicada", () => {
+  it("no trae la navegación de migas de antes (ni la ruta ni enlaces de camino)", () => {
+    pintar({ en: "/obra/a.db/1/presupuesto" });
     expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
     expect(screen.getByRole("banner").querySelector(".silice-marco-barra__migas")).toBeNull();
+  });
+
+  it("dice la carpeta activa", () => {
+    pintar({ carpeta: "Carpeta de la empresa" });
+    expect(screen.getByText("Carpeta activa: Carpeta de la empresa")).toHaveClass("silice-marco-barra__carpeta");
+  });
+
+  it("sin carpeta que decir no pinta el rótulo vacío", () => {
+    pintar({ carpeta: null });
     expect(screen.queryByText(/Carpeta activa/)).toBeNull();
+  });
+
+  it("la carpeta activa y el contexto van juntos: dónde se trabaja y en qué", () => {
+    render(
+      <MemoryRouter initialEntries={["/obra/a.db/1/resumen"]}>
+        <BarraSuperior alAbrirBuscador={vi.fn()} nombre="Ana" carpeta="Carpeta Sur" migaContextual="Obras / Galpón Sur" />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Carpeta activa: Carpeta Sur")).toBeInTheDocument();
+    expect(screen.getByText("Obras / Galpón Sur")).toBeInTheDocument();
   });
 
   it("muestra la miga contextual limpia cuando se provee", () => {
     render(
       <MemoryRouter initialEntries={["/obra/a.db/1/resumen"]}>
-        <BarraSuperior alAbrirBuscador={vi.fn()} nombre="Ana" migaContextual="Obras / Galpón Sur" />
+        <BarraSuperior alAbrirBuscador={vi.fn()} nombre="Ana" carpeta={null} migaContextual="Obras / Galpón Sur" />
       </MemoryRouter>,
     );
     expect(screen.getByText("Obras / Galpón Sur")).toBeInTheDocument();
@@ -62,6 +81,7 @@ describe("BarraSuperior: contexto limpio y modo ventana dedicada", () => {
         <BarraSuperior
           alAbrirBuscador={vi.fn()}
           nombre="Ana"
+          carpeta="Carpeta de la empresa"
           enVentanaDedicada
           espacioActivo="auditoria"
           espacios={[
@@ -73,6 +93,8 @@ describe("BarraSuperior: contexto limpio y modo ventana dedicada", () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole("link", { name: "Volver a Obras" })).toHaveAttribute("href", "/inicio/general");
+    // Auditoría, Precios y Producción trabajan con la carpeta abierta: la ventana dedicada también la dice.
+    expect(screen.getByText("Carpeta activa: Carpeta de la empresa")).toBeInTheDocument();
     const selector = screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" });
     expect(selector).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "01 · Auditoría" })).toHaveAttribute("aria-current", "page");

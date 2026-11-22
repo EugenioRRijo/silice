@@ -66,6 +66,16 @@ describe("la barra superior cabe en 1366 px con letra Normal", () => {
     expect(encoger(regla(".silice-marco-barra__buscar"))).toBeGreaterThan(encoger(contexto));
   });
 
+  test("la carpeta activa cede después del buscador y se recorta con puntos suspensivos", () => {
+    const carpeta = regla(".silice-marco-barra__carpeta");
+    expect(carpeta).toMatch(/flex:\s*0\s+\d+\s+auto/);
+    expect(carpeta).toMatch(/min-inline-size:\s*0/);
+    expect(carpeta).toMatch(/overflow:\s*hidden/);
+    expect(carpeta).toMatch(/text-overflow:\s*ellipsis/);
+    expect(carpeta).toMatch(/white-space:\s*nowrap/);
+    expect(encoger(regla(".silice-marco-barra__buscar"))).toBeGreaterThan(encoger(carpeta));
+  });
+
   test("ya no hay reglas de migas", () => {
     expect(barra()).not.toMatch(/__migas|__miga-actual|__separador/);
   });
