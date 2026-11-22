@@ -202,6 +202,28 @@ def test_sin_la_variable_la_portada_tampoco_se_sirve_bajo_app(dist: Path) -> Non
     _cabeceras_de_seguridad(respuesta)
 
 
+@pytest.mark.usefixtures("sin_portada_web")
+@pytest.mark.parametrize(
+    "ruta",
+    [
+        "/app/Portada.html",
+        "/app/PORTADA.HTML",
+        "/app/portada.HTML",
+        "/app/portada.html.",
+        "/app/portada.html. . ",
+        "/app/portada.html::$DATA",
+        "/app/./portada.html",
+    ],
+)
+def test_sin_la_variable_la_portada_no_se_cuela_con_otra_grafia(dist: Path, ruta: str) -> None:
+    """En Windows el sistema de archivos no distingue mayúsculas, ignora puntos y espacios del
+    final y abre el flujo `::$DATA`: la guardia compara el archivo, no la grafía de la ruta."""
+    _con_portada(dist)
+    respuesta = _cliente().get(ruta)
+    assert respuesta.status_code == 404, ruta
+    assert PORTADA not in respuesta.text
+
+
 @pytest.mark.parametrize("valor", ["", "0", "si", "true", " 1"])
 def test_la_variable_solo_enciende_la_portada_con_1(
     dist: Path, monkeypatch: pytest.MonkeyPatch, valor: str
