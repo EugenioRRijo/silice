@@ -1414,7 +1414,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await titulo("Presupuesto");
     const enlace = within(screen.getByRole("banner")).getByRole("link", { name: "Cuenta de Ana Pérez" });
     await u.click(enlace);
-    await titulo("Pantalla y tamaño de letra");
+    await titulo("Configuración");
     expect(ruta()).toBe("/cuenta/preferencias");
     await new Promise((r) => setTimeout(r, 80));
     expect(enlace).toHaveFocus();

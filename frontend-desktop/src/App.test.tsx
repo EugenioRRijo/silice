@@ -73,7 +73,7 @@ describe("App", () => {
   });
 
   // Eugenio, 2026-11-22 («sigo insistiendo»): la letra y su tamaño van ÚNICAMENTE en la configuración del perfil
-  // (Cuenta › Pantalla y tamaño de letra), nunca a la derecha de la cabecera. Sin sesión no hay cuenta ni menú.
+  // (Cuenta › Configuración), nunca a la derecha de la cabecera. Sin sesión no hay cuenta ni menú.
   test("sin sesión la cabecera no trae el control de tamaño de letra, ni la cuenta ni el menú", async () => {
     sesionActual = () => json({ detalle: "Sin sesión." }, 401);
     render(<App />);
