@@ -87,7 +87,7 @@ describe("ListaHallazgos", () => {
     expect(within(fila("Rendimiento fuera de rango")).getByText("Información")).toBeInTheDocument();
   });
 
-  test("la celda va con cifras tabulares y el impacto sale en es-VE (coma decimal), no con el punto de la API (M4)", () => {
+  test("la celda va en Plex Mono y el impacto sale en es-VE (coma decimal), no con el punto de la API (M4)", () => {
     montar();
     const f = fila("El total no coincide con la suma de las partidas");
     const celda = within(f).getByText("PRESUPUESTO!F12");

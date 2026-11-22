@@ -326,7 +326,7 @@ describe("CampoConBusqueda: ARIA (§3.6)", () => {
     expect(document.getElementById(campo().getAttribute("aria-activedescendant")!)).toHaveAttribute("role", "option");
   });
 
-  test("el código va en la familia del diseño (cifras tabulares) y la línea de abajo dice código, unidad, tipo de obra y composición", async () => {
+  test("el código va en Plex Mono y la línea de abajo dice código, unidad, tipo de obra y composición", async () => {
     const u = usuario();
     render(<Pagina />);
     await buscarYResponder(u, "tub", grupo(TRES));
