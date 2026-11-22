@@ -1,5 +1,6 @@
-// Tema Carbon g10 (claro) y alias --silice-* (DESIGN.md). Los alias solo apuntan a colores y tokens de
-// Carbon: ningun valor hexadecimal se escribe a mano aqui.
+// Tema Carbon g10 (claro) y alias --silice-* (DESIGN.md). La severidad, la variacion IBCS y el aviso apuntan a colores de
+// Carbon; la paleta propia del «Instrumento de auditoria y control» (enmienda 2026-11-22: petroleo, arena silice y la
+// rampa neutra del concreto) son los unicos hexadecimales a mano, copiados de la propuesta aprobada con su contraste.
 @use "@carbon/styles/scss/config" with (
   $css--font-face: false,
   $use-akamai-cdn: false
@@ -14,6 +15,16 @@
 
 // Carbon v11 no emite las clases .cds--type-* por si solo: se piden aqui (heading-03, body-compact-01, label-01...).
 @include type.type-classes();
+
+// La familia de Carbon (IBM Plex) no es configurable por Sass ($font-families no es !default): se fija aqui, despues de su
+// reset, en el cuerpo y en los tres componentes que la piden por su cuenta. Los demas controles heredan (font-family: inherit).
+body,
+.cds--g10,
+.cds--content-switcher-btn,
+.cds--number input[type="number"],
+.cds--number input[type="text"].cds--number {
+  font-family: var(--silice-fuente);
+}
 
 :root {
   // Tema g10 en la raiz: el fondo del body y los alias --silice-* leen --cds-* fuera del componente Theme.
@@ -43,12 +54,43 @@
   // Escala del texto (control «Tamaño de letra»): 1 normal, 1.25 grande, 1.5 muy grande. La fija preferenciaDeLetra.ts.
   --silice-escala-letra: 1;
 
-  // Marco de la empresa (rediseño del marco, Tarea 1): valores neutros del repositorio. El tema de la empresa los
-  // reemplaza en la raiz desde GET /v1/tema (marco/tema.ts); aqui nunca va un color de la empresa.
-  --silice-marco: var(--cds-background-inverse);
-  --silice-acento: #{colors.$yellow-20};
-  --silice-lateral: #{colors.$warm-gray-10};
-  --silice-lateral-activo: #{colors.$warm-gray-20};
+  // Paleta del instrumento de auditoria. Contrastes (WCAG): petroleo 13,41:1 con blanco; arena 7,74:1 sobre petroleo; tinta
+  // 16,34:1 sobre papel; grafito 7,84:1 sobre papel y 6,52:1 sobre el lateral; gris de obra 5,68:1 y 4,72:1; borde de campo
+  // 3,57:1 (WCAG 1.4.11); real 9,92:1 sobre papel. Los neutros son una sola rampa apenas verdosa (el concreto, no el crema).
+  --silice-petroleo: #15333a;
+  --silice-petroleo-hover: #20444c;
+  --silice-arena: #d3c49a;
+  --silice-tinta: #1b2120;
+  --silice-grafito: #4a5451;
+  --silice-gris-obra: #5f6966;
+  --silice-borde-campo: #7f8a86;
+  --silice-borde: #c9d0cd;
+  --silice-hilo: #dde2df;
+  --silice-lateral-base: #e7ebe9;
+  --silice-lateral-hover: #dce2df;
+  --silice-concreto: #f2f4f2;
+  --silice-papel: #ffffff;
+  --silice-seleccion: #dde9e6;
+  // IBCS: el real va relleno, el plan en contorno de 1,5 px (tinta) y la prevision achurada a 45 grados con el color del real.
+  --silice-real: #3b4542;
+  --silice-plan: var(--silice-tinta);
+
+  // Familia de la interfaz: una sola, tambien en cifras y codigos (tabular-nums). Sin monoespaciada.
+  --silice-fuente: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+
+  // Movimiento: una curva (deceleracion, sin rebote) y cuatro duraciones. Se anima el trazo, nunca la cifra.
+  --silice-curva: cubic-bezier(0.16, 1, 0.3, 1);
+  --silice-t-respuesta: 120ms;
+  --silice-t-estado: 200ms;
+  --silice-t-panel: 320ms;
+  --silice-t-trazo: 560ms;
+
+  // Marco de la empresa (rediseño del marco, Tarea 1): valores por omision del repositorio, petroleo y arena. El tema de la
+  // empresa los reemplaza en la raiz desde GET /v1/tema (marco/tema.ts); aqui nunca va un color de la empresa.
+  --silice-marco: var(--silice-petroleo);
+  --silice-acento: var(--silice-arena);
+  --silice-lateral: var(--silice-lateral-base);
+  --silice-lateral-activo: var(--silice-lateral-hover);
   // Color complementario (enlaces, bordes interactivos y raya de la pestana activa) y contador de la barra lateral: la
   // empresa puede darles su color; sin el, siguen al marco y al lateral.
   --silice-complementario: var(--silice-marco);
