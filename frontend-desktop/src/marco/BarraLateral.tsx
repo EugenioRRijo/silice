@@ -7,7 +7,7 @@ import {
   SidePanelClose,
   SidePanelOpen,
 } from "@carbon/icons-react";
-import { useEffect, useId, useMemo } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
 import { Link, useLocation } from "react-router";
 import { Pildora } from "../comun/Pildora";
 import { claveDeObra, contarPorObra } from "../paginas/pendientes/logica";
@@ -39,6 +39,17 @@ function iconoDeEspacio(id: string) {
 export function BarraLateral({ obraAbierta }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
   const { sidebarCollapsed, toggleSidebar } = useWorkspaceLayout();
+  // Plegar o desplegar desmonta una rama y monta la otra: el botón pulsado (o la obra enfocada, con Ctrl+B) desaparece y el
+  // foco caería en el cuerpo del documento. Si se perdió, pasa al botón equivalente de la rama nueva (WCAG 2.4.3); si lo
+  // tiene otro control (el contenido, con Ctrl+B), no se toca.
+  const alternador = useRef<HTMLButtonElement>(null);
+  const plegadaAntes = useRef(sidebarCollapsed);
+  useLayoutEffect(() => {
+    if (plegadaAntes.current === sidebarCollapsed) return;
+    plegadaAntes.current = sidebarCollapsed;
+    const activo = document.activeElement;
+    if (activo === null || activo === document.body) alternador.current?.focus();
+  }, [sidebarCollapsed]);
   const navegar = useNavegarSeguro();
   const base = useId();
   const { obras, carpetaActual, tituloActual, estado, recargar } = useObras();
@@ -137,6 +148,7 @@ export function BarraLateral({ obraAbierta }: Props) {
         <div className="silice-marco-lateral__riel">
           <div className="silice-marco-lateral__riel-arriba">
             <button
+              ref={alternador}
               type="button"
               className="silice-marco-lateral__riel-btn silice-marco-lateral__riel-btn--toggle"
               onClick={toggleSidebar}
@@ -199,6 +211,7 @@ export function BarraLateral({ obraAbierta }: Props) {
               {total > 0 && <Pildora valor={total} />}
             </Link>
             <button
+              ref={alternador}
               type="button"
               className="silice-marco-lateral__plegar"
               onClick={toggleSidebar}
