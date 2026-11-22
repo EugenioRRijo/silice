@@ -309,10 +309,12 @@ describe("la hoja de estilos de los medidores", () => {
     expect(i, `falta ${selector}`).toBeGreaterThanOrEqual(0);
     return hoja.slice(i, hoja.indexOf("}", i));
   };
-  const hexDe = (token: string) => {
-    const m = new RegExp(`${token}:\\s*(#[0-9a-fA-F]{6})`).exec(editorial);
-    expect(m, `falta ${token} en editorial.scss`).not.toBeNull();
-    return m![1]!;
+  // Los alias de editorial.scss apuntan a la paleta de tokens.scss (--silice-ink -> --silice-tinta -> #hex): se siguen hasta el color.
+  const paleta = `${editorial}\n${leer("src/estilos/tokens.scss")}`;
+  const hexDe = (token: string): string => {
+    const m = new RegExp(`${token}:\\s*(#[0-9a-fA-F]{6}|var\\((--[a-z0-9-]+)\\))`).exec(paleta);
+    expect(m, `falta ${token} en editorial.scss ni en tokens.scss`).not.toBeNull();
+    return m![2] ? hexDe(m![2]) : m![1]!;
   };
   function luminancia(hex: string): number {
     const canal = (i: number) => {
