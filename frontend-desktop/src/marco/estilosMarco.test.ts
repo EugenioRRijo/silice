@@ -124,7 +124,7 @@ describe("la barra superior y la lateral siguen el tema de la empresa", () => {
   });
 
   test.each(["marco/BarraSuperior.scss", "marco/BarraLateral.scss"])("%s no usa los colores fijos del rediseño editorial", (ruta) => {
-    expect(leer(ruta)).not.toMatch(/--silice-(charcoal|gold|rail-hover|ink)/);
+    expect(leer(ruta)).not.toMatch(/--silice-(charcoal|gold|rail-hover|ink)/);
   });
 });
 

@@ -14,9 +14,9 @@ import { useTema } from "./useTema";
 interface Props {
   alAbrirBuscador: () => void;
   nombre: string;
-  // Conservada por compatibilidad de llamada; la carpeta ya no se expone como chip tecnico en la cabecera.
-  carpeta?: string | null;
-  // Contexto limpio en escritorio (ej. «Inicio / Vista general» u «Obras / Drenaje de la clínica»).
+  // El nombre de la carpeta abierta ahora, o null si todavía no se sabe (no se pinta un rótulo vacío).
+  carpeta: string | null;
+  // Dónde se está dentro de la carpeta (ej. «Inicio / Vista general» u «Obras / Drenaje de la clínica»): texto, no enlaces.
   migaContextual?: string | null;
   // Ventana dedicada a pantalla completa para Auditoria, Precios o Produccion.
   enVentanaDedicada?: boolean;
@@ -41,9 +41,14 @@ function usaCtrlK(destino: EventTarget | null): boolean {
   );
 }
 
+// Barra superior del marco (plan F6, T6; diseño visual §4): la marca, que lleva a la ruta índice; la carpeta activa y, fuera
+// de la ventana dedicada, el contexto de texto; el buscador (Ctrl+K); y la persona, que es un enlace a la Cuenta. Sin el
+// tamaño de letra, que vive solo en la Cuenta (decisión de Eugenio, 2026-11-04). En Auditoría, Precios y Producción
+// (ventana dedicada) lleva «Volver a Obras» y el selector de las tres herramientas. La monta marco/Marco.
 export function BarraSuperior({
   alAbrirBuscador,
   nombre,
+  carpeta,
   migaContextual = null,
   enVentanaDedicada = false,
   espacioActivo = null,
@@ -86,6 +91,8 @@ export function BarraSuperior({
             </>
           )}
         </Link>
+        {/* Auditoría, Precios y Producción trabajan con la carpeta abierta: se dice también en la ventana dedicada. */}
+        {carpeta && <span className="silice-marco-barra__carpeta">{`Carpeta activa: ${carpeta}`}</span>}
         {!enVentanaDedicada && (
           <span className="silice-marco-barra__contexto">
             {migaContextual ? (

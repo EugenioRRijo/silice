@@ -117,7 +117,18 @@
   }
 }
 
-// Contexto limpio en la barra (sustituye el chip tecnico de carpeta).
+// La carpeta abierta, junto a la marca: cede despues del buscador y, si no cabe, se recorta con puntos suspensivos.
+.silice-marco-barra__carpeta {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cds-text-inverse);
+  @include type.type-style("label-01");
+}
+
+// El contexto de texto dentro de la carpeta («Obras / Galpon Sur»): ocupa el hueco flexible y es lo primero que se oculta.
 .silice-marco-barra__contexto {
   display: inline-flex;
   align-items: center;
