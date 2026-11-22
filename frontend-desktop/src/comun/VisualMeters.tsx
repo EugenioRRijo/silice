@@ -371,36 +371,61 @@ export function AnimatedBarChart({
   );
 }
 
-/* 4. Rango de un costo proyectado (RiskRangeMeter): lo previsto en contorno y lo pronosticado achurado (IBCS) */
+/* 4. Rango de un costo proyectado (RiskRangeMeter): cada escenario contra lo previsto (IBCS) */
 export interface PuntoDelRango {
   rotulo: string;
-  // Solo dibuja: el monto de la API. La barra mayor llena la pista.
+  // Solo dibuja: el monto de la API.
   valor: number | null;
   // Lo que se lee, ya en es-VE («1.302,46 USD»).
   texto: string | null;
+  // «plan»: lo previsto (el presupuesto base), una marca en contorno. «pronostico»: un escenario (P50, P80), una barra
+  // achurada que va de la base al escenario.
   tipo: "plan" | "pronostico";
 }
 
+// La escala va de la menor a la mayor cifra (no desde cero: contra cero, base, P50 y P80 medirían casi lo mismo). La base
+// cruza cada pista con una línea, para comparar cada escenario contra ella; un escenario por debajo va de él a la base.
+// El porcentaje del ancho solo dibuja: no se escribe ninguna variación.
 export function RiskRangeMeter({ puntos, etiqueta = "Rango de exposición de costos" }: { puntos: PuntoDelRango[]; etiqueta?: string }) {
   const progress = useLoadProgress(720, puntos.map((p) => `${p.rotulo}:${p.valor}`).join("|"));
-  const mayor = Math.max(0, ...puntos.map((p) => (finito(p.valor) ? p.valor : 0)));
-  const ancho = (v: number | null) => (finito(v) && v > 0 && mayor > 0 ? (v / mayor) * 100 * progress : 0);
+  const valores = puntos.map((p) => p.valor).filter(finito);
+  const menor = valores.length > 0 ? Math.min(...valores) : 0;
+  const rango = valores.length > 0 ? Math.max(...valores) - menor : 0;
+  const posicion = (v: number) => (rango > 0 ? ((v - menor) / rango) * 100 : 0);
+  const base = puntos.find((p) => p.tipo === "plan" && finito(p.valor))?.valor ?? null;
+  const enBase = base !== null ? posicion(base) : 0;
+  // Una marca en `x` % sin salirse de la pista: se corre hacia dentro lo mismo que avanza.
+  const sobre = (x: number) => ({ insetInlineStart: `${x}%`, translate: `-${x}%` });
 
   return (
     <div className="silice-riesgo-medidor" role="group" aria-label={etiqueta}>
-      {puntos.map((p) => (
-        <div key={p.rotulo} className="silice-riesgo-medidor__fila">
-          <div className="silice-riesgo-medidor__cabecera">
-            <span className="silice-riesgo-medidor__nombre">{p.rotulo}</span>
-            <span className="silice-riesgo-medidor__valor">
-              <Cifra texto={p.texto} />
-            </span>
+      <p className="silice-riesgo-medidor__nota">Cada barra va del presupuesto base al escenario.</p>
+      {puntos.map((p) => {
+        const hasta = finito(p.valor) ? posicion(p.valor) : null;
+        const ancho = hasta === null ? 0 : Math.abs(hasta - enBase) * progress;
+        const desde = hasta !== null && hasta < enBase ? enBase - ancho : enBase;
+        return (
+          <div key={p.rotulo} className="silice-riesgo-medidor__fila">
+            <div className="silice-riesgo-medidor__cabecera">
+              <span className="silice-riesgo-medidor__nombre">{p.rotulo}</span>
+              <span className="silice-riesgo-medidor__valor">
+                <Cifra texto={p.texto} />
+              </span>
+            </div>
+            <div className="silice-riesgo-medidor__pista">
+              {p.tipo === "plan"
+                ? hasta !== null && <div className="silice-riesgo-medidor__marca" style={sobre(hasta)} />
+                : hasta !== null && (
+                    <div
+                      className="silice-riesgo-medidor__barra silice-riesgo-medidor__barra--pronostico"
+                      style={{ insetInlineStart: `${desde}%`, inlineSize: `${ancho}%` }}
+                    />
+                  )}
+              {base !== null && <div className="silice-riesgo-medidor__base" style={sobre(enBase)} aria-hidden="true" />}
+            </div>
           </div>
-          <div className="silice-riesgo-medidor__pista">
-            <div className={`silice-riesgo-medidor__barra silice-riesgo-medidor__barra--${p.tipo}`} style={{ inlineSize: `${ancho(p.valor)}%` }} />
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

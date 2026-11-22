@@ -434,30 +434,50 @@
   color: var(--silice-ink);
 }
 
+.silice-riesgo-medidor__nota {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--silice-muted);
+}
+
 .silice-riesgo-medidor__pista {
+  position: relative;
   inline-size: 100%;
   block-size: 0.75rem;
   background-color: var(--silice-hairline);
   border-radius: var(--silice-radio-sm);
-  overflow: hidden;
 }
 
+// Lo pronosticado (P50, P80): de la base al escenario, achurado a 135 grados en la tinta con su contorno (la textura IBCS
+// del pronóstico, no un degradado de adorno). Con colores forzados queda el contorno.
 .silice-riesgo-medidor__barra {
-  block-size: 100%;
+  position: absolute;
+  inset-block: 0;
   box-sizing: border-box;
   border-radius: var(--silice-radio-sm);
 }
 
-// Lo previsto (el presupuesto base): contorno.
-.silice-riesgo-medidor__barra--plan {
-  background-color: transparent;
-  border: 0.125rem solid var(--silice-ink);
-}
-
-// Lo pronosticado (P50, P80): achurado a 135 grados en la tinta, con su contorno (la textura IBCS del pronóstico, no un
-// degradado de adorno). Con colores forzados queda el contorno.
 .silice-riesgo-medidor__barra--pronostico {
   background-color: transparent;
   background-image: repeating-linear-gradient(135deg, var(--silice-ink) 0 0.125rem, transparent 0.125rem 0.375rem);
   border: 0.125rem solid var(--silice-ink);
+}
+
+// Lo previsto (el presupuesto base): una marca en contorno en su lugar de la escala.
+.silice-riesgo-medidor__marca {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 0.75rem;
+  box-sizing: border-box;
+  background-color: transparent;
+  border: 0.125rem solid var(--silice-ink);
+  border-radius: var(--silice-radio-sm);
+}
+
+// La línea de la base, que cruza cada pista.
+.silice-riesgo-medidor__base {
+  position: absolute;
+  inset-block: -0.1875rem;
+  inline-size: 0.125rem;
+  background-color: var(--silice-ink);
 }

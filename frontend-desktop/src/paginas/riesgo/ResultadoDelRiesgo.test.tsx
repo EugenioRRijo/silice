@@ -52,7 +52,18 @@ describe("el medidor del rango de la proyección", () => {
   });
 
   test("las barras miden la diferencia contra la base: el P50 queda visiblemente por debajo del P80", () => {
-    const medidor = montar();
+    // Con movimiento reducido el medidor se pinta ya en su valor final (sin él, crece desde la base al cargar).
+    const original = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (q: string) => ({ matches: q.includes("reduced-motion"), media: q, addEventListener() {}, removeEventListener() {} }),
+    });
+    let medidor: HTMLElement;
+    try {
+      medidor = montar();
+    } finally {
+      Object.defineProperty(window, "matchMedia", { configurable: true, value: original });
+    }
     const [p50, p80] = [...medidor.querySelectorAll<HTMLElement>(".silice-riesgo-medidor__barra")];
     // Base 1.000, P50 1.248,72 y P80 1.302,46: contra cero las tres medirían casi lo mismo (77 %, 96 % y 100 %).
     expect(Number.parseFloat(p50!.style.inlineSize)).toBeCloseTo(82.23, 1);
