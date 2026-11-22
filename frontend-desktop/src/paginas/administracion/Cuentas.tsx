@@ -349,7 +349,7 @@ export default function Cuentas() {
               },
             ]}
             filas={filasDeCuentas(cuentas)}
-            vacio={{ titulo: "Todavía no hay cuentas." }}
+            vacio={{ titulo: "Todavía no hay cuentas" }}
           />
         )}
       </section>

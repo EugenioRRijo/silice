@@ -89,7 +89,7 @@ export default function PaginaAdministracion() {
   return (
     <div className="silice-adm">
       {!puede ? (
-        <EstadoVacio titulo="Su cuenta no tiene permiso para administrar la instalación." />
+        <EstadoVacio titulo="Su cuenta no tiene permiso para administrar la instalación" />
       ) : (
         <Layer className="silice-adm__capa">
           {bloquesDe(seccion, sesion.acciones).map(({ id, titulo, Contenido, conTitulo }) =>

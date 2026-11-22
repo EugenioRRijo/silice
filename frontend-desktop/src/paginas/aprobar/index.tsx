@@ -262,7 +262,7 @@ function Partidas({ datos }: { datos: DetalleDeEnvio }) {
           precio: p.pendiente || p.precio_unitario === null ? "Sin precio" : centesimasEsVe(p.precio_unitario),
           total: p.total === null ? "" : centesimasEsVe(p.total),
         }))}
-        vacio={{ titulo: "Esta versión no tiene partidas." }}
+        vacio={{ titulo: "Esta versión no tiene partidas" }}
       />
     </section>
   );

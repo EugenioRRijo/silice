@@ -68,7 +68,7 @@ function Cuerpo({ ficha, carpeta, obraId }: Pick<ObraAbierta, "ficha" | "carpeta
           <Cifra nombre={obra.version_de_linea_base ? TEXTOS.versionDeLaLineaBase : TEXTOS.versionVigente}>
             {obra.version ?? <span className="silice-resumen__sin-dato">{TEXTOS.sinVersion}</span>}
           </Cifra>
-          <Cifra nombre={TEXTOS.etapa}>
+          <Cifra nombre={TEXTOS.etapa} texto>
             <EtapaDeObra etapa={obra.etapa} texto={obra.etapa_texto} />
           </Cifra>
         </dl>
@@ -77,11 +77,14 @@ function Cuerpo({ ficha, carpeta, obraId }: Pick<ObraAbierta, "ficha" | "carpeta
   );
 }
 
-function Cifra({ nombre, children }: { nombre: string; children: ReactNode }) {
+// `texto`: el dato es una palabra (la etapa) y no una cifra; va en la letra normal (pulido unslop, 2026-11-22).
+function Cifra({ nombre, texto = false, children }: { nombre: string; texto?: boolean; children: ReactNode }) {
   return (
     <div className="silice-resumen__cifra">
       <dt className="cds--type-label-01">{nombre}</dt>
-      <dd className="cds--type-body-compact-02">{children}</dd>
+      <dd className={texto ? "cds--type-body-compact-02 silice-resumen__valor--texto" : "cds--type-body-compact-02"}>
+        {children}
+      </dd>
     </div>
   );
 }

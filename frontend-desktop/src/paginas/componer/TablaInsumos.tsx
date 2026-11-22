@@ -422,7 +422,7 @@ export function TablaInsumos({
                           value={fila[c.clave] ?? ""}
                           onChange={(e) => alCambiar(i, c.clave, e.target.value)}
                         >
-                          <SelectItem value="" text="" />
+                          <SelectItem value="" text="Sin modalidad" />
                           {modalidades.map((m) => (
                             <SelectItem key={m} value={m} text={m} />
                           ))}

@@ -1,7 +1,7 @@
 // Logica pura de «Índices del BCV» (UC-17 pasos 1-3): arma los formularios y las tablas con lo que manda la API. No
 // calcula ni redondea nada: la API solo trae recuentos y rangos de fechas, y los mensajes se muestran tal cual.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
-import { fechaEsVe } from "../../indicadores/formatoEsVe";
+import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export const AYUDA =
   "Importe la tasa de referencia del BCV, el INPC o una serie en CSV. «Leer» no escribe nada: muestra lo que se " +
@@ -70,7 +70,7 @@ export interface Lectura {
 
 export const COLUMNAS_SERIES: ColumnaDensa[] = [
   { clave: "serie", titulo: "Serie" },
-  { clave: "valores", titulo: "Valores", numerica: true },
+  { clave: "valores", titulo: "Valores", numerica: true, celda: (f) => formatoEsVe(f["valores"] ?? "") },
   // La API manda aaaa-mm-dd; se lee como en el resto de Sílice (VB-19). Con `celda` y no con `presentar`: este pondría la
   // forma ISO en el `title` (VD-5), como la fecha de las versiones del Tablero.
   { clave: "desde", titulo: "Desde", celda: (f) => fechaEsVe(f["desde"] ?? "") },
@@ -96,7 +96,7 @@ export function filasRechazos(rechazos: Rechazo[]): FilaDensa[] {
 }
 
 export function textoOmitidos(omitidos: number): string {
-  return `Hay ${omitidos} ${omitidos === 1 ? "fila rechazada más" : "filas rechazadas más"} que no se muestran aquí.`;
+  return `Hay ${formatoEsVe(String(omitidos))} ${omitidos === 1 ? "fila rechazada más" : "filas rechazadas más"} que no se muestran aquí.`;
 }
 
 // Fecha local de hoy en YYYY-MM-DD (lo que manda el input de fecha y lo que lee la API).

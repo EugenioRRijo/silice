@@ -551,7 +551,7 @@ describe("Estudio de mercado", () => {
     montar();
     await elegirInsumo(u);
     expect(within(cifras()).getByText("Sin observaciones en los últimos 90 días")).toBeInTheDocument();
-    expect(screen.getByText("Sin observaciones en los últimos 90 días.")).toBeInTheDocument();
+    expect(screen.queryByText("Sin observaciones en los últimos 90 días.")).toBeNull();
     expect(screen.getByText(/Anote el primer precio que vea/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(campoPrecio()).toHaveValue("");

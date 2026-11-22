@@ -78,8 +78,8 @@ export default function PaginaCatalogo() {
       />
       <Tabs>
         <TabList aria-label="Catálogo">
-          <Tab>Partidas ({filasPartidas.length})</Tab>
-          <Tab>Insumos ({filasInsumos.length})</Tab>
+          <Tab>Partidas ({formatoEsVe(String(filasPartidas.length))})</Tab>
+          <Tab>Insumos ({formatoEsVe(String(filasInsumos.length))})</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>

@@ -14,7 +14,7 @@ interface Props {
 function tituloDe(s: Similar): string {
   const puntaje = Number(s.puntaje);
   const texto = Number.isFinite(puntaje) ? puntaje.toFixed(2) : String(s.puntaje);
-  return `${formatoEsVe(texto)} · ${s.codigo} · ${s.descripcion}`;
+  return `${s.codigo} · ${s.descripcion} (similitud ${formatoEsVe(texto)})`;
 }
 
 // Ayuda 1: partidas parecidas, de solo lectura. La persona copia a mano lo que le sirva; nada se llena solo.

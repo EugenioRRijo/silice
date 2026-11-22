@@ -73,7 +73,7 @@ export default function PaginaEntregar() {
       )}
       {proyectos.estado === "listo" && proyectos.datos.length === 0 && (
         <EstadoVacio
-          titulo="Esta carpeta todavía no tiene obras."
+          titulo="Esta carpeta todavía no tiene obras"
           descripcion="Cree una obra y guarde una versión de su presupuesto para tener algo que entregar."
         />
       )}
@@ -166,14 +166,14 @@ function Seleccion({
         <EsqueletoPagina etiqueta="Cargando las versiones" />
       )}
       {versiones.estado === "listo" && lista.length === 0 && (
-        <EstadoVacio titulo="Esta obra todavía no tiene versiones." />
+        <EstadoVacio titulo="Esta obra todavía no tiene versiones" />
       )}
       <MensajeDeCarga carga={versiones} />
       {elegida && noAprobada && (
         <InlineNotification
           kind="warning"
           role="status"
-          title="Esta versión no está aprobada."
+          title="Esta versión no está aprobada"
           subtitle={
             aprobada === undefined
               ? "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha."
@@ -267,7 +267,7 @@ function Entrega({
         </div>
         <div>
           <dt className="cds--type-label-01">Hallazgos</dt>
-          <dd className="cds--type-heading-03">{datos.hallazgos_total}</dd>
+          <dd className="cds--type-heading-03 silice-cifra">{formatoEsVe(String(datos.hallazgos_total))}</dd>
           {datos.hallazgos_total > 0 && (
             <dd className="cds--type-body-compact-01">
               {textoDeHallazgos(datos.hallazgos_por_severidad)}
@@ -324,7 +324,7 @@ function Entrega({
         <InlineNotification
           kind="warning"
           title="Sin clave de firma"
-          subtitle="No hay clave de firma: el paquete saldrá SIN FIRMA y quien lo reciba lo verá como «no verificado»."
+          subtitle="No hay clave de firma: el paquete saldrá sin firma y quien lo reciba lo verá como «no verificado»."
           lowContrast
           hideCloseButton
         />
@@ -369,8 +369,8 @@ function Entrega({
         <div className="silice-entregar__listo" role="status">
           <p className="cds--type-heading-compact-01">
             {listo.firmado
-              ? "Paquete listo y firmado."
-              : "Paquete listo (sin firma)."}
+              ? "Paquete listo y firmado"
+              : "Paquete listo (sin firma)"}
           </p>
           <p className="silice-entregar__sha cds--type-code-01">{`SHA-256: ${listo.sha256}`}</p>
           <Button

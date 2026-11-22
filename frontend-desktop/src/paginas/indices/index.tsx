@@ -7,6 +7,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AVISO_SIN_XLRD,
@@ -195,10 +196,10 @@ export default function PaginaIndices() {
             />
           )}
           <div className="silice-indices__acciones">
-            <Button type="submit" kind="primary" size="md" disabled={lectura.tipo === "leyendo"}>
+            <Button type="submit" kind="secondary" size="md" disabled={lectura.tipo === "leyendo"}>
               Leer
             </Button>
-            {lectura.tipo === "leyendo" && <InlineLoading description="Leyendo..." status="active" />}
+            {lectura.tipo === "leyendo" && <InlineLoading description="Leyendo…" status="active" />}
           </div>
         </form>
       )}
@@ -276,15 +277,15 @@ function InformePrevio({ lectura, contexto, definiciones, alCambiar, confirmacio
         <dl className="silice-indices__datos">
           <div>
             <dt className="cds--type-label-01">Filas leídas</dt>
-            <dd className="cds--type-heading-04">{informe.filas_leidas}</dd>
+            <dd className="cds--type-heading-04">{formatoEsVe(String(informe.filas_leidas))}</dd>
           </div>
           <div>
             <dt className="cds--type-label-01">Rechazadas</dt>
-            <dd className="cds--type-heading-04">{informe.filas_rechazadas}</dd>
+            <dd className="cds--type-heading-04">{formatoEsVe(String(informe.filas_rechazadas))}</dd>
           </div>
           <div>
             <dt className="cds--type-label-01">Provisionales</dt>
-            <dd className="cds--type-heading-04">{informe.provisionales}</dd>
+            <dd className="cds--type-heading-04">{formatoEsVe(String(informe.provisionales))}</dd>
           </div>
         </dl>
       </section>
@@ -342,7 +343,7 @@ function InformePrevio({ lectura, contexto, definiciones, alCambiar, confirmacio
                 onChange={(e) => alCambiar(i, "periodicidad", e.target.value)}
               >
                 {contexto.periodicidades.map((p) => (
-                  <SelectItem key={p} value={p} text={p} />
+                  <SelectItem key={p} value={p} text={p === "" ? "" : p[0]!.toUpperCase() + p.slice(1)} />
                 ))}
               </Select>
             </div>
@@ -354,7 +355,7 @@ function InformePrevio({ lectura, contexto, definiciones, alCambiar, confirmacio
         <Button kind="primary" size="md" disabled={enCurso} onClick={alConfirmar}>
           Confirmar la importación
         </Button>
-        {enCurso && <InlineLoading description="Guardando..." status="active" />}
+        {enCurso && <InlineLoading description="Guardando…" status="active" />}
       </div>
       {confirmacion.tipo === "error" && <AvisoError error={confirmacion.error} titulo="No se pudo confirmar" />}
     </section>

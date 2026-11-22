@@ -45,7 +45,7 @@ export function LanzadorDeEspacio({
         </span>
       )}
       <span className="silice-lanzador__accion" aria-hidden="true">
-        Abrir herramienta <ArrowRight size={14} aria-hidden="true" />
+        Abrir herramienta <ArrowRight size={16} aria-hidden="true" />
       </span>
     </Link>
   );

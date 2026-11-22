@@ -226,13 +226,13 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
           {barrasAvance.length > 0 && (
             <div className="silice-panel silice-panel--padded silice-inicio__grafico-card">
               <h3 className="cds--type-heading-compact-02">Avance real frente al plan</h3>
-              <p className="silice-panel__subtitulo">Porcentaje acumulado de obras con control activo.</p>
+              <p className="silice-panel__subtitulo">Porcentaje acumulado de obras con control activo</p>
               <AnimatedBarChart items={barrasAvance} realLegend="Avance real (%)" planLegend="Plan acumulado (%)" height={190} />
             </div>
           )}
           <div className="silice-panel silice-panel--padded silice-inicio__grafico-card">
             <h3 className="cds--type-heading-compact-02">Distribución de obras por estado</h3>
-            <p className="silice-panel__subtitulo">Cuántas obras hay en cada estado.</p>
+            <p className="silice-panel__subtitulo">Cuántas obras hay en cada estado</p>
             <AnimatedDonutChart
               segments={partesPorEtapa(obras)}
               centerLabel="Obras"

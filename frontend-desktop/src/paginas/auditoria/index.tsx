@@ -96,7 +96,7 @@ export default function PaginaAuditoria() {
             Últimas auditorías guardadas
           </h2>
           <p className="silice-inicio__nota cds--type-body-compact-01">
-            {`Carpeta de trabajo: ${caso?.nombre ?? "ninguna"}`}
+            {`Carpeta: ${caso?.nombre ? caso.nombre.replace(/\.db$/i, "") : "ninguna"}`}
             {proyecto ? ` · Obra: ${nombreProyecto ?? proyecto}` : ""}
           </p>
           {recorrido && (

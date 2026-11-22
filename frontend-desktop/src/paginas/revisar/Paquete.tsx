@@ -132,7 +132,7 @@ function Reauditoria({
                 etiqueta={lote.titulo}
                 columnas={COLUMNAS_HALLAZGOS}
                 filas={lote.hallazgos.map((h, j) => ({ id: String(j), ...h }))}
-                vacio={{ titulo: "Ninguno." }}
+                vacio={{ titulo: "Ninguno" }}
               />
             </section>
           ))}
@@ -152,7 +152,7 @@ function Reauditoria({
               etiqueta={r.cambios_titulo}
               columnas={COLUMNAS_CAMBIOS}
               filas={filasDeCambios(r.cambios)}
-              vacio={{ titulo: "Ningún cambio nuevo." }}
+              vacio={{ titulo: "Ningún cambio nuevo" }}
             />
           </section>
           <section className="silice-revisar__seccion" aria-labelledby="revisar-excel">

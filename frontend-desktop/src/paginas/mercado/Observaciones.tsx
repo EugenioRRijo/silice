@@ -124,7 +124,7 @@ export function Observaciones({ estudio, alCambiar }: Props) {
         <>
           <TablaDensa etiqueta={nombreDeTabla} columnas={columnas} filas={filas} />
           <p className="silice-mercado__nota cds--type-helper-text-01">
-            {`Las cifras usan las observaciones en ${moneda}, la moneda de la carpeta de trabajo; las de otra moneda se convierten con la tasa del BCV del día de la observación.`}
+            {`Las cifras usan las observaciones en ${moneda}, la moneda de la carpeta; las de otra moneda se convierten con la tasa del BCV del día de la observación.`}
           </p>
         </>
       ) : (

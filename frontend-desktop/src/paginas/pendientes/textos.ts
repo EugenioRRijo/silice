@@ -24,7 +24,7 @@ export const TEXTOS = {
   cargando: "Cargando los pendientes",
   error: "No se pudieron leer los pendientes",
   reintentar: "Reintentar",
-  vacio: "No tiene pendientes.",
+  vacio: "No tiene pendientes",
   vacioExplica: "Cuando una obra necesite algo de usted, aparecerá aquí.",
   omitidas: (n: number) =>
     n === 1 ? "No se pudo leer 1 carpeta; sus pendientes no aparecen." : `No se pudieron leer ${cifra(n)} carpetas; sus pendientes no aparecen.`,

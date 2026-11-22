@@ -372,7 +372,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     expect(within(fila).getByText("Tubo PVC 1/2")).toBeInTheDocument();
     expect(within(fila).getByTitle("3,1034")).toHaveTextContent("3,10");
     expect(within(fila).getByText("01/07/2026")).toBeInTheDocument();
-    expect(within(fila).getByText("OK")).toBeInTheDocument();
+    expect(within(fila).getByText("Sin observaciones")).toBeInTheDocument();
     // Lo que no es principal no está en la tabla.
     expect(within(tabla).queryByText("Tasa")).toBeNull();
     await userEvent.click(within(fila).getByRole("button", { name: "Detalle de MAT-001" }));

@@ -145,7 +145,7 @@ export default function Empresa() {
         <CampoTexto id="adm-empresa-nombre" labelText="Nombre de la empresa" value={nombre} onChange={(e) => setNombre(e.target.value)} />
         <CampoTexto id="adm-empresa-rif" labelText="RIF" value={rif} onChange={(e) => setRif(e.target.value)} />
         <CampoTexto id="adm-empresa-ciudad" labelText="Ciudad" value={ciudad} onChange={(e) => setCiudad(e.target.value)} />
-        <Button type="submit" kind="primary" size="md" disabled={ocupada}>
+        <Button type="submit" kind={hayEmpresa && clave === null ? "secondary" : "primary"} size="md" disabled={ocupada}>
           Guardar la empresa
         </Button>
       </form>

@@ -88,7 +88,7 @@ export default function ClavesApi() {
           etiqueta: c.etiqueta,
           nombre: c.nombre,
           estado: c.estado,
-          ultimo_uso: c.ultimo_uso ?? "nunca",
+          ultimo_uso: c.ultimo_uso ?? "Nunca",
         }))}
         vacio={{ titulo: "Todavía no hay claves de API" }}
       />
@@ -99,7 +99,7 @@ export default function ClavesApi() {
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
         />
-        <Button type="submit" kind="primary" size="md" disabled={ocupada}>
+        <Button type="submit" kind="secondary" size="md" disabled={ocupada}>
           Crear la clave de API
         </Button>
       </form>

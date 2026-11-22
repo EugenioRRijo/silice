@@ -48,9 +48,21 @@ import { Guardar } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
 import { Similares } from "./Similares";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { agregarFila, borrarFila, completarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 import { TablaInsumos } from "./TablaInsumos";
+
+const ETIQUETA_DOMINIO: Record<string, string> = {
+  civil: "Civil",
+  telecom: "Telecomunicaciones",
+  industrial: "Industrial",
+  sistemas: "Sistemas",
+};
+
+function textoDominio(dominio: string): string {
+  return ETIQUETA_DOMINIO[dominio] ?? (dominio === "" ? "" : dominio[0]!.toUpperCase() + dominio.slice(1));
+}
 
 // Lo que se anuncia junto a «Fecha»: cuantos precios del catalogo son de otra lista y cuantos no se pudieron comprobar. Nada
 // si no hay ninguno.
@@ -58,8 +70,16 @@ function avisoDeListas(listas: Record<TipoTabla, { otras: number; quiza: number 
   const otras = TIPOS.reduce((n, t) => n + listas[t].otras, 0);
   const quiza = TIPOS.reduce((n, t) => n + listas[t].quiza, 0);
   const partes = [
-    otras === 0 ? "" : otras === 1 ? "1 precio es de otra lista; revíselo." : `${otras} precios son de otra lista; revíselos.`,
-    quiza === 0 ? "" : quiza === 1 ? "1 precio puede ser de otra lista; revíselo." : `${quiza} precios pueden ser de otra lista; revíselos.`,
+    otras === 0
+      ? ""
+      : otras === 1
+        ? "1 precio es de otra lista; revíselo."
+        : `${formatoEsVe(String(otras))} precios son de otra lista; revíselos.`,
+    quiza === 0
+      ? ""
+      : quiza === 1
+        ? "1 precio puede ser de otra lista; revíselo."
+        : `${formatoEsVe(String(quiza))} precios pueden ser de otra lista; revíselos.`,
   ];
   return partes.filter(Boolean).join(" ");
 }
@@ -547,7 +567,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             onChange={(e) => cambiarCabecera({ dominio: e.target.value })}
           >
             {dominios.map((d) => (
-              <SelectItem key={d} value={d} text={d} />
+              <SelectItem key={d} value={d} text={textoDominio(d)} />
             ))}
           </Select>
           <div>

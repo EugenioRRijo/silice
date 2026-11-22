@@ -27,14 +27,14 @@ const GraficoCarbon = lazy(() => import("../../comun/GraficoCarbon"));
 
 // Una tarjeta de dinero con su exacto lo lleva en el `title` y para el lector de pantalla (VB-21); las demas, el
 // texto de la API en el `title`.
-function Tarjetas({ tarjetas, moneda }: { tarjetas: Tarjeta[]; moneda: string }) {
+function Tarjetas({ tarjetas, moneda, destacarPrimera = false }: { tarjetas: Tarjeta[]; moneda: string; destacarPrimera?: boolean }) {
   return (
     <dl className="silice-tablero__tarjetas">
-      {tarjetas.map((t) => (
+      {tarjetas.map((t, i) => (
         <div key={t.rotulo} className="silice-tablero__tarjeta">
           <dt className="cds--type-label-01">{t.rotulo}</dt>
           <dd
-            className="cds--type-heading-04"
+            className={destacarPrimera && i === 0 ? "cds--type-heading-04" : "cds--type-heading-03"}
             title={t.exacto ? `Valor exacto: ${formatoEsVe(t.exacto)} ${moneda}`.trim() : t.valor}
           >
             {formatoMontoEsVe(t.valor)}
@@ -116,9 +116,9 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
   return (
     <>
       <p className="silice-tablero__nota cds--type-body-compact-01">
-        {`Versión ${datos.version} del ${fechaEsVe(datos.fecha ?? "")} · ${datos.renglones} renglones · ${moneda}`}
+        {`Versión ${datos.version} del ${fechaEsVe(datos.fecha ?? "")} · ${formatoEsVe(String(datos.renglones))} ${datos.renglones === 1 ? "renglón" : "renglones"} · ${moneda}`}
       </p>
-      <Tarjetas tarjetas={datos.tarjetas} moneda={moneda} />
+      <Tarjetas tarjetas={datos.tarjetas} moneda={moneda} destacarPrimera />
 
       <section className="silice-tablero__bloque" aria-labelledby="tablero-control">
         <h2 id="tablero-control" className="cds--type-heading-compact-02">
@@ -272,7 +272,7 @@ export default function PaginaTablero() {
     <div className="silice-tablero silice-pagina">
       <h1 className="cds--type-heading-04">Tablero de la obra</h1>
       {proyecto === null ? (
-        <EstadoVacio titulo="Elija una obra" descripcion="El tablero muestra la obra elegida en la cabecera." />
+        <EstadoVacio titulo="Elija una obra" descripcion="Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K." />
       ) : (
         <Cargado proyecto={proyecto} />
       )}

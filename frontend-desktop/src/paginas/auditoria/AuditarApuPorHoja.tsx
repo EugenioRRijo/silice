@@ -316,7 +316,12 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
           .join(" · ")}
       </p>
       <div className="silice-inicio__acciones">
-        <Button kind="primary" size="md" disabled={libro === null || auditando || leyendoHojas} onClick={() => void auditar()}>
+        <Button
+          kind={informe && auditado && puedeLlevar && obra !== null ? "secondary" : "primary"}
+          size="md"
+          disabled={libro === null || auditando || leyendoHojas}
+          onClick={() => void auditar()}
+        >
           Auditar el libro de APU
         </Button>
         {leyendoHojas && <InlineLoading description="Leyendo las hojas del presupuesto..." />}
@@ -438,7 +443,11 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
   const [llevado, setLlevado] = useState<LibroLlevado | null>(null);
 
   if (obra === null) {
-    return <p className="silice-inicio__nota cds--type-body-compact-01">Elija una obra en la barra de arriba para llevar el libro a su Hoja.</p>;
+    return (
+      <p className="silice-inicio__nota cds--type-body-compact-01">
+        Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para llevar el libro a su Hoja.
+      </p>
+    );
   }
 
   async function llevar() {

@@ -145,8 +145,8 @@ describe("Tablero de la obra", () => {
     // VB-19: la fecha se lee dd/mm/aaaa
     expect(screen.getByText("Versión OB-001 del 02/11/2026 · 3 renglones · USD")).toBeInTheDocument();
     // Solo la primera cifra (total vigente) va en heading-04; las demás tarjetas van en heading-03.
-    expect(screen.getByText("5.060,00")).toHaveClass("cds--type-heading-04");
-    expect(screen.getByText("4.266,67")).toHaveClass("cds--type-heading-03");
+    expect(screen.getByText("5.060,00", { selector: "dd" })).toHaveClass("cds--type-heading-04");
+    expect(screen.getByText("4.266,67", { selector: "dd" })).toHaveClass("cds--type-heading-03");
     const versiones = screen.getByRole("table", { name: "Versiones del presupuesto" });
     // VD-5: la fecha no lleva su forma ISO en el title; las cifras si llevan su exacto
     expect(within(versiones).getByText("02/11/2026")).not.toHaveAttribute("title");

@@ -103,10 +103,15 @@ export function etiquetasDeDesconocidos(desconocidos: InsumoDesconocido[]): stri
 }
 
 export function avisoDesconocidos(desconocidos: InsumoDesconocido[]): string {
+  const n = desconocidos.length;
+  const cantidad =
+    n === 1
+      ? "1 insumo que no está en el catálogo"
+      : `${formatoEsVe(String(n))} insumos que no están en el catálogo`;
   return (
-    `El archivo trae ${desconocidos.length} insumo(s) que no están en el catálogo: ` +
-    `${etiquetasDeDesconocidos(desconocidos)}. Elija en "Dar de alta" los que quiera crear antes de revalorar; ` +
-    "los demás se ignoran."
+    `El archivo trae ${cantidad}: ` +
+    `${etiquetasDeDesconocidos(desconocidos)}. Elija en «Dar de alta» ` +
+    (n === 1 ? "si quiere crearlo antes de revalorar; si no, se ignora." : "los que quiera crear antes de revalorar; los demás se ignoran.")
   );
 }
 

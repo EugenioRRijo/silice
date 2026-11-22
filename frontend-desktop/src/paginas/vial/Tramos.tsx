@@ -21,9 +21,11 @@ import { TramoConCantidades } from "./TramoConCantidades";
 import { useTramos } from "./useTramos";
 import "./vial.scss";
 
-const SIN_OBRA = "Abra una obra para ver o importar sus tramos.";
-const SIN_VERSIONES = "Esta obra aún no tiene versiones guardadas. Guarde una en el Presupuesto para cargar sus tramos.";
-const SIN_TRAMOS = "Esta versión aún no tiene tramos. Importe el archivo de la vía.";
+const SIN_OBRA = "Abra una obra para ver o importar sus tramos";
+const SIN_VERSIONES_TITULO = "Esta obra aún no tiene versiones guardadas";
+const SIN_VERSIONES_DESC = "Guarde una en el Presupuesto para cargar sus tramos.";
+const SIN_TRAMOS_TITULO = "Esta versión aún no tiene tramos";
+const SIN_TRAMOS_DESC = "Importe el archivo de la vía.";
 
 // El aviso de llevar los tramos al presupuesto: el número de renglones en es-VE (punto de miles) y la versión.
 function textoLlevados(renglones: number, version: string): string {
@@ -89,7 +91,7 @@ export default function Tramos() {
       const datos = await importarTramos(nombre, version, archivo);
       reemplazar(datos);
       const n = datos.tramos.length;
-      setAviso(`Tramos importados: ${n} ${n === 1 ? "tramo" : "tramos"} de ${archivo.name}.`);
+      setAviso(`Tramos importados: ${formatoEsVe(String(n))} ${n === 1 ? "tramo" : "tramos"} de ${archivo.name}.`);
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       else setError(razon);
@@ -114,7 +116,9 @@ export default function Tramos() {
       </p>
       {nombre === null && <EstadoVacio titulo={SIN_OBRA} />}
       {versiones.estado === "error" && <AvisoError error={versiones.error} titulo="No se pudieron leer las versiones" />}
-      {versiones.estado === "listo" && ofrecidas.length === 0 && <EstadoVacio titulo={SIN_VERSIONES} />}
+      {versiones.estado === "listo" && ofrecidas.length === 0 && (
+        <EstadoVacio titulo={SIN_VERSIONES_TITULO} descripcion={SIN_VERSIONES_DESC} />
+      )}
       {version !== null && (
         <>
           <Select id="tramos-version" labelText="Versión" value={version} onChange={(e) => cambiarVersion(e.target.value)}>
@@ -156,7 +160,7 @@ export default function Tramos() {
                   <Button kind="primary" size="md" disabled={llevando} onClick={() => void llevar()}>
                     Llevar al presupuesto
                   </Button>
-                  {llevando && <InlineLoading description="Llevando al presupuesto..." />}
+                  {llevando && <InlineLoading description="Llevando al presupuesto…" />}
                 </div>
               )}
               <AvisoConFoco aviso={llevados} alCerrar={() => setLlevados(null)}>
@@ -172,7 +176,9 @@ export default function Tramos() {
               {carga.datos.tramos.length > 0 && nombre !== null && (
                 <ReportesDeLaVia proyecto={nombre} version={version} alExpirar={alExpirar} />
               )}
-              {carga.datos.tramos.length === 0 && carga.datos.editable && <EstadoVacio titulo={SIN_TRAMOS} />}
+              {carga.datos.tramos.length === 0 && carga.datos.editable && (
+                <EstadoVacio titulo={SIN_TRAMOS_TITULO} descripcion={SIN_TRAMOS_DESC} />
+              )}
               {carga.datos.tramos.map((t) => (
                 <TramoConCantidades key={t.id} tramo={t} cantidades={carga.datos.cantidades} />
               ))}

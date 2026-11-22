@@ -40,7 +40,7 @@ export function Cifras({ estudio, obra }: Props) {
         </h2>
         {est.n === 0 ? (
           <EstadoVacio
-            titulo={`Sin observaciones en los últimos ${formatoEsVe(String(est.dias))} días.`}
+            titulo={`Sin observaciones en los últimos ${formatoEsVe(String(est.dias))} días`}
             descripcion="Anote el primer precio que vea en «Anotar una observación», más abajo, o amplíe los días hacia atrás."
           />
         ) : (
@@ -75,7 +75,7 @@ export function Cifras({ estudio, obra }: Props) {
               <dd className="silice-mercado__valor">
                 <Monto valor={estudio.piso} moneda={moneda} />
               </dd>
-              <dd className="silice-mercado__de cds--type-helper-text-01">costo directo más administración</dd>
+              <dd className="silice-mercado__de cds--type-helper-text-01">Costo directo más administración</dd>
             </div>
             <div className="silice-mercado__cifra">
               <dt className="cds--type-label-01">Precio con utilidad</dt>

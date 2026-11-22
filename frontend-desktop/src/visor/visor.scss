@@ -338,13 +338,13 @@ body {
 // La insignia va a caballo de la esquina superior derecha: dentro de la celda taparia el final de los numeros.
 .halo__insignia {
   position: absolute;
-  inset-block-start: -7px;
-  inset-inline-end: -7px;
+  inset-block-start: -8px;
+  inset-inline-end: -8px;
   display: block;
   box-sizing: border-box;
-  inline-size: 14px;
-  block-size: 14px;
-  padding: 1px;
+  inline-size: 16px;
+  block-size: 16px;
+  padding: 2px;
   border: 0;
   line-height: 0;
   background: var(--cds-background);

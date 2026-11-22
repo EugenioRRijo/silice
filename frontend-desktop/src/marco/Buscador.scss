@@ -20,6 +20,8 @@
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   inline-size: min(40rem, 100%);
   max-block-size: calc(100vh - 12vh - 1rem);
+  border-radius: var(--silice-radio-lg);
+  overflow: hidden;
   background: var(--cds-layer-01);
   color: var(--cds-text-primary);
 

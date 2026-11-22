@@ -1,4 +1,4 @@
-import { StructuredListBody, StructuredListCell, StructuredListRow, StructuredListWrapper, Tag } from "@carbon/react";
+import { StructuredListBody, StructuredListCell, StructuredListRow, StructuredListWrapper } from "@carbon/react";
 import { AvisoError } from "../../comun/AvisoError";
 import { useCarga } from "../../comun/useCarga";
 import type { Carga } from "../../comun/useCarga";
@@ -90,17 +90,13 @@ function LaVersion({ carga }: { carga: Carga<Acerca> }) {
           {d.carpeta_datos !== null && <Fila rotulo="Carpeta de datos" valor={d.carpeta_datos} />}
         </StructuredListBody>
       </StructuredListWrapper>
-      <h3 className="cds--type-heading-compact-02">Módulos</h3>
-      <StructuredListWrapper isCondensed aria-label="Módulos">
+      <h3 className="cds--type-heading-compact-02">Especialidades</h3>
+      <StructuredListWrapper isCondensed aria-label="Especialidades">
         <StructuredListBody>
           {d.modulos.map((m) => (
             <StructuredListRow key={m.nombre}>
               <StructuredListCell>{m.nombre}</StructuredListCell>
-              <StructuredListCell>
-                <Tag size="sm" type={m.instalado ? "green" : "gray"}>
-                  {m.instalado ? "instalado" : "no instalado"}
-                </Tag>
-              </StructuredListCell>
+              <StructuredListCell>{m.instalado ? "Instalada" : "No instalada"}</StructuredListCell>
             </StructuredListRow>
           ))}
         </StructuredListBody>

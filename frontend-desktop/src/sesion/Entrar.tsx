@@ -1,5 +1,5 @@
 import { Button, Form } from "@carbon/react";
-import { CheckmarkFilled, Password } from "@carbon/icons-react";
+import { Password } from "@carbon/icons-react";
 import { InlineNotification, PasswordInput } from "../comun/carbonEs";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -43,7 +43,7 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
       <div className="silice-entrada__rejilla">
         <aside className="silice-entrada__marca-panel">
           <div className="silice-entrada__marca-arriba">
-            <p className="silice-entrada__etiqueta">Instalación local · SQLite</p>
+            <p className="silice-entrada__etiqueta">Instalación local</p>
             <h2 className="silice-entrada__marca-titulo">
               Entrar al escritorio de presupuestos y auditoría
             </h2>
@@ -61,9 +61,9 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
               </dd>
             </div>
             <div className="silice-entrada__ficha">
-              <dt className="silice-entrada__clave">Aritmética Decimal exacta</dt>
+              <dt className="silice-entrada__clave">Cálculo exacto de precios</dt>
               <dd className="silice-entrada__valor">
-                Cálculos APU, auditoría de libros Excel y firmas locales sobre tu propio equipo.
+                Cálculos de APU, auditoría de libros Excel y firmas locales en este equipo.
               </dd>
             </div>
           </dl>
@@ -73,7 +73,7 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
           <div className="silice-entrada__cabecera">
             <h1 className="cds--type-heading-04">Entrar</h1>
             <p className="silice-entrada__texto cds--type-body-compact-01">
-              Usa tu cuenta registrada en <code className="silice-codigo">instalacion.db</code>.
+              Escriba el usuario y la contraseña de su cuenta en esta instalación.
             </p>
           </div>
           {aviso && <p className="silice-entrada__aviso cds--type-body-compact-01">{aviso}</p>}
@@ -123,7 +123,6 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
             </div>
           </Form>
           <div className="silice-entrada__pie-seguridad">
-            <CheckmarkFilled size={16} aria-hidden="true" />
             <span>La sesión vive en el servidor de Sílice de esta instalación · El asistente con un proveedor en la nube viene apagado</span>
           </div>
         </section>

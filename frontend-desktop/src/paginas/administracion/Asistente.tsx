@@ -228,7 +228,7 @@ export default function Asistente() {
                 autoComplete="off"
                 onChange={(e) => setContrasena(e.target.value)}
               />
-              <Button type="submit" kind="primary" size="md" disabled={ocupada}>
+              <Button type="submit" kind="secondary" size="md" disabled={ocupada}>
                 Reactivar la clave
               </Button>
             </form>
@@ -250,7 +250,7 @@ export default function Asistente() {
               disabled={!permitida}
               onChange={(e) => setRespaldo(e.target.value)}
             />
-            <Button type="submit" kind="primary" size="md" disabled={ocupada || !permitida}>
+            <Button type="submit" kind="secondary" size="md" disabled={ocupada || !permitida}>
               Registrar la clave
             </Button>
           </form>

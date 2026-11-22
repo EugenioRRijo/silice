@@ -85,9 +85,7 @@ export default function Panorama() {
           <div className="silice-panel__cabecera">
             <div>
               <h2 className="cds--type-heading-compact-02">Herramientas dedicadas</h2>
-              <p className="silice-panel__subtitulo">
-                Abra cualquiera de los espacios especializados a pantalla completa sin salir de su instalación.
-              </p>
+              <p className="silice-panel__subtitulo">Espacios de trabajo de la empresa</p>
             </div>
           </div>
           <div className="silice-lanzador__rejilla">

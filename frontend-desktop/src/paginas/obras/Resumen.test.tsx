@@ -114,6 +114,15 @@ describe("Resumen de la obra abierta", () => {
     expect(screen.queryByRole("heading", { name: "Obras" })).toBeNull();
   });
 
+  // Pulido unslop (Eugenio, 2026-11-22): la letra monoespaciada y gruesa es solo para cifras; la etapa es texto.
+  it("la etapa se lee en la letra normal y el total sigue como cifra", async () => {
+    montar();
+    await screen.findByRole("heading", { level: 1, name: "Resumen" });
+    const cifras = screen.getByRole("group", { name: "Cifras de la obra" });
+    expect(within(cifras).getByText("En aprobación").closest("dd")).toHaveClass("silice-resumen__valor--texto");
+    expect(within(cifras).getByText("1.234.567,89 Bs").closest("dd")).not.toHaveClass("silice-resumen__valor--texto");
+  });
+
   it("con línea base la cifra de versión se rotula «Versión de la línea base»", async () => {
     montar();
     await screen.findByRole("heading", { level: 1, name: "Resumen" });

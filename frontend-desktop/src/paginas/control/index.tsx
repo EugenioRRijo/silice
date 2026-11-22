@@ -86,7 +86,7 @@ export default function PaginaControl() {
     <div className="silice-control silice-pagina">
       <h1 className="cds--type-heading-04">Control de obra</h1>
       {proyecto === null ? (
-        <EstadoVacio titulo="Elija una obra" descripcion="Abra una obra en la cabecera para controlarla." />
+        <EstadoVacio titulo="Elija una obra" descripcion="Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para controlarla." />
       ) : (
         <Tabs key={proyecto} selectedIndex={pestana} onChange={({ selectedIndex }) => setPestana(selectedIndex)}>
           <TabList aria-label="Secciones del control de obra" contained>

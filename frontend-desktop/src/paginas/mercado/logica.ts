@@ -139,7 +139,7 @@ export function sinTasaDelDia(n: number): string {
 export function convertidasConLaTasa(n: number): string {
   return n === 1
     ? "1 de las observaciones estaba en otra moneda y se convirtió con la tasa del BCV de su día."
-    : `${n} de las observaciones estaban en otra moneda y se convirtieron con la tasa del BCV de su día.`;
+    : `${formatoEsVe(String(n))} de las observaciones estaban en otra moneda y se convirtieron con la tasa del BCV de su día.`;
 }
 
 // Hoy, como lo da el selector de fecha (AAAA-MM-DD), en la hora local de quien usa la pagina.

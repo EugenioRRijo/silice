@@ -50,6 +50,7 @@
   min-inline-size: 10rem;
   max-inline-size: calc(100vw - 1rem);
   padding: 0.25rem 0;
+  border-radius: var(--silice-radio-md);
   background: var(--cds-layer-01);
   border: 1px solid var(--cds-border-subtle);
 }

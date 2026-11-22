@@ -79,7 +79,7 @@ export function CalculadoraFCAS({ alExpirar }: { alExpirar: (error: unknown) => 
     (cajaDelFallo.current ?? cajaDelAviso.current ?? cajaDelResultado.current)?.focus();
   }, [enfocar]);
 
-  if (carga.tipo === "cargando") return <InlineLoading description="Cargando los componentes del FCAS..." status="active" />;
+  if (carga.tipo === "cargando") return <InlineLoading description="Cargando los componentes del FCAS…" status="active" />;
   if (carga.tipo === "error") return <AvisoError error={carga.error} titulo="No se pudieron leer los componentes del FCAS" />;
   const { componentes } = carga.datos;
 
@@ -155,7 +155,7 @@ export function CalculadoraFCAS({ alExpirar }: { alExpirar: (error: unknown) => 
                 onChange={(e) => cambiarFila(c.id, { valor: e.target.value })}
               />
               <p className="silice-precios-empresa__nota cds--type-label-01">
-                {c.a_cotejar && <strong className="silice-fcas__cotejar">a cotejar</strong>} {c.fuente}
+                {c.a_cotejar && <strong className="silice-fcas__cotejar">A cotejar</strong>} {c.fuente}
               </p>
             </li>
           ))}
@@ -164,7 +164,7 @@ export function CalculadoraFCAS({ alExpirar }: { alExpirar: (error: unknown) => 
           <Button type="submit" kind="primary" size="md" disabled={calculando}>
             Calcular el FCAS
           </Button>
-          {calculando && <InlineLoading description="Calculando..." status="active" />}
+          {calculando && <InlineLoading description="Calculando…" status="active" />}
         </div>
       </form>
       {fallo !== null && (

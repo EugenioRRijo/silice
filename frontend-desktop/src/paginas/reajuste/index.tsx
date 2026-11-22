@@ -152,7 +152,7 @@ export default function PaginaReajuste() {
       <h1 className="cds--type-heading-04">Reajuste de precios</h1>
       {codigo === null && (
         <EstadoVacio
-          titulo="Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios."
+          titulo="Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios"
           descripcion="El estudio de reajuste se hace sobre una versión guardada del contrato."
         />
       )}
@@ -178,7 +178,7 @@ function Estudio({ proyecto, alExpirar }: { proyecto: string; alExpirar: () => v
   if (contexto.estado !== "listo") return <MensajeDeCarga carga={contexto} />;
   if (contexto.datos.versiones.length === 0) {
     return (
-      <EstadoVacio titulo="La obra no tiene versiones guardadas: guarde la del contrato primero." />
+      <EstadoVacio titulo="La obra no tiene versiones guardadas: guarde la del contrato primero" />
     );
   }
   return <Formulario proyecto={proyecto} contexto={contexto.datos} alExpirar={alExpirar} />;
@@ -439,7 +439,7 @@ function Formulario({
                   </>
                 )}
                 <div>
-                  <Button kind="primary" size="md" disabled={ocupado} onClick={() => void calcular()}>
+                  <Button kind={calculo ? "secondary" : "primary"} size="md" disabled={ocupado} onClick={() => void calcular()}>
                     Calcular
                   </Button>
                 </div>
@@ -493,7 +493,7 @@ function Formulario({
             <CampoTexto id="rj-estudio-responsable" labelText="Responsable del estudio" helperText="En blanco, su nombre de usuario." value={responsable} onChange={(e) => setResponsable(e.target.value)} />
             {calculo.estado === "cerrado" && calculo.parciales.length > 0 && (
               <Select id="rj-reemplaza" labelText="Reemplaza al estudio parcial" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
-                <SelectItem value="" text="ninguno" />
+                <SelectItem value="" text="Ninguno" />
                 {calculo.parciales.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechaEsVe(p.fecha_calculo)})`} />
                 ))}
