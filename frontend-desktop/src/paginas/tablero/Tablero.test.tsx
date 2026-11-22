@@ -49,8 +49,9 @@ const TABLERO: TableroRespuesta = {
     disponible: true,
     motivo: "",
     anillos: [
-      { rotulo: "Avance fisico", fraccion: "0.3", texto: "30,0 %", favorable: null },
-      { rotulo: "SPI (plazo)", fraccion: "0.8", texto: "0,80", favorable: false },
+      // El texto como lo arma el servidor (aplicacion/estilo.py, `porcentaje`): con punto decimal. La pantalla lo lee en es-VE.
+      { rotulo: "Avance fisico", fraccion: "0.3", texto: "30.0 %", favorable: null },
+      { rotulo: "SPI (plazo)", fraccion: "0.8", texto: "0.80", favorable: false },
       { rotulo: "CPI (costo)", fraccion: null, texto: "—", favorable: false },
     ],
     tarjetas: [{ rotulo: "EAC", valor: "4266.67", detalle: "" }],
@@ -219,6 +220,48 @@ describe("Tablero de la obra", () => {
     expect(tarjeta).toHaveAttribute("title", "Valor exacto: 95.066,60006250 USD");
     const [anillo] = await screen.findAllByTestId("grafico-anillo");
     expect(anillo).toHaveAttribute("data-centro", "95.066,60");
+  });
+
+  // El anillo de avance del control de obra (rediseño 2026-11-21): la cifra que se lee es el texto del servidor en es-VE, una
+  // sola vez y en el centro; la fracción solo dibuja el arco. Antes salía «62.5 %» con punto debajo y, en el centro, un número
+  // que calculaba el navegador.
+  describe("el anillo del avance físico", () => {
+    const conAvance = (texto: string, fraccion: string | null) => ({
+      ...TABLERO,
+      control: { ...TABLERO.control!, anillos: [{ rotulo: "Avance fisico", fraccion, texto, favorable: null }, ...TABLERO.control!.anillos.slice(1)] },
+    });
+
+    test("dice «62,5 %» una sola vez, con coma, como lo manda la API («62.5 %»)", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625")));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      const bloque = anillo.closest(".silice-tablero__anillos") as HTMLElement;
+      expect(within(bloque).getAllByText("62,5 %")).toHaveLength(1);
+      expect(bloque.textContent).not.toMatch(/62\.5/);
+      expect(bloque.textContent).not.toMatch(/0,0 %/);
+    });
+
+    test("el arco dibuja la fracción de la API y lleva la tinta del real, no el ámbar", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625")));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      expect(anillo.querySelector(".silice-radial__arco")).toHaveClass("silice-radial__arco--charcoal");
+    });
+
+    test("SPI y CPI no van en anillo: son índices, no partes de un todo (V-21)", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625")));
+      montar("OB-S2");
+      await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      expect(screen.queryByRole("img", { name: /SPI|CPI/ })).toBeNull();
+    });
+
+    test("sin avance («no disponible») no hay anillo ni un «0 %» inventado", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("no disponible", null)));
+      montar("OB-S2");
+      await screen.findByText("EAC");
+      expect(screen.queryByRole("img", { name: /Avance fisico/ })).toBeNull();
+      expect(screen.queryByText(/^0([,.]0)? %$/)).toBeNull();
+    });
   });
 
   test("el punto de equilibrio nombra el período con el mismo arreglo que el eje de la curva: «Día 1» (VD-8)", async () => {
