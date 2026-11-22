@@ -106,15 +106,18 @@
                 <aside class="ventana__hallazgos" aria-label="Hallazgos del libro de ejemplo">
                   <p class="ventana__subtitulo">Hallazgos del libro (3)</p>
                   <ul>
-                    <li class="ventana__hallazgo ventana__hallazgo--error">
+                    <li class="ventana__hallazgo ventana__hallazgo--critico">
+                      <span class="ventana__sev"><svg class="ventana__sev-icono" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8,1C4.1,1,1,4.1,1,8s3.1,7,7,7s7-3.1,7-7S11.9,1,8,1z M10.7,11.5L4.5,5.3l0.8-0.8l6.2,6.2L10.7,11.5z"/></svg>Crítico</span>
                       <strong>L3 · Valor guardado ≠ fórmula</strong>
                       <span><code>PRESUPUESTO!F12</code> · 154,28 USD</span>
                     </li>
-                    <li class="ventana__hallazgo">
+                    <li class="ventana__hallazgo ventana__hallazgo--advertencia">
+                      <span class="ventana__sev"><svg class="ventana__sev-icono" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true" focusable="false"><path d="M16.002,6.1714h-.004L4.6487,27.9966,4.6506,28H27.3494l.0019-.0034ZM14.875,12h2.25v9h-2.25ZM16,26a1.5,1.5,0,1,1,1.5-1.5A1.5,1.5,0,0,1,16,26Z"/><path d="M29,30H3a1,1,0,0,1-.8872-1.4614l13-25a1,1,0,0,1,1.7744,0l13,25A1,1,0,0,1,29,30ZM4.6507,28H27.3493l.002-.0033L16.002,6.1714h-.004L4.6487,27.9967Z"/></svg>Advertencia</span>
                       <strong>L6 · Parámetro global sobrescrito</strong>
                       <span><code>APU!H8</code></span>
                     </li>
-                    <li class="ventana__hallazgo">
+                    <li class="ventana__hallazgo ventana__hallazgo--advertencia">
+                      <span class="ventana__sev"><svg class="ventana__sev-icono" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true" focusable="false"><path d="M16.002,6.1714h-.004L4.6487,27.9966,4.6506,28H27.3494l.0019-.0034ZM14.875,12h2.25v9h-2.25ZM16,26a1.5,1.5,0,1,1,1.5-1.5A1.5,1.5,0,0,1,16,26Z"/><path d="M29,30H3a1,1,0,0,1-.8872-1.4614l13-25a1,1,0,0,1,1.7744,0l13,25A1,1,0,0,1,29,30ZM4.6507,28H27.3493l.002-.0033L16.002,6.1714h-.004L4.6487,27.9967Z"/></svg>Advertencia</span>
                       <strong>L9 · Cuadre interno</strong>
                       <span><code>RESUMEN!D40</code></span>
                     </li>
@@ -327,15 +330,15 @@
                 <div class="findings">
                   <div class="finding finding--err">
                     <div><strong>Fórmula reemplazada</strong><span>Partida 12 · diferencia de 154,28 USD</span></div>
-                    <em>Urgente</em>
+                    <em><svg class="finding__icono" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8,1C4.1,1,1,4.1,1,8s3.1,7,7,7s7-3.1,7-7S11.9,1,8,1z M10.7,11.5L4.5,5.3l0.8-0.8l6.2,6.2L10.7,11.5z"/></svg>Crítico</em>
                   </div>
                   <div class="finding finding--ml">
                     <div><strong>Precio fuera de mercado</strong><span>Cabilla ½" · 22 % sobre el promedio</span></div>
-                    <em>Revisar</em>
+                    <em><svg class="finding__icono" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true" focusable="false"><path d="M16.002,6.1714h-.004L4.6487,27.9966,4.6506,28H27.3494l.0019-.0034ZM14.875,12h2.25v9h-2.25ZM16,26a1.5,1.5,0,1,1,1.5-1.5A1.5,1.5,0,0,1,16,26Z"/><path d="M29,30H3a1,1,0,0,1-.8872-1.4614l13-25a1,1,0,0,1,1.7744,0l13,25A1,1,0,0,1,29,30ZM4.6507,28H27.3493l.002-.0033L16.002,6.1714h-.004L4.6487,27.9967Z"/></svg>Atípico</em>
                   </div>
                   <div class="finding finding--warn">
                     <div><strong>Suma incompleta</strong><span>Plan de pagos omite una cuota</span></div>
-                    <em>Atención</em>
+                    <em><svg class="finding__icono" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true" focusable="false"><path d="M16.002,6.1714h-.004L4.6487,27.9966,4.6506,28H27.3494l.0019-.0034ZM14.875,12h2.25v9h-2.25ZM16,26a1.5,1.5,0,1,1,1.5-1.5A1.5,1.5,0,0,1,16,26Z"/><path d="M29,30H3a1,1,0,0,1-.8872-1.4614l13-25a1,1,0,0,1,1.7744,0l13,25A1,1,0,0,1,29,30ZM4.6507,28H27.3493l.002-.0033L16.002,6.1714h-.004L4.6487,27.9967Z"/></svg>Advertencia</em>
                   </div>
                   <div class="finding finding--ok">
                     <strong>1.247 celdas correctas</strong>
