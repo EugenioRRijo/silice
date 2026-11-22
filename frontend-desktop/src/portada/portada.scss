@@ -669,8 +669,11 @@ input:focus-visible {
   color: var(--muted);
 }
 
+// `.bento__card p` fija su propio tamaño: el rótulo conserva el suyo.
 .bento__card .ejemplo-ficticio {
   margin-block-start: 0.75rem;
+  font-size: 0.6875rem;
+  color: var(--muted);
 }
 
 .ejemplo-ficticio--oscuro {
@@ -1312,9 +1315,15 @@ input:focus-visible {
   }
 }
 
+// La nota va debajo de la ventana, no encima: no tapa su pie («Ejemplo con datos ficticios»).
 .onboarding__escena {
-  position: relative;
-  padding-block-end: 1.5rem;
+  display: grid;
+  gap: 1rem;
+
+  .onboarding__callout {
+    position: static;
+    max-inline-size: none;
+  }
 }
 
 .onboarding__callout {
