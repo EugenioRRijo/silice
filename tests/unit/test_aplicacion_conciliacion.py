@@ -339,3 +339,8 @@ def test_conciliar_no_falla_al_formatear_montos_de_27_o_mas_cifras_enteras():
     assert "100.000.000.000.000.000.000.000.000.000,50" in h.descripcion
     h3 = _solo(_conciliar(costos=_costos(otro)), "CV3")
     assert "100.000.000.000.000.000.000.000.000.000,555" in h3.descripcion
+
+
+def test_dinero_de_un_monto_con_exponente_no_falla():
+    """1E+58 tiene una cifra en el coeficiente pero 61 a céntimos: la precisión mira la magnitud."""
+    assert conciliacion._dinero(D("1E+58")) == "10" + ".000" * 19 + ",00"
