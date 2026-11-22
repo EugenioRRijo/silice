@@ -1,9 +1,14 @@
-// Motor isometrico 3D ligero en Canvas2D para el Portico Estructural de la Portada.
-// Cero dependencias externas, 100 % offline, respeta prefers-reduced-motion.
+// Motor isometrico 3D ligero en Canvas2D para el Portico Estructural de la Portada (solo de pruebas).
+// Cero dependencias externas, 100 % offline, respeta prefers-reduced-motion. Solo pide cuadros mientras el lienzo esta a
+// la vista, la pestana visible y algo se mueve (giro, arrastre o una transicion de camara, modo o capa).
+// Las cifras son un ejemplo con datos ficticios (no las calcula el nucleo); las capas suman el total al centimo y sus
+// porcentajes el 100,0 % (portico3d.test.ts).
 
 export type Modo3D = "despiece" | "radiografia" | "ensamblado";
 export type Camara3D = "isometrica" | "corte" | "planta";
-export type Capa3D = "all" | "concreto" | "acero" | "encofrado" | "equipos";
+export type Capa3D = "all" | "concreto" | "acero" | "encofrado" | "equipos" | "indirectos";
+// Las capas con pieza en el modelo; los indirectos y la utilidad no tienen volumen y se reparten sobre todas.
+type CapaFisica = Exclude<Capa3D, "all" | "indirectos">;
 
 interface Punto3D {
   x: number;
@@ -18,7 +23,7 @@ interface Caja3D {
   w: number;
   h: number;
   d: number;
-  capa: Exclude<Capa3D, "all">;
+  capa: CapaFisica;
   color: string;
   borde: string;
   alpha?: number;
@@ -58,6 +63,11 @@ export const METADATOS_CAPA: Record<Capa3D, { titulo: string; desc: string; cost
     titulo: "04 · Equipos de vaciado y nivelación",
     desc: "Tubería de bombeo de concreto, regla vibratoria y nivel láser de control en sitio.",
     costo: "21,85 USD · 9,0 % del APU",
+  },
+  indirectos: {
+    titulo: "05 · Indirectos y utilidad",
+    desc: "Administración, imprevistos y utilidad: no tienen pieza en el modelo y se reparten sobre todas las partidas.",
+    costo: "48,18 USD · 19,9 % del APU",
   },
 };
 
@@ -331,8 +341,7 @@ export function iniciarPortico3D(canvas: HTMLCanvasElement) {
       ctx!.stroke();
     }
 
-    const objetivoDespiece = modo === "despiece" ? 1 : 0;
-    despieceFactor += (objetivoDespiece - despieceFactor) * (reducido ? 1 : 0.14);
+    despieceFactor += (objetivoDespiece() - despieceFactor) * (reducido ? 1 : 0.14);
 
     const caras: CaraProyectada[] = [];
     for (const caja of cajas) {
@@ -354,7 +363,8 @@ export function iniciarPortico3D(canvas: HTMLCanvasElement) {
 
       let alpha = caja.alpha ?? 1;
       if (modo === "radiografia" && caja.capa === "concreto") alpha = 0.22;
-      if (capaActiva !== "all" && caja.capa !== capaActiva) alpha *= 0.18;
+      if (capaActiva === "indirectos") alpha *= 0.35;
+      else if (capaActiva !== "all" && caja.capa !== capaActiva) alpha *= 0.18;
 
       for (const [i0, i1, i2, i3, shade] of CARAS) {
         const p0 = proy[i0]!;
@@ -396,40 +406,87 @@ export function iniciarPortico3D(canvas: HTMLCanvasElement) {
     }
   }
 
+  // Bucle a demanda: un cuadro pide el siguiente solo si algo se mueve. Fuera de la vista (IntersectionObserver) o con
+  // la pestana oculta (visibilitychange) no se pide ninguno; al volver, se retoma.
+  const EPSILON = 1e-3;
   let raf = 0;
-  function bucle() {
+  let aLaVista = true;
+  let destruido = false;
+
+  function objetivoDespiece() {
+    return modo === "despiece" ? 1 : 0;
+  }
+  function sigueMoviendose() {
+    return (
+      (rotando && !arrastrando) ||
+      Math.abs(targetYaw - yaw) > EPSILON ||
+      Math.abs(targetPitch - pitch) > EPSILON ||
+      Math.abs(objetivoDespiece() - despieceFactor) > EPSILON
+    );
+  }
+  function puedeDibujar() {
+    return !destruido && aLaVista && !document.hidden;
+  }
+  function pedirCuadro() {
+    if (raf === 0 && puedeDibujar()) raf = requestAnimationFrame(cuadro);
+  }
+  function pausar() {
+    if (raf !== 0) cancelAnimationFrame(raf);
+    raf = 0;
+  }
+  function cuadro() {
+    raf = 0;
     if (rotando && !arrastrando) {
       targetYaw += 0.004;
     }
     yaw += (targetYaw - yaw) * (reducido ? 1 : 0.14);
     pitch += (targetPitch - pitch) * (reducido ? 1 : 0.14);
     dibujar();
-    raf = requestAnimationFrame(bucle);
+    if (sigueMoviendose()) pedirCuadro();
   }
-  raf = requestAnimationFrame(bucle);
 
-  canvas.addEventListener("pointerdown", (e) => {
+  const observador =
+    typeof IntersectionObserver === "function"
+      ? new IntersectionObserver((entradas) => {
+          aLaVista = entradas.some((e) => e.isIntersecting);
+          if (aLaVista) pedirCuadro();
+          else pausar();
+        })
+      : null;
+  observador?.observe(canvas);
+  const alCambiarVisibilidad = () => (document.hidden ? pausar() : pedirCuadro());
+  document.addEventListener("visibilitychange", alCambiarVisibilidad);
+  window.addEventListener("resize", pedirCuadro);
+  pedirCuadro();
+
+  const alPresionar = (e: PointerEvent) => {
     arrastrando = true;
     ultX = e.clientX;
     ultY = e.clientY;
-    canvas.setPointerCapture(e.pointerId);
-  });
-  canvas.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== undefined) canvas.setPointerCapture?.(e.pointerId);
+    pedirCuadro();
+  };
+  const alMover = (e: PointerEvent) => {
     if (!arrastrando) return;
     targetYaw += (e.clientX - ultX) * 0.008;
     targetPitch = Math.max(0.12, Math.min(1.25, targetPitch + (e.clientY - ultY) * 0.006));
     ultX = e.clientX;
     ultY = e.clientY;
-  });
+    pedirCuadro();
+  };
   const soltar = () => {
     arrastrando = false;
+    pedirCuadro();
   };
+  canvas.addEventListener("pointerdown", alPresionar);
+  canvas.addEventListener("pointermove", alMover);
   canvas.addEventListener("pointerup", soltar);
   canvas.addEventListener("pointercancel", soltar);
 
   return {
     setModo(m: Modo3D) {
       modo = m;
+      pedirCuadro();
     },
     setCamara(c: Camara3D) {
       if (c === "isometrica") {
@@ -442,12 +499,18 @@ export function iniciarPortico3D(canvas: HTMLCanvasElement) {
         targetYaw = 0.55;
         targetPitch = 1.18;
       }
+      pedirCuadro();
     },
     setCapa(capa: Capa3D) {
       capaActiva = capa;
+      pedirCuadro();
     },
     toggleRotar(): boolean {
       rotando = !rotando;
+      pedirCuadro();
+      return rotando;
+    },
+    estaRotando(): boolean {
       return rotando;
     },
     centrar() {
@@ -456,10 +519,18 @@ export function iniciarPortico3D(canvas: HTMLCanvasElement) {
       targetYaw = 0.68;
       targetPitch = 0.42;
       rotando = !reducido;
+      pedirCuadro();
     },
     destruir() {
-      cancelAnimationFrame(raf);
+      destruido = true;
+      pausar();
+      observador?.disconnect();
+      document.removeEventListener("visibilitychange", alCambiarVisibilidad);
+      window.removeEventListener("resize", pedirCuadro);
+      canvas.removeEventListener("pointerdown", alPresionar);
+      canvas.removeEventListener("pointermove", alMover);
+      canvas.removeEventListener("pointerup", soltar);
+      canvas.removeEventListener("pointercancel", soltar);
     },
   };
 }
-

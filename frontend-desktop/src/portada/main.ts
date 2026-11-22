@@ -1,3 +1,4 @@
+// Portada web de pruebas (solo con npm run build:portada y SILICE_PORTADA_WEB=1): cablea los controles del pórtico 3D.
 import "./portada.scss";
 import { iniciarPortico3D, METADATOS_CAPA } from "./portico3d";
 import type { Camara3D, Capa3D, Modo3D } from "./portico3d";
@@ -8,9 +9,22 @@ const portico = canvas ? iniciarPortico3D(canvas) : null;
 const hudTitulo = document.getElementById("hud-titulo");
 const hudDesc = document.getElementById("hud-desc");
 const hudCosto = document.getElementById("hud-costo");
+const btnPausa = document.getElementById("btn-pausa") as HTMLButtonElement | null;
 
 function marcarActivo(botones: NodeListOf<HTMLButtonElement>, elegido: HTMLButtonElement) {
   for (const b of botones) b.classList.toggle("is-active", b === elegido);
+}
+
+// El botón dice lo que hará: «Pausar» si gira, «Rotar» si está quieto (también con movimiento reducido).
+function rotularPausa() {
+  if (btnPausa && portico) btnPausa.textContent = portico.estaRotando() ? "Pausar" : "Rotar";
+}
+
+function mostrarCapa(capa: Capa3D) {
+  const meta = METADATOS_CAPA[capa];
+  if (hudTitulo) hudTitulo.textContent = meta.titulo;
+  if (hudDesc) hudDesc.textContent = meta.desc;
+  if (hudCosto) hudCosto.textContent = meta.costo;
 }
 
 const botonesModo = document.querySelectorAll<HTMLButtonElement>("[data-mode]");
@@ -40,18 +54,15 @@ for (const btn of botonesCapa) {
     if (!capa || !portico) return;
     portico.setCapa(capa);
     marcarActivo(botonesCapa, btn);
-    const meta = METADATOS_CAPA[capa];
-    if (hudTitulo) hudTitulo.textContent = meta.titulo;
-    if (hudDesc) hudDesc.textContent = meta.desc;
-    if (hudCosto) hudCosto.textContent = meta.costo;
+    mostrarCapa(capa);
   });
 }
 
-const btnPausa = document.getElementById("btn-pausa") as HTMLButtonElement | null;
 if (btnPausa && portico) {
+  rotularPausa();
   btnPausa.addEventListener("click", () => {
-    const sigue = portico.toggleRotar();
-    btnPausa.textContent = sigue ? "Pausar" : "Rotar";
+    portico.toggleRotar();
+    rotularPausa();
   });
 }
 
@@ -62,21 +73,13 @@ if (btnCentrar && portico) {
     if (botonesModo[0]) marcarActivo(botonesModo, botonesModo[0]);
     if (botonesCam[0]) marcarActivo(botonesCam, botonesCam[0]);
     if (botonesCapa[0]) marcarActivo(botonesCapa, botonesCapa[0]);
-    const meta = METADATOS_CAPA.all;
-    if (hudTitulo) hudTitulo.textContent = meta.titulo;
-    if (hudDesc) hudDesc.textContent = meta.desc;
-    if (hudCosto) hudCosto.textContent = meta.costo;
-    if (btnPausa) btnPausa.textContent = "Pausar";
+    mostrarCapa("all");
+    rotularPausa();
   });
 }
 
-// Accion del boton de descarga de Windows en #descargar
-const btnDescargarWin = document.getElementById("btn-descargar-win") as HTMLButtonElement | null;
-const descargaEstado = document.getElementById("descarga-estado");
-if (btnDescargarWin && descargaEstado) {
-  btnDescargarWin.addEventListener("click", () => {
-    descargaEstado.className = "descarga-estado is-info";
-    descargaEstado.textContent =
-      "El instalador de escritorio para Windows (x64) está en preparación final. Mientras tanto, puedes usar el entorno web de prueba (/app/) con el mismo motor local FastAPI + SQLite.";
-  });
-}
+// Al dejar la página se suelta el pórtico (bucle, observador y oyentes). Si la página queda en la caché de ida y vuelta
+// (`persisted`) no se destruye: al volver, visibilitychange retoma el bucle.
+window.addEventListener("pagehide", (evento) => {
+  if (!(evento as PageTransitionEvent).persisted) portico?.destruir();
+});

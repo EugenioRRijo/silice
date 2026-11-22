@@ -3,10 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sílice — Ingeniería de Costos, APU y Auditoría Forense</title>
+    <title>Sílice · Portada de pruebas</title>
     <link rel="icon" href="/app/silice.svg" type="image/svg+xml" />
   </head>
   <body>
+    <!--
+      Portada web SOLO DE PRUEBAS (Eugenio, 2026-11-22): la suite de escritorio abre /app/ y no pasa por aquí. Entra al
+      dist con `npm run build:portada` y el FastAPI la sirve en / solo con SILICE_PORTADA_WEB=1. Toda cifra es un ejemplo
+      con datos ficticios, y las ventanas de Sílice están hechas en HTML (sin fotos ni marcas ajenas).
+    -->
     <div class="bleed-wrapper">
       <!-- TOP BAR -->
       <header class="bleed-full topbar">
@@ -17,18 +22,17 @@
           </a>
 
           <nav aria-label="Navegación principal" class="topnav">
-            <a href="#quienes-somos">Quiénes somos</a>
+            <a href="#que-hace">Qué hace</a>
             <a href="#soluciones">Soluciones</a>
             <a href="#vista-3d">Vista 3D</a>
             <a href="#como-funciona">Cómo funciona</a>
-            <a href="#descargar">Descargar</a>
+            <a href="#probar">Probar</a>
           </nav>
 
           <div class="topbar__actions">
-            <a href="/app/" class="btn-link">Probar en web</a>
-            <a href="#descargar" class="btn-gold">
-              <span>Descargar para Windows</span>
-              <span aria-hidden="true">↓</span>
+            <a href="/app/" class="btn-gold">
+              <span>Entrar a Sílice</span>
+              <span aria-hidden="true">→</span>
             </a>
           </div>
         </div>
@@ -39,7 +43,7 @@
         <div class="bleed-content-inner hero__grid">
           <div class="hero__copy">
             <div class="hero__copy-main">
-              <p class="hero__kicker">Software de escritorio Windows (x64) · Ingeniería de Costos y Auditoría</p>
+              <p class="hero__kicker">Suite de escritorio para Windows (x64) · Ingeniería de costos y auditoría</p>
               <h1 class="hero__title">Presupuestos que cuadran. Obras que llegan a la meta.</h1>
               <p class="hero__lead">
                 Sílice es software local de ingeniería de costos: arma tus análisis de precios
@@ -47,14 +51,12 @@
                 y controla el avance físico y financiero de cada obra desde tu equipo Windows.
               </p>
               <div class="hero__ctas">
-                <a href="#descargar" class="btn-dark">
-                  <span>Descargar Sílice para Windows</span>
-                  <span class="btn-dark__arrow" aria-hidden="true">↓</span>
+                <a href="/app/" class="btn-dark">
+                  <span>Entrar a Sílice</span>
+                  <span class="btn-dark__arrow" aria-hidden="true">→</span>
                 </a>
-                <a href="/app/" class="btn-white">
-                  <span aria-hidden="true">▶</span>
-                  <span>Probar versión web</span>
-                  <span class="btn-white__tag">Prueba</span>
+                <a href="#vista-3d" class="btn-white">
+                  <span>Ver el pórtico en 3D</span>
                 </a>
               </div>
             </div>
@@ -67,24 +69,63 @@
               </div>
               <div class="hero__proof-text">
                 <strong>Windows 10 / 11 (x64) · Base SQLite local por carpeta</strong>
-                <span>El acceso web (<code>/app/</code>) opera hoy como entorno de prueba del sistema antes de instalar en escritorio.</span>
+                <span>Esta portada es una página de pruebas: la suite instalada abre directamente en su ventana (<code>/app/</code>).</span>
               </div>
             </div>
           </div>
 
           <div class="hero__stage">
-            <div class="hero__photo-card">
-              <img
-                src="./src/portada/imagenes/hero_ingenieros.webp"
-                alt="Ingenieros revisando planos y presupuesto de obra en sitio"
-                class="hero__photo"
-              />
-              <div class="hero__photo-caption">
-                <p class="caption__kicker">EJEMPLO DE CONTROL DE OBRA</p>
-                <p class="caption__title">Seguimiento físico y financiero</p>
-                <p class="caption__meta">Aritmética Decimal exacta · Coma decimal es-VE</p>
+            <figure class="ventana ventana--hero" aria-labelledby="ventana-hero-pie">
+              <div class="ventana__titulo" aria-hidden="true">
+                <span class="ventana__sello">S</span>
+                <span class="ventana__nombre">Sílice · Obra de ejemplo</span>
+                <span class="ventana__controles"><span>–</span><span>□</span><span>×</span></span>
               </div>
-            </div>
+              <div class="ventana__barra">
+                <span>Presupuesto</span>
+                <span aria-hidden="true">/</span>
+                <strong>APU E-323 · Concreto f'c 250 kg/cm² (m³)</strong>
+              </div>
+              <div class="ventana__cuerpo">
+                <table class="ventana__tabla">
+                  <caption class="ventana__oculto">Desglose del APU de ejemplo</caption>
+                  <thead>
+                    <tr><th scope="col">Cód.</th><th scope="col">Componente</th><th scope="col">USD</th><th scope="col">%</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>01</td><td>Concreto f'c 250</td><td>96,20</td><td>39,6</td></tr>
+                    <tr><td>02</td><td>Cabillas y estribos</td><td>42,20</td><td>17,4</td></tr>
+                    <tr><td>03</td><td>Encofrado y mano de obra</td><td>34,21</td><td>14,1</td></tr>
+                    <tr><td>04</td><td>Equipos y vaciado</td><td>21,85</td><td>9,0</td></tr>
+                    <tr><td>05</td><td>Indirectos y utilidad</td><td>48,18</td><td>19,9</td></tr>
+                  </tbody>
+                  <tfoot>
+                    <tr><th scope="row" colspan="2">Precio unitario</th><td>242,64</td><td>100,0</td></tr>
+                  </tfoot>
+                </table>
+                <aside class="ventana__hallazgos" aria-label="Hallazgos del libro de ejemplo">
+                  <p class="ventana__subtitulo">Hallazgos del libro (3)</p>
+                  <ul>
+                    <li class="ventana__hallazgo ventana__hallazgo--error">
+                      <strong>L3 · Valor guardado ≠ fórmula</strong>
+                      <span><code>PRESUPUESTO!F12</code> · 154,28 USD</span>
+                    </li>
+                    <li class="ventana__hallazgo">
+                      <strong>L6 · Parámetro global sobrescrito</strong>
+                      <span><code>APU!H8</code></span>
+                    </li>
+                    <li class="ventana__hallazgo">
+                      <strong>L9 · Cuadre interno</strong>
+                      <span><code>RESUMEN!D40</code></span>
+                    </li>
+                  </ul>
+                </aside>
+              </div>
+              <figcaption id="ventana-hero-pie" class="ventana__pie">
+                <span class="ejemplo-ficticio">Ejemplo con datos ficticios</span>
+                <span>Ventana de Sílice dibujada en HTML: un APU y los hallazgos de su libro.</span>
+              </figcaption>
+            </figure>
 
             <div class="hero__cards">
               <article class="proof-card proof-card--light">
@@ -92,15 +133,15 @@
                 <div class="proof-card__body">
                   <p class="proof-card__label">Desviación detectable en una sola partida</p>
                   <p class="proof-card__value proof-card__value--err">154,28 <span>USD</span></p>
-                  <p class="proof-card__foot">recalculando fórmulas Excel L1–L7</p>
+                  <p class="proof-card__foot">al recalcular las fórmulas del libro (reglas L1 a L9); ejemplo con datos ficticios</p>
                 </div>
               </article>
 
               <article class="proof-card proof-card--dark">
                 <span class="proof-card__icon proof-card__icon--gold" aria-hidden="true">▣</span>
                 <div class="proof-card__body">
-                  <p class="proof-card__value">100 %</p>
-                  <p class="proof-card__desc">en tu equipo Windows. Tus costos nunca salen de tu oficina.</p>
+                  <p class="proof-card__value">Local</p>
+                  <p class="proof-card__desc">La base SQLite vive en la carpeta de la instalación. El asistente con un proveedor en la nube viene apagado.</p>
                 </div>
               </article>
             </div>
@@ -109,23 +150,23 @@
       </main>
 
       <!-- METRICS / ARCHITECTURE BAND -->
-      <section id="quienes-somos" class="bleed-full metrics" aria-label="Qué hacemos y cómo está construido Sílice">
+      <section id="que-hace" class="bleed-full metrics" aria-label="Qué hace Sílice y cómo está construido">
         <div class="bleed-content-inner metrics__grid">
           <div class="metric">
             <p class="metric__num">Decimal</p>
             <p class="metric__text">aritmética decimal exacta al céntimo, sin errores de punto flotante binario</p>
           </div>
           <div class="metric">
-            <p class="metric__num">L1–L7</p>
-            <p class="metric__text">auditoría forense de libros Excel sobre archivo original intacto</p>
+            <p class="metric__num">L1 a L9</p>
+            <p class="metric__text">reglas de auditoría de libros Excel, leídos sin modificar el archivo original</p>
           </div>
           <div class="metric">
             <p class="metric__num">Windows</p>
             <p class="metric__text">software de escritorio local (x64) con bases SQLite aisladas por carpeta</p>
           </div>
           <div class="metric">
-            <p class="metric__num">0</p>
-            <p class="metric__text">datos enviados a la nube. Contraseñas Argon2id y firmas Ed25519 en tu PC</p>
+            <p class="metric__num">Argon2id</p>
+            <p class="metric__text">para las contraseñas, y Ed25519 para firmar los paquetes de entrega en el propio equipo</p>
           </div>
         </div>
       </section>
@@ -141,17 +182,23 @@
             <h2 id="vista-3d-titulo">Cada capa de tu obra, traducida al céntimo en tu presupuesto.</h2>
           </div>
           <p class="stage3d__lead">
-            Arrastra el modelo o haz clic en cada partida —concreto, cabillas, encofrado o equipos— o
-            cambia a <strong>Radiografía acero</strong> para inspeccionar cómo se construye el precio
-            unitario de <span class="mono-gold">242,64 USD/m³</span>.
+            Arrastra el modelo o elige una capa (concreto, cabillas, encofrado, equipos o indirectos) o
+            cambia a <strong>Radiografía acero</strong> para ver cómo se arma el precio unitario de
+            <span class="mono-gold">242,64 USD/m³</span> de este ejemplo con datos ficticios.
           </p>
         </div>
 
         <div class="bleed-edge stage3d__viewport">
           <div class="stage3d__canvas-wrap">
-            <canvas id="portico-canvas" class="stage3d__canvas" aria-label="Pórtico estructural 3D interactivo de Sílice"></canvas>
+            <canvas
+              id="portico-canvas"
+              class="stage3d__canvas"
+              role="img"
+              aria-label="Pórtico estructural en 3D de un APU de ejemplo con datos ficticios"
+            ></canvas>
 
             <div class="stage3d__hud-card">
+              <p class="ejemplo-ficticio ejemplo-ficticio--oscuro">Ejemplo con datos ficticios</p>
               <p class="stage3d__hud-kicker">PARTIDA E-323 · CONCRETO F'C 250 KG/CM²</p>
               <h3 class="stage3d__hud-title" id="hud-titulo">Pórtico estructural · Despiece APU</h3>
               <p class="stage3d__hud-desc" id="hud-desc">
@@ -181,9 +228,9 @@
             </div>
           </div>
 
-          <div class="bleed-content-inner stage3d__layers" role="group" aria-label="Capas de costo APU">
+          <div class="bleed-content-inner stage3d__layers" role="group" aria-label="Capas de costo del APU de ejemplo">
             <button type="button" class="layer-btn is-active" data-layer="all">
-              <span class="layer-btn__code">ALL</span>
+              <span class="layer-btn__code">ALL · 100,0 %</span>
               <strong>Todas las capas</strong>
               <span class="layer-btn__price">242,64 USD/m³</span>
             </button>
@@ -206,6 +253,11 @@
               <span class="layer-btn__code">04 · 9,0 %</span>
               <strong>Equipos y vaciado</strong>
               <span class="layer-btn__price">21,85 USD</span>
+            </button>
+            <button type="button" class="layer-btn" data-layer="indirectos">
+              <span class="layer-btn__code">05 · 19,9 %</span>
+              <strong>Indirectos y utilidad</strong>
+              <span class="layer-btn__price">48,18 USD</span>
             </button>
           </div>
         </div>
@@ -231,23 +283,24 @@
           <div class="bento">
             <!-- 01 APU -->
             <article class="bento__card bento__card--7 bento__card--flush">
-              <div class="bento__media">
-                <img src="./src/portada/imagenes/concreto_apu.webp" alt="Vaciado de concreto estructural f'c 250 kg/cm2" />
-                <div class="apu-overlay">
-                  <div class="apu-overlay__head">
-                    <strong>Concreto f'c 250 kg/cm²</strong>
-                    <span class="apu-overlay__ok">Listo</span>
+              <div class="bento__escena">
+                <figure class="ventana ventana--compacta" aria-labelledby="ventana-apu-pie">
+                  <div class="ventana__titulo" aria-hidden="true">
+                    <span class="ventana__sello">S</span>
+                    <span class="ventana__nombre">APU E-323 · Concreto f'c 250 kg/cm²</span>
+                    <span class="ventana__estado">Listo</span>
                   </div>
-                  <div class="apu-overlay__rows">
-                    <div><span>Materiales</span><strong>138,40</strong></div>
-                    <div><span>Mano de obra</span><strong>34,21</strong></div>
-                    <div><span>Equipos</span><strong>21,85</strong></div>
-                  </div>
-                  <div class="apu-overlay__total">
-                    <span>Precio unitario</span>
-                    <strong>242,64 <em>USD/m³</em></strong>
-                  </div>
-                </div>
+                  <dl class="ventana__lista">
+                    <div><dt>Materiales (concreto y cabillas)</dt><dd>138,40</dd></div>
+                    <div><dt>Encofrado y mano de obra</dt><dd>34,21</dd></div>
+                    <div><dt>Equipos</dt><dd>21,85</dd></div>
+                    <div><dt>Indirectos y utilidad</dt><dd>48,18</dd></div>
+                    <div class="ventana__total"><dt>Precio unitario</dt><dd>242,64 <span>USD/m³</span></dd></div>
+                  </dl>
+                  <figcaption id="ventana-apu-pie" class="ventana__pie">
+                    <span class="ejemplo-ficticio">Ejemplo con datos ficticios</span>
+                  </figcaption>
+                </figure>
               </div>
               <div class="bento__foot">
                 <div>
@@ -258,7 +311,7 @@
                     obra con prestaciones, equipos y utilidad calculados al céntimo.
                   </p>
                 </div>
-                <a href="/app/" class="btn-outline">Abrir escritorio →</a>
+                <a href="/app/" class="btn-outline">Entrar a Sílice →</a>
               </div>
             </article>
 
@@ -289,6 +342,7 @@
                     <span aria-hidden="true">✓</span>
                   </div>
                 </div>
+                <p class="ejemplo-ficticio">Ejemplo con datos ficticios</p>
               </div>
               <div class="bento__bar">
                 <span>Informe listo para compartir en PDF</span>
@@ -311,6 +365,7 @@
                     <div class="progress-track"><div class="progress-fill progress-fill--gold" style="inline-size: 64%"></div></div>
                   </div>
                 </div>
+                <p class="ejemplo-ficticio">Ejemplo con datos ficticios</p>
               </div>
               <div class="bento__bar">
                 <span class="text-ok">Dentro del presupuesto</span>
@@ -323,24 +378,31 @@
               <div>
                 <p class="bento__kicker bento__kicker--dark">04 · Precios al día</p>
                 <p class="gold-stat">+3,8 %</p>
-                <p class="gold-sub">reajuste aplicado este mes</p>
+                <p class="gold-sub">reajuste de ejemplo con datos ficticios</p>
               </div>
               <p class="gold-copy">
-                Actualiza tus presupuestos con los índices del BCV en un clic y protege tu margen de
-                la inflación.
+                Actualiza tus presupuestos con los índices del BCV y protege tu margen de la inflación.
               </p>
             </article>
 
             <!-- 05 Cantera -->
-            <article class="bento__card bento__card--4 bento__card--flush">
-              <div class="bento__thumb">
-                <img src="./src/portada/imagenes/cantera_aridos.webp" alt="Cargador frontal en cantera de piedra picada y agregados" />
-                <span class="thumb-badge">14,85 USD/t</span>
-              </div>
-              <div class="bento__pad">
+            <article class="bento__card bento__card--4">
+              <div>
                 <p class="bento__kicker">05 · Cantera y áridos</p>
                 <h3>Conoce el costo real de cada tonelada.</h3>
                 <p>Inventario, báscula, combustible y maquinaria pesada en un mismo lugar.</p>
+                <figure class="ventana ventana--ficha" aria-labelledby="ventana-cantera-pie">
+                  <dl class="ventana__lista">
+                    <div><dt>Extracción y voladura</dt><dd>5,20</dd></div>
+                    <div><dt>Trituración y cribado</dt><dd>4,35</dd></div>
+                    <div><dt>Combustible y maquinaria</dt><dd>3,90</dd></div>
+                    <div><dt>Indirectos</dt><dd>1,40</dd></div>
+                    <div class="ventana__total"><dt>Piedra picada</dt><dd>14,85 <span>USD/t</span></dd></div>
+                  </dl>
+                  <figcaption id="ventana-cantera-pie" class="ventana__pie">
+                    <span class="ejemplo-ficticio">Ejemplo con datos ficticios</span>
+                  </figcaption>
+                </figure>
               </div>
             </article>
 
@@ -351,8 +413,8 @@
                 <p class="bento__kicker bento__kicker--gold">06 · Tu información, protegida</p>
                 <h3>Funciona en tus equipos, sin depender de internet.</h3>
                 <p>
-                  Respaldos automáticos, accesos con contraseña segura y cada entrega firmada
-                  localmente con Ed25519 para que nadie la altere.
+                  Respaldo verificado antes de cada migración de la base, contraseñas con Argon2id y
+                  paquetes de entrega que se pueden firmar con Ed25519 para detectar cualquier alteración.
                 </p>
               </div>
             </article>
@@ -361,10 +423,10 @@
             <article class="bento__card bento__card--6 bento__card--row">
               <div>
                 <p class="bento__kicker">07 · Trabajo en equipo</p>
-                <h3>Quien arma no revisa.</h3>
+                <h3>Cada quien con su rol.</h3>
                 <p>
-                  Roles claros para administrar, elaborar y revisar. Cada quien en lo suyo, todos sobre
-                  el mismo número.
+                  Roles para administrar, armar y revisar. Si quien revisa una versión también la armó,
+                  Sílice lo avisa y deja el dictamen registrado.
                 </p>
               </div>
               <a href="/app/#/cuenta/cuentas" class="bento__link">Ver roles</a>
@@ -376,11 +438,29 @@
       <!-- HOW IT WORKS -->
       <section id="como-funciona" class="bleed-full onboarding" aria-labelledby="como-titulo">
         <div class="bleed-content-inner onboarding__grid">
-          <div class="onboarding__media">
-            <img src="./src/portada/imagenes/equipo_obra.webp" alt="Equipo de ingenieros revisando planos y presupuesto con Sílice" />
+          <div class="onboarding__escena">
+            <figure class="ventana ventana--revision" aria-labelledby="ventana-revision-pie">
+              <div class="ventana__titulo" aria-hidden="true">
+                <span class="ventana__sello">S</span>
+                <span class="ventana__nombre">Revisión · Versión 3 del presupuesto</span>
+                <span class="ventana__controles"><span>–</span><span>□</span><span>×</span></span>
+              </div>
+              <dl class="ventana__lista ventana__lista--ficha">
+                <div><dt>Obra</dt><dd>Edificio de ejemplo</dd></div>
+                <div><dt>Armó</dt><dd><code>ana</code></dd></div>
+                <div><dt>Revisa</dt><dd><code>luis</code></dd></div>
+                <div><dt>Hallazgos abiertos</dt><dd>0</dd></div>
+                <div><dt>Dictamen</dt><dd>Aprobada</dd></div>
+                <div><dt>Paquete de entrega</dt><dd>Firmado (Ed25519)</dd></div>
+              </dl>
+              <figcaption id="ventana-revision-pie" class="ventana__pie">
+                <span class="ejemplo-ficticio">Ejemplo con datos ficticios</span>
+                <span>Ventana de Sílice dibujada en HTML: la revisión de una versión.</span>
+              </figcaption>
+            </figure>
             <div class="onboarding__callout">
-              <strong>Software de escritorio local</strong>
-              <p>Instalación en Windows x64 sin depender de servidores externos.</p>
+              <strong>Suite de escritorio local</strong>
+              <p>Se instala en Windows x64; la base vive en la carpeta de la instalación.</p>
             </div>
           </div>
 
@@ -394,8 +474,8 @@
               <li>
                 <span class="steps__num">1</span>
                 <div>
-                  <h3>Descarga e instala en tu PC Windows</h3>
-                  <p>Cada instalación crea su base local SQLite aislada por carpeta, con cuentas separadas por rol y respaldos atómicos.</p>
+                  <h3>Instala Sílice en tu equipo Windows</h3>
+                  <p>Cada instalación crea su base SQLite en su carpeta, con cuentas por rol y un respaldo verificado antes de cada migración.</p>
                 </div>
               </li>
               <li>
@@ -408,8 +488,8 @@
               <li>
                 <span class="steps__num">3</span>
                 <div>
-                  <h3>Aprueba, controla la obra y entrega con sello</h3>
-                  <p>Quien elabora no aprueba su propio presupuesto: el revisor aprueba y Sílice genera paquetes entregables firmados con Ed25519.</p>
+                  <h3>Revisa, controla la obra y entrega firmado</h3>
+                  <p>Quien revisa deja su dictamen sobre la versión; si también la armó, Sílice lo avisa y lo deja registrado. El paquete de entrega puede firmarse con la clave de la empresa (Ed25519).</p>
                 </div>
               </li>
             </ol>
@@ -429,36 +509,36 @@
             <div class="testimonial__author">
               <span class="brand__mark" aria-hidden="true">S</span>
               <div>
-                <strong>Sílice Desktop Suite</strong>
-                <span>Ingeniería de Costos, Presupuestos APU y Auditoría Forense · Venezuela</span>
+                <strong>Sílice</strong>
+                <span>Ingeniería de costos, presupuestos APU y auditoría de libros · Venezuela</span>
               </div>
             </div>
           </div>
           <div class="testimonial__stats">
             <div class="stat-box">
-              <strong>100 % Local</strong>
-              <span>Ejecución en Windows con SQLite WAL y cero envío de datos a terceros</span>
+              <strong>Local</strong>
+              <span>Ejecución en Windows con SQLite WAL; el asistente con un proveedor en la nube viene apagado</span>
             </div>
             <div class="stat-box">
-              <strong>RBAC + Ed25519</strong>
-              <span>Separación estricta entre elaboración, revisión y firma criptográfica de entregas</span>
+              <strong>Roles + Ed25519</strong>
+              <span>Roles para armar, revisar y administrar, y firma de los paquetes de entrega</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- FINAL CTA: DOWNLOAD WINDOWS + WEB TEST BUILD -->
-      <section id="descargar" class="bleed-full cta" aria-labelledby="cta-titulo">
+      <!-- FINAL CTA: WEB TEST BUILD -->
+      <section id="probar" class="bleed-full cta" aria-labelledby="cta-titulo">
         <div class="bleed-content-inner cta__grid">
           <div class="cta__copy">
             <p class="section-kicker section-kicker--gold">
               <span class="section-kicker__bar" aria-hidden="true"></span>
-              DESCARGA DE ESCRITORIO · WINDOWS X64
+              PÁGINA DE PRUEBAS
             </p>
-            <h2 id="cta-titulo">Descarga Sílice en tu <span>escritorio Windows.</span></h2>
+            <h2 id="cta-titulo">Prueba Sílice <span>en este equipo.</span></h2>
             <p>
-              Lleva el sistema completo de presupuestos APU, auditoría forense de Excel, precios BCV y
-              control de producción directamente a tu equipo Windows 10 u 11 (64 bits), sin nube obligatoria.
+              Esta portada solo existe para probar. La suite instalada en Windows abre directamente en
+              su ventana; desde aquí se entra a la misma suite en el navegador.
             </p>
             <dl class="download-specs">
               <div>
@@ -470,34 +550,28 @@
                 <dd>SQLite WAL · Decimal exacto</dd>
               </div>
               <div>
-                <dt>Privacidad</dt>
-                <dd>0 conexiones salientes</dd>
+                <dt>Asistente IA</dt>
+                <dd>Apagado al instalar</dd>
               </div>
             </dl>
             <div class="cta__actions">
-              <button type="button" id="btn-descargar-win" class="btn-gold">
-                <span>Descargar instalador Windows (.exe)</span>
-                <span aria-hidden="true">↓</span>
-              </button>
-              <p id="descarga-estado" class="descarga-estado" role="status" aria-live="polite"></p>
+              <a href="/app/" class="btn-gold">
+                <span>Entrar a Sílice</span>
+                <span aria-hidden="true">→</span>
+              </a>
             </div>
           </div>
 
           <div class="cta__form-card">
             <p class="bento__kicker">ENTORNO DE PRUEBA EN NAVEGADOR</p>
-            <h3>Prueba cómo se comporta Sílice hoy en web</h3>
-            <p class="cta__form-sub">
-              Por ahora desplegamos el sistema en web como ambiente de prueba para validar en vivo todo el
-              flujo (sesión local, obras, APU, auditoría, precios y producción) mientras cerramos el paquete
-              de escritorio para Windows.
-            </p>
+            <h3>Qué es lo mismo que en el escritorio</h3>
             <ul class="web-test-list">
-              <li>Mismo motor Python/FastAPI y base SQLite que la aplicación de escritorio.</li>
-              <li>Control de acceso local con roles separados (Arma, Revisa y Administrador).</li>
+              <li>Mismo motor Python/FastAPI y base SQLite que la suite de escritorio.</li>
+              <li>Cuentas locales con roles (arma, revisa y administrador).</li>
               <li>Ventanas dedicadas a pantalla completa para Auditoría, Precios BCV y Producción.</li>
             </ul>
             <a href="/app/" class="btn-dark btn-dark--full">
-              <span>Abrir entorno web de prueba (/app/)</span>
+              <span>Abrir la suite en el navegador (/app/)</span>
               <span class="btn-dark__arrow" aria-hidden="true">→</span>
             </a>
           </div>
@@ -507,8 +581,8 @@
       <!-- FOOTER -->
       <footer class="bleed-full footer">
         <div class="bleed-content-inner footer__inner">
-          <span>Sílice Desktop Suite · Ingeniería de Costos, APU y Auditoría Forense · Windows x64 Local-First</span>
-          <a href="/app/">Probar entorno web (/app/) →</a>
+          <span>Sílice · Presupuestos de obra y auditoría de libros · Página de pruebas</span>
+          <a href="/app/">Entrar a Sílice (/app/) →</a>
         </div>
       </footer>
     </div>
