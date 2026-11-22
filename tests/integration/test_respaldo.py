@@ -336,12 +336,21 @@ def test_si_falla_una_copia_al_restaurar_no_deja_eventos_perdidos_ni_bases_a_med
     assert _filas(caso) == caso_modificado
 
 
-def test_si_falla_una_copia_y_tambien_reponer_lanza_respaldo_fallido_sin_eventos_perdidos(
+def test_si_falla_una_copia_y_no_se_puede_reponer_la_instalacion_queda_el_aviso_de_eventos(
     datos: Datos, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """SEG-12: la instalación ya quedó sobrescrita con la del juego y reponerla también falla. Los
+    eventos de acceso posteriores al juego se perdieron: el aviso `eventos_perdidos_*.json` tiene
+    que quedar escrito, y el mensaje dice qué no se repuso."""
     _instalacion_vacia(datos)
     caso = bases_prueba.copiar_base("0.5.0", "demo.db", datos.casos / "demo.db")
     juego = _respaldar(datos, [caso])
+    with closing(sqlite3.connect(datos.instalacion)) as conexion:
+        conexion.execute(
+            "INSERT INTO evento_acceso (fecha_hora, login_intentado, ip_cliente, tipo, detalle) "
+            "VALUES ('2026-10-02T10:00:00', 'admin', '', 'entrada', 'luego')"
+        )
+        conexion.commit()
 
     original = respaldo.copiar_sqlite
     fallo_en_curso = False
@@ -356,7 +365,45 @@ def test_si_falla_una_copia_y_tambien_reponer_lanza_respaldo_fallido_sin_eventos
         original(origen, destino)
 
     monkeypatch.setattr(respaldo, "copiar_sqlite", falla_todo_luego_del_caso)
-    with pytest.raises(respaldo.RespaldoFallido, match="database is locked"):
+    with pytest.raises(respaldo.RespaldoFallido, match="database is locked") as fallo:
         _restaurar(datos, juego)
 
+    # La instalación es la del juego: el evento de después se perdió.
+    assert _filas(datos.instalacion) == _filas(juego / "instalacion.db")
+    [aviso] = datos.carpeta.glob("eventos_perdidos_*.json")
+    perdidos = json.loads(aviso.read_text(encoding="utf-8"))
+    assert perdidos["revisado"] is False
+    assert [(e["tipo"], e["detalle"]) for e in perdidos["eventos"]] == [("entrada", "luego")]
+    assert "No se pudo reponer instalacion.db" in str(fallo.value)
+    assert aviso.name in str(fallo.value)
+
+
+def test_si_no_se_puede_escribir_el_aviso_de_eventos_no_se_restaura_nada(
+    datos: Datos, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """El aviso va antes de sobrescribir la instalación: si no se puede escribir, no se toca ninguna
+    base (nunca una instalación restaurada sin su aviso)."""
+    _instalacion_vacia(datos)
+    caso = bases_prueba.copiar_base("0.5.0", "demo.db", datos.casos / "demo.db")
+    juego = _respaldar(datos, [caso])
+    with closing(sqlite3.connect(datos.instalacion)) as conexion:
+        conexion.execute(
+            "INSERT INTO evento_acceso (fecha_hora, login_intentado, ip_cliente, tipo, detalle) "
+            "VALUES ('2026-10-02T10:00:00', 'admin', '', 'entrada', 'luego')"
+        )
+        conexion.commit()
+    instalacion_modificada = _filas(datos.instalacion)
+
+    original = respaldo._escribir_json
+
+    def disco_lleno_para_el_aviso(ruta: Path, contenido) -> None:
+        if ruta.name.startswith("eventos_perdidos_"):
+            raise OSError(28, "No space left on device")
+        original(ruta, contenido)
+
+    monkeypatch.setattr(respaldo, "_escribir_json", disco_lleno_para_el_aviso)
+    with pytest.raises(respaldo.RespaldoFallido, match="No se restauró nada"):
+        _restaurar(datos, juego)
+
+    assert _filas(datos.instalacion) == instalacion_modificada
     assert list(datos.carpeta.glob("eventos_perdidos_*.json")) == []
