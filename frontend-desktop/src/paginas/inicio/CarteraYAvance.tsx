@@ -6,6 +6,7 @@ import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { QueEsEsto } from "../../comun/QueEsEsto";
 import { AnimatedBarChart, AnimatedDonutChart } from "../../comun/VisualMeters";
+import type { BarDatum, DonutSegment } from "../../comun/VisualMeters";
 import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { FranjaDeCifras } from "../../indicadores/FranjaDeCifras";
 import { EtapaDeObra } from "../../marco/EtapaDeObra";
@@ -18,6 +19,64 @@ import { TEXTOS } from "./textos";
 // el ícono. Una etapa que esta pantalla no conoce se escribe sin ícono.
 const ETAPAS: readonly Etapa[] = ["en_elaboracion", "en_aprobacion", "aprobada", "en_ejecucion", "atrasada"];
 const esEtapa = (etapa: string): etapa is Etapa => (ETAPAS as readonly string[]).includes(etapa);
+
+// El color de cada etapa en el anillo por estado: fijo por etapa (no por su lugar ni su tamaño), de los grises y el verde
+// azulado de los gráficos (DESIGN.md: ni verde ni rojo IBCS, que son de las variaciones, ni el ámbar de la marca). «Atrasada»
+// lleva el de su ícono en la tabla (`EtapaDeObra`, la severidad de error). Cada uno llega a 3:1 sobre la superficie y los
+// vecinos se distinguen también con daltonismo (validador de paletas de la skill dataviz, 2026-11-22).
+// Los de Carbon, como en `paletaGraficos.ts` (@carbon/colors es solo de desarrollo).
+const COLOR_DE_ETAPA: Record<Etapa, string> = {
+  en_elaboracion: "#8d8d8d", // gray-50
+  en_aprobacion: "#525252", // gray-70
+  aprobada: "#009d9a", // teal-50
+  en_ejecucion: "#161616", // gray-100
+  atrasada: "var(--silice-sev-error)", // orange-50
+};
+// Una etapa que esta pantalla no conoce: gris 60, al final.
+const COLOR_DE_OTRA_ETAPA = "#6f6f6f";
+
+// Las barras del avance: solo las obras con real y plan, con las cifras de la API en es-VE (el número solo dibuja).
+const MAXIMO_DE_BARRAS = 6;
+function barrasDeAvance(obras: readonly ObraDeLaCartera[]): BarDatum[] {
+  return obras.flatMap((o): BarDatum[] => {
+    if (o.avance_real === null || o.avance_plan === null) return [];
+    return [
+      {
+        id: claveDeObra(o.carpeta, o.obra_id),
+        label: o.nombre,
+        real: Number(o.avance_real),
+        plan: Number(o.avance_plan),
+        realText: `${formatoEsVe(o.avance_real)} %`,
+        planText: `${formatoEsVe(o.avance_plan)} %`,
+      },
+    ];
+  }).slice(0, MAXIMO_DE_BARRAS);
+}
+
+// El anillo por estado: cuántas obras de la lista hay en cada etapa (un conteo de filas; la API no manda porcentajes por
+// estado y la pantalla no los calcula), en el orden de la obra y con el texto de la etapa que da el servidor.
+function partesPorEtapa(obras: readonly ObraDeLaCartera[]): DonutSegment[] {
+  const conteo = new Map<string, { texto: string; obras: number }>();
+  for (const o of obras) {
+    const actual = conteo.get(o.etapa);
+    if (actual) actual.obras += 1;
+    else conteo.set(o.etapa, { texto: o.etapa_texto, obras: 1 });
+  }
+  const orden = [...ETAPAS, ...[...conteo.keys()].filter((e) => !esEtapa(e))];
+  return orden.flatMap((etapa): DonutSegment[] => {
+    const e = conteo.get(etapa);
+    if (e === undefined) return [];
+    return [
+      {
+        id: etapa,
+        label: e.texto,
+        value: e.obras,
+        valueText: formatoEsVe(String(e.obras)),
+        color: esEtapa(etapa) ? COLOR_DE_ETAPA[etapa] : COLOR_DE_OTRA_ETAPA,
+      },
+    ];
+  });
+}
 
 interface Props {
   carga: Carga<ResumenTodasRespuesta>;
@@ -146,42 +205,7 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
     }
   };
   const obras = carga.estado === "listo" ? carga.datos.obras : [];
-  const barrasAvance = obras
-    .filter((o) => o.avance_real !== null && o.avance_plan !== null)
-    .slice(0, 6)
-    .map((o) => {
-      const real = Number(o.avance_real);
-      const plan = Number(o.avance_plan);
-      return {
-        id: claveDeObra(o.carpeta, o.obra_id),
-        label: o.nombre.length > 14 ? `${o.nombre.slice(0, 14)}…` : o.nombre,
-        value: Number.isFinite(real) ? real : 0,
-        secondaryValue: Number.isFinite(plan) ? plan : 0,
-        valueLabel: `${formatoEsVe(o.avance_real ?? "0")} %`,
-        secondaryLabel: `${formatoEsVe(o.avance_plan ?? "0")} %`,
-        color: "#222427",
-        secondaryColor: "#e5b21a",
-      };
-    });
-  const conteoPorEtapa = new Map<string, { label: string; count: number; color: string }>();
-  const colorDeEtapa: Record<string, string> = {
-    en_ejecucion: "#e5b21a",
-    en_elaboracion: "#222427",
-    aprobada: "#168a4c",
-    en_aprobacion: "#5b6270",
-    atrasada: "#b91c1c",
-  };
-  for (const o of obras) {
-    const actual = conteoPorEtapa.get(o.etapa);
-    if (actual) actual.count += 1;
-    else conteoPorEtapa.set(o.etapa, { label: o.etapa_texto, count: 1, color: colorDeEtapa[o.etapa] ?? "#6e737a" });
-  }
-  const segmentosEtapa = [...conteoPorEtapa.values()].map((e) => ({
-    label: e.label,
-    value: e.count,
-    valueText: `${formatoEsVe(String(e.count))}`,
-    color: e.color,
-  }));
+  const barrasAvance = barrasDeAvance(obras);
 
   return (
     <>
@@ -202,21 +226,14 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
             <div className="silice-panel silice-panel--padded silice-inicio__grafico-card">
               <h3 className="cds--type-heading-compact-02">Avance real frente al plan</h3>
               <p className="silice-panel__subtitulo">Porcentaje acumulado de obras con control activo.</p>
-              <AnimatedBarChart
-                items={barrasAvance}
-                maxValue={100}
-                orientation="vertical"
-                primaryLegend="Avance real (%)"
-                secondaryLegend="Plan acumulado (%)"
-                height={190}
-              />
+              <AnimatedBarChart items={barrasAvance} realLegend="Avance real (%)" planLegend="Plan acumulado (%)" height={190} />
             </div>
           )}
           <div className="silice-panel silice-panel--padded silice-inicio__grafico-card">
             <h3 className="cds--type-heading-compact-02">Distribución de obras por estado</h3>
-            <p className="silice-panel__subtitulo">Pase el cursor sobre cada segmento para inspeccionar la cartera.</p>
+            <p className="silice-panel__subtitulo">Cuántas obras hay en cada estado.</p>
             <AnimatedDonutChart
-              segments={segmentosEtapa}
+              segments={partesPorEtapa(obras)}
               centerLabel="Obras"
               centerValue={formatoEsVe(String(obras.length))}
               size={168}

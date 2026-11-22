@@ -1,5 +1,11 @@
-// Visualizadores SVG animados de Silice (RadialGauge, AnimatedDonutChart, AnimatedBarChart, RiskRangeMeter, AlertBanner).
-// Todo tamano de texto en rem (estilosLetra.test.ts) y cifras en tabular-nums.
+// Medidores de Silice (VisualMeters.tsx): anillo, anillo por partes, barras de avance y rango de riesgo.
+// Todo tamano de texto en rem (estilosLetra.test.ts) y cifras en tabular-nums. Los colores son tokens: lo real va relleno en
+// la tinta, lo previsto (plan) en contorno y lo pronosticado achurado (IBCS, DESIGN.md); cada marca llega a 3:1 sobre la
+// superficie (WCAG 1.4.11, VisualMeters.test.tsx). Las cifras van en las tintas de texto, nunca en el color de la serie.
+
+.silice-sin-dato {
+  color: var(--silice-muted);
+}
 
 .silice-radial {
   display: flex;
@@ -16,6 +22,22 @@
 .silice-radial__svg {
   transform: rotate(-90deg);
   display: block;
+}
+
+.silice-radial__pista {
+  stroke: var(--silice-hairline);
+}
+
+.silice-radial__arco--charcoal {
+  stroke: var(--silice-ink);
+}
+
+.silice-radial__arco--emerald {
+  stroke: var(--silice-ok);
+}
+
+.silice-radial__arco--crimson {
+  stroke: var(--silice-err);
 }
 
 .silice-radial__centro {
@@ -50,14 +72,7 @@
   line-height: 1.3;
 }
 
-.silice-radial__sub {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--silice-muted);
-  line-height: 1.4;
-}
-
-// Donut interactivo
+// Anillo por partes
 .silice-donut {
   display: flex;
   flex-wrap: wrap;
@@ -74,6 +89,10 @@
 .silice-donut__svg {
   transform: rotate(-90deg);
   display: block;
+}
+
+.silice-donut__pista {
+  stroke: var(--silice-rail-band);
 }
 
 .silice-donut__segmento {
@@ -126,18 +145,35 @@
   border-block: 1px solid var(--silice-hairline);
 }
 
+.silice-donut__fila {
+  border-block-end: 1px solid var(--silice-hairline);
+
+  &:last-child {
+    border-block-end: 0;
+  }
+}
+
+// Cada parte es un botón (teclado y lectora): sin el aspecto de botón, como una fila de la leyenda.
 .silice-donut__item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  inline-size: 100%;
+  margin: 0;
   padding: 0.625rem 0.5rem;
-  border-block-end: 1px solid var(--silice-hairline);
+  border: 0;
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
   transition: background-color 140ms ease;
+}
 
-  &:last-child {
-    border-block-end: 0;
-  }
+.silice-donut__item:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
 }
 
 .silice-donut__item--activo {
@@ -158,23 +194,10 @@
   flex: none;
 }
 
-.silice-donut__item-texto {
-  display: grid;
-  min-inline-size: 0;
-}
-
 .silice-donut__item-nombre {
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--silice-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.silice-donut__item-sub {
-  font-size: 0.75rem;
-  color: var(--silice-muted-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -199,63 +222,7 @@
   color: var(--silice-muted);
 }
 
-// Barras horizontales
-.silice-barras-h {
-  display: grid;
-  gap: 0.875rem;
-}
-
-.silice-barras-h__fila {
-  display: grid;
-  gap: 0.375rem;
-}
-
-.silice-barras-h__cabecera {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.8125rem;
-}
-
-.silice-barras-h__nombre {
-  min-inline-size: 0;
-  color: var(--silice-ink);
-}
-
-.silice-barras-h__sub {
-  margin-inline-start: 0.5rem;
-  font-size: 0.75rem;
-  color: var(--silice-muted-soft);
-}
-
-.silice-barras-h__valor {
-  flex: none;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--silice-ink);
-}
-
-.silice-barras-h__pista {
-  inline-size: 100%;
-  block-size: 0.75rem;
-  background-color: var(--silice-hairline);
-  border-radius: var(--silice-radio-sm);
-  overflow: hidden;
-}
-
-.silice-barras-h__pista--sec {
-  block-size: 0.4375rem;
-  background-color: var(--silice-rail);
-}
-
-.silice-barras-h__relleno {
-  block-size: 100%;
-  border-radius: var(--silice-radio-sm);
-}
-
-// Barras verticales con linea base en cero
+// Barras verticales de 0 a 100 % con linea base en cero
 .silice-barras-v {
   display: grid;
   gap: 0.75rem;
@@ -281,6 +248,16 @@
   block-size: 0.75rem;
   border-radius: 0.125rem;
   display: inline-block;
+  box-sizing: border-box;
+}
+
+.silice-barras-v__muestra--real {
+  background-color: var(--silice-ink);
+}
+
+.silice-barras-v__muestra--plan {
+  background-color: transparent;
+  border: 0.125rem solid var(--silice-ink);
 }
 
 .silice-barras-v__lienzo {
@@ -375,13 +352,23 @@
 }
 
 .silice-barras-v__cifra--sec {
-  color: var(--silice-gold-ink);
+  color: var(--silice-muted);
 }
 
 .silice-barras-v__barra {
   inline-size: 100%;
+  box-sizing: border-box;
   border-start-start-radius: var(--silice-radio-sm);
   border-start-end-radius: var(--silice-radio-sm);
+}
+
+.silice-barras-v__barra--real {
+  background-color: var(--silice-ink);
+}
+
+.silice-barras-v__barra--plan {
+  background-color: transparent;
+  border: 0.125rem solid var(--silice-ink);
 }
 
 .silice-barras-v__eje-x {
@@ -406,14 +393,6 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--silice-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.silice-barras-v__rotulo-sub {
-  font-size: 0.6875rem;
-  color: var(--silice-muted-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -455,21 +434,50 @@
   color: var(--silice-ink);
 }
 
-.silice-riesgo-medidor__delta {
-  font-weight: 400;
+.silice-riesgo-medidor__nota {
+  margin: 0;
+  font-size: 0.75rem;
   color: var(--silice-muted);
 }
 
 .silice-riesgo-medidor__pista {
+  position: relative;
   inline-size: 100%;
   block-size: 0.75rem;
   background-color: var(--silice-hairline);
   border-radius: var(--silice-radio-sm);
-  overflow: hidden;
 }
 
+// Lo pronosticado (P50, P80): de la base al escenario, achurado a 135 grados en la tinta con su contorno (la textura IBCS
+// del pronóstico, no un degradado de adorno). Con colores forzados queda el contorno.
 .silice-riesgo-medidor__barra {
-  block-size: 100%;
+  position: absolute;
+  inset-block: 0;
+  box-sizing: border-box;
   border-radius: var(--silice-radio-sm);
 }
 
+.silice-riesgo-medidor__barra--pronostico {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(135deg, var(--silice-ink) 0 0.125rem, transparent 0.125rem 0.375rem);
+  border: 0.125rem solid var(--silice-ink);
+}
+
+// Lo previsto (el presupuesto base): una marca en contorno en su lugar de la escala.
+.silice-riesgo-medidor__marca {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 0.75rem;
+  box-sizing: border-box;
+  background-color: transparent;
+  border: 0.125rem solid var(--silice-ink);
+  border-radius: var(--silice-radio-sm);
+}
+
+// La línea de la base, que cruza cada pista.
+.silice-riesgo-medidor__base {
+  position: absolute;
+  inset-block: -0.1875rem;
+  inline-size: 0.125rem;
+  background-color: var(--silice-ink);
+}

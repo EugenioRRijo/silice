@@ -10,6 +10,7 @@ import { fechaEsVe, formatoEsVe, formatoMontoEsVe } from "../../indicadores/form
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../../comun/useCarga";
 import {
+  anillosDePorcentaje,
   centroDelAnillo,
   datosDeDesglose,
   detalleDeTarjeta,
@@ -125,21 +126,20 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
         </h2>
         {datos.control?.disponible ? (
           <>
-            {datos.control.anillos.some((a) => a.fraccion !== null && a.texto.includes("%") && Number.isFinite(Number(a.fraccion))) && (
+            {anillosDePorcentaje(datos.control.anillos).length > 0 && (
               <div className="silice-tablero__anillos">
-                {datos.control.anillos
-                  .filter((a) => a.fraccion !== null && a.texto.includes("%") && Number.isFinite(Number(a.fraccion)))
-                  .map((a) => (
-                    <div key={a.rotulo} className="silice-tablero__anillo">
-                      <RadialGauge
-                        value={Math.min(100, Math.max(0, Number(a.fraccion) * 100))}
-                        label={a.rotulo}
-                        sublabel={a.texto}
-                        tone={a.favorable === true ? "emerald" : a.favorable === false ? "crimson" : "gold"}
-                        size={92}
-                      />
-                    </div>
-                  ))}
+                {anillosDePorcentaje(datos.control.anillos).map((a) => (
+                  <div key={a.rotulo} className="silice-tablero__anillo">
+                    {/* La fracción solo dibuja el arco; lo que se lee es el texto del servidor («62.5 %»), en es-VE. */}
+                    <RadialGauge
+                      label={a.rotulo}
+                      fraccion={Number(a.fraccion)}
+                      texto={formatoMontoEsVe(a.texto)}
+                      tone={a.favorable === true ? "emerald" : a.favorable === false ? "crimson" : "charcoal"}
+                      size={92}
+                    />
+                  </div>
+                ))}
               </div>
             )}
             <Tarjetas tarjetas={datos.control.tarjetas} moneda={moneda} />

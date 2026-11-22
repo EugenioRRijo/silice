@@ -1,14 +1,24 @@
-import { useEffect, useState } from "react";
-import { formatoEsVe } from "../indicadores/formatoEsVe";
+import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import "./VisualMeters.scss";
+
+// Los medidores del rediseño del 2026-11-21 (anillo, anillo por partes, barras y rango). Contrato de los cuatro:
+// - El número solo dibuja (la fracción o el valor que manda la API). La cifra que se lee es el texto que les dan, ya en es-VE
+//   (quien llama lo arma con `formatoEsVe` y compañía, sin pasar por Number): ningún medidor calcula, redondea ni formatea
+//   una cifra (DESIGN.md, «La pantalla no calcula nada»).
+// - Sin dato escriben «—» con «sin dato» para la lectora, nunca «0».
+// - Crecen al cargar (Eugenio, 2026-11-22: las animaciones del rediseño se quedan) y con `prefers-reduced-motion: reduce`
+//   se pintan ya en su valor final, sin pedir cuadros de animación.
+// - Los colores salen de la hoja de estilos (tokens), no van en línea; el anillo por partes recibe el color de cada parte
+//   de quien lo llama, fijo por entidad.
 
 function prefiereMenosMovimiento(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-// Progreso suave (cubic-out) 0 -> 1 al montar o cambiar clave; instantaneo con prefers-reduced-motion o jsdom.
-function useLoadProgress(durationMs = 680, triggerKey?: string | number): number {
+// Progreso suave (cubic-out) de 0 a 1 al montar o al cambiar la clave; 1 de una vez con movimiento reducido.
+function useLoadProgress(durationMs: number, triggerKey: string): number {
   const reducido = prefiereMenosMovimiento() || typeof requestAnimationFrame !== "function";
   const [animProgress, setAnimProgress] = useState(() => (reducido ? 1 : 0));
 
@@ -31,172 +41,225 @@ function useLoadProgress(durationMs = 680, triggerKey?: string | number): number
   return reducido ? 1 : animProgress;
 }
 
-function formatearDecimal(valor: number, decimales = 2): string {
-  if (!Number.isFinite(valor)) return "0";
-  return formatoEsVe(valor.toFixed(decimales));
+const SIN_DATO = "sin dato";
+
+const finito = (n: number | null | undefined): n is number => typeof n === "number" && Number.isFinite(n);
+const tieneTexto = (t: string | null | undefined): t is string => typeof t === "string" && t.trim() !== "";
+// El texto para un nombre accesible: el dado o «sin dato».
+const leible = (t: string | null | undefined): string => (tieneTexto(t) ? t : SIN_DATO);
+
+// «—» a la vista y «sin dato» para la lectora: nunca un cero que no dio el servidor.
+export function SinDato() {
+  return (
+    <span className="silice-sin-dato">
+      <span aria-hidden="true">—</span>
+      <span className="cds--visually-hidden">{SIN_DATO}</span>
+    </span>
+  );
 }
 
-/* 1. Indicador circular animado (RadialGauge) */
+function Cifra({ texto }: { texto: string | null | undefined }) {
+  return tieneTexto(texto) ? <>{texto}</> : <SinDato />;
+}
+
+/* 1. Anillo de un porcentaje (RadialGauge) */
 export interface RadialGaugeProps {
-  value: number;
   label: string;
-  sublabel?: string;
-  tone?: "gold" | "emerald" | "crimson" | "charcoal";
+  // Solo dibuja: la fracción de la API (0.625 es 62,5 % de la vuelta), recortada entre 0 y 1. Sin número no hay arco.
+  fraccion: number | null;
+  // Lo que se lee en el centro, una sola vez: el texto del servidor ya en es-VE («62,5 %»).
+  texto: string | null;
+  // Tinta (lo real, por omisión), o el verde y el rojo de una variación IBCS favorable o desfavorable.
+  tone?: "charcoal" | "emerald" | "crimson";
   size?: number;
 }
 
-export function RadialGauge({ value, label, sublabel, tone = "gold", size = 96 }: RadialGaugeProps) {
-  const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
-  const progress = useLoadProgress(720, `${label}-${clamped}`);
-  const animatedValue = clamped * progress;
+export function RadialGauge({ label, fraccion, texto, tone = "charcoal", size = 96 }: RadialGaugeProps) {
+  const destino = finito(fraccion) ? Math.max(0, Math.min(1, fraccion)) : 0;
+  const progress = useLoadProgress(720, `${label}-${destino}`);
 
   const strokeWidth = size >= 96 ? 10 : 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (animatedValue / 100) * circumference;
-
-  const strokeColor =
-    tone === "emerald" ? "#168a4c" : tone === "crimson" ? "#b91c1c" : tone === "charcoal" ? "#222427" : "#e5b21a";
-  const trackColor = tone === "emerald" ? "#dcfce7" : tone === "crimson" ? "#fee2e2" : "#eae8e1";
+  const offset = circumference * (1 - destino * progress);
 
   return (
     <div className="silice-radial">
       <div className="silice-radial__aro" style={{ inlineSize: size, blockSize: size }}>
-        <svg width={size} height={size} className="silice-radial__svg" role="img" aria-label={`${label}: ${formatearDecimal(clamped, 1)} %`}>
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={trackColor} strokeWidth={strokeWidth} />
+        <svg width={size} height={size} className="silice-radial__svg" role="img" aria-label={`${label}: ${leible(texto)}`}>
+          <circle className="silice-radial__pista" cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth} />
           <circle
+            className={`silice-radial__arco silice-radial__arco--${tone}`}
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke={strokeColor}
             strokeWidth={strokeWidth}
-            strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
           />
         </svg>
         <div className="silice-radial__centro" aria-hidden="true">
-          <span className="silice-radial__cifra">{`${formatearDecimal(animatedValue, 1)} %`}</span>
+          <span className="silice-radial__cifra">
+            <Cifra texto={texto} />
+          </span>
         </div>
       </div>
       <div className="silice-radial__texto">
         <p className="silice-radial__etiqueta">{label}</p>
-        {sublabel && <p className="silice-radial__sub">{sublabel}</p>}
       </div>
     </div>
   );
 }
 
-/* 2. Grafico circular interactivo con leyenda dividida por lineas finas (AnimatedDonutChart) */
+/* 2. Anillo por partes con su leyenda (AnimatedDonutChart) */
 export interface DonutSegment {
+  // Fija la parte (y su color) aunque cambie el orden o el tamaño.
+  id: string;
   label: string;
+  // Solo dibuja: el tamaño de la parte. Sin número, o cero, no se dibuja (la leyenda la sigue diciendo).
   value: number;
-  valueText?: string;
+  // Lo que se lee de la parte, ya en es-VE.
+  valueText: string | null;
+  // El porcentaje de la parte, solo si lo manda la API (ya en es-VE); el anillo no lo calcula.
+  pctText?: string | null;
+  // Un color del gráfico o un token (`var(--…)`), fijo por entidad.
   color: string;
-  subtext?: string;
 }
 
 export function AnimatedDonutChart({
   segments,
   centerLabel,
   centerValue,
-  unit = "",
   size = 176,
 }: {
   segments: DonutSegment[];
   centerLabel: string;
-  centerValue: string;
-  unit?: string;
+  // Lo que se lee en el centro sin nada resaltado, ya en es-VE.
+  centerValue: string | null;
   size?: number;
 }) {
-  const positivos = segments.filter((s) => Number.isFinite(s.value) && s.value > 0);
-  const total = positivos.reduce((acc, s) => acc + s.value, 0) || 1;
-  const progress = useLoadProgress(800, `${centerValue}-${positivos.length}`);
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const progress = useLoadProgress(800, segments.map((s) => `${s.id}:${s.value}`).join("|"));
+  // Lo resaltado: el ratón manda sobre el foco y el foco sobre lo fijado con Enter.
+  const [sobre, setSobre] = useState<number | null>(null);
+  const [enfocado, setEnfocado] = useState<number | null>(null);
+  const [fijado, setFijado] = useState<number | null>(null);
+  // La única parada de Tab de la leyenda (tabindex itinerante): la última enfocada.
+  const [parada, setParada] = useState(0);
+  const botones = useRef<(HTMLButtonElement | null)[]>([]);
 
   const strokeWidth = 22;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const arcs = segments.reduce<
-    (DonutSegment & { val: number; pct: number; startOffset: number; fraction: number })[]
-  >((acc, seg) => {
-    const val = Number.isFinite(seg.value) && seg.value > 0 ? seg.value : 0;
-    const fraction = val / total;
+  const tamanos = segments.map((s) => (finito(s.value) && s.value > 0 ? s.value : 0));
+  const total = tamanos.reduce((acc, v) => acc + v, 0);
+  const dibujadas = tamanos.filter((v) => v > 0).length;
+  // 2 px de la superficie entre partes vecinas; una sola parte cierra la vuelta.
+  const hueco = dibujadas > 1 ? 2 : 0;
+  const arcos = tamanos.reduce<{ inicio: number; fraccion: number }[]>((acc, v) => {
     const prev = acc.at(-1);
-    const startOffset = prev ? prev.startOffset + prev.fraction : 0;
-    acc.push({ ...seg, val, pct: fraction * 100, startOffset, fraction });
+    acc.push({ inicio: prev ? prev.inicio + prev.fraccion : 0, fraccion: total > 0 ? v / total : 0 });
     return acc;
   }, []);
 
-  const activeSeg = hoveredIdx !== null ? arcs[hoveredIdx] : null;
+  const indiceActivo = sobre ?? enfocado ?? fijado;
+  const activo = indiceActivo !== null ? segments[indiceActivo] : undefined;
+  const paradaValida = Math.min(fijado ?? parada, Math.max(0, segments.length - 1));
+
+  const alTeclear = (idx: number) => (e: KeyboardEvent<HTMLButtonElement>) => {
+    const ultimo = segments.length - 1;
+    const destino: Record<string, number> = {
+      ArrowDown: idx === ultimo ? 0 : idx + 1,
+      ArrowRight: idx === ultimo ? 0 : idx + 1,
+      ArrowUp: idx === 0 ? ultimo : idx - 1,
+      ArrowLeft: idx === 0 ? ultimo : idx - 1,
+      Home: 0,
+      End: ultimo,
+    };
+    if (e.key === "Escape") {
+      setFijado(null);
+      return;
+    }
+    const siguiente = destino[e.key];
+    if (siguiente === undefined) return;
+    e.preventDefault();
+    botones.current[siguiente]?.focus();
+  };
 
   return (
     <div className="silice-donut">
       <div className="silice-donut__aro" style={{ inlineSize: size, blockSize: size }}>
-        <svg width={size} height={size} className="silice-donut__svg" role="img" aria-label={`Gráfico circular: ${centerLabel}`}>
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#efece5" strokeWidth={strokeWidth} />
-          {arcs.map((arc, idx) => {
-            if (arc.val <= 0) return null;
-            const visibleLen = Math.max(0, arc.fraction * circumference * progress - 2);
-            const dashArray = `${visibleLen} ${circumference}`;
-            const dashOffset = -(arc.startOffset * circumference * progress);
-            const hovered = hoveredIdx === idx;
+        <svg width={size} height={size} className="silice-donut__svg" role="img" aria-label={`${centerLabel}: ${leible(centerValue)}`}>
+          <circle className="silice-donut__pista" cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth} />
+          {segments.map((seg, idx) => {
+            const arco = arcos[idx]!;
+            if (arco.fraccion <= 0) return null;
+            const visible = Math.max(0, arco.fraccion * circumference * progress - hueco);
+            const resaltada = indiceActivo === idx;
             return (
               <circle
-                key={arc.label}
+                key={seg.id}
+                data-id={seg.id}
                 cx={size / 2}
                 cy={size / 2}
                 r={radius}
                 fill="none"
-                stroke={arc.color}
-                strokeWidth={hovered ? strokeWidth + 4 : strokeWidth}
-                strokeDasharray={dashArray}
-                strokeDashoffset={dashOffset}
-                className="silice-donut__segmento"
-                onMouseEnter={() => setHoveredIdx(idx)}
-                onMouseLeave={() => setHoveredIdx(null)}
+                style={{ stroke: seg.color }}
+                strokeWidth={resaltada ? strokeWidth + 4 : strokeWidth}
+                strokeDasharray={`${visible} ${circumference}`}
+                strokeDashoffset={-(arco.inicio * circumference * progress)}
+                className={`silice-donut__segmento${resaltada ? " silice-donut__segmento--activo" : ""}`}
+                onMouseEnter={() => setSobre(idx)}
+                onMouseLeave={() => setSobre(null)}
               />
             );
           })}
         </svg>
         <div className="silice-donut__centro" aria-hidden="true">
-          <span className="silice-donut__centro-titulo">{activeSeg ? activeSeg.label : centerLabel}</span>
+          <span className="silice-donut__centro-titulo">{activo ? activo.label : centerLabel}</span>
           <span className="silice-donut__centro-valor">
-            {activeSeg ? `${formatearDecimal(activeSeg.pct, 1)} %` : centerValue}
+            <Cifra texto={activo ? activo.valueText : centerValue} />
           </span>
-          {activeSeg ? (
-            <span className="silice-donut__centro-unidad">
-              {activeSeg.valueText ?? `${formatearDecimal(activeSeg.val, unit ? 2 : 0)}${unit ? ` ${unit}` : ""}`}
-            </span>
-          ) : (
-            unit && <span className="silice-donut__centro-unidad">{unit}</span>
-          )}
+          {activo && tieneTexto(activo.pctText) && <span className="silice-donut__centro-unidad">{activo.pctText}</span>}
         </div>
       </div>
 
+      {/* Cada parte es un botón de la leyenda: el foco (Tab una vez y luego flechas, Inicio y Fin) la resalta en el anillo y
+          en el centro; Enter o Espacio la deja fijada (aria-pressed) y Esc la suelta. El nombre dice la parte y su cifra. */}
       <ul className="silice-donut__leyenda" aria-label={`Detalle de ${centerLabel}`}>
-        {arcs.map((arc, idx) => (
-          <li
-            key={arc.label}
-            className={`silice-donut__item${hoveredIdx === idx ? " silice-donut__item--activo" : ""}`}
-            onMouseEnter={() => setHoveredIdx(idx)}
-            onMouseLeave={() => setHoveredIdx(null)}
-          >
-            <div className="silice-donut__item-izq">
-              <span className="silice-donut__muestra" style={{ backgroundColor: arc.color }} aria-hidden="true" />
-              <div className="silice-donut__item-texto">
-                <span className="silice-donut__item-nombre">{arc.label}</span>
-                {arc.subtext && <span className="silice-donut__item-sub">{arc.subtext}</span>}
-              </div>
-            </div>
-            <div className="silice-donut__item-der">
-              <span className="silice-donut__item-valor">
-                {arc.valueText ?? `${formatearDecimal(arc.val, unit ? 2 : 0)}${unit ? ` ${unit}` : ""}`}
+        {segments.map((seg, idx) => (
+          <li key={seg.id} className="silice-donut__fila">
+            <button
+              type="button"
+              ref={(b) => {
+                botones.current[idx] = b;
+              }}
+              className={`silice-donut__item${indiceActivo === idx ? " silice-donut__item--activo" : ""}`}
+              tabIndex={idx === paradaValida ? 0 : -1}
+              aria-pressed={fijado === idx}
+              aria-label={[seg.label, leible(seg.valueText), ...(tieneTexto(seg.pctText) ? [seg.pctText] : [])].join(" ")}
+              onFocus={() => {
+                setEnfocado(idx);
+                setParada(idx);
+              }}
+              onBlur={() => setEnfocado(null)}
+              onClick={() => setFijado((f) => (f === idx ? null : idx))}
+              onKeyDown={alTeclear(idx)}
+              onMouseEnter={() => setSobre(idx)}
+              onMouseLeave={() => setSobre(null)}
+            >
+              <span className="silice-donut__item-izq">
+                <span className="silice-donut__muestra" style={{ backgroundColor: seg.color }} aria-hidden="true" />
+                <span className="silice-donut__item-nombre">{seg.label}</span>
               </span>
-              <span className="silice-donut__item-pct">{`${formatearDecimal(arc.pct, 1)} %`}</span>
-            </div>
+              <span className="silice-donut__item-der">
+                <span className="silice-donut__item-valor">
+                  <Cifra texto={seg.valueText} />
+                </span>
+                {tieneTexto(seg.pctText) && <span className="silice-donut__item-pct">{seg.pctText}</span>}
+              </span>
+            </button>
           </li>
         ))}
       </ul>
@@ -204,135 +267,86 @@ export function AnimatedDonutChart({
   );
 }
 
-/* 3. Grafico de barras animado (vertical u horizontal, linea base en cero) */
+/* 3. Barras de avance real contra el plan, de 0 a 100 % (IBCS: real relleno, plan en contorno) */
 export interface BarDatum {
   id: string;
+  // El nombre completo: si no cabe, la hoja de estilos lo recorta y el `title` lo dice entero.
   label: string;
-  sublabel?: string;
-  value: number;
-  secondaryValue?: number;
-  valueLabel: string;
-  secondaryLabel?: string;
-  color?: string;
-  secondaryColor?: string;
+  // Solo dibujan: el porcentaje de la API (62.5 es 62,5 %).
+  real: number | null;
+  plan?: number | null;
+  // Lo que se lee sobre cada barra, ya en es-VE.
+  realText: string | null;
+  planText?: string | null;
 }
+
+const MARCAS_DE_LA_ESCALA = [100, 75, 50, 25, 0] as const;
 
 export function AnimatedBarChart({
   items,
-  maxValue,
-  orientation = "vertical",
-  primaryLegend,
-  secondaryLegend,
+  realLegend,
+  planLegend,
   height = 200,
 }: {
   items: BarDatum[];
-  maxValue?: number;
-  orientation?: "vertical" | "horizontal";
-  primaryLegend?: string;
-  secondaryLegend?: string;
+  realLegend: string;
+  planLegend?: string;
   height?: number;
 }) {
-  const progress = useLoadProgress(760, `${orientation}-${items.map((i) => i.value).join("-")}`);
-  const computedMax = maxValue ?? Math.max(1, ...items.flatMap((i) => [Math.max(0, i.value), Math.max(0, i.secondaryValue ?? 0)]));
-
-  if (orientation === "horizontal") {
-    return (
-      <div className="silice-barras-h">
-        {items.map((item) => {
-          const pct = Math.min(100, Math.max(item.value > 0 ? 3 : 0, (item.value / computedMax) * 100)) * progress;
-          const secPct =
-            item.secondaryValue !== undefined
-              ? Math.min(100, Math.max(item.secondaryValue > 0 ? 2 : 0, (item.secondaryValue / computedMax) * 100)) * progress
-              : null;
-          return (
-            <div key={item.id} className="silice-barras-h__fila">
-              <div className="silice-barras-h__cabecera">
-                <div className="silice-barras-h__nombre">
-                  <strong>{item.label}</strong>
-                  {item.sublabel && <span className="silice-barras-h__sub">{item.sublabel}</span>}
-                </div>
-                <span className="silice-barras-h__valor">{item.valueLabel}</span>
-              </div>
-              <div className="silice-barras-h__pista">
-                <div className="silice-barras-h__relleno" style={{ inlineSize: `${pct}%`, backgroundColor: item.color ?? "#222427" }} />
-              </div>
-              {secPct !== null && (
-                <div className="silice-barras-h__pista silice-barras-h__pista--sec">
-                  <div
-                    className="silice-barras-h__relleno"
-                    style={{ inlineSize: `${secPct}%`, backgroundColor: item.secondaryColor ?? "#e5b21a" }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  const primarySwatch = items.find((i) => i.color)?.color ?? "#222427";
-  const secondarySwatch = items.find((i) => i.secondaryColor)?.secondaryColor ?? "#e5b21a";
+  const progress = useLoadProgress(760, items.map((i) => `${i.id}:${i.real}:${i.plan}`).join("|"));
   const maxBarPx = Math.max(48, height - 28);
+  // Una barra con valor mide al menos 4 px para que se vea; la animación la lleva de 0 a su alto.
+  const alto = (v: number | null | undefined) =>
+    finito(v) && v > 0 ? Math.max(4, (Math.min(100, v) / 100) * maxBarPx) * progress : 0;
+  const conPlan = items.some((i) => i.plan !== undefined);
 
   return (
     <div className="silice-barras-v">
-      {(primaryLegend || secondaryLegend) && (
-        <div className="silice-barras-v__leyenda">
-          {primaryLegend && (
-            <span className="silice-barras-v__leyenda-item">
-              <span className="silice-barras-v__muestra" style={{ backgroundColor: primarySwatch }} aria-hidden="true" />
-              {primaryLegend}
-            </span>
-          )}
-          {secondaryLegend && (
-            <span className="silice-barras-v__leyenda-item">
-              <span className="silice-barras-v__muestra" style={{ backgroundColor: secondarySwatch }} aria-hidden="true" />
-              {secondaryLegend}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="silice-barras-v__leyenda">
+        <span className="silice-barras-v__leyenda-item">
+          <span className="silice-barras-v__muestra silice-barras-v__muestra--real" aria-hidden="true" />
+          {realLegend}
+        </span>
+        {conPlan && planLegend && (
+          <span className="silice-barras-v__leyenda-item">
+            <span className="silice-barras-v__muestra silice-barras-v__muestra--plan" aria-hidden="true" />
+            {planLegend}
+          </span>
+        )}
+      </div>
 
       <div className="silice-barras-v__lienzo">
         <div className="silice-barras-v__area" style={{ blockSize: height }}>
           <div className="silice-barras-v__rejilla" aria-hidden="true">
-            {[100, 75, 50, 25, 0].map((tick) => {
-              const bottomPx = (tick / 100) * maxBarPx;
-              return (
-                <div key={tick} className="silice-barras-v__linea" style={{ insetBlockEnd: `${bottomPx}px` }}>
-                  <span className="silice-barras-v__tick">
-                    {maxValue === 100 ? `${tick} %` : formatearDecimal((computedMax * tick) / 100, 0)}
-                  </span>
-                  <div className={`silice-barras-v__trazo${tick === 0 ? " silice-barras-v__trazo--base" : ""}`} />
-                </div>
-              );
-            })}
+            {MARCAS_DE_LA_ESCALA.map((tick) => (
+              <div key={tick} className="silice-barras-v__linea" style={{ insetBlockEnd: `${(tick / 100) * maxBarPx}px` }}>
+                <span className="silice-barras-v__tick">{`${tick} %`}</span>
+                <div className={`silice-barras-v__trazo${tick === 0 ? " silice-barras-v__trazo--base" : ""}`} />
+              </div>
+            ))}
           </div>
 
           <div className="silice-barras-v__columnas">
             {items.map((item) => {
-              const primaryH = Math.max(item.value > 0 ? 4 : 0, (Math.max(0, item.value) / computedMax) * maxBarPx * progress);
-              const secondaryH =
-                item.secondaryValue !== undefined
-                  ? Math.max(item.secondaryValue > 0 ? 4 : 0, (Math.max(0, item.secondaryValue) / computedMax) * maxBarPx * progress)
-                  : null;
+              const hReal = alto(item.real);
+              const hPlan = alto(item.plan);
               return (
                 <div key={item.id} className="silice-barras-v__grupo">
                   <div className="silice-barras-v__par">
                     <div className="silice-barras-v__col">
-                      <span className="silice-barras-v__cifra">{item.valueLabel}</span>
-                      <div
-                        className="silice-barras-v__barra"
-                        style={{ blockSize: `${primaryH}px`, backgroundColor: item.color ?? "#222427" }}
-                      />
+                      <span className="silice-barras-v__cifra">
+                        <Cifra texto={item.realText} />
+                      </span>
+                      <div className="silice-barras-v__barra silice-barras-v__barra--real" style={{ blockSize: `${hReal}px` }} />
                     </div>
-                    {secondaryH !== null && (
+                    {item.plan !== undefined && (
                       <div className="silice-barras-v__col">
-                        <span className="silice-barras-v__cifra silice-barras-v__cifra--sec">{item.secondaryLabel ?? ""}</span>
+                        <span className="silice-barras-v__cifra silice-barras-v__cifra--sec">
+                          <Cifra texto={item.planText} />
+                        </span>
                         <div
-                          className="silice-barras-v__barra"
-                          style={{ blockSize: `${secondaryH}px`, backgroundColor: item.secondaryColor ?? "#e5b21a" }}
+                          className="silice-barras-v__barra silice-barras-v__barra--plan"
+                          style={{ blockSize: `${hPlan}px`, ...(hPlan === 0 ? { borderWidth: 0 } : {}) }}
                         />
                       </div>
                     )}
@@ -349,11 +363,6 @@ export function AnimatedBarChart({
               <span className="silice-barras-v__rotulo-principal" title={item.label}>
                 {item.label}
               </span>
-              {item.sublabel && (
-                <span className="silice-barras-v__rotulo-sub" title={item.sublabel}>
-                  {item.sublabel}
-                </span>
-              )}
             </div>
           ))}
         </div>
@@ -362,89 +371,61 @@ export function AnimatedBarChart({
   );
 }
 
-/* 4. Medidor de rango de riesgo (Base / P50 / P80 / P95 opcional) */
-export function RiskRangeMeter({
-  base,
-  p50,
-  p80,
-  p95,
-  currency,
-  baseText,
-  p50Text,
-  p80Text,
-  p95Text,
-}: {
-  base: number;
-  p50: number;
-  p80: number;
-  p95?: number;
-  currency: string;
-  baseText?: string;
-  p50Text?: string;
-  p80Text?: string;
-  p95Text?: string;
-}) {
-  const maxVal = Math.max(p95 ?? 0, p80, p50, base * 1.05, 1);
-  const progress = useLoadProgress(720, `${base}-${p80}-${p95 ?? 0}`);
-  const pct = (v: number) => Math.min(100, Math.max(6, (Math.max(0, v) / maxVal) * 100)) * progress;
-  const delta = (v: number) => {
-    if (base <= 0) return "0,0 %";
-    const diff = ((v - base) / base) * 100;
-    const signo = diff > 0 ? "+" : "";
-    return `${signo}${formatearDecimal(diff, 1)} %`;
-  };
+/* 4. Rango de un costo proyectado (RiskRangeMeter): cada escenario contra lo previsto (IBCS) */
+export interface PuntoDelRango {
+  rotulo: string;
+  // Solo dibuja: el monto de la API.
+  valor: number | null;
+  // Lo que se lee, ya en es-VE («1.302,46 USD»).
+  texto: string | null;
+  // «plan»: lo previsto (el presupuesto base), una marca en contorno. «pronostico»: un escenario (P50, P80), una barra
+  // achurada que va de la base al escenario.
+  tipo: "plan" | "pronostico";
+}
 
-  const filas = [
-    {
-      label: "Presupuesto base vigente",
-      value: base,
-      text: baseText ?? `${formatearDecimal(base)} ${currency}`,
-      color: "#222427",
-      delta: "0,0 %",
-    },
-    {
-      label: "Escenario probable (P50)",
-      value: p50,
-      text: p50Text ?? `${formatearDecimal(p50)} ${currency}`,
-      color: "#5b6270",
-      delta: delta(p50),
-    },
-    {
-      label: "Exposición recomendada (P80)",
-      value: p80,
-      text: p80Text ?? `${formatearDecimal(p80)} ${currency}`,
-      color: "#e5b21a",
-      delta: delta(p80),
-    },
-    ...(p95 !== undefined
-      ? [
-          {
-            label: "Estrés extremo (P95)",
-            value: p95,
-            text: p95Text ?? `${formatearDecimal(p95)} ${currency}`,
-            color: "#b91c1c",
-            delta: delta(p95),
-          },
-        ]
-      : []),
-  ];
+// La escala va de la menor a la mayor cifra (no desde cero: contra cero, base, P50 y P80 medirían casi lo mismo). La base
+// cruza cada pista con una línea, para comparar cada escenario contra ella; un escenario por debajo va de él a la base.
+// El porcentaje del ancho solo dibuja: no se escribe ninguna variación.
+export function RiskRangeMeter({ puntos, etiqueta = "Rango de exposición de costos" }: { puntos: PuntoDelRango[]; etiqueta?: string }) {
+  const progress = useLoadProgress(720, puntos.map((p) => `${p.rotulo}:${p.valor}`).join("|"));
+  const valores = puntos.map((p) => p.valor).filter(finito);
+  const menor = valores.length > 0 ? Math.min(...valores) : 0;
+  const rango = valores.length > 0 ? Math.max(...valores) - menor : 0;
+  const posicion = (v: number) => (rango > 0 ? ((v - menor) / rango) * 100 : 0);
+  const base = puntos.find((p) => p.tipo === "plan" && finito(p.valor))?.valor ?? null;
+  const enBase = base !== null ? posicion(base) : 0;
+  // Una marca en `x` % sin salirse de la pista: se corre hacia dentro lo mismo que avanza.
+  const sobre = (x: number) => ({ insetInlineStart: `${x}%`, translate: `-${x}%` });
 
   return (
-    <div className="silice-riesgo-medidor" role="group" aria-label="Rango de exposición de costos">
-      {filas.map((r) => (
-        <div key={r.label} className="silice-riesgo-medidor__fila">
-          <div className="silice-riesgo-medidor__cabecera">
-            <span className="silice-riesgo-medidor__nombre">{r.label}</span>
-            <span className="silice-riesgo-medidor__valor">
-              {r.text} <span className="silice-riesgo-medidor__delta">({r.delta})</span>
-            </span>
+    <div className="silice-riesgo-medidor" role="group" aria-label={etiqueta}>
+      <p className="silice-riesgo-medidor__nota">Cada barra va del presupuesto base al escenario.</p>
+      {puntos.map((p) => {
+        const hasta = finito(p.valor) ? posicion(p.valor) : null;
+        const ancho = hasta === null ? 0 : Math.abs(hasta - enBase) * progress;
+        const desde = hasta !== null && hasta < enBase ? enBase - ancho : enBase;
+        return (
+          <div key={p.rotulo} className="silice-riesgo-medidor__fila">
+            <div className="silice-riesgo-medidor__cabecera">
+              <span className="silice-riesgo-medidor__nombre">{p.rotulo}</span>
+              <span className="silice-riesgo-medidor__valor">
+                <Cifra texto={p.texto} />
+              </span>
+            </div>
+            <div className="silice-riesgo-medidor__pista">
+              {p.tipo === "plan"
+                ? hasta !== null && <div className="silice-riesgo-medidor__marca" style={sobre(hasta)} />
+                : hasta !== null && (
+                    <div
+                      className="silice-riesgo-medidor__barra silice-riesgo-medidor__barra--pronostico"
+                      style={{ insetInlineStart: `${desde}%`, inlineSize: `${ancho}%` }}
+                    />
+                  )}
+              {base !== null && <div className="silice-riesgo-medidor__base" style={sobre(enBase)} aria-hidden="true" />}
+            </div>
           </div>
-          <div className="silice-riesgo-medidor__pista">
-            <div className="silice-riesgo-medidor__barra" style={{ inlineSize: `${pct(r.value)}%`, backgroundColor: r.color }} />
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
-

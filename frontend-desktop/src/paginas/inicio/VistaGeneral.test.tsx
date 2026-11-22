@@ -741,3 +741,37 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
   });
 });
 
+
+// Los lanzadores de los espacios de la empresa (rediseño 2026-11-21): cada uno se llama como su espacio en `marco/espacios.ts`
+// (el mismo nombre de la barra lateral), no con un nombre propio, y dice las herramientas que la cuenta puede abrir allí. El
+// número de orden («01») es adorno: no entra en el nombre del enlace. Oráculos escritos a mano.
+describe("Vista general: los lanzadores de los espacios", () => {
+  test("cada lanzador lleva el nombre de su espacio y abre su primera herramienta usable", async () => {
+    montar();
+    const lanzadores = await bloque("Herramientas dedicadas");
+    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
+    expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
+    expect(within(lanzadores).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/resumen");
+    expect(lanzadores.textContent).not.toMatch(/Auditor Forense|Precios, Catálogo|Índices BCV|Cantera/);
+  });
+
+  test("cada lanzador describe las herramientas de su espacio que la cuenta puede usar, con sus nombres", async () => {
+    montar();
+    const lanzadores = await bloque("Herramientas dedicadas");
+    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAccessibleDescription(
+      "Subir y auditar Excel · Libro de la empresa · Historial de auditorías",
+    );
+    // Quien arma no administra precios: ni «Precios de la empresa» ni «Índices del BCV».
+    expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAccessibleDescription(
+      "Catálogo de partidas e insumos · Simulador de listas",
+    );
+  });
+
+  test("con la especialidad de producción apagada no se ofrece su lanzador", async () => {
+    apagados = ["produccion"];
+    montar();
+    const lanzadores = await bloque("Herramientas dedicadas");
+    await waitFor(() => expect(within(lanzadores).queryByRole("link", { name: "Costos de producción" })).toBeNull());
+    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toBeInTheDocument();
+  });
+});
