@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 
 from adapters.espacio.especialidades import Constante
+from aplicacion.cifras import precision_para
 
 _CENTIMO = Decimal("0.01")
 
@@ -34,7 +35,7 @@ class ResumenImpuestos:
 
 def _centimos(valor: Decimal) -> Decimal:
     with localcontext() as contexto:
-        contexto.prec = max(60, len(valor.as_tuple().digits) + 10)
+        contexto.prec = precision_para(valor)
         return valor.quantize(_CENTIMO, rounding=ROUND_HALF_UP)
 
 
@@ -44,9 +45,7 @@ def con_iva(
     """El IVA de `subtotal` a `alicuota` (fracción: 0,16 es 16 %). El total suma las cifras ya
     redondeadas, así lo que se lee en pantalla cuadra."""
     with localcontext() as contexto:
-        contexto.prec = max(
-            60, len(subtotal.as_tuple().digits) + len(alicuota.as_tuple().digits) + 10
-        )
+        contexto.prec = precision_para(subtotal, alicuota)
         base = _centimos(subtotal)
         iva = _centimos(subtotal * alicuota)
         return ResumenImpuestos(base, iva, base + iva)

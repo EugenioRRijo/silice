@@ -49,7 +49,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
-from aplicacion.cifras import cifra_escrita, texto_de_cifra
+from aplicacion.cifras import cifra_escrita, precision_para, texto_de_cifra
 from aplicacion.listas_para_armar import (
     SinListaParaArmar,
     exigir_responsable,
@@ -126,6 +126,8 @@ _LARGO_CITAS = 400
 _CENTIMO = Decimal("0.01")
 _DECIMA = Decimal("0.1")
 _CIEN = Decimal(100)
+#: Las cifras del margen: las del contexto por omisión, como en `main` antes de L2.
+_CIFRAS_DEL_MARGEN = 28
 _Q1 = Decimal("0.25")
 _MEDIANA = Decimal("0.5")
 
@@ -185,7 +187,7 @@ class Propuesta:
 
 def _cuantizar(valor: Decimal, paso: Decimal, rounding: str = ROUND_HALF_UP) -> Decimal:
     with localcontext() as contexto:
-        contexto.prec = max(60, len(valor.as_tuple().digits) + 10)
+        contexto.prec = precision_para(valor)
         return valor.quantize(paso, rounding=rounding)
 
 
@@ -552,11 +554,9 @@ def margen(objetivo: Decimal, precio_unitario: Decimal) -> Decimal:
     (`ROUND_HALF_UP`): negativo si el objetivo queda por debajo del precio con utilidad."""
     if precio_unitario <= 0:
         raise ValueError("el precio unitario debe ser mayor que cero")
-    with localcontext() as contexto:
-        contexto.prec = max(
-            60,
-            len(objetivo.as_tuple().digits) + len(precio_unitario.as_tuple().digits) + 10,
-        )
+    # Un porcentaje, no un monto: con las 28 cifras del contexto por omisión (sin `precision_para`).
+    # Un margen que no cabe es absurdo y lanza `InvalidOperation`; la API lo dice «sin margen».
+    with localcontext(prec=_CIFRAS_DEL_MARGEN):
         porcentaje = (objetivo - precio_unitario) / precio_unitario * _CIEN
         return porcentaje.quantize(_DECIMA, rounding=ROUND_HALF_UP)
 

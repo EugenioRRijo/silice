@@ -34,7 +34,7 @@ from adapters.espacio.modelo import (
 )
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja, hoja_desperdicio
-from aplicacion.cifras import texto_de_cifra
+from aplicacion.cifras import precision_para, texto_de_cifra
 from aplicacion.desperdicio import GuardadoDelDesglose
 from aplicacion.frentes import frente_de
 from aplicacion.hoja_borradores import BorradorVivo
@@ -103,7 +103,7 @@ def monto(valor: Decimal) -> Monto:
     """`texto` como la clasica (dos decimales) y `exacto`; con precision de sobra para que una
     cifra de muchos digitos no falle al redondear (el contexto por omision tiene 28)."""
     with localcontext() as contexto:
-        contexto.prec = max(60, len(valor.as_tuple().digits) + 10)
+        contexto.prec = precision_para(valor)
         return Monto(formatear_decimal(valor, DECIMALES_PRESENTACION), format(valor, "f"))
 
 
