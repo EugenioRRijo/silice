@@ -31,7 +31,10 @@ INDICE = (
     '<body><div id="raiz"></div></body></html>'
 )
 GUION = "console.log('silice');"
-PORTADA = '<!doctype html><html lang="es"><head><title>Portada de pruebas</title></head><body></body></html>'
+PORTADA = (
+    '<!doctype html><html lang="es"><head><title>Portada de pruebas</title></head>'
+    "<body></body></html>"
+)
 VARIABLE_PORTADA = "SILICE_PORTADA_WEB"
 MENSAJE_PORTADA_SIN_COMPILAR = (
     "La portada de pruebas no está compilada (npm run build:portada en frontend-desktop)."
@@ -226,7 +229,8 @@ def test_con_la_variable_la_raiz_sirve_la_portada_compilada_con_csp(dist: Path) 
 
 @pytest.mark.usefixtures("portada_web")
 def test_con_la_variable_y_sin_compilar_la_portada_da_404_con_mensaje(dist: Path) -> None:
-    """Sin `npm run build:portada` no hay respaldo escrito en Python: un 404 que dice cómo compilarla."""
+    """Sin `npm run build:portada` no hay respaldo escrito en Python: un 404 que dice cómo
+    compilarla."""
     respuesta = _cliente().get("/")
     assert respuesta.status_code == 404
     assert respuesta.json() == {"detalle": MENSAJE_PORTADA_SIN_COMPILAR}
@@ -234,6 +238,7 @@ def test_con_la_variable_y_sin_compilar_la_portada_da_404_con_mensaje(dist: Path
 
 
 def test_no_queda_una_segunda_portada_escrita_en_python() -> None:
-    """Una sola portada: la de Vite (`frontend-desktop/portada.html`). `api/portada.py` se retiró."""
+    """Una sola portada: la de Vite (`frontend-desktop/portada.html`); `api/portada.py` se
+    retiró."""
     assert importlib.util.find_spec("api.portada") is None
     assert not hasattr(interfaz, "PORTADA_HTML")

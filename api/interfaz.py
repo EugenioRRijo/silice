@@ -11,10 +11,16 @@ Toda respuesta de `/app` lleva la CSP del plan de la sesión 2 (`default-src 'se
 `Cache-Control: no-cache` (los recursos de Vite llevan huella en el nombre). `'unsafe-inline'` en
 estilos queda solo mientras Carbon o Univer lo exijan (lo comprueba la tarea 2.4 en el navegador).
 La protección de red y de hosts (`api.proteccion`) envuelve también este montaje.
+
+`GET /` no es parte del producto: la suite de escritorio abre `/app/` y la raíz redirige allí (307).
+Solo con `SILICE_PORTADA_WEB=1` en el entorno sirve la portada web de pruebas, que compila
+`npm run build:portada` (`DIST/portada.html`) y que el instalador no lleva; sin esa variable,
+`/app/portada.html` tampoco se sirve aunque esté en la carpeta.
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -24,12 +30,16 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
 
-from api.portada import PORTADA_HTML
 from operacion.config import RAIZ
 
 PREFIJO = "/app"
 DIST: Path = RAIZ / "frontend-desktop" / "dist"
 MENSAJE_SIN_COMPILAR = "La interfaz nueva no está compilada (npm run build en frontend-desktop)."
+VARIABLE_PORTADA = "SILICE_PORTADA_WEB"
+ARCHIVO_PORTADA = "portada.html"
+MENSAJE_PORTADA_SIN_COMPILAR = (
+    "La portada de pruebas no está compilada (npm run build:portada en frontend-desktop)."
+)
 MENSAJES = {404: "No existe ese archivo de la interfaz.", 405: "La interfaz solo admite GET."}
 CSP = "; ".join(
     (
@@ -52,6 +62,12 @@ CABECERAS = {
 }
 
 
+def portada_activa() -> bool:
+    """La portada web de pruebas, encendida solo con `SILICE_PORTADA_WEB=1` (se lee en cada
+    petición)."""
+    return os.environ.get(VARIABLE_PORTADA) == "1"
+
+
 def con_cabeceras(respuesta: Response) -> Response:
     """Las cabeceras de seguridad de `/app`; al HTML, además, `Cache-Control: no-cache`."""
     respuesta.headers.update(CABECERAS)
@@ -71,6 +87,8 @@ class InterfazNueva:
         carpeta = DIST
         if not carpeta.is_dir():
             respuesta: Response = JSONResponse({"detalle": MENSAJE_SIN_COMPILAR}, status_code=404)
+        elif _es_la_portada(scope) and not portada_activa():
+            respuesta = JSONResponse({"detalle": MENSAJES[404]}, status_code=404)
         else:
             estaticos = StaticFiles(directory=carpeta, html=True, check_dir=False)
             try:
@@ -81,11 +99,21 @@ class InterfazNueva:
         await con_cabeceras(respuesta)(scope, receive, send)
 
 
-def portada(_request: Request) -> Response:
-    """`GET /` → portada compilada por Vite (`DIST/portada.html`) o respaldo autocontenido."""
-    compilada = DIST / "portada.html"
-    html = compilada.read_text(encoding="utf-8") if compilada.is_file() else PORTADA_HTML
-    return con_cabeceras(HTMLResponse(html))
+def _es_la_portada(scope: Scope) -> bool:
+    ruta = str(scope.get("path", ""))
+    return ruta.removeprefix(PREFIJO).strip("/") == ARCHIVO_PORTADA
+
+
+def raiz(request: Request) -> Response:
+    """`GET /` → `/app/` (307); con `SILICE_PORTADA_WEB=1`, la portada de pruebas compilada por
+    Vite (`DIST/portada.html`) o un 404 que dice cómo compilarla."""
+    if not portada_activa():
+        return redirigir(request)
+    compilada = DIST / ARCHIVO_PORTADA
+    if not compilada.is_file():
+        sin_compilar = JSONResponse({"detalle": MENSAJE_PORTADA_SIN_COMPILAR}, status_code=404)
+        return con_cabeceras(sin_compilar)
+    return con_cabeceras(HTMLResponse(compilada.read_text(encoding="utf-8")))
 
 
 def redirigir(_request: Request) -> Response:
@@ -95,6 +123,6 @@ def redirigir(_request: Request) -> Response:
 
 def montar(app: FastAPI) -> None:
     """Registra `/` y `/app` (fuera del esquema OpenAPI y sin clave: son estáticos y públicos)."""
-    app.add_route("/", portada, methods=["GET", "HEAD"], include_in_schema=False)
+    app.add_route("/", raiz, methods=["GET", "HEAD"], include_in_schema=False)
     app.add_route(PREFIJO, redirigir, methods=["GET", "HEAD"], include_in_schema=False)
     app.mount(PREFIJO, InterfazNueva(), name="interfaz")
