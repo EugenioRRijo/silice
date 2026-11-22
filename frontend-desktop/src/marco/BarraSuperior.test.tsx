@@ -81,6 +81,27 @@ describe("BarraSuperior: contexto limpio y modo ventana dedicada", () => {
   });
 });
 
+// La interfaz es la suite de escritorio (start.py abre /app/): la portada web de `GET /` no existirá en el producto y la
+// barra no la enlaza, ni dentro ni fuera de la ventana dedicada (Eugenio, 2026-11-22).
+describe("BarraSuperior: sin enlace a la portada web", () => {
+  it.each([false, true])("con ventana dedicada %s no hay enlace «Portada» ni a «/» fuera del enrutador", (enVentanaDedicada) => {
+    render(
+      <MemoryRouter initialEntries={["/auditoria/subir"]}>
+        <BarraSuperior
+          alAbrirBuscador={vi.fn()}
+          nombre="Ana"
+          carpeta={null}
+          enVentanaDedicada={enVentanaDedicada}
+          espacioActivo="auditoria"
+          espacios={[{ id: "auditoria", titulo: "Auditar un presupuesto", ruta: "/auditoria/subir" }]}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("link", { name: /portada/i })).toBeNull();
+    expect(screen.getByRole("banner").querySelector(".silice-marco-barra__portada")).toBeNull();
+  });
+});
+
 describe("BarraSuperior: buscador", () => {
   it("el clic llama a alAbrirBuscador una vez", async () => {
     const { alAbrirBuscador } = pintar();
