@@ -1630,4 +1630,41 @@ describe("Marco: barra lateral plegable (Ocultar / Mostrar y Ctrl+B)", () => {
     expect(lateral).not.toHaveAttribute("data-collapsed", "true");
     expect(window.localStorage.getItem("silice_sidebar_collapsed")).toBe("0");
   });
+
+  // Como en «el foco no se pierde cuando la acción quita el control»: el botón pulsado se desmonta (el riel y la barra
+  // abierta son ramas distintas) y el foco caía en el cuerpo del documento (WCAG 2.4.3). Pasa al botón equivalente.
+  test("con el teclado, Ocultar deja el foco en Mostrar y Mostrar lo deja en Ocultar", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/inicio/pendientes" });
+    await titulo("Pendientes");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    within(lateral).getByRole("button", { name: "Ocultar barra lateral" }).focus();
+    await u.keyboard("{Enter}");
+    expect(within(lateral).getByRole("button", { name: "Mostrar barra lateral" })).toHaveFocus();
+    await u.keyboard("{Enter}");
+    expect(within(lateral).getByRole("button", { name: "Ocultar barra lateral" })).toHaveFocus();
+  });
+
+  test("Ctrl+B con el foco en una obra de la lista lo deja en Mostrar barra lateral, no en el cuerpo", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/inicio/pendientes" });
+    await titulo("Pendientes");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    const lista = await within(lateral).findByRole("list", { name: "Obras" });
+    within(lista).getAllByRole("link")[0]!.focus();
+    await u.keyboard("{Control>}b{/Control}");
+    expect(lateral).toHaveAttribute("data-collapsed", "true");
+    expect(within(lateral).getByRole("button", { name: "Mostrar barra lateral" })).toHaveFocus();
+  });
+
+  test("Ctrl+B con el foco en el contenido no lo mueve", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/inicio/pendientes" });
+    await titulo("Pendientes");
+    const contenido = document.getElementById("contenido")!;
+    contenido.focus();
+    await u.keyboard("{Control>}b{/Control}");
+    expect(screen.getByRole("complementary", { name: "Barra lateral" })).toHaveAttribute("data-collapsed", "true");
+    expect(contenido).toHaveFocus();
+  });
 });
