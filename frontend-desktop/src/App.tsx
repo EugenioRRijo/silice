@@ -9,7 +9,6 @@ import type { ConsultaPrimerArranque } from "./bienvenida/usePrimerArranque";
 import { CambiarContrasena } from "./sesion/CambiarContrasena";
 import { Entrar } from "./sesion/Entrar";
 import { useSesion } from "./sesion/useSesion";
-import { TamanoLetra } from "./comun/TamanoLetra";
 import { Marco } from "./marco/Marco";
 import { ProveedorDelTema } from "./marco/useTema";
 import { MenuCuenta } from "./shell/MenuCuenta";
@@ -19,9 +18,9 @@ import type { CrearHojaVisor } from "./visor/hojaVisor";
 
 // El enrutador es de hash (`/app/#/inicio/general`): el servidor de /app es estatico y no devuelve index.html para
 // /app/libros al recargar, y asi tampoco hace falta tocarlo cuando la interfaz vaya dentro de Tauri.
-// Cabecera de las pantallas sin el marco (entrar, bienvenida, recuperar, cambio de contrasena obligatorio): «Sílice» y el
-// tamano de letra, que la persona necesita para leer la pantalla de entrada; con una sesion provisional, tambien su cuenta
-// para poder salir. Sin navegacion: todavia no hay pantallas a las que ir.
+// Cabecera de las pantallas sin el marco (entrar, bienvenida, recuperar, cambio de contrasena obligatorio): «Sílice» y, con
+// una sesion provisional, su cuenta para poder salir. El tamano de letra vive solo en Cuenta › Pantalla y tamano de letra
+// (Eugenio, 2026-11-22). Sin navegacion: todavia no hay pantallas a las que ir.
 function CabeceraSinMarco({ nombre, alSalir }: { nombre?: string; alSalir: () => void }) {
   return (
     <Header aria-label="Sílice" className="silice-marco-barra silice-sin-marco">
@@ -32,7 +31,6 @@ function CabeceraSinMarco({ nombre, alSalir }: { nombre?: string; alSalir: () =>
         Sílice
       </HeaderName>
       <HeaderGlobalBar>
-        <TamanoLetra />
         {nombre && <MenuCuenta nombre={nombre} alSalir={alSalir} />}
       </HeaderGlobalBar>
     </Header>
