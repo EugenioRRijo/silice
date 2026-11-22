@@ -5,11 +5,13 @@ Una prueba por causa, con su frontera. Los oraculos son tablas escritas a mano a
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
 from aplicacion.hoja import Borrador
 from asistente.propuestas import EstadoPropuesta, Propuesta, TipoPropuesta, aplicar
-from asistente.validacion import Causa, Rechazo, validar_llamada
+from asistente.validacion import Causa, Rechazo, numeros_de, validar_llamada
 from tests.fixtures.asistente_pedidos import AMBIENTE, FECHA, ORIGEN, catalogo, contexto
 
 
@@ -244,3 +246,34 @@ def test_una_cita_tomada_del_resumen_del_borrador_y_no_del_pedido_se_rechaza():
     contexto_ = contexto(borrador=borrador, textos=("Una toma de agua a 60 cm del piso.",))
     resultado = validar_llamada("proponer_punto", punto, contexto_)
     assert isinstance(resultado, Rechazo) and resultado.causa is Causa.CITA_NO_LITERAL
+
+
+@pytest.mark.parametrize(
+    ("texto", "esperado"),
+    [
+        ("1.200", Decimal("1200")),  # punto de miles sin coma: 1200, no 1,2
+        ("1.234,56", Decimal("1234.56")),
+        ("0,5", Decimal("0.5")),
+        ("12", Decimal("12")),
+        ("1.200 m", Decimal("1200")),
+    ],
+)
+def test_la_guarda_lee_coma_decimal_y_punto_de_miles(texto, esperado):
+    assert numeros_de(texto) == {esperado}
+
+
+def test_la_guarda_rechaza_la_cifra_de_la_ia_mil_veces_menor_y_acepta_la_correcta():
+    partida = {
+        "codigo": "AF-SALIDA",
+        "unidad": "punto",
+        "citas": [{"campo": "cantidad", "texto": "1.200 salidas"}],
+        "supuestos": [],
+    }
+    textos = ("necesito 1.200 salidas de agua",)
+    _no(
+        "proponer_partida",
+        {**partida, "cantidad": "1.2"},
+        Causa.NUMERO_AUSENTE_DE_LA_CITA,
+        textos=textos,
+    )
+    _ok("proponer_partida", {**partida, "cantidad": "1200"}, textos=textos)
