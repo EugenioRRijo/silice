@@ -126,7 +126,7 @@ En los textos no se dice «módulo» ni «área».
   «Recorrido» cuando tocan) y el botón de la persona: un enlace a `#/cuenta/preferencias`, con el círculo de iniciales y el
   nombre; con letra Grande o Muy grande, solo el círculo, con el mismo nombre accesible; sin letras en el nombre, el ícono de
   persona. Salir de la sesión está en la Cuenta, no aquí.
-- **Tamaño de letra:** dentro del marco vive **solo en la Cuenta**, «Pantalla y tamaño de letra» (`#/cuenta/preferencias`,
+- **Tamaño de letra:** dentro del marco vive **solo en la Cuenta**, «Configuración» (`#/cuenta/preferencias`,
   `EspacioDeCuenta.tsx`), a un clic del botón de la persona (decisión de Eugenio, 2026-11-04). Antes de entrar en la sesión,
   la cabecera sin marco de `App.tsx` todavía muestra el control: es la única excepción.
 - **Barra lateral** (`BarraLateral.tsx`): 14,75 rem, fondo `--silice-lateral`. Es fija bajo la barra superior, con su propio
@@ -225,7 +225,7 @@ pantalla principal de la sección:
 
 El conmutador de Presupuesto dice «Presupuesto | Componer», no «Partidas» (decisión de Eugenio, 2026-11-04).
 
-**La Cuenta** (`EspacioDeCuenta.tsx`) tiene su barra con seis secciones: «Pantalla y tamaño de letra», «Cuentas y permisos»,
+**La Cuenta** (`EspacioDeCuenta.tsx`) tiene su barra con seis secciones: «Configuración», «Cuentas y permisos»,
 «Empresa y tema», «Carpetas», «Especialidades, IA e instalación» y «Ayuda y acerca de Sílice». Lo que la cuenta no puede
 usar no aparece; «Carpetas» pide además `cambiar_caso`. **El h1 de cada sección dice lo mismo que su pestaña** (también la
 Ayuda: «Ayuda y acerca de Sílice»; antes decía «Acerca de Sílice»). Una sección escrita a mano que la cuenta no puede usar

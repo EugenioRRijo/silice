@@ -257,7 +257,7 @@ def patron_de_hash(id_: str) -> str:
 
 def pagina_de_la_ruta(enlace: str) -> str | None:
     """La pantalla a la que lleva un enlace (`href` o `location.hash`), o `None` si no lleva a una
-    pantalla del registro (Pendientes, «Pantalla y tamaño de letra», un segmento desconocido o una
+    pantalla del registro (Pendientes, «Configuración», un segmento desconocido o una
     dirección vieja que F8 retiró, como `#/catalogo`)."""
     ruta = enlace.split("#", 1)[1] if "#" in enlace else enlace
     partes = [p for p in ruta.split("?", 1)[0].split("/") if p]

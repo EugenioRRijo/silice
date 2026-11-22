@@ -53,7 +53,7 @@ function CabeceraDeCuenta({ sesion, alSalir }: Pick<Props, "sesion" | "alSalir">
   );
 }
 
-// «Pantalla y tamaño de letra» (adenda C): el único lugar del tamaño de letra dentro del marco, para toda cuenta, con una
+// «Configuración» (adenda C): el único lugar del tamaño de letra dentro del marco, para toda cuenta, con una
 // muestra de lectura para comprobar al instante cómo se ve, y los datos de la cuenta.
 function Preferencias({ sesion }: { sesion: SesionRespuesta }) {
   return (
@@ -89,7 +89,7 @@ function Preferencias({ sesion }: { sesion: SesionRespuesta }) {
 }
 
 // El cuerpo de una sección, sin su h1: lo que la sección monta. Las cuatro de administración y la Ayuda pesan lo que pesa su
-// pantalla (carga a demanda); «Pantalla y tamaño de letra» no tiene pantalla en el registro.
+// pantalla (carga a demanda); «Configuración» no tiene pantalla en el registro.
 function Contenido({ def, sesion, pantalla }: { def: CuentaDef; sesion: SesionRespuesta; pantalla: Props["pantalla"] }) {
   if (def.id === "preferencias") return <Preferencias sesion={sesion} />;
   if (def.id === "contrasena") return <ContrasenaDeLaCuenta />;
@@ -106,8 +106,8 @@ function Contenido({ def, sesion, pantalla }: { def: CuentaDef; sesion: SesionRe
 }
 
 // La Cuenta como espacio (`#/cuenta/:seccion`; plan F6, T6; contrato de rutas §3): su cabecera con la persona, la barra de
-// secciones que la cuenta puede usar y, en el lienzo, la sección. Una sección que no existe lleva a «Pantalla y tamaño de
-// letra»; una que existe pero la cuenta no puede usar, escrita a mano, dice «Sin permiso» con la barra de lo que sí puede.
+// secciones que la cuenta puede usar y, en el lienzo, la sección. Una sección que no existe lleva a «Configuración»; una
+// que existe pero la cuenta no puede usar, escrita a mano, dice «Sin permiso» con la barra de lo que sí puede.
 // «Ayuda y acerca de Sílice» no pone h1 propio: lo trae su pantalla, con el mismo nombre que la pestaña (como en las demás
 // secciones, el h1 y la pestaña dicen lo mismo). Las demás lo ponen aquí, una sola vez.
 export function EspacioDeCuenta({ sesion, pantalla, alSalir }: Props) {

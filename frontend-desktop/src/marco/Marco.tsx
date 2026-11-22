@@ -540,7 +540,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                           />
                         }
                       />
-                      {/* La Cuenta (F6, T6): `/cuenta` abre «Pantalla y tamaño de letra». */}
+                      {/* La Cuenta (F6, T6): `/cuenta` abre «Configuración». */}
                       <Route path="/cuenta" element={<RaizDeLaCuenta />} />
                       <Route
                         path="/cuenta/:seccion"
@@ -619,7 +619,7 @@ function APendientes() {
   return <Navigate to={`${RUTA_DE_PENDIENTES}${search}`} replace />;
 }
 
-// `#/cuenta` abre la primera sección, «Pantalla y tamaño de letra», que es de toda cuenta; la consulta se conserva.
+// `#/cuenta` abre la primera sección, «Configuración», que es de toda cuenta; la consulta se conserva.
 function RaizDeLaCuenta() {
   const { search } = useLocation();
   return <Navigate to={`${rutaDeCuenta("preferencias")}${search}`} replace />;
