@@ -130,12 +130,13 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
               <div className="silice-tablero__anillos">
                 {anillosDePorcentaje(datos.control.anillos).map((a) => (
                   <div key={a.rotulo} className="silice-tablero__anillo">
-                    {/* La fracción solo dibuja el arco; lo que se lee es el texto del servidor («62.5 %»), en es-VE. */}
+                    {/* La fracción solo dibuja el arco; lo que se lee es el texto del servidor («62.5 %»), en es-VE. La
+                        variación (`favorable` de la API) la dice el anillo con ícono y palabra, no solo con el color. */}
                     <RadialGauge
                       label={a.rotulo}
                       fraccion={Number(a.fraccion)}
                       texto={formatoMontoEsVe(a.texto)}
-                      tone={a.favorable === true ? "emerald" : a.favorable === false ? "crimson" : "charcoal"}
+                      variacion={a.favorable === true ? "favorable" : a.favorable === false ? "desfavorable" : null}
                       size={92}
                     />
                   </div>

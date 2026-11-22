@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { CheckmarkOutline, WarningAlt } from "@carbon/icons-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
+import { TEXTO_SEMANTICA } from "../indicadores/ibcs";
 import "./VisualMeters.scss";
 
 // Los medidores del rediseño del 2026-11-21 (anillo, anillo por partes, barras y rango). Contrato de los cuatro:
@@ -8,18 +10,34 @@ import "./VisualMeters.scss";
 //   una cifra (DESIGN.md, «La pantalla no calcula nada»).
 // - Sin dato escriben «—» con «sin dato» para la lectora, nunca «0».
 // - Crecen al cargar (Eugenio, 2026-11-22: las animaciones del rediseño se quedan) y con `prefers-reduced-motion: reduce`
-//   se pintan ya en su valor final, sin pedir cuadros de animación.
+//   se pintan ya en su valor final, sin pedir cuadros de animación. La preferencia se escucha: si cambia con la pantalla
+//   abierta, el medidor salta a su valor; si se vuelve a permitir el movimiento, crece otra vez desde cero.
 // - Los colores salen de la hoja de estilos (tokens), no van en línea; el anillo por partes recibe el color de cada parte
 //   de quien lo llama, fijo por entidad.
 
+const MENOS_MOVIMIENTO = "(prefers-reduced-motion: reduce)";
+const hayMatchMedia = () => typeof window !== "undefined" && typeof window.matchMedia === "function";
+
+// Sin matchMedia (jsdom, un navegador viejo) se asume movimiento reducido: el medidor se pinta en su valor.
 function prefiereMenosMovimiento(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return hayMatchMedia() ? window.matchMedia(MENOS_MOVIMIENTO).matches : true;
+}
+
+function alCambiarElMovimiento(avisar: () => void): () => void {
+  if (!hayMatchMedia()) return () => {};
+  const consulta = window.matchMedia(MENOS_MOVIMIENTO);
+  if (typeof consulta.addEventListener !== "function") return () => {};
+  consulta.addEventListener("change", avisar);
+  return () => consulta.removeEventListener("change", avisar);
+}
+
+function usePrefiereMenosMovimiento(): boolean {
+  return useSyncExternalStore(alCambiarElMovimiento, prefiereMenosMovimiento, () => true);
 }
 
 // Progreso suave (cubic-out) de 0 a 1 al montar o al cambiar la clave; 1 de una vez con movimiento reducido.
 function useLoadProgress(durationMs: number, triggerKey: string): number {
-  const reducido = prefiereMenosMovimiento() || typeof requestAnimationFrame !== "function";
+  const reducido = usePrefiereMenosMovimiento() || typeof requestAnimationFrame !== "function";
   const [animProgress, setAnimProgress] = useState(() => (reducido ? 1 : 0));
 
   useEffect(() => {
@@ -69,12 +87,17 @@ export interface RadialGaugeProps {
   fraccion: number | null;
   // Lo que se lee en el centro, una sola vez: el texto del servidor ya en es-VE («62,5 %»).
   texto: string | null;
-  // Tinta (lo real, por omisión), o el verde y el rojo de una variación IBCS favorable o desfavorable.
-  tone?: "charcoal" | "emerald" | "crimson";
+  // La variación IBCS que manda la API (`favorable` del anillo). Sin ella el arco va en la tinta (lo real); con ella, en el
+  // verde o el rojo, y nunca solo en el color: al lado del anillo van su ícono y su palabra.
+  variacion?: "favorable" | "desfavorable" | null;
   size?: number;
 }
 
-export function RadialGauge({ label, fraccion, texto, tone = "charcoal", size = 96 }: RadialGaugeProps) {
+const TONO_DE_LA_VARIACION = { favorable: "emerald", desfavorable: "crimson" } as const;
+
+export function RadialGauge({ label, fraccion, texto, variacion = null, size = 96 }: RadialGaugeProps) {
+  const tone = variacion === null ? "charcoal" : TONO_DE_LA_VARIACION[variacion];
+  const IconoDeVariacion = variacion === "favorable" ? CheckmarkOutline : WarningAlt;
   const destino = finito(fraccion) ? Math.max(0, Math.min(1, fraccion)) : 0;
   const progress = useLoadProgress(720, `${label}-${destino}`);
 
@@ -107,6 +130,12 @@ export function RadialGauge({ label, fraccion, texto, tone = "charcoal", size = 
       </div>
       <div className="silice-radial__texto">
         <p className="silice-radial__etiqueta">{label}</p>
+        {variacion !== null && (
+          <p className={`silice-radial__variacion silice-radial__variacion--${variacion}`}>
+            <IconoDeVariacion size={16} aria-hidden="true" />
+            <span>{TEXTO_SEMANTICA[variacion]}</span>
+          </p>
+        )}
       </div>
     </div>
   );
@@ -210,6 +239,8 @@ export function AnimatedDonutChart({
                 strokeDasharray={`${visible} ${circumference}`}
                 strokeDashoffset={-(arco.inicio * circumference * progress)}
                 className={`silice-donut__segmento${resaltada ? " silice-donut__segmento--activo" : ""}`}
+                // La lectora y el teclado van por la leyenda (un botón por parte); el arco solo responde al ratón.
+                aria-hidden="true"
                 onMouseEnter={() => setSobre(idx)}
                 onMouseLeave={() => setSobre(null)}
               />
