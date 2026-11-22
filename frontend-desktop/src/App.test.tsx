@@ -72,8 +72,9 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Entrar" });
   });
 
-  // Antes en Cabecera.test.tsx: la persona necesita leer la pantalla de entrada; sin sesion no hay cuenta ni menu.
-  test("sin sesión la cabecera también trae el control de tamaño de letra, y no la cuenta ni el menú", async () => {
+  // Eugenio, 2026-11-22 («sigo insistiendo»): la letra y su tamaño van ÚNICAMENTE en la configuración del perfil
+  // (Cuenta › Pantalla y tamaño de letra), nunca a la derecha de la cabecera. Sin sesión no hay cuenta ni menú.
+  test("sin sesión la cabecera no trae el control de tamaño de letra, ni la cuenta ni el menú", async () => {
     sesionActual = () => json({ detalle: "Sin sesión." }, 401);
     render(<App />);
     await screen.findByRole("heading", { name: "Entrar" });
@@ -82,7 +83,7 @@ describe("App", () => {
     // La suite de escritorio no enlaza a la portada web (GET /), que es solo de pruebas (Eugenio, 2026-11-22).
     expect(within(banner).queryByRole("link", { name: "Portada" })).not.toBeInTheDocument();
     expect(banner.querySelector('a[href="/"]')).toBeNull();
-    expect(within(banner).getByRole("group", { name: "Tamaño de letra" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Tamaño de letra" })).not.toBeInTheDocument();
     expect(within(banner).queryByRole("button", { name: /^Cuenta de/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
   });
