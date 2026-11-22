@@ -4,7 +4,7 @@
 THESIS: el libro es la evidencia y la pantalla es una lente forense sobre él. Se rechaza el tablero de tarjetas
 con KPI en grande como sustituto de la evidencia, y la hoja escondida detrás de un clic. La app abre en la Vista general,
 que pone primero lo que bloquea; la cartera va por moneda, sin sumar Bs con USD. La navegación va por espacios.
-OWN-WORLD: IBM Carbon g10 nativo (paquete oficial @carbon/react), Atkinson Hyperlegible Next, marco azul petróleo, esquinas rectas,
+OWN-WORLD: IBM Carbon g10 nativo (paquete oficial @carbon/react), IBM Plex Sans y Mono, esquinas rectas,
 divisores de 1 px, severidad con ícono, morado solo para atípicos, verde/rojo IBCS solo en cifras de variación.
 STORY: el auditor suelta el libro, lo ve como en Excel con las celdas marcadas, toca un hallazgo, cae en su
 celda y lee libro contra Sílice.
@@ -18,36 +18,19 @@ ajustan aquí cuando la construcción los fije.
 
 ## Sistema
 
-> **Enmienda 2026-11-22 (aprobada por Eugenio): dirección «Instrumento de auditoría y control».** Sustituye la dirección
-> editorial anterior en tres puntos, y donde choque con lo que sigue en este documento, manda esta enmienda:
-> 1. **Tipografía:** una sola familia, **Atkinson Hyperlegible Next** (SIL OFL 1.1, variable 200-800, paquete
->    `@fontsource-variable/atkinson-hyperlegible-next` 5.3.0, alojada en el servidor), para todo, cifras y códigos incluidos
->    con `font-variant-numeric: tabular-nums`. Se retiran IBM Plex Sans, IBM Plex Mono y la cursiva. Solo 400 y 600
->    (500 en la cifra de pantalla); escala de 1,5 / 1,25 / 1 / 0,875 / 0,75 rem.
-> 2. **Color:** marco por omisión **petróleo `#15333a`** con raya de 2 px en **arena sílice `#d3c49a`** (el tema de la empresa
->    sigue pintándolos por `--silice-marco` y `--silice-acento`); neutros del concreto (tinta `#1b2120`, grafito `#4a5451`, gris de
->    obra `#5f6966`, borde `#c9d0cd`, hilo `#dde2df`, lateral `#e7ebe9`, fondo `#f2f4f2`, papel `#ffffff`, selección `#dde9e6`).
->    La severidad, el morado de los atípicos, el IBCS y el aviso V-16 **no cambian**. IBCS: real relleno (`#3b4542`), plan en
->    contorno de 1,5 px, previsión achurada a 45°.
-> 3. **Movimiento:** las animaciones se quedan, con reglas (ver «Movimiento»).
->
-> Radio 0 en todo (excepciones: la píldora de los contadores y el círculo de iniciales); sin sombras propias; densidad de
-> tablas `sm` (2 rem) y `md` (2,5 rem) con campos editables; las pantallas de trabajo van sin ancho máximo. Los valores exactos
-> viven en `src/estilos/tokens.scss` y los vigila `src/estilos/instrumentoAuditoria.test.ts`.
-
 - **Carbon oficial:** `@carbon/react` y `@carbon/styles` (Sass). No se recrea Carbon a mano ni se mezcla con otro
   sistema de componentes. Tema **g10** (claro): la escena es una laptop con luz variable, a veces en obra; el tema
   oscuro (g100) queda diferido.
-- **Tipografía:** Atkinson Hyperlegible Next para todo (enmienda 2026-11-22); referencias de celda (`PRESUPUESTO!F12`) y códigos de
-  regla en la misma familia, con el cero con barra de serie. Cifras con `font-variant-numeric: tabular-nums` (la familia no las trae
-  tabulares por omisión), alineadas a la derecha. Escala productiva de Carbon
+- **Tipografía:** IBM Plex Sans para todo; IBM Plex Mono para referencias de celda (`PRESUPUESTO!F12`) y códigos de
+  regla. Cifras con `font-variant-numeric: tabular-nums`, alineadas a la derecha. Escala productiva de Carbon
   (`body-compact-01` 14 px, `label-01` 12 px, `heading-03` 20 px para el valor de un indicador).
   **Tamaño base por presbicia (Eugenio, 2026-10-21):** la raíz mide 116,6667 % de la letra del navegador, así que el cuerpo de
   Carbon (14 px) sale a 16 px y la etiqueta más pequeña (12 px) a 14 px; todo va en rem. El control «Tamaño de letra» de la
   cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
   `--silice-escala-letra`. Con Grande y Muy grande el buscador de la barra superior queda en su ícono por debajo de 1536
   y 1920 px (véase «Marco»), y la cuenta queda en su círculo de iniciales. El texto de los gráficos de Carbon Charts
-  también sigue la escala (los gráficos van sin su barra de herramientas: su `button` queda dentro de un `div role="button"`, defecto de la librería que axe anota como `nested-interactive`, con rótulos en inglés; cada gráfico ya trae su tabla de montos exactos); el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). La familia se aloja en el propio servidor, sin CDN (RNF-08).
+  también sigue la escala (los gráficos van sin su barra de herramientas: su `button` queda dentro de un `div role="button"`, defecto de la librería que axe anota como `nested-interactive`, con rótulos en inglés; cada gráfico ya trae su tabla de montos exactos); el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
+  cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
   no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio. Única excepción a las esquinas rectas:
   la píldora de los contadores de la barra lateral (especificación 2026-10-26, §8 ter, aprobada por Eugenio) y el círculo
@@ -410,22 +393,9 @@ el acento ni un color de severidad suelto: la severidad se sigue diciendo **en p
 
 ## Movimiento
 
-Enmienda 2026-11-22 (Eugenio): **las animaciones se quedan**, y sustituyen al «ninguno decorativo» del 2026-10-18. Principio:
-se anima el trazo, nunca la cifra; una cifra es evidencia y sale final desde el primer fotograma. El movimiento explica estado,
-continuidad o ubicación y nada más.
-
-| Token | Valor | Para qué |
-|---|---|---|
-| `--silice-curva` | `cubic-bezier(0.16, 1, 0.3, 1)` | la única curva (deceleración, sin rebote) |
-| `--silice-t-respuesta` | 120 ms | color al pasar el ratón, pulsar y fila elegida |
-| `--silice-t-estado` | 200 ms | raya de la pestaña activa y aparición del plan |
-| `--silice-t-panel` | 320 ms | panel lateral, localizador de celda y cota |
-| `--silice-t-trazo` | 560 ms | la barra del real que se traza (una vez, al llegar los datos) |
-
-Solo `transform`, `opacity`, `clip-path` y color; nunca `width`, `height`, `inline-size` ni márgenes. `transition` nombra sus
-propiedades, nunca `all`. Sin coreografía al cargar, sin escalonado, sin bucles salvo el esqueleto de carga de Carbon.
-`prefers-reduced-motion: reduce` quita el movimiento espacial (llega el valor final) y conserva los cambios de color y
-opacidad, que dicen algo.
+Ninguno decorativo (Eugenio, 2026-10-18). Solo las transiciones de estado propias de los componentes Carbon
+(70-110 ms, `motion(standard, productive)`); los halos aparecen sin animación; nada anima al cargar la página;
+`prefers-reduced-motion: reduce` quita incluso esas transiciones.
 
 ## Texto
 
@@ -440,5 +410,4 @@ un toque, en el tooltip accesible de cada indicador.
 ## Prohibido
 
 Tarjetas con sombra para agrupar, íconos decorativos, puntos de color sin significado, gradientes, morado fuera de
-los atípicos, verde por ser positivo, cifras redondeadas sin el exacto a la vista, animar una cifra (conteos que suben), cortinas de
-pantalla completa con progreso inventado.
+los atípicos, verde por ser positivo, cifras redondeadas sin el exacto a la vista, animaciones de entrada.

@@ -1,5 +1,4 @@
-// Estilos propios de la aplicacion. Carbon pone la gramatica visual; editorial.scss aplica las superficies y los alias del
-// «Instrumento de auditoria y control» (DESIGN.md, enmienda 2026-11-22).
+// Estilos propios de la aplicacion. Carbon pone la gramatica visual; editorial.scss aplica el sistema Swiss-industrial.
 @use "./fuentes";
 @use "./tokens";
 @use "./editorial";
@@ -31,16 +30,14 @@ body {
   color: var(--silice-texto);
 }
 
-// Cifras: tabulares y alineadas a la derecha donde se usen. Las referencias de celda (PRESUPUESTO!H38) y los codigos van en
-// la misma familia, con cifras tabulares: el cero con barra de la familia ya distingue O-10 de 0-10.
+// Cifras: tabulares y alineadas a la derecha donde se usen. Referencias de celda y reglas en Plex Mono.
 .silice-cifra {
   font-variant-numeric: tabular-nums;
   text-align: end;
-  white-space: nowrap;
 }
 
 .silice-codigo {
-  font-variant-numeric: tabular-nums;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 .silice-entrada {
@@ -58,18 +55,19 @@ body {
   min-block-size: calc(100dvh - 3rem);
   place-items: center;
   padding: 4.5rem 1.5rem 2.5rem;
-  background-color: var(--silice-concreto);
+  background-color: var(--silice-stone);
 }
 
-// Entrar: el formulario va sobre papel, con la marca; sin panel oscuro, sin fichas translucidas y sin etiqueta en
-// mayusculas espaciadas. Los textos los fija Entrar.tsx; aqui solo la superficie.
 .silice-entrada__rejilla {
   inline-size: 100%;
   max-inline-size: 56rem;
   display: grid;
   grid-template-columns: minmax(18rem, 0.85fr) minmax(20rem, 1.15fr);
-  border: 1px solid var(--silice-borde);
-  background-color: var(--silice-papel);
+  border: 1px solid var(--silice-border);
+  border-radius: 1rem;
+  overflow: hidden;
+  background-color: var(--silice-surface);
+  box-shadow: 0 18px 42px rgba(24, 26, 29, 0.08);
 
   @media (max-width: 48rem) {
     grid-template-columns: 1fr;
@@ -81,9 +79,8 @@ body {
   align-content: space-between;
   gap: 2rem;
   padding: 2.25rem;
-  background-color: var(--silice-papel);
-  color: var(--silice-tinta);
-  border-inline-end: 1px solid var(--silice-hilo);
+  background-color: var(--silice-charcoal);
+  color: var(--cds-text-on-color);
 }
 
 .silice-entrada__marca-arriba {
@@ -93,25 +90,27 @@ body {
 
 .silice-entrada__etiqueta {
   margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 0.75rem;
-  line-height: 1.33;
-  letter-spacing: 0.01em;
-  color: var(--silice-grafito);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--silice-gold);
 }
 
 .silice-entrada .silice-entrada__marca-titulo {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--silice-tinta);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--cds-text-on-color);
+  letter-spacing: -0.02em;
 }
 
 .silice-entrada__marca-texto {
   margin: 0;
-  color: var(--silice-grafito);
+  color: rgba(255, 255, 255, 0.74);
   font-size: 0.875rem;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .silice-entrada__fichas {
@@ -121,8 +120,10 @@ body {
 }
 
 .silice-entrada__ficha {
-  padding-block-start: 0.75rem;
-  border-block-start: 1px solid var(--silice-hilo);
+  padding: 0.875rem 1rem;
+  border-radius: var(--silice-radio-md);
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: grid;
   gap: 0.25rem;
 }
@@ -130,14 +131,14 @@ body {
 .silice-entrada__clave {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--silice-tinta);
+  color: var(--silice-gold);
 }
 
 .silice-entrada__valor {
   margin: 0;
   font-size: 0.75rem;
   line-height: 1.45;
-  color: var(--silice-grafito);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .silice-entrada__panel {
@@ -145,7 +146,7 @@ body {
   align-content: center;
   gap: 1.25rem;
   padding: 2.25rem;
-  background-color: var(--silice-papel);
+  background-color: var(--silice-surface);
 }
 
 .silice-entrada__cabecera {
@@ -173,6 +174,11 @@ body {
   inline-size: 100%;
   max-inline-size: 100%;
   justify-content: center;
+  border-radius: var(--silice-radio-sm);
+
+  svg {
+    fill: var(--silice-gold);
+  }
 }
 
 .silice-entrada__pie-seguridad {
@@ -180,12 +186,13 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding-block-start: 1rem;
-  border-block-start: 1px solid var(--silice-hilo);
+  border-block-start: 1px solid var(--silice-hairline);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 0.75rem;
-  color: var(--silice-grafito);
+  color: var(--silice-muted);
 
   svg {
-    fill: currentColor;
+    fill: var(--silice-ok);
     flex: none;
   }
 }
@@ -195,14 +202,13 @@ body {
   padding: 0.75rem 1rem;
   background-color: var(--silice-warn-bg);
   border: 1px solid var(--silice-warn-border);
-  color: var(--silice-tinta);
+  border-radius: var(--silice-radio-md);
+  color: var(--silice-warn);
 }
 
-// Barra superior: el color lo pone --silice-marco (petroleo por omision, o el de la empresa) y la raya de 2 px, el acento
-// (arena). El texto de la barra es blanco (--cds-text-on-color).
 header.cds--header.silice-marco-barra {
-  background-color: var(--silice-marco);
-  border-block-end: 2px solid var(--silice-acento);
+  background-color: var(--silice-charcoal);
+  border-block-end: 2px solid var(--silice-gold);
   color: var(--cds-text-on-color);
 
   .cds--header__name,
@@ -210,33 +216,8 @@ header.cds--header.silice-marco-barra {
   a.cds--header__name {
     color: var(--cds-text-on-color);
     gap: 0.5rem;
-    font-weight: 600;
+    font-weight: 700;
   }
-}
-
-// «Demostracion» en la barra: etiqueta de aviso (fondo yellow-10 de Carbon, V-16) con texto en la tinta (14,8:1). Carbon
-// pinta `.cds--header__action` con su propio color y fondo en hover, pulsado, foco y abierto; esta regla (tres clases) les
-// gana en los cuatro estados y mantiene el texto oscuro >= 4,5:1 sobre el fondo de aviso. El icono sigue al texto.
-.silice-marco-barra .silice-demo .silice-demo__boton,
-.silice-marco-barra .silice-demo .silice-demo__boton:hover,
-.silice-marco-barra .silice-demo .silice-demo__boton:active,
-.silice-marco-barra .silice-demo .silice-demo__boton:focus-visible,
-.silice-marco-barra .silice-demo .silice-demo__boton[aria-expanded="true"] {
-  background-color: var(--silice-aviso-fondo);
-  color: var(--silice-tinta);
-
-  svg {
-    fill: currentColor;
-  }
-}
-
-.silice-marco-barra .silice-demo .silice-demo__boton:hover {
-  background-color: var(--silice-gold-soft);
-}
-
-.silice-marco-barra .silice-demo .silice-demo__boton:focus-visible {
-  outline: 2px solid var(--cds-focus);
-  outline-offset: -2px;
 }
 
 .silice-sin-marco__sello {
@@ -245,9 +226,10 @@ header.cds--header.silice-marco-barra {
   justify-content: center;
   inline-size: 1.75rem;
   block-size: 1.75rem;
-  background-color: var(--silice-arena);
-  color: var(--silice-petroleo);
-  font-weight: 600;
+  border-radius: var(--silice-radio-sm);
+  background-color: var(--silice-gold);
+  color: var(--silice-charcoal-ink);
+  font-weight: 700;
   font-size: 0.875rem;
 }
 
@@ -259,10 +241,11 @@ header.cds--header.silice-marco-barra {
   color: var(--cds-text-on-color);
   text-decoration: none;
   font-size: 0.8125rem;
-  transition: background-color var(--silice-t-respuesta) var(--silice-curva);
+  font-weight: 500;
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 
   &:hover {
-    background-color: var(--silice-petroleo-hover);
+    background-color: var(--cds-background-inverse-hover);
     color: var(--cds-text-on-color);
   }
 }
@@ -273,27 +256,24 @@ header.cds--header.silice-marco-barra {
 }
 
 .silice-marco-barra .silice-letra__opcion[aria-pressed="true"] {
-  color: var(--silice-tinta);
-  background-color: var(--silice-papel);
+  color: var(--silice-ink);
+  background-color: var(--silice-surface);
 }
 
 .silice-entrada__texto {
   margin: 0;
-  color: var(--silice-grafito);
+  color: var(--silice-muted);
   max-inline-size: 65ch;
 }
 
-// Movimiento (DESIGN.md): las animaciones se quedan, con la curva y las duraciones de tokens.scss. Con
-// prefers-reduced-motion se quita el movimiento espacial (nada de transform, clip-path ni recorridos: llega el valor final)
-// y se conservan los cambios de color y opacidad, que dicen algo (hover, foco, estado). `transition-property` restringe
-// TODAS las transiciones a esas propiedades; las animaciones por fotogramas (incluidas las de Carbon) saltan a su final.
+// Sin animacion decorativa (DESIGN.md, Movimiento). Con prefers-reduced-motion se quitan tambien las
+// transiciones de estado propias de los componentes Carbon.
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    transition-property: color, background-color, border-color, outline-color, opacity;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+    transition: none !important;
+    animation: none !important;
     scroll-behavior: auto !important;
   }
 }
