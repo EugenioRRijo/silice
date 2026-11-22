@@ -1,63 +1,64 @@
 import { Catalog, DocumentView, Industry, Workspace } from "@carbon/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ESPACIOS, NUMERO_DEL_ESPACIO } from "./espacios";
 import "./ModeTransitionOverlay.scss";
 
 export type EstacionMayor = "obras" | "auditoria" | "precios" | "produccion";
 
-const METADATOS: Record<EstacionMayor, { codigo: string; titulo: string; subtitulo: string; detalle: string }> = {
-  obras: {
-    codigo: "Espacio principal · Obras",
-    titulo: "Gestión Integral de Obras",
-    subtitulo: "Presupuestos APU, rendimientos, control EVM y entregas",
-    detalle: "Preparando cartera y presupuestos activos…",
-  },
-  auditoria: {
-    codigo: "01 · Ventana dedicada",
-    titulo: "Auditor Forense de Presupuestos",
-    subtitulo: "Inspección celda por celda, fórmulas y verificación del libro",
-    detalle: "Abriendo mesa de auditoría…",
-  },
-  precios: {
-    codigo: "02 · Ventana dedicada",
-    titulo: "Precios, Catálogo e Índices BCV",
-    subtitulo: "Listas maestras, detector de atípicos ML y simulador",
-    detalle: "Cargando catálogo de insumos y series BCV…",
-  },
-  produccion: {
-    codigo: "03 · Ventana dedicada",
-    titulo: "Costos de Producción y Cantera",
-    subtitulo: "Existencias de agregados, costo por tonelada y mezclas de planta",
-    detalle: "Cargando existencias de patio y costos…",
-  },
-};
+interface Metadatos {
+  codigo: string;
+  titulo: string;
+  subtitulo: string;
+}
+
+// Un solo nombre por espacio: el de `ESPACIOS`, el mismo de la barra lateral y del selector de la barra superior. Lo de
+// debajo son sus herramientas, tal como se llaman en su barra; nada de rótulos propios de la cortina.
+function metadatosDe(destino: EstacionMayor): Metadatos {
+  if (destino === "obras") {
+    return { codigo: "Espacio principal", titulo: "Obras", subtitulo: "Vista general, pendientes y las obras de la carpeta" };
+  }
+  const espacio = ESPACIOS[destino];
+  return {
+    codigo: `${NUMERO_DEL_ESPACIO[destino]} · Ventana dedicada`,
+    titulo: espacio.titulo,
+    subtitulo: espacio.herramientas.map((h) => h.titulo).join(", "),
+  };
+}
 
 function prefiereMenosMovimiento(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+// La barra avanza sola mientras dura la cortina (340 ms): es una animación, no la medida de una carga, así que no se
+// escribe ningún porcentaje. Los temporizadores se programan una vez por destino (el `key` de abajo): la función de
+// cierre se lee de una referencia, porque Marco pasa una nueva en cada dibujo y reprogramarlos alargaba la cortina.
 function ContenidoTransicion({ destino, alTerminar }: { destino: EstacionMayor; alTerminar: () => void }) {
   const reducido = prefiereMenosMovimiento();
   const [progreso, setProgreso] = useState(14);
+  const terminar = useRef(alTerminar);
+  useLayoutEffect(() => {
+    terminar.current = alTerminar;
+  }, [alTerminar]);
 
   useEffect(() => {
     if (reducido) {
-      const t = window.setTimeout(() => alTerminar(), 0);
+      const t = window.setTimeout(() => terminar.current(), 0);
       return () => window.clearTimeout(t);
     }
     const t1 = window.setTimeout(() => setProgreso(66), 80);
     const t2 = window.setTimeout(() => setProgreso(100), 210);
-    const t3 = window.setTimeout(() => alTerminar(), 340);
+    const t3 = window.setTimeout(() => terminar.current(), 340);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       window.clearTimeout(t3);
     };
-  }, [alTerminar, reducido]);
+  }, [reducido]);
 
   if (reducido) return null;
 
-  const meta = METADATOS[destino];
+  const meta = metadatosDe(destino);
   const Icono =
     destino === "auditoria"
       ? DocumentView
@@ -73,7 +74,6 @@ function ContenidoTransicion({ destino, alTerminar }: { destino: EstacionMayor; 
         <div className="silice-transicion__acento" aria-hidden="true" />
         <div className="silice-transicion__cabecera">
           <span className="silice-transicion__codigo">{meta.codigo}</span>
-          <span className="silice-transicion__porcentaje">{`${progreso} %`}</span>
         </div>
         <div className="silice-transicion__cuerpo">
           <div className="silice-transicion__icono" aria-hidden="true">
@@ -85,10 +85,10 @@ function ContenidoTransicion({ destino, alTerminar }: { destino: EstacionMayor; 
           </div>
         </div>
         <div className="silice-transicion__barra-bloque">
-          <div className="silice-transicion__pista">
+          <div className="silice-transicion__pista" aria-hidden="true">
             <div className="silice-transicion__progreso" style={{ inlineSize: `${progreso}%` }} />
           </div>
-          <p className="silice-transicion__detalle">{meta.detalle}</p>
+          <p className="silice-transicion__detalle">{`Abriendo ${meta.titulo}…`}</p>
         </div>
       </div>
     </div>

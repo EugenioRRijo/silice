@@ -93,6 +93,14 @@ export function espacioDeLaPagina(paginaId: string): { espacio: EspacioId; herra
   return undefined;
 }
 
+// El número de cada ventana dedicada en el selector de la barra superior, la barra lateral y la cortina. Es solo un
+// adorno visual (va con aria-hidden o como contenido generado sin texto alternativo): el nombre es el `titulo` de abajo.
+export const NUMERO_DEL_ESPACIO: Record<EspacioId, string> = {
+  auditoria: "01",
+  precios: "02",
+  produccion: "03",
+};
+
 export const ESPACIOS: Record<EspacioId, { titulo: string; herramientas: readonly HerramientaDef[] }> = {
   produccion: {
     titulo: "Costos de producción",

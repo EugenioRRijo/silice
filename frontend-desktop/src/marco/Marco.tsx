@@ -439,6 +439,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     setEstacionPrevia(estacionActual);
     setTransicion(estacionActual);
   }
+  const alTerminarTransicion = useCallback(() => setTransicion(null), []);
 
   // Breadcrumb contextual limpio en la barra superior (sustituye el chip tecnico de carpeta).
   const obraActualRuta = obraDeLaRuta(ubicacion.pathname);
@@ -586,7 +587,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
               <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
               {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
               <DialogoSalida paginas={paginas} />
-              <ModeTransitionOverlay destino={transicion} alTerminar={() => setTransicion(null)} />
+              <ModeTransitionOverlay destino={transicion} alTerminar={alTerminarTransicion} />
             </div>
           </ContextoLayoutDelMarco.Provider>
         </ContextoObras.Provider>
