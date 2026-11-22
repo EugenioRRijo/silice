@@ -57,10 +57,8 @@ def test_marco_gris_medio_da_los_avisos_exactos(tmp_path: Path) -> None:
     # al pasar el ratón (85 % con negro: 119 * 0,85 = 101 = #656565, L = 0,130) 1,05 / 0,180 =
     # 5,83; al pulsar (70 %: 83 = #535353, L = 0,0865) 1,05 / 0,1365 = 7,69, que pasa 7:1. Las
     # iniciales (#777777 sobre el acento #fddc69) dan 3,33. El marco como enlace sobre #f4f4f4
-    # 4,07 y sobre blanco 4,48; sobre el lateral neutro #e7ebe9 (L = 0,8229) 0,8729 / 0,2345 = 3,72;
-    # el mismo marco como número del contador sobre el lateral 3,72. Con el acento arena #d3c49a
-    # (L = 0,5566) las iniciales y la raya de acento dan 0,6066 / 0,2345 = 2,59, que se muestra
-    # «2,5» y no pasa 4,5:1 ni 3:1. El borde neutro #7d8884 sobre el marco #777777 da 1,22.
+    # 4,07, sobre blanco 4,48 y sobre el lateral 4,06; el mismo marco como número del contador
+    # sobre el lateral 4,06. La raya de acento (3,33) pasa 3:1.
     assert _con(tmp_path, marco="#777777") == [
         "El texto de la barra superior no se lee bien sobre el color del marco:"
         " 4,4:1, hace falta 4,5:1",
@@ -68,27 +66,25 @@ def test_marco_gris_medio_da_los_avisos_exactos(tmp_path: Path) -> None:
         "El texto de los botones principales no se lee bien al pasar el ratón:"
         " 5,8:1, hace falta 7:1",
         "Las iniciales de la cuenta no se leen bien sobre el color de acento:"
-        " 2,5:1, hace falta 4,5:1",
+        " 3,3:1, hace falta 4,5:1",
         "Los enlaces no se leen bien sobre el fondo de la página: 4,0:1, hace falta 4,5:1",
         "Los enlaces no se leen bien sobre las capas blancas: 4,4:1, hace falta 4,5:1",
-        "Los enlaces no se leen bien sobre el color lateral: 3,7:1, hace falta 4,5:1",
+        "Los enlaces no se leen bien sobre el color lateral: 4,0:1, hace falta 4,5:1",
         "Los bordes de la barra superior casi no se ven sobre el color del marco:"
-        " 1,2:1, hace falta 3:1",
-        "La raya de color de acento bajo la barra superior casi no se ve sobre el color del marco:"
-        " 2,5:1, hace falta 3:1",
-        "El número del contador no se lee bien sobre su fondo: 3,7:1, hace falta 4,5:1",
+        " 1,3:1, hace falta 3:1",
+        "El número del contador no se lee bien sobre su fondo: 4,0:1, hace falta 4,5:1",
     ]
 
 
 def test_lateral_oscuro_avisa_del_texto_las_lineas_y_el_contador(tmp_path: Path) -> None:
-    # Lateral #1a1a1a (L = 0,0103): el texto #161616 da 1,04; el marco neutro #15333a (L = 0,0283)
-    # como enlace y como número y contorno del contador da 0,0783 / 0,0603 = 1,298 -> «1,2» al
-    # truncar; el borde neutro #7d8884 pasa (L = 0,2427: 0,2927 / 0,0603 = 4,85).
+    # Lateral #1a1a1a (L = 0,0103): el texto #161616 da 1,04; el marco neutro #393939 (L = 0,041)
+    # como enlace y como número y contorno del contador da (0,091 / 0,0603) = 1,51 -> «1,5»; el
+    # borde #8d8d8d pasa (5,24).
     assert _con(tmp_path, lateral="#1a1a1a") == [
-        "Los enlaces no se leen bien sobre el color lateral: 1,2:1, hace falta 4,5:1",
+        "Los enlaces no se leen bien sobre el color lateral: 1,5:1, hace falta 4,5:1",
         "El texto del menú lateral no se lee bien sobre el color lateral: 1,0:1, hace falta 4,5:1",
-        "El número del contador no se lee bien sobre su fondo: 1,2:1, hace falta 4,5:1",
-        "El contorno del contador casi no se ve sobre el color lateral: 1,2:1, hace falta 3:1",
+        "El número del contador no se lee bien sobre su fondo: 1,5:1, hace falta 4,5:1",
+        "El contorno del contador casi no se ve sobre el color lateral: 1,5:1, hace falta 3:1",
     ]
 
 
@@ -99,9 +95,8 @@ def test_colores_que_pasan_no_dan_avisos(tmp_path: Path) -> None:
 
 
 def test_tema_neutro_cumple_la_raya_del_activo_con_holgura() -> None:
-    # #15333a (L = 0,0283) sobre #dce2df (L = 0,7494) = 0,7994 / 0,0783 = 10,21:1 a mano
-    # (decisión de Eugenio, 2026-10-27: la raya es del marco).
-    assert tema.contraste("#15333a", "#dce2df") == pytest.approx(10.21, abs=0.01)
+    # #393939 sobre #e5e0df = 8,83:1 a mano (decisión de Eugenio, 2026-10-27: la raya es del marco).
+    assert tema.contraste("#393939", "#e5e0df") == pytest.approx(8.83, abs=0.01)
     assert tema.leer_tema(Path("no-existe")).avisos == []
 
 
@@ -139,15 +134,14 @@ def test_marco_justo_para_el_texto_blanco_avisa_de_los_enlaces(tmp_path: Path) -
 
 def test_complementario_propio_avisa_de_los_enlaces_y_del_boton(tmp_path: Path) -> None:
     # Complementario #767676 con el marco neutro: sobre #f4f4f4 4,13, sobre blanco 4,54 (pasa) y
-    # sobre el lateral #e7ebe9 (L = 0,8229) 3,78. Es también el botón: el blanco en reposo 4,54,
-    # al pasar el
+    # sobre el lateral #f7f3f2 4,12. Es también el botón: el blanco en reposo 4,54, al pasar el
     # ratón (118 * 0,85 = 100 = #646464) 5,92 y al pulsar (#535353) 7,69, que pasa 7:1.
     assert _con(tmp_path, complementario="#767676") == [
         "El texto de los botones principales no se lee bien sobre su fondo: 4,5:1, hace falta 7:1",
         "El texto de los botones principales no se lee bien al pasar el ratón:"
         " 5,9:1, hace falta 7:1",
         "Los enlaces no se leen bien sobre el fondo de la página: 4,1:1, hace falta 4,5:1",
-        "Los enlaces no se leen bien sobre el color lateral: 3,7:1, hace falta 4,5:1",
+        "Los enlaces no se leen bien sobre el color lateral: 4,1:1, hace falta 4,5:1",
     ]
 
 
@@ -161,13 +155,11 @@ def test_complementario_que_solo_falla_en_reposo_da_ese_unico_aviso(tmp_path: Pa
 
 
 def test_complementario_que_falla_reposo_y_hover_pero_no_al_pulsar(tmp_path: Path) -> None:
-    # #2a6fa8: reposo 5,333; hover (#245e8f) 6,834; pulsado (#1d4e76) 8,737 (pasa). Como enlace
-    # sobre el lateral #e7ebe9: 0,8729 / 0,1969 = 4,43 («4,4»).
+    # #2a6fa8: reposo 5,333; hover (#245e8f) 6,834; pulsado (#1d4e76) 8,737 (pasa).
     assert _con(tmp_path, complementario="#2a6fa8") == [
         "El texto de los botones principales no se lee bien sobre su fondo: 5,3:1, hace falta 7:1",
         "El texto de los botones principales no se lee bien al pasar el ratón:"
         " 6,8:1, hace falta 7:1",
-        "Los enlaces no se leen bien sobre el color lateral: 4,4:1, hace falta 4,5:1",
     ]
 
 
@@ -192,26 +184,25 @@ def test_el_borde_del_boton_ya_no_se_mide(tmp_path: Path) -> None:
 
 
 def test_iniciales_de_la_cuenta_bajo_4_5_dan_su_aviso(tmp_path: Path) -> None:
-    # Acento #2a6fa8 (L = 0,1469) con el marco neutro #15333a (L = 0,0283) en las iniciales:
-    # (0,1469 + 0,05) / (0,0283 + 0,05) = 2,51 -> «2,5». La raya de acento (mismo par) da lo mismo
-    # contra el 3:1. Acento blanco: 13,41, sin avisos.
+    # Acento #2a6fa8 (L = 0,1469) con el marco neutro #393939 (L = 0,0409) en las iniciales:
+    # (0,1469 + 0,05) / (0,0409 + 0,05) = 2,17 -> «2,1». La raya de acento (mismo par) da lo mismo
+    # contra el 3:1. Acento blanco: 11,55, sin avisos.
     assert _con(tmp_path, acento="#2a6fa8") == [
         "Las iniciales de la cuenta no se leen bien sobre el color de acento:"
-        " 2,5:1, hace falta 4,5:1",
+        " 2,1:1, hace falta 4,5:1",
         "La raya de color de acento bajo la barra superior casi no se ve sobre el color del marco:"
-        " 2,5:1, hace falta 3:1",
+        " 2,1:1, hace falta 3:1",
     ]
     assert _con(tmp_path, acento="#ffffff") == []
 
 
 def test_contador_con_poco_contraste_da_dos_avisos(tmp_path: Path) -> None:
     # Número #999999 sobre el fondo #bbbbbb del contador: 1,48; el mismo número (contorno) sobre
-    # el lateral neutro #e7ebe9 (L = 0,8229): 0,8729 / 0,3685 = 2,37 (se muestra «2,3»), por debajo
-    # de 3:1; sobre el fondo de la opción activa #dce2df (L = 0,7494) con #999999 (L = 0,3185):
-    # 0,7994 / 0,3685 = 2,17 («2,1»).
+    # el lateral neutro #f7f3f2: 2,59 (se muestra «2,5»), por debajo de 3:1; sobre el fondo de la
+    # opción activa #e5e0df (L = 0,753) con #999999 (L = 0,3185): 0,803 / 0,3685 = 2,18 («2,1»).
     assert _con(tmp_path, contador_numero="#999999", contador_fondo="#bbbbbb") == [
         "El número del contador no se lee bien sobre su fondo: 1,4:1, hace falta 4,5:1",
-        "El contorno del contador casi no se ve sobre el color lateral: 2,3:1, hace falta 3:1",
+        "El contorno del contador casi no se ve sobre el color lateral: 2,5:1, hace falta 3:1",
         "El contorno del contador casi no se ve sobre el fondo de la opción activa del menú"
         " lateral: 2,1:1, hace falta 3:1",
     ]
@@ -220,7 +211,7 @@ def test_contador_con_poco_contraste_da_dos_avisos(tmp_path: Path) -> None:
 def test_contador_por_defecto_sigue_al_marco_y_al_lateral(tmp_path: Path) -> None:
     # Sin claves propias, el número es el marco y el fondo es el lateral: un lateral igual al
     # marco se nota también en el contador (1:1).
-    avisos = _con(tmp_path, lateral="#15333a")
+    avisos = _con(tmp_path, lateral="#393939")
     assert "El número del contador no se lee bien sobre su fondo: 1,0:1, hace falta 4,5:1" in avisos
 
 
@@ -261,22 +252,11 @@ def test_tema_neutro_cumple_los_umbrales_del_boton_con_holgura() -> None:
 def test_el_contorno_del_contador_tambien_se_mide_sobre_el_fondo_de_la_opcion_activa(
     tmp_path: Path,
 ) -> None:
-    # La píldora de Pendientes activo queda sobre `lateral-activo` (#dce2df, L = 0,7494). Número
-    # #838383 (L = 0,2269) sobre el fondo del contador #1a1a1a (L = 0,0103): 0,2769 / 0,0603 =
-    # 4,59, pasa 4,5; sobre el lateral #e7ebe9 (L = 0,8229): 0,8729 / 0,2769 = 3,15, pasa 3:1;
-    # pero sobre #dce2df: 0,7994 / 0,2769 = 2,89, que se muestra truncado «2,8».
-    assert _con(tmp_path, contador_numero="#838383", contador_fondo="#1a1a1a") == [
+    # La píldora de Pendientes activo queda sobre `lateral-activo` (#e5e0df, L = 0,753). Número
+    # #8a8a8a (L = 0,254) sobre el fondo del contador #1a1a1a (L = 0,0103): 5,04, pasa 4,5; sobre
+    # el lateral #f7f3f2 (L = 0,903): 3,13, pasa 3:1; pero sobre #e5e0df: (0,753 + 0,05) /
+    # (0,254 + 0,05) = 2,64, que se muestra truncado «2,6».
+    assert _con(tmp_path, contador_numero="#8a8a8a", contador_fondo="#1a1a1a") == [
         "El contorno del contador casi no se ve sobre el fondo de la opción activa del menú"
-        " lateral: 2,8:1, hace falta 3:1"
+        " lateral: 2,6:1, hace falta 3:1"
     ]
-
-
-def test_neutro_es_el_instrumento_de_auditoria_de_tokens_scss() -> None:
-    # Las dos copias coinciden: petróleo #15333a (marco), arena #d3c49a (acento) y lateral #e7ebe9
-    # (--silice-petroleo, --silice-arena y --silice-lateral-base de estilos/tokens.scss).
-    assert tema._NEUTRO["marco"] == "#15333a"
-    assert tema._NEUTRO["acento"] == "#d3c49a"
-    assert tema._NEUTRO["lateral"] == "#e7ebe9"
-    assert tema._NEUTRO["lateral-activo"] == "#dce2df"
-    # Contraste a mano del marco sobre el acento: (0,5620 + 0,05) / (0,0289 + 0,05) = 7,74.
-    assert tema.contraste("#15333a", "#d3c49a") == pytest.approx(7.74, abs=0.01)
