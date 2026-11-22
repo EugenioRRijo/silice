@@ -2,8 +2,13 @@
 @use "umbrales" as u;
 @use "@carbon/styles/scss/type";
 
-// Barra superior Swiss-industrial de Silice: fondo carbon oscuro con raya dorada inferior.
-// Sin hexadecimales ni tamanos en px: solo tokens --silice-* y --cds-* y unidades rem.
+// Barra superior del marco: fondo del marco de la empresa (--silice-marco), raya inferior de 3 px del acento y texto claro
+// sobre el marco (--cds-text-inverse). Son los colores que la empresa elige en Cuenta > Empresa y tema y los pares que el
+// servidor mide (aplicacion/tema.py: texto-del-marco/marco, acento/marco, borde/marco, marco/acento). Sin hexadecimales ni
+// tamanos en px: solo tokens --silice-* y --cds-* y unidades rem.
+// Cuando no cabe todo (1366 px con letra Normal en una obra, hallazgo 7 del recorrido del 01-11-2026) cede primero el
+// buscador, hasta su icono; luego la carpeta activa y el contexto, que se recortan con puntos suspensivos. La marca y la
+// persona no ceden: la cuenta, al ceder su envoltorio, sacaba el boton por el borde derecho.
 .silice-marco-barra {
   display: flex;
   align-items: center;
@@ -12,8 +17,8 @@
   box-sizing: border-box;
   block-size: 3rem;
   padding-inline: 1rem;
-  background-color: var(--silice-charcoal);
-  border-block-end: 2px solid var(--silice-gold);
+  background-color: var(--silice-marco);
+  border-block-end: 3px solid var(--silice-acento);
   color: var(--cds-text-inverse);
 }
 
@@ -45,8 +50,8 @@
   inline-size: 1.75rem;
   block-size: 1.75rem;
   border-radius: var(--silice-radio-sm);
-  background-color: var(--silice-gold);
-  color: var(--silice-charcoal-ink);
+  background-color: var(--silice-acento);
+  color: var(--silice-marco);
   font-weight: 700;
   font-size: 0.875rem;
   flex: none;
@@ -88,8 +93,9 @@
   gap: 0.375rem;
   flex: none;
   padding: 0.375rem 0.625rem;
+  border: 1px solid var(--cds-border-strong-01);
   border-radius: var(--silice-radio-sm);
-  background-color: var(--cds-background-inverse-hover);
+  background-color: transparent;
   color: var(--cds-text-inverse);
   font-size: 0.75rem;
   font-weight: 600;
@@ -97,12 +103,12 @@
   white-space: nowrap;
 
   svg {
-    fill: var(--silice-gold);
+    fill: var(--silice-acento);
     flex: none;
   }
 
   &:hover {
-    background-color: var(--silice-charcoal-hover);
+    background-color: var(--cds-background-inverse-hover);
   }
 
   &:focus-visible {
@@ -144,8 +150,8 @@
   gap: 0.25rem;
   padding: 0.1875rem;
   border-radius: var(--silice-radio-md);
-  background-color: var(--silice-charcoal-deep);
-  border: 1px solid var(--silice-charcoal-hover);
+  background-color: transparent;
+  border: 1px solid var(--cds-border-strong-01);
   flex: none;
 }
 
@@ -168,8 +174,8 @@
 
   &[aria-current="page"] {
     opacity: 1;
-    background-color: var(--silice-gold);
-    color: var(--silice-charcoal-ink);
+    background-color: var(--silice-acento);
+    color: var(--silice-marco);
   }
 
   &:focus-visible {
@@ -189,9 +195,9 @@
   overflow: hidden;
   block-size: 2rem;
   padding-inline: 0.75rem;
-  border: 1px solid var(--silice-charcoal-hover);
+  border: 1px solid var(--cds-border-strong-01);
   border-radius: var(--silice-radio-sm);
-  background-color: var(--silice-charcoal-btn);
+  background-color: transparent;
   color: inherit;
   font-family: inherit;
   text-align: start;
@@ -205,7 +211,7 @@
   }
 
   &:hover {
-    background-color: var(--silice-charcoal-hover);
+    background-color: var(--cds-background-inverse-hover);
   }
 
   &:focus-visible {

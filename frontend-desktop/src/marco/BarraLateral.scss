@@ -1,8 +1,9 @@
 @use "umbrales" as u;
 @use "@carbon/styles/scss/type";
 
-// Barra lateral colapsable Swiss-industrial (256px expandida <-> riel compacto de 48px).
-// Solo variables --silice-* y --cds-* (sin hexadecimales sueltos) y todo en rem.
+// Barra lateral colapsable (16 rem expandida <-> riel compacto de 3 rem). Fondo, hover y fila activa en los colores del
+// tema de la empresa (--silice-lateral, --silice-lateral-activo y el borde del activo en --silice-marco), que el servidor
+// mide contra el texto (aplicacion/tema.py). Solo variables --silice-* y --cds-* (sin hexadecimales sueltos) y todo en rem.
 .silice-marco-lateral {
   display: flex;
   flex-direction: column;
@@ -12,7 +13,7 @@
   min-block-size: 0;
   overflow: hidden;
   background-color: var(--silice-lateral);
-  color: var(--silice-ink);
+  color: var(--cds-text-primary);
   transition: inline-size 180ms ease-out;
 
   ul {
@@ -54,7 +55,7 @@
   &:hover {
     background-color: var(--silice-surface);
     border-color: var(--silice-border-strong);
-    color: var(--silice-ink);
+    color: var(--cds-text-primary);
   }
 
   &:focus-visible {
@@ -137,7 +138,7 @@
   padding: 0.4375rem 0.75rem;
   border: 1px solid transparent;
   border-radius: var(--silice-radio-md);
-  color: var(--silice-ink);
+  color: var(--cds-text-primary);
   text-decoration: none;
   transition: background-color 140ms ease, border-color 140ms ease;
   @include type.type-style("body-compact-01");
@@ -148,7 +149,7 @@
   }
 
   &:hover {
-    background-color: var(--silice-rail-hover);
+    background-color: var(--silice-lateral-activo);
   }
 
   &:focus-visible {
@@ -156,10 +157,11 @@
     outline-offset: -2px;
   }
 
+  // El activo: fondo del lateral activo, borde del color del marco y seminegrita (no solo color).
   &[aria-current="page"] {
-    background-color: var(--silice-surface);
-    border-color: var(--silice-border-strong);
-    color: var(--silice-ink);
+    background-color: var(--silice-lateral-activo);
+    border-color: var(--silice-marco);
+    color: var(--cds-text-primary);
     font-weight: 600;
   }
 }
@@ -225,14 +227,13 @@
   }
 
   &:hover {
-    background-color: var(--silice-surface);
-    border-color: var(--silice-border);
+    background-color: var(--silice-lateral-activo);
   }
 }
 
+// Los iconos de los espacios van en el color del texto: el ambar fijo no se mide contra el lateral de la empresa.
 .silice-marco-lateral__icono-oro {
-  fill: var(--silice-gold-ink);
-  color: var(--silice-gold-ink);
+  fill: currentcolor;
 }
 
 .silice-marco-lateral__prefijo {
@@ -299,7 +300,7 @@
 
   svg {
     flex: none;
-    fill: var(--silice-gold);
+    fill: currentcolor;
   }
 
   &:hover {
@@ -364,14 +365,14 @@
   }
 
   &:hover {
-    background-color: var(--silice-rail-hover);
-    color: var(--silice-ink);
+    background-color: var(--silice-lateral-activo);
+    color: var(--cds-text-primary);
   }
 
   &[aria-current="page"] {
-    background-color: var(--silice-surface);
-    border-color: var(--silice-border-strong);
-    color: var(--silice-ink);
+    background-color: var(--silice-lateral-activo);
+    border-color: var(--silice-marco);
+    color: var(--cds-text-primary);
   }
 
   &:focus-visible {
@@ -383,31 +384,26 @@
 .silice-marco-lateral__riel-btn--toggle {
   background-color: var(--silice-surface);
   border-color: var(--silice-border-strong);
-  color: var(--silice-ink);
+  color: var(--cds-text-primary);
 
   &:hover {
-    border-color: var(--silice-ink);
+    border-color: var(--cds-text-primary);
   }
 }
 
+// «Nueva obra» en el riel: el boton principal (complementario con texto blanco, 7:1 que mide el servidor).
 .silice-marco-lateral__riel-btn--primario {
   background-color: var(--cds-button-primary);
-  color: var(--silice-gold);
+  color: var(--cds-text-on-color);
 
   &:hover {
     background-color: var(--cds-button-primary-hover);
-    color: var(--silice-gold);
+    color: var(--cds-text-on-color);
   }
 }
 
 .silice-marco-lateral__riel-btn--oro {
-  color: var(--silice-gold-ink);
-
-  &:hover {
-    background-color: var(--silice-surface);
-    border-color: var(--silice-border);
-    color: var(--silice-gold-ink);
-  }
+  color: var(--cds-text-primary);
 }
 
 @include u.con-letra-grande {
