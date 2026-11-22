@@ -48,3 +48,12 @@ def test_con_iva_no_falla_con_un_subtotal_de_27_o_mas_cifras_enteras() -> None:
     assert resumen.subtotal == D("9" * 30 + ".50")
     assert resumen.iva == D("159999999999999999999999999999.92")
     assert resumen.total == D("1159999999999999999999999999999.42")
+
+
+def test_con_iva_de_un_subtotal_con_exponente_no_falla() -> None:
+    """1E+58 tiene una cifra en el coeficiente pero 61 a céntimos: la precisión mira la magnitud
+    (`adjusted()`), no solo las cifras escritas."""
+    resumen = con_iva(D("1E+58"))
+    assert str(resumen.subtotal) == "1" + "0" * 58 + ".00"
+    assert str(resumen.iva) == "16" + "0" * 56 + ".00"
+    assert str(resumen.total) == "116" + "0" * 56 + ".00"

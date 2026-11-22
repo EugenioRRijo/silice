@@ -511,3 +511,10 @@ def test_dinero_y_celda_del_pdf_no_fallan_con_montos_de_27_o_mas_cifras_enteras(
         presupuesto_pdf._celda("precio", "100.000.000.000.000.000.000.000.000.000,5")
         == "100.000.000.000.000.000.000.000.000.000,50"
     )
+
+
+def test_dinero_del_pdf_de_un_monto_con_exponente_no_falla():
+    """1E+58 tiene una cifra en el coeficiente pero 61 a céntimos: la precisión mira la magnitud."""
+    from aplicacion import presupuesto_pdf
+
+    assert presupuesto_pdf._dinero(D("1E+58")) == "10" + ".000" * 19 + ",00"

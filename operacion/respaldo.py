@@ -302,8 +302,10 @@ def _con_extension(nombre: str) -> str:
     return nombre if nombre.lower().endswith(".db") else f"{nombre}.db"
 
 
-def _reponer_desde_juego(antes: Path, copiadas: Sequence[tuple[Path, str]]) -> None:
-    """Intenta reponer desde `antes` las bases ya sobreescritas o borrar las recien creadas."""
+def _reponer_desde_juego(antes: Path, copiadas: Sequence[tuple[Path, str]]) -> list[Path]:
+    """Intenta reponer desde `antes` las bases ya sobreescritas o borrar las recien creadas, y
+    devuelve las que no pudo reponer (siguen con la copia del juego, o a medio borrar)."""
+    sin_reponer: list[Path] = []
     for destino, tipo in reversed(copiadas):
         previa = ruta_en_juego(antes, destino, tipo)
         try:
@@ -312,7 +314,8 @@ def _reponer_desde_juego(antes: Path, copiadas: Sequence[tuple[Path, str]]) -> N
             else:
                 destino.unlink(missing_ok=True)
         except (sqlite3.Error, OSError):
-            pass
+            sin_reponer.append(destino)
+    return sin_reponer
 
 
 def restaurar(
@@ -390,6 +393,21 @@ def restaurar(
             "eventos": eventos_perdidos(ruta_instalacion, ficha.get("ultimo_evento_acceso")),
             "diferencias": perdidos_mod.diferencias(ruta_instalacion, copia_instalacion),
         }
+    # El aviso SEG-12 va ANTES de sobrescribir la instalación: así nunca queda una instalación
+    # restaurada sin él (ni si la copia de un caso falla y reponerla también, ni si el proceso
+    # muere a medias). Solo se retira si la instalación vuelve a ser la de antes.
+    perdidos = None
+    if datos_perdidos is not None:
+        perdidos = carpeta_datos / f"eventos_perdidos_{momento:%Y%m%d-%H%M%S}.json"
+        try:
+            carpeta_datos.mkdir(parents=True, exist_ok=True)
+            _escribir_json(perdidos, datos_perdidos)
+        except OSError as error:
+            perdidos.unlink(missing_ok=True)
+            raise RespaldoFallido(
+                f"No se pudo escribir el aviso de eventos perdidos {perdidos.name}: {error}. "
+                f"No se restauró nada; las bases de antes están en {antes}."
+            ) from error
     copiadas: list[tuple[Path, str]] = []
     for base in elegidas:
         destino = destinos[base["archivo"]]
@@ -399,17 +417,20 @@ def restaurar(
             copiar_sqlite(juego / base["archivo"], destino)
         except sqlite3.Error as error:
             pendientes_de_reponer = copiadas if existia else [*copiadas, (destino, base["destino"])]
-            _reponer_desde_juego(antes, pendientes_de_reponer)
-            raise RespaldoFallido(
+            sin_reponer = _reponer_desde_juego(antes, pendientes_de_reponer)
+            mensaje = (
                 f"No se pudo restaurar {destino.name}: {error}. Cierre Sílice y reintente; "
                 f"las bases de antes están en {antes}."
-            ) from error
+            )
+            if sin_reponer:
+                mensaje += f" No se pudo reponer {', '.join(r.name for r in sin_reponer)}."
+            if perdidos is not None:
+                if ruta_instalacion in sin_reponer:
+                    mensaje += f" Los eventos de acceso perdidos están en {perdidos}."
+                else:
+                    perdidos.unlink(missing_ok=True)
+            raise RespaldoFallido(mensaje) from error
         copiadas.append((destino, base["destino"]))
-    perdidos = None
-    if datos_perdidos is not None:
-        carpeta_datos.mkdir(parents=True, exist_ok=True)
-        perdidos = carpeta_datos / f"eventos_perdidos_{momento:%Y%m%d-%H%M%S}.json"
-        _escribir_json(perdidos, datos_perdidos)
     return Restauracion(
         antes=antes,
         restauradas=tuple(destino for destino, _ in copiadas),

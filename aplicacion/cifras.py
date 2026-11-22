@@ -40,6 +40,7 @@ __all__ = [
     "CifraInvalida",
     "cifra_escrita",
     "leer_banda",
+    "precision_para",
     "texto_de_cifra",
 ]
 
@@ -98,6 +99,17 @@ def texto_de_cifra(valor: Decimal) -> str:
     entera, _, decimales = fijo.lstrip("-").partition(".")
     grupos = f"{int(entera):,}".replace(",", ".")
     return f"{signo}{grupos}" + (f",{decimales}" if decimales else "")
+
+
+def precision_para(*valores: Decimal) -> int:
+    """Las cifras de un `localcontext` con las que cuantizar a céntimos, multiplicar o sumar estos
+    montos no lanza `InvalidOperation` ni redondea en silencio: 60 como piso, o las cifras del
+    coeficiente más la magnitud (`adjusted()`) de cada uno, con 10 de holgura. La magnitud cuenta
+    porque 1E+58 tiene una sola cifra escrita pero 61 a céntimos (el contexto por omisión tiene 28).
+
+    Es para montos. Un porcentaje (el margen de `aplicacion.mercado`) no se amplía: uno que no cabe
+    en 28 cifras es absurdo y su `InvalidOperation` se dice «sin margen»."""
+    return max(60, sum(len(v.as_tuple().digits) + abs(v.adjusted()) for v in valores) + 10)
 
 
 # --- la banda de distancia escrita en una descripción -------------------------------------------
