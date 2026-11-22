@@ -243,35 +243,6 @@
   opacity: 0.85;
 }
 
-.silice-marco-barra__portada {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  border-radius: var(--silice-radio-sm);
-  color: var(--cds-text-inverse);
-  opacity: 0.84;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-decoration: none;
-  white-space: nowrap;
-
-  svg {
-    fill: var(--silice-gold);
-    flex: none;
-  }
-
-  &:hover {
-    opacity: 1;
-    background-color: var(--cds-background-inverse-hover);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--cds-focus-inverse);
-    outline-offset: 2px;
-  }
-}
-
 .silice-marco-barra .silice-cuenta {
   flex: none;
 }
@@ -319,8 +290,7 @@
       white-space: nowrap;
     }
 
-    .silice-marco-barra__contexto,
-    .silice-marco-barra__portada span {
+    .silice-marco-barra__contexto {
       display: none;
     }
   }

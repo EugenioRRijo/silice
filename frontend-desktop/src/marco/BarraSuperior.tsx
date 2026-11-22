@@ -1,4 +1,4 @@
-import { ArrowLeft, Globe, Search, User } from "@carbon/icons-react";
+import { ArrowLeft, Search, User } from "@carbon/icons-react";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router";
@@ -139,10 +139,6 @@ export function BarraSuperior({
             <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
           </button>
         )}
-        <a href="/" className="silice-marco-barra__portada">
-          <Globe size={16} aria-hidden="true" />
-          <span>Portada</span>
-        </a>
         {extra}
         <div className="silice-cuenta">
           <Link
