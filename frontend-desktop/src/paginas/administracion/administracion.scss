@@ -85,3 +85,9 @@
 .silice-adm__confirmar:focus {
   outline: 2px solid var(--silice-interactivo);
 }
+
+// Aviso «sin ningún rol»: ícono y texto en una línea, el ícono centrado con la letra.
+.silice-adm__nota .silice-sev {
+  display: inline-flex;
+  align-items: center;
+}
