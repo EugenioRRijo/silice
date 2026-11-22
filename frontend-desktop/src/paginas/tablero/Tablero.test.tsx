@@ -241,6 +241,19 @@ describe("Tablero de la obra", () => {
       expect(bloque.textContent).not.toMatch(/0,0 %/);
     });
 
+    test("lo que se lee es el texto, no el número que da la fracción (0.6249 no se lee «62,49 %»)", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.6249")));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      expect((anillo.closest(".silice-tablero__anillos") as HTMLElement).textContent).not.toMatch(/62[.,]49|62,4 %/);
+    });
+
+    test("si el servidor ya lo manda en es-VE («1.062,5 %») se lee igual: el formato no se aplica dos veces", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("1.062,5 %", "10.625")));
+      montar("OB-S2");
+      expect(await screen.findByRole("img", { name: "Avance fisico: 1.062,5 %" })).toBeInTheDocument();
+    });
+
     test("el arco dibuja la fracción de la API y lleva la tinta del real, no el ámbar", async () => {
       fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625")));
       montar("OB-S2");

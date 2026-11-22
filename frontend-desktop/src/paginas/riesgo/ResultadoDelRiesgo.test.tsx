@@ -50,4 +50,12 @@ describe("el medidor del rango de la proyección", () => {
     const medidor = montar({ ...PROYECCION, total_base: "123456789012345678901234567890.125", p50: "1", p80: "2" });
     expect(within(medidor).getByText("123.456.789.012.345.678.901.234.567.890,13 USD")).toBeInTheDocument();
   });
+
+  test("las barras miden la diferencia contra la base: el P50 queda visiblemente por debajo del P80", () => {
+    const medidor = montar();
+    const [p50, p80] = [...medidor.querySelectorAll<HTMLElement>(".silice-riesgo-medidor__barra")];
+    // Base 1.000, P50 1.248,72 y P80 1.302,46: contra cero las tres medirían casi lo mismo (77 %, 96 % y 100 %).
+    expect(Number.parseFloat(p50!.style.inlineSize)).toBeCloseTo(82.23, 1);
+    expect(p80!.style.inlineSize).toBe("100%");
+  });
 });

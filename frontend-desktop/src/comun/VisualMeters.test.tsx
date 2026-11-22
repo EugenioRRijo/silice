@@ -379,15 +379,49 @@ describe("RiskRangeMeter: base, P50 y P80 como los manda el servidor", () => {
     expect(grupo.textContent).not.toMatch(/0,00 USD\s*\(|\b0 USD/);
   });
 
-  test("la base (lo previsto) va en contorno y P50 y P80 (pronóstico) achurados, sin colores en línea", () => {
+  test("la escala va desde la base: lo previsto es una marca en contorno y P50 y P80 (pronóstico) barras achuradas", () => {
     conMovimientoReducido(true);
     const { container } = render(<RiskRangeMeter puntos={PUNTOS} />);
-    const barras = [...container.querySelectorAll<HTMLElement>(".silice-riesgo-medidor__barra")];
-    expect(barras.map((b) => b.classList.contains("silice-riesgo-medidor__barra--plan"))).toEqual([true, false, false]);
-    expect(barras.map((b) => b.classList.contains("silice-riesgo-medidor__barra--pronostico"))).toEqual([false, true, true]);
-    for (const b of barras) expect(b.style.backgroundColor).toBe("");
-    // El P80, el mayor, llena la pista; la base mide lo suyo.
-    expect(barras[2]!.style.inlineSize).toBe("100%");
-    expect(Number.parseFloat(barras[0]!.style.inlineSize)).toBeCloseTo((1000 / 1302.4561) * 100);
+    const filas = [...container.querySelectorAll<HTMLElement>(".silice-riesgo-medidor__fila")];
+    expect(filas[0]!.querySelector(".silice-riesgo-medidor__marca")).toBeInTheDocument();
+    expect(filas[0]!.querySelector(".silice-riesgo-medidor__barra")).toBeNull();
+    const barras = filas.slice(1).map((f) => f.querySelector<HTMLElement>(".silice-riesgo-medidor__barra--pronostico")!);
+    for (const b of [...barras, filas[0]!.querySelector<HTMLElement>(".silice-riesgo-medidor__marca")!]) {
+      expect(b.style.backgroundColor).toBe("");
+    }
+    // Base 1.000 a P80 1.302,46: la pista entera es esa diferencia. El P50 cubre (1.248,72 - 1.000) / 302,46 de ella.
+    expect(barras.map((b) => b.style.insetInlineStart)).toEqual(["0%", "0%"]);
+    expect(Number.parseFloat(barras[0]!.style.inlineSize)).toBeCloseTo((248.7171 / 302.4561) * 100, 4);
+    expect(barras[1]!.style.inlineSize).toBe("100%");
+    // La línea de la base cruza cada pista, para comparar cada escenario contra ella.
+    for (const f of filas) expect(f.querySelector<HTMLElement>(".silice-riesgo-medidor__base")!.style.insetInlineStart).toBe("0%");
+    expect(screen.getByText("Cada barra va del presupuesto base al escenario.")).toBeInTheDocument();
+  });
+
+  test("un escenario por debajo de la base va de él a la base, y la escala abarca a los dos", () => {
+    conMovimientoReducido(true);
+    const { container } = render(
+      <RiskRangeMeter
+        puntos={[PUNTOS[0]!, { ...PUNTOS[1]!, valor: 900, texto: "900,00 USD" }, { ...PUNTOS[2]!, valor: 1300, texto: "1.300,00 USD" }]}
+      />,
+    );
+    const filas = [...container.querySelectorAll<HTMLElement>(".silice-riesgo-medidor__fila")];
+    const p50 = filas[1]!.querySelector<HTMLElement>(".silice-riesgo-medidor__barra")!;
+    const p80 = filas[2]!.querySelector<HTMLElement>(".silice-riesgo-medidor__barra")!;
+    // Escala de 900 a 1.300 (400): la base cae en el 25 %.
+    expect(p50.style.insetInlineStart).toBe("0%");
+    expect(Number.parseFloat(p50.style.inlineSize)).toBeCloseTo(25);
+    expect(Number.parseFloat(p80.style.insetInlineStart)).toBeCloseTo(25);
+    expect(Number.parseFloat(p80.style.inlineSize)).toBeCloseTo(75);
+  });
+
+  test("crece al cargar desde la base", () => {
+    conMovimientoReducido(false);
+    conCuadrosManuales();
+    const { container } = render(<RiskRangeMeter puntos={PUNTOS} />);
+    const p80 = () => container.querySelectorAll<HTMLElement>(".silice-riesgo-medidor__barra")[1]!;
+    expect(p80().style.inlineSize).toBe("0%");
+    soltarCuadros(5_000);
+    expect(p80().style.inlineSize).toBe("100%");
   });
 });
