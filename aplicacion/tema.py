@@ -32,14 +32,14 @@ _COLOR = re.compile(r"#[0-9a-fA-F]{6}")
 #: avisos de contraste miden contra ella. Fuente: @carbon/colors (gray-80, gray-50, yellow-20,
 #: warm-gray-10/-20) y @carbon/themes g10 (text-inverse, text-primary, background).
 _NEUTRO = {
-    "marco": "#393939",  # --silice-marco = --cds-background-inverse (gray-80)
-    "acento": "#fddc69",  # --silice-acento (yellow-20)
-    "lateral": "#f7f3f2",  # --silice-lateral (warm-gray-10)
-    "lateral-activo": "#e5e0df",  # --silice-lateral-activo (warm-gray-20); el tema no lo cambia
+    "marco": "#15333a",  # --silice-marco = --silice-petroleo («Instrumento de auditoría»)
+    "acento": "#d3c49a",  # --silice-acento = --silice-arena
+    "lateral": "#e7ebe9",  # --silice-lateral = --silice-lateral-base
+    "lateral-activo": "#dce2df",  # --silice-lateral-activo (-hover); el tema no lo cambia
     "texto-del-marco": "#ffffff",  # --cds-text-inverse
     "texto-del-boton": "#ffffff",  # --cds-text-on-color (g10): el texto del botón principal
     "texto": "#161616",  # --cds-text-primary
-    "borde": "#8d8d8d",  # --cds-border-strong-01 (gray-50)
+    "borde": "#7d8884",  # borde de campo de tokens.scss algo más oscuro: 3,05:1 sobre el lateral
     "fondo": "#f4f4f4",  # --cds-background (g10): el fondo del contenido, no el blanco de las capas
     "blanco": "#ffffff",  # --cds-layer-01 (g10): las capas, los diálogos y los campos
 }
