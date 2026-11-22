@@ -20,20 +20,21 @@ import { TEXTOS } from "./textos";
 const ETAPAS: readonly Etapa[] = ["en_elaboracion", "en_aprobacion", "aprobada", "en_ejecucion", "atrasada"];
 const esEtapa = (etapa: string): etapa is Etapa => (ETAPAS as readonly string[]).includes(etapa);
 
-// El color de cada etapa en el anillo por estado: fijo por etapa (no por su lugar ni su tamaño), de los grises y el verde
-// azulado de los gráficos (DESIGN.md: ni verde ni rojo IBCS, que son de las variaciones, ni el ámbar de la marca). «Atrasada»
-// lleva el de su ícono en la tabla (`EtapaDeObra`, la severidad de error). Cada uno llega a 3:1 sobre la superficie y los
-// vecinos se distinguen también con daltonismo (validador de paletas de la skill dataviz, 2026-11-22).
-// Los de Carbon, como en `paletaGraficos.ts` (@carbon/colors es solo de desarrollo).
+// El color de cada etapa en el anillo por estado: fijo por etapa (no por su lugar ni su tamaño). Son tokens del gráfico
+// (`--silice-grafico-etapa-*`, en inicio.scss, con sus valores y el porqué), no colores en el componente.
+// Excepción anotada: «atrasada» no lleva un color de serie sino la severidad de error (`--silice-sev-error`), el mismo
+// de su ícono en la tabla (`EtapaDeObra`), para que la obra atrasada se lea igual en los dos lugares.
+// La paleta queda para la dirección de diseño (los grises 50, 70 y 100 se parecen entre sí); mientras tanto la leyenda
+// dice cada estado con su nombre y su cifra, así que el color no es lo único que los distingue.
 const COLOR_DE_ETAPA: Record<Etapa, string> = {
-  en_elaboracion: "#8d8d8d", // gray-50
-  en_aprobacion: "#525252", // gray-70
-  aprobada: "#009d9a", // teal-50
-  en_ejecucion: "#161616", // gray-100
-  atrasada: "var(--silice-sev-error)", // orange-50
+  en_elaboracion: "var(--silice-grafico-etapa-en-elaboracion)",
+  en_aprobacion: "var(--silice-grafico-etapa-en-aprobacion)",
+  aprobada: "var(--silice-grafico-etapa-aprobada)",
+  en_ejecucion: "var(--silice-grafico-etapa-en-ejecucion)",
+  atrasada: "var(--silice-sev-error)",
 };
-// Una etapa que esta pantalla no conoce: gris 60, al final.
-const COLOR_DE_OTRA_ETAPA = "#6f6f6f";
+// Una etapa que esta pantalla no conoce, al final.
+const COLOR_DE_OTRA_ETAPA = "var(--silice-grafico-etapa-otra)";
 
 // Las barras del avance: solo las obras con real y plan, con las cifras de la API en es-VE (el número solo dibuja).
 const MAXIMO_DE_BARRAS = 6;

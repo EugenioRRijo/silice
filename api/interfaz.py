@@ -87,21 +87,33 @@ class InterfazNueva:
         carpeta = DIST
         if not carpeta.is_dir():
             respuesta: Response = JSONResponse({"detalle": MENSAJE_SIN_COMPILAR}, status_code=404)
-        elif _es_la_portada(scope) and not portada_activa():
-            respuesta = JSONResponse({"detalle": MENSAJES[404]}, status_code=404)
         else:
             estaticos = StaticFiles(directory=carpeta, html=True, check_dir=False)
-            try:
-                respuesta = await estaticos.get_response(estaticos.get_path(scope), scope)
-            except ErrorHttp as error:
-                detalle = MENSAJES.get(error.status_code, str(error.detail))
-                respuesta = JSONResponse({"detalle": detalle}, status_code=error.status_code)
+            ruta = estaticos.get_path(scope)
+            if not portada_activa() and _es_la_portada(carpeta, ruta):
+                respuesta = JSONResponse({"detalle": MENSAJES[404]}, status_code=404)
+            else:
+                respuesta = await _servir(estaticos, ruta, scope)
         await con_cabeceras(respuesta)(scope, receive, send)
 
 
-def _es_la_portada(scope: Scope) -> bool:
-    ruta = str(scope.get("path", ""))
-    return ruta.removeprefix(PREFIJO).strip("/") == ARCHIVO_PORTADA
+async def _servir(estaticos: StaticFiles, ruta: str, scope: Scope) -> Response:
+    try:
+        return await estaticos.get_response(ruta, scope)
+    except ErrorHttp as error:
+        detalle = MENSAJES.get(error.status_code, str(error.detail))
+        return JSONResponse({"detalle": detalle}, status_code=error.status_code)
+
+
+def _es_la_portada(carpeta: Path, ruta: str) -> bool:
+    """¿La ruta pedida abre el mismo archivo que `DIST/portada.html`? Se compara el archivo y no
+    la grafía: en Windows `Portada.HTML`, `portada.html.` y `portada.html::$DATA` lo abren."""
+    try:
+        portada = os.stat(carpeta / ARCHIVO_PORTADA)
+        pedido = os.stat(os.path.join(carpeta, ruta))
+    except (OSError, ValueError):
+        return False
+    return os.path.samestat(portada, pedido)
 
 
 def raiz(request: Request) -> Response:

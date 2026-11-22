@@ -72,6 +72,37 @@
   line-height: 1.3;
 }
 
+// La variación IBCS del anillo: el color del arco nunca va solo, la dice también su ícono y su palabra.
+.silice-radial__variacion {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+
+  svg {
+    flex: none;
+  }
+}
+
+.silice-radial__variacion--favorable {
+  color: var(--silice-ok-ink);
+
+  svg {
+    fill: var(--silice-ok);
+  }
+}
+
+.silice-radial__variacion--desfavorable {
+  color: var(--silice-err);
+
+  svg {
+    fill: var(--silice-err);
+  }
+}
+
 // Anillo por partes
 .silice-donut {
   display: flex;
@@ -480,4 +511,13 @@
   inset-block: -0.1875rem;
   inline-size: 0.125rem;
   background-color: var(--silice-ink);
+}
+
+// Con movimiento reducido el resalte del anillo por partes y de su leyenda cambia de una vez (el crecer al cargar lo
+// apaga VisualMeters.tsx, que no pide cuadros de animación).
+@media (prefers-reduced-motion: reduce) {
+  .silice-donut__segmento,
+  .silice-donut__item {
+    transition: none;
+  }
 }

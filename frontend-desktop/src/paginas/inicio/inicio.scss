@@ -114,7 +114,17 @@
 }
 
 // Banda de graficos animados de cartera (barras + donut circular).
+// Los tokens del anillo por estado (CarteraYAvance.tsx), uno fijo por etapa: los grises y el verde azulado de Carbon de
+// los graficos (como paletaGraficos.ts), ni el verde ni el rojo IBCS (son de las variaciones) ni el ambar de la marca.
+// Cada uno llega a 3:1 sobre la superficie. «Atrasada» no tiene token aqui: lleva --silice-sev-error, el de su icono.
+// Pendiente de la direccion de diseno: los grises 50, 70 y 100 se parecen entre si (banda de claridad y croma).
 .silice-inicio__visuales {
+  --silice-grafico-etapa-en-elaboracion: #8d8d8d; // gray-50
+  --silice-grafico-etapa-en-aprobacion: #525252; // gray-70
+  --silice-grafico-etapa-aprobada: #009d9a; // teal-50
+  --silice-grafico-etapa-en-ejecucion: #161616; // gray-100
+  --silice-grafico-etapa-otra: #6f6f6f; // gray-60, una etapa que la pantalla no conoce
+
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   gap: 1.25rem;

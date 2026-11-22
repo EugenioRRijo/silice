@@ -1,4 +1,7 @@
 // Portada editorial Swiss-industrial de Silice (100 % local, sin CDN, todo font-size en rem).
+// Página solo de pruebas (npm run build:portada + SILICE_PORTADA_WEB=1), fuera del producto. Por eso queda
+// FUERA de la regla de tokens de DESIGN.md: sus colores literales no son la paleta de /app. Los tokens de texto de
+// :root sí cumplen 4,5:1 sobre --stone y --surface, y el atípico es el morado 60 de Carbon (accesibilidad.test.ts).
 @use "../estilos/fuentes";
 
 :root {
@@ -11,11 +14,14 @@
   --charcoal-deep: #14171c;
   --ink: #1c1d1f;
   --muted: #5c6066;
-  --muted-soft: #6e737a;
+  --muted-soft: #666b72;
   --gold: #f5c842;
   --gold-hover: #e6b72e;
-  --ok: #168a4c;
-  --err: #d93829;
+  --ok: #198038; // green-60 de Carbon: 4,64:1 sobre --stone
+  --err: #b81921; // red-60 hover de Carbon: 6,07:1 sobre --stone
+  --atipico: #8a3ffc; // purple-60 de Carbon, solo para precios atípicos (RF-100)
+  --sev-critico: #da1e28; // ícono ErrorFilled (red-60)
+  --sev-advertencia-icono: #b28600; // ícono WarningAltFilled (yellow-50, 3,33:1 sobre blanco)
   --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
@@ -588,8 +594,38 @@ input:focus-visible {
   }
 }
 
-.ventana__hallazgo--error {
+.ventana__hallazgo--critico {
   border-inline-start-color: var(--err);
+}
+
+// La severidad se dice con ícono y palabra; el borde solo refuerza (WCAG 1.4.1).
+.ventana__hallazgo .ventana__sev {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ventana__sev-icono,
+.finding__icono {
+  flex: none;
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+}
+
+.ventana__hallazgo--critico .ventana__sev-icono,
+.finding--err .finding__icono {
+  color: var(--sev-critico);
+}
+
+.ventana__hallazgo--advertencia .ventana__sev-icono,
+.finding--warn .finding__icono {
+  color: var(--sev-advertencia-icono);
+}
+
+.finding--ml .finding__icono {
+  color: var(--atipico);
 }
 
 .ventana__lista {
@@ -669,8 +705,11 @@ input:focus-visible {
   color: var(--muted);
 }
 
+// `.bento__card p` fija su propio tamaño: el rótulo conserva el suyo.
 .bento__card .ejemplo-ficticio {
   margin-block-start: 0.75rem;
+  font-size: 0.6875rem;
+  color: var(--muted);
 }
 
 .ejemplo-ficticio--oscuro {
@@ -1218,6 +1257,9 @@ input:focus-visible {
   }
 
   em {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     font-style: normal;
     font-weight: 600;
     flex: none;
@@ -1225,7 +1267,7 @@ input:focus-visible {
 }
 
 .finding--err { background-color: #fef3f2; border-color: #fecdca; em { color: #b42318; } }
-.finding--ml { background-color: #f4f3ff; border-color: #d9d6fe; em { color: #5925dc; } }
+.finding--ml { background-color: #f6f2ff; border-color: #e8daff; em { color: var(--atipico); } }
 .finding--warn { background-color: #fffaeb; border-color: #fedf89; em { color: #b54708; } }
 .finding--ok { background-color: #ecfdf3; border-color: #abefc6; color: #067647; font-weight: 600; align-items: center; }
 
@@ -1312,9 +1354,15 @@ input:focus-visible {
   }
 }
 
+// La nota va debajo de la ventana, no encima: no tapa su pie («Ejemplo con datos ficticios»).
 .onboarding__escena {
-  position: relative;
-  padding-block-end: 1.5rem;
+  display: grid;
+  gap: 1rem;
+
+  .onboarding__callout {
+    position: static;
+    max-inline-size: none;
+  }
 }
 
 .onboarding__callout {

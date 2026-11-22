@@ -1,4 +1,3 @@
-import { ArrowRight, Catalog, DocumentView, Industry } from "@carbon/icons-react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import type { ResumenTodasRespuesta } from "../../api/tipos";
@@ -12,6 +11,7 @@ import { EmpiezaAqui } from "../../comun/ayuda/BloqueEmpiezaAqui";
 import { pasosDeEmpiezaAqui } from "../../comun/ayuda/empiezaAqui";
 import { claveDeObra } from "../pendientes/logica";
 import { CarteraYAvance } from "./CarteraYAvance";
+import { LanzadorDeEspacio } from "./LanzadorDeEspacio";
 import { LoQueBloquea } from "./LoQueBloquea";
 import { PanelArenera } from "./PanelArenera";
 import type { ExistenciaRespuesta } from "./PanelArenera";
@@ -35,12 +35,6 @@ const RUTA_CUENTAS = "/v1/cuentas";
 // nombre de la barra lateral) y lo describe con las herramientas que la cuenta puede abrir allí, con sus nombres. El número
 // de orden es adorno: va oculto a la lectora y fuera del nombre del enlace.
 const CODIGO: Record<EspacioId, string> = { auditoria: "01", precios: "02", produccion: "03" };
-
-function IconoLanzador({ id }: { id: EspacioId }) {
-  if (id === "auditoria") return <DocumentView size={16} aria-hidden="true" />;
-  if (id === "precios") return <Catalog size={16} aria-hidden="true" />;
-  return <Industry size={16} aria-hidden="true" />;
-}
 
 function herramientasUsables(id: EspacioId, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[]): string {
   return ESPACIOS[id].herramientas
@@ -98,27 +92,14 @@ export default function Panorama() {
           </div>
           <div className="silice-lanzador__rejilla">
             {espaciosOfrecidos.map((esp) => (
-              <Link
+              <LanzadorDeEspacio
                 key={esp.id}
-                to={esp.ruta}
-                className="silice-lanzador__tarjeta"
-                aria-labelledby={`lanzador-${esp.id}`}
-                aria-describedby={`lanzador-${esp.id}-desc`}
-              >
-                <span className="silice-lanzador__arriba" aria-hidden="true">
-                  <span className="silice-lanzador__codigo">{`${CODIGO[esp.id]} · Ventana dedicada`}</span>
-                  <IconoLanzador id={esp.id} />
-                </span>
-                <span id={`lanzador-${esp.id}`} className="silice-lanzador__titulo">
-                  {esp.titulo}
-                </span>
-                <span id={`lanzador-${esp.id}-desc`} className="silice-lanzador__desc">
-                  {herramientasUsables(esp.id, sesion.acciones, sesion.modo_entrega, modulosApagados ?? [])}
-                </span>
-                <span className="silice-lanzador__accion" aria-hidden="true">
-                  Abrir herramienta <ArrowRight size={14} aria-hidden="true" />
-                </span>
-              </Link>
+                id={esp.id}
+                codigo={CODIGO[esp.id]}
+                titulo={esp.titulo}
+                ruta={esp.ruta}
+                herramientas={herramientasUsables(esp.id, sesion.acciones, sesion.modo_entrega, modulosApagados ?? [])}
+              />
             ))}
           </div>
         </section>
