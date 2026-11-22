@@ -1,4 +1,5 @@
 import { Button, Form } from "@carbon/react";
+import { CheckmarkFilled, Password } from "@carbon/icons-react";
 import { InlineNotification, PasswordInput } from "../comun/carbonEs";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -41,34 +42,40 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
     <main className="silice-entrada silice-entrada--dividida">
       <div className="silice-entrada__rejilla">
         <aside className="silice-entrada__marca-panel">
-          <div className="silice-entrada__sello">S</div>
-          <div className="silice-entrada__marca-cuerpo">
-            <h2 className="cds--type-heading-04">Sílice</h2>
+          <div className="silice-entrada__marca-arriba">
+            <p className="silice-entrada__etiqueta">Instalación local · SQLite</p>
+            <h2 className="silice-entrada__marca-titulo">
+              Entrar al escritorio de presupuestos y auditoría
+            </h2>
             <p className="silice-entrada__marca-texto">
-              Ingeniería de costos, presupuestos APU y auditoría forense de libros Excel sobre base
-              local verificable.
+              Cada sesión aplica control de roles separado entre quien arma, revisa, aprueba y
+              administra la carpeta local.
             </p>
           </div>
+
           <dl className="silice-entrada__fichas">
             <div className="silice-entrada__ficha">
-              <dt className="silice-entrada__clave">Acceso único</dt>
+              <dt className="silice-entrada__clave">Separación de funciones (RBAC)</dt>
               <dd className="silice-entrada__valor">
-                Usuario y contraseña para cuentas operativas o administrador de la instalación.
+                Quien elabora el presupuesto no aprueba ni firma su propio paquete de entrega.
               </dd>
             </div>
             <div className="silice-entrada__ficha">
-              <dt className="silice-entrada__clave">Entorno local</dt>
+              <dt className="silice-entrada__clave">Aritmética Decimal exacta</dt>
               <dd className="silice-entrada__valor">
-                Sesión de prueba web conectada al servidor SQLite local.
+                Cálculos APU, auditoría de libros Excel y firmas locales sobre tu propio equipo.
               </dd>
             </div>
           </dl>
         </aside>
+
         <section className="silice-entrada__panel">
-          <h1 className="cds--type-heading-04">Entrar</h1>
-          <p className="silice-entrada__texto cds--type-body-compact-01">
-            Entre con su usuario y contraseña de Sílice.
-          </p>
+          <div className="silice-entrada__cabecera">
+            <h1 className="cds--type-heading-04">Entrar</h1>
+            <p className="silice-entrada__texto cds--type-body-compact-01">
+              Usa tu cuenta registrada en <code className="silice-codigo">instalacion.db</code>.
+            </p>
+          </div>
           {aviso && <p className="silice-entrada__aviso cds--type-body-compact-01">{aviso}</p>}
           <Form className="silice-entrada__formulario" onSubmit={enviar} noValidate>
             <CampoTexto
@@ -100,7 +107,12 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
               />
             )}
             <div className="silice-entrada__acciones">
-              <Button type="submit" disabled={enviando} className="silice-entrada__enviar">
+              <Button
+                type="submit"
+                disabled={enviando}
+                renderIcon={Password}
+                className="silice-entrada__enviar"
+              >
                 {enviando ? "Entrando…" : "Entrar"}
               </Button>
               {alRecuperar && (
@@ -110,6 +122,10 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
               )}
             </div>
           </Form>
+          <div className="silice-entrada__pie-seguridad">
+            <CheckmarkFilled size={16} aria-hidden="true" />
+            <span>Sesión local cifrada · Sin envío de datos externos</span>
+          </div>
         </section>
       </div>
     </main>

@@ -56,14 +56,14 @@ describe("la barra superior cabe en 1366 px con letra Normal", () => {
     expect(buscar).toMatch(/min-inline-size:\s*2\.5rem/);
   });
 
-  test("la carpeta activa ocupa el hueco flexible, cede después del buscador y se recorta con puntos suspensivos", () => {
-    const carpeta = regla(".silice-marco-barra__carpeta");
-    expect(carpeta).toMatch(/flex:\s*1\s+\d+\s+auto/);
-    expect(carpeta).toMatch(/min-inline-size:\s*0/);
-    expect(carpeta).toMatch(/overflow:\s*hidden/);
-    expect(carpeta).toMatch(/text-overflow:\s*ellipsis/);
-    expect(carpeta).toMatch(/white-space:\s*nowrap/);
-    expect(encoger(regla(".silice-marco-barra__buscar"))).toBeGreaterThan(encoger(carpeta));
+  test("el contexto ocupa el hueco flexible, cede después del buscador y se recorta con puntos suspensivos", () => {
+    const contexto = regla(".silice-marco-barra__contexto");
+    expect(contexto).toMatch(/flex:\s*1\s+\d+\s+auto/);
+    expect(contexto).toMatch(/min-inline-size:\s*0/);
+    expect(contexto).toMatch(/overflow:\s*hidden/);
+    expect(contexto).toMatch(/text-overflow:\s*ellipsis/);
+    expect(contexto).toMatch(/white-space:\s*nowrap/);
+    expect(encoger(regla(".silice-marco-barra__buscar"))).toBeGreaterThan(encoger(contexto));
   });
 
   test("ya no hay reglas de migas", () => {

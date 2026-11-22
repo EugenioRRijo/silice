@@ -100,7 +100,7 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
   return (
     <figure className="silice-curva" aria-label={titulo}>
       <div ref={contenedor} className="silice-curva__grafico">
-        <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el grafico" />}>
+        <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el gráfico" />}>
           <GraficoCarbon
             tipo="linea"
             datos={filasDeGrafico(series)}

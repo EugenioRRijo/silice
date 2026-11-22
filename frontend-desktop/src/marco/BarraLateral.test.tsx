@@ -202,7 +202,7 @@ describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () 
     expect(within(lista).queryByRole("list")).toBeNull();
     expect(lista.querySelector("ul")).toBeNull();
     expect(lista.querySelector("svg")).toBeNull();
-    expect(document.querySelector('[role="tree"], [role="treeitem"], [role="group"], [aria-expanded], [aria-level]')).toBeNull();
+    expect(lista.querySelector('[role="tree"], [role="treeitem"], [role="group"], [aria-expanded], [aria-level]')).toBeNull();
     // Las secciones de la obra ya no cuelgan de la barra lateral: están en la barra de la obra.
     for (const seccion of ["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra", "Riesgo"]) {
       expect(screen.queryByRole("link", { name: seccion })).toBeNull();
@@ -369,12 +369,14 @@ describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
     expect(lista.querySelectorAll('[tabindex="-1"]')).toHaveLength(0);
   });
 
-  it("Tab recorre Vista general, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
+  it("Tab recorre Vista general, el boton de plegado, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
     const u = userEvent.setup();
     pintar({ ruta: "/inicio/pendientes" });
     await listaDeObras();
     await u.tab();
     expect(screen.getByRole("link", { name: "Vista general" })).toHaveFocus();
+    await u.tab();
+    expect(screen.getByRole("button", { name: "Ocultar barra lateral" })).toHaveFocus();
     await u.tab();
     expect(screen.getByRole("button", { name: "Nueva obra" })).toHaveFocus();
     await u.tab();
@@ -520,10 +522,10 @@ describe("BarraLateral: Nueva obra", () => {
     expect(foco).toContain("outline-offset: -4px");
     expect(foco).not.toContain("--silice-marco");
     expect(estilos).toContain("background-color: var(--silice-lateral)");
-    expect(estilos).toMatch(/inline-size: 14\.75rem/);
-    expect(estilos).toContain("var(--silice-lateral-activo)");
-    // La raya del activo es del color del marco (8,83:1 sobre el fondo del activo en el tema neutro), no del acento.
-    expect(estilos).toMatch(/&\[aria-current="page"\]\s*\{[^}]*3px solid var\(--silice-marco\)/);
+    expect(estilos).toMatch(/inline-size: 16rem/);
+    expect(estilos).toContain("var(--silice-rail-hover)");
+    // Regla anti-slop: fila activa distinguida por contraste de superficie limpia, sin rayas laterales gruesas.
+    expect(estilos).toMatch(/&\[aria-current="page"\]\s*\{[^}]*background-color:\s*var\(--silice-surface\)/);
     expect(estilos).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 

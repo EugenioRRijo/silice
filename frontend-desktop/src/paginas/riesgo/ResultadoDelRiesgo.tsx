@@ -2,6 +2,7 @@ import type { JSX, ReactNode, Ref } from "react";
 import type { ComprobacionDeLaObra, ProyeccionDeLaObra } from "../../api/riesgo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
+import { RiskRangeMeter } from "../../comun/VisualMeters";
 import { formatoEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
 import { MAS_EMPUJAN, monto } from "./logica";
 
@@ -58,6 +59,15 @@ export function ResultadoDeLaProyeccion({ datos, region, conSeries, children }: 
         <dt>Reserva para cubrir el P80</dt>
         <dd className="silice-cifra">{m(datos.reserva)}</dd>
       </dl>
+      <RiskRangeMeter
+        base={Number(datos.total_base)}
+        p50={Number(datos.p50)}
+        p80={Number(datos.p80)}
+        currency={datos.moneda}
+        baseText={m(datos.total_base)}
+        p50Text={m(datos.p50)}
+        p80Text={m(datos.p80)}
+      />
       {filas.length > 0 ? (
         <TablaDensa etiqueta="Los tres insumos que más empujan" columnas={columnas} filas={filas} />
       ) : (

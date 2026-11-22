@@ -1,18 +1,19 @@
 @use "umbrales" as u;
 @use "@carbon/styles/scss/type";
 
-// Barra lateral marfil del marco nuevo (maqueta aprobada): 236 px, fondo --silice-lateral. Sin hexadecimales: solo
-// --silice-* y --cds-*. Rem, sin sombra ni animacion.
+// Barra lateral colapsable Swiss-industrial (256px expandida <-> riel compacto de 48px).
+// Solo variables --silice-* y --cds-* (sin hexadecimales sueltos) y todo en rem.
 .silice-marco-lateral {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  inline-size: 14.75rem;
+  inline-size: 16rem;
   flex: none;
   min-block-size: 0;
   overflow: hidden;
   background-color: var(--silice-lateral);
-  color: var(--cds-text-primary);
+  color: var(--silice-ink);
+  transition: inline-size 180ms ease-out;
 
   ul {
     margin: 0;
@@ -21,16 +22,72 @@
   }
 }
 
+.silice-marco-lateral--colapsada {
+  inline-size: 3rem;
+}
+
+.silice-marco-lateral__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--silice-hairline);
+}
+
+.silice-marco-lateral__plegar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--silice-radio-md);
+  background-color: transparent;
+  color: var(--silice-muted);
+  cursor: pointer;
+
+  svg {
+    fill: currentcolor;
+  }
+
+  &:hover {
+    background-color: var(--silice-surface);
+    border-color: var(--silice-border-strong);
+    color: var(--silice-ink);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-marco-lateral__obras-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem 0.5rem;
+}
+
 .silice-marco-lateral__titulo {
   margin: 0;
-  padding: 1rem 1rem 0.5rem;
-  color: var(--cds-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.32px;
+  color: var(--silice-muted);
+  font-weight: 600;
   @include type.type-style("label-01");
 }
 
-// La zona de obras ocupa lo que sobra: su cabecera y «Nueva obra» quedan fijas y solo la lista de obras se desplaza.
+.silice-marco-lateral__conteo {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-muted-soft);
+}
+
+.silice-marco-lateral__accion {
+  padding: 0 0.75rem 0.625rem;
+}
+
 .silice-marco-lateral__obras {
   display: flex;
   flex: 1 1 auto;
@@ -41,11 +98,13 @@
 .silice-marco-lateral__arbol {
   flex: 1 1 auto;
   min-block-size: 0;
-  margin-block-start: 0.5rem;
+  padding: 0 0.75rem 0.75rem;
   overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
 }
 
-// El nombre de la obra y, solo si otra obra se llama igual, su carpeta debajo en letra secundaria (D-F3-3).
 .silice-marco-lateral__nombre {
   display: flex;
   flex: 1 1 auto;
@@ -54,7 +113,6 @@
   overflow-wrap: anywhere;
 }
 
-// Un nombre largo se limita a 2 lineas con puntos suspensivos (el nombre completo va en el nombre accesible, y en `title` solo si esta recortado).
 .silice-marco-lateral__obra-nombre {
   display: -webkit-box;
   overflow: hidden;
@@ -64,23 +122,24 @@
 }
 
 .silice-marco-lateral__de-carpeta {
-  color: var(--cds-text-secondary);
+  color: var(--silice-muted-soft);
   font-weight: 400;
   @include type.type-style("label-01");
 }
 
-// Una fila de Pendientes, de una obra o de Empresa. La raya del activo ocupa su sitio siempre (transparente) para que el
-// texto no se mueva al activarse.
+// Fila limpia de una sola elevacion (anti-slop: sin border-l-4 ni rayas gruesas).
 .silice-marco-lateral__fila {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   box-sizing: border-box;
-  min-block-size: 2rem;
-  padding-inline: 0.75rem 1rem;
-  border-inline-start: 3px solid transparent;
-  color: inherit;
+  min-block-size: 2.25rem;
+  padding: 0.4375rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--silice-radio-md);
+  color: var(--silice-ink);
   text-decoration: none;
+  transition: background-color 140ms ease, border-color 140ms ease;
   @include type.type-style("body-compact-01");
 
   svg {
@@ -89,7 +148,7 @@
   }
 
   &:hover {
-    background-color: var(--silice-lateral-activo);
+    background-color: var(--silice-rail-hover);
   }
 
   &:focus-visible {
@@ -98,20 +157,23 @@
   }
 
   &[aria-current="page"] {
-    background-color: var(--silice-lateral-activo);
-    border-inline-start: 3px solid var(--silice-marco);
+    background-color: var(--silice-surface);
+    border-color: var(--silice-border-strong);
+    color: var(--silice-ink);
     font-weight: 600;
   }
 }
 
 .silice-marco-lateral__pendientes {
-  margin-block-start: 0.5rem;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-weight: 600;
 }
 
 .silice-marco-lateral__aviso {
   margin: 0;
   padding: 0.5rem 1rem;
-  color: var(--cds-text-secondary);
+  color: var(--silice-muted);
   @include type.type-style("body-compact-01");
 }
 
@@ -131,14 +193,62 @@
   }
 }
 
-// La zona «Costos y producción» (antes Empresa, F6, T6): no cede alto a la lista de obras.
+// Zona inferior de lanzadores dedicados (Costos y produccion).
 .silice-marco-lateral__costos {
   flex: none;
-  padding-block-end: 0.5rem;
+  padding: 0.75rem;
+  border-block-start: 1px solid var(--silice-border);
+  background-color: var(--silice-rail-band);
+
+  .silice-marco-lateral__titulo {
+    padding: 0 0.5rem 0.5rem;
+  }
+
+  ul {
+    display: grid;
+    gap: 0.25rem;
+  }
 }
 
-// «Costos y producción» con letra grande: el titulo pasa a ser un boton que pliega los espacios (F4, Tarea 0; F6, T6). Toma la letra, el color y
-// las mayusculas del titulo para no parecer un control distinto; el foco usa el mismo contorno que las filas.
+.silice-marco-lateral__herramienta {
+  min-block-size: 2.125rem;
+  padding: 0.375rem 0.625rem;
+  font-weight: 500;
+
+  &::before {
+    content: attr(data-prefijo) "." / "";
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--silice-muted);
+    flex: none;
+  }
+
+  &:hover {
+    background-color: var(--silice-surface);
+    border-color: var(--silice-border);
+  }
+}
+
+.silice-marco-lateral__icono-oro {
+  fill: var(--silice-gold-ink);
+  color: var(--silice-gold-ink);
+}
+
+.silice-marco-lateral__prefijo {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--silice-muted);
+  flex: none;
+}
+
+.silice-marco-lateral__etiqueta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .silice-marco-lateral__costos-boton {
   display: flex;
   align-items: center;
@@ -167,28 +277,29 @@
   }
 }
 
-// «Nueva obra»: boton vistoso de ancho completo, 40 px, siempre visible bajo la cabecera de Obras.
+// Boton principal «Nueva obra» (reutiliza tokens de Carbon button-primary).
 .silice-marco-boton-principal {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   box-sizing: border-box;
   inline-size: 100%;
   block-size: 2.5rem;
   padding-inline: 1rem;
-  // Mismo tono que el boton principal de Carbon (tokens de estilos/tokens.scss): el complementario, texto blanco, sin borde.
   border: none;
+  border-radius: var(--silice-radio-md);
   background-color: var(--cds-button-primary);
   color: var(--cds-text-on-color);
   font-family: inherit;
   font-weight: 600;
-  text-align: start;
+  text-align: center;
   cursor: pointer;
   @include type.type-style("body-compact-01");
 
   svg {
     flex: none;
-    fill: currentcolor;
+    fill: var(--silice-gold);
   }
 
   &:hover {
@@ -200,34 +311,122 @@
   }
 
   &:focus-visible {
-    // Blanco: sobre el complementario (que sin uno propio es el marco) el contorno del marco no se veria.
     outline: 2px solid var(--cds-text-on-color);
     outline-offset: -4px;
   }
 }
 
-// Letra Grande o Muy grande: el rem pasa de 24 o 28 px y Pendientes, los titulos y las cinco entradas de Empresa se comian
-// el alto (a 1366x768 la zona de obras quedaba en casi nada). Se compactan filas y titulos y la zona de obras conserva un
-// minimo; si no cabe todo, la barra se desplaza (marco.scss). Los tres botones de tamano de letra no se tocan (D-F3-5).
+// Riel compacto anclado de 48px cuando la barra esta colapsada.
+.silice-marco-lateral__riel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  block-size: 100%;
+  padding-block: 0.75rem;
+}
+
+.silice-marco-lateral__riel-arriba,
+.silice-marco-lateral__riel-abajo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.silice-marco-lateral__riel-abajo {
+  inline-size: 100%;
+  padding-block-start: 0.625rem;
+  border-block-start: 1px solid var(--silice-border);
+}
+
+.silice-marco-lateral__riel-sep {
+  inline-size: 1.5rem;
+  border-block-start: 1px solid var(--silice-border);
+  margin-block: 0.125rem;
+}
+
+.silice-marco-lateral__riel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 1px solid transparent;
+  border-radius: var(--silice-radio-md);
+  background-color: transparent;
+  color: var(--silice-muted);
+  text-decoration: none;
+  cursor: pointer;
+
+  svg {
+    fill: currentcolor;
+  }
+
+  &:hover {
+    background-color: var(--silice-rail-hover);
+    color: var(--silice-ink);
+  }
+
+  &[aria-current="page"] {
+    background-color: var(--silice-surface);
+    border-color: var(--silice-border-strong);
+    color: var(--silice-ink);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-marco-lateral__riel-btn--toggle {
+  background-color: var(--silice-surface);
+  border-color: var(--silice-border-strong);
+  color: var(--silice-ink);
+
+  &:hover {
+    border-color: var(--silice-ink);
+  }
+}
+
+.silice-marco-lateral__riel-btn--primario {
+  background-color: var(--cds-button-primary);
+  color: var(--silice-gold);
+
+  &:hover {
+    background-color: var(--cds-button-primary-hover);
+    color: var(--silice-gold);
+  }
+}
+
+.silice-marco-lateral__riel-btn--oro {
+  color: var(--silice-gold-ink);
+
+  &:hover {
+    background-color: var(--silice-surface);
+    border-color: var(--silice-border);
+    color: var(--silice-gold-ink);
+  }
+}
+
 @include u.con-letra-grande {
   .silice-marco-lateral__fila {
     min-block-size: 1.5rem;
+  }
+
+  .silice-marco-lateral__obras-cabecera {
+    padding: 0.5rem 1rem 0.25rem;
   }
 
   .silice-marco-lateral__titulo {
     padding: 0.5rem 1rem 0.25rem;
   }
 
-  .silice-marco-lateral__pendientes,
-  .silice-marco-lateral__arbol {
-    margin-block-start: 0.25rem;
-  }
-
   .silice-marco-lateral__obras {
     min-block-size: 10rem;
   }
 
-  // El boton de la zona es un blanco de puntero: no baja de 1,5 rem aunque el titulo se compacte.
   .silice-marco-lateral__costos-boton {
     min-block-size: 1.5rem;
   }

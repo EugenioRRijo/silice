@@ -1,4 +1,12 @@
-import { Add } from "@carbon/icons-react";
+import {
+  Add,
+  Catalog,
+  Dashboard,
+  DocumentView,
+  Industry,
+  SidePanelClose,
+  SidePanelOpen,
+} from "@carbon/icons-react";
 import { useEffect, useId, useMemo } from "react";
 import { Link, useLocation } from "react-router";
 import { Pildora } from "../comun/Pildora";
@@ -15,42 +23,37 @@ import { obrasAlcanzables, useOferta } from "./oferta";
 import { RUTA_DE_VISTA_GENERAL, esRutaDeInicio, rutaDeObra } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
 import { usePendientes } from "./usePendientes";
+import { useWorkspaceLayout } from "./useWorkspaceLayout";
 import { ZonaDeCostos } from "./ZonaDeCostos";
 
 interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
 }
 
-// Barra lateral del marco nuevo: Vista general (con los pendientes por hacer), la lista plana de Obras y «Costos y producción». Cada obra es un enlace a su Resumen (F6, T5;
-// decisión de Eugenio, 2026-11-04: elegir otra obra no conserva la sección); las secciones de la obra abierta están en su
-// barra, bajo la cabecera (EspacioDeObra). Sin títulos de grupo por carpeta (D-F3-3): las obras van por nombre y solo las de
-// nombre repetido dicen su carpeta. Las píldoras de Pendientes y de cada obra salen de los pendientes que el marco ya
-// cargó (`usePendientes`). «Costos y producción» vive en ZonaDeCostos; la Cuenta, a la que ya no lleva ninguna entrada de
-// esta barra, se abre desde el botón de la persona (F6, T6).
+function iconoDeEspacio(id: string) {
+  if (id === "auditoria") return <DocumentView size={16} aria-hidden="true" />;
+  if (id === "precios") return <Catalog size={16} aria-hidden="true" />;
+  return <Industry size={16} aria-hidden="true" />;
+}
+
 export function BarraLateral({ obraAbierta }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
-  // Ir a la obra recién creada es salir de la pantalla: con cambios sin guardar se pregunta, como en las demás
-  // navegaciones del marco. Si la persona se queda, la obra ya creada sigue en la lista (se recargó).
+  const { sidebarCollapsed, toggleSidebar } = useWorkspaceLayout();
   const navegar = useNavegarSeguro();
   const base = useId();
   const { obras, carpetaActual, tituloActual, estado, recargar } = useObras();
-  // Los contadores solo se pintan con la lectura lista y mayor que cero: cargando o con error no hay número (ni uno falso).
   const carga = usePendientes();
   const porObra = useMemo(() => contarPorObra(carga.estado === "listo" ? carga.pendientes : []), [carga]);
   const total = carga.estado === "listo" ? carga.pendientes.length : 0;
-  // Las dos vistas de Inicio (Vista general y Pendientes) son del mismo espacio: la entrada está activa en cualquiera.
   const { pathname } = useLocation();
   const enInicio = esRutaDeInicio(pathname);
-  // El espacio de la ruta (`/produccion/…`, `/auditoria/…`, `/precios/…`): el primer segmento.
   const primerSegmento = pathname.split("/")[1] ?? "";
   const espacioActivo = oferta.espacios.find((e) => e.id === primerSegmento)?.id ?? null;
-  // El diálogo lo puede pedir también la mesa (marco/nuevaObra); al irse la barra (salir de la sesión) se cierra.
   const nuevaAbierta = useNuevaObraAbierta();
   useEffect(() => cerrarNuevaObra, []);
   const { espacios } = oferta;
   const puedeCrear = acciones.includes("editar_hoja");
 
-  // Por nombre (sin tildes ni mayúsculas) y, si se repite, por carpeta: la API las trae por carpeta (D-F3-3).
   const visibles = useMemo(
     () =>
       obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta).toSorted(
@@ -61,9 +64,7 @@ export function BarraLateral({ obraAbierta }: Props) {
     [obras, carpetaActual, puedeCambiarDeCarpeta],
   );
   const carpetaDeHomonimas = useMemo(() => obrasConMismoNombre(visibles), [visibles]);
-  // «Nueva obra» crea donde está la persona: en la carpeta de la obra abierta en la ruta o, sin obra, en la de la sesión.
   const carpetaDeCreacion = obraAbierta === null ? carpetaActual : obraAbierta.carpeta;
-  // El título lo da el servidor: el de la carpeta de la sesión viene con la lista; el de otra, con sus obras.
   const tituloDeCreacion =
     carpetaDeCreacion === carpetaActual
       ? tituloActual
@@ -80,7 +81,6 @@ export function BarraLateral({ obraAbierta }: Props) {
     const clave = claveDeObra(o.carpeta, o.obra_id);
     const carpeta = carpetaDeHomonimas.get(clave);
     const cuenta = porObra.get(clave) ?? 0;
-    // El nombre accesible dice lo mismo que se ve: la obra, su carpeta si hay homónima y cuántos pendientes tiene.
     const nombre = [o.obra, carpeta, cuenta > 0 ? TEXTOS_PENDIENTES.porHacer(cuenta) : undefined].filter(Boolean).join(", ");
     return (
       <li key={clave}>
@@ -111,8 +111,6 @@ export function BarraLateral({ obraAbierta }: Props) {
         </div>
       );
     }
-    // Sin nada que mostrar: mientras llega la primera lista (o una recarga de una lista vacía) se dice que carga; no se
-    // pinta una lista vacía. Con obras ya cargadas, una recarga conserva la lista.
     if (visibles.length === 0) {
       return estado === "cargando" ? (
         <p className="silice-marco-lateral__aviso" role="status">
@@ -130,32 +128,113 @@ export function BarraLateral({ obraAbierta }: Props) {
   }
 
   return (
-    <aside className="silice-marco-lateral" aria-label="Barra lateral">
-      <Link
-        to={RUTA_DE_VISTA_GENERAL}
-        aria-current={enInicio ? "page" : undefined}
-        aria-label={total > 0 ? `Vista general, ${TEXTOS_PENDIENTES.porHacer(total)}` : undefined}
-        className="silice-marco-lateral__fila silice-marco-lateral__pendientes"
-      >
-        Vista general
-        {total > 0 && <Pildora valor={total} />}
-      </Link>
-
-      {/* Sin `leer_proyecto` la cuenta no ve obras: la zona no se pinta. */}
-      {estado !== "sin_permiso" && (
-        <div className="silice-marco-lateral__obras">
-          <h2 className="silice-marco-lateral__titulo">Obras</h2>
-          {puedeCrear && (
-            <button type="button" className="silice-marco-boton-principal" onClick={abrirNuevaObra}>
-              <Add size={20} aria-hidden="true" />
-              Nueva obra
+    <aside
+      className={`silice-marco-lateral${sidebarCollapsed ? " silice-marco-lateral--colapsada" : ""}`}
+      data-collapsed={sidebarCollapsed ? "true" : "false"}
+      aria-label="Barra lateral"
+    >
+      {sidebarCollapsed ? (
+        <div className="silice-marco-lateral__riel">
+          <div className="silice-marco-lateral__riel-arriba">
+            <button
+              type="button"
+              className="silice-marco-lateral__riel-btn silice-marco-lateral__riel-btn--toggle"
+              onClick={toggleSidebar}
+              aria-label="Mostrar barra lateral"
+              aria-expanded={false}
+              title="Mostrar barra lateral (Ctrl+B)"
+            >
+              <SidePanelOpen size={16} aria-hidden="true" />
             </button>
+            <div className="silice-marco-lateral__riel-sep" aria-hidden="true" />
+            <Link
+              to={RUTA_DE_VISTA_GENERAL}
+              aria-current={enInicio ? "page" : undefined}
+              aria-label={total > 0 ? `Vista general, ${TEXTOS_PENDIENTES.porHacer(total)}` : "Vista general"}
+              title={total > 0 ? `Vista general (${total})` : "Vista general"}
+              className="silice-marco-lateral__riel-btn"
+            >
+              <Dashboard size={16} aria-hidden="true" />
+            </Link>
+            {estado !== "sin_permiso" && puedeCrear && (
+              <button
+                type="button"
+                className="silice-marco-lateral__riel-btn silice-marco-lateral__riel-btn--primario"
+                onClick={abrirNuevaObra}
+                aria-label="Nueva obra"
+                title="Nueva obra"
+              >
+                <Add size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          {espacios.length > 0 && (
+            <nav aria-label="Costos y producción" className="silice-marco-lateral__riel-abajo">
+              {espacios.map((e) => (
+                <Link
+                  key={e.id}
+                  to={e.ruta}
+                  aria-current={espacioActivo === e.id ? "page" : undefined}
+                  aria-label={e.titulo}
+                  title={e.titulo}
+                  className="silice-marco-lateral__riel-btn silice-marco-lateral__riel-btn--oro"
+                >
+                  {iconoDeEspacio(e.id)}
+                </Link>
+              ))}
+            </nav>
           )}
-          {zonaDeObras()}
         </div>
-      )}
+      ) : (
+        <>
+          <div className="silice-marco-lateral__cabecera">
+            <Link
+              to={RUTA_DE_VISTA_GENERAL}
+              aria-current={enInicio ? "page" : undefined}
+              aria-label={total > 0 ? `Vista general, ${TEXTOS_PENDIENTES.porHacer(total)}` : undefined}
+              className="silice-marco-lateral__fila silice-marco-lateral__pendientes"
+            >
+              <Dashboard size={16} aria-hidden="true" />
+              <span>Vista general</span>
+              {total > 0 && <Pildora valor={total} />}
+            </Link>
+            <button
+              type="button"
+              className="silice-marco-lateral__plegar"
+              onClick={toggleSidebar}
+              aria-label="Ocultar barra lateral"
+              aria-expanded={true}
+              title="Ocultar barra lateral (Ctrl+B)"
+            >
+              <SidePanelClose size={16} aria-hidden="true" />
+            </button>
+          </div>
 
-      <ZonaDeCostos espacios={espacios} espacioActivo={espacioActivo} idBase={base} />
+          {estado !== "sin_permiso" && (
+            <div className="silice-marco-lateral__obras">
+              <div className="silice-marco-lateral__obras-cabecera">
+                <h2 className="silice-marco-lateral__titulo">Obras</h2>
+                {visibles.length > 0 && (
+                  <span className="silice-marco-lateral__conteo" aria-hidden="true">
+                    {visibles.length}
+                  </span>
+                )}
+              </div>
+              {puedeCrear && (
+                <div className="silice-marco-lateral__accion">
+                  <button type="button" className="silice-marco-boton-principal" onClick={abrirNuevaObra}>
+                    <Add size={16} aria-hidden="true" />
+                    Nueva obra
+                  </button>
+                </div>
+              )}
+              {zonaDeObras()}
+            </div>
+          )}
+
+          <ZonaDeCostos espacios={espacios} espacioActivo={espacioActivo} idBase={base} />
+        </>
+      )}
 
       <DialogoNuevaObra
         abierto={nuevaAbierta}
@@ -164,7 +243,6 @@ export function BarraLateral({ obraAbierta }: Props) {
         alCrear={(obra) => {
           cerrarNuevaObra();
           recargar();
-          // El código lo da el servidor como texto; si no son dígitos no hay ruta a la obra nueva y se queda donde está.
           if (/^\d+$/.test(obra.codigo)) void navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
         }}
       />

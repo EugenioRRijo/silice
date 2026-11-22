@@ -1,4 +1,4 @@
-import { Search, User } from "@carbon/icons-react";
+import { ArrowLeft, Globe, Search, User } from "@carbon/icons-react";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router";
@@ -6,19 +6,33 @@ import { iniciales } from "../shell/iniciales";
 import "../shell/MenuCuenta.scss";
 import "./BarraSuperior.scss";
 import { rutaDeCuenta } from "./espacios";
-import { RUTA_DE_INICIO } from "./secciones";
+import type { EspacioId } from "./espacios";
+import type { EspacioOfrecido } from "./oferta";
+import { RUTA_DE_INICIO, RUTA_DE_VISTA_GENERAL } from "./secciones";
 import { useTema } from "./useTema";
 
 interface Props {
   alAbrirBuscador: () => void;
   nombre: string;
-  // El nombre de la carpeta abierta ahora, o null si todavía no se sabe (no se pinta un rótulo vacío).
-  carpeta: string | null;
-  // Lo que el marco pone antes de la cuenta (la marca de la demostración, «Recorrido»).
+  // Conservada por compatibilidad de llamada; la carpeta ya no se expone como chip tecnico en la cabecera.
+  carpeta?: string | null;
+  // Contexto limpio en escritorio (ej. «Inicio / Vista general» u «Obras / Drenaje de la clínica»).
+  migaContextual?: string | null;
+  // Ventana dedicada a pantalla completa para Auditoria, Precios o Produccion.
+  enVentanaDedicada?: boolean;
+  espacioActivo?: EspacioId | null;
+  espacios?: readonly EspacioOfrecido[];
+  // Lo que el marco pone antes de la cuenta (la marca de la demostracion, «Recorrido»).
   extra?: ReactNode;
 }
 
-// Un campo donde Ctrl+K ya significa otra cosa (texto largo o contenido editable, también «plaintext-only»): ahi no se abre el
+const ETIQUETA_MODO: Record<EspacioId, string> = {
+  auditoria: "01 · Auditoría",
+  precios: "02 · Precios y Catálogo",
+  produccion: "03 · Producción",
+};
+
+// Un campo donde Ctrl+K ya significa otra cosa (texto largo o contenido editable, tambien «plaintext-only»): ahi no se abre el
 // buscador. `closest` incluye al propio destino.
 function usaCtrlK(destino: EventTarget | null): boolean {
   return (
@@ -27,10 +41,15 @@ function usaCtrlK(destino: EventTarget | null): boolean {
   );
 }
 
-// Barra superior del marco (plan F6, T6; diseño visual §4): la marca, que lleva a la ruta índice; la carpeta activa; el
-// buscador (Ctrl+K); y la persona, que es un enlace a la Cuenta. Sin migas (cada espacio dice dónde se está) y sin el
-// tamaño de letra, que vive solo en la Cuenta (decisión de Eugenio, 2026-11-04). La monta marco/Marco.
-export function BarraSuperior({ alAbrirBuscador, nombre, carpeta, extra }: Props) {
+export function BarraSuperior({
+  alAbrirBuscador,
+  nombre,
+  migaContextual = null,
+  enVentanaDedicada = false,
+  espacioActivo = null,
+  espacios = [],
+  extra,
+}: Props) {
   const { logo } = useTema();
   const { pathname } = useLocation();
   const enLaCuenta = pathname === "/cuenta" || pathname.startsWith("/cuenta/");
@@ -47,43 +66,102 @@ export function BarraSuperior({ alAbrirBuscador, nombre, carpeta, extra }: Props
   }, [alAbrirBuscador]);
 
   return (
-    <header className="silice-marco-barra">
-      <Link to={RUTA_DE_INICIO} className="silice-marco-barra__marca">
-        {logo ? (
-          <img src={logo} alt="Sílice — Ir al inicio" className="silice-marco-barra__logo" />
-        ) : (
-          <span className="silice-marco-barra__nombre">Sílice</span>
+    <header className={`silice-marco-barra${enVentanaDedicada ? " silice-marco-barra--dedicada" : ""}`}>
+      <div className="silice-marco-barra__izq">
+        {enVentanaDedicada && (
+          <Link to={RUTA_DE_VISTA_GENERAL} className="silice-marco-barra__volver">
+            <ArrowLeft size={16} aria-hidden="true" />
+            <span>Volver a Obras</span>
+          </Link>
         )}
-      </Link>
-      {/* Ocupa siempre el hueco flexible (vacía si no se sabe la carpeta) para que el buscador y la cuenta queden a la derecha. */}
-      <span className="silice-marco-barra__carpeta">{carpeta ? `Carpeta activa: ${carpeta}` : ""}</span>
-      <button
-        type="button"
-        className="silice-marco-barra__buscar"
-        aria-keyshortcuts="Control+K"
-        onClick={alAbrirBuscador}
-      >
-        <Search size={16} aria-hidden="true" />
-        <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
-      </button>
-      {extra}
-      <div className="silice-cuenta">
-        <Link
-          to={rutaDeCuenta("preferencias")}
-          className="cds--header__action silice-cuenta__boton"
-          aria-current={enLaCuenta ? "page" : undefined}
-          aria-label={`Cuenta de ${nombre}`}
-          title={nombre}
-        >
-          {letras ? (
-            <span className="silice-cuenta__iniciales cds--type-label-01" aria-hidden="true">
-              {letras}
-            </span>
+        <Link to={RUTA_DE_INICIO} className="silice-marco-barra__marca">
+          {logo ? (
+            <img src={logo} alt="Sílice — Ir al inicio" className="silice-marco-barra__logo" />
           ) : (
-            <User size={16} className="silice-cuenta__persona" aria-hidden="true" />
+            <>
+              <span className="silice-marco-barra__sello" aria-hidden="true">
+                S
+              </span>
+              <span className="silice-marco-barra__nombre">Sílice</span>
+            </>
           )}
-          <span className="silice-cuenta__nombre cds--type-body-compact-01">{nombre}</span>
         </Link>
+        {!enVentanaDedicada && (
+          <span className="silice-marco-barra__contexto">
+            {migaContextual ? (
+              <>
+                <span className="silice-marco-barra__barra-sep" aria-hidden="true">
+                  /
+                </span>
+                <span className="silice-marco-barra__contexto-texto">{migaContextual}</span>
+              </>
+            ) : (
+              ""
+            )}
+          </span>
+        )}
+      </div>
+
+      {enVentanaDedicada && espacios.length > 0 ? (
+        <nav aria-label="Selector de herramientas dedicadas" className="silice-marco-barra__modos">
+          {espacios.map((e) => (
+            <Link
+              key={e.id}
+              to={e.ruta}
+              aria-current={espacioActivo === e.id ? "page" : undefined}
+              className="silice-marco-barra__modo"
+            >
+              {ETIQUETA_MODO[e.id]}
+            </Link>
+          ))}
+        </nav>
+      ) : (
+        <button
+          type="button"
+          className="silice-marco-barra__buscar"
+          aria-keyshortcuts="Control+K"
+          onClick={alAbrirBuscador}
+        >
+          <Search size={16} aria-hidden="true" />
+          <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
+        </button>
+      )}
+
+      <div className="silice-marco-barra__der">
+        {enVentanaDedicada && (
+          <button
+            type="button"
+            className="silice-marco-barra__buscar silice-marco-barra__buscar--compacto"
+            aria-keyshortcuts="Control+K"
+            onClick={alAbrirBuscador}
+          >
+            <Search size={16} aria-hidden="true" />
+            <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
+          </button>
+        )}
+        <a href="/" className="silice-marco-barra__portada">
+          <Globe size={16} aria-hidden="true" />
+          <span>Portada</span>
+        </a>
+        {extra}
+        <div className="silice-cuenta">
+          <Link
+            to={rutaDeCuenta("preferencias")}
+            className="cds--header__action silice-cuenta__boton"
+            aria-current={enLaCuenta ? "page" : undefined}
+            aria-label={`Cuenta de ${nombre}`}
+            title={nombre}
+          >
+            {letras ? (
+              <span className="silice-cuenta__iniciales cds--type-label-01" aria-hidden="true">
+                {letras}
+              </span>
+            ) : (
+              <User size={16} className="silice-cuenta__persona" aria-hidden="true" />
+            )}
+            <span className="silice-cuenta__nombre cds--type-body-compact-01">{nombre}</span>
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -29,10 +29,10 @@ const estilos = () => nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd(
 describe("Pildora: colores propios del contador", () => {
   const regla = () => /\.silice-pildora\s*\{([^}]*)\}/.exec(estilos())?.[1] ?? "";
 
-  it("pinta el número y un contorno de 1 px del color del número sobre el fondo del contador", () => {
-    expect(regla()).toMatch(/background-color:\s*var\(--silice-contador-fondo\)/);
+  it("pinta el número limpio en monoespaciado tabular sin cápsula redondeada (anti-slop)", () => {
     expect(regla()).toMatch(/(^|[\s;])color:\s*var\(--silice-contador-numero\)/);
-    expect(regla()).toMatch(/border:\s*1px solid var\(--silice-contador-numero\)/);
+    expect(regla()).toMatch(/font-variant-numeric:\s*tabular-nums/);
+    expect(regla()).not.toMatch(/border-radius/);
   });
 
   it("deja de usar el acento y el marco", () => {

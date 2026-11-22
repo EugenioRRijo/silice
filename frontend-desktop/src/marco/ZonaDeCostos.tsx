@@ -1,8 +1,9 @@
-import { ChevronDown, ChevronRight } from "@carbon/icons-react";
+import { Catalog, ChevronDown, ChevronRight, DocumentView, Industry } from "@carbon/icons-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import type { TamanoDeLetra } from "../comun/preferenciaDeLetra";
 import { useTamanoDeLetra } from "../comun/useTamanoDeLetra";
+import type { EspacioId } from "./espacios";
 import type { EspacioOfrecido } from "./oferta";
 
 interface Props {
@@ -13,12 +14,18 @@ interface Props {
   idBase: string;
 }
 
-// La zona «Costos y producción» de la barra lateral (Auditar un presupuesto, Precios y catálogo, Costos de producción), aparte
-// de BarraLateral: lleva su propio estado de plegado y su hook de letra, que no tienen nada que ver con el de las obras.
-// Antes era la zona Empresa (Tarea 0 del plan F4); en F6, T6 «Empresa y personas» y «Ayuda» pasaron a la Cuenta y quedó solo
-// este grupo, con su título (diseño visual 3.1). Con letra normal es un h2 sin botón; con Grande o Muy grande, un
-// desplegable de WAI-ARIA que arranca plegado (abierto si la ruta es de uno de los tres espacios) para darle su alto a la
-// lista de obras. La decisión de la persona vale para el tamaño de letra con que se tomó.
+const PREFIJO_ESPACIO: Record<EspacioId, string> = {
+  auditoria: "01",
+  precios: "02",
+  produccion: "03",
+};
+
+function IconoEspacio({ id }: { id: EspacioId }) {
+  if (id === "auditoria") return <DocumentView size={16} className="silice-marco-lateral__icono-oro" aria-hidden="true" />;
+  if (id === "precios") return <Catalog size={16} className="silice-marco-lateral__icono-oro" aria-hidden="true" />;
+  return <Industry size={16} className="silice-marco-lateral__icono-oro" aria-hidden="true" />;
+}
+
 export function ZonaDeCostos({ espacios, espacioActivo, idBase }: Props) {
   const tamanoDeLetra = useTamanoDeLetra();
   const plegable = tamanoDeLetra !== "normal";
@@ -26,7 +33,6 @@ export function ZonaDeCostos({ espacios, espacioActivo, idBase }: Props) {
   const manual = decision?.tamano === tamanoDeLetra ? decision.abierta : null;
   const abierta = !plegable || (manual ?? espacioActivo !== null);
   const idDeLista = `${idBase}-costos`;
-  // Sin ningún espacio que la cuenta pueda usar no hay zona que ofrecer.
   if (espacios.length === 0) return null;
 
   return (
@@ -54,9 +60,11 @@ export function ZonaDeCostos({ espacios, espacioActivo, idBase }: Props) {
               <Link
                 to={e.ruta}
                 aria-current={espacioActivo === e.id ? "page" : undefined}
-                className="silice-marco-lateral__fila"
+                data-prefijo={PREFIJO_ESPACIO[e.id]}
+                className="silice-marco-lateral__fila silice-marco-lateral__herramienta"
               >
-                {e.titulo}
+                <IconoEspacio id={e.id} />
+                <span className="silice-marco-lateral__etiqueta">{e.titulo}</span>
               </Link>
             </li>
           ))}

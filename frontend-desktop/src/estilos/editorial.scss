@@ -1,0 +1,282 @@
+// Sistema visual editorial Swiss-industrial de Silice (unslop + frontend-design).
+// Capas sobre tokens.scss sin alterar los tokens de Carbon que vigilan temaNeutro/colorDeAccion.
+// Regla estricta: todos los tamanos de fuente en rem (estilosLetra.test.ts).
+
+:root {
+  --silice-stone: #f7f6f3;
+  --silice-surface: #ffffff;
+  --silice-surface-muted: #f4f3ee;
+  --silice-surface-warm: #faf9f6;
+  --silice-rail: #f3f2ed;
+  --silice-rail-hover: #eae8e1;
+  --silice-rail-band: #efece5;
+  --silice-border: #e4e2da;
+  --silice-border-strong: #d6d3c7;
+  --silice-hairline: #eceae2;
+  --silice-charcoal: #1e2125;
+  --silice-charcoal-btn: #222427;
+  --silice-charcoal-hover: #31353b;
+  --silice-charcoal-deep: #14171a;
+  --silice-charcoal-ink: #181a1d;
+  --silice-gold: #f5c842;
+  --silice-gold-strong: #e5b21a;
+  --silice-gold-soft: #fdf5d7;
+  --silice-gold-ink: #9a6b00;
+  --silice-ink: #1c1d1f;
+  --silice-muted: #5c6066;
+  --silice-muted-soft: #6e737a;
+  --silice-ok: #168a4c;
+  --silice-ok-ink: #166534;
+  --silice-ok-bg: #ecfbf2;
+  --silice-ok-border: #bbf7d0;
+  --silice-warn: #b45309;
+  --silice-warn-bg: #fffbeb;
+  --silice-warn-border: #fde68a;
+  --silice-err: #b91c1c;
+  --silice-err-bg: #fef2f2;
+  --silice-err-border: #fecaca;
+  --silice-radio-sm: 0.375rem;
+  --silice-radio-md: 0.5rem;
+  --silice-radio-lg: 0.75rem;
+}
+
+body {
+  background-color: var(--silice-stone);
+  color: var(--silice-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.cds--g10 {
+  --cds-background: var(--silice-stone);
+  --cds-layer-01: var(--silice-surface);
+  --cds-layer: var(--silice-surface);
+  --cds-border-subtle: var(--silice-border);
+  --cds-border-subtle-01: var(--silice-hairline);
+  --cds-border-strong-01: var(--silice-border-strong);
+  --cds-text-primary: var(--silice-ink);
+  --cds-text-secondary: var(--silice-muted);
+  --cds-field-01: var(--silice-surface);
+  background-color: var(--silice-stone);
+  color: var(--silice-ink);
+}
+
+.silice-marco,
+.silice-entrada {
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--silice-ink);
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+  }
+
+  h1.cds--type-heading-04 {
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  h2.cds--type-heading-compact-02,
+  h2.cds--type-heading-03 {
+    font-weight: 700;
+  }
+}
+
+// Contenedor principal: ancho comodo con barra abierta; ancho completo al colapsar o en ventana dedicada.
+.silice-marco .silice-pagina {
+  max-inline-size: 74rem;
+  padding: 1.5rem 1.75rem 2.5rem;
+  gap: 1.5rem;
+  transition: max-inline-size 200ms ease-out;
+
+  @media (max-width: 48rem) {
+    padding: 1.25rem 1rem 2rem;
+  }
+}
+
+.silice-contenido--expandido .silice-pagina {
+  max-inline-size: none;
+}
+
+// Superficie plana de una sola elevacion (cero cards anidadas).
+.silice-panel {
+  background-color: var(--silice-surface);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
+  overflow: hidden;
+}
+
+.silice-panel--padded {
+  padding: 1.25rem;
+}
+
+.silice-panel__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-block-end: 1px solid var(--silice-hairline);
+
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+}
+
+.silice-panel__subtitulo {
+  color: var(--silice-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin-block-start: 0.25rem;
+}
+
+// Banda unificada de KPIs con divisores finos (single-elevation hairline strip).
+.silice-banda-kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  background-color: var(--silice-surface);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
+  overflow: hidden;
+}
+
+.silice-banda-kpi__celda {
+  padding: 1.125rem 1.25rem;
+  border-inline-end: 1px solid var(--silice-hairline);
+  border-block-end: 1px solid var(--silice-hairline);
+  display: grid;
+  align-content: start;
+  gap: 0.375rem;
+  min-inline-size: 0;
+
+  &:last-child {
+    border-inline-end: 0;
+  }
+}
+
+.silice-banda-kpi__etiqueta {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--silice-muted);
+}
+
+.silice-banda-kpi__valor {
+  margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.silice-banda-kpi__detalle {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--silice-muted-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+// Armonizacion editorial de controles Carbon en todas las 40 pantallas sin tocar su contrato funcional.
+.silice-marco,
+.silice-entrada {
+  .cds--btn {
+    border-radius: var(--silice-radio-sm);
+    font-weight: 600;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+
+  .cds--btn--tertiary {
+    background-color: var(--silice-surface);
+    border-color: var(--silice-border-strong);
+    color: var(--silice-ink);
+
+    &:hover {
+      background-color: var(--silice-surface-muted);
+      border-color: var(--silice-ink);
+      color: var(--silice-ink);
+    }
+  }
+
+  .cds--text-input,
+  .cds--password-input,
+  .cds--select-input,
+  .cds--text-area {
+    background-color: var(--silice-surface);
+    border: 1px solid var(--silice-border-strong);
+    border-radius: var(--silice-radio-sm);
+    color: var(--silice-ink);
+
+    &:focus {
+      outline: 2px solid var(--silice-charcoal-btn);
+      outline-offset: -1px;
+    }
+  }
+
+  .cds--inline-notification {
+    border-radius: var(--silice-radio-md);
+    border: 1px solid var(--silice-border);
+  }
+
+  .cds--tile {
+    background-color: var(--silice-surface);
+    border: 1px solid var(--silice-border);
+    border-radius: var(--silice-radio-lg);
+  }
+
+  .cds--tabs .cds--tabs__nav-link {
+    font-weight: 500;
+  }
+
+  .cds--tabs .cds--tabs__nav-item--selected .cds--tabs__nav-link {
+    font-weight: 600;
+    color: var(--silice-ink);
+  }
+
+  // Tablas de datos Carbon con superficie blanca y cabeceras editoriales en piedra suave.
+  .silice-tabla {
+    background-color: var(--silice-surface);
+    border: 1px solid var(--silice-border);
+    border-radius: var(--silice-radio-lg);
+
+    .cds--data-table {
+      background-color: var(--silice-surface);
+    }
+
+    .cds--data-table thead th,
+    .cds--data-table-header {
+      background-color: var(--silice-surface-muted);
+      color: var(--silice-muted);
+      border-block-end: 1px solid var(--silice-border);
+      font-weight: 600;
+    }
+
+    .cds--data-table tbody td {
+      background-color: var(--silice-surface);
+      border-block-end: 1px solid var(--silice-hairline);
+      color: var(--silice-ink);
+    }
+
+    .cds--data-table tbody tr:hover td {
+      background-color: var(--silice-surface-warm);
+    }
+
+    .cds--data-table tbody tr:last-child td {
+      border-block-end: 0;
+    }
+  }
+
+  // Bloques de formularios / fieldsets en pantallas de control, riesgo, indices y administracion.
+  fieldset {
+    background-color: var(--silice-surface);
+    border: 1px solid var(--silice-border);
+    border-radius: var(--silice-radio-lg);
+    padding: 1.125rem 1.25rem;
+  }
+}
+

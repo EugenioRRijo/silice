@@ -1,0 +1,475 @@
+// Visualizadores SVG animados de Silice (RadialGauge, AnimatedDonutChart, AnimatedBarChart, RiskRangeMeter, AlertBanner).
+// Todo tamano de texto en rem (estilosLetra.test.ts) y cifras en tabular-nums.
+
+.silice-radial {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-radial__aro {
+  position: relative;
+  flex: none;
+}
+
+.silice-radial__svg {
+  transform: rotate(-90deg);
+  display: block;
+}
+
+.silice-radial__centro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.silice-radial__cifra {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+  line-height: 1;
+}
+
+.silice-radial__texto {
+  min-inline-size: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-radial__etiqueta {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--silice-ink);
+  line-height: 1.3;
+}
+
+.silice-radial__sub {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--silice-muted);
+  line-height: 1.4;
+}
+
+// Donut interactivo
+.silice-donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.silice-donut__aro {
+  position: relative;
+  flex: none;
+  margin-inline: auto;
+}
+
+.silice-donut__svg {
+  transform: rotate(-90deg);
+  display: block;
+}
+
+.silice-donut__segmento {
+  cursor: pointer;
+  transition: stroke-width 180ms ease;
+}
+
+.silice-donut__centro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding-inline: 1.25rem;
+  pointer-events: none;
+}
+
+.silice-donut__centro-titulo {
+  font-size: 0.75rem;
+  color: var(--silice-muted-soft);
+  line-height: 1.2;
+}
+
+.silice-donut__centro-valor {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+  margin-block-start: 0.25rem;
+  line-height: 1.1;
+}
+
+.silice-donut__centro-unidad {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.6875rem;
+  color: var(--silice-muted);
+  font-variant-numeric: tabular-nums;
+  margin-block-start: 0.125rem;
+}
+
+.silice-donut__leyenda {
+  flex: 1 1 14rem;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block: 1px solid var(--silice-hairline);
+}
+
+.silice-donut__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.5rem;
+  border-block-end: 1px solid var(--silice-hairline);
+  transition: background-color 140ms ease;
+
+  &:last-child {
+    border-block-end: 0;
+  }
+}
+
+.silice-donut__item--activo {
+  background-color: var(--silice-surface-warm);
+}
+
+.silice-donut__item-izq {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-inline-size: 0;
+}
+
+.silice-donut__muestra {
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  border-radius: 0.125rem;
+  flex: none;
+}
+
+.silice-donut__item-texto {
+  display: grid;
+  min-inline-size: 0;
+}
+
+.silice-donut__item-nombre {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--silice-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.silice-donut__item-sub {
+  font-size: 0.75rem;
+  color: var(--silice-muted-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.silice-donut__item-der {
+  display: grid;
+  text-align: end;
+  flex: none;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-donut__item-valor {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--silice-ink);
+}
+
+.silice-donut__item-pct {
+  font-size: 0.75rem;
+  color: var(--silice-muted);
+}
+
+// Barras horizontales
+.silice-barras-h {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.silice-barras-h__fila {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.silice-barras-h__cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.silice-barras-h__nombre {
+  min-inline-size: 0;
+  color: var(--silice-ink);
+}
+
+.silice-barras-h__sub {
+  margin-inline-start: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--silice-muted-soft);
+}
+
+.silice-barras-h__valor {
+  flex: none;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+}
+
+.silice-barras-h__pista {
+  inline-size: 100%;
+  block-size: 0.75rem;
+  background-color: var(--silice-hairline);
+  border-radius: var(--silice-radio-sm);
+  overflow: hidden;
+}
+
+.silice-barras-h__pista--sec {
+  block-size: 0.4375rem;
+  background-color: var(--silice-rail);
+}
+
+.silice-barras-h__relleno {
+  block-size: 100%;
+  border-radius: var(--silice-radio-sm);
+}
+
+// Barras verticales con linea base en cero
+.silice-barras-v {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.silice-barras-v__leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--silice-muted);
+}
+
+.silice-barras-v__leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 500;
+}
+
+.silice-barras-v__muestra {
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border-radius: 0.125rem;
+  display: inline-block;
+}
+
+.silice-barras-v__lienzo {
+  padding-block-start: 1.25rem;
+}
+
+.silice-barras-v__area {
+  position: relative;
+}
+
+.silice-barras-v__rejilla {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.silice-barras-v__linea {
+  position: absolute;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transform: translateY(50%);
+}
+
+.silice-barras-v__tick {
+  inline-size: 3.5rem;
+  flex: none;
+  text-align: end;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.6875rem;
+  color: var(--silice-muted-soft);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.silice-barras-v__trazo {
+  flex: 1 1 auto;
+  border-block-start: 1px dashed var(--silice-border);
+}
+
+.silice-barras-v__trazo--base {
+  border-block-start: 1px solid var(--silice-border-strong);
+}
+
+.silice-barras-v__columnas {
+  position: absolute;
+  inset-inline: 4rem 0.5rem;
+  inset-block-end: 0;
+  block-size: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 0.75rem;
+}
+
+.silice-barras-v__grupo {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  block-size: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.silice-barras-v__par {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.375rem;
+  inline-size: 100%;
+  max-inline-size: 5rem;
+}
+
+.silice-barras-v__col {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.silice-barras-v__cifra {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+  margin-block-end: 0.25rem;
+  white-space: nowrap;
+}
+
+.silice-barras-v__cifra--sec {
+  color: var(--silice-gold-ink);
+}
+
+.silice-barras-v__barra {
+  inline-size: 100%;
+  border-start-start-radius: var(--silice-radio-sm);
+  border-start-end-radius: var(--silice-radio-sm);
+}
+
+.silice-barras-v__eje-x {
+  padding-inline: 4rem 0.5rem;
+  margin-block-start: 0.625rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-around;
+  gap: 0.75rem;
+}
+
+.silice-barras-v__rotulo {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  text-align: center;
+  display: grid;
+  gap: 0.125rem;
+}
+
+.silice-barras-v__rotulo-principal {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--silice-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.silice-barras-v__rotulo-sub {
+  font-size: 0.6875rem;
+  color: var(--silice-muted-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Medidor de riesgo
+.silice-riesgo-medidor {
+  display: grid;
+  gap: 0.875rem;
+  padding: 1.125rem 1.25rem;
+  background-color: var(--silice-surface);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
+}
+
+.silice-riesgo-medidor__fila {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.silice-riesgo-medidor__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.silice-riesgo-medidor__nombre {
+  font-weight: 600;
+  color: var(--silice-ink);
+}
+
+.silice-riesgo-medidor__valor {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+}
+
+.silice-riesgo-medidor__delta {
+  font-weight: 400;
+  color: var(--silice-muted);
+}
+
+.silice-riesgo-medidor__pista {
+  inline-size: 100%;
+  block-size: 0.75rem;
+  background-color: var(--silice-hairline);
+  border-radius: var(--silice-radio-sm);
+  overflow: hidden;
+}
+
+.silice-riesgo-medidor__barra {
+  block-size: 100%;
+  border-radius: var(--silice-radio-sm);
+}
+

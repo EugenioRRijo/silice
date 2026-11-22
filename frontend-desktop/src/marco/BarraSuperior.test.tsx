@@ -39,21 +39,45 @@ describe("BarraSuperior: marca", () => {
   });
 });
 
-describe("BarraSuperior: sin migas y con la carpeta activa", () => {
-  it("no trae migas: ni la ruta ni enlaces de camino", () => {
-    pintar({ en: "/obra/a.db/1/presupuesto" });
+describe("BarraSuperior: contexto limpio y modo ventana dedicada", () => {
+  it("no trae migas de navegacion ni expone el chip tecnico Carpeta activa", () => {
+    pintar({ en: "/obra/a.db/1/presupuesto", carpeta: "s1" });
     expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
     expect(screen.getByRole("banner").querySelector(".silice-marco-barra__migas")).toBeNull();
-  });
-
-  it("dice la carpeta activa", () => {
-    pintar({ carpeta: "Carpeta de la empresa" });
-    expect(screen.getByText("Carpeta activa: Carpeta de la empresa")).toHaveClass("silice-marco-barra__carpeta");
-  });
-
-  it("sin carpeta que decir no pinta el rótulo vacío", () => {
-    pintar({ carpeta: null });
     expect(screen.queryByText(/Carpeta activa/)).toBeNull();
+  });
+
+  it("muestra la miga contextual limpia cuando se provee", () => {
+    render(
+      <MemoryRouter initialEntries={["/obra/a.db/1/resumen"]}>
+        <BarraSuperior alAbrirBuscador={vi.fn()} nombre="Ana" migaContextual="Obras / Galpón Sur" />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Obras / Galpón Sur")).toBeInTheDocument();
+  });
+
+  it("en ventana dedicada muestra Volver a Obras y el selector 01/02/03", () => {
+    render(
+      <MemoryRouter initialEntries={["/auditoria/subir"]}>
+        <BarraSuperior
+          alAbrirBuscador={vi.fn()}
+          nombre="Ana"
+          enVentanaDedicada
+          espacioActivo="auditoria"
+          espacios={[
+            { id: "auditoria", titulo: "Auditar un presupuesto", ruta: "/auditoria/subir" },
+            { id: "precios", titulo: "Precios y catálogo", ruta: "/precios/catalogo" },
+            { id: "produccion", titulo: "Costos de producción", ruta: "/produccion/resumen" },
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("link", { name: "Volver a Obras" })).toHaveAttribute("href", "/inicio/general");
+    const selector = screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" });
+    expect(selector).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "01 · Auditoría" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "02 · Precios y Catálogo" })).toHaveAttribute("href", "/precios/catalogo");
+    expect(screen.getByRole("link", { name: "03 · Producción" })).toHaveAttribute("href", "/produccion/resumen");
   });
 });
 

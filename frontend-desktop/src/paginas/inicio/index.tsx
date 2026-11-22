@@ -1,8 +1,11 @@
+import { ArrowRight, Catalog, DocumentView, Industry } from "@carbon/icons-react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import type { ResumenTodasRespuesta } from "../../api/tipos";
 import { rutaOPendientes } from "../../marco/espacios";
+import type { EspacioId } from "../../marco/espacios";
 import { obrasConMismoNombre } from "../../marco/homonimas";
+import { ofertaDe } from "../../marco/oferta";
 import { useAplicacion } from "../../shell/contexto";
 import { EmpiezaAqui } from "../../comun/ayuda/BloqueEmpiezaAqui";
 import { pasosDeEmpiezaAqui } from "../../comun/ayuda/empiezaAqui";
@@ -26,8 +29,36 @@ const RUTA_CUENTAS = "/v1/cuentas";
 // `GET /v1/obras/resumen/todas`), las últimas auditorías y, solo con `operar_arenera` y su especialidad encendida, la arenera.
 // Cada bloque lee y falla por su cuenta: uno que falla dice su error y no tumba a los demás. La pantalla no calcula nada: las
 // cifras son las del servidor, solo formateadas.
+const LANZADORES: Record<EspacioId, { codigo: string; titulo: string; desc: string }> = {
+  auditoria: {
+    codigo: "01 · Ventana dedicada",
+    titulo: "Auditor Forense de Presupuestos",
+    desc: "Suba un libro Excel o revise el libro de la empresa para detectar fórmulas rotas y variaciones.",
+  },
+  precios: {
+    codigo: "02 · Ventana dedicada",
+    titulo: "Precios, Catálogo e Índices BCV",
+    desc: "Administre listas maestras, catálogo de insumos, series del BCV y simulaciones.",
+  },
+  produccion: {
+    codigo: "03 · Ventana dedicada",
+    titulo: "Costos de Producción y Cantera",
+    desc: "Controle existencias de patio, costos reales por tonelada y mezclas de planta.",
+  },
+};
+
+function IconoLanzador({ id }: { id: EspacioId }) {
+  if (id === "auditoria") return <DocumentView size={16} aria-hidden="true" />;
+  if (id === "precios") return <Catalog size={16} aria-hidden="true" />;
+  return <Industry size={16} aria-hidden="true" />;
+}
+
 export default function Panorama() {
   const { alExpirar, sesion, modulosApagados, abrirNuevaObra } = useAplicacion();
+  const espaciosOfrecidos = useMemo(
+    () => ofertaDe(sesion.acciones, sesion.modo_entrega, modulosApagados ?? []).espacios,
+    [sesion.acciones, sesion.modo_entrega, modulosApagados],
+  );
   // Cada recurso se pide solo si la cuenta puede leerlo (la API contestaría 403): sin la acción, el bloque se omite.
   const puedeLeer = sesion.acciones.includes("leer_proyecto");
   const puedeVerArenera = sesion.acciones.includes("operar_arenera") && !(modulosApagados ?? []).includes("produccion");
@@ -56,6 +87,36 @@ export default function Panorama() {
         {TEXTOS.titulo}
       </h1>
       <EmpiezaAqui pasos={pasos} acciones={sesion.acciones} />
+      {espaciosOfrecidos.length > 0 && (
+        <section className="silice-panel silice-lanzador" aria-label="Herramientas dedicadas">
+          <div className="silice-panel__cabecera">
+            <div>
+              <h2 className="cds--type-heading-compact-02">Herramientas dedicadas</h2>
+              <p className="silice-panel__subtitulo">
+                Abra cualquiera de los espacios especializados a pantalla completa sin salir de su instalación.
+              </p>
+            </div>
+          </div>
+          <div className="silice-lanzador__rejilla">
+            {espaciosOfrecidos.map((esp) => {
+              const info = LANZADORES[esp.id];
+              return (
+                <Link key={esp.id} to={esp.ruta} className="silice-lanzador__tarjeta">
+                  <div className="silice-lanzador__arriba">
+                    <span className="silice-lanzador__codigo">{info.codigo}</span>
+                    <IconoLanzador id={esp.id} />
+                  </div>
+                  <p className="silice-lanzador__titulo">{info.titulo}</p>
+                  <p className="silice-lanzador__desc">{info.desc}</p>
+                  <span className="silice-lanzador__accion">
+                    Abrir herramienta <ArrowRight size={14} aria-hidden="true" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
       <LoQueBloquea carpetaDe={(p) => carpetas.get(claveDeObra(p.carpeta, p.obra_id))} />
       <CarteraYAvance carga={cartera} carpetas={carpetas} puedeCrear={sesion.acciones.includes("editar_hoja")} alCrear={abrirNuevaObra} />
       {puedeLeer && (

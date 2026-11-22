@@ -5,6 +5,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { QueEsEsto } from "../../comun/QueEsEsto";
+import { AnimatedBarChart, AnimatedDonutChart } from "../../comun/VisualMeters";
 import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { FranjaDeCifras } from "../../indicadores/FranjaDeCifras";
 import { EtapaDeObra } from "../../marco/EtapaDeObra";
@@ -145,6 +146,43 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
     }
   };
   const obras = carga.estado === "listo" ? carga.datos.obras : [];
+  const barrasAvance = obras
+    .filter((o) => o.avance_real !== null && o.avance_plan !== null)
+    .slice(0, 6)
+    .map((o) => {
+      const real = Number(o.avance_real);
+      const plan = Number(o.avance_plan);
+      return {
+        id: claveDeObra(o.carpeta, o.obra_id),
+        label: o.nombre.length > 14 ? `${o.nombre.slice(0, 14)}…` : o.nombre,
+        value: Number.isFinite(real) ? real : 0,
+        secondaryValue: Number.isFinite(plan) ? plan : 0,
+        valueLabel: `${formatoEsVe(o.avance_real ?? "0")} %`,
+        secondaryLabel: `${formatoEsVe(o.avance_plan ?? "0")} %`,
+        color: "#222427",
+        secondaryColor: "#e5b21a",
+      };
+    });
+  const conteoPorEtapa = new Map<string, { label: string; count: number; color: string }>();
+  const colorDeEtapa: Record<string, string> = {
+    en_ejecucion: "#e5b21a",
+    en_elaboracion: "#222427",
+    aprobada: "#168a4c",
+    en_aprobacion: "#5b6270",
+    atrasada: "#b91c1c",
+  };
+  for (const o of obras) {
+    const actual = conteoPorEtapa.get(o.etapa);
+    if (actual) actual.count += 1;
+    else conteoPorEtapa.set(o.etapa, { label: o.etapa_texto, count: 1, color: colorDeEtapa[o.etapa] ?? "#6e737a" });
+  }
+  const segmentosEtapa = [...conteoPorEtapa.values()].map((e) => ({
+    label: e.label,
+    value: e.count,
+    valueText: `${formatoEsVe(String(e.count))}`,
+    color: e.color,
+  }));
+
   return (
     <>
       <section className="silice-inicio__bloque" aria-labelledby="inicio-cartera">
@@ -158,6 +196,34 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
         )}
         {cuerpo()}
       </section>
+      {obras.length > 0 && (
+        <section className="silice-inicio__visuales" aria-label="Indicadores visuales de cartera">
+          {barrasAvance.length > 0 && (
+            <div className="silice-panel silice-panel--padded silice-inicio__grafico-card">
+              <h3 className="cds--type-heading-compact-02">Avance real frente al plan</h3>
+              <p className="silice-panel__subtitulo">Porcentaje acumulado de obras con control activo.</p>
+              <AnimatedBarChart
+                items={barrasAvance}
+                maxValue={100}
+                orientation="vertical"
+                primaryLegend="Avance real (%)"
+                secondaryLegend="Plan acumulado (%)"
+                height={190}
+              />
+            </div>
+          )}
+          <div className="silice-panel silice-panel--padded silice-inicio__grafico-card">
+            <h3 className="cds--type-heading-compact-02">Distribución de obras por estado</h3>
+            <p className="silice-panel__subtitulo">Pase el cursor sobre cada segmento para inspeccionar la cartera.</p>
+            <AnimatedDonutChart
+              segments={segmentosEtapa}
+              centerLabel="Obras"
+              centerValue={formatoEsVe(String(obras.length))}
+              size={168}
+            />
+          </div>
+        </section>
+      )}
       {obras.length > 0 && (
         <section className="silice-inicio__bloque" aria-labelledby="inicio-obras">
           <h2 id="inicio-obras" className="cds--type-heading-compact-02">

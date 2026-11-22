@@ -24,8 +24,11 @@ import type { CrearHojaVisor } from "./visor/hojaVisor";
 // para poder salir. Sin navegacion: todavia no hay pantallas a las que ir.
 function CabeceraSinMarco({ nombre, alSalir }: { nombre?: string; alSalir: () => void }) {
   return (
-    <Header aria-label="Sílice" className="silice-marco-barra">
+    <Header aria-label="Sílice" className="silice-marco-barra silice-sin-marco">
       <HeaderName href="#/" prefix="">
+        <span className="silice-sin-marco__sello" aria-hidden="true">
+          S
+        </span>
         Sílice
       </HeaderName>
       <HeaderGlobalBar>

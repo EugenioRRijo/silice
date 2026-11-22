@@ -245,13 +245,14 @@ describe("Marco: las direcciones viejas se retiraron (F8, C1)", () => {
 
 // F6, T4: Producción, Auditoría y Precios son espacios con su barra de herramientas (/<espacio>/<herramienta>).
 describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", () => {
-  test("#/precios/simulador se abre dentro del marco nuevo", async () => {
+  test("#/precios/simulador se abre en ventana dedicada sin barra lateral de obras", async () => {
     montar({ en: "/precios/simulador" });
     expect(await titulo("Simulador de listas")).toBeInTheDocument();
     expect(ruta()).toBe("/precios/simulador");
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "Barra lateral" })).toBeInTheDocument();
+    expect(within(barra).getByRole("link", { name: "Volver a Obras" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Barra lateral" })).toBeNull();
     expect(within(barra).queryByRole("navigation", { name: "Ruta" })).toBeNull();
     expect(within(screen.getByRole("navigation", { name: "Precios y catálogo" })).getByRole("link", { name: "Simulador de listas" })).toHaveAttribute("aria-current", "page");
   });
@@ -362,12 +363,12 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
     expect(within(barra).getByRole("link", { name: "Libro de la empresa" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("la barra lateral marca el espacio abierto", async () => {
+  test("en ventana dedicada el selector superior marca el espacio abierto", async () => {
     montar({ en: "/auditoria/historial" });
     await titulo("Historial de auditorías");
-    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    expect(within(lateral).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("aria-current", "page");
-    expect(within(lateral).getByRole("link", { name: "Costos de producción" })).not.toHaveAttribute("aria-current");
+    const selector = screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" });
+    expect(within(selector).getByRole("link", { name: "01 · Auditoría" })).toHaveAttribute("aria-current", "page");
+    expect(within(selector).getByRole("link", { name: "03 · Producción" })).not.toHaveAttribute("aria-current");
   });
 
   test("Ctrl+K lleva a las rutas nuevas", async () => {
@@ -442,7 +443,8 @@ describe("Marco: la obra como espacio de trabajo", () => {
     expect(cabecera).not.toHaveTextContent("de trabajo");
     expect(cabecera).toHaveTextContent("Versión: 002");
     expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
-    expect(await screen.findByText("Carpeta activa: Carpeta Sur")).toBeInTheDocument();
+    expect(screen.queryByText(/Carpeta activa:/)).toBeNull();
+    expect(await screen.findByText("Obras / Galpón Sur")).toBeInTheDocument();
     expect(document.title).toBe("Presupuesto · Galpón Sur · Sílice");
   });
 
@@ -1121,7 +1123,7 @@ describe("Marco: lo que se monta con él", () => {
     expect(screen.getByText("Ahora trabaja con la carpeta «silice».")).toBeInTheDocument();
     expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1);
     expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
-    expect(await within(barra).findByText("Carpeta activa: Carpeta de la empresa")).toBeInTheDocument();
+    expect(await within(barra).findByText("Inicio / Vista general")).toBeInTheDocument();
   });
 
   test("con un recorrido en curso su columna acompaña al contenido", async () => {
@@ -1384,8 +1386,8 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
 
   test("un enlace de la barra lateral conserva el foco: solo se mueve si se perdió", async () => {
     const u = userEvent.setup();
-    montar({ en: "/precios/simulador" });
-    await titulo("Simulador de listas");
+    montar({ en: "/obra/empresa/7/resumen" });
+    await titulo("Resumen de la obra");
     const enlace = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" });
     await u.click(enlace);
     await titulo("Vista general");
@@ -1599,12 +1601,33 @@ describe("Marco: especialidades apagadas", () => {
     expect(ruta()).toBe("/produccion/resumen");
     // La barra del espacio no ofrece pestañas que la cuenta no puede usar, y sin ninguna no se pinta vacía.
     expect(screen.queryByRole("navigation", { name: "Costos de producción" })).toBeNull();
-    // La barra lateral tampoco la ofrece.
-    expect(within(screen.getByRole("complementary", { name: "Barra lateral" })).queryByRole("link", { name: "Costos de producción" })).toBeNull();
+    // El selector superior de ventana dedicada tampoco ofrece Producción.
+    expect(within(screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" })).queryByRole("link", { name: /Producción/ })).toBeNull();
   });
 
   test("si no se puede leer el estado, nada se oculta (la API sigue cortando)", async () => {
     montar({ sesion: sesionDe("ana"), en: "/obra/empresa/7/riesgo" });
     expect(await titulo("Riesgo de la obra")).toBeInTheDocument();
+  });
+});
+
+describe("Marco: barra lateral plegable (Ocultar / Mostrar y Ctrl+B)", () => {
+  afterEach(() => {
+    window.localStorage.removeItem("silice_sidebar_collapsed");
+  });
+
+  test("el botón de la barra lateral la pliega a riel compacto y el atajo Ctrl+B la vuelve a expandir", async () => {
+    const usuario = userEvent.setup();
+    montar({ en: "/inicio/pendientes" });
+    await titulo("Pendientes");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    expect(lateral).not.toHaveAttribute("data-collapsed", "true");
+    await usuario.click(within(lateral).getByRole("button", { name: "Ocultar barra lateral" }));
+    expect(lateral).toHaveAttribute("data-collapsed", "true");
+    expect(window.localStorage.getItem("silice_sidebar_collapsed")).toBe("1");
+    expect(within(lateral).getByRole("button", { name: "Mostrar barra lateral" })).toBeInTheDocument();
+    await usuario.keyboard("{Control>}b{/Control}");
+    expect(lateral).not.toHaveAttribute("data-collapsed", "true");
+    expect(window.localStorage.getItem("silice_sidebar_collapsed")).toBe("0");
   });
 });

@@ -4,6 +4,7 @@ import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { RadialGauge } from "../../comun/VisualMeters";
 import { PALETA_GRAFICOS, colorPorGrupo, formatoNumeroEsVe } from "../../comun/paletaGraficos";
 import { fechaEsVe, formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
@@ -124,6 +125,23 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
         </h2>
         {datos.control?.disponible ? (
           <>
+            {datos.control.anillos.some((a) => a.fraccion !== null && a.texto.includes("%") && Number.isFinite(Number(a.fraccion))) && (
+              <div className="silice-tablero__anillos">
+                {datos.control.anillos
+                  .filter((a) => a.fraccion !== null && a.texto.includes("%") && Number.isFinite(Number(a.fraccion)))
+                  .map((a) => (
+                    <div key={a.rotulo} className="silice-tablero__anillo">
+                      <RadialGauge
+                        value={Math.min(100, Math.max(0, Number(a.fraccion) * 100))}
+                        label={a.rotulo}
+                        sublabel={a.texto}
+                        tone={a.favorable === true ? "emerald" : a.favorable === false ? "crimson" : "gold"}
+                        size={92}
+                      />
+                    </div>
+                  ))}
+              </div>
+            )}
             <Tarjetas tarjetas={datos.control.tarjetas} moneda={moneda} />
           </>
         ) : (
