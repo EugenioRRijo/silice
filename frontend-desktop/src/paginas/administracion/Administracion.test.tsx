@@ -273,6 +273,44 @@ describe("Administracion: Cuentas y Accesos", () => {
       expect(boton).toBeDisabled();
     });
 
+    // Revisión del 2026-11-22: la nota salía desde el primer render como si fuera un error y no estaba ligada al
+    // grupo; el botón quedaba deshabilitado sin explicación para un lector de pantalla.
+    const AVISO_SIN_ROL = "Sin ningún rol la cuenta no podría hacer nada: marque al menos uno para crearla.";
+
+    test("la nota de roles es una pista neutra ligada al grupo y al botón desde el inicio, sin aviso", async () => {
+      montar();
+      await cargada();
+      const grupo = screen.getByRole("group", { name: "Qué puede hacer" });
+      expect(grupo).toHaveAccessibleDescription("Marque al menos un rol.");
+      expect(screen.getByRole("button", { name: "Crear la cuenta" })).toHaveAccessibleDescription("Marque al menos un rol.");
+      expect(screen.queryByText(AVISO_SIN_ROL)).toBeNull();
+      expect(screen.getAllByRole("status").some((s) => s.textContent?.includes("rol"))).toBe(false);
+    });
+
+    test("al desmarcar el último rol se anuncia el aviso en una región de estado", async () => {
+      montar();
+      const usuario = userEvent.setup();
+      await cargada();
+      const arma = screen.getByLabelText("arma presupuestos (arma)", { selector: "#adm-roles-arma" });
+      await usuario.click(arma);
+      expect(screen.queryByText(AVISO_SIN_ROL)).toBeNull();
+      await usuario.click(arma);
+      const aviso = screen.getByText(AVISO_SIN_ROL);
+      expect(aviso.closest("[role='status']")).not.toBeNull();
+    });
+
+    test("con el resto del alta listo y sin rol, el aviso dice por qué el botón no deja crear", async () => {
+      montar();
+      const usuario = userEvent.setup();
+      await cargada();
+      await usuario.type(screen.getByLabelText("Usuario"), "rita");
+      await usuario.type(screen.getByLabelText("Nombre de la persona"), "Rita");
+      expect(screen.queryByText(AVISO_SIN_ROL)).toBeNull();
+      await usuario.type(screen.getByLabelText("Contraseña temporal"), TEMPORAL);
+      expect(screen.getByText(AVISO_SIN_ROL).closest("[role='status']")).not.toBeNull();
+      expect(screen.getByRole("button", { name: "Crear la cuenta" })).toBeDisabled();
+    });
+
     test("explica el usuario y la politica de contrasena", async () => {
       montar();
       await cargada();
