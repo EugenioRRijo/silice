@@ -1,4 +1,3 @@
-import { gray, warmGray, yellow } from "@carbon/colors";
 import { describe, expect, it } from "vitest";
 
 // El servidor mide los avisos de contraste contra una copia de los colores neutros (`_NEUTRO` en aplicacion/tema.py); la
@@ -29,12 +28,13 @@ describe("_NEUTRO de aplicacion/tema.py frente a Carbon", () => {
     );
   });
 
+  const tokens = nodo.getBuiltinModule("node:fs").readFileSync(`${raiz}/src/estilos/tokens.scss`, "utf-8");
+  const deTokens = (nombre: string) => new RegExp(`${nombre}:\\s*(#[0-9a-fA-F]{6});`).exec(tokens)![1]!;
   it.each([
-    ["marco", () => gray[80], "gray-80 de @carbon/colors"],
-    ["acento", () => yellow[20], "yellow-20 de @carbon/colors"],
-    ["lateral", () => warmGray[10], "warm-gray-10 de @carbon/colors"],
-    ["lateral-activo", () => warmGray[20], "warm-gray-20 de @carbon/colors"],
-    ["borde", () => gray[50], "gray-50 de @carbon/colors"],
+    ["marco", () => deTokens("--silice-petroleo"), "--silice-petroleo de tokens.scss"],
+    ["acento", () => deTokens("--silice-arena"), "--silice-arena de tokens.scss"],
+    ["lateral", () => deTokens("--silice-lateral-base"), "--silice-lateral-base de tokens.scss"],
+    ["lateral-activo", () => deTokens("--silice-lateral-hover"), "--silice-lateral-hover de tokens.scss"],
     ["texto-del-boton", () => g10["textOnColor"]!, "text-on-color del tema g10 de @carbon/themes"],
     ["texto-del-marco", () => g10["textInverse"]!, "text-inverse del tema g10 de @carbon/themes"],
     ["texto", () => g10["textPrimary"]!, "text-primary del tema g10 de @carbon/themes"],
@@ -44,9 +44,17 @@ describe("_NEUTRO de aplicacion/tema.py frente a Carbon", () => {
     expect(servidor[clave]).toBe(deCarbon().toLowerCase());
   });
 
-  it("el marco neutro es el fondo inverso del tema g10 (--silice-marco = --cds-background-inverse)", () => {
-    expect(servidor["marco"]).toBe(g10["backgroundInverse"]!.toLowerCase());
-    expect(servidor["borde"]).toBe(g10["borderStrong01"]!.toLowerCase());
+  it("el borde neutro llega a 3:1 sobre el lateral y sobre el marco (WCAG 1.4.11)", () => {
+    const luz = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => {
+        const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    };
+    const razon = (x: string, y: string) => (Math.max(luz(x), luz(y)) + 0.05) / (Math.min(luz(x), luz(y)) + 0.05);
+    expect(razon(servidor["borde"]!, servidor["lateral"]!)).toBeGreaterThanOrEqual(3);
+    expect(razon(servidor["borde"]!, servidor["marco"]!)).toBeGreaterThanOrEqual(3);
   });
 });
 
