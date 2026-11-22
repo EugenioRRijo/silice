@@ -148,6 +148,7 @@ export default function Cuentas() {
   const aviso = useRef<HTMLDivElement>(null);
   const montado = useRef(true);
   const quienAbrio = useRef<HTMLElement | null>(null);
+  const selectorDeCuenta = useRef<HTMLSelectElement>(null);
 
   const [login, setLogin] = useState("");
   const [nombre, setNombre] = useState("");
@@ -249,7 +250,7 @@ export default function Cuentas() {
 
   const crear = async (evento: FormEvent) => {
     evento.preventDefault();
-    if (!puedeCrear(login, nombre, temporal)) return;
+    if (!puedeCrear(login, nombre, temporal, rolesNuevos)) return;
     const cuerpo = { login, nombre, roles: rolesNuevos, contrasena_temporal: temporal };
     setTemporal(""); // se vacia al enviar, haya exito o no
     if (await ejecutar("/v1/cuentas", cuerpo) && montado.current) {
@@ -324,13 +325,15 @@ export default function Cuentas() {
                 clave: "accion",
                 titulo: "Acción",
                 ordenable: false,
+                // Cada fila dice de qué cuenta es (WCAG 2.4.6) y elige por su id; el foco pasa al selector de abajo.
                 celda: (f) => (
                   <Button
                     kind="ghost"
                     size="sm"
+                    aria-label={`Elegir la cuenta ${String(f.usuario)}`}
                     onClick={() => {
-                      const cuenta = cuentas.find((c) => c.login === String(f.usuario));
-                      if (cuenta) setElegidaId(cuenta.id);
+                      setElegidaId(Number(f.id));
+                      selectorDeCuenta.current?.focus();
                     }}
                   >
                     Elegir
@@ -385,6 +388,7 @@ export default function Cuentas() {
           />
           <CampoTexto id="adm-nombre" labelText="Nombre de la persona" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
           <SelectorDeRoles idBase="adm-roles" leyenda="Qué puede hacer" elegidos={rolesNuevos} alCambiar={setRolesNuevos} />
+          {rolesNuevos.length === 0 && <p className="silice-adm__nota cds--type-label-01">Marque al menos un rol.</p>}
           {avisoEnAlta && <p className="silice-adm__nota cds--type-label-01">{avisoEnAlta}</p>}
           <PasswordInput
             id="adm-temporal"
@@ -400,7 +404,7 @@ export default function Cuentas() {
             onChange={(e) => setTemporal(e.target.value)}
           />
           <div>
-            <Button type="submit" kind="primary" size="md" disabled={ocupado || !puedeCrear(login, nombre, temporal)}>
+            <Button type="submit" kind="primary" size="md" disabled={ocupado || !puedeCrear(login, nombre, temporal, rolesNuevos)}>
               Crear la cuenta
             </Button>
           </div>
@@ -414,6 +418,7 @@ export default function Cuentas() {
           </h2>
           <div className="silice-adm__seccion" inert={abierta}>
             <Select
+              ref={selectorDeCuenta}
               id="adm-cuenta"
               labelText="Cuenta que va a cambiar"
               value={elegida ? String(elegida.id) : ""}

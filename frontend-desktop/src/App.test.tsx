@@ -79,7 +79,9 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Entrar" });
     const banner = screen.getByRole("banner");
     expect(banner).toHaveClass("silice-marco-barra");
-    expect(within(banner).getByRole("link", { name: "Portada" })).toHaveAttribute("href", "/");
+    // La suite de escritorio no enlaza a la portada web (GET /), que es solo de pruebas (Eugenio, 2026-11-22).
+    expect(within(banner).queryByRole("link", { name: "Portada" })).not.toBeInTheDocument();
+    expect(banner.querySelector('a[href="/"]')).toBeNull();
     expect(within(banner).getByRole("group", { name: "Tamaño de letra" })).toBeInTheDocument();
     expect(within(banner).queryByRole("button", { name: /^Cuenta de/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();

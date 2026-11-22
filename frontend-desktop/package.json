@@ -11,6 +11,7 @@
     "dev": "node scripts/inicio_rapido.mjs",
     "dev:vite": "vite",
     "build": "tsc -b && vite build",
+    "build:portada": "tsc -b && vite build --mode portada",
     "test": "vitest run",
     "lint": "eslint . && tsc -b --noEmit",
     "licencias": "node scripts/verificar_licencias.mjs",

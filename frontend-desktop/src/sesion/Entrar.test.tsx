@@ -129,4 +129,18 @@ describe("Entrar", () => {
     expect(entrar.compareDocumentPosition(enlace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  // Auditoría del 2026-11-21: la entrada no promete lo que el sistema no hace. Quien armó una versión puede revisarla
+  // (P2: se avisa y queda registrado, no se impide; aplicacion/revision.py), no existe un rol «aprueba», la sesión va
+  // por http://127.0.0.1 sin TLS y el asistente con proveedor en la nube sí envía datos cuando un administrador lo activa.
+  test("solo dice lo que el sistema hace: sin separación de funciones impuesta, sin «cifrada» ni «sin envío de datos»", () => {
+    render(<Entrar onEntrar={vi.fn()} />);
+    const texto = document.body.textContent ?? "";
+    for (const falso of [/separaci[oó]n de funciones/i, /RBAC/, /\baprueba\b/i, /cifrad/i, /sin env[ií]o de datos/i]) {
+      expect(texto).not.toMatch(falso);
+    }
+    expect(screen.getByText("Si quien revisa una versión también la armó, la revisión lo avisa y el dictamen queda registrado.")).toBeInTheDocument();
+    expect(
+      screen.getByText("La sesión vive en el servidor de Sílice de esta instalación · El asistente con un proveedor en la nube viene apagado"),
+    ).toBeInTheDocument();
+  });
 });

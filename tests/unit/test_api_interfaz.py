@@ -7,6 +7,7 @@ es el literal del plan de la sesión 2 (Task 2.3a), escrito aquí a mano.
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,14 @@ INDICE = (
     '<body><div id="raiz"></div></body></html>'
 )
 GUION = "console.log('silice');"
+PORTADA = (
+    '<!doctype html><html lang="es"><head><title>Portada de pruebas</title></head>'
+    "<body></body></html>"
+)
+VARIABLE_PORTADA = "SILICE_PORTADA_WEB"
+MENSAJE_PORTADA_SIN_COMPILAR = (
+    "La portada de pruebas no está compilada (npm run build:portada en frontend-desktop)."
+)
 
 
 def _cliente(ip: str = IP_LOCAL[0]) -> TestClient:
@@ -155,62 +164,81 @@ def test_la_csp_no_permite_unsafe_eval_ni_anfitriones_externos() -> None:
     assert directivas["base-uri"] == ["'none'"]
 
 
-def test_portada_en_raiz_sirve_html_autocontenido_con_csp_y_sin_urls_externas(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.fixture
+def sin_portada_web(monkeypatch: pytest.MonkeyPatch) -> None:
+    """El producto: sin la variable `SILICE_PORTADA_WEB` (la portada es solo de pruebas)."""
+    monkeypatch.delenv(VARIABLE_PORTADA, raising=False)
+
+
+@pytest.fixture
+def portada_web(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La entrada de pruebas: `SILICE_PORTADA_WEB=1`."""
+    monkeypatch.setenv(VARIABLE_PORTADA, "1")
+
+
+def _con_portada(dist: Path) -> Path:
+    (dist / "portada.html").write_text(PORTADA, encoding="utf-8")
+    return dist
+
+
+@pytest.mark.usefixtures("sin_portada_web")
+def test_sin_la_variable_la_raiz_redirige_a_app_aunque_haya_portada_compilada(dist: Path) -> None:
+    """La suite de escritorio no publica la portada: `GET /` (y `HEAD /`) lleva a `/app/`."""
+    _con_portada(dist)
+    for metodo in ("GET", "HEAD"):
+        respuesta = _cliente().request(metodo, "/", follow_redirects=False)
+        assert respuesta.status_code == 307, metodo
+        assert respuesta.headers["location"] == "/app/"
+        _cabeceras_de_seguridad(respuesta)
+        assert PORTADA not in respuesta.text
+
+
+@pytest.mark.usefixtures("sin_portada_web")
+def test_sin_la_variable_la_portada_tampoco_se_sirve_bajo_app(dist: Path) -> None:
+    _con_portada(dist)
+    respuesta = _cliente().get("/app/portada.html")
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": "No existe ese archivo de la interfaz."}
+    _cabeceras_de_seguridad(respuesta)
+
+
+@pytest.mark.parametrize("valor", ["", "0", "si", "true", " 1"])
+def test_la_variable_solo_enciende_la_portada_con_1(
+    dist: Path, monkeypatch: pytest.MonkeyPatch, valor: str
 ) -> None:
-    """`GET /` entrega la portada independiente de Sílice incluso sin `dist` compilado, con CSP,
-    `Cache-Control: no-cache`, enlaces a `/app/`, cero scripts inline y cero URLs externas."""
-    monkeypatch.setattr(interfaz, "DIST", tmp_path / "no-existe")
+    _con_portada(dist)
+    monkeypatch.setenv(VARIABLE_PORTADA, valor)
+    respuesta = _cliente().get("/", follow_redirects=False)
+    assert respuesta.status_code == 307 and respuesta.headers["location"] == "/app/"
+
+
+@pytest.mark.usefixtures("portada_web")
+def test_con_la_variable_la_raiz_sirve_la_portada_compilada_con_csp(dist: Path) -> None:
+    _con_portada(dist)
     respuesta = _cliente().get("/")
     assert respuesta.status_code == 200
     assert respuesta.headers["content-type"].startswith("text/html")
+    assert respuesta.text == PORTADA
     _cabeceras_de_seguridad(respuesta)
     assert respuesta.headers["cache-control"] == "no-cache"
-
-    html = respuesta.text
-    assert "Presupuestos de obra verificables, celda por celda." in html
-    assert "Iniciar sesión en Sílice" in html
-    assert 'href="/app/"' in html
-    for fragmento in (
-        "Decimal exacto",
-        "SQLite local",
-        "Sin telemetría",
-        "PLAN DE PAGOS · Inspección forense",
-        "1.740,89 USD",
-        "1.586,61 USD",
-        "PRESUPUESTO!F12",
-        "VALUACIONES!J48",
-        "COVENIN!C104",
-        "Núcleo APU multidominio",
-        "Auditoría forense Excel",
-        "Control de obra y valor ganado",
-        "Moneda, índices BCV y riesgo",
-        "Producción de cantera y áridos",
-        "Gobernanza local y respaldos",
-        "Administrador Master",
-        "Rol Arma",
-        "Rol Revisa",
-    ):
-        assert fragmento in html, fragmento
-
-    assert "<script" not in html.lower()
-    assert "http://" not in html and "https://" not in html
-
-    cabecera = _cliente().head("/")
-    assert cabecera.status_code == 200
-    _cabeceras_de_seguridad(cabecera)
+    assert _cliente().head("/").status_code == 200
+    assert _cliente().get("/app/portada.html").status_code == 200
     assert "/" not in app.openapi()["paths"]
     assert _cliente(ip="8.8.8.8").get("/").status_code == 403
 
 
-def test_portada_destaca_descarga_escritorio_y_acceso_web_de_prueba(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """`GET /` presenta el botón principal «Descargar el sistema Sílice» para el ambiente de
-    escritorio propio y distingue el inicio de sesión en `/app/` como ambiente web de prueba."""
-    monkeypatch.setattr(interfaz, "DIST", tmp_path / "no-existe")
-    html = _cliente().get("/").text
-    assert "Descargar el sistema Sílice" in html
-    assert 'href="#descargar"' in html
-    assert "ambiente de prueba web" in html.lower()
-    assert "ambiente de escritorio propio" in html.lower()
+@pytest.mark.usefixtures("portada_web")
+def test_con_la_variable_y_sin_compilar_la_portada_da_404_con_mensaje(dist: Path) -> None:
+    """Sin `npm run build:portada` no hay respaldo escrito en Python: un 404 que dice cómo
+    compilarla."""
+    respuesta = _cliente().get("/")
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": MENSAJE_PORTADA_SIN_COMPILAR}
+    _cabeceras_de_seguridad(respuesta)
+
+
+def test_no_queda_una_segunda_portada_escrita_en_python() -> None:
+    """Una sola portada: la de Vite (`frontend-desktop/portada.html`); `api/portada.py` se
+    retiró."""
+    assert importlib.util.find_spec("api.portada") is None
+    assert not hasattr(interfaz, "PORTADA_HTML")

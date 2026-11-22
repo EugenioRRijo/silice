@@ -48,16 +48,16 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
               Entrar al escritorio de presupuestos y auditoría
             </h2>
             <p className="silice-entrada__marca-texto">
-              Cada sesión aplica control de roles separado entre quien arma, revisa, aprueba y
-              administra la carpeta local.
+              Cada cuenta entra con sus roles (arma, revisa o administra) y hace lo que esos roles le
+              permiten.
             </p>
           </div>
 
           <dl className="silice-entrada__fichas">
             <div className="silice-entrada__ficha">
-              <dt className="silice-entrada__clave">Separación de funciones (RBAC)</dt>
+              <dt className="silice-entrada__clave">Quien arma y quien revisa</dt>
               <dd className="silice-entrada__valor">
-                Quien elabora el presupuesto no aprueba ni firma su propio paquete de entrega.
+                Si quien revisa una versión también la armó, la revisión lo avisa y el dictamen queda registrado.
               </dd>
             </div>
             <div className="silice-entrada__ficha">
@@ -124,7 +124,7 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
           </Form>
           <div className="silice-entrada__pie-seguridad">
             <CheckmarkFilled size={16} aria-hidden="true" />
-            <span>Sesión local cifrada · Sin envío de datos externos</span>
+            <span>La sesión vive en el servidor de Sílice de esta instalación · El asistente con un proveedor en la nube viene apagado</span>
           </div>
         </section>
       </div>

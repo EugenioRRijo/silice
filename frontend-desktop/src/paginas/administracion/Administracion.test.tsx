@@ -216,6 +216,7 @@ describe("Administracion: Cuentas y Accesos", () => {
     async function llenar(usuario: ReturnType<typeof userEvent.setup>, clave = TEMPORAL) {
       await usuario.type(screen.getByLabelText("Usuario"), "rita");
       await usuario.type(screen.getByLabelText("Nombre de la persona"), "Rita");
+      await usuario.click(screen.getByLabelText("arma presupuestos (arma)", { selector: "#adm-roles-arma" }));
       await usuario.type(screen.getByLabelText("Contraseña temporal"), clave);
     }
 
@@ -227,6 +228,7 @@ describe("Administracion: Cuentas y Accesos", () => {
       expect(boton).toBeDisabled();
       await usuario.type(screen.getByLabelText("Usuario"), "rita");
       await usuario.type(screen.getByLabelText("Nombre de la persona"), "Rita");
+      await usuario.click(screen.getByLabelText("arma presupuestos (arma)", { selector: "#adm-roles-arma" }));
       await usuario.type(screen.getByLabelText("Contraseña temporal"), "corta");
       expect(boton).toBeDisabled();
       expect(screen.getByText("La contraseña debe tener entre 10 y 128 caracteres.")).toBeInTheDocument();
@@ -243,6 +245,7 @@ describe("Administracion: Cuentas y Accesos", () => {
       expect(screen.queryByText(texto)).toBeNull();
       await usuario.type(screen.getByLabelText("Usuario"), "ana perez");
       await usuario.type(screen.getByLabelText("Nombre de la persona"), "Ana");
+      await usuario.click(screen.getByLabelText("arma presupuestos (arma)", { selector: "#adm-roles-arma" }));
       await usuario.type(screen.getByLabelText("Contraseña temporal"), TEMPORAL);
       expect(screen.getByText(texto)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Crear la cuenta" })).toBeDisabled();
@@ -250,6 +253,24 @@ describe("Administracion: Cuentas y Accesos", () => {
       await usuario.type(screen.getByLabelText("Usuario"), "ana.perez");
       expect(screen.queryByText(texto)).toBeNull();
       expect(screen.getByRole("button", { name: "Crear la cuenta" })).toBeEnabled();
+    });
+
+    // Auditoría del 2026-11-21: una cuenta sin roles nace sin permisos; el alta pide al menos uno (puedeCrear con roles).
+    test("sin ningun rol marcado no deja crear la cuenta, ni con el boton ni con Intro", async () => {
+      montar();
+      const usuario = userEvent.setup();
+      await cargada();
+      await usuario.type(screen.getByLabelText("Usuario"), "rita");
+      await usuario.type(screen.getByLabelText("Nombre de la persona"), "Rita");
+      await usuario.type(screen.getByLabelText("Contraseña temporal"), `${TEMPORAL}{Enter}`);
+      const boton = screen.getByRole("button", { name: "Crear la cuenta" });
+      expect(boton).toBeDisabled();
+      expect(posts()).toHaveLength(0);
+      const arma = screen.getByLabelText("arma presupuestos (arma)", { selector: "#adm-roles-arma" });
+      await usuario.click(arma);
+      expect(boton).toBeEnabled();
+      await usuario.click(arma);
+      expect(boton).toBeDisabled();
     });
 
     test("explica el usuario y la politica de contrasena", async () => {
@@ -275,7 +296,6 @@ describe("Administracion: Cuentas y Accesos", () => {
         );
       };
       await llenar(usuario);
-      await usuario.click(screen.getByLabelText("arma presupuestos (arma)", { selector: "#adm-roles-arma" }));
       await usuario.click(screen.getByLabelText("revisa paquetes (revisa)", { selector: "#adm-roles-revisa" }));
       expect(screen.getAllByText(AVISO).length).toBeGreaterThan(0);
       await usuario.click(screen.getByRole("button", { name: "Crear la cuenta" }));
@@ -330,6 +350,25 @@ describe("Administracion: Cuentas y Accesos", () => {
   });
 
   describe("cambiar una cuenta", () => {
+    // Auditoría del 2026-11-21 (WCAG 2.4.6 y 4.1.2): cada «Elegir» de la tabla dice de qué cuenta es, elige por id y
+    // lleva el foco al selector de la cuenta que va a cambiar.
+    test("cada «Elegir» nombra su cuenta, la elige y lleva el foco al selector", async () => {
+      montar();
+      const usuario = userEvent.setup();
+      await cargada();
+      expect(screen.queryByRole("button", { name: "Elegir" })).toBeNull();
+      for (const login of ["admin", "ana", "luis"]) {
+        expect(screen.getByRole("button", { name: `Elegir la cuenta ${login}` })).toBeInTheDocument();
+      }
+      await usuario.click(screen.getByRole("button", { name: "Elegir la cuenta ana" }));
+      const selector = screen.getByLabelText("Cuenta que va a cambiar");
+      expect(selector).toHaveValue("2");
+      expect(selector).toHaveFocus();
+      expect(screen.getByRole("heading", { name: "Cambiar la cuenta ana" })).toBeInTheDocument();
+      await usuario.click(screen.getByRole("button", { name: "Elegir la cuenta luis" }));
+      expect(selector).toHaveValue("3");
+    });
+
     test("no preselecciona ninguna: invita a elegir y las acciones esperan", async () => {
       montar();
       await cargada();
