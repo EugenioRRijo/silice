@@ -364,6 +364,8 @@ describe("Auditar un libro con un APU por hoja", () => {
     render(<AuditarApuPorHoja alExpirar={vi.fn()} obra="Vía ficticia" puedeLlevar />);
     await auditarLosDos();
     const llevar = screen.getByRole("button", { name: "Llevar el libro a la Hoja de «Vía ficticia»" });
+    expect(llevar).toHaveClass("cds--btn--primary");
+    expect(screen.getByRole("button", { name: "Auditar el libro de APU" })).toHaveClass("cds--btn--secondary");
     expect(llevar).toBeDisabled(); // falta la moneda de los precios
     await usuario.selectOptions(screen.getByRole("combobox", { name: "Moneda de los precios del libro" }), "Bs");
     await usuario.click(llevar);
@@ -393,7 +395,7 @@ describe("Auditar un libro con un APU por hoja", () => {
     conLlevar();
     const { unmount } = render(<AuditarApuPorHoja alExpirar={vi.fn()} obra={null} puedeLlevar />);
     await auditarLosDos();
-    expect(screen.getByText("Elija una obra en la barra de arriba para llevar el libro a su Hoja.")).toBeInTheDocument();
+    expect(screen.getByText("Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para llevar el libro a su Hoja.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Llevar el libro a la Hoja/ })).toBeNull();
     unmount();
     render(<AuditarApuPorHoja alExpirar={vi.fn()} obra="Vía ficticia" puedeLlevar={false} />);

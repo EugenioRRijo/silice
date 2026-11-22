@@ -749,6 +749,7 @@ describe("Vista general: los lanzadores de los espacios", () => {
   test("cada lanzador lleva el nombre de su espacio y abre su primera herramienta usable", async () => {
     montar();
     const lanzadores = await bloque("Herramientas dedicadas");
+    expect(within(lanzadores).getByText("Espacios de trabajo de la empresa")).toBeInTheDocument();
     expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
     expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
     expect(within(lanzadores).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/resumen");

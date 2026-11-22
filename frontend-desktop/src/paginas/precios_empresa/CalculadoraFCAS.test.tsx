@@ -78,7 +78,7 @@ describe("Calculadora del FCAS por componentes", () => {
     expect(screen.getByLabelText("Días calendario del período")).toHaveValue("365");
     expect(screen.getByLabelText("FCAS de la versión")).toHaveValue("6,00");
     expect(screen.getByText(/CCT 2023, cláusula 48/)).toBeInTheDocument();
-    expect(screen.getAllByText("a cotejar")).toHaveLength(3);
+    expect(screen.getAllByText("A cotejar")).toHaveLength(3);
     // el valor por defecto, como se escribe en es-VE
     expect(screen.getByLabelText(/Contribución especial para pensiones/, { selector: 'input[type="text"]' })).toHaveValue("9");
   });

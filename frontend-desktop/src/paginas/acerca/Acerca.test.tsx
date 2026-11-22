@@ -78,9 +78,12 @@ describe("Acerca de Sílice", () => {
     // Revisión final del árbitro (MENOR 3): la persona ve «carpeta», no «caso».
     expect(screen.getByText("Base de la carpeta abierta")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/caso abierto/);
+    expect(screen.getByRole("heading", { level: 3, name: "Especialidades" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Especialidades")).toBeInTheDocument();
     expect(screen.getByText("Planos DXF")).toBeInTheDocument();
-    expect(screen.getByText("instalado")).toBeInTheDocument();
-    expect(screen.getByText("no instalado")).toBeInTheDocument();
+    expect(screen.getByText("Instalada")).toBeInTheDocument();
+    expect(screen.getByText("No instalada")).toBeInTheDocument();
+    expect(document.querySelector(".cds--tag")).toBeNull();
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/acerca");
   });
 

@@ -274,6 +274,7 @@ describe("Revisar un paquete", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "El emisor no los declaró (1)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "En común (0)" })).toBeInTheDocument();
+    expect(screen.getAllByText("Ninguno").length).toBeGreaterThan(0);
     const nuevos = screen.getByRole("table", { name: "El emisor no los declaró" });
     expect(within(nuevos).getByText("Información")).toBeInTheDocument(); // la severidad con su nombre, no solo color
     expect(screen.getByText("Esta instalación no recibió una entrega anterior de esta obra.")).toBeInTheDocument();

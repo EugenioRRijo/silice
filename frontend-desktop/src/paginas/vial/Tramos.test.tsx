@@ -136,7 +136,8 @@ describe("Tramos de la vía", () => {
   test("una versión sin tramos invita a importarlos", async () => {
     tramos = () => json(VACIA);
     montar();
-    expect(await screen.findByText("Esta versión aún no tiene tramos. Importe el archivo de la vía.")).toBeInTheDocument();
+    expect(await screen.findByText("Esta versión aún no tiene tramos")).toBeInTheDocument();
+    expect(screen.getByText("Importe el archivo de la vía.")).toBeInTheDocument();
   });
 
   test("importar manda el archivo como multipart y avisa con el foco en el aviso", async () => {
@@ -243,7 +244,7 @@ describe("Tramos de la vía", () => {
   test("sin tramos no ofrece llevarlos", async () => {
     tramos = () => json(VACIA);
     montar();
-    await screen.findByText("Esta versión aún no tiene tramos. Importe el archivo de la vía.");
+    await screen.findByText("Esta versión aún no tiene tramos");
     expect(screen.queryByRole("button", { name: "Llevar al presupuesto" })).toBeNull();
   });
 
@@ -280,13 +281,13 @@ describe("Tramos de la vía", () => {
   test("sin tramos no ofrece los reportes de la vía", async () => {
     tramos = () => json(VACIA);
     montar();
-    await screen.findByText("Esta versión aún no tiene tramos. Importe el archivo de la vía.");
+    await screen.findByText("Esta versión aún no tiene tramos");
     expect(screen.queryByRole("region", { name: "Reportes de la vía" })).toBeNull();
   });
 
   test("sin obra abierta lo dice y no pide nada", async () => {
     montar(null);
-    expect(screen.getByText("Abra una obra para ver o importar sus tramos.")).toBeInTheDocument();
+    expect(screen.getByText("Abra una obra para ver o importar sus tramos")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 

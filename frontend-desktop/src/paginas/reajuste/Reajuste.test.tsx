@@ -163,13 +163,13 @@ describe("Reajuste de precios", () => {
   test("sin proyecto abierto dice qué hacer", async () => {
     montar(null);
     // Tanda 2 del pulido F5 (Tarea 7): la barra superior ya no tiene «Proyecto»; la obra se elige en el árbol o con Ctrl+K.
-    expect(await screen.findByText("Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios.")).toBeInTheDocument();
+    expect(await screen.findByText("Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios")).toBeInTheDocument();
   });
 
   test("un proyecto sin versiones pide guardar la del contrato", async () => {
     contexto = () => json({ ...CONTEXTO, versiones: [] });
     montar();
-    expect(await screen.findByText(/no tiene versiones guardadas/)).toBeInTheDocument();
+    expect(await screen.findByText("La obra no tiene versiones guardadas: guarde la del contrato primero")).toBeInTheDocument();
   });
 
   test("arranca con la versión más antigua, la cláusula, los componentes y las revaloradas", async () => {
@@ -468,7 +468,10 @@ describe("Reajuste de precios", () => {
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     const lista = await screen.findByLabelText("Reemplaza al estudio parcial");
+    expect(within(lista).getByRole("option", { name: "Ninguno" })).toHaveValue("");
     expect(within(lista).getByRole("option", { name: "3 (calculado el 10/02/2027)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Calcular" })).toHaveClass("cds--btn--secondary");
+    expect(screen.getByRole("button", { name: "Guardar estudio" })).toHaveClass("cds--btn--primary");
     await u.selectOptions(lista, "3");
     await u.click(screen.getByRole("button", { name: "Guardar estudio" }));
     await screen.findByText(/guardado/);

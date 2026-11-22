@@ -28,7 +28,7 @@ describe("Similares", () => {
   test("lista cada partida con puntaje a dos decimales, código y descripción", () => {
     render(<Similares similares={[UNA]} />);
     expect(screen.getByRole("heading", { name: "Partidas similares del catálogo" })).toBeInTheDocument();
-    expect(screen.getByText("0,87 · FIC-001 · Muro ficticio de bloque")).toBeInTheDocument();
+    expect(screen.getByText("FIC-001 · Muro ficticio de bloque (similitud 0,87)")).toBeInTheDocument();
   });
 
   test("al abrir una muestra el rendimiento y sus tablas de solo lectura", async () => {

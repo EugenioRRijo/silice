@@ -177,7 +177,26 @@ describe("Índices del BCV", () => {
     expect(screen.getByLabelText("Nombre de INDICE-A")).toHaveValue("INDICE-A");
     expect(screen.getByLabelText("Organismo de INDICE-A")).toHaveValue("");
     expect(screen.getByLabelText("Unidad de INDICE-B")).toHaveValue("indice_bs");
-    expect(screen.getByLabelText("Periodicidad de INDICE-B")).toHaveValue("mensual");
+    const periodicidad = screen.getByLabelText("Periodicidad de INDICE-B");
+    expect(periodicidad).toHaveValue("mensual");
+    expect(within(periodicidad).getAllByRole("option").map((o) => [o.textContent, (o as HTMLOptionElement).value])).toEqual([
+      ["Diaria", "diaria"],
+      ["Mensual", "mensual"],
+      ["Trimestral", "trimestral"],
+      ["Anual", "anual"],
+    ]);
+    expect(screen.getByRole("button", { name: "Leer" })).toHaveClass("cds--btn--secondary");
+    expect(screen.getByRole("button", { name: "Confirmar la importación" })).toHaveClass("cds--btn--primary");
+  });
+
+  test("los conteos de filas leídas, rechazadas y provisionales llevan punto de miles", async () => {
+    leer = () => json({ ...INFORME, filas_leidas: 1200, filas_rechazadas: 1050, provisionales: 1001 });
+    montar();
+    await leerCsv();
+    const resumen = screen.getByRole("region", { name: "Resumen de la lectura" });
+    expect(within(resumen).getByText("Filas leídas").nextSibling).toHaveTextContent("1.200");
+    expect(within(resumen).getByText("Rechazadas").nextSibling).toHaveTextContent("1.050");
+    expect(within(resumen).getByText("Provisionales").nextSibling).toHaveTextContent("1.001");
   });
 
   test("confirmar reenvía el archivo con la huella y las definiciones, y muestra los mensajes", async () => {

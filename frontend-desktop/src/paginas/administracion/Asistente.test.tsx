@@ -96,6 +96,8 @@ describe("Asistente de IA", () => {
     expect(screen.getByText(`Mayor que cero. ${AYUDA_CIFRAS}`)).toBeInTheDocument();
     expect(screen.getByText(/Si la dirección de Ollama no es de este equipo/)).toBeInTheDocument();
     expect(screen.getByText("Clave registrada: ninguna")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar la configuración" })).toHaveClass("cds--btn--primary");
+    expect(screen.getByRole("button", { name: "Registrar la clave" })).toHaveClass("cds--btn--secondary");
   });
 
   test("guarda la configuración con el tope tal como se tecleó (lo lee el servidor con la regla)", async () => {
@@ -262,6 +264,7 @@ describe("Asistente de IA", () => {
     );
     montar();
     expect(await screen.findByText(/hay una en el respaldo cifrado/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reactivar la clave" })).toHaveClass("cds--btn--secondary");
     await usuario.type(screen.getByLabelText("Contraseña del respaldo cifrado de la clave"), RESPALDO);
     await usuario.click(screen.getByRole("button", { name: "Reactivar la clave" }));
     expect(await screen.findByText("Clave de IA reactivada (…5678).")).toBeInTheDocument();

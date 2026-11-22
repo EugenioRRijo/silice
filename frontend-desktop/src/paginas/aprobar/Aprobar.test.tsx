@@ -243,6 +243,12 @@ describe("lo que se aprueba, en solo lectura", () => {
     expect(within(tabla).queryByText(/12\.345,600000/)).toBeNull();
   });
 
+  test("sin partidas muestra el estado vacío sin punto final", async () => {
+    detalleDe = () => json(detalle({ partidas: [] }));
+    montar();
+    expect(await screen.findByText("Esta versión no tiene partidas")).toBeInTheDocument();
+  });
+
   test("los hallazgos con el informe de auditoría", async () => {
     montar();
     const informe = await screen.findByRole("region", { name: "Informe de auditoría" });

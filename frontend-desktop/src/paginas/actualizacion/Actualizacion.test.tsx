@@ -188,7 +188,7 @@ describe("Actualizar precios", () => {
     await subir();
     expect(
       await screen.findByText(
-        /El archivo trae 2 insumo\(s\) que no están en el catálogo: Tornillo ficticio \(material, u\), Arandela ficticia \(material, u\)\. Elija en "Dar de alta"/,
+        /El archivo trae 2 insumos que no están en el catálogo: Tornillo ficticio \(material, u\), Arandela ficticia \(material, u\)\. Elija en «Dar de alta»/,
       ),
     ).toBeInTheDocument();
     const [ruta, opciones] = llamada("vista-previa")!;
@@ -261,7 +261,7 @@ describe("Actualizar precios", () => {
     expect(f.getAll("dar_de_alta")).toEqual(["Arandela ficticia"]);
   });
 
-  test("mientras revalora dice «Revalorando...»", async () => {
+  test("mientras revalora dice «Revalorando…»", async () => {
     montar();
     const { usuario } = await subir();
     let soltar: (r: Response) => void = () => undefined;
@@ -271,7 +271,7 @@ describe("Actualizar precios", () => {
       return json(VISTA);
     });
     await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
-    expect(await screen.findByText("Revalorando...")).toBeInTheDocument();
+    expect(await screen.findByText("Revalorando…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Revalorar presupuesto" })).toBeDisabled();
     soltar(json(REVALORACION));
     expect(await screen.findByText("Comparativo por partida")).toBeInTheDocument();
@@ -364,10 +364,12 @@ describe("Actualizar precios", () => {
     for (const rotulo of ["Anterior", "Nuevo", "Variación", "Variación %"]) {
       expect(within(total).getByText(rotulo)).toBeInTheDocument();
     }
-    expect(within(total).getByText("1.000,00")).toBeInTheDocument();
-    expect(within(total).getByText("1.100,00")).toBeInTheDocument();
-    expect(within(total).getByText("100,00")).toBeInTheDocument();
-    expect(within(total).getByText("10,00")).toBeInTheDocument();
+    expect(within(total).getByText("1.000,00")).toHaveClass("cds--type-heading-03", "silice-cifra");
+    expect(within(total).getByText("1.100,00")).toHaveClass("cds--type-heading-03", "silice-cifra");
+    expect(within(total).getByText("100,00").closest("dd")).toHaveClass("cds--type-heading-04", "silice-cifra");
+    expect(within(total).getByText("10,00").closest("dd")).toHaveClass("cds--type-heading-04", "silice-cifra");
+    expect(within(total).getByText("USD")).toHaveClass("cds--type-body-compact-01");
+    expect(within(total).getByText("USD")).not.toHaveClass("silice-cifra");
     expect(within(total).getAllByText(/desfavorable/).length).toBeGreaterThan(0);
   });
 

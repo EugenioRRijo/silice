@@ -69,7 +69,7 @@ describe("TablaInsumos", () => {
     );
     const selector = screen.getByLabelText("Modalidad, fila 1");
     const opciones = within(selector).getAllByRole("option").map((o) => o.textContent);
-    expect(opciones).toEqual(["", "JORNAL", "DESTAJO"]);
+    expect(opciones).toEqual(["Sin modalidad", "JORNAL", "DESTAJO"]);
     await usuario.selectOptions(selector, "DESTAJO");
     expect(alCambiar).toHaveBeenCalledWith(0, "modalidad", "DESTAJO");
   });

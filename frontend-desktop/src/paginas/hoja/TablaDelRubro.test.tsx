@@ -173,4 +173,10 @@ describe("TablaDelRubro: el desperdicio de los materiales", () => {
     pintar({ desperdicios: [TRAZA] });
     expect(screen.queryByText(/Desglose del desperdicio guardado/)).toBeNull();
   });
+
+  test("el encabezado del rubro usa singular y plural reales sin «línea(s)»", () => {
+    pintar();
+    expect(screen.getByRole("heading", { level: 3, name: "Materiales · 2 líneas" })).toBeInTheDocument();
+    expect(screen.queryByText(/línea\(s\)/)).toBeNull();
+  });
 });

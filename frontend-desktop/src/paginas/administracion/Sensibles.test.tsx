@@ -75,6 +75,7 @@ describe("pestañas sensibles de Administración", () => {
       montar(<Empresa />);
       expect(await screen.findByText(/Primero guarde el nombre y el RIF/)).toBeInTheDocument();
       expect(screen.queryByLabelText(/Contraseña de la clave/)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Guardar la empresa" })).toHaveClass("cds--btn--primary");
     });
 
     test("guarda la empresa", async () => {
@@ -95,6 +96,8 @@ describe("pestañas sensibles de Administración", () => {
       fetchFalso.mockResolvedValue(json(SIN_CLAVE));
       montar(<Empresa />);
       await usuario.type(await screen.findByLabelText(/Contraseña de la clave \(12/), FRASE);
+      expect(screen.getByRole("button", { name: "Guardar la empresa" })).toHaveClass("cds--btn--secondary");
+      expect(screen.getByRole("button", { name: "Generar la clave" })).toHaveClass("cds--btn--primary");
       await usuario.type(screen.getByLabelText("Repítala"), "otra frase distinta");
       await usuario.click(screen.getByRole("button", { name: "Generar la clave" }));
       expect(await screen.findByText("Las dos contraseñas no coinciden.")).toBeInTheDocument();
@@ -195,8 +198,9 @@ describe("pestañas sensibles de Administración", () => {
       montar(<ClavesApi />);
       const tabla = await screen.findByRole("table", { name: "Claves de API" });
       expect(tabla).toHaveTextContent("api:ABCD1234");
-      expect(tabla).toHaveTextContent("nunca");
+      expect(tabla).toHaveTextContent("Nunca");
       expect(tabla).toHaveTextContent("revocada");
+      expect(screen.getByRole("button", { name: "Crear la clave de API" })).toHaveClass("cds--btn--secondary");
     });
 
     test("la clave nueva se muestra una vez y se puede cerrar", async () => {
@@ -267,6 +271,7 @@ describe("pestañas sensibles de Administración", () => {
       expect(screen.queryByText(/^API:/)).toBeNull();
       expect(screen.queryByText(/silice\.toml/)).toBeNull();
       expect(screen.getByText("20261110-090000 (manual, 2 bases)")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Crear respaldo ahora" })).toHaveClass("cds--btn--secondary");
       expect(screen.getByRole("button", { name: "Descargar 20261110-090000 (.zip)" })).toBeInTheDocument();
     });
 

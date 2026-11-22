@@ -115,6 +115,21 @@ describe("Catálogo de partidas e insumos", () => {
     expect((await screen.findAllByRole("alert")).length).toBeGreaterThan(0);
   });
 
+  test("las pestañas muestran los conteos de partidas e insumos en es-VE", async () => {
+    const muchas = Array.from({ length: 1000 }, (_, i) => ({
+      codigo: `CIV-${i + 1}`,
+      descripcion: `Partida ${i + 1}`,
+      unidad: "m3",
+      dominio: "civil",
+    }));
+    fetchFalso.mockImplementation((ruta) =>
+      Promise.resolve(json(String(ruta).endsWith("/partidas") ? muchas : INSUMOS)),
+    );
+    montar();
+    expect(await screen.findByRole("tab", { name: "Partidas (1.000)" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Insumos (4)" })).toBeInTheDocument();
+  });
+
   test("el título de la página es un h1", async () => {
     montar();
     // Mientras carga el h1 ya esta (V-8); se espera a la tabla para comprobar el de la pagina completa.

@@ -204,10 +204,11 @@ describe("Inicio de auditoría", () => {
       expect(within(seccion).queryByText(/Recorrido en curso/)).not.toBeInTheDocument();
     });
 
-    test("dice la carpeta de trabajo abierta (no «caso»)", async () => {
-      montar();
+    test("dice la carpeta abierta sin extensión .db (no «caso»)", async () => {
+      montar({ caso: { nombre: "clinica.db", ruta_relativa: "data/clinica.db" } });
       const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
-      expect(within(seccion).getByText(/Carpeta de trabajo: clinica/)).toBeInTheDocument();
+      expect(within(seccion).getByText("Carpeta: clinica")).toBeInTheDocument();
+      expect(within(seccion).queryByText(/\.db/)).not.toBeInTheDocument();
       expect(within(seccion).queryByText(/\bcaso\b/i)).not.toBeInTheDocument();
     });
 

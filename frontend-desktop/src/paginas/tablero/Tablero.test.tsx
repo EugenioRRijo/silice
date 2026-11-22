@@ -104,6 +104,7 @@ describe("Tablero de la obra", () => {
   test("sin proyecto invita a elegirlo y no pide nada a la API", () => {
     montar(null);
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
+    expect(screen.getByText("Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
@@ -143,6 +144,9 @@ describe("Tablero de la obra", () => {
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("/v1/tablero?proyecto=OB-S2");
     // VB-19: la fecha se lee dd/mm/aaaa
     expect(screen.getByText("Versión OB-001 del 02/11/2026 · 3 renglones · USD")).toBeInTheDocument();
+    // Solo la primera cifra (total vigente) va en heading-04; las demás tarjetas van en heading-03.
+    expect(screen.getByText("5.060,00")).toHaveClass("cds--type-heading-04");
+    expect(screen.getByText("4.266,67")).toHaveClass("cds--type-heading-03");
     const versiones = screen.getByRole("table", { name: "Versiones del presupuesto" });
     // VD-5: la fecha no lleva su forma ISO en el title; las cifras si llevan su exacto
     expect(within(versiones).getByText("02/11/2026")).not.toHaveAttribute("title");
@@ -312,7 +316,14 @@ describe("Tablero de la obra", () => {
     fetchFalso.mockImplementation(async () => json({ ...TABLERO, tarjetas: [...TABLERO.tarjetas, equilibrio] }));
     montar("DEMO-001");
     expect(await screen.findByText("se alcanza en Día 1 [DEMO-01-INST]")).toBeInTheDocument();
+    expect(screen.getByText("82,10 %")).toHaveClass("cds--type-heading-03");
     expect(screen.queryByText(/Dia 1/)).toBeNull();
+  });
+
+  test("renglones usa formato es-VE y singular real", async () => {
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, renglones: 1 }));
+    montar("OB-S2");
+    expect(await screen.findByText("Versión OB-001 del 02/11/2026 · 1 renglón · USD")).toBeInTheDocument();
   });
 
   test("sin control de obra lo dice con su motivo", async () => {

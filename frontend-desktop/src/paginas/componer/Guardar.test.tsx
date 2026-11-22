@@ -70,6 +70,13 @@ describe("Guardar", () => {
     expect(screen.getByText("El rendimiento se guardó sin justificación.")).toBeInTheDocument();
   });
 
+  test("sin lista para armar el botón queda deshabilitado y nombra la carpeta", () => {
+    montar({ sinLista: true });
+    expect(screen.getByRole("button", { name: "Guardar composición" })).toBeDisabled();
+    expect(screen.getByText(/lista de precios para armar de la carpeta:/)).toBeInTheDocument();
+    expect(screen.queryByText(/carpeta de trabajo/)).toBeNull();
+  });
+
   test("un error de guardado se muestra con su detalle", () => {
     montar({ error: "Las condiciones del rendimiento son obligatorias." });
     expect(screen.getByRole("alert")).toHaveTextContent("Las condiciones del rendimiento son obligatorias.");

@@ -143,4 +143,23 @@ describe("Entrar", () => {
       screen.getByText("La sesión vive en el servidor de Sílice de esta instalación · El asistente con un proveedor en la nube viene apagado"),
     ).toBeInTheDocument();
   });
+
+  test("usa trato de usted, sin nombres de archivo internos ni ícono decorativo en el pie", () => {
+    const { container } = render(<Entrar onEntrar={vi.fn()} />);
+    const texto = document.body.textContent ?? "";
+    expect(screen.getByText("Instalación local")).toBeInTheDocument();
+    expect(screen.getByText("Cálculo exacto de precios")).toBeInTheDocument();
+    expect(
+      screen.getByText("Cálculos de APU, auditoría de libros Excel y firmas locales en este equipo."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Escriba el usuario y la contraseña de su cuenta en esta instalación."),
+    ).toBeInTheDocument();
+    for (const retirado of [/SQLite/i, /Aritm[eé]tica Decimal/i, /instalacion\.db/i, /tu propio/i, /Usa tu/i]) {
+      expect(texto).not.toMatch(retirado);
+    }
+    const pie = container.querySelector(".silice-entrada__pie-seguridad");
+    expect(pie).not.toBeNull();
+    expect(pie?.querySelector("svg")).toBeNull();
+  });
 });

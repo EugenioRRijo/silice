@@ -199,7 +199,7 @@ describe("Administracion: Cuentas y Accesos", () => {
   test("sin la accion administrar_cuentas no se ofrece nada (también aquí, aunque el marco ya lo filtra)", () => {
     montar({ ...SESION, acciones: [] });
     expect(screen.queryByRole("tab")).toBeNull();
-    expect(screen.getByText("Su cuenta no tiene permiso para administrar la instalación.")).toBeInTheDocument();
+    expect(screen.getByText("Su cuenta no tiene permiso para administrar la instalación")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
@@ -746,7 +746,7 @@ describe("Administracion: Carpetas de trabajo", () => {
   test("sin cambiar de carpeta la sección no ofrece nada (también aquí, aunque el marco ya lo filtra)", () => {
     montarConCarpetas(SESION);
     expect(screen.queryByRole("list", { name: "Carpetas de trabajo de la instalación" })).not.toBeInTheDocument();
-    expect(screen.getByText("Su cuenta no tiene permiso para administrar la instalación.")).toBeInTheDocument();
+    expect(screen.getByText("Su cuenta no tiene permiso para administrar la instalación")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 });

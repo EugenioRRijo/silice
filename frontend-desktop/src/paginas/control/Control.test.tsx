@@ -314,6 +314,7 @@ describe("Control de obra", () => {
   test("sin proyecto invita a elegirlo y no pide nada", () => {
     montar(null);
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
+    expect(screen.getByText("Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para controlarla.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 

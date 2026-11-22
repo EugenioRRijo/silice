@@ -180,7 +180,7 @@ describe("Mercado › Cotizaciones de la obra", () => {
     versiones = SIN_VERSIONES;
     montar();
     await abrirPestana();
-    expect(await screen.findByText("Esta obra aún no tiene versiones guardadas.")).toBeInTheDocument();
+    expect(await screen.findByText("Esta obra aún no tiene versiones guardadas")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Registrar una cotización…" })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });

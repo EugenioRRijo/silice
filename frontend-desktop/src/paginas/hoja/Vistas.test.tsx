@@ -194,7 +194,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     montar();
     expect(
       await screen.findByText(
-        "2 partida(s) no tienen composición en el catálogo del caso: quedan pendientes y no suman al total.",
+        "2 partidas no tienen composición en el catálogo de la carpeta: quedan pendientes y no suman al total.",
       ),
     ).toBeInTheDocument();
   });

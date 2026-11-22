@@ -278,6 +278,8 @@ describe("Estudio de mercado", () => {
     expect(within(tabla).getByText("No: sin tasa del BCV del 01/10/2026")).toBeInTheDocument();
     expect(tabla).not.toHaveTextContent("2026-10-20");
     expect(within(tabla).getByText("150,00 Bs")).not.toHaveAttribute("title");
+    expect(screen.getByText(/la moneda de la carpeta;/)).toBeInTheDocument();
+    expect(screen.queryByText(/carpeta de trabajo/)).toBeNull();
   });
 
   // Tarea D3: una observacion en otra moneda se cita convertida con la tasa del BCV de su dia, con la misma linea de
@@ -357,6 +359,7 @@ describe("Estudio de mercado", () => {
       ["Su costo (piso)", "2.010,50 Bs"],
       ["Precio con utilidad", "2.074,44 Bs"],
     ]);
+    expect(within(costo).getByText("Costo directo más administración")).toBeInTheDocument();
     expect(within(costo).getByText(/Vivienda unifamiliar 80 m²/)).toBeInTheDocument();
     const razon = screen.getByText("La competencia cobra menos que su costo: se propone su costo.");
     expect(razon).toBeInTheDocument();
@@ -547,6 +550,7 @@ describe("Estudio de mercado", () => {
     );
     montar();
     await elegirInsumo(u);
+    expect(within(cifras()).getByText("Sin observaciones en los últimos 90 días")).toBeInTheDocument();
     expect(screen.getByText("Sin observaciones en los últimos 90 días.")).toBeInTheDocument();
     expect(screen.getByText(/Anote el primer precio que vea/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
