@@ -2,11 +2,12 @@ import { ArrowRight, Catalog, DocumentView, Industry } from "@carbon/icons-react
 import { useMemo } from "react";
 import { Link } from "react-router";
 import type { ResumenTodasRespuesta } from "../../api/tipos";
-import { rutaOPendientes } from "../../marco/espacios";
+import { ESPACIOS, rutaOPendientes } from "../../marco/espacios";
 import type { EspacioId } from "../../marco/espacios";
 import { obrasConMismoNombre } from "../../marco/homonimas";
 import { ofertaDe } from "../../marco/oferta";
 import { useAplicacion } from "../../shell/contexto";
+import { paginaPorId, usable } from "../../shell/rutas";
 import { EmpiezaAqui } from "../../comun/ayuda/BloqueEmpiezaAqui";
 import { pasosDeEmpiezaAqui } from "../../comun/ayuda/empiezaAqui";
 import { claveDeObra } from "../pendientes/logica";
@@ -28,29 +29,27 @@ const RUTA_CUENTAS = "/v1/cuentas";
 // (F7, A4); después, lo que bloquea (los pendientes del marco), la cartera por moneda y el avance de cada obra contra el plan (una lectura de
 // `GET /v1/obras/resumen/todas`), las últimas auditorías y, solo con `operar_arenera` y su especialidad encendida, la arenera.
 // Cada bloque lee y falla por su cuenta: uno que falla dice su error y no tumba a los demás. La pantalla no calcula nada: las
-// cifras son las del servidor, solo formateadas.
-const LANZADORES: Record<EspacioId, { codigo: string; titulo: string; desc: string }> = {
-  auditoria: {
-    codigo: "01 · Ventana dedicada",
-    titulo: "Auditor Forense de Presupuestos",
-    desc: "Suba un libro Excel o revise el libro de la empresa para detectar fórmulas rotas y variaciones.",
-  },
-  precios: {
-    codigo: "02 · Ventana dedicada",
-    titulo: "Precios, Catálogo e Índices BCV",
-    desc: "Administre listas maestras, catálogo de insumos, series del BCV y simulaciones.",
-  },
-  produccion: {
-    codigo: "03 · Ventana dedicada",
-    titulo: "Costos de Producción y Cantera",
-    desc: "Controle existencias de patio, costos reales por tonelada y mezclas de planta.",
-  },
-};
+// cifras son las del servidor, solo formateadas (el anillo por estado cuenta las obras de la lista).
+//
+// Los lanzadores de los espacios (rediseño 2026-11-21): cada uno se llama como su espacio en `marco/espacios.ts` (el mismo
+// nombre de la barra lateral) y lo describe con las herramientas que la cuenta puede abrir allí, con sus nombres. El número
+// de orden es adorno: va oculto a la lectora y fuera del nombre del enlace.
+const CODIGO: Record<EspacioId, string> = { auditoria: "01", precios: "02", produccion: "03" };
 
 function IconoLanzador({ id }: { id: EspacioId }) {
   if (id === "auditoria") return <DocumentView size={16} aria-hidden="true" />;
   if (id === "precios") return <Catalog size={16} aria-hidden="true" />;
   return <Industry size={16} aria-hidden="true" />;
+}
+
+function herramientasUsables(id: EspacioId, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[]): string {
+  return ESPACIOS[id].herramientas
+    .filter((h) => {
+      const pagina = paginaPorId(h.pagina);
+      return pagina !== undefined && usable(pagina, acciones, modoEntrega, apagados);
+    })
+    .map((h) => h.titulo)
+    .join(" · ");
 }
 
 export default function Panorama() {
@@ -98,22 +97,29 @@ export default function Panorama() {
             </div>
           </div>
           <div className="silice-lanzador__rejilla">
-            {espaciosOfrecidos.map((esp) => {
-              const info = LANZADORES[esp.id];
-              return (
-                <Link key={esp.id} to={esp.ruta} className="silice-lanzador__tarjeta">
-                  <div className="silice-lanzador__arriba">
-                    <span className="silice-lanzador__codigo">{info.codigo}</span>
-                    <IconoLanzador id={esp.id} />
-                  </div>
-                  <p className="silice-lanzador__titulo">{info.titulo}</p>
-                  <p className="silice-lanzador__desc">{info.desc}</p>
-                  <span className="silice-lanzador__accion">
-                    Abrir herramienta <ArrowRight size={14} aria-hidden="true" />
-                  </span>
-                </Link>
-              );
-            })}
+            {espaciosOfrecidos.map((esp) => (
+              <Link
+                key={esp.id}
+                to={esp.ruta}
+                className="silice-lanzador__tarjeta"
+                aria-labelledby={`lanzador-${esp.id}`}
+                aria-describedby={`lanzador-${esp.id}-desc`}
+              >
+                <span className="silice-lanzador__arriba" aria-hidden="true">
+                  <span className="silice-lanzador__codigo">{`${CODIGO[esp.id]} · Ventana dedicada`}</span>
+                  <IconoLanzador id={esp.id} />
+                </span>
+                <span id={`lanzador-${esp.id}`} className="silice-lanzador__titulo">
+                  {esp.titulo}
+                </span>
+                <span id={`lanzador-${esp.id}-desc`} className="silice-lanzador__desc">
+                  {herramientasUsables(esp.id, sesion.acciones, sesion.modo_entrega, modulosApagados ?? [])}
+                </span>
+                <span className="silice-lanzador__accion" aria-hidden="true">
+                  Abrir herramienta <ArrowRight size={14} aria-hidden="true" />
+                </span>
+              </Link>
+            ))}
           </div>
         </section>
       )}
