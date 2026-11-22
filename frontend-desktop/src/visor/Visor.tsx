@@ -220,7 +220,11 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
 
   const cambiarFecha = (valor: string) => {
     setFecha(valor);
-    if ((fase === "listo" || fase === "cargando") && archivo && ISO.test(valor)) void volverAAuditar(archivo, valor);
+    if (!archivo || !ISO.test(valor)) return;
+    // Con el libro listo basta volver a auditar. Si todavía carga, se carga de nuevo con la fecha nueva:
+    // volver a auditar solo adelantaría el turno y la réplica en vuelo se descartaría, dejando el esqueleto.
+    if (fase === "listo") void volverAAuditar(archivo, valor);
+    else if (fase === "cargando") void cargar(archivo, valor);
   };
 
   const alAgregar = (_evento: unknown, { addedFiles }: { addedFiles: File[] }) => {
