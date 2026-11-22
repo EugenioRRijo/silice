@@ -530,12 +530,10 @@ describe("BarraLateral: Nueva obra", () => {
   });
 
   it("el tema neutro da al texto sobre el acento un contraste de al menos 4,5:1", () => {
-    // Los alias neutros de tokens.scss: acento = arena (#d3c49a), marco = petroleo (#15333a).
+    // Los alias neutros de tokens.scss: acento = yellow-20 de Carbon, marco = background-inverse de g10 (gray-80).
     const tokens = leer("estilos/tokens.scss");
-    expect(tokens).toContain("--silice-acento: var(--silice-arena)");
-    expect(tokens).toContain("--silice-marco: var(--silice-petroleo)");
-    expect(tokens).toContain("--silice-arena: #d3c49a");
-    expect(tokens).toContain("--silice-petroleo: #15333a");
+    expect(tokens).toContain("--silice-acento: #{colors.$yellow-20}");
+    expect(tokens).toContain("--silice-marco: var(--cds-background-inverse)");
     const luminancia = (hex: string) => {
       const [r, g, b] = [1, 3, 5].map((i) => {
         const c = parseInt(hex.slice(i, i + 2), 16) / 255;
@@ -543,7 +541,7 @@ describe("BarraLateral: Nueva obra", () => {
       });
       return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
     };
-    const [claro, oscuro] = [luminancia("#d3c49a"), luminancia("#15333a")];
+    const [claro, oscuro] = [luminancia("#fddc69"), luminancia("#393939")];
     expect((claro + 0.05) / (oscuro + 0.05)).toBeGreaterThanOrEqual(4.5);
   });
 });
