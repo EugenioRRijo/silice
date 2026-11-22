@@ -59,14 +59,14 @@ export function ResultadoDeLaProyeccion({ datos, region, conSeries, children }: 
         <dt>Reserva para cubrir el P80</dt>
         <dd className="silice-cifra">{m(datos.reserva)}</dd>
       </dl>
+      {/* El mismo P50 y P80 de arriba, dibujados: el número solo da el largo de la barra y lo que se lee es el monto de la API
+          en centésimas. Sin variación contra la base: la API no la manda y la pantalla no la calcula. */}
       <RiskRangeMeter
-        base={Number(datos.total_base)}
-        p50={Number(datos.p50)}
-        p80={Number(datos.p80)}
-        currency={datos.moneda}
-        baseText={m(datos.total_base)}
-        p50Text={m(datos.p50)}
-        p80Text={m(datos.p80)}
+        puntos={[
+          { rotulo: "Presupuesto base vigente", valor: Number(datos.total_base), texto: m(datos.total_base), tipo: "plan" },
+          { rotulo: "Escenario probable (P50)", valor: Number(datos.p50), texto: m(datos.p50), tipo: "pronostico" },
+          { rotulo: "Exposición recomendada (P80)", valor: Number(datos.p80), texto: m(datos.p80), tipo: "pronostico" },
+        ]}
       />
       {filas.length > 0 ? (
         <TablaDensa etiqueta="Los tres insumos que más empujan" columnas={columnas} filas={filas} />
