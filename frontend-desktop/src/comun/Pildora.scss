@@ -8,7 +8,7 @@
   justify-content: flex-end;
   margin-inline-start: auto;
   padding-inline: 0.25rem;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-variant-numeric: tabular-nums;
   color: var(--silice-contador-numero);
   @include type.type-style("label-01");

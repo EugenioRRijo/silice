@@ -7,7 +7,7 @@ import { plano } from "./normalizar";
 export interface OpcionDeBusqueda<T> {
   clave: string; // estable y unica en toda la lista: "partida:LB-02-TUB"
   principal: string; // linea 1: lo que la persona reconoce (la descripcion)
-  secundaria: string[]; // linea 2, ya como texto: [codigo, unidad, ...]; el primero es el codigo (va en Plex Mono)
+  secundaria: string[]; // linea 2, ya como texto: [codigo, unidad, ...]; el primero es el codigo (va con cifras tabulares)
   valor: T; // lo que recibe el padre al elegir
 }
 

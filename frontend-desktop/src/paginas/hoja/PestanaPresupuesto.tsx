@@ -88,7 +88,7 @@ const ID_AGREGAR = "hoja-agregar-partida-boton";
 const idDeCantidad = (n: number | string) => `hoja-cantidades-${n}`;
 const idDeQuitar = (n: number | string) => `hoja-quitar-${n}`;
 
-// «Cómo se midió»: el cálculo (en Plex Mono, como se escribió) y la nota; sin ninguno, de dónde sale la cantidad.
+// «Cómo se midió»: el cálculo (en la familia del diseño, como se escribió) y la nota; sin ninguno, de dónde sale la cantidad.
 function Medicion({ fila }: { fila: Pick<FilaPresupuesto, "quitable" | "calculo" | "nota" | "de_tramo"> }) {
   const { calculo, nota, texto } = comoSeMidio(fila);
   return (

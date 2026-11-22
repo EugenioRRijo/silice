@@ -79,7 +79,7 @@
 }
 
 .silice-marco-lateral__conteo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   color: var(--silice-muted-soft);
@@ -219,7 +219,8 @@
 
   &::before {
     content: attr(data-prefijo) "." / "";
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--silice-muted);
@@ -237,7 +238,8 @@
 }
 
 .silice-marco-lateral__prefijo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--silice-muted);

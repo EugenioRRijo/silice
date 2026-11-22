@@ -75,7 +75,7 @@ function lineaConPrecio(s: SugerenciaDeConsulta): string[] {
   return partes;
 }
 
-// Un grupo con una opcion por sugerencia: la etiqueta arriba; abajo el valor (el codigo, en Plex Mono) y la fuente (o, con
+// Un grupo con una opcion por sugerencia: la etiqueta arriba; abajo el valor (el codigo, con cifras tabulares) y la fuente (o, con
 // `mostrarPrecio`, la unidad y el precio con su fecha).
 export function gruposDeConsulta(
   respuesta: SugerenciasHalladas,

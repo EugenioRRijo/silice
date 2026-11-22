@@ -78,7 +78,8 @@
 }
 
 .silice-lanzador__codigo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--silice-muted-soft);
@@ -163,7 +164,7 @@
 .silice-inicio__resumen {
   margin: 0;
   color: var(--silice-muted);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
@@ -335,5 +336,6 @@
   text-overflow: clip;
   white-space: normal;
   overflow-wrap: anywhere;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }

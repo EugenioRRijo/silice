@@ -8,7 +8,7 @@
 .silice-tablero__nota {
   margin: 0;
   color: var(--silice-muted);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-variant-numeric: tabular-nums;
 }
 
@@ -41,7 +41,7 @@
 
   dd {
     margin: 0;
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-family: inherit;
     font-variant-numeric: tabular-nums;
     color: var(--silice-ink);
   }
