@@ -1077,6 +1077,53 @@ describe("Marco: lo que se monta con él", () => {
     ).toBeInTheDocument();
   });
 
+  // F1: desde una obra de demostracion.db, «Volver a la carpeta de la empresa» debe salir de /obra/demostracion.db/...
+  // hacia Inicio y conservar el aviso de cambio de carpeta sin que useObraDeLaRuta reabra demostracion.db.
+  test("F1: desde una obra de demostracion.db, «Volver a la carpeta de la empresa» lleva a Inicio con el aviso y no la reabre", async () => {
+    const u = userEvent.setup();
+    instalar((estado) => {
+      estado.casos = [...estado.casos, caso("demostracion.db")];
+      estado.actual = caso("demostracion.db");
+    });
+    const base = servidor.fetchFalso;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+        if (String(entrada) === "/v1/obras/todas" && (init?.method ?? "GET") === "GET") {
+          const baseTodas = obrasTodas(servidor.estado);
+          return json({
+            ...baseTodas,
+            obras: [
+              ...baseTodas.obras,
+              {
+                carpeta: "demostracion.db",
+                carpeta_titulo: "demostracion",
+                obra_id: 10,
+                obra: "Obra Demo",
+                version_codigo: "001",
+              },
+            ],
+          });
+        }
+        return base(entrada, init);
+      }),
+    );
+
+    montar({ en: "/obra/demostracion.db/10/presupuesto" });
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
+    const barra = screen.getByRole("banner");
+    await u.click(await within(barra).findByRole("button", { name: "Demostración: está viendo datos inventados" }));
+    await u.click(within(barra).getByRole("button", { name: "Volver a la carpeta de la empresa" }));
+
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
+    expect(await screen.findByText("Carpeta cambiada")).toBeInTheDocument();
+    expect(screen.getByText("Ahora trabaja con la carpeta «silice».")).toBeInTheDocument();
+    expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1);
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+    expect(await within(barra).findByText("Carpeta activa: Carpeta de la empresa")).toBeInTheDocument();
+  });
+
   test("con un recorrido en curso su columna acompaña al contenido", async () => {
     iniciarRecorrido(RECORRIDO_AUDITAR);
     montar({ en: "/auditoria/libros" });

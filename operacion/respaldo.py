@@ -302,6 +302,19 @@ def _con_extension(nombre: str) -> str:
     return nombre if nombre.lower().endswith(".db") else f"{nombre}.db"
 
 
+def _reponer_desde_juego(antes: Path, copiadas: Sequence[tuple[Path, str]]) -> None:
+    """Intenta reponer desde `antes` las bases ya sobreescritas o borrar las recien creadas."""
+    for destino, tipo in reversed(copiadas):
+        previa = ruta_en_juego(antes, destino, tipo)
+        try:
+            if previa.is_file():
+                copiar_sqlite(previa, destino)
+            else:
+                destino.unlink(missing_ok=True)
+        except (sqlite3.Error, OSError):
+            pass
+
+
 def restaurar(
     juego: Path,
     *,
@@ -363,35 +376,42 @@ def restaurar(
         heads=heads,
         ahora=momento,
     )
-    perdidos = None
+    datos_perdidos: dict[str, Any] | None = None
     if any(base["destino"] == "instalacion" for base in elegidas):
         from operacion import eventos_perdidos as perdidos_mod  # diferido: evita un ciclo
 
         copia_instalacion = next(
             juego / base["archivo"] for base in elegidas if base["destino"] == "instalacion"
         )
-        carpeta_datos.mkdir(parents=True, exist_ok=True)
-        perdidos = carpeta_datos / f"eventos_perdidos_{momento:%Y%m%d-%H%M%S}.json"
-        _escribir_json(
-            perdidos,
-            {
-                "juego": str(juego),
-                "fecha": momento.isoformat(timespec="seconds"),
-                "revisado": False,
-                "eventos": eventos_perdidos(ruta_instalacion, ficha.get("ultimo_evento_acceso")),
-                "diferencias": perdidos_mod.diferencias(ruta_instalacion, copia_instalacion),
-            },
-        )
-    restauradas = []
+        datos_perdidos = {
+            "juego": str(juego),
+            "fecha": momento.isoformat(timespec="seconds"),
+            "revisado": False,
+            "eventos": eventos_perdidos(ruta_instalacion, ficha.get("ultimo_evento_acceso")),
+            "diferencias": perdidos_mod.diferencias(ruta_instalacion, copia_instalacion),
+        }
+    copiadas: list[tuple[Path, str]] = []
     for base in elegidas:
         destino = destinos[base["archivo"]]
         destino.parent.mkdir(parents=True, exist_ok=True)
+        existia = destino.exists()
         try:
             copiar_sqlite(juego / base["archivo"], destino)
         except sqlite3.Error as error:
+            pendientes_de_reponer = copiadas if existia else [*copiadas, (destino, base["destino"])]
+            _reponer_desde_juego(antes, pendientes_de_reponer)
             raise RespaldoFallido(
                 f"No se pudo restaurar {destino.name}: {error}. Cierre Sílice y reintente; "
                 f"las bases de antes están en {antes}."
             ) from error
-        restauradas.append(destino)
-    return Restauracion(antes=antes, restauradas=tuple(restauradas), eventos_perdidos=perdidos)
+        copiadas.append((destino, base["destino"]))
+    perdidos = None
+    if datos_perdidos is not None:
+        carpeta_datos.mkdir(parents=True, exist_ok=True)
+        perdidos = carpeta_datos / f"eventos_perdidos_{momento:%Y%m%d-%H%M%S}.json"
+        _escribir_json(perdidos, datos_perdidos)
+    return Restauracion(
+        antes=antes,
+        restauradas=tuple(destino for destino, _ in copiadas),
+        eventos_perdidos=perdidos,
+    )

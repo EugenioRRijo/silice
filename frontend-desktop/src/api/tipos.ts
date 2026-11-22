@@ -160,6 +160,8 @@ export interface LibroAuditadoRespuesta {
   indicadores?: IndicadorRespuesta[];
   // Campo aditivo de V-16: numeros de las partidas con el costo directo incompleto (L4). Una API anterior no lo trae.
   partidas_con_omision?: number[];
+  // Campo aditivo de RF-144: aviso cuando no se pudo guardar la auditoria en el historial.
+  aviso_historial?: string | null;
 }
 
 export interface EstiloVisualRespuesta {

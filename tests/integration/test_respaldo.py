@@ -298,3 +298,65 @@ def test_un_juego_de_una_version_mas_nueva_no_se_restaura(datos: Datos) -> None:
     juego = _respaldar(datos, [futura])
     with pytest.raises(respaldo.RespaldoFallido, match="versión más nueva"):
         _restaurar(datos, juego)
+
+
+def test_si_falla_una_copia_al_restaurar_no_deja_eventos_perdidos_ni_bases_a_medias(
+    datos: Datos, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _instalacion_vacia(datos)
+    caso = bases_prueba.copiar_base("0.5.0", "demo.db", datos.casos / "demo.db")
+    juego = _respaldar(datos, [caso])
+    with closing(sqlite3.connect(datos.instalacion)) as conexion:
+        conexion.execute(
+            "INSERT INTO evento_acceso (fecha_hora, login_intentado, ip_cliente, tipo, detalle) "
+            "VALUES ('2026-10-02T10:00:00', 'admin', '', 'entrada', 'luego')"
+        )
+        conexion.commit()
+    with closing(sqlite3.connect(caso)) as conexion:
+        conexion.execute(
+            "INSERT INTO proyecto (nombre, descripcion, dominio) VALUES ('despues', '', 'civil')"
+        )
+        conexion.commit()
+    instalacion_modificada = _filas(datos.instalacion)
+    caso_modificado = _filas(caso)
+
+    original = respaldo.copiar_sqlite
+
+    def falla_en_el_caso(origen: Path, destino: Path) -> None:
+        if destino == caso:
+            raise sqlite3.OperationalError("database is locked")
+        original(origen, destino)
+
+    monkeypatch.setattr(respaldo, "copiar_sqlite", falla_en_el_caso)
+    with pytest.raises(respaldo.RespaldoFallido, match="database is locked"):
+        _restaurar(datos, juego)
+
+    assert list(datos.carpeta.glob("eventos_perdidos_*.json")) == []
+    assert _filas(datos.instalacion) == instalacion_modificada
+    assert _filas(caso) == caso_modificado
+
+
+def test_si_falla_una_copia_y_tambien_reponer_lanza_respaldo_fallido_sin_eventos_perdidos(
+    datos: Datos, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _instalacion_vacia(datos)
+    caso = bases_prueba.copiar_base("0.5.0", "demo.db", datos.casos / "demo.db")
+    juego = _respaldar(datos, [caso])
+
+    original = respaldo.copiar_sqlite
+    fallo_en_curso = False
+
+    def falla_todo_luego_del_caso(origen: Path, destino: Path) -> None:
+        nonlocal fallo_en_curso
+        if destino == caso:
+            fallo_en_curso = True
+            raise sqlite3.OperationalError("database is locked")
+        if fallo_en_curso:
+            raise sqlite3.OperationalError("otra conexion bloqueo instalacion")
+        original(origen, destino)
+
+    monkeypatch.setattr(respaldo, "copiar_sqlite", falla_todo_luego_del_caso)
+    with pytest.raises(respaldo.RespaldoFallido, match="database is locked"):
+        _restaurar(datos, juego)
+
+    assert list(datos.carpeta.glob("eventos_perdidos_*.json")) == []

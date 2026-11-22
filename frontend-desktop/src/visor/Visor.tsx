@@ -220,7 +220,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
 
   const cambiarFecha = (valor: string) => {
     setFecha(valor);
-    if (fase === "listo" && archivo && ISO.test(valor)) void volverAAuditar(archivo, valor);
+    if ((fase === "listo" || fase === "cargando") && archivo && ISO.test(valor)) void volverAAuditar(archivo, valor);
   };
 
   const alAgregar = (_evento: unknown, { addedFiles }: { addedFiles: File[] }) => {
@@ -376,6 +376,18 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
 
       {ranuraCabecera === undefined && <div className="visor__barra">{controles}</div>}
       {ranuraCabecera && createPortal(controles, ranuraCabecera)}
+
+      {fase === "listo" && auditoria?.aviso_historial && (
+        <InlineNotification
+          kind="warning"
+          role="status"
+          title="Historial"
+          subtitle={auditoria.aviso_historial}
+          lowContrast
+          hideCloseButton
+          className="visor__error"
+        />
+      )}
 
       {error && (
         <InlineNotification

@@ -663,6 +663,19 @@ describe("Control de obra", () => {
     expect(screen.getByRole("table", { name: "Plan reproyectado" })).toBeInTheDocument();
   });
 
+  test("alertas y reproyeccion: eac_sistema y el punto de equilibrio proyectado salen en es-VE", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        terminos: { ...CALCULO.terminos!, eac_sistema: "12345.67 USD" },
+        equilibrio: { punto: "0.7850", mensaje: "sube 3,5 puntos sobre el base" },
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
+    expect(await screen.findByText("EAC (sistema): 12.345,67 USD")).toBeInTheDocument();
+    expect(screen.getByText("Punto de equilibrio proyectado: 0,7850 (sube 3,5 puntos sobre el base)")).toBeInTheDocument();
+  });
+
   test("la severidad de las alertas va con su icono y su nombre, y la descripcion en es-VE (VB-4)", async () => {
     // Las severidades tal como las manda la API (`Severidad.name` del nucleo o «sin evaluar»).
     calculo = () =>

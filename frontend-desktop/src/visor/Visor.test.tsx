@@ -528,5 +528,18 @@ describe("Visor", () => {
       });
       expect(hoja.fijarZoom).toHaveBeenLastCalledWith(1.2);
     });
+
+    test("F7: muestra aviso_historial cuando viene en la respuesta de auditoría", async () => {
+      fetchFalso.mockImplementation(async (entrada) => {
+        const ruta = String(entrada);
+        if (ruta.endsWith("/v1/libros/replica")) return json(replica);
+        if (ruta.endsWith("/v1/libros/auditoria")) {
+          return json({ ...auditoria, aviso_historial: "No se pudo guardar en el historial." });
+        }
+        return json({ detalle: "ruta inesperada" }, 404);
+      });
+      await abierto();
+      expect(await screen.findByText("No se pudo guardar en el historial.")).toBeInTheDocument();
+    });
   });
 });

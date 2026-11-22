@@ -517,3 +517,25 @@ def test_el_margen_contra_el_precio_unitario(
 def test_el_margen_sin_precio_unitario_es_un_error() -> None:
     with pytest.raises(ValueError, match="^el precio unitario debe ser mayor que cero$"):
         margen(Decimal("10"), Decimal("0"))
+
+
+def test_centimos_propuesta_y_margen_no_fallan_con_montos_de_27_o_mas_cifras() -> None:
+    """L2: `centimos`, `propuesta` (cobro) y `margen` amplían la precisión decimal al cuantizar."""
+    grande = Decimal("1" + "0" * 29 + ".125")
+    assert centimos(grande) == Decimal("1" + "0" * 29 + ".13")
+    est = Estadisticas(
+        moneda="Bs",
+        n=1,
+        minimo=grande,
+        q1=grande,
+        mediana=grande,
+        promedio=grande,
+        maximo=grande,
+        ids=(1,),
+        convertidas=0,
+        sin_tasa=0,
+        dias=90,
+    )
+    prop = propuesta("cobro", est, piso=Decimal("1" + "0" * 29 + ".121"))
+    assert prop.precio == Decimal("1" + "0" * 29 + ".13")
+    assert margen(Decimal("1" + "0" * 30), Decimal("1")) == Decimal("9" * 30 + "00.0")

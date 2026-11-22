@@ -77,8 +77,8 @@ export function useAprobacionDeVersion(
 }
 
 // El estado de cada versión de la obra (Versiones, Tarea 6): `datos` es null si la respuesta no trae `versiones`.
-export function useEstadosDeAprobacion(proyecto: string): LecturaDeEstados {
-  const { lectura } = useLecturaDeAprobaciones(proyecto, true, proyecto);
-  if (lectura.estado !== "listo") return lectura;
-  return { estado: "listo", datos: estadosDe(lectura.datos) };
+export function useEstadosDeAprobacion(proyecto: string): LecturaDeEstados & { recargar: () => void } {
+  const { lectura, recargar } = useLecturaDeAprobaciones(proyecto, true, proyecto);
+  if (lectura.estado !== "listo") return { ...lectura, recargar };
+  return { estado: "listo", datos: estadosDe(lectura.datos), recargar };
 }
