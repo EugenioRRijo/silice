@@ -523,9 +523,9 @@ describe("BarraLateral: Nueva obra", () => {
     expect(foco).not.toContain("--silice-marco");
     expect(estilos).toContain("background-color: var(--silice-lateral)");
     expect(estilos).toMatch(/inline-size: 16rem/);
-    expect(estilos).toContain("var(--silice-rail-hover)");
-    // Regla anti-slop: fila activa distinguida por contraste de superficie limpia, sin rayas laterales gruesas.
-    expect(estilos).toMatch(/&\[aria-current="page"\]\s*\{[^}]*background-color:\s*var\(--silice-surface\)/);
+    expect(estilos).toContain("var(--silice-lateral-activo)");
+    // El borde del activo es del color del marco (8,83:1 sobre el fondo del activo en el tema neutro), no del acento.
+    expect(estilos).toMatch(/&\[aria-current="page"\]\s*\{[^}]*border-color:\s*var\(--silice-marco\)/);
     expect(estilos).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 

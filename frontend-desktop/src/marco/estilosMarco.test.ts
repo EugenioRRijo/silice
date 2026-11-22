@@ -81,6 +81,43 @@ describe("la barra superior cabe en 1366 px con letra Normal", () => {
   });
 });
 
+// Rediseño F3, Tarea 4c: el color que la empresa elige en Cuenta › Empresa y tema (`GET /v1/tema`, marco/tema.ts) pinta la
+// barra superior y la lateral, y el servidor mide esos pares (aplicacion/tema.py, `_PARES`). Los hexadecimales fijos del
+// rediseño editorial (--silice-charcoal*, --silice-gold*) no siguen al tema: la barra se quedaba carbón con cualquier marco.
+describe("la barra superior y la lateral siguen el tema de la empresa", () => {
+  const superior = () => leer("marco/BarraSuperior.scss");
+  const lateral = () => leer("marco/BarraLateral.scss");
+
+  test("la barra superior es del color del marco, con la raya de 3 px del acento y el texto sobre el marco", () => {
+    const barra = reglaDe(superior(), ".silice-marco-barra") ?? "";
+    expect(barra).toMatch(/background-color:\s*var\(--silice-marco\)/);
+    expect(barra).toMatch(/border-block-end:\s*3px solid var\(--silice-acento\)/);
+    expect(barra).toMatch(/(^|[\s;])color:\s*var\(--cds-text-inverse\)/);
+  });
+
+  test("el sello y el modo activo del selector van en el acento con el color del marco (par que mide el servidor)", () => {
+    const sello = reglaDe(superior(), ".silice-marco-barra__sello") ?? "";
+    expect(sello).toMatch(/background-color:\s*var\(--silice-acento\)/);
+    expect(sello).toMatch(/(^|[\s;])color:\s*var\(--silice-marco\)/);
+    const activo = superior().slice(superior().indexOf(".silice-marco-barra__modo {"));
+    expect(/&\[aria-current="page"\]\s*\{([^}]*)\}/.exec(activo)?.[1]).toMatch(/background-color:\s*var\(--silice-acento\)/);
+  });
+
+  test("la lateral pinta su fondo, el hover y la fila activa con el lateral, el lateral activo y la raya del marco", () => {
+    const fuente = lateral();
+    expect(reglaDe(fuente, ".silice-marco-lateral") ?? "").toMatch(/background-color:\s*var\(--silice-lateral\)/);
+    const fila = fuente.slice(fuente.indexOf(".silice-marco-lateral__fila {"));
+    expect(/&:hover\s*\{([^}]*)\}/.exec(fila)?.[1]).toMatch(/background-color:\s*var\(--silice-lateral-activo\)/);
+    const activa = /&\[aria-current="page"\]\s*\{([^}]*)\}/.exec(fila)?.[1] ?? "";
+    expect(activa).toMatch(/background-color:\s*var\(--silice-lateral-activo\)/);
+    expect(activa).toMatch(/border-color:\s*var\(--silice-marco\)/);
+  });
+
+  test.each(["marco/BarraSuperior.scss", "marco/BarraLateral.scss"])("%s no usa los colores fijos del rediseño editorial", (ruta) => {
+    expect(leer(ruta)).not.toMatch(/--silice-(charcoal|gold|rail-hover|ink)/);
+  });
+});
+
 // Plan F6, T3: la barra de espacio parte en renglones con cualquier cantidad de pestañas y cualquier letra, así que no
 // puede declarar un ancho fijo (ni en px ni en rem) en ella ni en sus pestañas.
 describe("la barra de espacio no declara anchos fijos", () => {
