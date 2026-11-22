@@ -226,9 +226,9 @@ describe("Tablero de la obra", () => {
   // sola vez y en el centro; la fracción solo dibuja el arco. Antes salía «62.5 %» con punto debajo y, en el centro, un número
   // que calculaba el navegador.
   describe("el anillo del avance físico", () => {
-    const conAvance = (texto: string, fraccion: string | null) => ({
+    const conAvance = (texto: string, fraccion: string | null, favorable: boolean | null = null) => ({
       ...TABLERO,
-      control: { ...TABLERO.control!, anillos: [{ rotulo: "Avance fisico", fraccion, texto, favorable: null }, ...TABLERO.control!.anillos.slice(1)] },
+      control: { ...TABLERO.control!, anillos: [{ rotulo: "Avance fisico", fraccion, texto, favorable }, ...TABLERO.control!.anillos.slice(1)] },
     });
 
     test("dice «62,5 %» una sola vez, con coma, como lo manda la API («62.5 %»)", async () => {
@@ -259,6 +259,34 @@ describe("Tablero de la obra", () => {
       montar("OB-S2");
       const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
       expect(anillo.querySelector(".silice-radial__arco")).toHaveClass("silice-radial__arco--charcoal");
+    });
+
+    test("la variación desfavorable que manda la API se dice con ícono y texto, no solo en rojo", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625", false)));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      const bloque = anillo.closest(".silice-tablero__anillos") as HTMLElement;
+      expect(anillo.querySelector(".silice-radial__arco")).toHaveClass("silice-radial__arco--crimson");
+      expect(within(bloque).getByText("desfavorable").closest(".silice-radial__variacion")!.querySelector("svg")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+    });
+
+    test("la variación favorable que manda la API se dice con ícono y texto, no solo en verde", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625", true)));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      const bloque = anillo.closest(".silice-tablero__anillos") as HTMLElement;
+      expect(anillo.querySelector(".silice-radial__arco")).toHaveClass("silice-radial__arco--emerald");
+      expect(within(bloque).getByText("favorable")).toBeInTheDocument();
+    });
+
+    test("sin variación (favorable nulo) no dice favorable ni desfavorable", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625", null)));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      expect((anillo.closest(".silice-tablero__anillos") as HTMLElement).textContent).not.toMatch(/favorable/);
     });
 
     test("SPI y CPI no van en anillo: son índices, no partes de un todo (V-21)", async () => {

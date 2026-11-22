@@ -1,5 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { blue60 } from "@carbon/colors";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { AnimatedBarChart, AnimatedDonutChart, RadialGauge, RiskRangeMeter } from "./VisualMeters";
 import type { DonutSegment } from "./VisualMeters";
@@ -31,6 +32,32 @@ function conMovimientoReducido(reducido: boolean) {
       dispatchEvent: () => false,
     }),
   });
+}
+
+// La preferencia que cambia con la pantalla abierta: la prueba la cambia y avisa a quien escucha `change`.
+function conMovimientoQueCambia(inicial: boolean) {
+  let reducido = inicial;
+  const oyentes = new Set<(e: MediaQueryListEvent) => void>();
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (consulta: string) => ({
+      get matches() {
+        return reducido && consulta.includes("prefers-reduced-motion");
+      },
+      media: consulta,
+      onchange: null,
+      addEventListener: (_tipo: string, f: (e: MediaQueryListEvent) => void) => oyentes.add(f),
+      removeEventListener: (_tipo: string, f: (e: MediaQueryListEvent) => void) => oyentes.delete(f),
+      addListener() {},
+      removeListener() {},
+      dispatchEvent: () => false,
+    }),
+  });
+  return (nuevo: boolean) =>
+    act(() => {
+      reducido = nuevo;
+      oyentes.forEach((f) => f({ matches: nuevo } as MediaQueryListEvent));
+    });
 }
 
 // Los cuadros de animación quedan en una cola que la prueba suelta cuando quiere, con el tiempo que quiere.
@@ -110,6 +137,30 @@ describe("RadialGauge: el anillo de un porcentaje del servidor", () => {
     const { container } = render(<RadialGauge label="Avance" fraccion={0.5} texto="50,0 %" />);
     expect(desplazamiento(container)).toBeCloseTo(circunferencia(container) * 0.5);
     expect(cola).toHaveLength(0);
+  });
+
+  test("si se pide menos movimiento a media animación, se pinta ya en su valor: escucha el cambio", () => {
+    const cambiar = conMovimientoQueCambia(false);
+    conCuadrosManuales();
+    const { container } = render(<RadialGauge label="Avance" fraccion={0.5} texto="50,0 %" />);
+    expect(desplazamiento(container)).toBeCloseTo(circunferencia(container));
+    cambiar(true);
+    expect(desplazamiento(container)).toBeCloseTo(circunferencia(container) * 0.5);
+  });
+
+  test("una variación favorable o desfavorable no va solo en el color: lleva ícono y texto (IBCS)", () => {
+    conMovimientoReducido(true);
+    const { container, rerender } = render(<RadialGauge label="Indice" fraccion={0.5} texto="50,0 %" variacion="desfavorable" />);
+    expect(arco(container)).toHaveClass("silice-radial__arco--crimson");
+    const desfavorable = screen.getByText("desfavorable");
+    expect(desfavorable.closest(".silice-radial__variacion")!.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    rerender(<RadialGauge label="Indice" fraccion={0.5} texto="50,0 %" variacion="favorable" />);
+    expect(arco(container)).toHaveClass("silice-radial__arco--emerald");
+    expect(screen.getByText("favorable").closest(".silice-radial__variacion")!.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByText("desfavorable")).toBeNull();
+    rerender(<RadialGauge label="Indice" fraccion={0.5} texto="50,0 %" variacion={null} />);
+    expect(arco(container)).toHaveClass("silice-radial__arco--charcoal");
+    expect(container.textContent).not.toMatch(/favorable/);
   });
 
   test("el tono por omisión es la tinta (real = relleno oscuro), no el ámbar de la marca", () => {
@@ -227,6 +278,14 @@ describe("AnimatedDonutChart: el anillo de la cartera por estado", () => {
     expect(ejecucion).toHaveAttribute("aria-pressed", "false");
     await usuario.tab();
     expect(centro).toHaveTextContent("Obras4");
+  });
+
+  test("las partes del SVG no se repiten para la lectora: la leyenda las dice y las recorre con el teclado", () => {
+    conMovimientoReducido(true);
+    const { container } = render(<AnimatedDonutChart segments={SEGMENTOS} centerLabel="Obras" centerValue="4" />);
+    const partes = [...container.querySelectorAll(".silice-donut__segmento")];
+    expect(partes).toHaveLength(3);
+    for (const p of partes) expect(p).toHaveAttribute("aria-hidden", "true");
   });
 
   test("con el ratón sobre un segmento también lo resalta", async () => {
@@ -351,6 +410,20 @@ describe("la hoja de estilos de los medidores", () => {
 
   test("el foco del teclado en la leyenda del anillo se ve", () => {
     expect(bloque(".silice-donut__item:focus-visible")).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
+  });
+
+  test("el contorno del foco (--cds-focus, el blue-60 del tema blanco de Carbon) llega a 3:1 sobre la fila resaltada y la superficie", () => {
+    for (const fondo of ["--silice-surface-warm", "--silice-surface"]) {
+      expect(contraste(blue60, hexDe(fondo))).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test("con movimiento reducido el resalte del anillo y de la leyenda no transiciona", () => {
+    const m = /@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/.exec(hoja);
+    expect(m, "falta el bloque @media (prefers-reduced-motion: reduce)").not.toBeNull();
+    for (const sel of ["silice-donut__segmento", "silice-donut__item"]) {
+      expect(m![1]).toMatch(new RegExp(`\\.${sel}[^{]*\\{[^}]*transition:\\s*none`));
+    }
   });
 });
 

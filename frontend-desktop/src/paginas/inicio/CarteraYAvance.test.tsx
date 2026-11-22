@@ -1,6 +1,8 @@
+import { fileURLToPath } from "node:url";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import * as sass from "sass";
 import { describe, expect, test } from "vitest";
 import type { ResumenTodasRespuesta } from "../../api/tipos";
 import { CarteraYAvance } from "./CarteraYAvance";
@@ -104,6 +106,26 @@ describe("Vista general: el anillo de obras por estado", () => {
     container.remove();
     const otra = montar({ ...CARTERA, obras: CARTERA.obras.filter((o) => o.etapa === "en_ejecucion") });
     expect(otra.container.querySelector<SVGCircleElement>('.silice-donut__segmento[data-id="en_ejecucion"]')!.style.stroke).toBe(antes);
+  });
+
+  test("el color de cada estado es un token del gráfico (inicio.scss), no un hex en el componente", () => {
+    const otraEtapa = { ...CARTERA, obras: [...CARTERA.obras, obra(11, "Obra rara", "suspendida", "Suspendida", null, null)] };
+    const { container } = montar(otraEtapa);
+    const color = (id: string) => container.querySelector<SVGCircleElement>(`.silice-donut__segmento[data-id="${id}"]`)!.style.stroke;
+    expect(color("en_elaboracion")).toBe("var(--silice-grafico-etapa-en-elaboracion)");
+    expect(color("en_ejecucion")).toBe("var(--silice-grafico-etapa-en-ejecucion)");
+    expect(color("suspendida")).toBe("var(--silice-grafico-etapa-otra)");
+    // La excepción anotada: «atrasada» lleva la severidad de su ícono en la tabla, no un color de serie.
+    expect(color("atrasada")).toBe("var(--silice-sev-error)");
+    // Las rutas van en una variable: con el literal, Vite reescribe el `new URL` como recurso.
+    const componente = "./CarteraYAvance.tsx";
+    const estilos = "./inicio.scss";
+    const fs = (globalThis as unknown as { process: { getBuiltinModule(n: string): { readFileSync(r: string, c: string): string } } }).process.getBuiltinModule("node:fs");
+    expect(fs.readFileSync(fileURLToPath(new URL(componente, import.meta.url)), "utf-8")).not.toMatch(/#[0-9a-f]{6}\b/i);
+    const css = sass.compile(fileURLToPath(new URL(estilos, import.meta.url))).css;
+    for (const etapa of ["en-elaboracion", "en-aprobacion", "aprobada", "en-ejecucion", "otra"]) {
+      expect(css).toMatch(new RegExp(`--silice-grafico-etapa-${etapa}:\\s*#[0-9a-f]{6}`, "i"));
+    }
   });
 
   test("no pide pasar el cursor: se recorre con el teclado y el foco lo resalta", async () => {
