@@ -10,6 +10,12 @@ export const AYUDA =
   "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con su fecha y su fuente. No cambia la valoración de ninguna obra que no la use.";
 export const TITULO_REFERENCIA = "Referencia de precios MaPreX (en bolívares)";
 export const ROTULO_REFERENCIA = "Cargar la referencia MaPreX en Bs";
+
+// Qué exige el archivo antes de subirlo (juez F2, 2026-11-23): las columnas de `core/catalog/precios.py`
+// (COLUMNAS_ARCHIVO y COLUMNAS_OPCIONALES), los tipos de `tipo_insumo` y las fechas AAAA-MM-DD.
+export const AYUDA_ARCHIVO =
+  "El archivo lleva una fila de títulos con las columnas «tipo», «insumo», «unidad» y «precio»; «tipo» es material, " +
+  "equipo o mano de obra. Opcionales: «fecha» (AAAA-MM-DD, por ejemplo 2026-11-23) y «fuente».";
 export const TITULO_LISTA = "La lista de la empresa";
 export const SIN_BASES = "La carpeta no tiene listas de precios: cargue una en Actualizar precios.";
 export const TITULO_HALLAZGOS = "Revisar precios vencidos o fuera de rango";

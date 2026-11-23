@@ -20,6 +20,7 @@ import {
   NOTA_ATIPICOS,
   ROTULO_ATIPICOS,
   ROTULO_REFERENCIA,
+  AYUDA_ARCHIVO,
   SIN_BASES,
   SIN_LISTAS,
   TITULO,
@@ -308,6 +309,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
             <CampoTexto id="precios-empresa-nombre" labelText="Nombre de la lista (opcional)" size="sm" value={nombre} onChange={(e) => setNombre(e.target.value)} />
           </div>
 
+          <p className="silice-precios-empresa__nota cds--type-body-compact-01">{AYUDA_ARCHIVO}</p>
           <SubidaArchivo
             id="precios-empresa-archivo"
             etiqueta="Archivo de precios (CSV o XLSX): suéltelo aquí, o haga clic para elegirlo"

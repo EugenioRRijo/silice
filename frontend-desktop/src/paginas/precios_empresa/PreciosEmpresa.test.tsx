@@ -177,7 +177,7 @@ describe("Precios de la empresa", () => {
     const ayuda = await screen.findByText(/^El archivo lleva una fila de títulos con las columnas «tipo», «insumo», «unidad» y «precio»/);
     expect(ayuda).toHaveTextContent("«tipo» es material, equipo o mano de obra");
     expect(ayuda).toHaveTextContent("Opcionales: «fecha» (AAAA-MM-DD, por ejemplo 2026-11-23) y «fuente».");
-    const subida = screen.getByText(/^Archivo de precios \(CSV o XLSX\)/);
+    const subida = screen.getAllByText(/^Archivo de precios \(CSV o XLSX\)/)[0]!;
     expect(ayuda.compareDocumentPosition(subida) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
