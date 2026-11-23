@@ -2,8 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
-import { ContextoDeLaHoja } from "../hoja/ProveedorDeLaHoja";
-import type { HojaDeLaObra } from "../hoja/ProveedorDeLaHoja";
+import { ContextoDeLaEdicionDelBorrador, ContextoDelBorradorAbierto } from "../../comun/borradorAbierto";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -319,9 +318,9 @@ describe("Componer una partida", () => {
   // éxito se queda en pantalla, dice que la partida todavía no está en el presupuesto y su único botón principal es el
   // paso siguiente, que lleva al Presupuesto con la partida para ponerle cantidad.
   // La Hoja de la obra (el borrador B-1), como la comparte `ProveedorDeLaHoja` con la subvista Componer; null = sin Hoja.
-  const hojaEditable = { estado: { estado: "listo", borrador: { id: "B-1" } }, puedeEditar: true } as unknown as HojaDeLaObra;
+  const hojaEditable = { borrador: "B-1", puedeEditar: true };
 
-  function montarEnObra(hoja: HojaDeLaObra | null = hojaEditable) {
+  function montarEnObra(hoja: { borrador: string; puedeEditar: boolean } | null = hojaEditable) {
     function Destino() {
       const { pathname, state } = useLocation();
       return <p data-testid="destino">{`${pathname} ${JSON.stringify(state)}`}</p>;
@@ -329,7 +328,8 @@ describe("Componer una partida", () => {
     render(
       <ContextoAplicacion.Provider value={{ sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}>
         <ContextoDeLaObra.Provider value={{ carpeta: "demo.db", obraId: 7, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
-          <ContextoDeLaHoja.Provider value={hoja}>
+          <ContextoDelBorradorAbierto.Provider value={hoja?.borrador ?? null}>
+          <ContextoDeLaEdicionDelBorrador.Provider value={hoja?.puedeEditar ?? null}>
             <MemoryRouter initialEntries={["/obra/demo.db/7/presupuesto/componer"]}>
               <Routes>
                 <Route path="/obra/demo.db/7/presupuesto/componer" element={<PaginaComponer />} />
@@ -337,7 +337,8 @@ describe("Componer una partida", () => {
                 <Route path="/obra/demo.db/7/versiones" element={<Destino />} />
               </Routes>
             </MemoryRouter>
-          </ContextoDeLaHoja.Provider>
+          </ContextoDeLaEdicionDelBorrador.Provider>
+          </ContextoDelBorradorAbierto.Provider>
         </ContextoDeLaObra.Provider>
       </ContextoAplicacion.Provider>,
     );
@@ -366,7 +367,7 @@ describe("Componer una partida", () => {
   });
 
   test("con una versión de solo lectura dice por qué no se puede agregar y lleva a Versiones", async () => {
-    montarEnObra({ ...hojaEditable, puedeEditar: false } as HojaDeLaObra);
+    montarEnObra({ ...hojaEditable, puedeEditar: false });
     await componerYGuardar();
     expect(
       await screen.findByText("Esta versión del presupuesto no se puede editar: abra o cree una versión editable para agregarla.", {}, ESPERA),

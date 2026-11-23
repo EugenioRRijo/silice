@@ -6,6 +6,10 @@ import { createContext } from "react";
 // Lo pone `paginas/hoja/ProveedorDeLaHoja.tsx`; sin Hoja abierta (o con su borrador cargando), `null`.
 export const ContextoDelBorradorAbierto = createContext<string | null>(null);
 
+// Si ese borrador se puede editar (juez F2, 2026-11-23): Componer no ofrece agregar una partida a una versión de solo
+// lectura y dice por qué. Lo pone el mismo proveedor; sin Hoja abierta, `null` (no se sabe).
+export const ContextoDeLaEdicionDelBorrador = createContext<boolean | null>(null);
+
 // Las vistas que contesta `GET /v1/hoja/borradores/{id}/vistas/{nombre}`.
 export type NombreDeVista = "espacio" | "presupuesto" | "apu" | "plan" | "equilibrio" | "parametros" | "auditoria";
 

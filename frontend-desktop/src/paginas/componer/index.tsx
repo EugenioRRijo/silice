@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { pedir } from "../../api/cliente";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { rutaDeObra } from "../../marco/secciones";
-import { ContextoDeLaHoja } from "../hoja/ProveedorDeLaHoja";
+import { ContextoDeLaEdicionDelBorrador, ContextoDelBorradorAbierto, rutaDeVista } from "../../comun/borradorAbierto";
 import { ComponerPartida } from "./ComponerPartida";
 import type { PartidaCompuesta } from "./ComponerPartida";
 import type { PasoSiguiente } from "./Guardar";
@@ -24,10 +24,10 @@ type EnElPresupuesto = "consultando" | "esta" | "no-esta" | "desconocido";
 export default function PaginaComponer(): JSX.Element {
   const [parametros] = useSearchParams();
   const obra = useContext(ContextoDeLaObra);
-  const hoja = useContext(ContextoDeLaHoja);
+  const borrador = useContext(ContextoDelBorradorAbierto);
+  const editable = useContext(ContextoDeLaEdicionDelBorrador);
   const navegar = useNavigate();
   const [enElPresupuesto, setEnElPresupuesto] = useState<EnElPresupuesto>("desconocido");
-  const borrador = hoja !== null && hoja.estado.estado === "listo" ? hoja.estado.borrador.id : null;
 
   // Fuera de una obra, guardar termina aquí (la partida queda en el catálogo). En la obra, se consulta el presupuesto.
   const alGuardar = (partida: PartidaCompuesta) => {
@@ -36,7 +36,7 @@ export default function PaginaComponer(): JSX.Element {
       return;
     }
     setEnElPresupuesto("consultando");
-    pedir<{ filas: { partida: string }[] }>(`/v1/hoja/borradores/${borrador}/vistas/presupuesto`)
+    pedir<{ filas: { partida: string }[] }>(rutaDeVista(borrador, "presupuesto"))
       .then((vista) => setEnElPresupuesto(vista.filas.some((f) => f.partida === partida.codigo) ? "esta" : "no-esta"))
       .catch(() => setEnElPresupuesto("desconocido"));
   };
@@ -46,7 +46,7 @@ export default function PaginaComponer(): JSX.Element {
       ? undefined
       : (partida: PartidaCompuesta): PasoSiguiente | null => {
           const presupuesto = rutaDeObra(obra.carpeta, obra.obraId, "presupuesto");
-          if (hoja !== null && !hoja.puedeEditar) {
+          if (editable === false) {
             return {
               aviso: "Esta versión del presupuesto no se puede editar: abra o cree una versión editable para agregarla.",
               boton: "Ir a Versiones",
