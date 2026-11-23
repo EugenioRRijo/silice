@@ -115,7 +115,7 @@ export function BarraDeCorte({
             value={precios.r}
             onChange={(e) => cambiarPrecios({ r: e.target.value })}
           />
-          <CampoTexto id="corte-fuente" labelText="Documento de respaldo de Km y R" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
+          <CampoTexto id="corte-fuente" labelText="Documento que respalda el factor de escalatoria (Km) y la parte que no se reajusta (R)" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
         </>
       )}
       <div>
