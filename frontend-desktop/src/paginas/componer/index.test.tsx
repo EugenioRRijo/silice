@@ -88,6 +88,7 @@ describe("Componer una partida", () => {
   let guardado: () => Response;
   let carpeta: () => Response;
   let vistaPresupuesto: () => Response;
+  let parametrosDeOmision: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -97,6 +98,7 @@ describe("Componer una partida", () => {
     partida = () => json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
     carpeta = () => json(estadoDeCarpeta("Lista ficticia 2026-01"));
     vistaPresupuesto = () => json({ filas: [{ partida: "FIC-7" }] });
+    parametrosDeOmision = () => json({ detalle: "No encontrado." }, 404);
     guardado = () => json({ precio_unitario: "29.70", mensaje: "Composición guardada para la partida FIC-1: precio unitario 29.70.", justificada: false, avisos: [] });
     fetchFalso.mockImplementation(async (entrada, init) => {
       const ruta = String(entrada);
@@ -118,6 +120,7 @@ describe("Componer una partida", () => {
       }
       if (ruta === "/v1/composicion/guardar") return guardado();
       if (ruta === "/v1/carpeta") return carpeta();
+      if (ruta === "/v1/composicion/parametros") return parametrosDeOmision();
       if (ruta === "/v1/hoja/borradores/B-1/vistas/presupuesto") return vistaPresupuesto();
       return json({ detalle: "No encontrado." }, 404);
     });
@@ -447,6 +450,20 @@ describe("Componer una partida", () => {
     const visibles = [...cabecera.querySelectorAll("input, select, textarea")].filter((c) => !plegado(c));
     expect(visibles.length).toBeLessThanOrEqual(8);
     expect(visibles.map((c) => (c as HTMLInputElement).labels?.[0]?.textContent?.trim())).toEqual(["Código", "Descripción", "Unidad"]);
+  });
+
+  // Juez F2: el resumen decía de dónde salían los parámetros, pero no cuánto valen. Ahora dice sus valores.
+  test("el resumen de «Más opciones» dice los valores de los parámetros, con la palabra antes de la sigla", async () => {
+    const campo = (clave: string, valor: string) => ({ clave, rotulo: clave, valor });
+    parametrosDeOmision = () =>
+      json({ campos: [campo("fcas", "6,00"), campo("bono_alimentacion", "1,00"), campo("administracion", "0,15"), campo("utilidad", "0,10")] });
+    montar();
+    const resumen = await screen.findByText(/^Más opciones de la partida/, {}, ESPERA);
+    await waitFor(() =>
+      expect(resumen).toHaveTextContent(
+        "parámetros de omisión: costos del salario (FCAS) 6,00 · bono de alimentación 1,00 · administración 0,15 · utilidad 0,10",
+      ),
+    );
   });
 
   test("un parámetro mal escrito abre «Más opciones de la partida» para que el error se vea", async () => {
