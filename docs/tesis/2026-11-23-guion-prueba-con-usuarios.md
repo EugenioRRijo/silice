@@ -84,7 +84,7 @@ Marque del 1 (muy en desacuerdo) al 5 (muy de acuerdo).
 | 9 | Me sentí muy seguro al usar el programa. | | | | | |
 | 10 | Necesité aprender muchas cosas antes de poder usar el programa. | | | | | |
 
-**Cómo se calcula** (Brooke, 1986):
+**Cómo se calcula** (Brooke, 1996):
 - en los ítems impares, se resta 1 a la respuesta;
 - en los pares, se calcula 5 menos la respuesta;
 - se suman los 10 resultados y la suma se multiplica por 2,5.
