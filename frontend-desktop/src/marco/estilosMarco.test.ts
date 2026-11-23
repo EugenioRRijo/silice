@@ -257,8 +257,11 @@ describe("componentes de Carbon dentro de una página con letra grande", () => {
   test("los fieldset encogen y las palabras largas (rutas, nombres de archivo) parten línea", () => {
     expect(bloque).toMatch(/fieldset[^{]*\{[^}]*min-inline-size:\s*0/);
     expect(bloque).toMatch(/overflow-wrap:\s*anywhere/);
+    // La declaración va en la propia página, antes de las reglas anidadas.
     const pagina = bloqueDe(bloque, ".silice-pagina {") ?? "";
-    expect(pagina.slice(0, pagina.indexOf("."))).toMatch(/overflow-wrap:\s*anywhere/);
+    expect(pagina.slice(0, pagina.indexOf("fieldset"))).toMatch(/overflow-wrap:\s*anywhere/);
+    // Las celdas de lista estructurada con `--nowrap` de Carbon también parten línea («Base de la carpeta abierta»).
+    expect(bloque).toMatch(/\.cds--structured-list-content--nowrap[^{]*\{[^}]*white-space:\s*normal/);
   });
 });
 
