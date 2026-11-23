@@ -36,16 +36,16 @@ interface Props {
 
 const EXPLICACION = "Una carpeta de trabajo guarda su catálogo, sus precios y sus obras en un solo archivo.";
 const MIB = 1024 * 1024;
-// El tope de `POST /v1/casos/subida` y su texto (`aplicacion/casos.py`, `MENSAJE_GRANDE`): un archivo mayor no se envia.
+// El tope de `POST /v1/casos/subida` (`aplicacion/casos.py`): un archivo mayor no se envia.
 const TOPE_SUBIDA = 20 * MIB;
-const MENSAJE_GRANDE = "El archivo pasa de 20 MiB.";
+const MENSAJE_GRANDE = "El archivo pasa de 20 MB.";
 
-// El tamano del archivo en MiB con un decimal y coma (es-VE): cuenta entera de decimas, sin redondeo de coma flotante
+// El tamano del archivo en MB con un decimal y coma (es-VE): cuenta entera de decimas, sin redondeo de coma flotante
 // a la vista ni `toFixed` (la interfaz no calcula montos; esto es solo el tamano de un archivo).
 export function mibEsVe(bytes: number): string {
   const decimas = Math.round((bytes * 10) / MIB);
-  if (decimas === 0 && bytes > 0) return "menos de 0,1 MiB";
-  return `${formatoEsVe(`${Math.floor(decimas / 10)}.${decimas % 10}`)} MiB`;
+  if (decimas === 0 && bytes > 0) return "menos de 0,1 MB";
+  return `${formatoEsVe(`${Math.floor(decimas / 10)}.${decimas % 10}`)} MB`;
 }
 
 // Que se puede hacer con las carpetas de trabajo (BCP-5 §4.3 a §4.7; diseno de modulos §7 y §12.2): ver la lista de la
@@ -463,7 +463,7 @@ function Subir({ abrir, recargar, vencida }: { abrir: Abrir; recargar: () => voi
   return (
     <div className="silice-carpetas__formulario">
       <p className="silice-carpetas__ayuda cds--type-helper-text-01">
-        Suba el archivo .db de una carpeta de trabajo, por ejemplo copiado de otro equipo. Nunca reemplaza una carpeta
+        Suba el archivo de una carpeta de trabajo, por ejemplo copiado de otro equipo. Nunca reemplaza una carpeta
         que ya exista.
       </p>
       {/* Cada eleccion (clic o soltar) empieza vaciando la anterior, en la fase de captura, antes de que `SubidaArchivo`
@@ -471,7 +471,7 @@ function Subir({ abrir, recargar, vencida }: { abrir: Abrir; recargar: () => voi
       <div onChangeCapture={olvidarElegido} onDropCapture={olvidarElegido}>
         <SubidaArchivo
           id={`${base}-archivo`}
-          etiqueta="Suelte aquí el archivo .db, o haga clic para elegirlo"
+          etiqueta="Suelte aquí el archivo de la carpeta, o haga clic para elegirlo"
           extensiones={[".db"]}
           deshabilitada={ocupado}
           alElegir={(a) => {
