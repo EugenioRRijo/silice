@@ -168,7 +168,7 @@ describe("pestañas sensibles de Administración", () => {
       montar(<Empresa />);
       expect(await screen.findByText("AB12 CD34")).toBeInTheDocument();
       expect(screen.getByText("Sello digital de su empresa para demostrar que un presupuesto entregado no fue alterado")).toBeInTheDocument();
-      expect(screen.getByText(/Código de verificación de su firma \(SHA-256\):/)).toBeInTheDocument();
+      expect(screen.getByText(/Código de verificación de la clave \(SHA-256\):/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Cambiar de clave (retirar)" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Descargar la clave pública" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Descargar el respaldo cifrado de la clave" })).toBeInTheDocument();

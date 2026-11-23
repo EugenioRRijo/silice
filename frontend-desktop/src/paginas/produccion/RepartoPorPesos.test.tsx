@@ -95,7 +95,7 @@ describe("Reparto de la cantera por pesos", () => {
   test("con la casilla apagada no se mandan pesos", async () => {
     await montarYElegirMoneda();
     expect(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" })).not.toBeChecked();
-    expect(screen.getByText("Si lo deja sin marcar, el costo se divide en partes iguales por tonelada producida")).toBeInTheDocument();
+    expect(screen.getByText("Si lo deja sin marcar, el costo se reparte en proporción a las toneladas producidas (el mismo costo por tonelada)")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Calcular costo por tonelada" }));
     await waitFor(() => expect(posts()).toHaveLength(1));
     expect(posts()[0]!.cuerpo).toEqual({ periodo: "2026-11", moneda: "Bs" });

@@ -177,7 +177,7 @@ describe("Precios de la empresa", () => {
     expect(screen.getByRole("heading", { name: "Precios de la empresa" })).toBeInTheDocument();
     expect(screen.getByText(/La lista de su empresa: una copia de la lista base/)).toBeInTheDocument();
     expect(screen.getByText(/No cambia la valoración de ninguna obra que no la use\./)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "La referencia MaPreX en bolívares" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Referencia de precios MaPreX (en bolívares)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "La lista de la empresa" })).toBeInTheDocument();
     expect(screen.getByText("Toma una lista base y aplica encima los precios de su archivo.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Revisar precios vencidos o fuera de rango" })).toBeInTheDocument();

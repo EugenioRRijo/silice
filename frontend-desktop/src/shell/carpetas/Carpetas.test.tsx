@@ -548,7 +548,7 @@ describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
     const grande = new File(["x"], "grande.db");
     Object.defineProperty(grande, "size", { value: 20 * 1024 * 1024 + 1 });
     await u.upload(dialogo().querySelector<HTMLInputElement>('input[type="file"]')!, grande);
-    expect(await within(dialogo()).findByText("El archivo pasa de 20 MB.")).toBeInTheDocument();
+    expect(await within(dialogo()).findByText("El archivo pesa más de 20 MB, el máximo que se puede subir.")).toBeInTheDocument();
     expect(within(dialogo()).getByRole("button", { name: "Subir" })).toBeDisabled();
     expect(servidor.de("POST", "/v1/casos/subida")).toEqual([]);
   });

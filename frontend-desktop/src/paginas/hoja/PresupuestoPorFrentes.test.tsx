@@ -242,15 +242,15 @@ describe("El presupuesto por frente", () => {
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
     await screen.findByRole("table", { name: "Presupuesto por frente" });
     expect(screen.queryByRole("combobox", { name: "Partida del presupuesto" })).toBeNull();
-    expect(screen.queryByText(/póngalo abajo/)).toBeNull();
-    expect(screen.getByText(/Ningún renglón tiene frente/)).toHaveTextContent(/salen del espacio de la obra/);
+    expect(screen.queryByText(/selector de abajo/)).toBeNull();
+    expect(screen.getByText(/Ninguna partida tiene frente de trabajo/)).toHaveTextContent(/salen del espacio de la obra/);
   });
 
   test("con renglones propios sí invita a ponerlo abajo", async () => {
     fetchFalso.mockImplementation(async () => json(SIN_FRENTES));
     montarCon(FILAS);
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
-    expect(await screen.findByText(/póngalo abajo.*importe un Excel organizado por frentes/)).toBeInTheDocument();
+    expect(await screen.findByText("Ninguna partida tiene frente de trabajo. Asígnelo con el selector de abajo o importe un Excel organizado por frentes.")).toBeInTheDocument();
   });
 
   test("quien solo lee no recibe la invitación a ponerlo abajo", async () => {
@@ -258,8 +258,8 @@ describe("El presupuesto por frente", () => {
     montarCon(FILAS, false);
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
     await screen.findByRole("table", { name: "Presupuesto por frente" });
-    expect(screen.queryByText(/póngalo abajo/)).toBeNull();
-    expect(screen.getByText("Ningún renglón tiene frente.")).toBeInTheDocument();
+    expect(screen.queryByText(/selector de abajo/)).toBeNull();
+    expect(screen.getByText("Ninguna partida tiene frente de trabajo.")).toBeInTheDocument();
   });
 
   test("el selector nombra el frente de cada renglón que lo tiene", async () => {

@@ -74,7 +74,7 @@ describe("Empresas registradas", () => {
     montar();
     const tabla = await screen.findByRole("table", { name: "Empresas registradas" });
     // Cada encabezado termina con su título (Carbon antepone la ayuda de ordenar).
-    const titulos = ["Empresa", "Código de verificación (SHA-256)", "Estado", "Comprobada con", "Método"];
+    const titulos = ["Empresa", "Código de verificación de la clave (SHA-256)", "Estado", "Comprobada con", "Método"];
     const encabezados = within(tabla).getAllByRole("columnheader");
     expect(encabezados).toHaveLength(titulos.length);
     encabezados.forEach((c, i) => expect(c.textContent?.endsWith(titulos[i])).toBe(true));
@@ -103,7 +103,7 @@ describe("Empresas registradas", () => {
     await usuario.upload(campoDeArchivo("adm-subir-clave"), archivo);
     expect(await screen.findByText("Contratista Ajena Demo, C.A.")).toBeInTheDocument();
     expect(screen.getByText(/Empresa declarada en el archivo/)).toBeInTheDocument();
-    expect(screen.getByText(/Código de verificación calculado del archivo \(SHA-256\)/)).toHaveTextContent("K7QF-M9XR-A2PT-W4HN-C8DV");
+    expect(screen.getByText(/Código de verificación de la clave \(SHA-256\), calculado del archivo/)).toHaveTextContent("K7QF-M9XR-A2PT-W4HN-C8DV");
     expect(screen.getByText(/Pida a la otra empresa que le lea su código de verificación por teléfono/)).toBeInTheDocument();
     expect(llamada(1)[0]).toBe("/v1/admin/empresas-registradas/leer");
     expect(llamada(1)[1]?.method).toBe("POST");

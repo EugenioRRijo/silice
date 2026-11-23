@@ -258,7 +258,7 @@ describe("Estudio de mercado", () => {
     expect(pares).toEqual([
       ["Observaciones", "5"],
       ["Mínimo", "100,00 Bs"],
-      ["Primer cuartil (25 % más bajo)", "120,00 Bs"],
+      ["Primer cuartil (el 25 % de los precios queda por debajo)", "120,00 Bs"],
       ["Mediana (valor central)", "130,00 Bs"],
       ["Promedio", "140,00 Bs"],
       ["Máximo", "200,00 Bs"],

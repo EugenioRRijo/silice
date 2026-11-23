@@ -238,5 +238,18 @@ describe("el glosario usa los nombres únicos de la pasada goldfish", () => {
   test("MaPreX se presenta como referencia pública de precios en bolívares", () => {
     expect(def("maprex")).toContain("referencia pública de precios de la construcción en bolívares");
   });
+
+  test("N2: la clave de firma no habla de «clave pública» y el reparto de cantera es por tonelada", () => {
+    expect(def("clave-de-firma")).not.toContain("clave pública");
+    expect(def("clave-de-firma")).toContain("Código de verificación de la clave (SHA-256)");
+    expect(def("reparto-cantera")).toContain("en proporción a las toneladas producidas");
+    expect(def("reparto-cantera")).not.toContain("partes iguales");
+  });
+
+  test("N2: Componer dice de qué lista y a qué fecha salen los precios", () => {
+    expect(AYUDA_DE_PANTALLAS.componer!.parrafos.join(" ")).toContain(
+      "Los precios salen de la lista de precios activa, en la «Fecha de precios» de este análisis.",
+    );
+  });
 });
 

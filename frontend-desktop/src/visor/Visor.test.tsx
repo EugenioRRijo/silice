@@ -336,7 +336,7 @@ describe("Visor", () => {
   test("el estado vacio tiene titulo y explica para que sirve la fecha de auditoria (m5)", () => {
     render(<Visor crearHoja={crearHoja} />);
     expect(screen.getByRole("heading", { level: 2, name: /libro/i })).toBeInTheDocument();
-    expect(screen.getByText(/fecha de auditoría/i, { selector: ".visor__ayuda-fecha, .visor__ayuda-fecha *" })).toBeInTheDocument();
+    expect(screen.getByText(/fecha de la revisión/i, { selector: ".visor__ayuda-fecha, .visor__ayuda-fecha *" })).toBeInTheDocument();
   });
 
   test("al cargar dice con texto que esta pasando (m4)", async () => {

@@ -209,7 +209,7 @@ describe("Asistente de IA", () => {
     montar();
     await usuario.type(await screen.findByLabelText("Clave de IA de la empresa"), CLAVE);
     await usuario.type(
-      screen.getByLabelText("Contraseña del respaldo cifrado (solo si el almacén seguro de contraseñas no está)"),
+      screen.getByLabelText("Contraseña del respaldo cifrado"),
       RESPALDO,
     );
     await usuario.click(screen.getByRole("button", { name: "Registrar la clave" }));

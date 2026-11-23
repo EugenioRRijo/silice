@@ -86,6 +86,8 @@ describe("PanelDesglose", () => {
     expect(screen.getByText(/4 partidas de este tipo de obra/)).toBeInTheDocument();
     expect(screen.getByText(/28,00/)).toBeInTheDocument();
     expect(screen.getByText(/dentro del rango esperado/i)).toBeInTheDocument();
+    // Dentro del rango no se pide revisar nada: esa instrucción es solo del caso de fuera (pasada goldfish N2.5).
+    expect(screen.queryByText(/Si queda fuera/)).toBeNull();
     // «compuerta G2» es del expediente de la tesis, no de quien compone (prueba en vivo 2026-10-25).
     expect(document.body.textContent).not.toMatch(/compuerta|G2/);
   });

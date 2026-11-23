@@ -354,7 +354,7 @@ describe("Escenarios de sensibilidad", () => {
       "Total anterior",
       "Total nuevo",
       "Variación %",
-      "Peso en el cambio (%)",
+      "Incidencia en el cambio (%)",
       "Precio unitario anterior",
       "Precio unitario nuevo",
       "Cantidad",
