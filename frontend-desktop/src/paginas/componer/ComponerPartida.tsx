@@ -124,7 +124,7 @@ interface Props {
   alGuardar: (partida: PartidaCompuesta) => void;
   // Qué sigue tras guardar (ficha de Componer, lote 1): en la obra, llevar la partida al presupuesto. Sin él, guardar
   // termina aquí (el panel de «Agregar partida» se cierra solo y ya deja la partida elegida).
-  pasoSiguiente?: (partida: PartidaCompuesta) => PasoSiguiente;
+  pasoSiguiente?: (partida: PartidaCompuesta) => PasoSiguiente | null;
 }
 
 // Por que existe (plan F4, Tarea 9): la composicion de una partida sin h1 ni navegacion, para la pantalla «Componer una
