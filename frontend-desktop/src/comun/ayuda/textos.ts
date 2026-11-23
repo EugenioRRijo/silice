@@ -159,7 +159,7 @@ export const GLOSARIO: readonly Termino[] = [
     id: "cpi",
     termino: "CPI (índice de costo)",
     definicion:
-      "Mide cuánto valor ejecutado obtiene por cada unidad de dinero gastada en la obra (EV entre AC). Un valor de 1,00 o más es favorable; por debajo de 1,00 indica que la obra está gastando más de lo planificado.",
+      "Mide cuánto valor ejecutado obtiene por cada unidad de dinero gastada en la obra (EV entre AC). Un valor de 1,00 o más es favorable; por debajo de 1,00 indica que se está gastando más de lo que vale lo ejecutado (sobrecosto).",
   },
   {
     id: "cuartil-y-mediana",
@@ -303,7 +303,7 @@ export const GLOSARIO: readonly Termino[] = [
     id: "p50-p80",
     termino: "P50 y P80",
     definicion:
-      "En Riesgo, los totales que no superan el 50 % y el 80 % de las trayectorias simuladas de los precios. La «Reserva recomendada para cubrir el P80» es lo que va del total base al P80.",
+      "En Riesgo, P50 es el total que no se supera en la mitad de las simulaciones de los precios; P80, el que no se supera en 8 de cada 10. La «Reserva recomendada para cubrir el P80» es lo que va del total base al P80.",
   },
   {
     id: "paquete",
