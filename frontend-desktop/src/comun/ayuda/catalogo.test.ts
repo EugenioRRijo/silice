@@ -188,3 +188,20 @@ describe("cada control que la ayuda nombra existe en la interfaz", () => {
     expect(citadas.filter((c) => !codigo.includes(c))).toEqual([]);
   });
 });
+
+// Revisor goldfish (2026-11-22): dos definiciones decían lo contrario de lo que significan.
+describe("el glosario define bien el CPI y el P50/P80", () => {
+  const def = (id: string) => GLOSARIO.find((t) => t.id === id)!.definicion;
+
+  test("el CPI compara lo gastado con lo que vale lo ejecutado, no con lo planificado (eso es el SPI)", () => {
+    expect(def("cpi")).toContain("más de lo que vale lo ejecutado");
+    expect(def("cpi")).not.toContain("más de lo planificado");
+  });
+
+  test("P50 y P80 son los totales que no se superan en la mitad y en 8 de cada 10 simulaciones", () => {
+    expect(def("p50-p80")).toContain("no se supera en la mitad de las simulaciones");
+    expect(def("p50-p80")).toContain("8 de cada 10");
+    expect(def("p50-p80")).not.toContain("no superan el 50 %");
+  });
+});
+
