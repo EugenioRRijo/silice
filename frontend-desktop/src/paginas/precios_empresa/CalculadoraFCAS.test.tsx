@@ -95,7 +95,9 @@ describe("Calculadora del FCAS por componentes", () => {
     const deLaVersion = screen.getByRole("region", { name: "FCAS de la versión" });
     expect(within(deLaVersion).getByText("600,00 %")).toBeInTheDocument();
     expect(within(deLaVersion).getByText("× 7,00")).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "Desglose del FCAS" })).toBeInTheDocument();
+    // Guardia de interfaz: ninguna sigla suelta en un rótulo (primero la palabra).
+    expect(screen.getByRole("table", { name: "Desglose del factor de costos asociados al salario (FCAS)" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Aporte al factor (FCAS)" })).toBeInTheDocument();
   });
 
   test("manda decimales con punto y solo los componentes activos", async () => {

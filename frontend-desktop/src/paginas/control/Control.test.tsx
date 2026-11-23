@@ -1105,7 +1105,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     const selector = screen.getByLabelText("Precios actualizados al corte (para separar inflación de consumo)");
     expect(within(selector).getByRole("option", { name: "Fórmula de escalatoria (con factor Km)" })).toHaveValue("escalatoria");
     await u.selectOptions(selector, "escalatoria");
-    expect(screen.getByLabelText("Documento de respaldo de Km y R")).toBeInTheDocument();
+    expect(screen.getByLabelText("Documento que respalda el factor de escalatoria (Km) y la parte que no se reajusta (R)")).toBeInTheDocument();
     await u.type(screen.getByLabelText("Factor de escalatoria (Km)"), "1.05");
     await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
     expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();

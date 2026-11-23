@@ -1,9 +1,4 @@
 {
   "_nota": "Deuda de la guardia de interfaz (comun/guardiaInterfaz.test.ts) al 2026-11-23: lo que ya incumplía. Solo puede bajar: al arreglar un caso, se borra su línea.",
-  "conocida": [
-    "siglas | paginas/control/PestanasDeResultados.tsx | Documento de respaldo de Km y R",
-    "siglas | paginas/precios_empresa/CalculadoraFCAS.tsx | Desglose del FCAS",
-    "siglas | paginas/precios_empresa/CalculadoraFCAS.tsx | Parte del FCAS",
-    "siglas | paginas/reajuste/index.tsx | Cláusula o documento que fija R"
-  ]
+  "conocida": []
 }

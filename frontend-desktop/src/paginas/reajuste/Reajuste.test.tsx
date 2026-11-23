@@ -147,7 +147,7 @@ describe("Reajuste de precios", () => {
     expect(
       screen.getByText(`Fracción: por ejemplo, 0,10 = 10 % fijo; escriba 0 si se reajusta todo. ${AYUDA_CIFRAS}`),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Cláusula o documento que fija R")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cláusula o documento que fija la parte que no se reajusta (R)")).toBeInTheDocument();
     expect(screen.getByLabelText("Descontar también la parte del contrato que no se reajusta (R) al calcular la comprobación directa")).toBeInTheDocument();
     await irA(u, "2. Períodos y lo ejecutado");
     await u.type(screen.getByLabelText("Cantidad, Ejecutado fila 1"), "1.5");
