@@ -164,6 +164,34 @@ describe("ListaHallazgos", () => {
     expect(document.querySelector(".hallazgo__contexto")).toBeNull();
   });
 
+  test("la fila elegida muestra la acción que manda el servidor; las demás y una acción vacía no la pintan", () => {
+    const { unmount } = montar({ seleccionado: 1 });
+    const elegida = fila("Precio unitario distinto al de INSUMOS");
+    expect(within(elegida).getByText("Acción: Igualar el precio")).toHaveClass("hallazgo__accion");
+    expect(within(fila("El total no coincide con la suma de las partidas")).queryByText(/^Acción:/)).toBeNull();
+    unmount();
+    montar({ hallazgos: [{ ...hallazgos[0], accion: "" }], seleccionado: 0 });
+    expect(document.querySelector(".hallazgo__accion")).toBeNull();
+  });
+
+  test("muestra el nombre de la regla junto al código cuando el servidor lo manda, y solo el código si viene vacío", () => {
+    montar({
+      hallazgos: [
+        { ...hallazgos[0], codigo: "L4", nombre_regla: "Componente fuera del total" },
+        { ...hallazgos[1], codigo: "L5", nombre_regla: "" },
+      ],
+    });
+    const conNombre = fila("El total no coincide con la suma de las partidas");
+    expect(conNombre.querySelector(".hallazgo__encabezado")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "PRESUPUESTO!F12 · Crítico · Componente fuera del total (L4) · Impacto 238,407",
+    );
+    expect(within(conNombre).getByText("L4")).toHaveClass("silice-codigo");
+    const sinNombre = fila("Precio unitario distinto al de INSUMOS");
+    expect(sinNombre.querySelector(".hallazgo__encabezado")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "APU-01!G48 · Error · L5 · Impacto 12,50",
+    );
+  });
+
   test("los filtros por severidad llevan icono ademas del texto y el numero (el color nunca va solo)", () => {
     montar();
     const boton = screen.getByRole("button", { name: "Crítico 1" });

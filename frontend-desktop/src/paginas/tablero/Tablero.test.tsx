@@ -1,6 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import type { ObraAbierta } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaTablero from "./index";
@@ -86,7 +89,7 @@ describe("Tablero de la obra", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  function montar(proyecto: string | null) {
+  function montar(proyecto: string | null, obra?: ObraAbierta) {
     const valor: Aplicacion = {
       sesion: SESION,
       proyecto,
@@ -94,10 +97,17 @@ describe("Tablero de la obra", () => {
       recargarProyectos: vi.fn(),
       alExpirar: vi.fn(),
     };
-    render(
-      <ContextoAplicacion.Provider value={valor}>
+    const contenido = obra ? (
+      <ContextoDeLaObra.Provider value={obra}>
         <PaginaTablero />
-      </ContextoAplicacion.Provider>,
+      </ContextoDeLaObra.Provider>
+    ) : (
+      <PaginaTablero />
+    );
+    render(
+      <MemoryRouter>
+        <ContextoAplicacion.Provider value={valor}>{contenido}</ContextoAplicacion.Provider>
+      </MemoryRouter>,
     );
   }
 
@@ -160,7 +170,7 @@ describe("Tablero de la obra", () => {
     expect(screen.getByText("EAC")).toBeInTheDocument();
     expect(await screen.findAllByTestId("grafico-anillo")).toHaveLength(1); // solo el desglose del contrato
     expect(await screen.findByTestId("grafico-linea")).toBeInTheDocument();
-    expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(2); // Pareto y versiones
+    expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(1); // solo Pareto: 1 versión no pinta «Total por versión»
     // cada grafico tiene su tabla con los montos exactos
     expect(screen.getByText("Partidas que concentran la mayor parte del costo, de mayor a menor.")).toBeInTheDocument();
     const pareto = screen.getByRole("table", { name: "Partidas que más pesan" });
@@ -237,9 +247,9 @@ describe("Tablero de la obra", () => {
   // sola vez y en el centro; la fracción solo dibuja el arco. Antes salía «62.5 %» con punto debajo y, en el centro, un número
   // que calculaba el navegador.
   describe("el anillo del avance físico", () => {
-    const conAvance = (texto: string, fraccion: string | null, favorable: boolean | null = null) => ({
+    const conAvance = (texto: string, fraccion: string | null, favorable: boolean | null = null, referencia?: string | null) => ({
       ...TABLERO,
-      control: { ...TABLERO.control!, anillos: [{ rotulo: "Avance fisico", fraccion, texto, favorable }, ...TABLERO.control!.anillos.slice(1)] },
+      control: { ...TABLERO.control!, anillos: [{ rotulo: "Avance fisico", fraccion, texto, favorable, referencia }, ...TABLERO.control!.anillos.slice(1)] },
     });
 
     test("dice «62,5 %» una sola vez, con coma, como lo manda la API («62.5 %»)", async () => {
@@ -314,6 +324,14 @@ describe("Tablero de la obra", () => {
       expect(screen.queryByRole("img", { name: /Avance fisico/ })).toBeNull();
       expect(screen.queryByText(/^0([,.]0)? %$/)).toBeNull();
     });
+
+    test("si el anillo trae referencia del servidor la muestra bajo el anillo", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("30.0 %", "0.3", null, "Plan a la fecha: 37,5 %")));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 30,0 %" });
+      const bloque = anillo.closest(".silice-tablero__anillos") as HTMLElement;
+      expect(within(bloque).getByText("Plan a la fecha: 37,5 %")).toBeInTheDocument();
+    });
   });
 
   test("el punto de equilibrio nombra el período con el mismo arreglo que el eje de la curva: «Día 1» (VD-8)", async () => {
@@ -333,13 +351,41 @@ describe("Tablero de la obra", () => {
     expect(await screen.findByText("Versión OB-001 del 02/11/2026 · 1 renglón · USD")).toBeInTheDocument();
   });
 
-  test("sin control de obra lo dice con su motivo", async () => {
+  test("sin control de obra lo dice con su motivo y ofrece abrir Control de obra", async () => {
     fetchFalso.mockImplementation(async () =>
       json({ ...TABLERO, control: { disponible: false, motivo: "No hay linea base declarada.", anillos: [], tarjetas: [] } }),
     );
     montar("OB-S2");
     expect(await screen.findByText("Aún no hay control de obra")).toBeInTheDocument();
     expect(screen.getByText("No hay linea base declarada.")).toBeInTheDocument();
+    const boton = screen.getByRole("link", { name: "Abrir el control de obra" });
+    expect(boton).toHaveAttribute("href", "/control");
+    expect(boton).toHaveClass("cds--btn", "cds--btn--secondary");
+  });
+
+  test("dentro de una obra abierta, «Abrir el control de obra» apunta al Control de esa obra", async () => {
+    fetchFalso.mockImplementation(async () =>
+      json({ ...TABLERO, control: { disponible: false, motivo: "No hay linea base declarada.", anillos: [], tarjetas: [] } }),
+    );
+    montar("OB-S2", { carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha: vi.fn() });
+    const boton = await screen.findByRole("link", { name: "Abrir el control de obra" });
+    expect(boton).toHaveAttribute("href", "/obra/empresa/3/control");
+  });
+
+  test("con 1 sola versión la tabla se muestra pero no el gráfico «Total por versión»", async () => {
+    fetchFalso.mockImplementation(async () => json(TABLERO));
+    montar("OB-S2");
+    await screen.findByRole("table", { name: "Versiones del presupuesto" });
+    const barras = await screen.findAllByTestId("grafico-barras");
+    expect(barras).toHaveLength(1);
+    expect(barras[0]).toHaveAttribute("data-grupos", "P-01");
+  });
+
+  test("con 2 versiones o más sí se muestra el gráfico «Total por versión»", async () => {
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, versiones: VERSIONES_DE_TRES.slice(0, 2) }));
+    montar("OB-S2");
+    await screen.findByRole("table", { name: "Versiones del presupuesto" });
+    expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(2);
   });
 
   test("un proyecto sin version guardada explica que hacer", async () => {

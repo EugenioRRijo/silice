@@ -497,18 +497,20 @@ describe("Vista general: sin obras", () => {
     // La Vista general reúne todas las carpetas que la cuenta puede ver: no habla de «esta carpeta».
     expect(b).not.toHaveTextContent("en esta carpeta");
     expect(within(b).getByText("Cuando haya una obra registrada en las carpetas a las que tiene acceso, aparecerá aquí.")).toBeInTheDocument();
-    expect(within(b).queryByRole("button", { name: "Nueva obra" })).toBeNull();
+    expect(within(b).queryByRole("button", { name: "Crear la primera obra" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Obras y avance contra el plan" })).toBeNull();
     expect(document.querySelector(".silice-vacio")).not.toBeNull();
   });
 
-  test("quien arma ve cómo empezar y el botón «Nueva obra»", async () => {
+  test("quien arma ve cómo empezar y el botón principal «Crear la primera obra»", async () => {
     cartera = () => json(SIN_OBRAS);
     montar();
     const b = await bloque("Cartera por moneda");
     expect(await within(b).findByText("Aún no hay obras")).toBeInTheDocument();
     expect(within(b).getByText("Cree la primera obra para armar su presupuesto y seguir su avance.")).toBeInTheDocument();
-    expect(within(b).getByRole("button", { name: "Nueva obra" })).toBeInTheDocument();
+    const boton = within(b).getByRole("button", { name: "Crear la primera obra" });
+    expect(boton).toBeInTheDocument();
+    expect(boton).toHaveClass("cds--btn--primary");
   });
 });
 
@@ -713,7 +715,7 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
     expect(pasos.map((p) => p.querySelector("strong")?.textContent)).toEqual(["Cree la obra", "Arme el presupuesto", "Envíelo a aprobación"]);
     expect(within(b).getByRole("link", { name: "Guía «Montar un presupuesto»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-presupuesto");
     expect(within(b).getByRole("link", { name: "Guía «Enviarlo a aprobación»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-aprobacion");
-    // No duplica la acción: «Nueva obra» sigue siendo el único botón, el del estado vacío de la cartera.
+    // No duplica la acción: «Crear la primera obra» sigue siendo el único botón, el del estado vacío de la cartera.
     expect(within(b).queryByRole("button")).toBeNull();
     expect(pedidas(RUTA_CUENTAS)).toBe(0);
   });

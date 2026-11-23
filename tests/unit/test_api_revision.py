@@ -96,7 +96,7 @@ SIN_DICTAMEN = (
     "dictamen. Pida al emisor uno nuevo."
 )
 MENSAJE_TOPE = (
-    "El archivo pesa más de 20 MiB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
+    "El archivo pesa más de 20 MB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
 )
 
 
@@ -710,7 +710,7 @@ def test_un_excel_externo_de_mas_del_tope_es_413(monkeypatch) -> None:
     )
     assert (r.status_code, r.json()) == (
         413,
-        {"detalle": "El presupuesto en Excel supera el máximo de 20 MiB."},
+        {"detalle": "El presupuesto en Excel supera el máximo de 20 MB."},
     )
 
 

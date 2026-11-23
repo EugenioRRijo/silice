@@ -489,10 +489,22 @@ describe("cómo se llega", () => {
     montar("/aprobar", { proyecto: "9" });
     const lista = await screen.findByRole("list", { name: "Versiones que esperan dictamen en esta carpeta" });
     expect(within(lista).getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByText("Hay 1 envío en otras carpetas: ábralo desde Pendientes.")).toBeInTheDocument();
+    expect(screen.getByText(/Hay 1 envío en otras carpetas\./)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrirlo en Pendientes" })).toHaveAttribute("href", "/inicio/pendientes");
     await u.click(within(lista).getByRole("button", { name: "Abrir el envío" }));
     expect(await screen.findByRole("region", { name: "Galpón Sur · GS-001" })).toBeInTheDocument();
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/aprobar?envio=12");
+  });
+
+  test("con varios envíos en otras carpetas ofrece el enlace «Abrirlos en Pendientes»", async () => {
+    pendientes = () =>
+      json([
+        fila("s1.db", 2, "1", "Torre", "T-001"),
+        fila("s3.db", 5, "2", "Puente", "P-001"),
+      ]);
+    montar("/aprobar", { proyecto: "9" });
+    expect(await screen.findByText(/Hay 2 envíos en otras carpetas\./)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrirlos en Pendientes" })).toHaveAttribute("href", "/inicio/pendientes");
   });
 
   test("T19, punto 5: sin `?envio=` y sin el índice (403), quien arma lo halla en el rastro de la obra elegida", async () => {
@@ -521,7 +533,7 @@ describe("cómo se llega", () => {
     );
     montar("/aprobar", { proyecto: "3", sesion: { ...SESION, acciones: [...SESION.acciones, "editar_hoja"] } });
     expect(await screen.findByText("No se pudieron leer los envíos por aprobar")).toBeInTheDocument();
-    expect(screen.queryByText("No hay versiones esperando dictamen.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No hay versiones esperando dictamen")).not.toBeInTheDocument();
     expect(alExpirar).not.toHaveBeenCalled();
   });
 
@@ -532,9 +544,14 @@ describe("cómo se llega", () => {
     expect(fetchFalso.mock.calls.map(([e]) => String(e)).some((u) => u.startsWith("/v1/aprobaciones?"))).toBe(false);
   });
 
-  test("sin envíos en ninguna carpeta lo dice", async () => {
+  test("sin envíos en ninguna carpeta muestra el estado vacío sin punto final, con descripción y enlace a Pendientes", async () => {
     montar("/aprobar");
-    expect(await screen.findByText("No hay versiones esperando dictamen.")).toBeInTheDocument();
+    expect(await screen.findByText("No hay versiones esperando dictamen")).toBeInTheDocument();
+    expect(screen.queryByText("No hay versiones esperando dictamen.")).toBeNull();
+    expect(
+      screen.getByText("Cuando alguien envíe una versión a aprobación desde Presupuesto, aparecerá aquí y en Pendientes."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver los pendientes" })).toHaveAttribute("href", "/inicio/pendientes");
   });
 });
 

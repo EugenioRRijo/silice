@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import type { ObraAbierta } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import RiesgoDeLaObra from "./RiesgoDeLaObra";
 
@@ -87,12 +89,17 @@ describe("Riesgo de la obra", () => {
   let usuario: ReturnType<typeof userEvent.setup>;
   const alExpirar = vi.fn();
 
-  function montar(sesion: SesionRespuesta = ANA) {
+  function montar(sesion: SesionRespuesta = ANA, obra?: ObraAbierta) {
+    const contenido = obra ? (
+      <ContextoDeLaObra.Provider value={obra}>
+        <RiesgoDeLaObra />
+      </ContextoDeLaObra.Provider>
+    ) : (
+      <RiesgoDeLaObra />
+    );
     render(
       <ContextoAplicacion.Provider value={{ sesion, proyecto: "7", nombreProyecto: "Vía Demo", caso: null, recargarProyectos: vi.fn(), alExpirar }}>
-        <MemoryRouter>
-          <RiesgoDeLaObra />
-        </MemoryRouter>
+        <MemoryRouter>{contenido}</MemoryRouter>
       </ContextoAplicacion.Provider>,
     );
   }
@@ -310,7 +317,7 @@ describe("Riesgo de la obra", () => {
     await waitFor(() => expect(screen.queryByText(/puede tardar/)).toBeNull());
   });
 
-  test("sin versiones guardadas remite a Presupuesto", async () => {
+  test("sin versiones guardadas remite al presupuesto con un botón principal", async () => {
     const leer = fetchFalso.getMockImplementation();
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = new URL(String(entrada), "http://prueba");
@@ -318,7 +325,25 @@ describe("Riesgo de la obra", () => {
       return leer!(entrada, init);
     });
     montar();
-    expect(await screen.findByText("Esta obra aún no tiene versiones guardadas. Guarde una en Presupuesto para proyectar su riesgo.")).toBeInTheDocument();
+    expect(await screen.findByText("Esta obra aún no tiene versiones")).toBeInTheDocument();
+    expect(
+      screen.getByText("Esta obra aún no tiene versiones guardadas. Guarde una en el presupuesto para proyectar su riesgo."),
+    ).toBeInTheDocument();
+    const boton = screen.getByRole("link", { name: "Ir al presupuesto" });
+    expect(boton).toHaveAttribute("href", "/hoja");
+    expect(boton).toHaveClass("cds--btn", "cds--btn--primary");
+  });
+
+  test("dentro de una obra abierta sin versiones, «Ir al presupuesto» apunta al presupuesto de esa obra", async () => {
+    const leer = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://prueba");
+      if (url.pathname === "/v1/hoja/versiones") return json({ proyecto: "Vía Demo", moneda: "USD", por_omision: null, versiones: [] });
+      return leer!(entrada, init);
+    });
+    montar(ANA, { carpeta: "obra.db", obraId: 7, ficha: { estado: "cargando" }, recargarFicha: vi.fn() });
+    const boton = await screen.findByRole("link", { name: "Ir al presupuesto" });
+    expect(boton).toHaveAttribute("href", "/obra/obra.db/7/presupuesto");
   });
 
   // Hallazgo 9 del recorrido: sin línea base de control la fecha de inicio es necesaria; el aviso salía bajo el botón, lejos

@@ -88,6 +88,35 @@ describe("Auditar un libro con un APU por hoja", () => {
     expect(screen.getByText("Emulsión ficticia: 0,52 l (0,5 + 4 %)")).toBeInTheDocument();
   });
 
+  test("ordena los hallazgos por severidad de forma estable y muestra el nombre de la regla si viene", async () => {
+    fetchFalso.mockImplementation(async (ruta) =>
+      String(ruta) === "/v1/libros/perfiles-apu-por-hoja"
+        ? json(PERFILES)
+        : json({
+            ...INFORME,
+            hallazgos: [
+              { codigo: "AH3", nombre_regla: "", severidad: "INFO", descripcion: "Primero informativo", celda: "APU 4!F27", impacto: null, accion: "informado" },
+              { codigo: "AH6", nombre_regla: "Cantidad del presupuesto contra su APU", severidad: "ADVERTENCIA", descripcion: "Primera advertencia", celda: "PRESUPUESTO!D5", impacto: null, accion: "informado" },
+              { codigo: "AH5", nombre_regla: "Precio unitario del presupuesto contra su APU", severidad: "ERROR", descripcion: "Error de precio", celda: "PRESUPUESTO!F8", impacto: "0.05", accion: "informado" },
+              { codigo: "AH1", nombre_regla: "Precio unitario del APU contra el recalculado", severidad: "CRITICO", descripcion: "Crítico de recálculo", celda: "APU 1!G33", impacto: "10.00", accion: "informado" },
+              { codigo: "AH4", severidad: "ADVERTENCIA", descripcion: "Segunda advertencia", celda: "APU 2!F28", impacto: null, accion: "informado" },
+            ],
+          }),
+    );
+    render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
+    await usuario.upload(campos()[0], new File(["x"], "frente.xlsx"));
+    await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
+    const tabla = await screen.findByRole("table", { name: "Hallazgos del libro" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    expect(filas.map((f) => within(f).getAllByRole("cell").map((c) => c.textContent))).toEqual([
+      ["Crítico", "Precio unitario del APU contra el recalculado (AH1)", "APU 1!G33", "Crítico de recálculo"],
+      ["Error", "Precio unitario del presupuesto contra su APU (AH5)", "PRESUPUESTO!F8", "Error de precio"],
+      ["Advertencia", "Cantidad del presupuesto contra su APU (AH6)", "PRESUPUESTO!D5", "Primera advertencia"],
+      ["Advertencia", "AH4", "APU 2!F28", "Segunda advertencia"],
+      ["Información", "AH3", "APU 4!F27", "Primero informativo"],
+    ]);
+  });
+
   test("sin presupuesto manda solo el libro de APU", async () => {
     render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
     await usuario.upload(campos()[0], new File(["x"], "frente.xlsx"));

@@ -705,4 +705,35 @@ describe("Estudio de mercado", () => {
     await waitFor(() => expect(llamadas("GET", /\/v1\/mercado\/compra\/ARE-LAV/)).toHaveLength(1));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  test("«Poner la propuesta en «Su precio»» rellena el campo, limpia errores y no guarda", async () => {
+    const u = userEvent.setup();
+    montar();
+    await elegirInsumo(u);
+    await u.clear(campoPrecio());
+    await u.type(campoPrecio(), "150.5");
+    await u.click(screen.getByRole("button", { name: "Usar este precio" }));
+    expect(campoPrecio()).toHaveAttribute("aria-invalid", "true");
+
+    await u.click(screen.getByRole("button", { name: "Poner la propuesta en «Su precio»" }));
+    expect(campoPrecio()).toHaveValue("130,00");
+    expect(campoPrecio()).not.toHaveAttribute("aria-invalid", "true");
+    expect(llamadas("POST", /\/usar$/)).toEqual([]);
+    expect(llamadas("GET", /\/afectados$/)).toEqual([]);
+  });
+
+  test("sin propuesta no se muestra el botón «Poner la propuesta en «Su precio»»", async () => {
+    const u = userEvent.setup();
+    responder("GET", /^\/v1\/mercado\/compra\/CEM-GRIS\?/, () =>
+      json({
+        ...ESTUDIO_COMPRA,
+        estadisticas: { n: 0, minimo: null, q1: null, mediana: null, promedio: null, maximo: null, ids: [], convertidas: 0, sin_tasa: 0, dias: 90 },
+        propuesta: { precio: null, razon: "Sin observaciones en los últimos 90 días." },
+        observaciones: [],
+      }),
+    );
+    montar();
+    await elegirInsumo(u);
+    expect(screen.queryByRole("button", { name: "Poner la propuesta en «Su precio»" })).not.toBeInTheDocument();
+  });
 });

@@ -80,7 +80,7 @@ FALTA = (
 )
 OTRO_CASO = "El caso cambió desde que abrió este borrador: ábralo de nuevo en el caso actual."
 REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo."
-EXCEDE = "El cuerpo de la peticion excede el maximo de 20 MiB."
+EXCEDE = "El envío pasa del máximo de 20 MB."
 FORMA_PLANO = "Suba un archivo de plano (DXF o IFC) y envíe el rev del borrador."
 SIN_IMPORTACION = "Vuelva a subir el plano: ya no está disponible."
 UNIDAD = "Elija una unidad de la lista: m, cm, mm, dm, in o ft."
@@ -1212,7 +1212,7 @@ def test_el_cerrojo_de_la_importacion_nunca_se_toma_antes_que_el_del_borrador(
 # --- ola de decisiones: los topes del lector (bytes, lecturas a la vez, barrido) ---
 
 PLANO_GRANDE = (
-    "El plano DXF pesa más de 8 MiB, el máximo que Sílice lee en un tiempo razonable. Purgue las "
+    "El plano DXF pesa más de 8 MB, el máximo que Sílice lee en un tiempo razonable. Purgue las "
     "capas y bloques que no use, o divida el dibujo por plantas, y vuelva a subirlo."
 )
 LECTURAS_OCUPADAS = (

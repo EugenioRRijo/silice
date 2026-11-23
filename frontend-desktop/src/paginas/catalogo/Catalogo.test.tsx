@@ -137,4 +137,45 @@ describe("Catálogo de partidas e insumos", () => {
     await screen.findByRole("table", { name: "Partidas" });
     expect(screen.getByRole("heading", { level: 1, name: "Catálogo de partidas e insumos" })).toBeInTheDocument();
   });
+
+  test("el dominio y el tipo se leen en palabras y la búsqueda encuentra el texto que se muestra", async () => {
+    const u = userEvent.setup();
+    fetchFalso.mockImplementation((ruta) => {
+      if (String(ruta).endsWith("/partidas")) {
+        return Promise.resolve(
+          json([
+            { codigo: "CIV-001", descripcion: "Excavación manual", unidad: "m3", dominio: "civil" },
+            { codigo: "TEL-001", descripcion: "Tendido de fibra", unidad: "m", dominio: "telecomunicaciones" },
+            { codigo: "IND-001", descripcion: "Montaje de bomba", unidad: "pza", dominio: "industrial" },
+            { codigo: "SIS-001", descripcion: "Tablero de control", unidad: "pza", dominio: "sistemas" },
+          ]),
+        );
+      }
+      return Promise.resolve(
+        json([
+          { codigo: "INS-1", descripcion: "Cemento ficticio", tipo: "material", unidad: "saco", precio_vigente: "12.34" },
+          { codigo: "INS-2", descripcion: "Peón ficticio", tipo: "mano_obra", unidad: null, precio_vigente: null },
+          { codigo: "INS-3", descripcion: "Retroexcavadora ficticia", tipo: "equipo", unidad: "dia", precio_vigente: "90.00" },
+        ]),
+      );
+    });
+    montar();
+    const tablaPartidas = await screen.findByRole("table", { name: "Partidas" });
+    expect(within(tablaPartidas).getByText("Civil")).toBeInTheDocument();
+    expect(within(tablaPartidas).getByText("Telecomunicaciones")).toBeInTheDocument();
+    expect(within(tablaPartidas).getByText("Industrial")).toBeInTheDocument();
+    expect(within(tablaPartidas).getByText("Sistemas")).toBeInTheDocument();
+
+    await u.click(screen.getByRole("tab", { name: /Insumos/ }));
+    const tablaInsumos = await screen.findByRole("table", { name: "Insumos" });
+    expect(within(tablaInsumos).getByText("Material")).toBeInTheDocument();
+    expect(within(tablaInsumos).getByText("Mano de obra")).toBeInTheDocument();
+    expect(within(tablaInsumos).getByText("Equipo")).toBeInTheDocument();
+    expect(tablaInsumos).not.toHaveTextContent("mano_obra");
+
+    await u.type(screen.getByRole("searchbox", { name: "Buscar en el catálogo" }), "mano de obra");
+    const filtrada = screen.getByRole("table", { name: "Insumos" });
+    expect(within(filtrada).getByText("Peón ficticio")).toBeInTheDocument();
+    expect(within(filtrada).queryByText("Cemento ficticio")).not.toBeInTheDocument();
+  });
 });

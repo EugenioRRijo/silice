@@ -182,7 +182,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F6: subir acepta solo .db, dice el nombre y los MB, anuncia el progreso y muestra 413, 422 y 409 tal cual", async () => {
     const u = userEvent.setup({ applyAccept: false });
     const respuestas = [
-      json({ detalle: "El archivo pasa de 20 MiB." }, 413),
+      json({ detalle: "El archivo pasa de 20 MB." }, 413),
       json({ detalle: "El archivo no es una carpeta de trabajo de Sílice válida: no se guardó." }, 422),
       json({ detalle: "Ya hay una carpeta de trabajo llamada s1.db: cambie el nombre antes de subirla." }, 409),
     ];
@@ -207,7 +207,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     expect(within(dialogo()).getByText("s1.db · 1,5 MB")).toBeInTheDocument();
     const listaAntes = await carpetasDeLaLista();
     for (const esperado of [
-      "El archivo pasa de 20 MiB.",
+      "El archivo pasa de 20 MB.",
       "El archivo no es una carpeta de trabajo de Sílice válida: no se guardó.",
       "Ya hay una carpeta de trabajo llamada s1.db: cambie el nombre antes de subirla.",
     ]) {

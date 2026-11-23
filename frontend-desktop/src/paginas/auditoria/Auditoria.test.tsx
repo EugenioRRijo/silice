@@ -108,10 +108,15 @@ describe("Inicio de auditoría", () => {
       expect(screen.getByRole("button", { name: /Suelte aquí el libro \.xlsx/ })).toBeInTheDocument();
     });
 
-    test("sin archivo no hay botones de auditar", () => {
+    test("sin archivo los dos botones están a la vista pero deshabilitados", () => {
       montar();
-      expect(screen.queryByRole("button", { name: "Auditar con recorrido guiado" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Auditar por mi cuenta" })).not.toBeInTheDocument();
+      const guiado = screen.getByRole("button", { name: "Auditar con recorrido guiado" });
+      const propio = screen.getByRole("button", { name: "Auditar por mi cuenta" });
+      expect(guiado).toBeDisabled();
+      expect(propio).toBeDisabled();
+      expect(guiado).toHaveClass("cds--btn--primary");
+      expect(propio).toHaveClass("cds--btn--tertiary");
+      expect(guiado.compareDocumentPosition(propio) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     test("con un archivo aparecen sus dos botones y el nombre del archivo", async () => {
@@ -166,7 +171,8 @@ describe("Inicio de auditoría", () => {
       montar();
       await usuario.upload(campoArchivo(), new File(["x"], "foto.png"));
       expect(screen.getByRole("alert")).toHaveTextContent("Solo se aceptan archivos .xlsx.");
-      expect(screen.queryByRole("button", { name: "Auditar por mi cuenta" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Auditar con recorrido guiado" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Auditar por mi cuenta" })).toBeDisabled();
     });
 
     test("elegir otro archivo reemplaza al anterior", async () => {

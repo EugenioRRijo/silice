@@ -449,8 +449,24 @@ describe("Entregar paquete", () => {
         "La última aprobada es VIV-002. Si entrega esta, el paquete saldrá rotulado «Versión NO aprobada», con la fecha y esa última aprobada.",
       );
       expect(
+        screen.getByRole("button", { name: "Usar la versión aprobada VIV-002" }),
+      ).toBeInTheDocument();
+      expect(
         screen.getByRole("button", { name: "Generar paquete" }),
       ).toBeEnabled();
+    });
+
+    test("el botón del aviso elige la versión aprobada y lleva el foco al selector «Versión»", async () => {
+      const u = userEvent.setup();
+      montar();
+      await screen.findByText("836,80 USD");
+      const selector = screen.getByLabelText("Versión");
+      await u.selectOptions(selector, "VIV-001");
+      const boton = await screen.findByRole("button", { name: "Usar la versión aprobada VIV-002" });
+      await u.click(boton);
+      expect(selector).toHaveValue("VIV-002");
+      expect(selector).toHaveFocus();
+      expect(screen.queryByText("Esta versión no está aprobada")).toBeNull();
     });
 
     test("sin ninguna aprobada propone la más nueva y avisa que no está aprobada", async () => {
@@ -466,6 +482,7 @@ describe("Entregar paquete", () => {
       expect(aviso.closest("[role=status]")).toHaveTextContent(
         "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde Presupuesto. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha.",
       );
+      expect(screen.queryByRole("button", { name: /Usar la versión aprobada/ })).toBeNull();
     });
 
     test("la aprobada con observaciones cuenta como aprobada", async () => {

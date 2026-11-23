@@ -439,4 +439,52 @@ describe("Revisar un paquete", () => {
     expect(screen.getByText("836,80")).toHaveAttribute("title", "Valor exacto: 836,79750000");
     expect(within(screen.getByRole("table", { name: "Hallazgos del presupuesto en Excel" })).getByText("R2")).toBeInTheDocument();
   });
+
+  test("muestra el nombre de la regla junto al código en paquete y Excel externo, y solo el código si viene vacío", async () => {
+    paquete = () =>
+      json({
+        ...REVISION,
+        reauditoria: {
+          ...REVISION.reauditoria!,
+          hallazgos: [
+            {
+              titulo: "El emisor no los declaró",
+              hallazgos: [
+                { regla: "R11", nombre_regla: "Precio fuera de rango", severidad: "INFO", descripcion: "Con nombre" },
+                { regla: "R4", nombre_regla: "", severidad: "ADVERTENCIA", descripcion: "Sin nombre" },
+              ],
+            },
+          ],
+        },
+      });
+    fetchFalso.mockImplementation(async (ruta, opciones) => {
+      const url = String(ruta);
+      if (url === "/v1/revision/paquete") return paquete();
+      if (url === "/v1/revision/contra-lista") {
+        const lista = (opciones?.body as FormData).get("lista");
+        return json(lista === "1" ? CONTRA_LA_DE_PRUEBA : CONTRA_MI_LISTA);
+      }
+      if (url === "/v1/revision/excel-externo") {
+        return json({
+          ...EXTERNO,
+          hallazgos: [
+            { regla: "R2", nombre_regla: "Consistencia de montos", severidad: "ERROR", descripcion: "La curva no cierra" },
+            { regla: "R7", nombre_regla: "", severidad: "INFO", descripcion: "Parámetro sin nombre" },
+          ],
+        });
+      }
+      return json({ detalle: "ruta inesperada " + url }, 404);
+    });
+    const usuario = await subirYEsperar();
+    const tablaPaquete = screen.getByRole("table", { name: "El emisor no los declaró" });
+    expect(within(tablaPaquete).getByText("Precio fuera de rango (R11)")).toBeInTheDocument();
+    expect(within(tablaPaquete).getByText("R4")).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole("tab", { name: "Presupuesto en Excel" }));
+    const campos = document.querySelectorAll('input[type="file"]');
+    await usuario.upload(campos[campos.length - 1] as HTMLInputElement, new File(["PK"], "externo.xlsx"));
+    const tablaExcel = await screen.findByRole("table", { name: "Hallazgos del presupuesto en Excel" });
+    expect(within(tablaExcel).getByText("Consistencia de montos (R2)")).toBeInTheDocument();
+    expect(within(tablaExcel).getByText("R7")).toBeInTheDocument();
+  });
 });

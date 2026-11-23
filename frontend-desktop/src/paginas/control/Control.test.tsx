@@ -8,7 +8,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaControl from "./index";
-import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, notaDeOpcion, sinLineasVacias } from "./logica";
+import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, notaDeOpcion, reglaDeHallazgo, sinLineasVacias, textoDeHallazgo } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
 // VD-1: la respuesta real de POST /v1/control/recuperacion/opciones para OB-S2 (la compara con la API
 // `tests/unit/test_api_control.py::test_la_respuesta_de_opciones_del_front_es_la_de_la_api_real`).
@@ -517,6 +517,65 @@ describe("Control de obra", () => {
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "", causa: null }]);
   });
 
+  test("los hallazgos de valuación muestran el nombre llano de la regla junto a su código", async () => {
+    valuaciones = () =>
+      json({
+        ...VALUACIONES,
+        hallazgos: [
+          {
+            valuacion: "V-01",
+            regla: "R13",
+            nombre_regla: "Valuación dentro del presupuesto",
+            severidad: "Error",
+            mensaje: "La valuación V-01 valúa una partida fuera de la línea base.",
+          },
+          {
+            valuacion: "",
+            regla: "R14",
+            severidad: "Advertencia",
+            mensaje: "Falta fecha de medición.",
+          },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de las valuaciones" });
+    expect(within(lista).getByText(/V-01 · Error · Valuación dentro del presupuesto \(R13\): La valuación V-01/)).toBeInTheDocument();
+    expect(within(lista).getByText(/Advertencia · R14: Falta fecha de medición\./)).toBeInTheDocument();
+  });
+
+  test("al registrar una valuación, el detalle muestra el nombre llano y el código de cada regla", async () => {
+    const leer = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      if (String(entrada) === "/v1/control/valuaciones" && (init?.method ?? "GET") === "POST") {
+        return json({
+          corte: "2026-11-20",
+          hallazgos: 1,
+          errores: 1,
+          detalle: [
+            {
+              valuacion: "V-03",
+              regla: "R14",
+              nombre_regla: "Fuente y fechas de la valuación",
+              severidad: "Error",
+              mensaje: "La valuación V-03 no tiene inspector.",
+            },
+          ],
+        });
+      }
+      return leer(entrada, init);
+    });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.type(screen.getByLabelText("Número"), "V-03");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "50");
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
+    const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" });
+    expect(within(lista).getByText(/Error · Fuente y fechas de la valuación \(R14\): La valuación V-03 no tiene inspector\./)).toBeInTheDocument();
+  });
+
   // F4, Tarea 3 (menor 1 del árbitro): la obra ya no se vuelve a montar al cambiar de sección; tras escribir en Control la
   // línea «Estado:» de la cabecera solo se actualiza si se vuelve a leer la ficha de la obra. Sin obra, nada que leer.
   test("dentro de una obra, declarar la línea base vuelve a leer la ficha de la obra", async () => {
@@ -606,6 +665,49 @@ describe("Control de obra", () => {
     const montos = screen.getByRole("table", { name: "Montos de Planificado (PV), ejecutado (EV) y gastado (AC)" });
     expect(within(montos).getByRole("columnheader", { name: "Período" })).toBeInTheDocument();
     expect(within(montos).getByText("1.000,00")).toHaveAttribute("title", "1000.00");
+  });
+
+  test("valor ganado oculta «En la otra moneda» y «Nota» si están vacías en todas las filas y explica la falta de tasa", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(within(tabla).queryByRole("columnheader", { name: "En la otra moneda" })).toBeNull();
+    expect(within(tabla).queryByRole("columnheader", { name: "Nota" })).toBeNull();
+    expect(screen.getByText("Sin tasa del BCV para el corte: no se muestran los montos en la otra moneda.")).toBeInTheDocument();
+  });
+
+  test("valor ganado usa el motivo que manda la API cuando no muestra la otra moneda", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        indicadores: [
+          ...CALCULO.indicadores,
+          { Indicador: "Tasa del corte", Valor: "no disponible", "En la otra moneda": "", Nota: "sin tasa aplicable a la fecha del corte" },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(within(tabla).queryByRole("columnheader", { name: "En la otra moneda" })).toBeNull();
+    expect(within(tabla).getByRole("columnheader", { name: "Nota" })).toBeInTheDocument();
+    expect(screen.getByText("Sin tasa aplicable a la fecha del corte: no se muestran los montos en la otra moneda.")).toBeInTheDocument();
+  });
+
+  test("valor ganado muestra «En la otra moneda» y «Nota» cuando alguna fila tiene dato", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        indicadores: [
+          { Indicador: "BAC (USD)", Valor: "4000.00", "En la otra moneda": "146000.00 Bs", Nota: "" },
+          { Indicador: "AC (gastado) (USD)", Valor: "no disponible", "En la otra moneda": "no disponible", Nota: "faltan tasas" },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(within(tabla).getByRole("columnheader", { name: "En la otra moneda" })).toBeInTheDocument();
+    expect(within(tabla).getByRole("columnheader", { name: "Nota" })).toBeInTheDocument();
+    expect(screen.queryByText(/no se muestran los montos en la otra moneda/)).toBeNull();
   });
 
   // Tarea D2: con los precios declarados, los que se convirtieron de otra moneda salen con su cuenta, su fecha y su
@@ -1080,6 +1182,31 @@ describe("logica del control", () => {
     const vacia = { partida: "", cantidad: "", fecha_medicion: "2026-11-01", observacion: "" };
     const llena = { partida: "A", cantidad: "", fecha_medicion: "", observacion: "" };
     expect(sinLineasVacias([vacia, llena])).toEqual([llena]);
+  });
+
+  test("reglaDeHallazgo y textoDeHallazgo muestran «Nombre (código)» cuando viene nombre_regla", () => {
+    expect(reglaDeHallazgo({ regla: "R13", nombre_regla: "Valuación dentro del presupuesto" })).toBe(
+      "Valuación dentro del presupuesto (R13)",
+    );
+    expect(reglaDeHallazgo({ regla: "R13", nombre_regla: "" })).toBe("R13");
+    expect(reglaDeHallazgo({ regla: "R14" })).toBe("R14");
+    expect(
+      textoDeHallazgo({
+        valuacion: "V-01",
+        regla: "R13",
+        nombre_regla: "Valuación dentro del presupuesto",
+        severidad: "Error",
+        mensaje: "Falta unitario.",
+      }),
+    ).toBe("Error · Valuación dentro del presupuesto (R13): Falta unitario.");
+    expect(
+      textoDeHallazgo({
+        valuacion: "",
+        regla: "",
+        severidad: "Advertencia",
+        mensaje: "Aviso general.",
+      }),
+    ).toBe("Advertencia: Aviso general.");
   });
 });
 

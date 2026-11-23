@@ -46,7 +46,7 @@ FORMA_SUBIDA = (
 )
 AVISO_MIGRADA = "Se actualizó el archivo a la versión actual de Sílice; quedó un respaldo previo."
 #: El del tope del cuerpo de la API (`LimiteDeCuerpo._rechazar`), copiado a mano.
-MENSAJE_CUERPO = "El cuerpo de la peticion excede el maximo de 20 MiB."
+MENSAJE_CUERPO = "El envío pasa del máximo de 20 MB."
 
 
 @pytest.fixture(scope="module")
