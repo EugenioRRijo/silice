@@ -26,6 +26,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.acceso import REVISAR
 from api.dependencias import SesionDep
+from aplicacion.nombres_reglas import nombre_de_regla
 from auditoria.reauditoria import Servicios, leer_documento_json, reauditar
 from core.budget.canonico import DocumentoInvalido
 from paquete.formato import PaqueteRechazado
@@ -47,6 +48,7 @@ ServiciosDep = Annotated[Servicios, Depends(servicios_de_la_api)]
 
 class HallazgoRespuesta(BaseModel):
     regla: str
+    nombre_regla: str = ""
     severidad: str
     descripcion: str
     origen_ids: list[str]
@@ -94,6 +96,7 @@ def _texto(valor: Any) -> str | None:
 def _hallazgo(h) -> HallazgoRespuesta:
     return HallazgoRespuesta(
         regla=h.regla,
+        nombre_regla=nombre_de_regla(h.regla),
         severidad=h.severidad.name,
         descripcion=h.descripcion,
         origen_ids=list(h.origen_ids),

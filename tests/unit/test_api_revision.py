@@ -262,7 +262,7 @@ def test_un_paquete_firmado_se_verifica_se_registra_y_se_reaudita() -> None:
     [r11] = re["hallazgos"][0]["hallazgos"]
     assert (r11["regla"], r11["nombre_regla"], r11["severidad"]) == (
         "R11",
-        "Precio fuera de rango",
+        "Precio fuera de rango frente a MaPreX",
         "INFO",
     )
     assert r11["descripcion"].startswith("3 insumos no contrastables")

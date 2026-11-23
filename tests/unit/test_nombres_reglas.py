@@ -160,7 +160,7 @@ def test_los_esquemas_de_hallazgos_de_la_api_incluyen_nombre_regla() -> None:
         impacto=Decimal("5.00"),
     )
     rev = revision._hallazgo(h_core)
-    assert (rev.regla, rev.nombre_regla) == ("R11", "Precio fuera de rango")
+    assert (rev.regla, rev.nombre_regla) == ("R11", "Precio fuera de rango frente a MaPreX")
 
     aud = auditorias._hallazgo(h_core)
-    assert (aud.regla, aud.nombre_regla) == ("R11", "Precio fuera de rango")
+    assert (aud.regla, aud.nombre_regla) == ("R11", "Precio fuera de rango frente a MaPreX")

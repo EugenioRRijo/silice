@@ -19,11 +19,16 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from aplicacion.cifras import texto_de_cifra
-from aplicacion.control_comun import _valuacion_del_hallazgo
-from aplicacion.control_tablas import Hueco, catalogo_de_frases
+from aplicacion.control_comun import Hueco, _valuacion_del_hallazgo, catalogo_de_frases
+from aplicacion.nombres_reglas import nombre_de_regla
 from core.budget.control import ResultadoControl
 
-__all__ = ["PLANTILLAS_DE_HALLAZGOS", "hallazgos_de_valuaciones", "mensaje_de_hallazgo"]
+__all__ = [
+    "PLANTILLAS_DE_HALLAZGOS",
+    "SEVERIDADES",
+    "hallazgos_de_valuaciones",
+    "mensaje_de_hallazgo",
+]
 
 
 def _fecha(iso: str) -> str:
@@ -169,6 +174,7 @@ def hallazgos_de_valuaciones(resultado: ResultadoControl) -> list[dict[str, str]
             {
                 "Valuacion": _valuacion_del_hallazgo(h.origen_ids, claves) or "",
                 "Regla": h.regla,
+                "NombreRegla": nombre_de_regla(h.regla),
                 "Severidad": SEVERIDADES.get(h.severidad.name, h.severidad.name),
                 "Mensaje": mensaje_de_hallazgo(h.descripcion),
             }

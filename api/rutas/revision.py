@@ -58,6 +58,7 @@ from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import revision as logica
 from aplicacion.listas_para_armar import lista_por_id
+from aplicacion.nombres_reglas import nombre_de_regla
 from core.budget.comparacion import Diferencia
 from core.verification.texto import formatear_decimal
 from operacion.config import carpeta_datos
@@ -108,6 +109,7 @@ Activa = Annotated[SesionActiva | None, REVISAR]
 
 class HallazgoRevision(BaseModel):
     regla: str
+    nombre_regla: str = ""
     severidad: str
     descripcion: str
 
@@ -238,7 +240,10 @@ def _leer(archivo: UploadFile, tope: int, mensaje: str) -> bytes:
 
 def _hallazgo(h) -> HallazgoRevision:
     return HallazgoRevision(
-        regla=h.regla, severidad=h.severidad.name, descripcion=pulir(h.descripcion)
+        regla=h.regla,
+        nombre_regla=nombre_de_regla(h.regla),
+        severidad=h.severidad.name,
+        descripcion=pulir(h.descripcion),
     )
 
 
