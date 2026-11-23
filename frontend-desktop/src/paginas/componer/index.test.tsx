@@ -2,6 +2,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import { ContextoDeLaHoja } from "../hoja/ProveedorDeLaHoja";
+import type { HojaDeLaObra } from "../hoja/ProveedorDeLaHoja";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -85,6 +87,7 @@ describe("Componer una partida", () => {
   let partida: () => Response;
   let guardado: () => Response;
   let carpeta: () => Response;
+  let vistaPresupuesto: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -93,6 +96,7 @@ describe("Componer una partida", () => {
     evaluacion = () => json(VACIA);
     partida = () => json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
     carpeta = () => json(estadoDeCarpeta("Lista ficticia 2026-01"));
+    vistaPresupuesto = () => json({ filas: [{ partida: "FIC-7" }] });
     guardado = () => json({ precio_unitario: "29.70", mensaje: "Composición guardada para la partida FIC-1: precio unitario 29.70.", justificada: false, avisos: [] });
     fetchFalso.mockImplementation(async (entrada, init) => {
       const ruta = String(entrada);
@@ -114,6 +118,7 @@ describe("Componer una partida", () => {
       }
       if (ruta === "/v1/composicion/guardar") return guardado();
       if (ruta === "/v1/carpeta") return carpeta();
+      if (ruta === "/v1/hoja/borradores/B-1/vistas/presupuesto") return vistaPresupuesto();
       return json({ detalle: "No encontrado." }, 404);
     });
   });
@@ -310,24 +315,69 @@ describe("Componer una partida", () => {
   // Ficha de Componer (2026-11-23, lote 1). Eugenio: «acabo de componer una partida y me perdí». Dentro de una obra, el
   // éxito se queda en pantalla, dice que la partida todavía no está en el presupuesto y su único botón principal es el
   // paso siguiente, que lleva al Presupuesto con la partida para ponerle cantidad.
-  function montarEnObra() {
+  // La Hoja de la obra (el borrador B-1), como la comparte `ProveedorDeLaHoja` con la subvista Componer; null = sin Hoja.
+  const hojaEditable = { estado: { estado: "listo", borrador: { id: "B-1" } }, puedeEditar: true } as unknown as HojaDeLaObra;
+
+  function montarEnObra(hoja: HojaDeLaObra | null = hojaEditable) {
     function Destino() {
-      const { state } = useLocation();
-      return <p data-testid="destino">{JSON.stringify(state)}</p>;
+      const { pathname, state } = useLocation();
+      return <p data-testid="destino">{`${pathname} ${JSON.stringify(state)}`}</p>;
     }
     render(
       <ContextoAplicacion.Provider value={{ sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}>
         <ContextoDeLaObra.Provider value={{ carpeta: "demo.db", obraId: 7, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
-          <MemoryRouter initialEntries={["/obra/demo.db/7/presupuesto/componer"]}>
-            <Routes>
-              <Route path="/obra/demo.db/7/presupuesto/componer" element={<PaginaComponer />} />
-              <Route path="/obra/demo.db/7/presupuesto" element={<Destino />} />
-            </Routes>
-          </MemoryRouter>
+          <ContextoDeLaHoja.Provider value={hoja}>
+            <MemoryRouter initialEntries={["/obra/demo.db/7/presupuesto/componer"]}>
+              <Routes>
+                <Route path="/obra/demo.db/7/presupuesto/componer" element={<PaginaComponer />} />
+                <Route path="/obra/demo.db/7/presupuesto" element={<Destino />} />
+                <Route path="/obra/demo.db/7/versiones" element={<Destino />} />
+              </Routes>
+            </MemoryRouter>
+          </ContextoDeLaHoja.Provider>
         </ContextoDeLaObra.Provider>
       </ContextoAplicacion.Provider>,
     );
   }
+
+  async function componerYGuardar(codigo = "FIC-1") {
+    const usuario = userEvent.setup();
+    await usuario.type(screen.getByLabelText("Código"), codigo);
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro ficticio");
+    await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
+    return usuario;
+  }
+
+  // Juez F2 (2026-11-23): «Todavía no está» se afirmaba sin comprobarlo, y con una versión de solo lectura el pedido se
+  // perdía sin aviso. El éxito ahora mira el presupuesto del borrador y la edición antes de decir qué sigue.
+  test("si la partida ya está en el presupuesto lo dice y el paso siguiente es verlo, no agregarla otra vez", async () => {
+    montarEnObra();
+    await componerYGuardar("FIC-7");
+    expect(await screen.findByText("Ya está en el presupuesto de esta obra.", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Agregar FIC-7/ })).toBeNull();
+    const ver = screen.getByRole("button", { name: "Ver el presupuesto" });
+    await waitFor(() => expect(ver).toHaveFocus());
+    await userEvent.click(ver);
+    expect(screen.getByTestId("destino")).toHaveTextContent("/obra/demo.db/7/presupuesto null");
+  });
+
+  test("con una versión de solo lectura dice por qué no se puede agregar y lleva a Versiones", async () => {
+    montarEnObra({ ...hojaEditable, puedeEditar: false } as HojaDeLaObra);
+    await componerYGuardar();
+    expect(
+      await screen.findByText("Esta versión del presupuesto no se puede editar: abra o cree una versión editable para agregarla.", {}, ESPERA),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Ir a Versiones" }));
+    expect(screen.getByTestId("destino")).toHaveTextContent("/obra/demo.db/7/versiones");
+  });
+
+  test("sin poder mirar el presupuesto no afirma nada: ofrece agregarla «si todavía no está»", async () => {
+    montarEnObra(null);
+    await componerYGuardar();
+    expect(await screen.findByText("Si todavía no está en el presupuesto de esta obra, agréguela con su cantidad.", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar FIC-1 al presupuesto" })).toBeInTheDocument();
+  });
 
   test("en una obra, al guardar dice que aún no está en el presupuesto y el paso siguiente es el único principal, con el foco", async () => {
     const usuario = userEvent.setup();
@@ -352,9 +402,9 @@ describe("Componer una partida", () => {
     await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
     await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
     await usuario.click(await screen.findByRole("button", { name: "Agregar FIC-1 al presupuesto" }, ESPERA));
-    expect(JSON.parse(screen.getByTestId("destino").textContent ?? "null")).toEqual({
-      agregarPartida: { codigo: "FIC-1", descripcion: "Muro ficticio", unidad: "" },
-    });
+    expect(screen.getByTestId("destino")).toHaveTextContent(
+      '/obra/demo.db/7/presupuesto {"agregarPartida":{"codigo":"FIC-1","descripcion":"Muro ficticio","unidad":""}}',
+    );
   });
 
   test("fuera de una obra el guardado no ofrece llevarla a un presupuesto", async () => {
