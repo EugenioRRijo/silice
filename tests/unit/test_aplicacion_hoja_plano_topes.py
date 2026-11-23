@@ -83,7 +83,7 @@ def test_un_plano_de_un_byte_mas_que_el_tope_se_rechaza_antes_de_escribir_nada(
     with pytest.raises(hoja_plano.PlanoDemasiadoGrande) as error:
         hoja_plano.leer(vivo, 0, _Subida(nombre, b"0" * (tope * MIB + 1)))
     assert error.value.mensaje == (
-        f"El plano {formato} pesa más de {tope} MiB, el máximo que Sílice lee en un tiempo "
+        f"El plano {formato} pesa más de {tope} MB, el máximo que Sílice lee en un tiempo "
         "razonable. Purgue las capas y bloques que no use, o divida el dibujo por plantas, y "
         "vuelva a subirlo."
     )

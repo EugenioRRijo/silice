@@ -66,7 +66,7 @@ FALTA = (
 )
 OTRO_CASO = "El caso cambió desde que abrió este borrador: ábralo de nuevo en el caso actual."
 REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo."
-EXCEDE = "El cuerpo de la peticion excede el maximo de 20 MiB."
+EXCEDE = "El envío pasa del máximo de 20 MB."
 BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
     "programa."

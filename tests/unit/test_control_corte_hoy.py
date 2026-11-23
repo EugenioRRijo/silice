@@ -173,10 +173,10 @@ def test_la_hoja_valor_ganado_del_excel_mide_a_hoy(sesion) -> None:
     _con_v03_futura(sesion)
     hojas = control.tablas_de_control(sesion, ob.NOMBRE, Catalogo(sesion), hoy=date(2026, 11, 13))
     valor_ganado = next(t for t in hojas if t.titulo == "Valor ganado")
-    assert (_valor(valor_ganado, "PV (USD)"), _valor(valor_ganado, "EV (USD)")) == (
-        "1500.00",
-        "1200.00",
-    )
+    # Cada indicador lleva su nombre en palabras antes de la sigla (pasada de claridad).
+    pv = _valor(valor_ganado, "PV (planificado) (USD)")
+    ev = _valor(valor_ganado, "EV (ejecutado) (USD)")
+    assert (pv, ev) == ("1500.00", "1200.00")
 
 
 def test_el_tablero_mide_a_hoy(sesion) -> None:

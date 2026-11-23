@@ -265,7 +265,7 @@ def test_el_cuerpo_de_exactamente_20_mib_pasa_y_con_un_byte_mas_es_413(api) -> N
     assert len(justo) == 20 * 1024 * 1024
     assert post(cliente, clave, justo).status_code == 200
     mas = post(cliente, clave, justo + b" ")
-    assert mas.status_code == 413 and "20 MiB" in mas.json()["detalle"]
+    assert mas.status_code == 413 and "20 MB" in mas.json()["detalle"]
 
 
 def test_el_middleware_corta_el_cuerpo_sin_leerlo_entero() -> None:
