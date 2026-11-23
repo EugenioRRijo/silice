@@ -23,6 +23,20 @@
   border-block-end: 1px solid var(--silice-divisor);
 }
 
+// «Más opciones de la partida» (ficha de Componer, lote 3): un bloque más, plegado, con su resumen como línea pulsable.
+.silice-componer__mas {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+  padding-block-end: 1.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+
+  > summary {
+    cursor: pointer;
+    color: var(--silice-texto-secundario);
+  }
+}
+
 .silice-componer__nota {
   max-inline-size: 65ch;
   color: var(--silice-texto-secundario);
