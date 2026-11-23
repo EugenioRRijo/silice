@@ -52,8 +52,12 @@ description: Use when designing, changing or reviewing any screen, form, table o
   «¿Qué es esto?» en el mismo lugar, y pestañas internas con fondo.
 - `core/` no cambia. Un mensaje del núcleo con jerga («ADVERTENCIA: … no es derivable ni reproducible») se traduce en
   `aplicacion/`; por ejemplo, el de la regla R1 se reconoce en `aplicacion/hoja_partidas.py:114`.
-- Ninguna sigla sola como rótulo (R, Km, SPI, CPI, EAC, P80, FCAS): primero la palabra. Vigila `paginas/sinJergaInterna.test.ts`.
+- Ninguna sigla sola como rótulo (R, Km, SPI, CPI, EAC, P80, FCAS): primero la palabra. **Hoy no hay guardia que lo
+  vigile**: `paginas/sinJergaInterna.test.ts` solo busca códigos internos (UC/RF/RNF) y palabras del marco. Ampliarla es
+  una tarea de F3.
 - TDD: la prueba en rojo antes del código, y suite completa al cerrar.
+- No se corre `prettier --write`: el repo no sigue ese formato, y reformatea cientos de líneas ajenas. Lo que manda es
+  `npm run lint`.
 
 ## Errores ya vividos en Sílice (no repetirlos)
 
