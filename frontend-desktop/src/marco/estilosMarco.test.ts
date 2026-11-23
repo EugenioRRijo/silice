@@ -208,3 +208,24 @@ describe("responsive con letra Grande y Muy grande", () => {
     expect(pestanaGrande).toMatch(/overflow-wrap:\s*anywhere/);
   });
 });
+
+// Tercera medición responsive (2026-11-22): a 768 px con letra Muy grande la barra lateral deja ~290 px al contenido. Las
+// rejillas de Administración y de la Ayuda tenían la columna implícita `auto`, que no baja del ancho mínimo de su hijo
+// más ancho (listas estructuradas y campos de Carbon), y el botón de la cabecera de la Cuenta quedaba en `max-content`.
+describe("la Cuenta cabe a 768 px con letra Muy grande", () => {
+  test.each([
+    ["paginas/administracion/administracion.scss", ".silice-adm {"],
+    ["paginas/administracion/administracion.scss", ".silice-adm__capa {"],
+    ["paginas/administracion/administracion.scss", ".silice-adm__bloque {"],
+    ["comun/ayuda/ayuda.scss", ".silice-ayuda {"],
+  ])("%s %s: la columna de la rejilla puede encoger", (archivo, apertura) => {
+    const regla = bloqueDe(leer(archivo), apertura) ?? "";
+    expect(regla).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  });
+
+  test("el botón de la cabecera de la Cuenta parte línea en vez de salirse", () => {
+    const regla = bloqueDe(leer("marco/marco.scss"), ".silice-cuenta-cabecera .cds--btn {") ?? "";
+    expect(regla).toMatch(/max-inline-size:\s*100%/);
+    expect(regla).toMatch(/white-space:\s*normal/);
+  });
+});
