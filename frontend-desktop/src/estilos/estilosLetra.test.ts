@@ -101,4 +101,15 @@ describe("raya de la opción activa del tamaño de letra sobre fondo claro", () 
     expect(i).toBeGreaterThan(-1);
     expect(barra.slice(i, i + 300)).toMatch(/border-block-end:\s*2px solid var\(--silice-acento\)/);
   });
+
+  // Detector de impeccable en vivo (2026-11-22): el pie de seguridad de la entrada es una frase de dos líneas y heredaba
+  // un interlineado de 1,0 (pide al menos 1,3). Va en la letra normal: la monoespaciada es para cifras.
+  test("el pie de seguridad de la entrada se lee con interlineado holgado y en la letra normal", () => {
+    const app = leer(`${raiz}/estilos/app.scss`);
+    const i = app.indexOf(".silice-entrada__pie-seguridad {");
+    expect(i).toBeGreaterThan(-1);
+    const regla = app.slice(i, app.indexOf("}", i));
+    expect(regla).toMatch(/line-height:\s*1\.5/);
+    expect(regla).not.toMatch(/IBM Plex Mono/);
+  });
 });
