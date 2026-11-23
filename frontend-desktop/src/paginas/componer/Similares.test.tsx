@@ -65,7 +65,7 @@ describe("Similares: empezar desde una partida parecida", () => {
     const usuario = userEvent.setup();
     const elegidas: string[] = [];
     render(<Similares similares={[UNA]} alEmpezarDesde={(s) => elegidas.push(s.codigo)} conAlgoEscrito={false} />);
-    await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
+    await usuario.click(screen.getByRole("button", { name: /^FIC-001 · / }));
     await usuario.click(screen.getByRole("button", { name: "Empezar desde FIC-001" }));
     expect(elegidas).toEqual(["FIC-001"]);
   });
@@ -73,7 +73,7 @@ describe("Similares: empezar desde una partida parecida", () => {
   test("una parecida sin tablas (desglose incompleto) no ofrece empezar desde ella", async () => {
     const usuario = userEvent.setup();
     render(<Similares similares={[{ ...UNA, tablas: null, aviso: "Desglose incompleto." }]} alEmpezarDesde={() => undefined} conAlgoEscrito={false} />);
-    await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
+    await usuario.click(screen.getByRole("button", { name: /^FIC-001 · / }));
     expect(screen.queryByRole("button", { name: /^Empezar desde/ })).toBeNull();
   });
 
@@ -81,7 +81,7 @@ describe("Similares: empezar desde una partida parecida", () => {
     const usuario = userEvent.setup();
     const elegidas: string[] = [];
     render(<Similares similares={[UNA]} alEmpezarDesde={(s) => elegidas.push(s.codigo)} conAlgoEscrito />);
-    await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
+    await usuario.click(screen.getByRole("button", { name: /^FIC-001 · / }));
     await usuario.click(screen.getByRole("button", { name: "Empezar desde FIC-001" }));
     const aviso = screen.getByRole("alert");
     expect(aviso).toHaveTextContent("Se reemplazarán los insumos y el rendimiento que ya escribió por los de FIC-001.");

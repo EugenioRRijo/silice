@@ -528,6 +528,19 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
 
   const usarFila = (tipo: TipoTabla) => (fila: Fila) => cambiarTablas((t) => agregarFila(t, tipo, fila));
   const dominios = ops?.dominios ?? [cabecera.dominio];
+  // «Empezar desde» una parecida (decisión de Eugenio, 2026-11-23): sus tablas llegan en es-VE como las de la precarga y
+  // su rendimiento, con punto (el exacto de la API), se escribe con coma. La unidad solo se toma si aún no hay una.
+  const empezarDesde = (s: Similar) => {
+    if (s.tablas === null) return;
+    setTablas(normalizarTablas(s.tablas));
+    setVueltaDePrecarga((n) => n + 1);
+    setCabecera((c) => ({
+      ...c,
+      rendimiento: s.rendimiento === null ? c.rendimiento : formatoEsVe(s.rendimiento),
+      unidad: c.unidad.trim() === "" && s.unidad !== null ? s.unidad : c.unidad,
+    }));
+    limpiarGuardado();
+  };
   // Un parámetro mal escrito (el aviso del servidor lo nombra) abre «Más opciones»: no se esconde lo que hay que corregir.
   const errorEnParametros = esAvisoDeParametros(evaluacion?.aviso ?? null);
   const origenDeParametros = falloParametros
@@ -652,7 +665,12 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
       </details>
 
       <AvisoError error={errorParecidas} titulo="No se pudieron pedir las partidas similares" />
-      <Similares similares={parecidas} nivel={nivel} />
+      <Similares
+        similares={parecidas}
+        nivel={nivel}
+        alEmpezarDesde={empezarDesde}
+        conAlgoEscrito={hayFilas(tablas) || cabecera.rendimiento.trim() !== ""}
+      />
 
       <section className="silice-componer__bloque" aria-labelledby="componer-rendimiento">
         <Titulo id="componer-rendimiento" className="cds--type-heading-compact-02">
