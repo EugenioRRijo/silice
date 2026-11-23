@@ -4,6 +4,7 @@ import { useContext } from "react";
 import { Severidad } from "../../comun/Severidad";
 import { cifrasEnTextoEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoAuditoria } from "./ContextoAuditoria";
+import { estadoLlano } from "./estadoLlano";
 import type { EstadoFila } from "./logica";
 
 interface Props {
@@ -18,7 +19,8 @@ interface Props {
 // texto lo escriben las reglas del núcleo con punto decimal («(1.89 m3)»): se lee en es-VE (prueba en vivo del 18/11/2026).
 export function EstadoDeFila({ estado, claves, rotulo }: Props) {
   const verEnRevision = useContext(ContextoAuditoria);
-  const texto = cifrasEnTextoEsVe(estado.texto);
+  // Sin la severidad repetida en mayúsculas y con los avisos conocidos del núcleo en español llano (`estadoLlano`).
+  const texto = estadoLlano(cifrasEnTextoEsVe(estado.texto), estado.severidad);
   if (estado.severidad === null) {
     return (
       <span className="silice-hoja__estado-fila" title={texto}>
