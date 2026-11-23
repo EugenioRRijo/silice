@@ -20,6 +20,8 @@ def _hallazgo(origenes: tuple[str, ...], severidad: str = "ADVERTENCIA", regla: 
         origen_ids=origenes,
         regla=regla,
         severidad=SimpleNamespace(name=severidad),
+        # La columna Estado dice «<Severidad>: <mensaje> (<regla>)»; `mensaje_de_hallazgo` vuelve
+        # «x» en «X.» (mayúscula inicial y punto final).
         descripcion="x",
     )
 
@@ -50,7 +52,7 @@ def test_un_numero_de_valuacion_con_dos_puntos_se_lee_entero() -> None:
         _hallazgo(("valuacion:VAL:01",), regla="R14"),
         valuaciones=("VAL", "VAL:01"),
     )
-    assert estado_de_valuaciones(resultado) == {"VAL:01": "ERROR: R13"}
+    assert estado_de_valuaciones(resultado) == {"VAL:01": "Error: X. (R13)"}
     assert [f["Valuacion"] for f in hallazgos_de_valuaciones(resultado)] == ["VAL:01", "VAL:01"]
 
 
@@ -60,7 +62,7 @@ def test_un_numero_solo_casa_entero_o_seguido_de_dos_puntos() -> None:
         valuaciones=("VAL", "VAL:P"),
     )
     # «valuacion:VAL:P-01» es la línea P-01 de VAL; no hay valuación «VAL:P-01».
-    assert estado_de_valuaciones(resultado) == {"VAL": "ADVERTENCIA: R13"}
+    assert estado_de_valuaciones(resultado) == {"VAL": "Advertencia: X. (R13)"}
 
 
 def test_el_caso_de_siempre_sigue_igual() -> None:
@@ -70,4 +72,7 @@ def test_el_caso_de_siempre_sigue_igual() -> None:
         _hallazgo(("valuacion:1:P-02",), severidad="INFO"),
         valuaciones=("1", "2"),
     )
-    assert estado_de_valuaciones(resultado) == {"2": "ERROR: R14", "1": "INFO: R13"}
+    assert estado_de_valuaciones(resultado) == {
+        "2": "Error: X. (R14)",
+        "1": "Información: X. (R13)",
+    }

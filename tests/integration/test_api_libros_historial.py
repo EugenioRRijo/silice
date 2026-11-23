@@ -35,6 +35,7 @@ from fastapi.testclient import TestClient
 
 from adapters.hoja_empresa.modelo import FilaHallazgo
 from api.main import app
+from aplicacion.nombres_reglas import NOMBRES_DE_REGLAS
 from fusion.proceso import ResultadoPdf
 from operacion import config
 from operacion.base_datos import Destino, preparar_base
@@ -217,7 +218,8 @@ def test_revisar_un_pdf_deja_una_fila_de_tipo_pdf(cliente, historial, monkeypatc
     assert (d["fecha_libro"], d["total_libro"], d["total_silice"]) == (None, None, None)
     assert d["hallazgos"] == [
         {
-            "regla": "L10", "hoja": "", "celda": "F3", "severidad": "ERROR",
+            "regla": "L10", "nombre_regla": NOMBRES_DE_REGLAS["L10"], "hoja": "",
+            "celda": "F3", "severidad": "ERROR",
             "mensaje": "La fila 1 no cuadra",
         }
     ]  # fmt: skip

@@ -74,7 +74,7 @@ FALTA = (
 )
 OTRO_CASO = "El caso cambió desde que abrió este borrador: ábralo de nuevo en el caso actual."
 REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo."
-EXCEDE = "El cuerpo de la peticion excede el maximo de 20 MiB."
+EXCEDE = "El envío pasa del máximo de 20 MB."
 FORMA_APU = (
     "El APU no tiene la forma esperada: envíe el rendimiento y las cantidades de materiales, "
     "equipos y mano de obra (y, si quiere, el desperdicio de cada material), cada una como texto "
