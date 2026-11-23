@@ -62,6 +62,14 @@ const ETIQUETA_DOMINIO: Record<string, string> = {
   sistemas: "Sistemas",
 };
 
+// Cómo se nombra cada parámetro del precio en el resumen de «Más opciones de la partida» (la palabra antes de la sigla).
+const NOMBRE_EN_EL_RESUMEN: Record<string, string> = {
+  fcas: "costos del salario (FCAS)",
+  bono_alimentacion: "bono de alimentación",
+  administracion: "administración",
+  utilidad: "utilidad",
+};
+
 function textoDominio(dominio: string): string {
   return ETIQUETA_DOMINIO[dominio] ?? (dominio === "" ? "" : dominio[0]!.toUpperCase() + dominio.slice(1));
 }
@@ -527,6 +535,13 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     : (baseParametros?.origen ?? "omision") === "obra"
       ? "parámetros de la obra"
       : "parámetros de omisión";
+  // Juez F2: el resumen dice también cuánto vale cada parámetro, con la palabra antes de la sigla.
+  const valoresDeParametros =
+    parametros === null
+      ? ""
+      : Object.entries(parametros)
+          .map(([clave, valor]) => `${NOMBRE_EN_EL_RESUMEN[clave] ?? clave} ${valor}`)
+          .join(" · ");
 
   return (
     <div className="silice-componer__cuerpo">
@@ -591,7 +606,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         onToggle={(e) => setMasOpciones(e.currentTarget.open)}
       >
         <summary className="cds--type-body-compact-01">
-          {`Más opciones de la partida: Tipo de obra: ${textoDominio(cabecera.dominio)} · precios al ${fechaEsVe(fecha)} · ${origenDeParametros}`}
+          {`Más opciones de la partida: Tipo de obra: ${textoDominio(cabecera.dominio)} · precios al ${fechaEsVe(fecha)} · ${origenDeParametros}${valoresDeParametros === "" ? "" : `: ${valoresDeParametros}`}`}
         </summary>
         <div className="silice-componer__rejilla">
           <div>
