@@ -7,6 +7,19 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Cambiado
+- **Fuera el «tablero de avión»: la interfaz se entiende sin saber de software** (2026-11-22/23; pedido de Eugenio:
+  «es como una persona entrar y ver un tablero de avion ... terminos que estan abreviados»). Auditada por tres
+  lectores de Gemini (10 pantallas eran «tablero de avión») y construida por Neon y Hydrogen con la skill
+  `constructor-gemini`, revisada por Claude: cada pantalla con cifras dice bajo su título para qué sirve; las siglas
+  técnicas (EAC, SPI, CPI, P50, P80, FCAS) llevan su explicación la primera vez; textos llanos («Precio unitario»,
+  «¿Coincide?», «Código de verificación (SHA-256)», «Fecha de la revisión»); unos 25 términos nuevos en el glosario.
+  El back manda sus rótulos en español llano («Avance físico», «Error: …», «Pérdida cambiaria (%)», que mide la tasa
+  Bs/USD) y el nombre de cada regla en los hallazgos (`nombre_regla`, `aplicacion/nombres_reglas.py`); el código de una
+  regla solo se muestra junto a su nombre. Las tareas rápidas 1 a 15 del backlog de UX; «Plan a la fecha» bajo el
+  anillo de avance; los mensajes de tamaño dicen «20 MB». Un revisor goldfish (lectura en frío) encontró dos
+  definiciones al revés en el glosario (CPI y P50/P80), ya corregidas; el resto de su pasada queda en
+  `docs/planes/2026-11-23-pasada-goldfish.md` (los créditos de Gemini se agotaron). Front completo: 4.918 pruebas en
+  verde; recorrido responsive: 384 mediciones sin fallos.
 - **Front menos genérico y responsive con letra grande** (2026-11-22, rama `feature/ui-aistudio-correcciones`; pedido de
   Eugenio: «pulas y me des un front menos ia y generico»). Sobre el aspecto de Neon (carbón y dorado), construido por
   Neon y Hydrogen con revisión de Claude: la entrada sin jerga y en usted; la cortina entre espacios sin vidrio ni sombra
