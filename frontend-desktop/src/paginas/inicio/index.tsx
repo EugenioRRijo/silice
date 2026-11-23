@@ -32,10 +32,7 @@ const RUTA_CUENTAS = "/v1/cuentas";
 // cifras son las del servidor, solo formateadas (el anillo por estado cuenta las obras de la lista).
 //
 // Los lanzadores de los espacios (rediseño 2026-11-21): cada uno se llama como su espacio en `marco/espacios.ts` (el mismo
-// nombre de la barra lateral) y lo describe con las herramientas que la cuenta puede abrir allí, con sus nombres. El número
-// de orden es adorno: va oculto a la lectora y fuera del nombre del enlace.
-const CODIGO: Record<EspacioId, string> = { auditoria: "01", precios: "02", produccion: "03" };
-
+// nombre de la barra lateral) y lo describe con las herramientas que la cuenta puede abrir allí, con sus nombres.
 function herramientasUsables(id: EspacioId, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[]): string {
   return ESPACIOS[id].herramientas
     .filter((h) => {
@@ -93,7 +90,6 @@ export default function Panorama() {
               <LanzadorDeEspacio
                 key={esp.id}
                 id={esp.id}
-                codigo={CODIGO[esp.id]}
                 titulo={esp.titulo}
                 ruta={esp.ruta}
                 herramientas={herramientasUsables(esp.id, sesion.acciones, sesion.modo_entrega, modulosApagados ?? [])}

@@ -40,7 +40,6 @@
     background-color: var(--silice-charcoal);
     color: var(--cds-text-on-color);
 
-    .silice-lanzador__codigo,
     .silice-lanzador__accion {
       color: var(--silice-gold);
     }
@@ -67,7 +66,6 @@
 .silice-lanzador__arriba {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
   color: var(--silice-muted-soft);
 
@@ -77,15 +75,8 @@
   }
 }
 
-.silice-lanzador__codigo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--silice-muted-soft);
-}
-
 .silice-lanzador__titulo {
-  margin: 0.25rem 0 0;
+  margin: 0;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--silice-ink);

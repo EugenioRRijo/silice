@@ -14,12 +14,6 @@ interface Props {
   idBase: string;
 }
 
-const PREFIJO_ESPACIO: Record<EspacioId, string> = {
-  auditoria: "01",
-  precios: "02",
-  produccion: "03",
-};
-
 function IconoEspacio({ id }: { id: EspacioId }) {
   if (id === "auditoria") return <DocumentView size={16} className="silice-marco-lateral__icono-oro" aria-hidden="true" />;
   if (id === "precios") return <Catalog size={16} className="silice-marco-lateral__icono-oro" aria-hidden="true" />;
@@ -60,7 +54,6 @@ export function ZonaDeCostos({ espacios, espacioActivo, idBase }: Props) {
               <Link
                 to={e.ruta}
                 aria-current={espacioActivo === e.id ? "page" : undefined}
-                data-prefijo={PREFIJO_ESPACIO[e.id]}
                 className="silice-marco-lateral__fila silice-marco-lateral__herramienta"
               >
                 <IconoEspacio id={e.id} />

@@ -9,17 +9,14 @@ function IconoLanzador({ id }: { id: EspacioId }) {
 }
 
 // Un lanzador de la Vista general: se llama como su espacio y lo describe con las herramientas que la cuenta puede usar
-// allí (`herramientas`, ya unidas con « · »). El código de orden es adorno: va oculto a la lectora y fuera del nombre.
-// Sin herramientas que decir no hay descripción: el enlace no apunta a un texto vacío.
+// allí (`herramientas`, ya unidas con « · »). Sin herramientas que decir no hay descripción: el enlace no apunta a un texto vacío.
 export function LanzadorDeEspacio({
   id,
-  codigo,
   titulo,
   ruta,
   herramientas,
 }: {
   id: EspacioId;
-  codigo: string;
   titulo: string;
   ruta: string;
   herramientas: string;
@@ -32,12 +29,11 @@ export function LanzadorDeEspacio({
       aria-labelledby={`lanzador-${id}`}
       aria-describedby={conDescripcion ? `lanzador-${id}-desc` : undefined}
     >
-      <span className="silice-lanzador__arriba" aria-hidden="true">
-        <span className="silice-lanzador__codigo">{`${codigo} · Ventana dedicada`}</span>
+      <span className="silice-lanzador__arriba">
         <IconoLanzador id={id} />
-      </span>
-      <span id={`lanzador-${id}`} className="silice-lanzador__titulo">
-        {titulo}
+        <span id={`lanzador-${id}`} className="silice-lanzador__titulo">
+          {titulo}
+        </span>
       </span>
       {conDescripcion && (
         <span id={`lanzador-${id}-desc`} className="silice-lanzador__desc">

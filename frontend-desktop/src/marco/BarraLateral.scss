@@ -217,15 +217,6 @@
   padding: 0.5rem 0.75rem;
   font-weight: 500;
 
-  &::before {
-    content: attr(data-prefijo) "." / "";
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--silice-muted);
-    flex: none;
-  }
-
   &:hover {
     background-color: var(--silice-lateral-activo);
   }
@@ -234,14 +225,6 @@
 // Los iconos de los espacios van en el color del texto: el ambar fijo no se mide contra el lateral de la empresa.
 .silice-marco-lateral__icono-oro {
   fill: currentcolor;
-}
-
-.silice-marco-lateral__prefijo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--silice-muted);
-  flex: none;
 }
 
 .silice-marco-lateral__etiqueta {

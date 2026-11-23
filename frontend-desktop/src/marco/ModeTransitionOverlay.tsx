@@ -1,12 +1,11 @@
 import { Catalog, DocumentView, Industry, Workspace } from "@carbon/icons-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ESPACIOS, NUMERO_DEL_ESPACIO } from "./espacios";
+import { ESPACIOS } from "./espacios";
 import "./ModeTransitionOverlay.scss";
 
 export type EstacionMayor = "obras" | "auditoria" | "precios" | "produccion";
 
 interface Metadatos {
-  codigo: string;
   titulo: string;
   subtitulo: string;
 }
@@ -15,11 +14,10 @@ interface Metadatos {
 // debajo son sus herramientas, tal como se llaman en su barra; nada de rótulos propios de la cortina.
 function metadatosDe(destino: EstacionMayor): Metadatos {
   if (destino === "obras") {
-    return { codigo: "Espacio principal", titulo: "Obras", subtitulo: "Vista general, pendientes y las obras de la carpeta" };
+    return { titulo: "Obras", subtitulo: "Vista general, pendientes y las obras de la carpeta" };
   }
   const espacio = ESPACIOS[destino];
   return {
-    codigo: `${NUMERO_DEL_ESPACIO[destino]} · Ventana dedicada`,
     titulo: espacio.titulo,
     subtitulo: espacio.herramientas.map((h) => h.titulo).join(", "),
   };
@@ -72,9 +70,6 @@ function ContenidoTransicion({ destino, alTerminar }: { destino: EstacionMayor; 
     <div className="silice-transicion" role="status" aria-live="polite" aria-label={`Cargando ${meta.titulo}`}>
       <div className="silice-transicion__tarjeta">
         <div className="silice-transicion__acento" aria-hidden="true" />
-        <div className="silice-transicion__cabecera">
-          <span className="silice-transicion__codigo">{meta.codigo}</span>
-        </div>
         <div className="silice-transicion__cuerpo">
           <div className="silice-transicion__icono" aria-hidden="true">
             <Icono size={24} />

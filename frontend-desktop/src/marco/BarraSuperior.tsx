@@ -27,9 +27,9 @@ interface Props {
 }
 
 const ETIQUETA_MODO: Record<EspacioId, string> = {
-  auditoria: "01 · Auditoría",
-  precios: "02 · Precios y Catálogo",
-  produccion: "03 · Producción",
+  auditoria: "Auditoría",
+  precios: "Precios y catálogo",
+  produccion: "Producción",
 };
 
 // Un campo donde Ctrl+K ya significa otra cosa (texto largo o contenido editable, tambien «plaintext-only»): ahi no se abre el
@@ -44,7 +44,7 @@ function usaCtrlK(destino: EventTarget | null): boolean {
 // Barra superior del marco (plan F6, T6; diseño visual §4): la marca, que lleva a la ruta índice; la carpeta activa y, fuera
 // de la ventana dedicada, el contexto de texto; el buscador (Ctrl+K); y la persona, que es un enlace a la Cuenta. Sin el
 // tamaño de letra, que vive solo en la Cuenta (decisión de Eugenio, 2026-11-04). En Auditoría, Precios y Producción
-// (ventana dedicada) lleva «Volver a Obras» y el selector de las tres herramientas. La monta marco/Marco.
+// (ventana dedicada) lleva «Volver a obras» y el selector de las tres herramientas. La monta marco/Marco.
 export function BarraSuperior({
   alAbrirBuscador,
   nombre,
@@ -76,7 +76,7 @@ export function BarraSuperior({
         {enVentanaDedicada && (
           <Link to={RUTA_DE_VISTA_GENERAL} className="silice-marco-barra__volver">
             <ArrowLeft size={16} aria-hidden="true" />
-            <span>Volver a Obras</span>
+            <span>Volver a obras</span>
           </Link>
         )}
         <Link to={RUTA_DE_INICIO} className="silice-marco-barra__marca">
