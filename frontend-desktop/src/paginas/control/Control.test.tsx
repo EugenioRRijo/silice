@@ -276,8 +276,8 @@ describe("Control de obra", () => {
 
   test("cada codigo interno tiene su etiqueta en español y los desconocidos se muestran tal cual (V-22)", () => {
     const esperadas: Record<string, string> = {
-      spi_error: "Límite de atraso (SPI) para error",
-      cpi_error: "Límite de sobrecosto (CPI) para error",
+      spi_error: "SPI mínimo antes de marcar «Error»",
+      cpi_error: "CPI mínimo antes de marcar «Error»",
       retraso_error: "Retraso del término para error",
       precio_info: "Desvío de precio que avisa",
       equilibrio_puntos: "Subida del punto de equilibrio que advierte",
@@ -327,7 +327,7 @@ describe("Control de obra", () => {
     expect(within(tabla).getByRole("columnheader", { name: "Origen" })).toBeInTheDocument();
     expect(within(tabla).getAllByText("Valor de referencia")[0]).toBeInTheDocument();
     expect(within(tabla).getByText("Dato del contrato")).toBeInTheDocument();
-    expect(within(tabla).getByText("Límite de atraso (SPI) para error")).toBeInTheDocument();
+    expect(within(tabla).getByText("SPI mínimo antes de marcar «Error»")).toBeInTheDocument();
     expect(within(tabla).getByText("SPI por debajo del cual el retraso es ERROR")).toBeInTheDocument();
     expect(titulosDe(tabla)).toEqual(["0.80", "0"]);
     expect(within(tabla).queryByText("spi_error")).toBeNull();
@@ -461,7 +461,7 @@ describe("Control de obra", () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
     await screen.findByRole("table", { name: "Indicadores de valor ganado" });
-    expect(screen.getByText(/^Corte al 13\/11\/2026 \(día hábil 10\)\. En SPI y CPI, 1,00 o más es favorable; menos de 1,00 indica atraso o sobrecosto\./)).toBeInTheDocument();
+    expect(screen.getByText(/^Corte al 13\/11\/2026 \(día hábil 10\)\. En SPI y CPI, 1,00 o más es favorable; menos de 1,00 indica atraso o sobrecosto\. Estas cifras no incluyen inflación futura\.$/)).toBeInTheDocument();
     expect(screen.getByText(/El costo de 10 USD del 01\/11\/2026/)).toBeInTheDocument();
     await u.click(screen.getByRole("tab", { name: "Recuperación" }));
     const decisiones = await screen.findByRole("table", { name: "Decisiones tomadas" });
@@ -667,6 +667,8 @@ describe("Control de obra", () => {
     const montos = screen.getByRole("table", { name: "Montos de Planificado (PV), ejecutado (EV) y gastado (AC)" });
     expect(within(montos).getByRole("columnheader", { name: "Período" })).toBeInTheDocument();
     expect(within(montos).getByText("1.000,00")).toHaveAttribute("title", "1000.00");
+    // EV y AC no comparten trazo: la leyenda nombra cada uno (pasada goldfish N1.6)
+    expect(screen.getByText("Línea fina: planificado · Línea gruesa: ejecutado (EV) · Línea gruesa punteada: gastado (AC).")).toBeInTheDocument();
   });
 
   test("valor ganado oculta «En la otra moneda» y «Nota» si están vacías en todas las filas y explica la falta de tasa", async () => {
@@ -785,7 +787,7 @@ describe("Control de obra", () => {
       });
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
-    expect(await screen.findByText("Costo final estimado por partida (EAC del sistema): 12.345,67 USD")).toBeInTheDocument();
+    expect(await screen.findByText("Costo final estimado sumando cada partida (EAC): 12.345,67 USD")).toBeInTheDocument();
     expect(screen.getByText("Punto de equilibrio proyectado: 0,7850 (sube 3,5 puntos sobre el base)")).toBeInTheDocument();
   });
 
@@ -977,7 +979,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     const u = montar();
     await screen.findByRole("table", { name: "Parámetros de control" });
     await u.selectOptions(screen.getByLabelText("Parámetro a cambiar"), "spi_error");
-    const campo = screen.getByLabelText("Nuevo valor de Límite de atraso (SPI) para error");
+    const campo = screen.getByLabelText("Nuevo valor de SPI mínimo antes de marcar «Error»");
     expect(campo).toHaveValue("0,80");
     expect(screen.getAllByText(AYUDA_CIFRAS).length).toBeGreaterThan(0);
     await u.click(screen.getByRole("button", { name: "Guardar parámetros" }));
@@ -989,7 +991,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     const u = montar();
     await screen.findByRole("table", { name: "Parámetros de control" });
     await u.selectOptions(screen.getByLabelText("Parámetro a cambiar"), "spi_error");
-    const campo = screen.getByLabelText("Nuevo valor de Límite de atraso (SPI) para error");
+    const campo = screen.getByLabelText("Nuevo valor de SPI mínimo antes de marcar «Error»");
     await u.clear(campo);
     await u.type(campo, "0.85");
     await u.click(screen.getByRole("button", { name: "Guardar parámetros" }));
@@ -1070,8 +1072,8 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("metodo=escalatoria"))).toBe(false);
     await u.clear(screen.getByLabelText("Factor de escalatoria (Km)"));
     await u.type(screen.getByLabelText("Factor de escalatoria (Km)"), "1,05");
-    await u.clear(screen.getByLabelText("Parte fija que no se reajusta (R)"));
-    await u.type(screen.getByLabelText("Parte fija que no se reajusta (R)"), "0,15");
+    await u.clear(screen.getByLabelText("Parte del contrato que no se reajusta (R)"));
+    await u.type(screen.getByLabelText("Parte del contrato que no se reajusta (R)"), "0,15");
     await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
     await waitFor(() =>
       expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("km=1.05&r=0.15"))).toBe(true),

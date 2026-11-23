@@ -476,7 +476,7 @@ describe("RiskRangeMeter: base, P50 y P80 como los manda el servidor", () => {
     expect(barras[1]!.style.inlineSize).toBe("100%");
     // La línea de la base cruza cada pista, para comparar cada escenario contra ella.
     for (const f of filas) expect(f.querySelector<HTMLElement>(".silice-riesgo-medidor__base")!.style.insetInlineStart).toBe("0%");
-    expect(screen.getByText("Cada barra muestra cuánto sube el escenario frente al presupuesto base (la escala no parte de cero).")).toBeInTheDocument();
+    expect(screen.getByText("Cada barra muestra cuánto sube cada costo frente al presupuesto base (la escala no parte de cero).")).toBeInTheDocument();
   });
 
   test("un escenario por debajo de la base va de él a la base, y la escala abarca a los dos", () => {

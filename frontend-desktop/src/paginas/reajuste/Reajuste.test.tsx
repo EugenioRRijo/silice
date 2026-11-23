@@ -133,7 +133,7 @@ describe("Reajuste de precios", () => {
     await u.type(screen.getByLabelText("Inicio del contrato"), "2026-01-15");
     await u.type(screen.getByLabelText("Duración (meses)"), "24");
     // Regla de Eugenio (2026-10-25): coma decimal al escribir; la API recibe «0.10».
-    await u.type(screen.getByLabelText("Parte del contrato que no se reajusta (R, en fracción)"), "0,10");
+    await u.type(screen.getByLabelText("Parte del contrato que no se reajusta (R)"), "0,10");
     await u.type(screen.getByLabelText("Serie, Componentes fila 1"), "FIC-MAT");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.type(screen.getByLabelText("Desde, Períodos fila 1"), "2027-02-01");
@@ -143,12 +143,12 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
-    await u.type(screen.getByLabelText("Parte del contrato que no se reajusta (R, en fracción)"), "0.10");
+    await u.type(screen.getByLabelText("Parte del contrato que no se reajusta (R)"), "0.10");
     expect(
-      screen.getByText(`Ejemplo: 0,10 equivale a 10 % fijo; escriba 0 si se reajusta todo. ${AYUDA_CIFRAS}`),
+      screen.getByText(`Fracción: por ejemplo, 0,10 = 10 % fijo; escriba 0 si se reajusta todo. ${AYUDA_CIFRAS}`),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Cláusula o documento que fija R")).toBeInTheDocument();
-    expect(screen.getByLabelText("Descontar también esa parte fija (R) al calcular la comprobación directa")).toBeInTheDocument();
+    expect(screen.getByLabelText("Descontar también la parte del contrato que no se reajusta (R) al calcular la comprobación directa")).toBeInTheDocument();
     await irA(u, "2. Períodos y lo ejecutado");
     await u.type(screen.getByLabelText("Cantidad, Ejecutado fila 1"), "1.5");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
@@ -158,7 +158,7 @@ describe("Reajuste de precios", () => {
       if (!alerta) throw new Error("sin aviso");
       return alerta;
     });
-    expect(aviso).toHaveTextContent(`Parte del contrato que no se reajusta (R, en fracción): ${MENSAJE_CIFRA}`);
+    expect(aviso).toHaveTextContent(`Parte del contrato que no se reajusta (R): ${MENSAJE_CIFRA}`);
     expect(aviso).toHaveTextContent(`Cantidad, Ejecutado fila 1: ${MENSAJE_CIFRA}`);
     expect(screen.getByLabelText("Cantidad, Ejecutado fila 1")).toHaveAttribute("aria-invalid", "true");
     expect(post("/v1/reajuste/calcular")).toBeUndefined();
@@ -478,7 +478,7 @@ describe("Reajuste de precios", () => {
     await screen.findByLabelText("Versión del contrato");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    const lista = await screen.findByLabelText("Estudio preliminar al que reemplaza este cálculo definitivo (opcional)");
+    const lista = await screen.findByLabelText("Estudio preliminar que este cálculo reemplaza (opcional)");
     expect(within(lista).getByRole("option", { name: "Ninguno" })).toHaveValue("");
     expect(within(lista).getByRole("option", { name: "3 (calculado el 10/02/2027)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Calcular" })).toHaveClass("cds--btn--secondary");

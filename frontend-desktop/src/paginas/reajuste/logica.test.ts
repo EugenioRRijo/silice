@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   armarCuerpo,
+  estadoDelEstudio,
   erroresDeCifras,
   columnasDeResultado,
   filasDeResultado,
@@ -12,6 +13,12 @@ import {
   quitarFilaVacia,
 } from "./logica";
 import { MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
+
+describe("estado del estudio", () => {
+  test("un estado sin traducción se muestra tal cual, sin la palabra «estudio» ni punto final", () => {
+    expect(estadoDelEstudio("borrador")).toBe("Estado: borrador");
+  });
+});
 
 describe("filas editables", () => {
   test("una fila con algun texto tiene datos; en blanco o solo espacios, no", () => {
@@ -103,7 +110,7 @@ describe("armarCuerpo", () => {
       ejecutado: [{ periodo: "1", partida: "A", cantidad: "2.5", fuente: "f" }],
     };
     expect(erroresDeCifras(mal)).toEqual([
-      `Parte del contrato que no se reajusta (R, en fracción): ${MENSAJE_CIFRA}`,
+      `Parte del contrato que no se reajusta (R): ${MENSAJE_CIFRA}`,
       `Peso, Componentes fila 1: ${MENSAJE_CIFRA}`,
       `Cantidad, Ejecutado fila 1: ${MENSAJE_CIFRA}`,
     ]);

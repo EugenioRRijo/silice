@@ -147,10 +147,13 @@ describe("Riesgo de la obra", () => {
     await usuario.selectOptions(await screen.findByLabelText("Cemento asfáltico"), "CEMENTO_ASFALTICO_PPI");
     await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
     const region = await screen.findByRole("region", { name: "Resultado de la proyección" });
-    expect(valorDe(region, "Costo probable (P50, mitad de los escenarios)")).toBe("1.248,72 USD");
-    expect(valorDe(region, "Costo conservador (P80, cubre 8 de cada 10 escenarios)")).toBe("1.302,46 USD");
+    expect(valorDe(region, "Costo probable (P50: no se supera en la mitad de las simulaciones)")).toBe("1.248,72 USD");
+    expect(valorDe(region, "Costo conservador (P80: no se supera en 8 de cada 10 simulaciones)")).toBe("1.302,46 USD");
     expect(valorDe(region, "Reserva recomendada para cubrir el P80")).toBe("302,46 USD");
     expect(valorDe(region, "Total base")).toBe("1.000,00 USD");
+    // Riesgo habla solo de simulaciones (pasada goldfish N1)
+    expect(within(region).getByText(/simulaciones con semilla/)).toBeInTheDocument();
+    expect(within(region).queryByText(/trayectoria|escenario/i)).toBeNull();
     const tabla = within(region).getByRole("table", { name: "Los tres insumos que más empujan" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     expect(filas.map((f) => within(f).getAllByRole("cell").map((c) => c.textContent))).toEqual([
@@ -262,7 +265,7 @@ describe("Riesgo de la obra", () => {
     const trayectorias = screen.getByLabelText("Simulaciones a correr");
     const porCorte = screen.getByLabelText("Simulaciones por fecha probada");
     const meses = screen.getByLabelText("Meses del plazo");
-    const semilla = screen.getByLabelText("Número de repetición (semilla)");
+    const semilla = screen.getByLabelText("Semilla (número para obtener siempre el mismo resultado)");
     const historia = screen.getByLabelText("Meses de historia");
     const proyectar = screen.getByRole("group", { name: "Proyectar" });
     const comprobar = screen.getByRole("group", { name: "Probar precisión con meses pasados" });
@@ -304,10 +307,10 @@ describe("Riesgo de la obra", () => {
     // mientras tanto, el aviso de espera: con 500 trayectorias por corte tarda alrededor de medio minuto
     expect(await screen.findByText(/puede tardar/)).toBeInTheDocument();
     soltar(json(COMPROBACION));
-    const region = await screen.findByRole("region", { name: "Comprobación hacia atrás" });
-    expect(valorDe(region, "Aciertos de la prueba (cobertura)")).toBe("84,21 %");
-    expect(valorDe(region, "Fechas pasadas cubiertas por el P80")).toBe("16 de 19");
-    expect(valorDe(region, "Fechas pasadas probadas")).toBe("19");
+    const region = await screen.findByRole("region", { name: "Prueba con meses pasados" });
+    expect(valorDe(region, "Cobertura (% de meses cubiertos)")).toBe("84,21 %");
+    expect(valorDe(region, "Meses cubiertos por el P80")).toBe("16 de 19");
+    expect(valorDe(region, "Meses probados")).toBe("19");
     expect(
       within(region).getByText(
         /Cerca de 80 % o más indica que la proyección habría cubierto bien las subidas pasadas \(es una referencia histórica, no una garantía\)\./,
@@ -453,10 +456,10 @@ describe("Riesgo de la obra", () => {
     await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
     await screen.findByRole("region", { name: "Resultado de la proyección" });
     await usuario.click(screen.getByRole("button", { name: "Probar precisión con meses pasados" }));
-    await screen.findByRole("region", { name: "Comprobación hacia atrás" });
+    await screen.findByRole("region", { name: "Prueba con meses pasados" });
     await usuario.selectOptions(screen.getByLabelText("Versión"), "VIA-001");
     expect(screen.queryByRole("region", { name: "Resultado de la proyección" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Comprobación hacia atrás" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Prueba con meses pasados" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Descargar el informe de riesgo" })).toBeNull();
   });
 
@@ -555,7 +558,7 @@ describe("Riesgo de la obra", () => {
     montar();
     await usuario.selectOptions(await screen.findByLabelText("Gasoil"), "GASOIL_USD");
     await usuario.click(screen.getByRole("button", { name: "Probar precisión con meses pasados" }));
-    await screen.findByRole("region", { name: "Comprobación hacia atrás" });
+    await screen.findByRole("region", { name: "Prueba con meses pasados" });
     await waitFor(() => expect(guardados()).toHaveLength(1));
     expect(guardados()[0]).toEqual({ proyecto: "Vía Demo", version: "VIA-002", mapa: { Gasoil: "GASOIL_USD" } });
   });
@@ -602,7 +605,7 @@ describe("Riesgo de la obra", () => {
     await waitFor(() => expect(guardados()).toHaveLength(1));
     await usuario.selectOptions(screen.getByLabelText("Cemento asfáltico"), "CEMENTO_ASFALTICO_PPI");
     await usuario.click(screen.getByRole("button", { name: "Probar precisión con meses pasados" }));
-    await screen.findByRole("region", { name: "Comprobación hacia atrás" });
+    await screen.findByRole("region", { name: "Prueba con meses pasados" });
     expect(guardados()).toHaveLength(1);
     soltar(json({ guardado: true }));
     await waitFor(() => expect(guardados()).toHaveLength(2));

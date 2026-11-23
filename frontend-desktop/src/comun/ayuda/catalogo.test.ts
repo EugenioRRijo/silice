@@ -203,5 +203,40 @@ describe("el glosario define bien el CPI y el P50/P80", () => {
     expect(def("p50-p80")).toContain("8 de cada 10");
     expect(def("p50-p80")).not.toContain("no superan el 50 %");
   });
+
+  test("el SPI habla de atraso frente a lo planificado", () => {
+    expect(def("spi")).toContain("atraso frente a lo planificado");
+  });
+});
+
+// Pasada goldfish N1 (2026-11-23): un solo nombre por idea, el que se lee en pantalla.
+describe("el glosario usa los nombres únicos de la pasada goldfish", () => {
+  const termino = (id: string) => GLOSARIO.find((t) => t.id === id)!.termino;
+  const def = (id: string) => GLOSARIO.find((t) => t.id === id)!.definicion;
+
+  test("cada término lleva el nombre que se lee en pantalla", () => {
+    expect(termino("comprobacion-hacia-atras")).toBe("Prueba con meses pasados");
+    expect(termino("incidencia")).toBe("Incidencia en el cambio (%)");
+    expect(termino("inpc")).toBe("Índice Nacional de Precios al Consumidor (INPC)");
+    expect(termino("fcas")).toBe("Factor de costos asociados al salario (FCAS)");
+    expect(termino("simulacion")).toBe("Simulación y semilla");
+  });
+
+  test("P50 y P80 se definen con el texto acordado", () => {
+    expect(def("p50-p80")).toBe(
+      "En Riesgo, P50 es el total que no se supera en la mitad de las simulaciones; P80, el que no se supera en 8 de cada 10. La reserva recomendada es la diferencia entre el total base y el P80.",
+    );
+  });
+
+  test("Riesgo habla solo de simulaciones: ni trayectorias ni escenarios", () => {
+    for (const id of ["simulacion", "p50-p80", "comprobacion-hacia-atras"]) {
+      expect(def(id), id).not.toMatch(/trayectoria|escenario/i);
+    }
+    expect(AYUDA_DE_PANTALLAS.riesgo!.parrafos.join(" ")).not.toMatch(/trayectoria/i);
+  });
+
+  test("MaPreX se presenta como referencia pública de precios en bolívares", () => {
+    expect(def("maprex")).toContain("referencia pública de precios de la construcción en bolívares");
+  });
 });
 

@@ -319,7 +319,7 @@ describe("Versiones: el registro de cambios en el panel", () => {
     const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
-    expect(texto(filas[0]!).slice(2)).toEqual(["Parámetro", "Control de obra: Límite de atraso (SPI) para error", "Límite de atraso (SPI) para error", "0,90", "0,85", "Reunión"]);
+    expect(texto(filas[0]!).slice(2)).toEqual(["Parámetro", "Control de obra: SPI mínimo antes de marcar «Error»", "SPI mínimo antes de marcar «Error»", "0,90", "0,85", "Reunión"]);
     expect(texto(filas[1]!).slice(4)).toEqual(["Ambiente", "A1.2", "Eje B2.5", "Reunión"]);
     expect(texto(filas[2]!).slice(4)).toEqual(["Instantánea", "Catálogo", "Instantánea", "Reunión"]);
   });
