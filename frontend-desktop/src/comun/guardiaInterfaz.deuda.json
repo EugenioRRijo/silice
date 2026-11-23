@@ -1,3 +1,27 @@
 {
-  "conocida": []
+  "_nota": "Deuda de la guardia de interfaz (comun/guardiaInterfaz.test.ts) al 2026-11-23: lo que ya incumplía. Solo puede bajar: al arreglar un caso, se borra su línea.",
+  "conocida": [
+    "siglas | paginas/control/PestanasDeResultados.tsx | Documento de respaldo de Km y R",
+    "siglas | paginas/precios_empresa/CalculadoraFCAS.tsx | Desglose del FCAS",
+    "siglas | paginas/precios_empresa/CalculadoraFCAS.tsx | Parte del FCAS",
+    "siglas | paginas/reajuste/index.tsx | Cláusula o documento que fija R",
+    "vacío | paginas/administracion/index.tsx | \"Su cuenta no tiene permiso para administrar la instalación\"",
+    "vacío | paginas/archivos/index.tsx | {TEXTOS.sinObra}",
+    "vacío | paginas/control/PestanasDeResultados.tsx | \"Aún no se ha tomado ninguna decisión de recuperación\"",
+    "vacío | paginas/entregar/index.tsx | \"Esta obra todavía no tiene versiones\"",
+    "vacío | paginas/escenarios/index.tsx | {SIN_PRESUPUESTOS}",
+    "vacío | paginas/hoja/index.tsx | \"Elija una obra\"",
+    "vacío | paginas/inicio/CarteraYAvance.tsx | {TEXTOS.cartera.noDisponible}",
+    "vacío | paginas/inicio/PanelArenera.tsx | \"Sin datos de la arenera en esta instalación\"",
+    "vacío | paginas/inicio/PanelArenera.tsx | \"Sin datos de la arenera para su cuenta\"",
+    "vacío | paginas/inicio/UltimasAuditorias.tsx | \"Sin historial de auditorías para su cuenta\"",
+    "vacío | paginas/precios_empresa/index.tsx | {SIN_LISTAS}",
+    "vacío | paginas/reajuste/index.tsx | \"La obra no tiene versiones guardadas: guarde la del contrato primero\"",
+    "vacío | paginas/revisar/Paquete.tsx | {SIN_ARCHIVO}",
+    "vacío | paginas/riesgo/RiesgoDeLaObra.tsx | {SIN_OBRA}",
+    "vacío | paginas/simulador/index.tsx | {MENSAJE_SIN_FILAS}",
+    "vacío | paginas/tablero/index.tsx | \"Su cuenta no puede ver el tablero\"",
+    "vacío | paginas/versiones/index.tsx | \"Elija una obra\"",
+    "vacío | paginas/vial/Tramos.tsx | {SIN_OBRA}"
+  ]
 }

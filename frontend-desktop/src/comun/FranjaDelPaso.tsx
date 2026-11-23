@@ -22,7 +22,7 @@ export function FranjaDelPaso({ tipo, texto, accion }: Props) {
     <section aria-label="Siguiente paso" className={falta ? "silice-franja silice-franja--falta" : "silice-franja"}>
       <p className="silice-franja__texto cds--type-body-compact-01">
         {falta && <WarningAltFilled size={16} aria-hidden="true" className="silice-franja__icono" />}
-        <strong>{falta ? "Te falta:" : "Siguiente paso:"}</strong> {texto}
+        <strong>{falta ? "Falta:" : "Siguiente paso:"}</strong> {texto}
       </p>
       {accion && (
         <Button
