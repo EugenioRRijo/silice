@@ -515,15 +515,37 @@ BARRAS_JS = """() => {
   const visible = el => { if (!el) return false; const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
   const caja = r => [r.left, r.top, r.right, r.bottom].map(Math.round);
+  // Un nodo dentro de un hijo «solo para lectores de pantalla» (1 px o con clip-path) no se
+  // ve: su texto conserva el ancho natural y, si se sumara, daría por recortada una etiqueta
+  // cuyo texto visible cabe (medición del 2026-11-22).
+  const oculto = (n, hasta) => {
+    for (let p = n.parentElement; p && p !== hasta; p = p.parentElement) {
+      const s = getComputedStyle(p);
+      const recortado = s.clipPath && s.clipPath !== 'none';
+      if (recortado || p.getBoundingClientRect().width <= 1) return true;
+    }
+    return false;
+  };
+  const anchoDelTextoVisible = el => {
+    const recorrido = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let izq = Infinity, der = -Infinity;
+    for (let n = recorrido.nextNode(); n; n = recorrido.nextNode()) {
+      if (!n.textContent.trim() || oculto(n, el)) continue;
+      const rango = document.createRange();
+      rango.selectNodeContents(n);
+      const r = rango.getBoundingClientRect();
+      if (r.width === 0) continue;
+      izq = Math.min(izq, r.left); der = Math.max(der, r.right);
+    }
+    return der > izq ? der - izq : 0;
+  };
   const recortes = raiz => {
     const salida = [];
     for (const el of raiz.querySelectorAll('*')) {
       if (!visible(el)) continue;
       const cs = getComputedStyle(el);
       if (cs.textOverflow !== 'ellipsis') continue;
-      const rango = document.createRange();
-      rango.selectNodeContents(el);
-      const texto = rango.getBoundingClientRect().width;
+      const texto = anchoDelTextoVisible(el);
       const caja = el.getBoundingClientRect().width;
       // Un texto solo para lectores de pantalla (1 px, con clip-path) no se ve: no cuenta.
       if (caja <= 1 || (cs.clipPath && cs.clipPath !== 'none')) continue;
