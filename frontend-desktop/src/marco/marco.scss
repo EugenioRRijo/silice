@@ -1,3 +1,4 @@
+@use "umbrales" as u;
 @use "@carbon/styles/scss/type";
 
 // Marco de la interfaz (Marco.tsx): barra superior fija (3 rem), barra lateral colapsable y contenido en piedra suave.
@@ -355,5 +356,33 @@
   h1,
   p {
     margin: 0;
+  }
+}
+
+// Con letra Grande o Muy grande y la barra lateral abierta en una tablet, los componentes de Carbon con ancho propio se
+// salían de la página (medición responsive, 2026-11-22). Con letra Normal no cambia nada.
+@include u.con-letra-grande {
+  .silice-pagina {
+    .cds--inline-notification,
+    .cds--actionable-notification {
+      min-inline-size: 0;
+      max-inline-size: 100%;
+    }
+
+    .cds--btn {
+      max-inline-size: 100%;
+      white-space: normal;
+    }
+
+    .cds--data-table-content {
+      max-inline-size: 100%;
+      overflow-x: auto;
+    }
+
+    .cds--structured-list {
+      table-layout: fixed;
+      inline-size: 100%;
+      overflow-wrap: anywhere;
+    }
   }
 }
