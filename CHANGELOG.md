@@ -6,6 +6,17 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+### Cambiado
+- **Front menos genérico y responsive con letra grande** (2026-11-22, rama `feature/ui-aistudio-correcciones`; pedido de
+  Eugenio: «pulas y me des un front menos ia y generico»). Sobre el aspecto de Neon (carbón y dorado), construido por
+  Neon y Hydrogen con revisión de Claude: la entrada sin jerga y en usted; la cortina entre espacios sin vidrio ni sombra
+  (la animación se queda); sin numeración «01 · 02 · 03» ni «Ventana dedicada»; un solo botón principal por zona; plurales
+  reales, «Sin observaciones», conteos con punto de miles y títulos sin punto final; pesos de 600 como máximo, letra mínima
+  de 0,75 rem, radios y espaciados en la rejilla de 4 px. La sección de la Cuenta se llama «Configuración» y es el único
+  lugar del tamaño de letra. Con letra Grande o Muy grande todas las pantallas caben a 768, 1024, 1366 y 1920 px (384
+  mediciones del recorrido automático sin fallos), y el recorrido ya no cuenta como recortado el texto oculto para
+  lectores de pantalla. Backlog de UX en `docs/planes/2026-11-22-backlog-ux.md`.
+
 ### Agregado
 - **Portada independiente, acceso jerárquico y depuración `ola-1121`** (2026-11-21; en `.worktrees/tanda`):
   - **Portada (`GET /`, `api/portada.py`)**: página de inicio autocontenida (HTML5 + CSS3 Carbon g10, cero scripts inline ni URLs externas) con CTA principal **«Descargar el sistema Sílice»** (`#descargar`), bloque de **Ambiente de escritorio propio** y enlace **«Probar inicio de sesión web»** hacia `/app/`.

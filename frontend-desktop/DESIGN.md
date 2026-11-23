@@ -126,9 +126,15 @@ En los textos no se dice «módulo» ni «área».
   «Recorrido» cuando tocan) y el botón de la persona: un enlace a `#/cuenta/preferencias`, con el círculo de iniciales y el
   nombre; con letra Grande o Muy grande, solo el círculo, con el mismo nombre accesible; sin letras en el nombre, el ícono de
   persona. Salir de la sesión está en la Cuenta, no aquí.
-- **Tamaño de letra:** dentro del marco vive **solo en la Cuenta**, «Configuración» (`#/cuenta/preferencias`,
-  `EspacioDeCuenta.tsx`), a un clic del botón de la persona (decisión de Eugenio, 2026-11-04). Antes de entrar en la sesión,
-  la cabecera sin marco de `App.tsx` todavía muestra el control: es la única excepción.
+- **Tamaño de letra:** vive **solo en la Cuenta**, «Configuración» (`#/cuenta/preferencias`, `EspacioDeCuenta.tsx`), a un
+  clic del botón de la persona (decisión de Eugenio, 2026-11-04). Desde el 2026-11-22 tampoco sale en la cabecera de la
+  entrada: no hay excepciones («la letra y el tamaño de letra debe ir UNICAMENTE en la seccion de configuracion»).
+- **Responsive con letra grande** (2026-11-22): toda página (`.silice-pagina`) tiene una sola columna
+  `minmax(0, 1fr)` que encoge con la ventana, y con letra Grande o Muy grande (`con-letra-grande` de `_umbrales.scss`) los
+  avisos, botones, tablas y listas de Carbon no pasan del ancho de la página. Se comprueba con
+  `scripts/recorrido_ux_playwright.py` a 768, 1024, 1366 y 1920 px con las tres letras: 384 mediciones sin fallos.
+- **Sin adornos de plantilla** (pulido unslop, 2026-11-22): sin numeración «01 · 02 · 03» en los espacios, un solo botón
+  principal por zona, pesos de 600 como máximo y nada por debajo de 0,75 rem.
 - **Barra lateral** (`BarraLateral.tsx`): 14,75 rem, fondo `--silice-lateral`. Es fija bajo la barra superior, con su propio
   desplazamiento. Tres zonas, en este orden:
   1. **Vista general**, la primera entrada, con la píldora de pendientes si hay alguno. Es la entrada de la app (véase
