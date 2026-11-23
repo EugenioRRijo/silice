@@ -434,7 +434,7 @@ export function RiskRangeMeter({ puntos, etiqueta = "Rango de exposición de cos
   return (
     <div className="silice-riesgo-medidor" role="group" aria-label={etiqueta}>
       <p className="silice-riesgo-medidor__nota">
-        Cada barra muestra cuánto sube el escenario frente al presupuesto base (la escala no parte de cero).
+        Cada barra muestra cuánto sube cada costo frente al presupuesto base (la escala no parte de cero).
       </p>
       {puntos.map((p) => {
         const hasta = finito(p.valor) ? posicion(p.valor) : null;

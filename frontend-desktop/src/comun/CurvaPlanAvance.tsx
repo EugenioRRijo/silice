@@ -7,8 +7,9 @@ import { TablaDensa } from "./TablaDensa";
 const GraficoCarbon = lazy(() => import("./GraficoCarbon"));
 
 // Curva comun plan / avance / pronostico (tablero y control de obra). El rol decide como se dibuja y no depende solo
-// del color: el plan va en trazo continuo fino, lo real en continuo grueso y el pronostico discontinuo.
-export type RolDeSerie = "plan" | "real" | "pronostico";
+// del color: el plan va en trazo continuo fino, lo ejecutado en continuo grueso, lo gastado en grueso punteado y el
+// pronostico discontinuo.
+export type RolDeSerie = "plan" | "real" | "gastado" | "pronostico";
 
 export interface PuntoDeCurva {
   periodo: string;
@@ -30,13 +31,16 @@ interface Props {
 }
 
 export const TRAZO_DE_PRONOSTICO = "6 4";
-export const GROSOR: Record<RolDeSerie, number> = { plan: 1.5, real: 3, pronostico: 2 };
+export const TRAZO_DE_GASTADO = "1 5";
+export const GROSOR: Record<RolDeSerie, number> = { plan: 1.5, real: 3, gastado: 3, pronostico: 2 };
+const TRAZO: Record<RolDeSerie, string> = { plan: "none", real: "none", gastado: TRAZO_DE_GASTADO, pronostico: TRAZO_DE_PRONOSTICO };
 
-const ORDEN_DE_ROLES: readonly RolDeSerie[] = ["plan", "real", "pronostico"];
+const ORDEN_DE_ROLES: readonly RolDeSerie[] = ["plan", "real", "gastado", "pronostico"];
 
 const LEYENDA_DE_ROL: Record<RolDeSerie, string> = {
   plan: "Línea fina: planificado",
-  real: "Línea gruesa: ejecutado y gastado",
+  real: "Línea gruesa: ejecutado (EV)",
+  gastado: "Línea gruesa punteada: gastado (AC)",
   pronostico: "Línea discontinua: pronóstico",
 };
 
@@ -67,7 +71,9 @@ export function aplicarTrazos(raiz: ParentNode, series: SerieDeCurva[]): void {
     const r = nombre === undefined ? undefined : rol.get(nombre);
     if (!r) return;
     trazo.style.strokeWidth = String(GROSOR[r]);
-    trazo.style.strokeDasharray = r === "pronostico" ? TRAZO_DE_PRONOSTICO : "none";
+    trazo.style.strokeDasharray = TRAZO[r];
+    // El punteado de lo gastado se lee como puntos redondos y no como un guion corto parecido al pronostico.
+    trazo.style.strokeLinecap = r === "gastado" ? "round" : "";
   });
 }
 

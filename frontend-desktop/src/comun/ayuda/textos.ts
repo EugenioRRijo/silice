@@ -144,12 +144,6 @@ export const GLOSARIO: readonly Termino[] = [
       "Método de reajuste de precios que recalcula lo ejecutado usando los precios nuevos de cada insumo en lugar de aplicar índices globales. Sirve para comparar cuánto habría costado la obra a precios actualizados frente a la fórmula de escalatoria.",
   },
   {
-    id: "comprobacion-hacia-atras",
-    termino: "Comprobación hacia atrás",
-    definicion:
-      "Prueba histórica del análisis de riesgo que simula meses pasados para ver cuántas veces la proyección P80 habría cubierto la subida real de precios. Una cobertura cercana al 80 % o más indica que el método habría cubierto bien las variaciones pasadas.",
-  },
-  {
     id: "cotizacion",
     termino: "Cotización",
     definicion:
@@ -204,16 +198,16 @@ export const GLOSARIO: readonly Termino[] = [
       "Dónde va la obra: «En elaboración», «En aprobación» o «Aprobada» según sus versiones y, con la línea base declarada, «En ejecución», o «Atrasada» si su SPI (el índice de plazo del valor ganado) baja del umbral de su control.",
   },
   {
+    id: "fcas",
+    termino: "Factor de costos asociados al salario (FCAS)",
+    definicion:
+      "Lo que se agrega al jornal de la mano de obra por las prestaciones y los demás costos del salario; no se aplica a la mano de obra a destajo. Se escribe como fracción en «Ajustes de costo» (6,00 son unas prestaciones del 600 %), y la calculadora de «Precios de la empresa» lo estima por componentes, pero no lo aplica por sí sola.",
+  },
+  {
     id: "factor-km",
     termino: "Factor de escalatoria (Km)",
     definicion:
       "El multiplicador que resume cuánto subieron los índices de precios entre el mes base del contrato y el mes del corte (por ejemplo, 1,15 equivale a un aumento del 15 %). Se usa en la fórmula de escalatoria para ajustar lo ejecutado.",
-  },
-  {
-    id: "fcas",
-    termino: "FCAS (factor de costos asociados al salario)",
-    definicion:
-      "Lo que se agrega al jornal de la mano de obra por las prestaciones y los demás costos del salario; no se aplica a la mano de obra a destajo. Se escribe como fracción en «Ajustes de costo» (6,00 son unas prestaciones del 600 %), y la calculadora de «Precios de la empresa» lo estima por componentes, pero no lo aplica por sí sola.",
   },
   {
     id: "perfil-libro",
@@ -229,21 +223,21 @@ export const GLOSARIO: readonly Termino[] = [
   },
   {
     id: "incidencia",
-    termino: "Incidencia (%)",
+    termino: "Incidencia en el cambio (%)",
     definicion:
-      "El peso porcentual que tiene un insumo o una partida en el cambio total del presupuesto al actualizar precios o probar un escenario. Le muestra en qué pocos renglones se concentra casi toda la variación del costo.",
+      "El peso porcentual que tiene un insumo o una partida en el cambio total del presupuesto al actualizar precios o probar un escenario. Le muestra en qué pocos insumos o partidas se concentra casi toda la variación del costo.",
+  },
+  {
+    id: "inpc",
+    termino: "Índice Nacional de Precios al Consumidor (INPC)",
+    definicion:
+      "El índice que publica el BCV y mide la variación general de los precios en el tiempo. Sílice lo utiliza para calcular el reajuste por escalatoria y simular el riesgo de variación de precios.",
   },
   {
     id: "indices-bcv",
     termino: "Índices y tasa del BCV",
     definicion:
       "Las cifras del Banco Central de Venezuela que usa Sílice: la tasa del dólar, para convertir entre Bs y USD, y el INPC y otras series, para el reajuste y el riesgo. Las importa quien administra en «Índices del BCV».",
-  },
-  {
-    id: "inpc",
-    termino: "INPC",
-    definicion:
-      "El Índice Nacional de Precios al Consumidor publicado por el BCV, que mide la variación general de los precios en el tiempo. Sílice lo utiliza para calcular el reajuste por escalatoria y simular el riesgo de variación de precios.",
   },
   {
     id: "insumo",
@@ -291,7 +285,7 @@ export const GLOSARIO: readonly Termino[] = [
     id: "maprex",
     termino: "MaPreX",
     definicion:
-      "La referencia externa de precios de la construcción que Sílice usa para contrastar: la lista de la empresa se revisa contra ella y una carpeta sin lista para armar puede crear la suya a partir de ella.",
+      "La referencia pública de precios de la construcción en bolívares que Sílice usa para contrastar: la lista de la empresa se revisa contra ella y una carpeta sin lista para armar puede crear la suya a partir de ella.",
   },
   {
     id: "obra",
@@ -303,7 +297,7 @@ export const GLOSARIO: readonly Termino[] = [
     id: "p50-p80",
     termino: "P50 y P80",
     definicion:
-      "En Riesgo, P50 es el total que no se supera en la mitad de las simulaciones de los precios; P80, el que no se supera en 8 de cada 10. La «Reserva recomendada para cubrir el P80» es lo que va del total base al P80.",
+      "En Riesgo, P50 es el total que no se supera en la mitad de las simulaciones; P80, el que no se supera en 8 de cada 10. La reserva recomendada es la diferencia entre el total base y el P80.",
   },
   {
     id: "paquete",
@@ -334,6 +328,12 @@ export const GLOSARIO: readonly Termino[] = [
     termino: "Procura",
     definicion:
       "El registro de las compras y llegadas de materiales o equipos a la obra, con su precio real y fecha. Permite usar esos precios reales en Control de obra para distinguir si un sobrecosto se debe a subidas de precio o a mayor consumo.",
+  },
+  {
+    id: "comprobacion-hacia-atras",
+    termino: "Prueba con meses pasados",
+    definicion:
+      "La comprobación de Riesgo que repite la proyección desde meses pasados, solo con la historia anterior a cada uno, para ver cuántas veces el P80 habría cubierto la subida real de precios. Una cobertura (% de meses cubiertos) cercana al 80 % o más indica que el método habría cubierto bien las variaciones pasadas.",
   },
   {
     id: "punto-de-equilibrio",
@@ -373,15 +373,15 @@ export const GLOSARIO: readonly Termino[] = [
   },
   {
     id: "simulacion",
-    termino: "Simulación (trayectorias y semilla)",
+    termino: "Simulación y semilla",
     definicion:
-      "En Riesgo de la obra, cada trayectoria es un escenario posible de cómo pueden subir los precios en el futuro; correr unas 2.000 da resultados estables. La semilla es el número que fija la secuencia al azar para que usted obtenga exactamente el mismo resultado si repite el cálculo.",
+      "En Riesgo de la obra, cada simulación es un camino posible de los precios en los meses que vienen; correr unas 2.000 da resultados estables. La semilla es el número que fija la secuencia al azar para que usted obtenga exactamente el mismo resultado si repite el cálculo.",
   },
   {
     id: "spi",
     termino: "SPI (índice de plazo)",
     definicion:
-      "Mide el ritmo de avance físico de la obra frente al cronograma planificado (EV entre PV). Un valor de 1,00 o más es favorable; por debajo de 1,00 indica que la obra lleva atraso.",
+      "Mide el ritmo de avance físico de la obra frente al cronograma planificado (EV entre PV). Un valor de 1,00 o más es favorable; por debajo de 1,00 indica atraso frente a lo planificado.",
   },
   {
     id: "tramo",
@@ -655,7 +655,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
   riesgo: {
     titulo: "Riesgo de la obra",
     parrafos: [
-      "Cuánto puede subir el presupuesto si los precios se mueven como en los meses pasados: «Proyectar» simula muchas trayectorias y da el P50, el P80 y la reserva para cubrir el P80. «Probar precisión con meses pasados» mide cuántas veces acertó esa cuenta en el pasado.",
+      "Cuánto puede subir el presupuesto si los precios se mueven como en los meses pasados: «Proyectar» corre muchas simulaciones y da el P50, el P80 y la reserva para cubrir el P80. «Probar precisión con meses pasados» mide cuántas veces acertó esa cuenta en el pasado.",
       "Si a una serie le falta historia, el aviso la nombra; quien administra los precios la carga en «Índices del BCV» (sección «Series del riesgo vial»).",
       "Sílice recuerda en la obra la serie que eligió para cada insumo cuando «Proyectar» o «Probar precisión con meses pasados» sale bien. Al volver, el selector viene con lo último que usó en esa versión o, si la versión no tiene nada propio, en otra versión de la obra, y la nota lo dice; lo que ya no vale (un insumo que ya no está o una serie que ya no se ofrece) no se precarga y se avisa.",
     ],

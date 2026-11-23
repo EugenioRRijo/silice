@@ -360,12 +360,12 @@ function Formulario({
                   </div>
                 </fieldset>
                 <fieldset className="silice-reajuste__grupo">
-                  <legend className="cds--type-label-01">Parte que no se reajusta y fuentes</legend>
+                  <legend className="cds--type-label-01">Parte del contrato que no se reajusta (R) y fuentes</legend>
                   <div className="silice-reajuste__rejilla">
                     <CampoTexto
                       id="rj-r"
                       labelText={ROTULO_R}
-                      helperText={`Ejemplo: 0,10 equivale a 10 % fijo; escriba 0 si se reajusta todo. ${AYUDA_CIFRAS}`}
+                      helperText={`Fracción: por ejemplo, 0,10 = 10 % fijo; escriba 0 si se reajusta todo. ${AYUDA_CIFRAS}`}
                       invalid={revisar && errorDeCifra(form.clausula.r) !== null}
                       invalidText={(revisar && errorDeCifra(form.clausula.r)) || undefined}
                       value={form.clausula.r}
@@ -377,7 +377,7 @@ function Formulario({
                   </div>
                   <Checkbox
                     id="rj-r-comprobacion"
-                    labelText="Descontar también esa parte fija (R) al calcular la comprobación directa"
+                    labelText="Descontar también la parte del contrato que no se reajusta (R) al calcular la comprobación directa"
                     checked={form.clausula.r_en_comprobacion === "si"}
                     onChange={(_, { checked }) => campo("r_en_comprobacion", checked ? "si" : "no")}
                   />
@@ -499,7 +499,7 @@ function Formulario({
             <CampoTexto id="rj-estudio-fuente" labelText="Fuente del estudio" value={fuente} onChange={(e) => setFuente(e.target.value)} />
             <CampoTexto id="rj-estudio-responsable" labelText="Responsable del estudio" helperText="En blanco, su nombre de usuario." value={responsable} onChange={(e) => setResponsable(e.target.value)} />
             {calculo.estado === "cerrado" && calculo.parciales.length > 0 && (
-              <Select id="rj-reemplaza" labelText="Estudio preliminar al que reemplaza este cálculo definitivo (opcional)" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
+              <Select id="rj-reemplaza" labelText="Estudio preliminar que este cálculo reemplaza (opcional)" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
                 <SelectItem value="" text="Ninguno" />
                 {calculo.parciales.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechaEsVe(p.fecha_calculo)})`} />

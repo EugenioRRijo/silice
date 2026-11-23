@@ -100,7 +100,7 @@ export function BarraDeCorte({
           <CampoTexto
             id="corte-km"
             labelText="Factor de escalatoria (Km)"
-            helperText="Relación de índices entre el mes base y el corte; ej. 1,15 = +15 %"
+            helperText="Relación de índices entre el mes base y el corte; por ejemplo, 1,15 = 15 % más"
             invalid={errores.km !== null}
             invalidText={errores.km ?? undefined}
             value={precios.km}
@@ -108,7 +108,7 @@ export function BarraDeCorte({
           />
           <CampoTexto
             id="corte-r"
-            labelText="Parte fija que no se reajusta (R)"
+            labelText="Parte del contrato que no se reajusta (R)"
             helperText="Fracción entre 0 y 1; escriba 0 si no aplica"
             invalid={errores.r !== null}
             invalidText={errores.r ?? undefined}
@@ -152,7 +152,7 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
   return (
     <>
       <p className="silice-control__nota cds--type-helper-text-01">
-        {`Corte al ${fechaDeRanura(calculo.corte ?? "")} (día hábil ${calculo.dia}). En SPI y CPI, 1,00 o más es favorable; menos de 1,00 indica atraso o sobrecosto. Sin proyectar inflación futura.`}
+        {`Corte al ${fechaDeRanura(calculo.corte ?? "")} (día hábil ${calculo.dia}). En SPI y CPI, 1,00 o más es favorable; menos de 1,00 indica atraso o sobrecosto. Estas cifras no incluyen inflación futura.`}
       </p>
       {calculo.costos_sin_tasa.map((texto) => (
         <InlineNotification key={texto} kind="warning" lowContrast hideCloseButton role="status" title={texto} />
@@ -176,7 +176,7 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
               { nombre: "Ejecutado (EV)", rol: "real", puntos: curva.map((p) => ({ periodo: p.periodo, valor: p.ev })) },
               {
                 nombre: "Gastado (AC)",
-                rol: "real",
+                rol: "gastado",
                 puntos: curva.flatMap((p) => (p.ac === null ? [] : [{ periodo: p.periodo, valor: p.ac }])),
               },
             ]}
@@ -281,7 +281,7 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
             <li>{`Fin estimado por ritmo global (SPI): ${t.indice}`}</li>
             <li>{`Fin estimado según avance de cada partida: ${t.reproyectado}`}</li>
             <li>{`Término del plan base: ${t.plan_base}`}</li>
-            <li>{`Costo final estimado por partida (EAC del sistema): ${formatoMontoEsVe(t.eac_sistema)}`}</li>
+            <li>{`Costo final estimado sumando cada partida (EAC): ${formatoMontoEsVe(t.eac_sistema)}`}</li>
           </ul>
         )}
         {calculo.motivo_termino && <p className="silice-control__nota cds--type-helper-text-01">{calculo.motivo_termino}</p>}
