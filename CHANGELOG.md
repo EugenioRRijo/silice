@@ -7,6 +7,12 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **Herramienta local para medir la auditoría de un libro** (2026-11-23; sin fusionar). `scripts/medir_auditoria_libro.py`
+  aplica el protocolo del anteproyecto v8 (§8) y no forma parte del producto. `clave` escribe la clave de la siembra,
+  `exportar` audita un libro con `procesar_libro` y saca los hallazgos a una planilla para marcar (Verdadero o Falso, más
+  la hoja «Se le escaparon») y `calcular` da la precisión, la detección de lo sembrado, la exhaustividad aproximada y el
+  kappa de Cohen entre dos evaluadores. Se niega a escribir dentro del repositorio y a sobrescribir una planilla. El
+  resumen sale sin celdas ni descripciones. Protocolo en `docs/tesis/2026-11-23-protocolo-medicion-auditoria.md`.
 - **Sprint 1120b: el mapa de series de Riesgo se guarda y el desperdicio dice quién lo guardó** (2026-11-20; sin fusionar).
   Riesgo recuerda por versión la serie que mueve cada insumo: al guardar un mapa propio se usa la vez siguiente; sin mapa
   propio toma el de otra versión de la misma obra, con una nota. Solo una cuenta con permiso de Riesgo lo guarda. En el
