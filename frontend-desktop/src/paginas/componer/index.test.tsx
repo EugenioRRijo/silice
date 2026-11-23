@@ -405,6 +405,18 @@ describe("Componer una partida", () => {
     await waitFor(() => expect(plegado(screen.getByRole("region", { name: "Parámetros del precio unitario" }))).toBe(false), ESPERA);
   });
 
+  // Ficha de Componer, lote 2: las ayudas llegan a los campos; el ejemplo con cifra es de la partida parecida real.
+  test("rendimiento, condiciones e insumos traen su ayuda, y al escribir la descripción el ejemplo es de la partida parecida", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    expect(screen.getByText("Cuánto de esta partida hace la cuadrilla en un día de trabajo.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Condiciones del rendimiento")).toHaveAccessibleDescription(/^Obligatorio\. .*por ejemplo/);
+    expect(screen.getByText(/^En «Consumo por unidad» escriba cuánto de cada insumo/)).toBeInTheDocument();
+    await usuario.type(screen.getByLabelText("Unidad"), "m2");
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro");
+    expect(await screen.findByText(/Por ejemplo, la partida parecida FIC-009 \(Muro ficticio\) rinde 8,00 m² por día\.$/, {}, ESPERA)).toBeInTheDocument();
+  });
+
   test("sin advertencia de rendimiento la justificación viaja nula", async () => {
     const usuario = userEvent.setup();
     montar();
