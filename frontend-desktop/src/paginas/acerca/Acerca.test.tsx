@@ -142,7 +142,7 @@ describe("Acerca de Sílice", () => {
         "Auditar un libro",
       ]);
       const glosario = screen.getByRole("region", { name: "Glosario" });
-      expect(within(glosario).getByText("FCAS (factor de costos asociados al salario)")).toBeInTheDocument();
+      expect(within(glosario).getByText("Factor de costos asociados al salario (FCAS)")).toBeInTheDocument();
     });
 
     test("«Empieza aquí» explica la primera vez: el código de instalación, la cuenta del administrador y cómo recuperarla", async () => {
@@ -172,7 +172,7 @@ describe("Acerca de Sílice", () => {
       const u = userEvent.setup();
       fetchFalso.mockResolvedValue(json(DATOS));
       montar({ en: "/cuenta/ayuda?tema=glosario-fcas" });
-      const termino = await screen.findByText("FCAS (factor de costos asociados al salario)");
+      const termino = await screen.findByText("Factor de costos asociados al salario (FCAS)");
       await waitFor(() => expect(termino).toHaveFocus());
       const indice = screen.getByRole("navigation", { name: "En esta ayuda" });
       await u.click(within(indice).getByRole("link", { name: "Guías por tarea" }));

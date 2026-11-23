@@ -1,9 +1,15 @@
 # Pasada goldfish (lotes N1 y N2): lo que un recién llegado aún no entiende
 
-> **Estado (2026-11-23):** pendiente. Los créditos de Gemini se agotaron antes de construirla (error 429). Claude
-> corrigió ya los dos errores de fondo del glosario (N1, puntos 1 y 2: el CPI y el P50/P80, commit `5383c750`); en
-> pantalla falta aplicar a Riesgo el texto nuevo de P50/P80. Todo lo demás está por hacer. Para retomarlo, dárselo
-> tal cual a Neon (N1) y Hydrogen (N2) con la skill `constructor-gemini`.
+> **Estado (2026-11-23): HECHA por Claude** (los créditos de Gemini seguían agotados, error 429 en Neon, Hydrogen y
+> Flash). N1: `527df0aa` (rojo) y `e52b5d1d` (verde); N2: `2adfcc2f` (rojo) y `a3dff1c9` (verde). Tres textos se
+> apartan del plan a propósito:
+> - **N1.6 (curva):** EV y AC compartían el rol `real` y el mismo trazo; AC tiene ahora su rol `gastado` (grueso
+>   punteado, `TRAZO_DE_GASTADO`) y la leyenda nombra cada serie.
+> - **N2.3 (frentes):** el aviso dice «Las partidas que salen del espacio de la obra no admiten frente a mano», no «las
+>   partidas creadas en la obra»: las que no admiten frente son las del espacio, y las propias sí lo admiten.
+> - **N2.8 y N2.10:** «Descargar la clave pública» se queda igual, porque con «clave de firma» parecería que se descarga
+>   la clave privada. El aviso de 20 MB queda como «El archivo pesa más de 20 MB, el máximo que se puede subir.», sin
+>   «divídalo», porque una carpeta `.db` no se puede dividir.
 
 
 Activa `.agents/skills/constructor-gemini/SKILL.md` (sin comandos, solo tu lote, TDD, informe). Rama

@@ -17,9 +17,20 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   Bs/USD) y el nombre de cada regla en los hallazgos (`nombre_regla`, `aplicacion/nombres_reglas.py`); el código de una
   regla solo se muestra junto a su nombre. Las tareas rápidas 1 a 15 del backlog de UX; «Plan a la fecha» bajo el
   anillo de avance; los mensajes de tamaño dicen «20 MB». Un revisor goldfish (lectura en frío) encontró dos
-  definiciones al revés en el glosario (CPI y P50/P80), ya corregidas; el resto de su pasada queda en
-  `docs/planes/2026-11-23-pasada-goldfish.md` (los créditos de Gemini se agotaron). Front completo: 4.918 pruebas en
-  verde; recorrido responsive: 384 mediciones sin fallos.
+  definiciones al revés en el glosario (CPI y P50/P80), ya corregidas. Claude hizo el resto de esa pasada (lotes N1 y N2
+  de `docs/planes/2026-11-23-pasada-goldfish.md`; los créditos de Gemini se agotaron) para dejar un solo nombre por
+  idea:
+  - Riesgo habla solo de «simulaciones», y su comprobación se llama «Prueba con meses pasados».
+  - «Incidencia en el cambio (%)» en Actualizar precios y en Escenarios.
+  - «SPI/CPI mínimo antes de marcar «Error»».
+  - «Parte del contrato que no se reajusta (R)».
+  - «Código de verificación de la clave (SHA-256)».
+  - «Fecha de la revisión» en el Visor.
+  - El reparto de cantera es «en proporción a las toneladas producidas».
+  - En la curva del valor ganado, lo gastado (AC) va con su propio trazo, grueso y punteado, y ya no se confunde con lo
+    ejecutado (EV).
+
+  Front completo: 4.927 pruebas en verde; recorrido responsive: 384 mediciones sin fallos.
 - **Front menos genérico y responsive con letra grande** (2026-11-22, rama `feature/ui-aistudio-correcciones`; pedido de
   Eugenio: «pulas y me des un front menos ia y generico»). Sobre el aspecto de Neon (carbón y dorado), construido por
   Neon y Hydrogen con revisión de Claude: la entrada sin jerga y en usted; la cortina entre espacios sin vidrio ni sombra
