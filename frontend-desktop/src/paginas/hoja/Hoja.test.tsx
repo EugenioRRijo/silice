@@ -137,6 +137,7 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Presupuesto" })).toBeInTheDocument();
     // F4, baja 8: ya no se manda al «selector de obra de la cabecera» (no existe; dentro de una obra siempre hay obra).
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
+    expect(screen.getByText("Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 

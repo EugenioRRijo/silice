@@ -13,6 +13,7 @@ import { PAGINAS } from "../../shell/rutas";
 import type { PaginaDef } from "../../shell/rutas";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
+import { UltimasAuditorias } from "./UltimasAuditorias";
 
 // F6, T8: la Vista general (`#/inicio/general`), dentro del marco de verdad y con la API de mentira. Las respuestas
 // tienen la forma de `GET /v1/obras/resumen/todas` (T7) y de `GET /v1/obras/pendientes/todas`; la interfaz solo las
@@ -778,5 +779,15 @@ describe("Vista general: los lanzadores de los espacios", () => {
     const lanzadores = await bloque("Herramientas de la empresa");
     await waitFor(() => expect(within(lanzadores).queryByRole("link", { name: "Costos de producción" })).toBeNull());
     expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toBeInTheDocument();
+  });
+});
+
+describe("Últimas auditorías: sin permiso dice a quién pedirlo", () => {
+  test("un 403 nombra los papeles que ven las auditorías guardadas", () => {
+    render(<UltimasAuditorias carga={{ estado: "sin_permiso", error: null }} desde="vista-general" />);
+    expect(screen.getByText("Sin historial de auditorías para su cuenta")).toBeInTheDocument();
+    expect(
+      screen.getByText("Ver las auditorías guardadas pide el papel «arma presupuestos» o «revisa paquetes»: pídaselo a quien administra Sílice."),
+    ).toBeInTheDocument();
   });
 });

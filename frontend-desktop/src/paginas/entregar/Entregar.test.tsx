@@ -144,6 +144,7 @@ describe("Entregar paquete", () => {
     versiones = () => json([]);
     montar();
     expect(await screen.findByText("Esta obra todavía no tiene versiones")).toBeInTheDocument();
+    expect(screen.getByText(/Guarde su primera versión en la sección «Presupuesto» de esa obra/)).toBeInTheDocument();
   });
 
   test("hallazgos_total se formatea en es-VE con silice-cifra", async () => {

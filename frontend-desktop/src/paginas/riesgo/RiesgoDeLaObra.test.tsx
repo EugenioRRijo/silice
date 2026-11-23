@@ -136,6 +136,19 @@ describe("Riesgo de la obra", () => {
     fijarCsrf(null);
   });
 
+  test("sin obra abierta dice dónde abrirla y no pide nada", () => {
+    render(
+      <ContextoAplicacion.Provider value={{ sesion: ANA, proyecto: null, nombreProyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar }}>
+        <MemoryRouter>
+          <RiesgoDeLaObra />
+        </MemoryRouter>
+      </ContextoAplicacion.Provider>,
+    );
+    expect(screen.getByText("Abra una obra para ver el riesgo de precios de su presupuesto.")).toBeInTheDocument();
+    expect(screen.getByText("Las obras están en «Obras» de la barra lateral; también puede buscarla con Ctrl+K.")).toBeInTheDocument();
+    expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
   test("tiene un solo h1 y ofrece la fecha de la línea base", async () => {
     montar();
     expect(screen.getByRole("heading", { level: 1, name: "Riesgo de la obra" })).toBeInTheDocument();

@@ -198,6 +198,7 @@ describe("Precios de la empresa", () => {
     expect(screen.getByLabelText("Fecha de la lista")).toHaveValue(hoyIso());
     expect(screen.getByLabelText("Moneda de la lista")).toHaveValue("");
     expect(screen.getByText("Todavía no hay listas de empresa en esta carpeta.")).toBeInTheDocument();
+    expect(screen.getByText(/Cree una arriba, en «La lista de la empresa», con «Crear la lista de la empresa»/)).toBeInTheDocument();
   });
 
   test("sin listas de precios en el caso no ofrece el formulario", async () => {

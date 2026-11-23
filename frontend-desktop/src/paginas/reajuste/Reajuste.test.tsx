@@ -175,6 +175,7 @@ describe("Reajuste de precios", () => {
     contexto = () => json({ ...CONTEXTO, versiones: [] });
     montar();
     expect(await screen.findByText("La obra no tiene versiones guardadas: guarde la del contrato primero")).toBeInTheDocument();
+    expect(screen.getByText(/Guárdela en la sección «Presupuesto» de la obra, con «Guardar primera versión…»/)).toBeInTheDocument();
   });
 
   test("arranca con la versión más antigua, la cláusula, los componentes y las revaloradas", async () => {

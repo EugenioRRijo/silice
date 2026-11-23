@@ -200,6 +200,7 @@ describe("Administracion: Cuentas y Accesos", () => {
     montar({ ...SESION, acciones: [] });
     expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.getByText("Su cuenta no tiene permiso para administrar la instalación")).toBeInTheDocument();
+    expect(screen.getByText(/pídale el cambio que necesita, o que le dé a su cuenta el papel «administra la instalación»/)).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
@@ -747,6 +748,7 @@ describe("Administracion: Carpetas de trabajo", () => {
     montarConCarpetas(SESION);
     expect(screen.queryByRole("list", { name: "Carpetas de trabajo de la instalación" })).not.toBeInTheDocument();
     expect(screen.getByText("Su cuenta no tiene permiso para administrar la instalación")).toBeInTheDocument();
+    expect(screen.getByText(/pídale el cambio que necesita, o que le dé a su cuenta el papel «administra la instalación»/)).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 });

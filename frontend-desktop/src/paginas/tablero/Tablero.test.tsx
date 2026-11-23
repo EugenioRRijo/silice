@@ -400,6 +400,7 @@ describe("Tablero de la obra", () => {
     fetchFalso.mockImplementation(async () => json({ detalle: "no" }, 403));
     montar("OB-S2");
     expect(await screen.findByText("Su cuenta no puede ver el tablero")).toBeInTheDocument();
+    expect(screen.getByText("Ver el tablero pide el papel «arma presupuestos» o «revisa paquetes»: pídaselo a quien administra Sílice.")).toBeInTheDocument();
   });
 
   test("404 dice que el proyecto no existe en el caso", async () => {

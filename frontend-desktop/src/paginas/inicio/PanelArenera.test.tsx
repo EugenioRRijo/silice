@@ -53,3 +53,17 @@ describe("PanelArenera: la existencia y la mínima en la misma escala", () => {
     expect(celdas[2]!.textContent).toBe("40 t");
   });
 });
+
+describe("PanelArenera: sin permiso dice a quién pedirlo", () => {
+  test("un 403 nombra los papeles que ven la arenera", () => {
+    render(
+      <MemoryRouter>
+        <PanelArenera carga={{ estado: "sin_permiso", error: null }} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Sin datos de la arenera para su cuenta")).toBeInTheDocument();
+    expect(
+      screen.getByText("Ver la arenera pide el papel «arma presupuestos» o «administra la instalación»: pídaselo a quien administra Sílice."),
+    ).toBeInTheDocument();
+  });
+});

@@ -908,6 +908,8 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
     await screen.findByText(/Las opciones se calculan a pedido/);
     expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("recuperacion"))).toBe(false);
+    expect(screen.getByText("Aún no se ha tomado ninguna decisión de recuperación")).toBeInTheDocument();
+    expect(screen.getByText("Pulse «Calcular opciones», arriba, y elija una con «Elegir y crear la versión».")).toBeInTheDocument();
     await u.type(screen.getByLabelText(/Día hábil objetivo/), "11");
     await u.click(screen.getByRole("button", { name: "Calcular opciones" }));
     expect(await screen.findByRole("table", { name: "Opciones de recuperación" })).toBeInTheDocument();
@@ -968,6 +970,7 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
     await u.click(await screen.findByRole("button", { name: "Calcular opciones" }));
     expect(await screen.findByText(/pero no elegir una/)).toBeInTheDocument();
+    expect(screen.getByText("Las decide quien arma la obra; cuando elija una, aparecerá aquí.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Elegir y crear la versión" })).toBeNull();
   });
 });
