@@ -146,7 +146,7 @@ describe("Resumen de la obra abierta", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
-    expect(franja()).toHaveTextContent("Te falta: Faltan 2 precios");
+    expect(franja()).toHaveTextContent("Falta: Faltan 2 precios");
     const boton = within(franja()).getByRole("button", { name: "Abrir el presupuesto" });
     await u.click(boton);
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/3/presupuesto");
@@ -155,7 +155,7 @@ describe("Resumen de la obra abierta", () => {
   it("una obra sin versiones dice «Te falta» (borrador en blanco)", async () => {
     montar({ ficha: { estado: "lista", obra: { ...FILA, version: null, total: null, que_pasa: "Sin partidas" } } });
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
-    expect(franja()).toHaveTextContent("Te falta: Sin partidas");
+    expect(franja()).toHaveTextContent("Falta: Sin partidas");
     expect(screen.getByText("Sin versión todavía")).toBeInTheDocument();
   });
 
@@ -202,7 +202,7 @@ describe("Resumen de la obra abierta", () => {
       ficha: { estado: "lista", obra: { ...FILA, siguiente: { texto: "Registrar el avance", pagina: "control" } } },
     });
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
-    expect(franja()).toHaveTextContent("Te falta: Faltan 2 precios");
+    expect(franja()).toHaveTextContent("Falta: Faltan 2 precios");
     expect(within(franja()).queryByRole("button")).toBeNull();
   });
 
@@ -218,7 +218,7 @@ describe("Resumen de la obra abierta", () => {
     const tramos = { estado: "lista" as const, obra: { ...FILA, siguiente: { texto: "Ver los tramos", pagina: "tramos" } } };
     const { unmount } = montar({ ficha: tramos, apagados: ["vial"] });
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
-    expect(franja()).toHaveTextContent("Te falta: Faltan 2 precios");
+    expect(franja()).toHaveTextContent("Falta: Faltan 2 precios");
     expect(within(franja()).queryByRole("button")).toBeNull();
     unmount();
     montar({ ficha: tramos, apagados: ["produccion"] });
@@ -293,7 +293,7 @@ describe("una lectura del resumen por obra abierta", () => {
         </ContextoAplicacion.Provider>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(franja()).toHaveTextContent("Te falta: Faltan 2 precios"));
+    await waitFor(() => expect(franja()).toHaveTextContent("Falta: Faltan 2 precios"));
     expect(llamadas.filter((c) => c === "GET /v1/obras/resumen")).toHaveLength(1);
     expect(screen.queryByText("Puente Sur")).toBeNull();
     expect(screen.queryByText("Depósito Este")).toBeNull();

@@ -346,7 +346,7 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
     await screen.findByRole("tab", { name: "Espacio y metrajes" });
     await irA(u, "Archivos y planos");
     const franja = await screen.findByRole("region", { name: "Siguiente paso" });
-    expect(franja).toHaveTextContent("Te falta: subir el plano o describir el espacio");
+    expect(franja).toHaveTextContent("Falta: subir el plano o describir el espacio");
     expect(principales()).toEqual(["Subir plano o cómputo"]);
     expect(within(franja).getByRole("button", { name: "Subir plano o cómputo" })).toBeInTheDocument();
     await u.click(within(franja).getByRole("button", { name: "Subir plano o cómputo" }));
