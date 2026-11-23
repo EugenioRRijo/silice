@@ -19,4 +19,18 @@ describe("Estado de una fila del presupuesto", () => {
     render(<EstadoDeFila estado={{ severidad: null, texto: "Cuadra con su regla (7.5 m2)" }} />);
     expect(screen.getByText("Cuadra con su regla (7,5 m2)")).toBeInTheDocument();
   });
+
+  test("la severidad la dice el ícono: el texto no la repite en mayúsculas y el aviso del núcleo se lee llano", () => {
+    render(
+      <EstadoDeFila
+        estado={{
+          severidad: "ADVERTENCIA",
+          texto: "ADVERTENCIA: la cantidad de S1-R01 (1000 m3) es manual y no declara la regla que la produjo: no es derivable ni reproducible",
+        }}
+      />,
+    );
+    expect(screen.getByText("Advertencia")).toBeInTheDocument();
+    expect(screen.getByText(/^La cantidad de S1-R01 \(1\.000 m³\) se escribió a mano/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/ADVERTENCIA|derivable|reproducible/);
+  });
 });
