@@ -253,5 +253,12 @@ describe("componentes de Carbon dentro de una página con letra grande", () => {
     expect(bloque).toMatch(/\.cds--data-table-content[^{]*\{[^}]*overflow-x:\s*auto/);
     expect(bloque).toMatch(/\.cds--structured-list[^{-]*\{[^}]*table-layout:\s*fixed/);
   });
+
+  test("los fieldset encogen y las palabras largas (rutas, nombres de archivo) parten línea", () => {
+    expect(bloque).toMatch(/fieldset[^{]*\{[^}]*min-inline-size:\s*0/);
+    expect(bloque).toMatch(/overflow-wrap:\s*anywhere/);
+    const pagina = bloqueDe(bloque, ".silice-pagina {") ?? "";
+    expect(pagina.slice(0, pagina.indexOf("."))).toMatch(/overflow-wrap:\s*anywhere/);
+  });
 });
 
