@@ -70,6 +70,9 @@ function ContenidoParametros({ id, rev, vista, alAusente, alAceptar, alRecargarB
       <AyudaDePestana id="ajustes" puedeEditar={puedeEditar} />
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir} />}
+      <p className="cds--type-helper-text-01">
+        FCAS (factor de costos asociados al salario), Administración y Utilidad se escriben como fracción decimal (6,00 = 600 %; 0,15 = 15 %). Cambiarlos recalcula todos los APU.
+      </p>
       <div className="silice-hoja__campos">
         {vista.campos.map((c) => (
           <CampoDeCelda

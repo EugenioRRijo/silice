@@ -43,6 +43,9 @@ export default function PaginaAuditoria() {
   return (
     <div className="silice-inicio silice-pagina">
       <h1 className="cds--type-heading-04">Inicio de auditoría</h1>
+      <p className="silice-inicio__nota cds--type-body-compact-01">
+        Suba un presupuesto en Excel para recalcular sus partidas y detectar errores
+      </p>
 
       {puedeAuditar ? (
         <section className="silice-inicio__bloque" aria-labelledby="auditoria-excel">

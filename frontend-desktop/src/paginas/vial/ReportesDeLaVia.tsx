@@ -4,7 +4,7 @@ import { DescargaArchivo } from "../../comun/DescargaArchivo";
 // de dónde sale cada cifra y propone el nombre del archivo. La pantalla solo pide el de la obra y la versión que se ven.
 export const REPORTES_DE_LA_VIA = [
   { tipo: "computos", etiqueta: "Cómputos por tramo" },
-  { tipo: "apu", etiqueta: "APU con origen y conciliación" },
+  { tipo: "apu", etiqueta: "APU detallado con origen y totales" },
   { tipo: "resumen", etiqueta: "Resumen con IVA" },
 ] as const;
 

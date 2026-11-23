@@ -234,7 +234,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
       return;
     }
     if (!ISO.test(fecha)) {
-      setError("Escriba la fecha de devolución antes de cargar el libro.");
+      setError("Escriba la fecha de auditoría antes de cargar el libro.");
       return;
     }
     void cargar(elegido, fecha);
@@ -316,7 +316,8 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
           type="date"
           size="sm"
           inline
-          labelText="Fecha de devolución"
+          labelText="Fecha de la revisión"
+          helperText="Con esta fecha se revisa el libro y se fecha el libro corregido que se devuelve"
           value={fecha}
           onChange={(e) => cambiarFecha(e.target.value)}
         />
@@ -409,7 +410,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
         <div className="visor__soltar">
           <h2 className="cds--type-heading-04">Abra un libro para auditarlo</h2>
           <p className="visor__ayuda-fecha cds--type-body-compact-01">
-            La fecha de devolución (en la barra de arriba) es la fecha con la que se audita el libro: con la misma
+            La fecha de auditoría (en la barra de arriba) es la fecha con la que se audita el libro: con la misma
             fecha, el mismo libro da siempre el mismo resultado.
           </p>
           <FileUploaderDropContainer

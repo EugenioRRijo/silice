@@ -176,7 +176,7 @@ export default function EmpresasRegistradas() {
         etiqueta="Empresas registradas"
         columnas={[
           { clave: "empresa", titulo: "Empresa" },
-          { clave: "huella", titulo: "Huella" },
+          { clave: "huella", titulo: "Código de verificación (SHA-256)" },
           { clave: "estado", titulo: "Estado" },
           { clave: "comprobada_con", titulo: "Comprobada con" },
           { clave: "metodo", titulo: "Método" },
@@ -284,15 +284,15 @@ export default function EmpresasRegistradas() {
               Empresa declarada en el archivo: <strong>{leida.empresa}</strong>
             </p>
             <p className="cds--type-body-compact-01">
-              Huella calculada del archivo: <strong>{leida.huella}</strong>
+              Código de verificación calculado del archivo (SHA-256): <strong>{leida.huella}</strong>
             </p>
             <p className="silice-adm__nota cds--type-label-01">
-              Pida a la otra empresa que le lea su huella por teléfono (u otro canal distinto del que le mandó el
-              archivo) y escríbala aquí.
+              Pida a la otra empresa que le lea su código de verificación por teléfono (u otro canal distinto del que le mandó el
+              archivo) y escríbalo aquí.
             </p>
             <CampoTexto
               id="adm-huella-leida"
-              labelText="Huella leída por otro canal"
+              labelText="Código de verificación confirmado por teléfono o en persona"
               value={huella}
               onChange={(e) => setHuella(e.target.value)}
             />

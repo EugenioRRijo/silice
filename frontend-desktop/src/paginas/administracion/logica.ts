@@ -48,7 +48,7 @@ export const PESTANAS = [
   { id: "cuentas", titulo: "Cuentas", migrada: true },
   { id: "empresa", titulo: "Empresa y clave de firma", migrada: true },
   { id: "registradas", titulo: "Empresas registradas", migrada: true },
-  { id: "api", titulo: "Claves de API", migrada: true },
+  { id: "api", titulo: "Claves para conectar otros programas (API)", migrada: true },
   { id: "asistente", titulo: "Asistente de IA", migrada: true },
   { id: "accesos", titulo: "Accesos", migrada: true },
   { id: "instalacion", titulo: "Instalación", migrada: true },

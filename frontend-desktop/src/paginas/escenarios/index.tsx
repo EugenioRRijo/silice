@@ -22,7 +22,6 @@ import {
   NOTA_PARAMETROS,
   NOTA_PENDIENTES,
   NOTA_PRECIOS,
-  ROTULOS_PARAMETROS,
   SIN_ESCENARIOS,
   SIN_PRESUPUESTOS,
   TITULO_COMPARACION,
@@ -39,6 +38,7 @@ import {
   nombrePorOmision,
   notaHallazgos,
   avisoPreciosSinEfecto,
+  rotuloDeParametro,
   rutaEscenarios,
 } from "./logica";
 import type { ErroresDeCifras, FilaPrecio } from "./logica";
@@ -284,7 +284,7 @@ export default function PaginaEscenarios() {
                   key={campo}
                   id={`escenarios-${campo}`}
                   size="sm"
-                  labelText={ROTULOS_PARAMETROS[campo]}
+                  labelText={rotuloDeParametro(campo, base.moneda)}
                   helperText={AYUDA_CIFRAS}
                   invalid={campoInvalido === campo || campo in errores.parametros}
                   invalidText={errores.parametros[campo] ?? (campoInvalido === campo ? mensajeDeError(errorGenerar) : undefined)}

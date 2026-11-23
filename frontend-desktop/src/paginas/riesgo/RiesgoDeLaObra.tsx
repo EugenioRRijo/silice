@@ -39,7 +39,7 @@ import { ResultadoDeLaComprobacion, ResultadoDeLaProyeccion } from "./ResultadoD
 import "./riesgo.scss";
 
 const SIN_OBRA = "Abra una obra para ver el riesgo de precios de su presupuesto.";
-const SIN_VERSIONES = "Esta obra aún no tiene versiones guardadas. Guarde una en la Hoja para proyectar su riesgo.";
+const SIN_VERSIONES = "Esta obra aún no tiene versiones guardadas. Guarde una en Presupuesto para proyectar su riesgo.";
 const ESPERA = "Comprobando hacia atrás: puede tardar cerca de medio minuto en una obra mediana.";
 
 type Pedido<T> = { estado: "nada" } | { estado: "cargando" } | { estado: "listo"; datos: T } | { estado: "error"; error: unknown };
@@ -262,7 +262,7 @@ export default function RiesgoDeLaObra() {
                 </div>
               </fieldset>
               <fieldset className="riesgo-seccion">
-                <legend className="cds--type-heading-compact-01">Comprobar hacia atrás</legend>
+                <legend className="cds--type-heading-compact-01">Probar precisión con meses pasados</legend>
                 <div className="riesgo-acciones">
                   <CampoTexto
                     id="riesgo-porCorte"
@@ -274,7 +274,7 @@ export default function RiesgoDeLaObra() {
                     onChange={(e) => cambiar("porCorte", e.target.value)}
                   />
                   <Button kind="secondary" size="md" disabled={ocupado} onClick={comprobar}>
-                    Comprobar hacia atrás
+                    Probar precisión con meses pasados
                   </Button>
                   {comprobacion.estado === "cargando" && <InlineLoading description={ESPERA} />}
                 </div>

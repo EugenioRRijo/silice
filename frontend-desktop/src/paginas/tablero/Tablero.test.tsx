@@ -164,8 +164,8 @@ describe("Tablero de la obra", () => {
     // cada grafico tiene su tabla con los montos exactos
     expect(screen.getByText("Partidas que concentran la mayor parte del costo, de mayor a menor.")).toBeInTheDocument();
     const pareto = screen.getByRole("table", { name: "Partidas que más pesan" });
-    expect(within(pareto).getByRole("columnheader", { name: "% del total" })).toBeInTheDocument();
-    expect(within(pareto).getByRole("columnheader", { name: "% acumulado" })).toBeInTheDocument();
+    expect(within(pareto).getByRole("columnheader", { name: /% del total/ })).toBeInTheDocument();
+    expect(within(pareto).getByRole("columnheader", { name: /% acumulado/ })).toBeInTheDocument();
     expect(within(pareto).getByText("3.000,00")).toBeInTheDocument();
     expect(within(pareto).getByTitle("3000.00")).toBeInTheDocument(); // el exacto, a un toque (V-19)
     expect(screen.getByRole("table", { name: "Versiones del presupuesto" })).toBeInTheDocument();

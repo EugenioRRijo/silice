@@ -289,7 +289,7 @@ describe("Actualizar precios", () => {
     expect(screen.getByText("1.000,00 -> 1.100,00 USD (variacion 100,00 USD, 10,00 %)")).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: /Comparativo/ });
     expect(within(tabla).getAllByRole("columnheader")).toHaveLength(9);
-    for (const titulo of ["Precio unitario anterior", "Precio unitario nuevo", "Aporte al cambio (%)"]) {
+    for (const titulo of [/Precio unitario anterior/, /Precio unitario nuevo/, /Aporte al cambio \(%\)/]) {
       expect(within(tabla).getByRole("columnheader", { name: titulo })).toBeInTheDocument();
     }
     // El comparativo llega con punto decimal; se lee en es-VE (D-8).

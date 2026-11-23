@@ -51,16 +51,16 @@ export function formularioExcel(archivo: File, tipo: "presupuesto" | "revision")
 // Las columnas de «Quién cambió qué»: las de la hoja «Cambios» del Excel de la revision.
 export const COLUMNAS_CAMBIOS: ColumnaDensa[] = [
   { clave: "version", titulo: "Versión" },
-  { clave: "objeto", titulo: "Objeto", presentar: rotuloDeObjeto },
+  { clave: "objeto", titulo: "Qué cambió", presentar: rotuloDeObjeto },
   // Clave, antes y después dependen del objeto y del campo de la misma fila: se pintan con la fila y el valor crudo va en el `title`.
-  { clave: "clave", titulo: "Clave", celda: (f) => <span title={f.clave}>{presentarClave(f.objeto ?? "", f.clave ?? "")}</span> },
+  { clave: "clave", titulo: "Partida o insumo", celda: (f) => <span title={f.clave}>{presentarClave(f.objeto ?? "", f.clave ?? "")}</span> },
   { clave: "campo", titulo: "Campo", presentar: rotuloDeCampoDeCambio },
   { clave: "antes", titulo: "Antes", celda: (f) => <span title={f.antes}>{presentarValor(f.campo ?? "", f.antes ?? "", f.clave ?? "")}</span> },
   { clave: "despues", titulo: "Después", celda: (f) => <span title={f.despues}>{presentarValor(f.campo ?? "", f.despues ?? "", f.clave ?? "")}</span> },
   { clave: "fuente", titulo: "Fuente" },
   { clave: "responsable", titulo: "Responsable" },
   { clave: "fecha", titulo: "Fecha", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
-  { clave: "marca", titulo: "Marca" },
+  { clave: "marca", titulo: "Observación" },
 ];
 
 export function filasDeCambios(cambios: Record<string, string>[]): FilaDensa[] {
@@ -72,7 +72,7 @@ export function filasDeCambios(cambios: Record<string, string>[]): FilaDensa[] {
 }
 
 export const COLUMNAS_HALLAZGOS: ColumnaDensa[] = [
-  { clave: "regla", titulo: "Regla" },
+  { clave: "regla", titulo: "Qué revisó Sílice" },
   { clave: "severidad", titulo: "Severidad", celda: "severidad" },
   { clave: "descripcion", titulo: "Descripción" },
 ];

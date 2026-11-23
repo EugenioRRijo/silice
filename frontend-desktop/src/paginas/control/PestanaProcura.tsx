@@ -269,8 +269,8 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
       />
       <Checkbox
         id={`${base}-declarar`}
-        labelText="Declararlo precio del corte"
-        helperText="Desde la fecha de llegada, Control de obra lo usará para separar el desvío de precio («Precios declarados de insumos»)."
+        labelText="Usar como precio real en Control de obra"
+        helperText="Si la marca, servirá para distinguir si un sobrecosto viene de subida de precios o de mayor consumo de material."
         checked={declarar}
         disabled={enviando}
         onChange={(_e, { checked }) => {

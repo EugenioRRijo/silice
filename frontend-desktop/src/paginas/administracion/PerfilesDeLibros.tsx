@@ -66,7 +66,7 @@ export default function PerfilesDeLibros() {
         onChange={(_e, { checked }) => setReemplazar(checked)}
       />
       <Button kind="primary" size="md" disabled={archivo === null || ocupada} onClick={() => void poner()}>
-        Poner el perfil
+        Guardar formato de libro
       </Button>
       <AvisoError error={error} titulo="No se puso el perfil" />
       {puesto && (

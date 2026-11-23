@@ -8,7 +8,7 @@ import type { Severidad } from "../indicadores/tipos";
 import { IconoDeSeveridad } from "../severidad/IconoDeSeveridad";
 import { SEVERIDADES, estiloDeSeveridad, normalizarSeveridad } from "../severidad/severidad";
 import { parsearCelda } from "./celdas";
-import { construirHalos, estiloDeHallazgo } from "./halos";
+import { CODIGO_ATIPICO, construirHalos, estiloDeHallazgo } from "./halos";
 import type { CeldaRef } from "./hojaVisor";
 
 interface Props {
@@ -160,6 +160,7 @@ export function ListaHallazgos({
   const idOcultos = useId();
 
   const { sinCelda, ocultos } = useMemo(() => construirHalos(hallazgos, hojas), [hallazgos, hojas]);
+  const hayAtipicos = useMemo(() => hallazgos.some((h) => h.codigo === CODIGO_ATIPICO), [hallazgos]);
   const sinCeldaSet = useMemo(() => new Set(sinCelda), [sinCelda]);
   const motivos = useMemo(() => new Map(ocultos.map((o) => [o.indice, o.motivo])), [ocultos]);
   const ocultosIndices = useMemo(() => ocultos.map((o) => o.indice), [ocultos]);
@@ -260,6 +261,11 @@ export function ListaHallazgos({
             />
           ))}
         </div>
+        {hayAtipicos && (
+          <p className="cds--type-body-compact-01">
+            En morado: precios muy distintos al histórico; revise si tienen justificación
+          </p>
+        )}
         {aviso && (
           <InlineNotification
             kind="info"

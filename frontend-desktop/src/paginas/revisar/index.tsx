@@ -13,6 +13,9 @@ export default function PaginaRevisar() {
   return (
     <div className="silice-revisar silice-pagina">
       <h1 className="cds--type-heading-04">Revisar un paquete</h1>
+      <p className="silice-revisar__nota cds--type-body-compact-01">
+        Verifique un presupuesto recibido (.silice o Excel) y registre su dictamen
+      </p>
       <Tabs>
         <TabList aria-label="Qué revisar" contained>
           <Tab>Paquete .silice</Tab>

@@ -78,7 +78,7 @@ export function textoDelBoton(accion: AccionDelPresupuesto, enBlanco: boolean, s
       return "Agregar la primera partida";
     case "guardar":
       if (enBlanco) return "Guardar primera versión…";
-      return soloDesglose ? "Guardar el desglose…" : "Guardar versión…";
+      return soloDesglose ? "Guardar ajuste de desperdicio…" : "Guardar versión…";
     case "ver_revision":
       return "Ir a Revisión";
     case "version_nueva":

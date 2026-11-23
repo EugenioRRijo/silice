@@ -41,7 +41,7 @@ export function FilaDeComponente({ numero, base, fila, producto = "", sePuedeQui
       />
       <CampoTexto
         id={`${base}-cantidad`}
-        labelText="Cantidad por t"
+        labelText="Cantidad por tonelada"
         inputMode="decimal"
         autoComplete="off"
         helperText={AYUDA_CIFRAS}
@@ -64,7 +64,7 @@ export function FilaDeComponente({ numero, base, fila, producto = "", sePuedeQui
         <Checkbox
           className="receta-componente__ligante"
           id={`${base}-ligante`}
-          labelText="Es el ligante"
+          labelText="Es el asfalto (ligante)"
           helperText="El asfalto de la mezcla: con él compara la fórmula de trabajo la auditoría de los tramos."
           checked={fila.esLigante === true}
           onChange={(_, { checked }) => alCambiar({ esLigante: checked })}

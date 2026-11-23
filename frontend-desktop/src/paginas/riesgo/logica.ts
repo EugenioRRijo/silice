@@ -22,10 +22,10 @@ export const CAMPOS_INICIALES: Campos = { inicio: "", meses: "6", trayectorias: 
 
 export const ROTULOS: Record<Exclude<keyof Campos, "inicio">, string> = {
   meses: "Meses del plazo",
-  trayectorias: "Trayectorias",
-  semilla: "Semilla",
+  trayectorias: "Simulaciones a correr",
+  semilla: "Número de repetición (semilla)",
   ventana: "Meses de historia",
-  porCorte: "Trayectorias por corte",
+  porCorte: "Simulaciones por fecha probada",
 };
 
 export type Lectura = { valor: number } | { error: string };

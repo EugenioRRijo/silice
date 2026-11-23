@@ -4,13 +4,13 @@ import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export const AYUDA =
-  "Importe la tasa de referencia del BCV, el INPC o una serie en CSV. «Leer» no escribe nada: muestra lo que se " +
-  "importaría. «Confirmar» guarda los valores con la huella del archivo; el mismo archivo dos veces no escribe nada.";
+  "Cargue la tasa del Banco Central (BCV), el Índice de Precios al Consumidor (INPC) o una serie en .csv. «Leer» " +
+  "muestra un adelanto sin guardar; «Confirmar la importación» los guarda sin duplicar archivos repetidos.";
 export const SIN_ARCHIVO = "Elija el archivo que bajó del BCV.";
 // Es el mismo texto que da la API al leer un .xls sin xlrd: aquí se adelanta, antes de enviar.
 export const AVISO_SIN_XLRD =
-  "No se puede leer un archivo .xls: falta el componente xlrd (extra «bcv» de la instalación). " +
-  "Instálelo, o use el .xlsx o el CSV canónico.";
+  "No se puede leer este archivo .xls antiguo. Guárdelo en Excel como .xlsx o .csv y súbalo de nuevo, o pida a " +
+  "soporte que habilite los .xls.";
 export const PERIODICIDAD_POR_DEFECTO = "mensual";
 
 export interface TipoArchivo {

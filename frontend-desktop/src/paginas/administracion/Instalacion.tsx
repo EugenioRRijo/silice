@@ -81,7 +81,7 @@ export default function Instalacion() {
           <InlineNotification
             kind="error"
             role="alert"
-            title="Las operaciones sensibles están bloqueadas"
+            title="Algunas acciones de seguridad (firmar, descargar respaldos) están bloqueadas"
             subtitle="Se restauró un respaldo y hay eventos de seguridad perdidos sin revisar."
             lowContrast
             hideCloseButton

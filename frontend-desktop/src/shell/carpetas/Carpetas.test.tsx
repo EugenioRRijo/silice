@@ -179,7 +179,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     expect(within(lista).getByRole("button", { name: "Abrir s1" })).toBeInTheDocument();
   });
 
-  test("F6: subir acepta solo .db, dice el nombre y los MiB, anuncia el progreso y muestra 413, 422 y 409 tal cual", async () => {
+  test("F6: subir acepta solo .db, dice el nombre y los MB, anuncia el progreso y muestra 413, 422 y 409 tal cual", async () => {
     const u = userEvent.setup({ applyAccept: false });
     const respuestas = [
       json({ detalle: "El archivo pasa de 20 MiB." }, 413),
@@ -204,7 +204,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     expect(within(dialogo()).getByRole("button", { name: "Subir" })).toBeDisabled();
     // 1,5 MiB exactos: 1.572.864 bytes.
     await u.upload(campo(), new File([new Uint8Array(1_572_864)], "s1.db"));
-    expect(within(dialogo()).getByText("s1.db · 1,5 MiB")).toBeInTheDocument();
+    expect(within(dialogo()).getByText("s1.db · 1,5 MB")).toBeInTheDocument();
     const listaAntes = await carpetasDeLaLista();
     for (const esperado of [
       "El archivo pasa de 20 MiB.",
@@ -540,7 +540,7 @@ describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
     expect(within(dialogo()).getByRole("button", { name: "Subir" })).toBeDisabled();
   });
 
-  test("un .db de más de 20 MiB se rechaza en el navegador con el texto de la API y no se sube", async () => {
+  test("un archivo de más de 20 MB se rechaza en el navegador y no se sube", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
     await abrirCarpetas();
@@ -548,9 +548,25 @@ describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
     const grande = new File(["x"], "grande.db");
     Object.defineProperty(grande, "size", { value: 20 * 1024 * 1024 + 1 });
     await u.upload(dialogo().querySelector<HTMLInputElement>('input[type="file"]')!, grande);
-    expect(await within(dialogo()).findByText("El archivo pasa de 20 MiB.")).toBeInTheDocument();
+    expect(await within(dialogo()).findByText("El archivo pasa de 20 MB.")).toBeInTheDocument();
     expect(within(dialogo()).getByRole("button", { name: "Subir" })).toBeDisabled();
     expect(servidor.de("POST", "/v1/casos/subida")).toEqual([]);
+  });
+
+  test("la pestaña Subir usa lenguaje llano: «archivo de la carpeta» y «MB», sin «archivo .db» ni «MiB»", async () => {
+    const u = userEvent.setup();
+    montarEnCarpetas();
+    await abrirCarpetas();
+    await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
+    expect(
+      within(dialogo()).getByText(
+        "Suba el archivo de una carpeta de trabajo, por ejemplo copiado de otro equipo. Nunca reemplaza una carpeta que ya exista.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialogo()).getByRole("button", { name: "Suelte aquí el archivo de la carpeta, o haga clic para elegirlo" }),
+    ).toBeInTheDocument();
+    expect(within(dialogo()).queryByText(/archivo \.db/i)).toBeNull();
   });
 });
 

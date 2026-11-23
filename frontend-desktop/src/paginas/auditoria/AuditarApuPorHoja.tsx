@@ -138,13 +138,13 @@ const COLUMNAS_PRECIOS: ColumnaDensa[] = [
   { clave: "hoja", titulo: "Hoja", ordenable: false },
   { clave: "codigo", titulo: "Código", ordenable: false },
   { clave: "descripcion", titulo: "Partida", ordenable: false },
-  { clave: "impreso", titulo: "P.U. impreso", numerica: true, ordenable: false, presentar: formatoEsVe },
-  { clave: "silice", titulo: "P.U. de Sílice", numerica: true, ordenable: false, presentar: formatoEsVe },
+  { clave: "impreso", titulo: "Precio unitario del Excel", numerica: true, ordenable: false, presentar: formatoEsVe },
+  { clave: "silice", titulo: "Precio unitario según Sílice", numerica: true, ordenable: false, presentar: formatoEsVe },
 ];
 
 const COLUMNAS_HALLAZGOS: ColumnaDensa[] = [
   { clave: "severidad", titulo: "Severidad", celda: "severidad", ordenable: false },
-  { clave: "codigo", titulo: "Regla", ordenable: false },
+  { clave: "codigo", titulo: "Qué revisó Sílice", ordenable: false },
   { clave: "celda", titulo: "Celda", ordenable: false },
   { clave: "descripcion", titulo: "Qué dice", ordenable: false },
 ];
@@ -245,7 +245,7 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
       {perfiles !== null && perfiles.length > 0 && (
         <Select
           id="auditoria-apu-perfil"
-          labelText="Perfil del libro"
+          labelText="Formato del archivo de Excel"
           helperText="Dice cómo leer las hojas de APU y qué hojas del presupuesto se marcan al elegirlo."
           value={perfil ?? ""}
           onChange={(e) => {
@@ -267,7 +267,7 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
       )}
       {sinLista && (
         <p className="silice-inicio__nota cds--type-body-compact-01">
-          {`No se pudo leer la lista de perfiles: se audita con ${POR_OMISION}.`}
+          No se pudo leer la lista de formatos: se audita con el formato estándar (un APU por hoja).
         </p>
       )}
       <SubidaArchivo
@@ -430,9 +430,9 @@ interface LibroLlevado {
 const COLUMNAS_LLEVADAS: ColumnaDensa[] = [
   { clave: "codigo", titulo: "Código en Sílice", ordenable: false },
   { clave: "hoja", titulo: "Hoja del libro", ordenable: false },
-  { clave: "impreso", titulo: "P.U. del libro", numerica: true, ordenable: false, presentar: formatoEsVe },
-  { clave: "hoja_pu", titulo: "P.U. en la Hoja", numerica: true, ordenable: false, presentar: formatoEsVe },
-  { clave: "casa", titulo: "¿Casa?", ordenable: false },
+  { clave: "impreso", titulo: "Precio unitario del Excel", numerica: true, ordenable: false, presentar: formatoEsVe },
+  { clave: "hoja_pu", titulo: "Precio unitario en el Presupuesto", numerica: true, ordenable: false, presentar: formatoEsVe },
+  { clave: "casa", titulo: "¿Coincide?", ordenable: false },
 ];
 
 function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra: string | null; alExpirar: () => void }): JSX.Element {
@@ -445,7 +445,7 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
   if (obra === null) {
     return (
       <p className="silice-inicio__nota cds--type-body-compact-01">
-        Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para llevar el libro a su Hoja.
+        Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para llevar las partidas a su Presupuesto.
       </p>
     );
   }
@@ -479,17 +479,17 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
     hoja: p.hoja,
     impreso: p.precio_impreso,
     hoja_pu: p.precio_hoja ?? "Pendiente",
-    casa: p.casa ? "Casa" : "No casa",
+    casa: p.casa ? "Sí coincide" : "No coincide",
   }));
   return (
     <section aria-labelledby="auditoria-apu-llevar" className="silice-inicio__bloque">
       <h3 id="auditoria-apu-llevar" className="cds--type-heading-compact-01">
-        Llevar el libro a la Hoja
+        Llevar partidas al Presupuesto
       </h3>
       <p className="silice-inicio__nota cds--type-body-compact-01">
-        Cada APU entra al catálogo con sus materiales, equipos y mano de obra, y cada renglón del presupuesto a la Hoja de la
+        Cada APU entra al catálogo con sus materiales, equipos y mano de obra, y cada renglón del presupuesto al Presupuesto de la
         obra con su cantidad y su frente (la hoja del presupuesto). Los precios quedan con su fuente: el libro y la celda.
-        Nada se guarda como versión hasta que lo guarde en la Hoja.
+        Nada se guarda como versión hasta que lo guarde en el Presupuesto.
       </p>
       <Select
         id="auditoria-apu-moneda"
@@ -506,7 +506,7 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
       {!auditado.presupuesto && (
         <CampoTexto
           id="auditoria-apu-frente"
-          labelText="Frente de los renglones (opcional)"
+          labelText="Capítulo o frente de trabajo (opcional)"
           value={frente}
           onChange={(e) => setFrente(e.target.value)}
           disabled={llevando}
@@ -514,9 +514,9 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
       )}
       <div className="silice-inicio__acciones">
         <Button kind="primary" size="md" disabled={!moneda || llevando} onClick={() => void llevar()}>
-          {`Llevar el libro a la Hoja de «${obra}»`}
+          {`Llevar partidas al Presupuesto de «${obra}»`}
         </Button>
-        {llevando && <InlineLoading description="Llevando el libro a la Hoja..." />}
+        {llevando && <InlineLoading description="Llevando partidas al Presupuesto..." />}
       </div>
       <AvisoError error={error} titulo="No se llevó el libro" />
       {llevado && (
@@ -527,22 +527,22 @@ function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra
               corta de la Hoja (`rutaOPendientes("hoja")`, «/hoja») abre la de la obra de la sesión, la misma a la que se llevó) y recuerda que llevar otra vez
               no duplica nada. Nombre accesible: el título, como el aviso AH11. */}
           <span id={ID_TITULO_LLEVADO} hidden>
-            {`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar.`}
+            {`Se llevaron ${llevado.renglones} partidas al Presupuesto de «${obra}», sin guardar.`}
           </span>
           <InlineNotification
             kind="success"
             role="status"
             aria-labelledby={ID_TITULO_LLEVADO}
-            title={`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar.`}
-            subtitle="Ábrala, retome el borrador, revíselo y guarde la versión. Un borrador sin guardar se pierde al salir de Sílice; si se perdió, vuelva a llevar el libro: no duplica nada."
+            title={`Se llevaron ${llevado.renglones} partidas al Presupuesto de «${obra}», sin guardar.`}
+            subtitle="Ábralo, retome el borrador, revíselo y guarde la versión. Un borrador sin guardar se pierde al salir de Sílice; si se perdió, vuelva a llevar el libro: no duplica nada."
             lowContrast
             hideCloseButton
           />
           {/* Carbon no admite controles dentro de un aviso en línea: el enlace va debajo. */}
           <p className="cds--type-body-compact-01">
-            <a className="cds--link" href={`#${rutaOPendientes("hoja")}`}>{`Abrir la Hoja de «${obra}»`}</a>
+            <a className="cds--link" href={`#${rutaOPendientes("hoja")}`}>{`Abrir el Presupuesto de «${obra}»`}</a>
           </p>
-          <TablaDensa etiqueta="Partidas llevadas a la Hoja" columnas={COLUMNAS_LLEVADAS} filas={filas} />
+          <TablaDensa etiqueta="Partidas llevadas al Presupuesto" columnas={COLUMNAS_LLEVADAS} filas={filas} />
           {llevado.sin_apu.length > 0 && (
             <p className="silice-inicio__nota cds--type-body-compact-01">{`No se llevaron, sin hoja de APU: ${enumeradas(llevado.sin_apu)}.`}</p>
           )}

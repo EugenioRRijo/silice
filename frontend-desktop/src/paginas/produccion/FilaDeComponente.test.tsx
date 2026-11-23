@@ -30,7 +30,7 @@ describe("la fila de un componente de la receta", () => {
   test.each([
     [true, 1],
     [false, 0],
-  ])("con puedeMarcarLigante=%s hay %i casillas «Es el ligante»", (puede, cuantas) => {
+  ])("con puedeMarcarLigante=%s hay %i casillas «Es el asfalto (ligante)»", (puede, cuantas) => {
     render(
       <FilaDeComponente
         numero={1}
@@ -43,7 +43,7 @@ describe("la fila de un componente de la receta", () => {
         alExpirar={() => {}}
       />,
     );
-    const casillas = screen.queryAllByRole("checkbox", { name: "Es el ligante" });
+    const casillas = screen.queryAllByRole("checkbox", { name: "Es el asfalto (ligante)" });
     expect(casillas).toHaveLength(cuantas);
     if (puede) expect(casillas[0]).toBeChecked();
   });

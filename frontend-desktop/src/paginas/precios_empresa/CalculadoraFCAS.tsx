@@ -155,7 +155,7 @@ export function CalculadoraFCAS({ alExpirar }: { alExpirar: (error: unknown) => 
                 onChange={(e) => cambiarFila(c.id, { valor: e.target.value })}
               />
               <p className="silice-precios-empresa__nota cds--type-label-01">
-                {c.a_cotejar && <strong className="silice-fcas__cotejar">A cotejar</strong>} {c.fuente}
+                {c.a_cotejar && <strong className="silice-fcas__cotejar">Verificar según ley vigente</strong>} {c.fuente}
               </p>
             </li>
           ))}
@@ -198,8 +198,8 @@ function Resultado({
             role="status"
             lowContrast
             hideCloseButton
-            title="Hay cifras por cotejar"
-            subtitle={`Antes de aplicar el FCAS, coteje con la norma vigente: ${r.a_cotejar.map((a) => a.nombre).join("; ")}.`}
+            title="Hay cifras por verificar según ley vigente"
+            subtitle={`Confirme si siguen vigentes estas tasas legales antes de aplicar el FCAS: ${r.a_cotejar.map((a) => a.nombre).join("; ")}.`}
           />
         </div>
       )}
@@ -211,7 +211,7 @@ function Resultado({
           <p className="cds--type-productive-heading-04">{porcentajeEsVe(r.porcentaje)}</p>
           <p className="cds--type-body-compact-01">{multiplicadorEsVe(r.multiplicador)}</p>
           <p className="silice-precios-empresa__nota cds--type-label-01">
-            Días pagados: {formatoEsVe(r.dias_pagados)}. Solo por días: {formatoEsVe(r.fcas_por_dias)}.
+            Días pagados: {formatoEsVe(r.dias_pagados)}. Factor solo por días (sin aportes en %): {formatoEsVe(r.fcas_por_dias)}.
           </p>
         </section>
         {r.version !== null && (
@@ -227,7 +227,7 @@ function Resultado({
       <TablaDensa etiqueta="Desglose del FCAS" columnas={COLUMNAS} filas={filas} />
       <p className="cds--type-body-compact-01">
         Esto no cambia ninguna versión. Para aplicarlo, escriba <strong>{textoParaEscribir(r.fcas)}</strong> en el
-        FCAS de la pestaña Parámetros del presupuesto de la obra; es una fracción: 0,50 equivale a 50 % y a
+        campo FCAS de Presupuesto › Ajustes de costo de la obra; es una fracción: 0,50 equivale a 50 % y a
         multiplicar el sueldo por 1,50.
       </p>
     </div>

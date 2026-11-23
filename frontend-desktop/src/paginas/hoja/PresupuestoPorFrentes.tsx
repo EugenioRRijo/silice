@@ -74,8 +74,8 @@ const rotuloDelRenglon = (f: FilaDelPresupuesto, i: number) =>
 // aquí (`aplicacion/frentes.py`, `poner_frentes`), y quien solo lee no cambia ninguno.
 function sinFrentes(editable: boolean, propias: number): string {
   if (!editable) return "Ningún renglón tiene frente.";
-  if (propias > 0) return "Ningún renglón tiene frente: póngalo abajo, o lleve a la Hoja un libro con una hoja de presupuesto por frente.";
-  return "Ningún renglón tiene frente. Los renglones que salen del espacio de la obra no llevan frente a mano: para agruparlos, lleve a la Hoja un libro con una hoja de presupuesto por frente.";
+  if (propias > 0) return "Ningún renglón tiene frente: póngalo abajo, o importe un Excel organizado por frentes.";
+  return "Ningún renglón tiene frente. Los renglones que salen del espacio de la obra no llevan frente a mano: para agruparlos, importe un Excel organizado por frentes.";
 }
 
 const renglones = (f: Frente) =>
@@ -199,7 +199,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
       )}
       {vista && puedeEditar && propias.length > 0 && (
         <div className="silice-hoja__frentes-edicion">
-          <Select id="hoja-frente-renglon" labelText="Renglón" value={elegido} onChange={(e) => setRenglon(e.target.value)} disabled={ocupado}>
+          <Select id="hoja-frente-renglon" labelText="Partida del presupuesto" value={elegido} onChange={(e) => setRenglon(e.target.value)} disabled={ocupado}>
             {propias.map((f, i) => (
               <SelectItem key={f.clave!} value={f.clave!} text={rotuloDelRenglon(f, i)} />
             ))}
@@ -207,7 +207,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
           <CampoTexto
             id="hoja-frente-nombre"
             labelText="Frente"
-            helperText="Vacío quita el frente del renglón."
+            helperText="Déjelo vacío para quitar el frente de esta partida."
             value={frente}
             maxLength={80}
             onChange={(e) => setFrente(e.target.value)}

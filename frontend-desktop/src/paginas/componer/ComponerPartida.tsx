@@ -559,23 +559,30 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             }}
             alExpirar={expirar}
           />
-          <Select
-            id="componer-dominio"
-            size="sm"
-            labelText="Dominio"
-            value={cabecera.dominio}
-            onChange={(e) => cambiarCabecera({ dominio: e.target.value })}
-          >
-            {dominios.map((d) => (
-              <SelectItem key={d} value={d} text={textoDominio(d)} />
-            ))}
-          </Select>
+          <div>
+            <Select
+              id="componer-dominio"
+              size="sm"
+              labelText="Tipo de obra (dominio)"
+              aria-describedby="componer-dominio-ayuda"
+              value={cabecera.dominio}
+              onChange={(e) => cambiarCabecera({ dominio: e.target.value })}
+            >
+              {dominios.map((d) => (
+                <SelectItem key={d} value={d} text={textoDominio(d)} />
+              ))}
+            </Select>
+            <p id="componer-dominio-ayuda" className="cds--form__helper-text">
+              Filtra partidas similares y referencias
+            </p>
+          </div>
           <div>
             <CampoTexto
               id="componer-fecha"
               size="sm"
               type="date"
-              labelText="Fecha"
+              labelText="Fecha de precios"
+              helperText="Define la lista de precios vigente para los insumos"
               value={fecha}
               onChange={(e) => {
                 setFecha(e.target.value);

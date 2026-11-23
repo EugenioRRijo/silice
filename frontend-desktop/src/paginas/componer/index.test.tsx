@@ -150,9 +150,9 @@ describe("Componer una partida", () => {
     expect(screen.getByLabelText("Condiciones del rendimiento")).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Consumo por unidad" })).toBeInTheDocument();
     expect(await screen.findByText(/Comience por la cabecera/, {}, ESPERA)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText("Dominio")).toHaveValue("civil"));
+    await waitFor(() => expect(screen.getByLabelText("Tipo de obra (dominio)")).toHaveValue("civil"));
     expect(
-      within(screen.getByLabelText("Dominio"))
+      within(screen.getByLabelText("Tipo de obra (dominio)"))
         .getAllByRole("option")
         .map((o) => [o.textContent, (o as HTMLOptionElement).value]),
     ).toEqual([

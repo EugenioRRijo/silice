@@ -7,11 +7,11 @@ import { unidadEscrita } from "../../comun/unidades";
 export const TITULO = "Precios de la empresa";
 export const AYUDA =
   "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con su fecha y su fuente. No cambia la valoración de ninguna obra que no la use.";
-export const TITULO_REFERENCIA = "1. La referencia MaPreX en bolívares";
+export const TITULO_REFERENCIA = "La referencia MaPreX en bolívares";
 export const ROTULO_REFERENCIA = "Cargar la referencia MaPreX en Bs";
-export const TITULO_LISTA = "2. La lista de la empresa";
+export const TITULO_LISTA = "La lista de la empresa";
 export const SIN_BASES = "La carpeta no tiene listas de precios: cargue una en Actualizar precios.";
-export const TITULO_HALLAZGOS = "3. Precios vencidos o fuera de rango (R11 y R12)";
+export const TITULO_HALLAZGOS = "Revisar precios vencidos o fuera de rango";
 export const SIN_LISTAS = "Todavía no hay listas de empresa en esta carpeta.";
 export const MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto.";
 export const EXTENSIONES = [".csv", ".xlsx"];
@@ -59,10 +59,10 @@ export interface Revision {
   otra_unidad: string[];
 }
 
-export const ROTULO_ALTA = "Dar de alta en el catálogo los insumos nuevos al crear la lista";
+export const ROTULO_ALTA = "Agregar al catálogo los insumos nuevos del archivo";
 export const ETIQUETA_NUEVOS = "Insumos nuevos del archivo";
 export const ETIQUETA_DADOS = "Insumos dados de alta en el catálogo";
-export const ROTULO_PARA_ARMAR = "Usarla como lista para armar";
+export const ROTULO_PARA_ARMAR = "Usarla para armar presupuestos";
 export const SIN_PERMISO_PARA_ARMAR = "La lista para armar la crea quien arma el presupuesto, desde Componer.";
 
 export function textoReconocidos(n: number): string {

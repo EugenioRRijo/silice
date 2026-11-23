@@ -155,13 +155,12 @@ function Declarar({
       <CampoTexto id="lb-desde" type="date" labelText="Vigente desde" value={v.desde} onChange={campo("desde")} />
       <Select
         id="lb-perspectiva"
-        labelText="Perspectiva"
-        helperText="costo: quien arma (contratista); precio: quien revisa (contratante)."
+        labelText="Base de medición"
         value={v.perspectiva}
         onChange={campo("perspectiva")}
       >
-        <SelectItem value="costo" text="costo" />
-        <SelectItem value="precio" text="precio" />
+        <SelectItem value="costo" text="Costo directo (visión del contratista)" />
+        <SelectItem value="precio" text="Precio de contrato (visión del cliente)" />
       </Select>
       <CampoTexto id="lb-inicio" type="date" labelText="Inicio de obra" value={v.inicio} onChange={campo("inicio")} />
       <CampoTexto
@@ -175,10 +174,10 @@ function Declarar({
         }}
       />
       <AreaTexto id="lb-feriados" labelText="Feriados (fechas como 25/12/2026, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
-      <CampoTexto id="lb-fuente" labelText="Fuente de la línea base" value={v.fuente} onChange={campo("fuente")} />
+      <CampoTexto id="lb-fuente" labelText="Documento de respaldo (contrato, acta o referencia)" value={v.fuente} onChange={campo("fuente")} />
       <div>
         <Button kind="primary" size="md" disabled={estado.enviando} onClick={declarar}>
-          Declarar línea base
+          Fijar línea base de control
         </Button>
       </div>
       <AvisoError error={errorFeriados || null} titulo="Revise los feriados" />
@@ -221,17 +220,17 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
         Parámetros de control
       </h2>
       <p className="silice-control__nota cds--type-body-compact-01">
-        Umbrales de las alertas y supuestos de las opciones. Son supuestos declarados, sin fuente normativa, salvo la
-        penalización (dato del contrato). Cambiarlos deja su registro.
+        Límites que disparan las alertas y datos para calcular opciones de recuperación. Son valores de referencia (salvo la
+        multa del contrato) y usted puede ajustarlos.
       </p>
       <TablaDensa
         etiqueta="Parámetros de control"
         columnas={[
-          // VD-5: el title (el exacto) solo en la cifra; el parametro, el texto y la naturaleza, sin el codigo interno
+          // VD-5: el title (el exacto) solo en la cifra; el parametro, el texto y el origen, sin el codigo interno
           { clave: "parametro", titulo: "Parámetro", ordenable: false, celda: sinTitulo("parametro", etiquetaDeCodigo) },
           { clave: "que_es", titulo: "Qué es", ordenable: false, celda: sinTitulo("que_es", textoLlano) },
           { clave: "valor", titulo: "Valor", numerica: true, ordenable: false, presentar: formatoMontoEsVe },
-          { clave: "naturaleza", titulo: "Naturaleza", ordenable: false, celda: sinTitulo("naturaleza", etiquetaDeCodigo) },
+          { clave: "naturaleza", titulo: "Origen", ordenable: false, celda: sinTitulo("naturaleza", etiquetaDeCodigo) },
         ]}
         filas={datos.parametros.map((p) => ({
           id: p.parametro,

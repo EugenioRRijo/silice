@@ -59,7 +59,7 @@ function hoja(nombre: string, extra: Partial<HojaVisualRespuesta> = {}): HojaVis
 function montar(extra: Partial<React.ComponentProps<typeof ListaHallazgos>> = {}) {
   const irACelda = vi.fn();
   const onElegir = vi.fn();
-  render(
+  const vista = render(
     <ListaHallazgos
       hallazgos={hallazgos}
       seleccionado={null}
@@ -68,7 +68,7 @@ function montar(extra: Partial<React.ComponentProps<typeof ListaHallazgos>> = {}
       {...extra}
     />,
   );
-  return { irACelda, onElegir };
+  return { irACelda, onElegir, unmount: vista.unmount };
 }
 
 function fila(descripcion: string): HTMLElement {

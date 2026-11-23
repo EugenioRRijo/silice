@@ -14,7 +14,7 @@ export const CODIGO_ATIPICO = "ATIPICO";
 export function estiloDeHallazgo(h: HallazgoLibroRespuesta): EstiloDeHallazgo {
   const base = estiloDeSeveridad(normalizarSeveridad(h.severidad));
   // El icono del atipico es el de su severidad: asi sigue diciendo "informacion", "advertencia"...
-  if (h.codigo === CODIGO_ATIPICO) return { ...base, token: "--silice-atipico", texto: "Atípico" };
+  if (h.codigo === CODIGO_ATIPICO) return { ...base, token: "--silice-atipico", texto: "Precio atípico (revisar)" };
   return base;
 }
 

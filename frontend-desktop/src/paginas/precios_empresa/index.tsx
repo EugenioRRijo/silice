@@ -278,6 +278,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
       <h2 id="precios-empresa-lista" className="cds--type-heading-compact-02">
         {TITULO_LISTA}
       </h2>
+      <p className="cds--type-body-compact-01">Toma una lista base y aplica encima los precios de su archivo.</p>
       {bases.length === 0 ? (
         <EstadoVacio titulo={SIN_BASES} />
       ) : (
@@ -453,6 +454,9 @@ function SeccionHallazgos({ listas, alExpirar }: PropsSeccion & { listas: ListaE
       <h2 id="precios-empresa-hallazgos" className="cds--type-heading-compact-02">
         {TITULO_HALLAZGOS}
       </h2>
+      <p className="cds--type-body-compact-01">
+        Muestra qué insumos de la lista tienen fecha vencida o un precio muy distinto al esperado.
+      </p>
       {listas.length === 0 ? (
         <EstadoVacio titulo={SIN_LISTAS} />
       ) : (

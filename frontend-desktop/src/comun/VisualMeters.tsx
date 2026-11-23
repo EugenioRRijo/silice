@@ -90,12 +90,14 @@ export interface RadialGaugeProps {
   // La variación IBCS que manda la API (`favorable` del anillo). Sin ella el arco va en la tinta (lo real); con ella, en el
   // verde o el rojo, y nunca solo en el color: al lado del anillo van su ícono y su palabra.
   variacion?: "favorable" | "desfavorable" | null;
+  // Línea opcional de referencia visible (ej. «Plan a la fecha: 70 %» o «Meta: ≥ 1,00»).
+  referencia?: string | null;
   size?: number;
 }
 
 const TONO_DE_LA_VARIACION = { favorable: "emerald", desfavorable: "crimson" } as const;
 
-export function RadialGauge({ label, fraccion, texto, variacion = null, size = 96 }: RadialGaugeProps) {
+export function RadialGauge({ label, fraccion, texto, variacion = null, referencia = null, size = 96 }: RadialGaugeProps) {
   const tone = variacion === null ? "charcoal" : TONO_DE_LA_VARIACION[variacion];
   const IconoDeVariacion = variacion === "favorable" ? CheckmarkOutline : WarningAlt;
   const destino = finito(fraccion) ? Math.max(0, Math.min(1, fraccion)) : 0;
@@ -136,6 +138,7 @@ export function RadialGauge({ label, fraccion, texto, variacion = null, size = 9
             <span>{TEXTO_SEMANTICA[variacion]}</span>
           </p>
         )}
+        {tieneTexto(referencia) && <p className="cds--type-helper-text-01">{referencia}</p>}
       </div>
     </div>
   );
@@ -430,7 +433,9 @@ export function RiskRangeMeter({ puntos, etiqueta = "Rango de exposición de cos
 
   return (
     <div className="silice-riesgo-medidor" role="group" aria-label={etiqueta}>
-      <p className="silice-riesgo-medidor__nota">Cada barra va del presupuesto base al escenario.</p>
+      <p className="silice-riesgo-medidor__nota">
+        Cada barra muestra cuánto sube el escenario frente al presupuesto base (la escala no parte de cero).
+      </p>
       {puntos.map((p) => {
         const hasta = finito(p.valor) ? posicion(p.valor) : null;
         const ancho = hasta === null ? 0 : Math.abs(hasta - enBase) * progress;

@@ -5,6 +5,7 @@ const cifra = (n: number) => formatoEsVe(String(n));
 
 export const TEXTOS = {
   titulo: "Vista general",
+  subtitulo: "Estado de todas sus obras, lo que requiere atención hoy y accesos rápidos",
   bloquea: {
     titulo: "Lo que requiere atención",
     cargando: "Cargando lo que requiere atención",

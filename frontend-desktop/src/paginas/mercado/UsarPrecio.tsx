@@ -245,8 +245,8 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
           <div className="silice-mercado__ancho">
             <Checkbox
               id={`mercado-${lado}-declarar`}
-              labelText={`Declararlo precio del corte de la obra ${obra.nombre}`}
-              helperText="Control de obra lo usará para separar el desvío de precio («Precios declarados de insumos»)."
+              labelText={`Usar también como precio real en Control de obra (${obra.nombre})`}
+              helperText="Permite ver en Control de obra cuánto cambió el gasto por variación de precios."
               checked={declarar}
               disabled={paso.fase !== "editando"}
               onChange={(_e, { checked }) => setDeclarar(checked)}
@@ -255,7 +255,7 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
         )}
         {abierta !== null && sinLineaBase && (
           <p className="silice-mercado__nota silice-mercado__ancho cds--type-helper-text-01">
-            {`La obra ${abierta.nombre} aún no tiene línea base de control: sin ella no hay precio del corte que declarar.`}
+            {`Para declararlo en Control de obra (${abierta.nombre}), primero fije la versión del contrato en Control de obra › Línea base.`}
           </p>
         )}
         <p className="silice-mercado__nota silice-mercado__ancho cds--type-helper-text-01">
@@ -276,7 +276,7 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
         <div ref={pregunta} tabIndex={-1} className="silice-mercado__pregunta" role="group" aria-label="Confirmar el precio">
           <p className="cds--type-body-compact-01">{textoDeAfectados(paso.apus)}</p>
           {declarando && (
-            <p className="cds--type-body-compact-01">{`También quedará como precio del corte de la obra ${obra.nombre} desde hoy.`}</p>
+            <p className="cds--type-body-compact-01">{`También quedará como precio real en Control de obra (${obra.nombre}) desde hoy.`}</p>
           )}
           <p className="cds--type-body-compact-01">{`¿Usar ${precio} ${moneda} para ${codigo}?`}</p>
           <div className="silice-mercado__botones">

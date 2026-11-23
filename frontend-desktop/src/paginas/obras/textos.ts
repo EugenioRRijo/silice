@@ -1,14 +1,15 @@
 // Los textos del Resumen de la obra (Tarea 2 del plan F4), en un solo lugar para que la prueba de jerga los vigile.
 export const TEXTOS = {
   titulo: "Resumen",
+  subtitulo: "Cifras principales, avance y tareas pendientes de esta obra",
   cargando: "Cargando el resumen de la obra",
   sinDato: "No hay datos de esta obra todavía.",
   cifras: "Cifras de la obra",
   total: "Total",
   sinTotal: "Sin presupuesto",
   avance: "Avance real contra plan",
-  versionDeLaLineaBase: "Versión de la línea base",
-  versionVigente: "Versión vigente",
+  versionDeLaLineaBase: "Versión del contrato (línea base)",
+  versionVigente: "Última versión guardada",
   sinVersion: "Sin versión todavía",
   etapa: "Etapa",
   pendientes: "Pendientes de esta obra",

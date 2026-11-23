@@ -25,6 +25,7 @@ import {
   armarCuerpo,
   errorDeCifra,
   erroresDeCifras,
+  estadoDelEstudio,
   filasDeResultado,
   formularioInicial,
   marcasPorPeriodo,
@@ -106,7 +107,7 @@ function columnasDePeriodo(revaloradas: string[]): ColumnaEditable[] {
         );
       },
     },
-    { clave: "excepcion", titulo: "Excepción" },
+    { clave: "excepcion", titulo: "Excepción (opcional)" },
   ];
 }
 // Con la lista recortada (`recortada`) una partida que no se ve se puede usar «tal cual»: el calculo dice si no es del
@@ -135,7 +136,7 @@ function columnasDeEjecutado(partidas: PartidaDelContrato[] | null, recortada: b
   ];
 }
 const PASOS = ["1. La cláusula", "2. Períodos y lo ejecutado"];
-const ETIQUETA_RESULTADO = "Escalatoria y comprobación, lado a lado";
+const ETIQUETA_RESULTADO = "Resultado: escalatoria frente a comprobación directa";
 
 
 // UC-18 (spec S1 §8): la cláusula de reajuste, los periodos con lo ejecutado y su fuente, la escalatoria y la
@@ -150,6 +151,9 @@ export default function PaginaReajuste() {
   return (
     <div className="silice-reajuste silice-pagina">
       <h1 className="cds--type-heading-04">Reajuste de precios</h1>
+      <p className="silice-reajuste__nota cds--type-body-compact-01">
+        Calcula cuánto debe ajustarse el pago de lo ejecutado por variación de precios
+      </p>
       {codigo === null && (
         <EstadoVacio
           titulo="Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios"
@@ -322,7 +326,7 @@ function Formulario({
                   <div className="silice-reajuste__rejilla">
                     <CampoTexto id="rj-inicio" type="date" labelText="Inicio del contrato" value={form.clausula.fecha_inicio} onChange={(e) => campo("fecha_inicio", e.target.value)} />
                     <CampoTexto id="rj-duracion" labelText="Duración (meses)" value={form.clausula.duracion_meses} onChange={(e) => campo("duracion_meses", e.target.value)} />
-                    <CampoTexto id="rj-primer" type="date" labelText="El primer año corre desde" helperText="Por defecto, el inicio del contrato (a cotejar)." value={form.clausula.fecha_referencia_primer_anio} onChange={(e) => campo("fecha_referencia_primer_anio", e.target.value)} />
+                    <CampoTexto id="rj-primer" type="date" labelText="Inicio del primer año de obra" helperText="Por defecto es el inicio del contrato; verifique en su contrato si el aniversario corre desde otra fecha" value={form.clausula.fecha_referencia_primer_anio} onChange={(e) => campo("fecha_referencia_primer_anio", e.target.value)} />
                     <CampoTexto id="rj-base" type="date" labelText="Mes base de los índices" value={form.clausula.fecha_base_indices} onChange={(e) => campo("fecha_base_indices", e.target.value)} />
                   </div>
                 </fieldset>
@@ -334,12 +338,12 @@ function Formulario({
                         <SelectItem key={p} value={p} text={rotuloDeOpcion(p)} />
                       ))}
                     </Select>
-                    <Select id="rj-mecanismo" labelText="Mecanismo" value={form.clausula.mecanismo} onChange={(e) => campo("mecanismo", e.target.value)}>
+                    <Select id="rj-mecanismo" labelText="Método de reajuste" value={form.clausula.mecanismo} onChange={(e) => campo("mecanismo", e.target.value)}>
                       {contexto.mecanismos.map((m) => (
                         <SelectItem key={m} value={m} text={rotuloDeOpcion(m)} />
                       ))}
                     </Select>
-                    <Select id="rj-pagadero" labelText="Mecanismo pagadero (solo con «ambos»)" value={form.clausula.mecanismo_pagadero} onChange={(e) => campo("mecanismo_pagadero", e.target.value)}>
+                    <Select id="rj-pagadero" labelText="Método que rige para el pago (solo si eligió comparar ambos)" value={form.clausula.mecanismo_pagadero} onChange={(e) => campo("mecanismo_pagadero", e.target.value)}>
                       <SelectItem value="" text="Ninguno" />
                       {contexto.mecanismos
                         .filter((m) => m !== "ambos")
@@ -348,7 +352,7 @@ function Formulario({
                         ))}
                     </Select>
                     <CampoTexto id="rj-fuente-pagadero" labelText="Fuente del mecanismo pagadero" value={form.clausula.fuente_pagadero} onChange={(e) => campo("fuente_pagadero", e.target.value)} />
-                    <Select id="rj-estructura" labelText="Estructura" value={form.clausula.estructura} onChange={(e) => campo("estructura", e.target.value)}>
+                    <Select id="rj-estructura" labelText="Pesos de materiales, equipos y mano de obra" value={form.clausula.estructura} onChange={(e) => campo("estructura", e.target.value)}>
                       {contexto.estructuras.map((x) => (
                         <SelectItem key={x} value={x} text={rotuloDeOpcion(x)} />
                       ))}
@@ -361,19 +365,19 @@ function Formulario({
                     <CampoTexto
                       id="rj-r"
                       labelText={ROTULO_R}
-                      helperText={AYUDA_CIFRAS}
+                      helperText={`Ejemplo: 0,10 equivale a 10 % fijo; escriba 0 si se reajusta todo. ${AYUDA_CIFRAS}`}
                       invalid={revisar && errorDeCifra(form.clausula.r) !== null}
                       invalidText={(revisar && errorDeCifra(form.clausula.r)) || undefined}
                       value={form.clausula.r}
                       onChange={(e) => campo("r", e.target.value)}
                     />
-                    <CampoTexto id="rj-fuente-r" labelText="Fuente de R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
+                    <CampoTexto id="rj-fuente-r" labelText="Cláusula o documento que fija R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
                     <CampoTexto id="rj-fuente" labelText="Fuente de la cláusula" helperText="Contrato, número, fecha." value={form.clausula.fuente} onChange={(e) => campo("fuente", e.target.value)} />
                     <CampoTexto id="rj-responsable" labelText="Responsable" helperText="En blanco, su nombre de usuario." value={form.clausula.responsable} onChange={(e) => campo("responsable", e.target.value)} />
                   </div>
                   <Checkbox
                     id="rj-r-comprobacion"
-                    labelText="La cláusula aplica R también a la comprobación"
+                    labelText="Descontar también esa parte fija (R) al calcular la comprobación directa"
                     checked={form.clausula.r_en_comprobacion === "si"}
                     onChange={(_, { checked }) => campo("r_en_comprobacion", checked ? "si" : "no")}
                   />
@@ -404,9 +408,9 @@ function Formulario({
                   Períodos y lo ejecutado (con su fuente)
                 </h2>
                 <p className="silice-reajuste__nota cds--type-body-compact-01">
-                  {`Versiones revaloradas para la comprobación directa: ${
-                    revaloradas.length > 0 ? revaloradas.join(", ") : "ninguna (la comprobación quedará «no disponible»)"
-                  }`}
+                  {revaloradas.length > 0
+                    ? `Versiones con precios actualizados para la comprobación directa: ${revaloradas.join(", ")}`
+                    : "Para la comprobación directa necesita una versión con precios actualizados (se crea en Mercado › Actualizar precios)."}
                 </p>
                 <FilasEditables
                   etiqueta="Períodos"
@@ -414,6 +418,9 @@ function Formulario({
                   filas={form.periodos}
                   alCambiar={(filas) => editar((f) => ({ ...f, periodos: filas }))}
                 />
+                <p className="silice-reajuste__nota cds--type-body-compact-01">
+                  En «Excepción (opcional)» anote solo si una cláusula del contrato autoriza reajustar ese período fuera de la regla general.
+                </p>
                 <Checkbox
                   id="rj-valuaciones"
                   labelText="Tomar lo ejecutado de las valuaciones registradas (cada una al período de su fecha hasta)"
@@ -459,7 +466,7 @@ function Formulario({
       {calculo && (
         <section className="silice-reajuste__bloque" aria-labelledby="reajuste-resultado">
           <h2 id="reajuste-resultado" ref={tituloResultado} tabIndex={-1} className="cds--type-heading-compact-02 silice-reajuste__enfocable">
-            Escalatoria y comprobación, lado a lado
+            {ETIQUETA_RESULTADO}
           </h2>
           <TablaDensa
             etiqueta={ETIQUETA_RESULTADO}
@@ -479,7 +486,7 @@ function Formulario({
               ))}
             </ul>
           )}
-          <p className="silice-reajuste__nota cds--type-body-compact-01">{`Estado del estudio: ${calculo.estado}.`}</p>
+          <p className="silice-reajuste__nota cds--type-body-compact-01">{estadoDelEstudio(calculo.estado)}</p>
           {calculo.avisos.map((aviso) => (
             <InlineNotification key={aviso} kind="warning" title="Aviso" subtitle={aviso} lowContrast hideCloseButton />
           ))}
@@ -492,7 +499,7 @@ function Formulario({
             <CampoTexto id="rj-estudio-fuente" labelText="Fuente del estudio" value={fuente} onChange={(e) => setFuente(e.target.value)} />
             <CampoTexto id="rj-estudio-responsable" labelText="Responsable del estudio" helperText="En blanco, su nombre de usuario." value={responsable} onChange={(e) => setResponsable(e.target.value)} />
             {calculo.estado === "cerrado" && calculo.parciales.length > 0 && (
-              <Select id="rj-reemplaza" labelText="Reemplaza al estudio parcial" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
+              <Select id="rj-reemplaza" labelText="Estudio preliminar al que reemplaza este cálculo definitivo (opcional)" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
                 <SelectItem value="" text="Ninguno" />
                 {calculo.parciales.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechaEsVe(p.fecha_calculo)})`} />

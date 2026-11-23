@@ -102,8 +102,8 @@ export function RepartoPorPesos({ periodo, producido, alCambiar, alExpirar }: Pr
     <div className="planta-reparto">
       <Checkbox
         id="reparto-pesos"
-        labelText="Repartir la cantera por pesos"
-        helperText="Apagado, la cantera se reparte por tonelada producida: el mismo costo por tonelada para todos los agregados."
+        labelText="Repartir el costo de la cantera por porcentaje manual"
+        helperText="Si lo deja sin marcar, el costo se divide en partes iguales por tonelada producida"
         checked={activo}
         onChange={(_, { checked }) => setActivo(checked)}
       />

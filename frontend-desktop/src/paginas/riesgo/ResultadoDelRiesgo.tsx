@@ -52,11 +52,11 @@ export function ResultadoDeLaProyeccion({ datos, region, conSeries, children }: 
       <dl className="riesgo-cifras">
         <dt>Total base</dt>
         <dd className="silice-cifra">{m(datos.total_base)}</dd>
-        <dt>P50</dt>
+        <dt>Costo probable (P50, mitad de los escenarios)</dt>
         <dd className="silice-cifra">{m(datos.p50)}</dd>
-        <dt>P80</dt>
+        <dt>Costo conservador (P80, cubre 8 de cada 10 escenarios)</dt>
         <dd className="silice-cifra">{m(datos.p80)}</dd>
-        <dt>Reserva para cubrir el P80</dt>
+        <dt>Reserva recomendada para cubrir el P80</dt>
         <dd className="silice-cifra">{m(datos.reserva)}</dd>
       </dl>
       {/* El mismo P50 y P80 de arriba, dibujados: el número solo da el largo de la barra y lo que se lee es el monto de la API
@@ -93,15 +93,15 @@ export function ResultadoDeLaComprobacion({ datos, region }: Props<ComprobacionD
     <section ref={region} tabIndex={-1} aria-label="Comprobación hacia atrás" className="riesgo-resultado">
       <h2 className="cds--type-heading-compact-02">Comprobación hacia atrás</h2>
       <dl className="riesgo-cifras">
-        <dt>Cobertura</dt>
+        <dt>Aciertos de la prueba (cobertura)</dt>
         <dd className="silice-cifra">{`${formatoEsVe(datos.cobertura_pct)} %`}</dd>
-        <dt>Cortes dentro del P80</dt>
+        <dt>Fechas pasadas cubiertas por el P80</dt>
         <dd className="silice-cifra">{`${formatoEsVe(String(datos.dentro))} de ${formatoEsVe(String(datos.n_cortes))}`}</dd>
-        <dt>Número de cortes</dt>
+        <dt>Fechas pasadas probadas</dt>
         <dd className="silice-cifra">{formatoEsVe(String(datos.n_cortes))}</dd>
       </dl>
       <p className="riesgo-nota cds--type-body-compact-01">
-        {`Cada corte proyecta ${datos.meses} meses solo con la historia anterior, con ${formatoEsVe(String(datos.trayectorias_por_corte))} trayectorias, y lo compara con lo que pasó. Los plazos se solapan: la cobertura es un indicador, no una probabilidad.`}
+        {`Cada fecha probada proyecta ${datos.meses} meses solo con la historia anterior, con ${formatoEsVe(String(datos.trayectorias_por_corte))} simulaciones, y la compara con lo que pasó. Cerca de 80 % o más indica que la proyección habría cubierto bien las subidas pasadas (es una referencia histórica, no una garantía).`}
       </p>
     </section>
   );

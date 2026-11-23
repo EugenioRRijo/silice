@@ -414,7 +414,7 @@ describe("App", () => {
       await usuario.click(screen.getByRole("button", { name: /^Crítico/ }));
       // La sesion vence: la siguiente llamada (cambiar la fecha vuelve a auditar) da 401.
       vencida = true;
-      const fecha = screen.getByLabelText("Fecha de devolución");
+      const fecha = screen.getByLabelText("Fecha de la revisión");
       await usuario.clear(fecha);
       await usuario.type(fecha, "2026-12-01");
       await screen.findByRole("heading", { name: "Entrar" });
@@ -432,7 +432,7 @@ describe("App", () => {
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
       await screen.findByText("Ana Pérez");
       const cabecera = screen.getByRole("banner");
-      const fecha = await screen.findByLabelText("Fecha de devolución");
+      const fecha = await screen.findByLabelText("Fecha de la revisión");
       expect(cabecera).not.toContainElement(fecha);
       await subirLibro(usuario);
       expect(within(cabecera).queryByText("libro_minimo.xlsx")).toBeNull();
@@ -445,7 +445,7 @@ describe("App", () => {
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
       // En la Cuenta el nombre sale dos veces: en la barra de arriba y en la cabecera de la Cuenta.
       expect((await screen.findAllByText("Ana Pérez")).length).toBeGreaterThan(0);
-      expect(screen.queryByLabelText("Fecha de devolución")).toBeNull();
+      expect(screen.queryByLabelText("Fecha de la revisión")).toBeNull();
     });
 
     test("un 401 muestra la entrada con el aviso Su sesion vencio", async () => {

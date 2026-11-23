@@ -286,7 +286,7 @@ describe("Revisar un paquete", () => {
     const celdasDelCambio = within(within(cambios).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
     expect(celdasDelCambio.slice(0, 9)).toEqual(["005", "APU", "MIN-001, Arena", "Cantidad", "1,00", "1,50", "memoria", "Ana <ana>", "02/11/2026 08:00"]);
     const filaDeControl = within(within(cambios).getAllByRole("row")[2]!).getAllByRole("cell").map((c) => c.textContent);
-    expect(filaDeControl.slice(0, 6)).toEqual(["005", "Parámetro", "Control de obra: Umbral de SPI para error", "Instantánea", "Catálogo", "Instantánea"]);
+    expect(filaDeControl.slice(0, 6)).toEqual(["005", "Parámetro", "Control de obra: Límite de atraso (SPI) para error", "Instantánea", "Catálogo", "Instantánea"]);
     expect(screen.getByText(REVISION.nota_excel)).toBeInTheDocument();
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);

@@ -26,8 +26,8 @@ export function Cifras({ estudio, obra }: Props) {
   const id = `mercado-${lado}-cifras`;
   const montos: [string, string | null][] = [
     ["Mínimo", est.minimo],
-    ["Primer cuartil", est.q1],
-    ["Mediana", est.mediana],
+    ["Primer cuartil (25 % más bajo)", est.q1],
+    ["Mediana (valor central)", est.mediana],
     ["Promedio", est.promedio],
     ["Máximo", est.maximo],
   ];
@@ -38,6 +38,9 @@ export function Cifras({ estudio, obra }: Props) {
         <h2 id={id} className="cds--type-heading-compact-02">
           {`Cifras de los últimos ${formatoEsVe(String(est.dias))} días, en ${moneda}`}
         </h2>
+        <p className="silice-mercado__nota cds--type-helper-text-01">
+          Resume las observaciones del período para ayudarle a fijar un precio competitivo.
+        </p>
         {est.n === 0 ? (
           <EstadoVacio
             titulo={`Sin observaciones en los últimos ${formatoEsVe(String(est.dias))} días`}

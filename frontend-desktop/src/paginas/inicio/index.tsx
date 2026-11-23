@@ -76,12 +76,13 @@ export default function Panorama() {
       <h1 className="cds--type-heading-04" tabIndex={-1}>
         {TEXTOS.titulo}
       </h1>
+      <p className="silice-inicio__nota cds--type-body-compact-01">{TEXTOS.subtitulo}</p>
       <EmpiezaAqui pasos={pasos} acciones={sesion.acciones} />
       {espaciosOfrecidos.length > 0 && (
-        <section className="silice-panel silice-lanzador" aria-label="Herramientas dedicadas">
+        <section className="silice-panel silice-lanzador" aria-label="Herramientas de la empresa">
           <div className="silice-panel__cabecera">
             <div>
-              <h2 className="cds--type-heading-compact-02">Herramientas dedicadas</h2>
+              <h2 className="cds--type-heading-compact-02">Herramientas de la empresa</h2>
               <p className="silice-panel__subtitulo">Espacios de trabajo de la empresa</p>
             </div>
           </div>

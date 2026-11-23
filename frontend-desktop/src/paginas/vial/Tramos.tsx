@@ -114,6 +114,10 @@ export default function Tramos() {
       <p className="vial-nota cds--type-body-compact-01">
         Los tramos de la vía de cada versión, con las cantidades de obra que salen de ellos. Se cargan desde un archivo CSV.
       </p>
+      <p className="vial-nota cds--type-helper-text-01">
+        Columnas requeridas en el .csv (separadas por punto y coma): tramo, progresiva_ini_km, progresiva_fin_km, ancho_m,
+        distancia_planta_km, elemento, tipo, espesor_m, densidad_t_m3, dosis_l_m2, lineas.
+      </p>
       {nombre === null && <EstadoVacio titulo={SIN_OBRA} />}
       {versiones.estado === "error" && <AvisoError error={versiones.error} titulo="No se pudieron leer las versiones" />}
       {versiones.estado === "listo" && ofrecidas.length === 0 && (

@@ -53,11 +53,11 @@ const COLUMNAS_DE_TEXTO = new Set(["Período", "Mecanismo", "Moneda", "Marcas"])
 const ROTULOS_DE_OPCION: Record<string, string> = {
   mensual: "Mensual",
   trimestral: "Trimestral",
-  escalatoria: "Escalatoria",
-  comprobacion: "Comprobación directa",
-  ambos: "Ambos (escalatoria y comprobación)",
-  por_partida: "Por partida",
-  declarada: "Declarada",
+  escalatoria: "Fórmula por índices (escalatoria)",
+  comprobacion: "Recálculo con precios nuevos (comprobación directa)",
+  ambos: "Comparar ambos métodos",
+  por_partida: "Calculados de cada partida del presupuesto",
+  declarada: "Pesos fijos del contrato",
   materiales: "Materiales",
   equipos: "Equipos",
   mano_obra: "Mano de obra",
@@ -65,6 +65,12 @@ const ROTULOS_DE_OPCION: Record<string, string> = {
 
 export function rotuloDeOpcion(valor: string): string {
   return ROTULOS_DE_OPCION[valor] ?? valor;
+}
+
+export function estadoDelEstudio(estado: string): string {
+  if (estado === "cerrado") return "Estado: definitivo";
+  if (estado.startsWith("parcial")) return "Estado: preliminar (faltan índices publicados)";
+  return `Estado del estudio: ${estado}.`;
 }
 
 export function filasVacias(claves: string[], cantidad: number): Fila[] {
@@ -113,7 +119,7 @@ export function formularioInicial(): Formulario {
 // (duracion en meses, numero de periodo) y las fechas no son cifras decimales y van tal cual. Un campo en blanco no se
 // juzga aqui: va tal cual y la API dice lo que falta (un peso en blanco es «sin peso»).
 
-export const ROTULO_R = "R (fracción no reajustable)";
+export const ROTULO_R = "Parte del contrato que no se reajusta (R, en fracción)";
 
 // El error de una cifra escrita, o null si se lee o esta en blanco.
 export function errorDeCifra(texto: string): string | null {

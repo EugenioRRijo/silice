@@ -284,7 +284,7 @@ function InformePrevio({ lectura, contexto, definiciones, alCambiar, confirmacio
             <dd className="cds--type-heading-04">{formatoEsVe(String(informe.filas_rechazadas))}</dd>
           </div>
           <div>
-            <dt className="cds--type-label-01">Provisionales</dt>
+            <dt className="cds--type-label-01">Provisionales (datos preliminares)</dt>
             <dd className="cds--type-heading-04">{formatoEsVe(String(informe.provisionales))}</dd>
           </div>
         </dl>

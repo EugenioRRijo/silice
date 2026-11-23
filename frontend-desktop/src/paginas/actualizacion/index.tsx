@@ -273,7 +273,7 @@ export default function PaginaActualizacion() {
                 lowContrast
                 hideCloseButton
               />
-              <CheckboxGroup legendText="Dar de alta">
+              <CheckboxGroup legendText="Agregar al catálogo">
                 {desconocidos.map((d, i) => (
                   <Checkbox
                     key={i}
@@ -289,7 +289,7 @@ export default function PaginaActualizacion() {
 
           <div className="silice-actualizacion__acciones">
             <Button type="submit" kind="primary" size="md" disabled={archivo === null || ocupada}>
-              Revalorar presupuesto
+              Actualizar precios del presupuesto
             </Button>
             {revalorando && <InlineLoading description="Revalorando…" status="active" />}
           </div>

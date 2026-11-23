@@ -74,9 +74,12 @@ export default function ClavesApi() {
 
   return (
     <div className="silice-adm__secciones">
+      <p className="silice-adm__nota cds--type-body-compact-01">
+        Solo si conecta Sílice con otro programa externo; para el uso diario no hace falta
+      </p>
       <AvisoError error={error} alCerrar={() => setError(null)} />
       <TablaDensa
-        etiqueta="Claves de API"
+        etiqueta="Claves para conectar otros programas (API)"
         columnas={[
           { clave: "etiqueta", titulo: "Clave" },
           { clave: "nombre", titulo: "Para qué" },
@@ -95,7 +98,7 @@ export default function ClavesApi() {
       <form className="silice-adm__seccion" onSubmit={(e) => void crear(e)}>
         <CampoTexto
           id="adm-api-nombre"
-          labelText="Para qué es esta clave (por ejemplo, el plugin que la usa)"
+          labelText="Para qué es esta clave (por ejemplo, el programa externo que se conectará)"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
         />
@@ -141,7 +144,7 @@ export default function ClavesApi() {
             </Button>
           ) : (
             <div role="group" aria-label="Confirmar" className="silice-adm__acciones">
-              <p className="cds--type-body-compact-01">Quien use esta clave dejará de entrar a la API. ¿Revocarla?</p>
+              <p className="cds--type-body-compact-01">El programa que use esta clave dejará de conectarse a Sílice. ¿Revocarla?</p>
               <Button kind="danger" size="md" onClick={() => void revocar()}>
                 Sí, revocar
               </Button>

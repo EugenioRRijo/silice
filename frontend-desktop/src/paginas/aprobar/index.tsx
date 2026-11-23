@@ -48,6 +48,9 @@ export default function PaginaAprobar() {
   return (
     <div className="silice-aprobar silice-pagina">
       <h1 className="cds--type-heading-04">Aprobar una versión</h1>
+      <p className="silice-aprobar__nota cds--type-body-compact-01">
+        Revise la versión enviada a aprobación y decida si se aprueba o se devuelve
+      </p>
       {envio === null ? (
         <BuscarEnvio alEncontrar={(id, reemplazar) => setParametros({ envio: String(id) }, { replace: reemplazar })} />
       ) : (

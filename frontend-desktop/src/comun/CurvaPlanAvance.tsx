@@ -32,10 +32,12 @@ interface Props {
 export const TRAZO_DE_PRONOSTICO = "6 4";
 export const GROSOR: Record<RolDeSerie, number> = { plan: 1.5, real: 3, pronostico: 2 };
 
-const TEXTO_DE_ROL: Record<RolDeSerie, string> = {
-  plan: "plan",
-  real: "real",
-  pronostico: "pronostico (discontinuo)",
+const ORDEN_DE_ROLES: readonly RolDeSerie[] = ["plan", "real", "pronostico"];
+
+const LEYENDA_DE_ROL: Record<RolDeSerie, string> = {
+  plan: "Línea fina: planificado",
+  real: "Línea gruesa: ejecutado y gastado",
+  pronostico: "Línea discontinua: pronóstico",
 };
 
 // La API nombra los periodos del control «Dia N» (convencion de la regla R7): se leen «Día N».
@@ -121,7 +123,10 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
         </Suspense>
       </div>
       <figcaption className="cds--type-helper-text-01">
-        {series.map((s) => `${s.nombre}: ${TEXTO_DE_ROL[s.rol]}`).join(" · ")}
+        {(() => {
+          const partes = ORDEN_DE_ROLES.filter((r) => series.some((s) => s.rol === r)).map((r) => LEYENDA_DE_ROL[r]);
+          return partes.length > 0 ? `${partes.join(" · ")}.` : "";
+        })()}
       </figcaption>
       <details className="silice-curva__tabla">
         <summary className="cds--type-body-compact-01">Ver los montos por período</summary>

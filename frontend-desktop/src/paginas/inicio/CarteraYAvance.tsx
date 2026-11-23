@@ -226,7 +226,7 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
           {barrasAvance.length > 0 && (
             <div className="silice-panel silice-panel--padded silice-inicio__grafico-card">
               <h3 className="cds--type-heading-compact-02">Avance real frente al plan</h3>
-              <p className="silice-panel__subtitulo">Porcentaje acumulado de obras con control activo</p>
+              <p className="silice-panel__subtitulo">Si el avance real queda por debajo del plan, la obra lleva atraso</p>
               <AnimatedBarChart items={barrasAvance} realLegend="Avance real (%)" planLegend="Plan acumulado (%)" height={190} />
             </div>
           )}

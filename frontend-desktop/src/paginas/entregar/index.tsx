@@ -68,6 +68,9 @@ export default function PaginaEntregar() {
   return (
     <div className="silice-entregar silice-pagina">
       <h1 className="cds--type-heading-04">Entregar paquete</h1>
+      <p className="silice-entregar__nota cds--type-body-compact-01">
+        Genere el archivo firmado de una versión del presupuesto para enviarlo al cliente
+      </p>
       {proyectos.estado === "cargando" && (
         <EsqueletoPagina etiqueta="Cargando las obras" />
       )}
@@ -176,7 +179,7 @@ function Seleccion({
           title="Esta versión no está aprobada"
           subtitle={
             aprobada === undefined
-              ? "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha."
+              ? "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde Presupuesto. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha."
               : `La última aprobada es ${aprobada}. Si entrega esta, el paquete saldrá rotulado «Versión NO aprobada», con la fecha y esa última aprobada.`
           }
           lowContrast
@@ -275,9 +278,9 @@ function Entrega({
           )}
         </div>
         <div>
-          <dt className="cds--type-label-01">Cadena</dt>
+          <dt className="cds--type-label-01">Integridad de versiones</dt>
           <dd className="cds--type-heading-03">
-            {datos.cadena_integra ? "Íntegra" : "Rota"}
+            {datos.cadena_integra ? "Sin alteraciones" : "Alterada"}
           </dd>
         </div>
       </dl>
@@ -372,7 +375,7 @@ function Entrega({
               ? "Paquete listo y firmado"
               : "Paquete listo (sin firma)"}
           </p>
-          <p className="silice-entregar__sha cds--type-code-01">{`SHA-256: ${listo.sha256}`}</p>
+          <p className="silice-entregar__sha cds--type-code-01">{`Código de verificación del archivo (SHA-256): ${listo.sha256}`}</p>
           <Button
             kind="tertiary"
             size="md"

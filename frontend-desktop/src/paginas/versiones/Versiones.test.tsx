@@ -319,7 +319,7 @@ describe("Versiones: el registro de cambios en el panel", () => {
     const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
-    expect(texto(filas[0]!).slice(2)).toEqual(["Parámetro", "Control de obra: Umbral de SPI para error", "Umbral de SPI para error", "0,90", "0,85", "Reunión"]);
+    expect(texto(filas[0]!).slice(2)).toEqual(["Parámetro", "Control de obra: Límite de atraso (SPI) para error", "Límite de atraso (SPI) para error", "0,90", "0,85", "Reunión"]);
     expect(texto(filas[1]!).slice(4)).toEqual(["Ambiente", "A1.2", "Eje B2.5", "Reunión"]);
     expect(texto(filas[2]!).slice(4)).toEqual(["Instantánea", "Catálogo", "Instantánea", "Reunión"]);
   });
@@ -376,13 +376,13 @@ describe("Versiones: la franja del paso", () => {
   });
 
   // Anexo A.6: la franja de Versiones usa el mismo rótulo que la de Presupuesto, según lo pendiente.
-  test("con solo el desglose del desperdicio pendiente, el botón dice «Guardar el desglose…» y abre el diálogo de ese nombre", async () => {
+  test("con solo el desglose del desperdicio pendiente, el botón dice «Guardar ajuste de desperdicio…» y abre el diálogo de ese nombre", async () => {
     cambiosAlAbrir = 1;
     desglosesAlAbrir = 1;
     const u = montar();
     const franja = await screen.findByRole("region", { name: "Siguiente paso" });
     expect(within(franja).queryByRole("button", { name: "Guardar versión…" })).toBeNull();
-    await u.click(within(franja).getByRole("button", { name: "Guardar el desglose…" }));
+    await u.click(within(franja).getByRole("button", { name: "Guardar ajuste de desperdicio…" }));
     const dialogo = await screen.findByRole("dialog");
     expect(within(dialogo).getByRole("heading", { name: "Guardar el desglose" })).toBeInTheDocument();
   });
@@ -418,7 +418,7 @@ describe("Versiones: la franja del paso", () => {
     });
     const u = montar();
     const franja = await screen.findByRole("region", { name: "Siguiente paso" });
-    await u.click(within(franja).getByRole("button", { name: "Guardar el desglose…" }));
+    await u.click(within(franja).getByRole("button", { name: "Guardar ajuste de desperdicio…" }));
     const dialogo = await screen.findByRole("dialog");
     await u.click(within(dialogo).getByRole("button", { name: "Guardar el desglose" }));
     const aviso = await screen.findByText(/Se guardó el desglose del desperdicio de 1 línea/);

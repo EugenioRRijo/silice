@@ -85,6 +85,9 @@ export default function PaginaControl() {
   return (
     <div className="silice-control silice-pagina">
       <h1 className="cds--type-heading-04">Control de obra</h1>
+      <p className="silice-control__nota cds--type-body-compact-01">
+        Mide si la obra va a tiempo y dentro del presupuesto, y cómo recuperar atrasos
+      </p>
       {proyecto === null ? (
         <EstadoVacio titulo="Elija una obra" descripcion="Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para controlarla." />
       ) : (

@@ -126,6 +126,9 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
         </h2>
         {datos.control?.disponible ? (
           <>
+            <p className="silice-tablero__nota cds--type-body-compact-01">
+              En plazo (SPI) y costo (CPI), 1,00 o más es favorable; menos de 1,00 indica atraso o sobrecosto.
+            </p>
             {anillosDePorcentaje(datos.control.anillos).length > 0 && (
               <div className="silice-tablero__anillos">
                 {anillosDePorcentaje(datos.control.anillos).map((a) => (
@@ -188,6 +191,9 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
           <h2 id="tablero-pareto" className="cds--type-heading-compact-02">
             Partidas que más pesan (Pareto)
           </h2>
+          <p className="silice-tablero__nota cds--type-body-compact-01">
+            Partidas que concentran la mayor parte del costo, de mayor a menor.
+          </p>
           <Grafico
             titulo="Partidas que más pesan"
             tipo="barras"
@@ -200,8 +206,8 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
               { clave: "partida", titulo: "Partida" },
               { clave: "descripcion", titulo: "Descripción" },
               { clave: "total", titulo: `Total (${moneda})`, numerica: true, presentar: formatoMontoEsVe },
-              { clave: "peso", titulo: "Peso", numerica: true, presentar: formatoMontoEsVe },
-              { clave: "acumulado", titulo: "Acumulado", numerica: true, presentar: formatoMontoEsVe },
+              { clave: "peso", titulo: "% del total", numerica: true, presentar: formatoMontoEsVe },
+              { clave: "acumulado", titulo: "% acumulado", numerica: true, presentar: formatoMontoEsVe },
             ]}
             filas={datos.pareto.map((f) => ({
               id: f.partida,
@@ -271,6 +277,9 @@ export default function PaginaTablero() {
   return (
     <div className="silice-tablero silice-pagina">
       <h1 className="cds--type-heading-04">Tablero de la obra</h1>
+      <p className="silice-tablero__nota cds--type-body-compact-01">
+        Resumen visual de cuánto cuesta la obra, qué partidas pesan más y cómo avanza
+      </p>
       {proyecto === null ? (
         <EstadoVacio titulo="Elija una obra" descripcion="Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K." />
       ) : (

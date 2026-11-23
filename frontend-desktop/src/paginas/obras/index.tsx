@@ -23,6 +23,7 @@ export default function PaginaObras() {
   return (
     <div className="silice-pagina silice-resumen">
       <h1 className="cds--type-heading-04">{TEXTOS.titulo}</h1>
+      <p className="cds--type-body-compact-01">{TEXTOS.subtitulo}</p>
       <Cuerpo ficha={ficha} carpeta={carpeta} obraId={obraId} />
       <Pendientes carpeta={carpeta} obraId={obraId} />
     </div>

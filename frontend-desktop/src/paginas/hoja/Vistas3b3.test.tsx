@@ -141,7 +141,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     expect(within(dl).getByText("Costo variable").nextElementSibling).toHaveTextContent("2.137,44 USD");
     expect(within(dl).getByText("Costo fijo").nextElementSibling).toHaveTextContent("320,62 USD");
     expect(within(dl).getByText("Utilidad").nextElementSibling).toHaveTextContent("245,81 USD");
-    expect(within(dl).getByText("Punto de equilibrio").nextElementSibling).toHaveTextContent("1.530,49 USD");
+    expect(within(dl).getByText("Punto de equilibrio (mínimo a ejecutar sin pérdida)").nextElementSibling).toHaveTextContent("1.530,49 USD");
     expect(within(dl).getByText("Como % de las ventas").nextElementSibling).toHaveTextContent("56,60 %");
     expect(within(dl).getByText("Se alcanza en").nextElementSibling).toHaveTextContent("Día 23");
     // El exacto va en el title y en un texto accesible; nada se redondea en la interfaz.
@@ -162,7 +162,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     await irA("Plan y equilibrio");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
     expect(screen.getByText("Ventas (contrato)")).toBeInTheDocument();
-    expect(screen.queryByText("Punto de equilibrio", { selector: "dt" })).toBeNull();
+    expect(screen.queryByText("Punto de equilibrio (mínimo a ejecutar sin pérdida)", { selector: "dt" })).toBeNull();
     expect(screen.queryByText("Como % de las ventas")).toBeNull();
     expect(screen.queryByText("Se alcanza en")).toBeNull();
   });
@@ -173,7 +173,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     montar();
     await irA("Plan y equilibrio");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
-    expect(screen.getByText("Punto de equilibrio", { selector: "dt" })).toBeInTheDocument();
+    expect(screen.getByText("Punto de equilibrio (mínimo a ejecutar sin pérdida)", { selector: "dt" })).toBeInTheDocument();
     expect(screen.queryByText("Se alcanza en")).toBeNull();
   });
 
@@ -207,7 +207,9 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     montar();
     await irA("Ajustes de costo");
     await userEvent.click(await screen.findByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
-    expect(await screen.findByText(/Cambiarlos recalcula/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Los parámetros de costo del borrador. Cambiarlos recalcula todos los APU y el total."),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/solo se leen/)).toBeNull();
   });
 
@@ -249,7 +251,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     expect(within(informe).getByText(/Resultado: NO CUMPLE/)).toBeInTheDocument();
     const tabla = within(informe).getByRole("table", { name: "Hallazgos" });
     expect(within(tabla).getAllByRole("row")).toHaveLength(3);
-    expect(within(tabla).getByText("R17")).toBeInTheDocument();
+    expect(within(tabla).getByText("Conexión de cada punto (R17)")).toBeInTheDocument();
     expect(within(tabla).getByText("El punto P1 no tiene fuente que lo alimente")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
     expect(screen.getByText("El informe se genera siempre, con todas las reglas, sobre el borrador vigente.")).toBeInTheDocument();
@@ -292,7 +294,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     const hallazgos = within(informe).getByRole("table", { name: "Hallazgos" });
     expect(within(hallazgos).getAllByRole("row")).toHaveLength(2);
     expect(within(hallazgos).getByText(/Fuente F1: falta el origen/)).toBeInTheDocument();
-    expect(within(hallazgos).queryByText("R17")).toBeNull();
+    expect(within(hallazgos).queryByText(/R17/)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Quitar filtro" }));
     expect(within(await screen.findByRole("table", { name: "Hallazgos" })).getAllByRole("row")).toHaveLength(3);
     expect(screen.queryByText("Hallazgos de Fuente F1")).toBeNull();
@@ -512,7 +514,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)"
     await userEvent.click(screen.getByRole("tab", { name: "Plan y equilibrio" }));
     await screen.findByText("Ventas (contrato)");
     await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
-    await screen.findByText(/^FCAS/);
+    await screen.findByRole("textbox", { name: /^FCAS/ });
     await userEvent.click(screen.getByRole("tab", { name: "Revisión" }));
     await screen.findByRole("region", { name: "Informe de auditoría" });
     await userEvent.click(screen.getByRole("tab", { name: "Precios" }));

@@ -57,7 +57,7 @@ export function errorDeCarga(carga: Carga<unknown>): unknown {
 // cifras): se pinta con `celda` (ver `sinTitulo`) y el valor de la fila no cambia.
 const ETIQUETAS_DE_CODIGO: Record<string, string> = {
   ...PARAMETROS_DE_CONTROL,
-  SUPUESTO_DECLARADO: "Supuesto declarado",
+  SUPUESTO_DECLARADO: "Valor de referencia",
   DATO_DEL_CONTRATO: "Dato del contrato",
   FUENTE_VERIFICADA: "Fuente verificada",
   "AL-1": "Retraso (SPI)",
@@ -173,7 +173,7 @@ export interface RegistroDeValuacion {
 }
 
 export function textoDeHallazgo(h: HallazgoDeValuacion): string {
-  return `${h.severidad} (${h.regla}): ${h.mensaje}`;
+  return `${h.severidad}: ${h.mensaje}`;
 }
 
 // MP-7: una partida que termina despues de su plan. El texto ya viene armado por la API («A atrasada 5 días: Compra
@@ -304,7 +304,7 @@ export const FILTROS_INICIALES: Filtros = { corte: "", precios: PRECIOS_INICIALE
 export const ROTULO_DE_METODO: Record<MetodoDePrecios, string> = {
   ninguno: "Sin precios del corte",
   comprobacion: "Comprobación directa (versión revalorada)",
-  escalatoria: "Escalatoria (un Km declarado)",
+  escalatoria: "Fórmula de escalatoria (con factor Km)",
   declarados: "Precios declarados de insumos",
 };
 
