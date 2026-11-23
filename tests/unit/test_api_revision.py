@@ -260,7 +260,11 @@ def test_un_paquete_firmado_se_verifica_se_registra_y_se_reaudita() -> None:
         "En común",
     ]
     [r11] = re["hallazgos"][0]["hallazgos"]
-    assert (r11["regla"], r11["severidad"]) == ("R11", "INFO")
+    assert (r11["regla"], r11["nombre_regla"], r11["severidad"]) == (
+        "R11",
+        "Precio fuera de rango",
+        "INFO",
+    )
     assert r11["descripcion"].startswith("3 insumos no contrastables")
     assert re["hallazgos"][1]["hallazgos"] == [] and re["hallazgos"][2]["hallazgos"] == []
     assert cuerpo["entrega_anterior"] is None and cuerpo["sin_entrega_anterior"] == SIN_ANTERIOR

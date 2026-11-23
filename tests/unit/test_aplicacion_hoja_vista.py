@@ -1235,7 +1235,7 @@ def test_las_columnas_de_precios_son_las_21_con_sus_rotulos():
         "Insumo", "Código", "Tipo", "Precio", "Lista", "Moneda", "Fecha del precio", "Tasa",
         "Fecha de la tasa", "Referencia", "Cotización", "Moneda original", "Precio original",
         "Fuente de la tasa", "Fuente", "Propio/heredado", "Erosión USD", "Erosión Bs",
-        "Erosión %", "Erosión por índice", "Estado",
+        "Pérdida cambiaria (%)", "Pérdida según el índice", "Estado",
     ]  # fmt: skip
     assert [c.clave for c in columnas if c.numerica] == [
         "precio", "tasa", "precio_original", "erosion_usd", "erosion_bs", "erosion_pct",

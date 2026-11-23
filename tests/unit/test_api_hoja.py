@@ -1350,8 +1350,8 @@ COLUMNAS_DE_PRECIOS = [
     ("propio", "Propio/heredado", False),
     ("erosion_usd", "Erosión USD", True),
     ("erosion_bs", "Erosión Bs", True),
-    ("erosion_pct", "Erosión %", True),
-    ("erosion_indice", "Erosión por índice", True),
+    ("erosion_pct", "Pérdida cambiaria (%)", True),
+    ("erosion_indice", "Pérdida según el índice", True),
     ("estado", "Estado", False),
 ]
 SIN_FUENTE = "Sin referencia ni cotización: el precio no tiene fuente"

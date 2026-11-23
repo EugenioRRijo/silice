@@ -165,17 +165,20 @@ def test_el_control_trae_los_tres_anillos_y_las_tarjetas_del_corte() -> None:
     control = _tablero(_con_clave()).json()["control"]
     assert control["disponible"] is True and control["motivo"] == ""
     anillos = {a["rotulo"]: a for a in control["anillos"]}
-    assert list(anillos) == ["Avance fisico", "SPI (plazo)", "CPI (costo)"]
-    assert (anillos["Avance fisico"]["texto"], anillos["Avance fisico"]["favorable"]) == (
+    assert list(anillos) == ["Avance físico", "SPI (plazo)", "CPI (costo)"]
+    assert (anillos["Avance físico"]["texto"], anillos["Avance físico"]["favorable"]) == (
         "30.0 %",
         None,
     )
-    assert float(anillos["Avance fisico"]["fraccion"]) == pytest.approx(0.3)
+    assert float(anillos["Avance físico"]["fraccion"]) == pytest.approx(0.3)
+    assert anillos["Avance físico"]["referencia"] == "Plan a la fecha: 37,5 %"
     assert (anillos["SPI (plazo)"]["texto"], anillos["SPI (plazo)"]["favorable"]) == ("0.80", False)
+    assert anillos["SPI (plazo)"]["referencia"] is None
     assert (anillos["CPI (costo)"]["texto"], anillos["CPI (costo)"]["favorable"]) == ("0.94", False)
+    assert anillos["CPI (costo)"]["referencia"] is None
     assert float(anillos["CPI (costo)"]["fraccion"]) == pytest.approx(0.9375)
     tarjetas = {t["rotulo"]: t["valor"] for t in control["tarjetas"]}
-    assert tarjetas["Avance físico (EV/BAC)"] == "30.0 %"
+    assert tarjetas["Avance físico (ejecutado sobre el presupuesto total)"] == "30.0 %"
     assert tarjetas["EAC (costo final estimado)"] == "4266.67 USD"
 
 
