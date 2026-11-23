@@ -40,7 +40,7 @@ import type {
   Similar,
 } from "./cliente";
 import { ContextoDelBorradorAbierto, rutaDeVista } from "../../comun/borradorAbierto";
-import { ParametrosDelPrecio, valoresDe } from "./ParametrosDelPrecio";
+import { ParametrosDelPrecio, esAvisoDeParametros, valoresDe } from "./ParametrosDelPrecio";
 import type { OrigenDeParametros } from "./ParametrosDelPrecio";
 import "./componer.scss";
 import { DialogoVariantes } from "./DialogoVariantes";
@@ -49,7 +49,7 @@ import type { PasoSiguiente } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
 import { Similares } from "./Similares";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { agregarFila, borrarFila, completarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 import { TablaInsumos } from "./TablaInsumos";
@@ -138,6 +138,8 @@ interface Props {
 export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelDelTitulo, alGuardar, pasoSiguiente }: Props): JSX.Element {
   // La partida del último guardado con éxito, para su paso siguiente.
   const [guardada, setGuardada] = useState<PartidaCompuesta | null>(null);
+  // «Más opciones de la partida» abierto a mano (lote 3); un parámetro mal escrito lo abre aunque esté cerrado.
+  const [masOpciones, setMasOpciones] = useState(false);
   const nivel = nivelDelTitulo === 1 ? 2 : 3;
   const Titulo = `h${nivel}` as const;
   const { alExpirar } = useAplicacion();
@@ -517,14 +519,16 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
 
   const usarFila = (tipo: TipoTabla) => (fila: Fila) => cambiarTablas((t) => agregarFila(t, tipo, fila));
   const dominios = ops?.dominios ?? [cabecera.dominio];
+  // Un parámetro mal escrito (el aviso del servidor lo nombra) abre «Más opciones»: no se esconde lo que hay que corregir.
+  const errorEnParametros = esAvisoDeParametros(evaluacion?.aviso ?? null);
+  const origenDeParametros = falloParametros
+    ? "parámetros de omisión (no se leyeron los de la obra)"
+    : (baseParametros?.origen ?? "omision") === "obra"
+      ? "parámetros de la obra"
+      : "parámetros de omisión";
 
   return (
     <div className="silice-componer__cuerpo">
-      <p className="silice-componer__nota cds--type-body-compact-01">
-        Componga una partida a mano: declare su cabecera y sus tres tablas de insumos, vea el precio unitario
-        desglosarse en vivo (sin necesidad de guardar) y guarde la composición. Si la partida ya existe, sus tablas se
-        precargan al teclear su código y guardar reemplaza su composición vigente; si no existe, la crea.
-      </p>
       <AvisoSinLista
         carpeta={carpeta}
         creada={listaCreada}
@@ -567,6 +571,27 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             }}
             alExpirar={expirar}
           />
+        </div>
+        <p id="componer-cabecera-aviso" role="status" aria-live="polite" className="cds--form__helper-text">
+          {avisoDeCabecera}
+        </p>
+        {/* El aviso de los precios de otra lista se lee sin abrir nada, aunque la fecha vaya plegada. */}
+        <p id="componer-fecha-estado" role="status" aria-live="polite" className="cds--form__helper-text">
+          {avisoDeListas(listas)}
+        </p>
+      </section>
+
+      {/* Ficha de Componer, lote 3: lo que casi siempre se deja como viene va plegado, con sus valores resumidos en una
+          frase. Un parámetro mal escrito lo abre: no se esconde lo que hay que corregir. */}
+      <details
+        className="silice-componer__mas"
+        open={masOpciones || errorEnParametros}
+        onToggle={(e) => setMasOpciones(e.currentTarget.open)}
+      >
+        <summary className="cds--type-body-compact-01">
+          {`Más opciones de la partida: Tipo de obra: ${textoDominio(cabecera.dominio)} · precios al ${fechaEsVe(fecha)} · ${origenDeParametros}`}
+        </summary>
+        <div className="silice-componer__rejilla">
           <div>
             <Select
               id="componer-dominio"
@@ -584,28 +609,30 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               Filtra partidas similares y referencias
             </p>
           </div>
-          <div>
-            <CampoTexto
-              id="componer-fecha"
-              size="sm"
-              type="date"
-              labelText="Fecha de precios"
-              helperText="Define la lista de precios vigente para los insumos"
-              value={fecha}
-              onChange={(e) => {
-                setFecha(e.target.value);
-                limpiarGuardado();
-              }}
-            />
-            <p id="componer-fecha-estado" role="status" aria-live="polite" className="cds--form__helper-text">
-              {avisoDeListas(listas)}
-            </p>
-          </div>
+          <CampoTexto
+            id="componer-fecha"
+            size="sm"
+            type="date"
+            labelText="Fecha de precios"
+            helperText="Define la lista de precios vigente para los insumos"
+            value={fecha}
+            onChange={(e) => {
+              setFecha(e.target.value);
+              limpiarGuardado();
+            }}
+          />
         </div>
-        <p id="componer-cabecera-aviso" role="status" aria-live="polite" className="cds--form__helper-text">
-          {avisoDeCabecera}
-        </p>
-      </section>
+        <ParametrosDelPrecio
+          campos={baseParametros?.campos ?? null}
+          origen={baseParametros?.origen ?? "omision"}
+          valores={parametros}
+          fallo={falloParametros}
+          aviso={evaluacion?.aviso ?? null}
+          alCambiar={(clave, texto) => setParametros((p) => (p === null ? p : { ...p, [clave]: texto }))}
+          alRestaurar={() => baseParametros !== null && setParametros(valoresDe(baseParametros.campos))}
+          nivel={nivel}
+        />
+      </details>
 
       <AvisoError error={errorParecidas} titulo="No se pudieron pedir las partidas similares" />
       <Similares similares={parecidas} nivel={nivel} />
@@ -675,17 +702,6 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           </div>
         ))}
       </section>
-
-      <ParametrosDelPrecio
-        campos={baseParametros?.campos ?? null}
-        origen={baseParametros?.origen ?? "omision"}
-        valores={parametros}
-        fallo={falloParametros}
-        aviso={evaluacion?.aviso ?? null}
-        alCambiar={(clave, texto) => setParametros((p) => (p === null ? p : { ...p, [clave]: texto }))}
-        alRestaurar={() => baseParametros !== null && setParametros(valoresDe(baseParametros.campos))}
-        nivel={nivel}
-      />
 
       <PanelDesglose
         evaluacion={evaluacion}
