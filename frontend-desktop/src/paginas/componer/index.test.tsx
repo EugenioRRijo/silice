@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -304,6 +305,66 @@ describe("Componer una partida", () => {
       justificacion: "Cuadrilla reforzada",
     });
     expect(String(envio.cuerpo?.fecha)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  // Ficha de Componer (2026-11-23, lote 1). Eugenio: «acabo de componer una partida y me perdí». Dentro de una obra, el
+  // éxito se queda en pantalla, dice que la partida todavía no está en el presupuesto y su único botón principal es el
+  // paso siguiente, que lleva al Presupuesto con la partida para ponerle cantidad.
+  function montarEnObra() {
+    function Destino() {
+      const { state } = useLocation();
+      return <p data-testid="destino">{JSON.stringify(state)}</p>;
+    }
+    render(
+      <ContextoAplicacion.Provider value={{ sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}>
+        <ContextoDeLaObra.Provider value={{ carpeta: "demo.db", obraId: 7, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
+          <MemoryRouter initialEntries={["/obra/demo.db/7/presupuesto/componer"]}>
+            <Routes>
+              <Route path="/obra/demo.db/7/presupuesto/componer" element={<PaginaComponer />} />
+              <Route path="/obra/demo.db/7/presupuesto" element={<Destino />} />
+            </Routes>
+          </MemoryRouter>
+        </ContextoDeLaObra.Provider>
+      </ContextoAplicacion.Provider>,
+    );
+  }
+
+  test("en una obra, al guardar dice que aún no está en el presupuesto y el paso siguiente es el único principal, con el foco", async () => {
+    const usuario = userEvent.setup();
+    montarEnObra();
+    await usuario.type(screen.getByLabelText("Código"), "FIC-1");
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro ficticio");
+    await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
+    expect(await screen.findByText("Todavía no está en el presupuesto de esta obra.", {}, ESPERA)).toBeInTheDocument();
+    const siguiente = screen.getByRole("button", { name: "Agregar FIC-1 al presupuesto" });
+    await waitFor(() => expect(siguiente).toHaveFocus());
+    expect(siguiente).toHaveClass("cds--btn--primary");
+    // Un solo principal: guardar de nuevo queda como secundario.
+    expect(screen.getByRole("button", { name: "Guardar composición" })).not.toHaveClass("cds--btn--primary");
+  });
+
+  test("«Agregar … al presupuesto» lleva al Presupuesto de la obra con la partida guardada", async () => {
+    const usuario = userEvent.setup();
+    montarEnObra();
+    await usuario.type(screen.getByLabelText("Código"), "FIC-1");
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro ficticio");
+    await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
+    await usuario.click(await screen.findByRole("button", { name: "Agregar FIC-1 al presupuesto" }, ESPERA));
+    expect(JSON.parse(screen.getByTestId("destino").textContent ?? "null")).toEqual({
+      agregarPartida: { codigo: "FIC-1", descripcion: "Muro ficticio", unidad: "" },
+    });
+  });
+
+  test("fuera de una obra el guardado no ofrece llevarla a un presupuesto", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    await usuario.type(screen.getByLabelText("Código"), "FIC-1");
+    await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
+    await screen.findByText(/Composición guardada/, {}, ESPERA);
+    expect(screen.queryByRole("button", { name: /al presupuesto$/ })).toBeNull();
   });
 
   test("sin advertencia de rendimiento la justificación viaja nula", async () => {

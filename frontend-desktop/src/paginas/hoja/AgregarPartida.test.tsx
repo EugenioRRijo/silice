@@ -299,7 +299,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
   }
   const vistasPedidas = () => fetchFalso.mock.calls.map(([r]) => String(r)).filter((r) => r.includes("/vistas/"));
 
-  function montar(sesion: SesionRespuesta = SESION) {
+  function montar(sesion: SesionRespuesta = SESION, entrada: string | { pathname: string; state: unknown } = "/hoja") {
     const valor: Aplicacion = {
       sesion,
       proyecto: "VIV-80",
@@ -310,7 +310,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     };
     return render(
       <ContextoAplicacion.Provider value={valor}>
-        <MemoryRouter initialEntries={["/hoja"]}>
+        <MemoryRouter initialEntries={[entrada]}>
           <Routes>
             <Route path="/hoja" element={<PaginaHoja />} />
             <Route path="/componer" element={<p>Pantalla de Componer</p>} />
@@ -785,6 +785,20 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await userEvent.click(within(otra).getByRole("button", { name: "Agregar al presupuesto" }));
     await waitFor(() => expect(escrituras(RUTA_AGREGAR)).toEqual([{ rev: 0, codigo: "Z-99", cantidad: "5", calculo: "", nota: "" }]));
     expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/hoja$/);
+  });
+
+  // Ficha de Componer (2026-11-23, lote 1): la subvista Componer termina con «Agregar X al presupuesto», que trae aquí la
+  // partida recién guardada. El diálogo se abre solo, con ella elegida y el foco en «Cantidad», el paso que sigue.
+  test("al llegar desde Componer con una partida, «Agregar partida» se abre con ella elegida y el foco en «Cantidad»", async () => {
+    montar(SESION, { pathname: "/hoja", state: { agregarPartida: { codigo: "Z-99", descripcion: "Zanja ficticia", unidad: "m3" } } });
+    const dialogo = await screen.findByRole("dialog", { name: "Agregar partida" });
+    expect(within(dialogo).getByRole("combobox", { name: "Partida" })).toHaveValue("Z-99 · Zanja ficticia");
+    await waitFor(() => expect(within(dialogo).getByRole("textbox", { name: "Cantidad (m³)" })).toHaveFocus());
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: "Cantidad (m³)" }), "5");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
+    await waitFor(() => expect(escrituras(RUTA_AGREGAR)).toEqual([{ rev: 0, codigo: "Z-99", cantidad: "5", calculo: "", nota: "" }]));
+    // El pedido se atiende una sola vez: cerrado el diálogo, no se vuelve a abrir.
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Agregar partida" })).toBeNull());
   });
 
   test("componer con algo escrito no pregunta; Esc cierra el panel sin guardar y lo escrito sigue en el diálogo", async () => {
