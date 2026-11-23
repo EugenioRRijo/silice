@@ -17,6 +17,7 @@
 // La Ayuda de la Cuenta: un índice de enlaces y tres partes separadas por un divisor de 1 px.
 .silice-ayuda {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
 }
 

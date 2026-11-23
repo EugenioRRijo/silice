@@ -245,6 +245,12 @@
   min-inline-size: 0;
 }
 
+// Con letra grande y poco ancho, «Salir de la sesión» parte línea: Carbon deja sus botones en `max-content`.
+.silice-cuenta-cabecera .cds--btn {
+  max-inline-size: 100%;
+  white-space: normal;
+}
+
 .silice-cuenta-preferencias {
   display: grid;
   gap: 1.5rem;
