@@ -71,6 +71,11 @@ Cuando Claude te encarga **construir** un lote, editas solo los archivos del lot
 (Claude prueba y confirma): activa [constructor-gemini](.agents/skills/constructor-gemini/SKILL.md), que reúne DESIGN.md,
 unslop, impeccable, las reglas de ECC y la lectura de un recién llegado.
 
+**Antes de diseñar o cambiar cualquier pantalla** (cualquier agente): activa
+[interfaz-silice](.agents/skills/interfaz-silice/SKILL.md). Pide una ficha de la pantalla en 10 partes, que empieza por
+la tarea de la persona y termina en el paso siguiente. También trae las piezas comunes y los errores ya vividos con
+usuarios.
+
 ## Si trabajas en paralelo con otro agente
 
 Anota cada hallazgo en `docs/bitacora/auditoria-agy-AAAA-MM-DD.md` con el formato de
