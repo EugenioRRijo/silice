@@ -218,6 +218,9 @@ describe("la Cuenta cabe a 768 px con letra Muy grande", () => {
     ["paginas/administracion/administracion.scss", ".silice-adm__capa {"],
     ["paginas/administracion/administracion.scss", ".silice-adm__bloque {"],
     ["comun/ayuda/ayuda.scss", ".silice-ayuda {"],
+    // La base de toda página: sin esto cualquier hijo ancho (una lista de Carbon, un campo) estira la página entera.
+    ["comun/comun.scss", ".silice-pagina {"],
+    ["paginas/administracion/administracion.scss", ".silice-adm__seccion {"],
   ])("%s %s: la columna de la rejilla puede encoger", (archivo, apertura) => {
     const regla = bloqueDe(leer(archivo), apertura) ?? "";
     expect(regla).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
