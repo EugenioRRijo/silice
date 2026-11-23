@@ -17,7 +17,10 @@ export const AYUDA_ARCHIVO =
   "El archivo lleva una fila de títulos con las columnas «tipo», «insumo», «unidad» y «precio»; «tipo» es material, " +
   "equipo o mano de obra. Opcionales: «fecha» (AAAA-MM-DD, por ejemplo 2026-11-23) y «fuente».";
 export const TITULO_LISTA = "La lista de la empresa";
-export const SIN_BASES = "La carpeta no tiene listas de precios: cargue una en Actualizar precios.";
+export const SIN_BASES = "La carpeta todavía no tiene una lista base de precios.";
+// El camino real sin lista base (juez F2, 2026-11-23): el botón de MaPreX de esta misma página la crea y la recarga.
+export const SIN_BASES_QUE_HACER =
+  "Cree una con «Cargar la referencia MaPreX en Bs», arriba en esta página: queda como lista base y aquí aparece el formulario de la lista de su empresa.";
 export const TITULO_HALLAZGOS = "Revisar precios vencidos o fuera de rango";
 export const SIN_LISTAS = "Todavía no hay listas de empresa en esta carpeta.";
 export const MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto.";

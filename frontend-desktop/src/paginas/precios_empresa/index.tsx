@@ -22,6 +22,7 @@ import {
   ROTULO_REFERENCIA,
   AYUDA_ARCHIVO,
   SIN_BASES,
+  SIN_BASES_QUE_HACER,
   SIN_LISTAS,
   TITULO,
   TITULO_HALLAZGOS,
@@ -281,7 +282,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
       </h2>
       <p className="cds--type-body-compact-01">Toma una lista base y aplica encima los precios de su archivo.</p>
       {bases.length === 0 ? (
-        <EstadoVacio titulo={SIN_BASES} />
+        <EstadoVacio titulo={SIN_BASES} descripcion={SIN_BASES_QUE_HACER} />
       ) : (
         <form className="silice-precios-empresa__formulario" onSubmit={crear}>
           <div className="silice-precios-empresa__campos">
