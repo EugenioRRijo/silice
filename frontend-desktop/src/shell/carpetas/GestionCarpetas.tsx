@@ -38,7 +38,7 @@ const EXPLICACION = "Una carpeta de trabajo guarda su catálogo, sus precios y s
 const MIB = 1024 * 1024;
 // El tope de `POST /v1/casos/subida` (`aplicacion/casos.py`): un archivo mayor no se envia.
 const TOPE_SUBIDA = 20 * MIB;
-const MENSAJE_GRANDE = "El archivo pasa de 20 MB.";
+const MENSAJE_GRANDE = "El archivo pesa más de 20 MB, el máximo que se puede subir.";
 
 // El tamano del archivo en MB con un decimal y coma (es-VE): cuenta entera de decimas, sin redondeo de coma flotante
 // a la vista ni `toFixed` (la interfaz no calcula montos; esto es solo el tamano de un archivo).

@@ -8,7 +8,7 @@ import { unidadEscrita } from "../../comun/unidades";
 export const TITULO = "Precios de la empresa";
 export const AYUDA =
   "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con su fecha y su fuente. No cambia la valoración de ninguna obra que no la use.";
-export const TITULO_REFERENCIA = "La referencia MaPreX en bolívares";
+export const TITULO_REFERENCIA = "Referencia de precios MaPreX (en bolívares)";
 export const ROTULO_REFERENCIA = "Cargar la referencia MaPreX en Bs";
 export const TITULO_LISTA = "La lista de la empresa";
 export const SIN_BASES = "La carpeta no tiene listas de precios: cargue una en Actualizar precios.";

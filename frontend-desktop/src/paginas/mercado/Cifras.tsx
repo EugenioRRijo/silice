@@ -26,7 +26,7 @@ export function Cifras({ estudio, obra }: Props) {
   const id = `mercado-${lado}-cifras`;
   const montos: [string, string | null][] = [
     ["Mínimo", est.minimo],
-    ["Primer cuartil (25 % más bajo)", est.q1],
+    ["Primer cuartil (el 25 % de los precios queda por debajo)", est.q1],
     ["Mediana (valor central)", est.mediana],
     ["Promedio", est.promedio],
     ["Máximo", est.maximo],

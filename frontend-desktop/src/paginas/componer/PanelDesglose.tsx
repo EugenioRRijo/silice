@@ -72,7 +72,7 @@ function BloqueContraste({ contraste, moneda, nivel }: { contraste: Contraste; m
       </p>
       <p className="cds--type-body-compact-01">
         {contraste.dentro_de_rango
-          ? "Su precio está dentro del rango esperado para un presupuesto detallado (clase 3 de AACE). Si queda fuera, revise rendimientos o precios."
+          ? "Su precio está dentro del rango esperado para un presupuesto detallado (clase 3 de AACE)."
           : "Su precio queda fuera del rango esperado para un presupuesto detallado (clase 3 de AACE); revise rendimientos o precios."}
       </p>
     </div>

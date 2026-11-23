@@ -168,7 +168,7 @@ export const COLUMNAS_PARTIDAS: ColumnaDensa[] = [
   { clave: "total_anterior", titulo: "Total anterior", numerica: true, presentar: formatoMontoEsVe },
   { clave: "total_nuevo", titulo: "Total nuevo", numerica: true, presentar: formatoMontoEsVe },
   { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
-  { clave: "incidencia_pct", titulo: "Peso en el cambio (%)", numerica: true, celda: "variacion" },
+  { clave: "incidencia_pct", titulo: "Incidencia en el cambio (%)", numerica: true, celda: "variacion" },
   { clave: "pu_anterior", titulo: "Precio unitario anterior", numerica: true, presentar: formatoMontoEsVe },
   { clave: "pu_nuevo", titulo: "Precio unitario nuevo", numerica: true, presentar: formatoMontoEsVe },
   { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoMontoEsVe },

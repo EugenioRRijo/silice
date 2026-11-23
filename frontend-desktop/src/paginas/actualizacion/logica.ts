@@ -72,7 +72,7 @@ export const COLUMNAS_COMPARATIVO: ColumnaDensa[] = [
   { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
   { clave: "total_anterior", titulo: "Total anterior", numerica: true, presentar: formatoEsVe },
   { clave: "total_nuevo", titulo: "Total nuevo", numerica: true, presentar: formatoEsVe },
-  { clave: "incidencia_pct", titulo: "Aporte al cambio (%)", numerica: true, celda: "variacion" },
+  { clave: "incidencia_pct", titulo: "Incidencia en el cambio (%)", numerica: true, celda: "variacion" },
 ];
 
 export function filasComparativo(filas: FilaComparativo[]): FilaDensa[] {

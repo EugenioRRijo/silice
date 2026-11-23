@@ -73,9 +73,9 @@ const rotuloDelRenglon = (f: FilaDelPresupuesto, i: number) =>
 // D4: «póngalo abajo» solo si abajo hay con qué ponerlo. Un renglón que sale del espacio de la obra no cambia de frente
 // aquí (`aplicacion/frentes.py`, `poner_frentes`), y quien solo lee no cambia ninguno.
 function sinFrentes(editable: boolean, propias: number): string {
-  if (!editable) return "Ningún renglón tiene frente.";
-  if (propias > 0) return "Ningún renglón tiene frente: póngalo abajo, o importe un Excel organizado por frentes.";
-  return "Ningún renglón tiene frente. Los renglones que salen del espacio de la obra no llevan frente a mano: para agruparlos, importe un Excel organizado por frentes.";
+  if (!editable) return "Ninguna partida tiene frente de trabajo.";
+  if (propias > 0) return "Ninguna partida tiene frente de trabajo. Asígnelo con el selector de abajo o importe un Excel organizado por frentes.";
+  return "Ninguna partida tiene frente de trabajo. Las partidas que salen del espacio de la obra no admiten frente a mano: para agruparlas, importe un Excel organizado por frentes.";
 }
 
 const renglones = (f: Frente) =>

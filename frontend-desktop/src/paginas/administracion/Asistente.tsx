@@ -247,7 +247,8 @@ export default function Asistente() {
             />
             <PasswordInput
               id="ia-contrasena-respaldo"
-              labelText="Contraseña del respaldo cifrado (solo si el almacén seguro de contraseñas no está)"
+              labelText="Contraseña del respaldo cifrado"
+              helperText="Solo hace falta si su equipo no tiene almacén seguro de contraseñas."
               value={respaldo}
               autoComplete="new-password"
               disabled={!permitida}

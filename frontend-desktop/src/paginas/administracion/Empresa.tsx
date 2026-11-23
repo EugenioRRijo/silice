@@ -191,7 +191,7 @@ export default function Empresa() {
             Sello digital de su empresa para demostrar que un presupuesto entregado no fue alterado
           </p>
           <p className="cds--type-body-compact-01">
-            Código de verificación de su firma (SHA-256): <strong>{clave.huella}</strong>
+            Código de verificación de la clave (SHA-256): <strong>{clave.huella}</strong>
           </p>
           <p className="silice-adm__nota cds--type-label-01">
             Léala por teléfono a quien reciba sus paquetes: es lo que comprueba su clave.

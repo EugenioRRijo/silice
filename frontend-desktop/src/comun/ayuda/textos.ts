@@ -129,7 +129,7 @@ export const GLOSARIO: readonly Termino[] = [
     id: "clave-de-firma",
     termino: "Clave de firma",
     definicion:
-      "El sello digital único de su empresa para firmar paquetes .silice antes de entregarlos al cliente. Quien recibe el paquete usa el código de verificación de la clave pública para comprobar que el presupuesto es auténtico y no fue alterado.",
+      "El sello digital único de su empresa para firmar paquetes .silice antes de entregarlos al cliente. Quien recibe el paquete usa el «Código de verificación de la clave (SHA-256)» para comprobar que el presupuesto es auténtico y no fue alterado.",
   },
   {
     id: "codigo-verificacion",
@@ -363,7 +363,7 @@ export const GLOSARIO: readonly Termino[] = [
     id: "reparto-cantera",
     termino: "Reparto de costos de cantera",
     definicion:
-      "Cómo se distribuyen los gastos mensuales de la cantera entre los distintos agregados producidos. Si no indica porcentajes manuales, Sílice reparte el costo en partes iguales según las toneladas producidas de cada material.",
+      "Cómo se distribuyen los gastos mensuales de la cantera entre los distintos agregados producidos. Si no indica porcentajes manuales, Sílice reparte el costo en proporción a las toneladas producidas de cada material (el mismo costo por tonelada).",
   },
   {
     id: "reserva-contingencia",
@@ -561,7 +561,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
     titulo: "Componer una partida",
     parrafos: [
       "Arma el APU de una partida: su cabecera, su rendimiento y sus insumos en «Materiales», «Equipos» y «Mano de obra». Sílice calcula el precio unitario mientras usted escribe, y «Guardar composición» la guarda en el catálogo.",
-      "Los precios salen de la lista para armar de la carpeta, a la «Fecha de precios» de la composición.",
+      "Los precios salen de la lista de precios activa, en la «Fecha de precios» de este análisis.",
     ],
     guia: "presupuesto",
     terminos: ["apu", "rendimiento", "insumo", "lista-para-armar"],
