@@ -32,7 +32,7 @@ export const TEXTOS = {
     omitidas: (n: number) =>
       n === 1 ? "No se pudo leer 1 carpeta; sus obras no aparecen en la cartera." : `No se pudieron leer ${cifra(n)} carpetas; sus obras no aparecen en la cartera.`,
     vacio: {
-      puedeCrear: { titulo: "Aún no hay obras", descripcion: "Cree la primera obra para armar su presupuesto y seguir su avance.", boton: "Nueva obra" },
+      puedeCrear: { titulo: "Aún no hay obras", descripcion: "Cree la primera obra para armar su presupuesto y seguir su avance.", boton: "Crear la primera obra" },
       soloRevisa: {
         titulo: "No hay obras que su cuenta pueda ver",
         descripcion: "Cuando haya una obra registrada en las carpetas a las que tiene acceso, aparecerá aquí.",

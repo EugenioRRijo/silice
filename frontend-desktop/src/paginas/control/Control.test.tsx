@@ -541,7 +541,9 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
     const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de las valuaciones" });
     expect(within(lista).getByText(/V-01 · Error · Valuación dentro del presupuesto \(R13\): La valuación V-01/)).toBeInTheDocument();
-    expect(within(lista).getByText(/Advertencia · R14: Falta fecha de medición\./)).toBeInTheDocument();
+    // Sin nombre llano, el código suelto no se muestra: solo la severidad y el mensaje.
+    expect(within(lista).getByText(/Advertencia: Falta fecha de medición\./)).toBeInTheDocument();
+    expect(within(lista).queryByText(/R14/)).toBeNull();
   });
 
   test("al registrar una valuación, el detalle muestra el nombre llano y el código de cada regla", async () => {

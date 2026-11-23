@@ -80,7 +80,7 @@ describe("entregar desde Aprobaciones (tanda 2 del pulido F5, Tarea 6)", () => {
   test("quien revisa ve Aprobaciones de la obra sin «Entregar paquete»", async () => {
     montar("rita", "/obra/empresa/7/aprobaciones");
     expect(await screen.findByRole("heading", { level: 1, name: "Aprobar una versión" })).toBeInTheDocument();
-    expect(await screen.findByText("No hay versiones esperando dictamen.")).toBeInTheDocument();
+    expect(await screen.findByText("No hay versiones esperando dictamen")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Entregar paquete" })).toBeNull();
   });
 });

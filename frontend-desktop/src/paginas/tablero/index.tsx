@@ -1,12 +1,15 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useContext } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
+import { EnlaceComoBoton } from "../../comun/EnlaceComoBoton";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { RadialGauge } from "../../comun/VisualMeters";
 import { PALETA_GRAFICOS, colorPorGrupo, formatoNumeroEsVe } from "../../comun/paletaGraficos";
 import { fechaEsVe, formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
+import { rutaOPendientes } from "../../marco/espacios";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../../comun/useCarga";
 import {
@@ -104,6 +107,8 @@ function Grafico({
 }
 
 function Contenido({ datos }: { datos: TableroRespuesta }) {
+  const obra = useContext(ContextoDeLaObra);
+  const obraAbierta = obra ? { carpeta: obra.carpeta, obraId: obra.obraId } : undefined;
   const moneda = datos.moneda ?? "";
   if (datos.version === null) {
     return (
@@ -140,6 +145,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
                       fraccion={Number(a.fraccion)}
                       texto={formatoMontoEsVe(a.texto)}
                       variacion={a.favorable === true ? "favorable" : a.favorable === false ? "desfavorable" : null}
+                      referencia={a.referencia}
                       size={92}
                     />
                   </div>
@@ -149,7 +155,11 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
             <Tarjetas tarjetas={datos.control.tarjetas} moneda={moneda} />
           </>
         ) : (
-          <EstadoVacio titulo="Aún no hay control de obra" descripcion={datos.control?.motivo} />
+          <EstadoVacio titulo="Aún no hay control de obra" descripcion={datos.control?.motivo}>
+            <EnlaceComoBoton to={rutaOPendientes("control", obraAbierta)} kind="secondary">
+              Abrir el control de obra
+            </EnlaceComoBoton>
+          </EstadoVacio>
         )}
       </section>
 
@@ -226,12 +236,14 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
           <h2 id="tablero-versiones" className="cds--type-heading-compact-02">
             Versiones del presupuesto
           </h2>
-          <Grafico
-            titulo="Total por versión"
-            tipo="barras"
-            datos={datosDeVersiones(datos.versiones)}
-            eje={{ abajo: `Total (${moneda})`, izquierda: "Versión" }}
-          />
+          {datos.versiones.length >= 2 && (
+            <Grafico
+              titulo="Total por versión"
+              tipo="barras"
+              datos={datosDeVersiones(datos.versiones)}
+              eje={{ abajo: `Total (${moneda})`, izquierda: "Versión" }}
+            />
+          )}
           <TablaDensa
             etiqueta="Versiones del presupuesto"
             columnas={[

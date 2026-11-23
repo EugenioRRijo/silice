@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { tipoDeInsumoEscrito } from "../../comun/tiposDeInsumo";
 import { unidadEscrita } from "../../comun/unidades";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
@@ -26,6 +27,12 @@ interface Insumo {
 }
 
 const SIN_PRECIO = "Sin precio vigente";
+const DOMINIOS: Record<string, string> = {
+  civil: "Civil",
+  telecomunicaciones: "Telecomunicaciones",
+  industrial: "Industrial",
+  sistemas: "Sistemas",
+};
 
 // «Catálogo de partidas e insumos» (solo lectura): las dos tablas de la página clásica, con una búsqueda.
 export default function PaginaCatalogo() {
@@ -49,14 +56,20 @@ export default function PaginaCatalogo() {
   if (partidas.estado !== "listo" || insumos.estado !== "listo") return <EsqueletoPagina titulo="Catálogo de partidas e insumos" />;
 
   const filasPartidas = partidas.datos
-    .filter((p) => coincide([p.codigo, p.descripcion, p.unidad, p.dominio], busqueda))
-    .map((p) => ({ id: p.codigo, codigo: p.codigo, descripcion: p.descripcion, unidad: unidadEscrita(p.unidad), dominio: p.dominio }));
+    .filter((p) => coincide([p.codigo, p.descripcion, p.unidad, p.dominio, DOMINIOS[p.dominio] ?? p.dominio], busqueda))
+    .map((p) => ({
+      id: p.codigo,
+      codigo: p.codigo,
+      descripcion: p.descripcion,
+      unidad: unidadEscrita(p.unidad),
+      dominio: DOMINIOS[p.dominio] ?? p.dominio,
+    }));
   const filasInsumos = insumos.datos
-    .filter((i) => coincide([i.codigo, i.descripcion, i.tipo, i.unidad], busqueda))
+    .filter((i) => coincide([i.codigo, i.descripcion, i.tipo, tipoDeInsumoEscrito(i.tipo), i.unidad], busqueda))
     .map((i) => ({
       id: i.codigo,
       codigo: i.codigo,
-      tipo: i.tipo,
+      tipo: tipoDeInsumoEscrito(i.tipo),
       descripcion: i.descripcion,
       unidad: i.unidad === null ? "" : unidadEscrita(i.unidad),
       // Sin lista vigente se dice con palabras: una celda vacía parecía un fallo. El orden la deja tras los números.

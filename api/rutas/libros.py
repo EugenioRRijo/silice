@@ -406,7 +406,7 @@ async def _leer(archivo: UploadFile, campo: str) -> bytes:
     del cuerpo entero que pone `api.proteccion`, más estricto que los 25 MiB de la guardia)."""
     excedido = HTTPException(
         413,
-        f"'{campo}' supera el máximo de {TOPE_BYTES / 2**20:g} MiB (el tope de la petición "
+        f"'{campo}' supera el máximo de {TOPE_BYTES / 2**20:g} MB (el tope de la petición "
         "entera, con todos sus archivos).",
     )
     if archivo.size is not None and archivo.size > TOPE_BYTES:

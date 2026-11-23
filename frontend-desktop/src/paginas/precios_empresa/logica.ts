@@ -1,6 +1,7 @@
 // Logica pura de «Precios de la empresa» (UC-17 4-5): textos de la pagina clasica y el formulario que recibe la API.
 // No calcula ni redondea: el impacto de cada hallazgo llega como texto con punto y solo se presenta en es-VE (D-8).
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
+import { TIPOS_DE_INSUMO } from "../../comun/tiposDeInsumo";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { unidadEscrita } from "../../comun/unidades";
 
@@ -75,9 +76,6 @@ export const COLUMNAS_NUEVOS: ColumnaDensa[] = [
   { clave: "unidad", titulo: "Unidad" },
   { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
 ];
-
-// El tipo como lo dice la pantalla y la unidad como se escribe («m³»), no las claves del servidor (árbitro 13/11, M5).
-const TIPOS_DE_INSUMO: Record<string, string> = { material: "Material", equipo: "Equipo", mano_obra: "Mano de obra" };
 
 export function filasNuevos(nuevos: InsumoNuevo[]): FilaDensa[] {
   return nuevos.map((n, i) => ({

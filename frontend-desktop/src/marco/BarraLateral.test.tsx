@@ -438,7 +438,7 @@ describe("BarraLateral: Nueva obra", () => {
     if (moneda) await userEvent.selectOptions(campo, moneda);
     else await waitFor(() => expect(campo).toHaveValue("Bs"));
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear la obra" }));
   }
   const envios = () => pedirFalso.mock.calls.filter(([r]) => r === "/v1/proyectos");
   const cambiosDeCarpeta = () => pedirFalso.mock.calls.filter(([r]) => r === "/v1/casos/actual");
@@ -467,7 +467,7 @@ describe("BarraLateral: Nueva obra", () => {
     expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("");
     expect(within(caja).queryByText("Es la moneda de esta carpeta (Bs).")).toBeNull();
     await userEvent.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(within(caja).getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(within(caja).getByRole("button", { name: "Crear la obra" }));
     expect(await within(caja).findByText("Elija la moneda de la obra.")).toBeInTheDocument();
     expect(envios()).toEqual([]);
   });
@@ -618,7 +618,7 @@ describe("BarraLateral: carga de las obras", () => {
     });
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear la obra" }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull();
       expect(screen.getByRole("list", { name: "Obras" })).toBeInTheDocument();
@@ -645,7 +645,7 @@ describe("BarraLateral: la obra recién creada", () => {
     await screen.findByRole("dialog", { name: "Nueva obra" });
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear la obra" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
   }
 
@@ -682,7 +682,7 @@ describe("BarraLateral: la obra recién creada, con cambios sin guardar", () => 
     await screen.findByRole("dialog", { name: "Nueva obra" });
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear la obra" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
   }
 

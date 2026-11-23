@@ -65,16 +65,14 @@ export default function PaginaAuditoria() {
           <p role="status" className="silice-inicio__nota cds--type-body-compact-01">
             {archivo ? `Archivo elegido: ${archivo.name}` : ""}
           </p>
-          {archivo && (
-            <div className="silice-inicio__acciones">
-              <Button kind="primary" size="md" onClick={() => auditar("guiado")}>
-                Auditar con recorrido guiado
-              </Button>
-              <Button kind="tertiary" size="md" onClick={() => auditar("propio")}>
-                Auditar por mi cuenta
-              </Button>
-            </div>
-          )}
+          <div className="silice-inicio__acciones">
+            <Button kind="primary" size="md" disabled={!archivo} onClick={() => auditar("guiado")}>
+              Auditar con recorrido guiado
+            </Button>
+            <Button kind="tertiary" size="md" disabled={!archivo} onClick={() => auditar("propio")}>
+              Auditar por mi cuenta
+            </Button>
+          </div>
         </section>
       ) : (
         <section className="silice-inicio__bloque" aria-labelledby="auditoria-excel">

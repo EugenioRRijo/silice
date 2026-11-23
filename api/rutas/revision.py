@@ -76,9 +76,9 @@ if TYPE_CHECKING:
 TOPE_PAQUETE = LIMITE_ARCHIVO  # 20 MiB: lo que `abrir_zip` admite
 TOPE_EXCEL = min(MAX_BYTES, LIMITE_CUERPO)  # 20 MiB: el cuerpo entero no pasa de ahí
 MENSAJE_TOPE_PAQUETE = (
-    "El archivo pesa más de 20 MiB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
+    "El archivo pesa más de 20 MB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
 )
-MENSAJE_TOPE_EXCEL = "El presupuesto en Excel supera el máximo de 20 MiB."
+MENSAJE_TOPE_EXCEL = "El presupuesto en Excel supera el máximo de 20 MB."
 MENSAJE_CUERPO_INVALIDO = (
     "Suba el archivo .silice que recibió; la lista se indica por su número, el dictamen es "
     "conforme, con observaciones o rechazado, y el Excel, presupuesto o revision."

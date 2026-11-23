@@ -432,7 +432,7 @@ export const GUIAS: readonly Guia[] = [
       {
         titulo: "Crear la obra y agregar sus partidas",
         pasos: [
-          "En la barra de la izquierda, pulse «Nueva obra». Escriba el «Nombre de la obra», revise la «Moneda» y pulse «Crear obra». Se abre el «Resumen» de la obra.",
+          "En la barra de la izquierda, pulse «Nueva obra». Escriba el «Nombre de la obra», revise la «Moneda» y pulse «Crear la obra». Se abre el «Resumen» de la obra.",
           "En la barra de secciones de la obra, vaya a «Presupuesto». En la pestaña «Partidas», pulse «Agregar partida».",
           "En «Partida», busque por código o por una palabra de la descripción y elija la del catálogo. Si no está, «Buscar parecidas» propone partidas que se le parecen, o elija la última sugerencia, «Componer una partida nueva», para armar su APU en el panel (queda en el catálogo de la empresa, para todas las obras).",
           "Escriba la cantidad (o el «Cálculo (opcional)», por ejemplo 6*3-2) y pulse «Agregar al presupuesto». Repita con cada partida.",

@@ -164,7 +164,7 @@ function Vacio({ puedeCrear, alCrear }: Pick<Props, "puedeCrear" | "alCrear">) {
   return (
     <EstadoVacio titulo={titulo} descripcion={descripcion}>
       <div>
-        <Button kind="tertiary" size="sm" onClick={alCrear}>
+        <Button kind="primary" size="sm" onClick={alCrear}>
           {boton}
         </Button>
       </div>

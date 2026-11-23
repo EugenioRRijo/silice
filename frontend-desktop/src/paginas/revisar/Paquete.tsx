@@ -14,6 +14,7 @@ import {
   COLUMNAS_HALLAZGOS,
   SIN_ARCHIVO,
   filasDeCambios,
+  filasDeHallazgos,
   formularioDictamen,
   formularioExcel,
   formularioPaquete,
@@ -131,7 +132,7 @@ function Reauditoria({
               <TablaDensa
                 etiqueta={lote.titulo}
                 columnas={COLUMNAS_HALLAZGOS}
-                filas={lote.hallazgos.map((h, j) => ({ id: String(j), ...h }))}
+                filas={filasDeHallazgos(lote.hallazgos)}
                 vacio={{ titulo: "Ninguno" }}
               />
             </section>

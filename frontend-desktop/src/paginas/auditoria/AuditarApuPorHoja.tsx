@@ -4,6 +4,7 @@ import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useRef, useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import type { HallazgoLibroRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
@@ -15,6 +16,7 @@ import { MONEDAS, rotuloDeMoneda } from "../../comun/monedas";
 import { enumeradas } from "../../comun/perfilesDeLibros";
 import type { PerfilDisponible } from "../../comun/perfilesDeLibros";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { SEVERIDADES, normalizarSeveridad } from "../../severidad/severidad";
 
 // F5 vial, tarea 6 (diseño 2026-11-03 §7): auditar un libro con un APU por hoja y, si viene, su libro de presupuesto
 // (`POST /v1/libros/apu-por-hoja`). El servidor recalcula cada hoja, la compara con lo impreso y dice cada hallazgo con
@@ -49,15 +51,6 @@ interface ApuPorHoja {
   celda_precio: string;
 }
 
-interface HallazgoDelLibro {
-  codigo: string;
-  severidad: string;
-  descripcion: string;
-  celda: string;
-  impacto: string | null;
-  accion: string;
-}
-
 interface DesperdicioLeido {
   descripcion: string;
   unidad: string;
@@ -76,7 +69,7 @@ export interface InformeApuPorHoja {
   cumple: boolean;
   por_severidad: Record<string, number>;
   apus: ApuPorHoja[];
-  hallazgos: HallazgoDelLibro[];
+  hallazgos: HallazgoLibroRespuesta[];
   desperdicios: DesperdicioLeido[];
 }
 
@@ -353,13 +346,23 @@ function Informe({ informe }: { informe: InformeApuPorHoja }): JSX.Element {
     impreso: a.precio_impreso,
     silice: a.precio_silice ?? NO_EVALUABLE,
   }));
-  const hallazgos = informe.hallazgos.map((h, i) => ({
-    id: `${h.codigo}-${h.celda}-${i}`,
-    severidad: h.severidad,
-    codigo: h.codigo,
-    celda: h.celda,
-    descripcion: h.descripcion,
-  }));
+  const ordenados = informe.hallazgos
+    .map((h, indice) => ({ h, indice }))
+    .sort(
+      (a, b) =>
+        SEVERIDADES.indexOf(normalizarSeveridad(a.h.severidad)) -
+          SEVERIDADES.indexOf(normalizarSeveridad(b.h.severidad)) || a.indice - b.indice,
+    );
+  const hallazgos = ordenados.map(({ h, indice }) => {
+    const nombre = h.nombre_regla?.trim();
+    return {
+      id: `${h.codigo}-${h.celda}-${indice}`,
+      severidad: h.severidad,
+      codigo: nombre ? `${nombre} (${h.codigo})` : h.codigo,
+      celda: h.celda,
+      descripcion: h.descripcion,
+    };
+  });
   return (
     <>
       <p className="silice-inicio__nota cds--type-body-compact-01">

@@ -193,6 +193,21 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
             )}
             <span>{propuesta.razon}</span>
           </p>
+          <div>
+            <Button
+              type="button"
+              kind="tertiary"
+              size="sm"
+              disabled={paso.fase !== "editando"}
+              onClick={() => {
+                setPrecio(propuesto);
+                setErrorDelCampo(null);
+                setHecho(null);
+              }}
+            >
+              Poner la propuesta en «Su precio»
+            </Button>
+          </div>
         </>
       ) : (
         <p className="silice-mercado__nota cds--type-body-compact-01">

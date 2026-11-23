@@ -10,6 +10,7 @@ import { fechaEsVe } from "./logica";
 // se muestran sin pasar por Number; el libro y el PDF no estan: solo su nombre y su huella (RNF-28).
 export interface HallazgoGuardado {
   regla: string;
+  nombre_regla?: string;
   hoja: string;
   celda: string;
   severidad: string;
@@ -134,7 +135,14 @@ export function Detalle({ id, alExpirar, alCerrar }: Props) {
               { clave: "celda", titulo: "Celda" },
               { clave: "mensaje", titulo: "Qué se encontró" },
             ]}
-            filas={carga.datos.hallazgos.map((h, i) => ({ id: String(i), ...h }))}
+            filas={carga.datos.hallazgos.map((h, i) => ({
+              id: String(i),
+              severidad: h.severidad,
+              regla: h.nombre_regla ? `${h.nombre_regla} (${h.regla})` : h.regla,
+              hoja: h.hoja,
+              celda: h.celda,
+              mensaje: h.mensaje,
+            }))}
             vacio={{ titulo: "Esta auditoría no dejó hallazgos guardados" }}
           />
         </>

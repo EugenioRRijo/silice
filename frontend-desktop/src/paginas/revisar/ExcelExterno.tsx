@@ -5,7 +5,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
-import { COLUMNAS_HALLAZGOS } from "./logica";
+import { COLUMNAS_HALLAZGOS, filasDeHallazgos } from "./logica";
 import { Dato } from "./piezas";
 import type { ExcelExterno } from "./tipos";
 
@@ -62,7 +62,7 @@ export function PestanaExcelExterno({ alExpirar }: { alExpirar: () => void }) {
           <TablaDensa
             etiqueta="Hallazgos del presupuesto en Excel"
             columnas={COLUMNAS_HALLAZGOS}
-            filas={estado.resultado.hallazgos.map((h, i) => ({ id: String(i), ...h }))}
+            filas={filasDeHallazgos(estado.resultado.hallazgos)}
             vacio={{ titulo: "Sin hallazgos." }}
           />
         </>

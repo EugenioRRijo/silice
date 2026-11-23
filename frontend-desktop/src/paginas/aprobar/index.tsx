@@ -1,6 +1,6 @@
 import { Button } from "@carbon/react";
 import { useCallback, useContext, useEffect, useId, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { nombreDeEstado } from "../../comun/aprobacion";
 import type { AprobacionesDeObra } from "../../comun/aprobacion";
@@ -13,6 +13,7 @@ import { unidadEscrita } from "../../comun/unidades";
 import { nombreDeResponsable } from "../../comun/responsable";
 import { cantidadEsVe, centesimasEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import { RUTA_DE_PENDIENTES } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import { EntregaDeLaObra } from "./EntregaDeLaObra";
 import { PanelDictamen } from "./PanelDictamen";
@@ -127,7 +128,16 @@ function BuscarEnvio({ alEncontrar }: { alEncontrar: (id: number, reemplazar: bo
   const { deLaCarpeta, deOtras } = busqueda;
   return (
     <>
-      {deLaCarpeta.length === 0 && deOtras === 0 && <EstadoVacio titulo="No hay versiones esperando dictamen." />}
+      {deLaCarpeta.length === 0 && deOtras === 0 && (
+        <EstadoVacio
+          titulo="No hay versiones esperando dictamen"
+          descripcion="Cuando alguien envíe una versión a aprobación desde Presupuesto, aparecerá aquí y en Pendientes."
+        >
+          <Link className="cds--link" to={RUTA_DE_PENDIENTES}>
+            Ver los pendientes
+          </Link>
+        </EstadoVacio>
+      )}
       {deLaCarpeta.length > 0 && (
         <ul className="silice-aprobar__lista" aria-label="Versiones que esperan dictamen en esta carpeta">
           {deLaCarpeta.map((f) => (
@@ -147,7 +157,10 @@ function BuscarEnvio({ alEncontrar }: { alEncontrar: (id: number, reemplazar: bo
       )}
       {deOtras > 0 && (
         <p className="silice-aprobar__nota cds--type-body-compact-01">
-          {`Hay ${deOtras} ${deOtras === 1 ? "envío" : "envíos"} en otras carpetas: ${deOtras === 1 ? "ábralo" : "ábralos"} desde Pendientes.`}
+          {`Hay ${deOtras} ${deOtras === 1 ? "envío" : "envíos"} en otras carpetas. `}
+          <Link className="cds--link" to={RUTA_DE_PENDIENTES}>
+            {deOtras === 1 ? "Abrirlo en Pendientes" : "Abrirlos en Pendientes"}
+          </Link>
         </p>
       )}
     </>

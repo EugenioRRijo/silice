@@ -253,7 +253,7 @@ La cabecera del espacio dice «Vista general»; el único `h1` es el de la panta
 0. **Empieza aquí** (F7, A4; `comun/ayuda/BloqueEmpiezaAqui.tsx`), solo la primera vez y derivado de los datos, sin guardar
    nada en el navegador (`pasosDeEmpiezaAqui`): a quien administra mientras su cuenta sea la única activa (`GET /v1/cuentas`),
    a quien arma o solo revisa mientras no vea ninguna obra (una cartera con carpetas omitidas no cuenta como «sin obras»). Una
-   lista numerada de pasos, cada uno con su enlace; **sin botones**: el único principal sigue siendo «Nueva obra» del estado
+   lista numerada de pasos, cada uno con su enlace; **sin botones**: el único principal sigue siendo «Crear la primera obra» del estado
    vacío de la cartera. Al pie, «Ver las guías y el glosario».
 1. **Lo que requiere atención.** Los primeros cinco pendientes de la bandeja, del más urgente al menos urgente. Lo que
    bloquea lleva el ícono de error y su palabra; el aviso, el ícono de advertencia y su palabra. Un enlace lleva a la bandeja
@@ -282,7 +282,7 @@ La cabecera del espacio dice «Vista general»; el único `h1` es el de la panta
 
 La pantalla no calcula nada: cada cifra es la del servidor, solo formateada en es-VE (coma decimal, punto de miles). Cada
 bloque pide sus datos por su cuenta; si uno falla, dice su error sin tumbar a los demás. Sin `leer_proyecto`, la cartera y el
-avance no se pintan. Sin obras, el estado vacío: quien puede crear ve «Nueva obra»; quien solo revisa lee «No hay obras que su cuenta pueda ver»
+avance no se pintan. Sin obras, el estado vacío: quien puede crear ve «Crear la primera obra»; quien solo revisa lee «No hay obras que su cuenta pueda ver»
 (la Vista general reúne todas las carpetas que la cuenta puede abrir, no una).
 
 ## Secciones de la obra

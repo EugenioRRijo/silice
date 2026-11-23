@@ -18,6 +18,7 @@ export interface Anillo {
   fraccion: string | null;
   texto: string;
   favorable: boolean | null;
+  referencia?: string | null;
 }
 
 export interface ControlDelTablero {

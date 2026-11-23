@@ -1,7 +1,7 @@
-import { Button, Form, Select, SelectItem } from "@carbon/react";
+import { Button, Callout, Form, Select, SelectItem } from "@carbon/react";
 import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { Download } from "@carbon/icons-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedirBinario } from "../../api/cliente";
 import { ESTADOS_APROBADOS, versionConEstado } from "../../comun/aprobacion";
@@ -123,6 +123,7 @@ function Seleccion({
     proyectos.find((p) => p.codigo === codigoAbierto) ?? proyectos[0];
   const [nombre, setNombre] = useState(inicial.nombre);
   const [version, setVersion] = useState("");
+  const selectorVersion = useRef<HTMLSelectElement>(null);
   const versiones = useCarga<VersionEntregable[]>(
     `/v1/entregas/versiones?proyecto=${encodeURIComponent(nombre)}`,
     alExpirar,
@@ -154,6 +155,7 @@ function Seleccion({
           ))}
         </Select>
         <Select
+          ref={selectorVersion}
           id="entregar-version"
           labelText="Versión"
           value={elegida}
@@ -172,16 +174,28 @@ function Seleccion({
         <EstadoVacio titulo="Esta obra todavía no tiene versiones" />
       )}
       <MensajeDeCarga carga={versiones} />
-      {elegida && noAprobada && (
+      {elegida && noAprobada && aprobada !== undefined && (
+        <Callout
+          kind="warning"
+          role="status"
+          statusIconDescription="Advertencia"
+          title="Esta versión no está aprobada"
+          titleId="entregar-aviso-no-aprobada"
+          subtitle={`La última aprobada es ${aprobada}. Si entrega esta, el paquete saldrá rotulado «Versión NO aprobada», con la fecha y esa última aprobada.`}
+          actionButtonLabel={`Usar la versión aprobada ${aprobada}`}
+          onActionButtonClick={() => {
+            setVersion(aprobada);
+            selectorVersion.current?.focus();
+          }}
+          lowContrast
+        />
+      )}
+      {elegida && noAprobada && aprobada === undefined && (
         <InlineNotification
           kind="warning"
           role="status"
           title="Esta versión no está aprobada"
-          subtitle={
-            aprobada === undefined
-              ? "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde Presupuesto. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha."
-              : `La última aprobada es ${aprobada}. Si entrega esta, el paquete saldrá rotulado «Versión NO aprobada», con la fecha y esa última aprobada.`
-          }
+          subtitle="Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde Presupuesto. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha."
           lowContrast
           hideCloseButton
         />

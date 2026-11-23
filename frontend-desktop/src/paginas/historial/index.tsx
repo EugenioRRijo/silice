@@ -1,12 +1,12 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { useState } from "react";
-import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
+import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { fechaValida } from "../../comun/porcentaje";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
 import { resultadoEnUnaLinea } from "../inicio/UltimasAuditorias";
@@ -35,16 +35,25 @@ const fechaMala = (t: string) => t !== "" && !fechaValida(t);
 // guardan (RNF-28): lo que hay es el resumen y los hallazgos, y por eso no hay nada que descargar.
 export default function PaginaHistorial() {
   const { alExpirar } = useAplicacion();
+  const navegar = useNavegarSeguro();
   const carga = useCarga<AuditoriaGuardadaRespuesta[]>(RUTA_LISTA, alExpirar);
   const [filtros, setFiltros] = useState<FiltrosHistorial>(FILTROS_VACIOS);
   const [abierta, setAbierta] = useState<number | null>(null);
   const aviso = filtrosInvalidos(filtros);
+  const irALibros = () => void navegar(rutaOPendientes("libros"));
 
   return (
     <section className="silice-pagina silice-historial" aria-labelledby="historial-titulo">
-      <h1 id="historial-titulo" className="cds--type-heading-04">
-        Historial de auditorías
-      </h1>
+      <div className="silice-historial__cabecera">
+        <h1 id="historial-titulo" className="cds--type-heading-04">
+          Historial de auditorías
+        </h1>
+        {carga.estado === "listo" && carga.datos.length > 0 && (
+          <Button kind="tertiary" size="sm" onClick={irALibros}>
+            Auditar un libro
+          </Button>
+        )}
+      </div>
       <p className="cds--type-body-compact-01">
         Cada vez que audita un libro de la empresa o revisa un PDF, el resultado queda aquí. El libro y el PDF no se
         guardan: solo el resumen, los hallazgos y la huella que identifica el archivo.
@@ -59,7 +68,9 @@ export default function PaginaHistorial() {
           titulo="Todavía no hay auditorías guardadas"
           descripcion="Audite un libro de la empresa o revise un PDF: el resumen y los hallazgos quedarán aquí."
         >
-          <Link to={rutaOPendientes("libros")}>Ir a Libro de la empresa</Link>
+          <Button kind="primary" size="md" onClick={irALibros}>
+            Auditar un libro
+          </Button>
         </EstadoVacio>
       )}
       {carga.estado === "listo" && carga.datos.length > 0 && (

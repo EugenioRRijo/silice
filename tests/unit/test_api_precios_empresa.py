@@ -370,7 +370,7 @@ def test_un_archivo_de_otro_formato_o_corrupto_o_enorme_se_rechaza(_entorno, mon
     r = _crear(navegador, cabeceras, base)
     assert r.status_code == 422, r.text
     assert r.json() == {
-        "detalle": "No se creó la lista: el archivo pesa más del máximo permitido (20 MiB)."
+        "detalle": "No se creó la lista: el archivo pesa más del máximo permitido (20 MB)."
     }
     assert _cuantas_listas(_entorno) == antes
 

@@ -4,6 +4,7 @@ import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { presentarClave, presentarValor } from "../../comun/presentarCambio";
 import { rotuloDeCampo as rotuloDeCampoDeCambio, rotuloDeObjeto } from "../../comun/rotulos";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import type { HallazgoRevision } from "./tipos";
 
 // ui/paginas/revisar.py lo dice con Markdown («Elija el archivo `.silice` que recibió.»); aqui va sin marcas.
 export const SIN_ARCHIVO = "Elija el archivo .silice que recibió.";
@@ -76,6 +77,18 @@ export const COLUMNAS_HALLAZGOS: ColumnaDensa[] = [
   { clave: "severidad", titulo: "Severidad", celda: "severidad" },
   { clave: "descripcion", titulo: "Descripción" },
 ];
+
+export function filasDeHallazgos(hallazgos: HallazgoRevision[]): FilaDensa[] {
+  return hallazgos.map((h, i) => {
+    const nombre = h.nombre_regla?.trim();
+    return {
+      id: String(i),
+      regla: nombre ? `${nombre} (${h.regla})` : h.regla,
+      severidad: h.severidad,
+      descripcion: h.descripcion,
+    };
+  });
+}
 
 // El campo que la reauditoria compara llega como identificador interno («precio_unitario»): se lee como rotulo.
 const ROTULOS_DE_CAMPO: Record<string, string> = { precio_unitario: "Precio unitario", total: "Total" };

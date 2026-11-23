@@ -132,6 +132,23 @@ export function BarraDeCorte({
 export function ValorGanado({ calculo }: { calculo: Calculo }) {
   const moneda = calculo.moneda ?? "";
   const curva = calculo.curva;
+  const ocultarOtraMoneda =
+    calculo.indicadores.length > 0 &&
+    calculo.indicadores.every((f) => {
+      const v = (f["En la otra moneda"] ?? "").trim();
+      return v === "" || v === "no disponible";
+    });
+  const ocultarNota =
+    calculo.indicadores.length > 0 && calculo.indicadores.every((f) => (f["Nota"] ?? "").trim() === "");
+  const columnasIndicadores = COLUMNAS_INDICADORES.filter(
+    (c) => !(ocultarOtraMoneda && c === "En la otra moneda") && !(ocultarNota && c === "Nota"),
+  );
+  const notaTasa = calculo.indicadores.find((f) => f.Indicador === "Tasa del corte")?.Nota?.trim() ?? "";
+  const motivoOtraMoneda =
+    calculo.motivo_otra_moneda?.trim() ||
+    (notaTasa
+      ? `${notaTasa[0]!.toUpperCase()}${notaTasa.slice(1)}: no se muestran los montos en la otra moneda.`
+      : "Sin tasa del BCV para el corte: no se muestran los montos en la otra moneda.");
   return (
     <>
       <p className="silice-control__nota cds--type-helper-text-01">
@@ -142,9 +159,10 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
       ))}
       <TablaDensa
         etiqueta="Indicadores de valor ganado"
-        columnas={columnasDe(COLUMNAS_INDICADORES, ["Valor", "En la otra moneda"])}
+        columnas={columnasDe(columnasIndicadores, ["Valor", "En la otra moneda"])}
         filas={conId(calculo.indicadores)}
       />
+      {ocultarOtraMoneda && <p className="silice-control__nota cds--type-helper-text-01">{motivoOtraMoneda}</p>}
       {curva.length > 0 && (
         <section className="silice-control__bloque" aria-labelledby="control-curva">
           <h2 id="control-curva" className="cds--type-heading-compact-02">
