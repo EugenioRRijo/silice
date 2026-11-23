@@ -119,7 +119,7 @@ describe("la aprobada manda en la línea base", () => {
     await u.selectOptions(await version(), "VIV-001");
     expect(await screen.findByText("Esta versión no está aprobada.")).toBeInTheDocument();
     await u.type(screen.getByLabelText("Vigente desde"), "2026-11-02");
-    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    await u.click(screen.getByRole("button", { name: "Fijar línea base de control" }));
     await waitFor(() => {
       const post = fetchFalso.mock.calls.find(([e, init]) => String(e) === "/v1/control/linea-base" && init?.method === "POST");
       expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ proyecto: "5", version: "VIV-001" });
@@ -130,7 +130,7 @@ describe("la aprobada manda en la línea base", () => {
     const u = userEvent.setup();
     montar();
     await version();
-    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    await u.click(screen.getByRole("button", { name: "Fijar línea base de control" }));
     expect(await screen.findByText("Línea base declarada.")).toBeInTheDocument();
     expect(document.querySelector(".cds--inline-notification--success")).toBeNull();
   });

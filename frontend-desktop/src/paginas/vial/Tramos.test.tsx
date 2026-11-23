@@ -266,9 +266,10 @@ describe("Tramos de la vía", () => {
     });
     montar();
     const grupo = await screen.findByRole("region", { name: "Reportes de la vía" });
-    for (const etiqueta of ["Cómputos por tramo", "APU con origen y conciliación", "Resumen con IVA"]) {
+    for (const etiqueta of ["Cómputos por tramo", "APU detallado con origen y totales", "Resumen con IVA"]) {
       await usuario.click(within(grupo).getByRole("button", { name: etiqueta }));
     }
+    expect(screen.getByText(/tramo, progresiva_ini_km, progresiva_fin_km, ancho_m, distancia_planta_km, elemento, tipo, espesor_m, densidad_t_m3, dosis_l_m2, lineas/)).toBeInTheDocument();
     await waitFor(() => expect(libros).toHaveLength(3));
     expect(libros.map((u) => [u.pathname, u.searchParams.get("proyecto"), u.searchParams.get("version")])).toEqual([
       ["/v1/vial/reportes/computos", "Vía Demo", "VIA-002"],

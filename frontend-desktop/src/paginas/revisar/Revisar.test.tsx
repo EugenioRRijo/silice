@@ -253,6 +253,7 @@ describe("Revisar un paquete", () => {
   test("tiene un solo h1, las dos pestañas de la clasica y dice que elija el archivo", () => {
     montar();
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["Revisar un paquete"]);
+    expect(screen.getByText("Verifique un presupuesto recibido (.silice o Excel) y registre su dictamen")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Paquete .silice" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Presupuesto en Excel" })).toBeInTheDocument();
     expect(screen.getByText("Elija el archivo .silice que recibió.")).toBeInTheDocument();
@@ -276,6 +277,7 @@ describe("Revisar un paquete", () => {
     expect(screen.getByRole("heading", { name: "En común (0)" })).toBeInTheDocument();
     expect(screen.getAllByText("Ninguno").length).toBeGreaterThan(0);
     const nuevos = screen.getByRole("table", { name: "El emisor no los declaró" });
+    expect(within(nuevos).getByText("Qué revisó Sílice")).toBeInTheDocument();
     expect(within(nuevos).getByText("Información")).toBeInTheDocument(); // la severidad con su nombre, no solo color
     expect(screen.getByText("Esta instalación no recibió una entrega anterior de esta obra.")).toBeInTheDocument();
     const cambios = screen.getByRole("table", { name: "Quién cambió qué" });

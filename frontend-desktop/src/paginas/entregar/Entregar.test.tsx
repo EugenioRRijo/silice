@@ -168,7 +168,9 @@ describe("Entregar paquete", () => {
     expect(screen.getByLabelText("Versión")).toHaveValue("002");
     expect(screen.getByText("3")).toHaveClass("silice-cifra"); // hallazgos
     expect(screen.getByText("2 advertencias, 1 error")).toBeInTheDocument(); // VB-16
-    expect(screen.getByText("Íntegra")).toBeInTheDocument();
+    expect(screen.getByText("Genere el archivo firmado de una versión del presupuesto para enviarlo al cliente")).toBeInTheDocument();
+    expect(screen.getByText("Integridad de versiones")).toBeInTheDocument();
+    expect(screen.getByText("Sin alteraciones")).toBeInTheDocument();
     expect(
       screen.getByText("Viaja con: presupuesto, informe, cadena."),
     ).toBeInTheDocument();
@@ -201,7 +203,7 @@ describe("Entregar paquete", () => {
     expect(
       await screen.findByText("Cadena rota en la versión 001."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Rota")).toBeInTheDocument(); // VB-16: mayúscula inicial, no «ROTA»
+    expect(screen.getByText("Alterada")).toBeInTheDocument(); // VB-16: mayúscula inicial, no «ROTA»
     // Los respaldos viven en la Cuenta, sección «Especialidades, IA e instalación» (/cuenta/sistema).
     expect(screen.getByText(/respaldo \(en la Cuenta, sección «Especialidades, IA e instalación»\)/)).toBeInTheDocument();
     expect(screen.queryByText(/pestaña Instalación/)).toBeNull();
@@ -222,7 +224,9 @@ describe("Entregar paquete", () => {
       .getAllByRole("status")
       .find((a) => (a.textContent ?? "").includes(AVISO_LEGADO));
     expect(aviso).toBeDefined();
-    expect(screen.getByText("Íntegra")).toBeInTheDocument();
+    expect(screen.getByText("Genere el archivo firmado de una versión del presupuesto para enviarlo al cliente")).toBeInTheDocument();
+    expect(screen.getByText("Integridad de versiones")).toBeInTheDocument();
+    expect(screen.getByText("Sin alteraciones")).toBeInTheDocument();
     const boton = screen.getByRole("button", { name: "Generar paquete" });
     expect(boton).toBeDisabled();
     const motivo = document.getElementById(
@@ -296,7 +300,7 @@ describe("Entregar paquete", () => {
     expect(
       await screen.findByText("Paquete listo (sin firma)"),
     ).toBeInTheDocument();
-    expect(screen.getByText(`SHA-256: ${SHA}`)).toBeInTheDocument();
+    expect(screen.getByText(`Código de verificación del archivo (SHA-256): ${SHA}`)).toBeInTheDocument();
     const [ruta, init] = llamadasPost()[0];
     expect(ruta).toBe("/v1/entregas");
     expect(JSON.parse(String(init?.body))).toEqual({
@@ -460,7 +464,7 @@ describe("Entregar paquete", () => {
       expect(screen.getByLabelText("Versión")).toHaveValue("VIV-002");
       const aviso = await screen.findByText("Esta versión no está aprobada");
       expect(aviso.closest("[role=status]")).toHaveTextContent(
-        "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha.",
+        "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde Presupuesto. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha.",
       );
     });
 

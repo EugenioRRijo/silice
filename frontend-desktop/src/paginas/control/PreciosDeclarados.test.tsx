@@ -14,7 +14,7 @@ describe("Precios declarados en la barra del corte", () => {
     const alAplicar = vi.fn();
     const u = userEvent.setup();
     render(<BarraDeCorte filtros={FILTROS_INICIALES} versiones={[]} alAplicar={alAplicar} />);
-    const metodo = screen.getByLabelText("Precios del corte");
+    const metodo = screen.getByLabelText("Precios actualizados al corte (para separar inflación de consumo)");
     expect(screen.getByRole("option", { name: "Precios declarados de insumos" })).toBeInTheDocument();
     expect(screen.queryByText(/último precio declarado/)).not.toBeInTheDocument();
 
@@ -24,7 +24,7 @@ describe("Precios declarados en la barra del corte", () => {
         "Usa el último precio declarado de cada material hasta la fecha de corte. Se declaran en Estudio de mercado o al recibir una compra en Procura.",
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Km declarado")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Factor de escalatoria (Km)")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Versión revalorada")).not.toBeInTheDocument();
 
     await u.click(screen.getByRole("button", { name: "Calcular al corte" }));

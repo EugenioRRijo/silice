@@ -249,14 +249,17 @@ describe("Estudio de mercado", () => {
     await elegirInsumo(u);
     expect(llamadas("GET", /\/v1\/mercado\/compra\//)[0].url).toBe("/v1/mercado/compra/CEM-GRIS?dias=90");
     const franja = cifras();
+    expect(
+      within(franja).getByText("Resume las observaciones del período para ayudarle a fijar un precio competitivo."),
+    ).toBeInTheDocument();
     const pares = within(franja)
       .getAllByRole("term")
       .map((t) => [t.textContent, t.nextElementSibling?.textContent]);
     expect(pares).toEqual([
       ["Observaciones", "5"],
       ["Mínimo", "100,00 Bs"],
-      ["Primer cuartil", "120,00 Bs"],
-      ["Mediana", "130,00 Bs"],
+      ["Primer cuartil (25 % más bajo)", "120,00 Bs"],
+      ["Mediana (valor central)", "130,00 Bs"],
       ["Promedio", "140,00 Bs"],
       ["Máximo", "200,00 Bs"],
     ]);

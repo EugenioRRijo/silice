@@ -98,11 +98,12 @@ describe("Visor", () => {
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
-  test("la fecha de devolucion empieza en hoy y se puede editar", async () => {
+  test("la fecha de auditoria empieza en hoy y se puede editar", async () => {
     vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 9, 18, 9, 30) });
     render(<Visor crearHoja={crearHoja} />);
-    const campo = screen.getByLabelText("Fecha de devolución") as HTMLInputElement;
+    const campo = screen.getByLabelText("Fecha de la revisión") as HTMLInputElement;
     expect(campo.value).toBe("2026-10-18");
+    expect(screen.getByText("Con esta fecha se revisa el libro y se fecha el libro corregido que se devuelve")).toBeInTheDocument();
     vi.useRealTimers();
     const usuario = userEvent.setup();
     await usuario.clear(campo);
@@ -114,7 +115,7 @@ describe("Visor", () => {
     const usuario = userEvent.setup();
     fetchFalso.mockImplementation(() => new Promise<Response>(() => {}));
     render(<Visor crearHoja={crearHoja} />);
-    const campo = screen.getByLabelText("Fecha de devolución");
+    const campo = screen.getByLabelText("Fecha de la revisión");
     await usuario.clear(campo);
     await usuario.type(campo, "2026-11-02");
     await soltar(usuario);
@@ -314,7 +315,7 @@ describe("Visor", () => {
     const ranura = document.createElement("div");
     document.body.appendChild(ranura);
     const { container } = render(<Visor crearHoja={crearHoja} ranuraCabecera={ranura} />);
-    expect(within(ranura).getByLabelText("Fecha de devolución")).toBeInTheDocument();
+    expect(within(ranura).getByLabelText("Fecha de la revisión")).toBeInTheDocument();
     expect(container.querySelector(".visor__barra")).toBeNull();
     await soltar(usuario);
     await within(ranura).findByText("libro_minimo.xlsx");
@@ -324,7 +325,7 @@ describe("Visor", () => {
 
   test("sin ranura aun (null) no pinta los controles ni los duplica (M3)", () => {
     render(<Visor crearHoja={crearHoja} ranuraCabecera={null} />);
-    expect(screen.queryByLabelText("Fecha de devolución")).toBeNull();
+    expect(screen.queryByLabelText("Fecha de la revisión")).toBeNull();
   });
 
   test("el h1 es de la pagina que aloja al visor, no del visor (V-8)", () => {
@@ -332,10 +333,10 @@ describe("Visor", () => {
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 
-  test("el estado vacio tiene titulo y explica para que sirve la fecha de devolucion (m5)", () => {
+  test("el estado vacio tiene titulo y explica para que sirve la fecha de auditoria (m5)", () => {
     render(<Visor crearHoja={crearHoja} />);
     expect(screen.getByRole("heading", { level: 2, name: /libro/i })).toBeInTheDocument();
-    expect(screen.getByText(/fecha de devolución/i, { selector: ".visor__ayuda-fecha, .visor__ayuda-fecha *" })).toBeInTheDocument();
+    expect(screen.getByText(/fecha de auditoría/i, { selector: ".visor__ayuda-fecha, .visor__ayuda-fecha *" })).toBeInTheDocument();
   });
 
   test("al cargar dice con texto que esta pasando (m4)", async () => {
@@ -382,7 +383,7 @@ describe("Visor", () => {
     await soltar(usuario);
     await screen.findByText("El total no coincide con la suma");
     fetchFalso.mockClear();
-    const campo = screen.getByLabelText("Fecha de devolución");
+    const campo = screen.getByLabelText("Fecha de la revisión");
     await usuario.clear(campo);
     await usuario.type(campo, "2026-12-01");
     await waitFor(() => expect(fetchFalso).toHaveBeenCalled());
@@ -405,7 +406,7 @@ describe("Visor", () => {
     render(<Visor crearHoja={crearHoja} />);
     await soltar(usuario);
     await screen.findByRole("status", { name: /Cargando el libro/ });
-    const campo = screen.getByLabelText("Fecha de devolución");
+    const campo = screen.getByLabelText("Fecha de la revisión");
     await usuario.clear(campo);
     await usuario.type(campo, "2026-12-01");
     abrirPuerta();

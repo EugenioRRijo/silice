@@ -78,7 +78,7 @@ function montar() {
 describe("Rastro de la obra: las aprobaciones de la obra", () => {
   test("las fases y el rastro íntegro, con ícono y texto", async () => {
     montar();
-    const region = await screen.findByRole("region", { name: "Rastro de la obra" });
+    const region = await screen.findByRole("region", { name: "Historial de aprobaciones" });
     expect(await within(region).findByText("VIV-001 devuelta → VIV-002 aprobada")).toBeInTheDocument();
     expect(within(region).getByText("Rastro de aprobaciones íntegro.")).toBeInTheDocument();
     expect(region.querySelector("svg")).not.toBeNull(); // el color nunca va solo
@@ -88,6 +88,7 @@ describe("Rastro de la obra: las aprobaciones de la obra", () => {
   test("cada movimiento con quién, cuándo, desenlace y notas; el dictamen de quien la armó lo dice", async () => {
     montar();
     const tabla = await screen.findByRole("table", { name: "Movimientos de aprobación" });
+    expect(within(tabla).getByText("Resultado")).toBeInTheDocument();
     const filas = within(tabla).getAllByRole("row").slice(1).map((f) => Array.from(f.querySelectorAll("td")).map((c) => c.textContent));
     expect(filas).toEqual([
       ["Envío", "VIV-001", "En aprobación", "Ana Pérez", "21/10/2026 09:30", "Primera entrega."],
@@ -100,14 +101,14 @@ describe("Rastro de la obra: las aprobaciones de la obra", () => {
   test("un rastro roto se dice con su mensaje", async () => {
     aprobaciones = () => json({ ...APROBACIONES, rastro: { integro: false, mensaje: "El rastro de aprobaciones se rompió en el evento n.º 2." } });
     montar();
-    const region = await screen.findByRole("region", { name: "Rastro de la obra" });
+    const region = await screen.findByRole("region", { name: "Historial de aprobaciones" });
     expect(await within(region).findByText("El rastro de aprobaciones se rompió en el evento n.º 2.")).toBeInTheDocument();
   });
 
   test("una obra que no envió versiones lo dice", async () => {
     aprobaciones = () => json({ rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." }, fases: "", versiones: {}, eventos: [] });
     montar();
-    const region = await screen.findByRole("region", { name: "Rastro de la obra" });
+    const region = await screen.findByRole("region", { name: "Historial de aprobaciones" });
     expect(await within(region).findByText("Esta obra todavía no envió versiones a aprobación.")).toBeInTheDocument();
     expect(within(region).queryByRole("table")).toBeNull();
   });
@@ -117,13 +118,13 @@ describe("Rastro de la obra: las aprobaciones de la obra", () => {
     montar();
     await waitFor(() => expect(fetchFalso).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.queryByRole("region", { name: "Rastro de la obra" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Historial de aprobaciones" })).toBeNull();
   });
 
   test("un fallo del servidor se dice dentro del bloque", async () => {
     aprobaciones = () => json({ detalle: "Falla." }, 503);
     montar();
-    const region = await screen.findByRole("region", { name: "Rastro de la obra" });
+    const region = await screen.findByRole("region", { name: "Historial de aprobaciones" });
     expect(await within(region).findByText("No se pudo leer el rastro de aprobaciones")).toBeInTheDocument();
   });
 });

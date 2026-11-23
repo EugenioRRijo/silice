@@ -195,6 +195,8 @@ describe("Historial de auditorías", () => {
     const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
     expect(within(panel).getByRole("heading", { level: 2, name: "Detalle de la auditoría" })).toBeInTheDocument();
     expect(within(panel).getByText("Ana Pérez <ana>")).toBeInTheDocument();
+    expect(within(panel).getByText("Código de verificación del archivo (SHA-256)")).toBeInTheDocument();
+    expect(within(panel).getByText("Sirve para comprobar que corresponde al mismo archivo original")).toBeInTheDocument();
     expect(within(panel).getByText("ab".repeat(32))).toBeInTheDocument();
     expect(within(panel).getByText("31/07/2026")).toBeInTheDocument();
     // VB-7: como el Libro, el total en centesimas y el exacto (en es-VE, sin redondear) en un Tooltip que se abre
@@ -205,6 +207,7 @@ describe("Historial de auditorías", () => {
     expect(silice).toHaveAccessibleDescription("Valor exacto: 1.234.500,5");
     expect(within(panel).queryByText("1.234.567,891000", { selector: "button" })).toBeNull();
     const tabla = within(panel).getByRole("table", { name: "Hallazgos guardados" });
+    expect(within(tabla).getByText("Qué revisó Sílice")).toBeInTheDocument();
     expect(within(tabla).getByText("El CD no cuadra con la suma.")).toBeInTheDocument();
     expect(within(tabla).getByText("APU-02")).toBeInTheDocument();
     expect(within(tabla).getByText("Advertencia")).toBeInTheDocument(); // la severidad con su nombre

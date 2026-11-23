@@ -51,7 +51,7 @@ describe("CurvaPlanAvance", () => {
     expect(screen.getByRole("table", { name: "Montos de Valor ganado" })).toBeInTheDocument();
     expect(screen.getByText("2.500,50")).toBeInTheDocument();
     expect(screen.getAllByText("—")).toHaveLength(2);
-    expect(screen.getByText(/EAC: pronostico \(discontinuo\)/)).toBeInTheDocument();
+    expect(screen.getByText("Línea fina: planificado · Línea gruesa: ejecutado y gastado · Línea discontinua: pronóstico.")).toBeInTheDocument();
   });
 
   test("el eje y el tooltip salen en es-VE y las series tienen su color sin morado (V-19, V-21)", async () => {

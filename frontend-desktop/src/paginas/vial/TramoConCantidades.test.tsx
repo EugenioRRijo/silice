@@ -33,7 +33,7 @@ describe("Un tramo con las partidas nuevas", () => {
 
   test("el resumen dice cuándo la obra mide el transporte por banda de distancia (tarea 2)", () => {
     expect(resumenDelTramo({ ...TRAMO, distancia_planta_km: "9", transporte: "banda" })).toBe(
-      "De 0 a 0,5 km · ancho 7 m · planta a 9 km · transporte en t por banda de distancia",
+      "De 0 a 0,5 km · ancho 7 m · planta a 9 km · transporte en toneladas por rango de distancia",
     );
     expect(resumenDelTramo({ ...TRAMO, distancia_planta_km: "9", transporte: null })).toBe("De 0 a 0,5 km · ancho 7 m · planta a 9 km");
   });

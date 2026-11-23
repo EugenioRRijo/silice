@@ -169,6 +169,12 @@ describe("RadialGauge: el anillo de un porcentaje del servidor", () => {
     expect(arco(container)).toHaveClass("silice-radial__arco--charcoal");
     expect(arco(container).getAttribute("stroke")).toBeNull();
   });
+
+  test("cuando recibe una referencia opcional la muestra junto al anillo", () => {
+    conMovimientoReducido(true);
+    render(<RadialGauge label="SPI (plazo)" fraccion={0.85} texto="0,85" variacion="desfavorable" referencia="Meta: ≥ 1,00" />);
+    expect(screen.getByText("Meta: ≥ 1,00")).toBeInTheDocument();
+  });
 });
 
 const SEGMENTOS: DonutSegment[] = [
@@ -470,7 +476,7 @@ describe("RiskRangeMeter: base, P50 y P80 como los manda el servidor", () => {
     expect(barras[1]!.style.inlineSize).toBe("100%");
     // La línea de la base cruza cada pista, para comparar cada escenario contra ella.
     for (const f of filas) expect(f.querySelector<HTMLElement>(".silice-riesgo-medidor__base")!.style.insetInlineStart).toBe("0%");
-    expect(screen.getByText("Cada barra va del presupuesto base al escenario.")).toBeInTheDocument();
+    expect(screen.getByText("Cada barra muestra cuánto sube el escenario frente al presupuesto base (la escala no parte de cero).")).toBeInTheDocument();
   });
 
   test("un escenario por debajo de la base va de él a la base, y la escala abarca a los dos", () => {

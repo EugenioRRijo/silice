@@ -55,6 +55,7 @@ describe("Vista general: el gráfico del avance real contra el plan", () => {
   test("cada barra dice el avance de la API en es-VE: «62.5» se lee 62,5 %", () => {
     montar();
     const g = avance();
+    expect(within(g).getByText("Si el avance real queda por debajo del plan, la obra lleva atraso")).toBeInTheDocument();
     for (const t of ["62,5 %", "70,0 %", "10,0 %", "25,5 %"]) expect(within(g).getByText(t)).toBeInTheDocument();
     expect(g.textContent).not.toMatch(/62\.5|25\.5/);
   });

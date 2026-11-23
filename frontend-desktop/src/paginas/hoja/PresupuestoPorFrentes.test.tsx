@@ -94,8 +94,9 @@ describe("El presupuesto por frente", () => {
     const alAceptar = montar();
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
     await screen.findByRole("table", { name: "Presupuesto por frente" });
-    await usuario.selectOptions(screen.getByRole("combobox", { name: "Renglón" }), "VF-009|a-mano:1");
+    await usuario.selectOptions(screen.getByRole("combobox", { name: "Partida del presupuesto" }), "VF-009|a-mano:1");
     await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    expect(screen.getByText("Déjelo vacío para quitar el frente de esta partida.")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
     await waitFor(() => expect(alAceptar).toHaveBeenCalledTimes(1));
     const edicion = fetchFalso.mock.calls.find(([, o]) => o?.method === "PUT")!;
@@ -133,6 +134,7 @@ describe("El presupuesto por frente", () => {
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
     await screen.findByRole("table", { name: "Presupuesto por frente" });
     await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    expect(screen.getByText("Déjelo vacío para quitar el frente de esta partida.")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Frente" })).toHaveValue(""));
     cambiarRev(4);
@@ -178,6 +180,7 @@ describe("El presupuesto por frente", () => {
     const edicion = diferida();
     fetchFalso.mockImplementation(async (_ruta, opciones) => (opciones?.method === "PUT" ? edicion.promesa : json(NUEVA)));
     await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    expect(screen.getByText("Déjelo vacío para quitar el frente de esta partida.")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
     cambiarRev(5);
     expect(await screen.findByText("Total general: 4.801,13 Bs")).toBeInTheDocument();
@@ -207,6 +210,7 @@ describe("El presupuesto por frente", () => {
     const edicion = diferida();
     fetchFalso.mockImplementation(async (_ruta, opciones) => (opciones?.method === "PUT" ? edicion.promesa : json(VISTA)));
     await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    expect(screen.getByText("Déjelo vacío para quitar el frente de esta partida.")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
     expect(screen.getByRole("button", { name: "Ocultar el presupuesto por frente" })).toBeDisabled();
     edicion.soltar(
@@ -237,7 +241,7 @@ describe("El presupuesto por frente", () => {
     montarCon(FILAS.map((f) => ({ ...f, quitable: false })));
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
     await screen.findByRole("table", { name: "Presupuesto por frente" });
-    expect(screen.queryByRole("combobox", { name: "Renglón" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Partida del presupuesto" })).toBeNull();
     expect(screen.queryByText(/póngalo abajo/)).toBeNull();
     expect(screen.getByText(/Ningún renglón tiene frente/)).toHaveTextContent(/salen del espacio de la obra/);
   });
@@ -246,7 +250,7 @@ describe("El presupuesto por frente", () => {
     fetchFalso.mockImplementation(async () => json(SIN_FRENTES));
     montarCon(FILAS);
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
-    expect(await screen.findByText(/póngalo abajo/)).toBeInTheDocument();
+    expect(await screen.findByText(/póngalo abajo.*importe un Excel organizado por frentes/)).toBeInTheDocument();
   });
 
   test("quien solo lee no recibe la invitación a ponerlo abajo", async () => {
@@ -265,7 +269,7 @@ describe("El presupuesto por frente", () => {
       { clave: "VF-009|a-mano:1", partida: "VF-009", descripcion: "Señal ficticia", quitable: true, frente: null },
     ]);
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
-    const selector = await screen.findByRole("combobox", { name: "Renglón" });
+    const selector = await screen.findByRole("combobox", { name: "Partida del presupuesto" });
     expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
       "1. VF-001 (FRENTE A) · Riego ficticio",
       "2. VF-001 (FRENTE B) · Riego ficticio",
@@ -282,11 +286,12 @@ describe("El presupuesto por frente", () => {
     );
     const { rerender } = render(panel(FILAS));
     await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
-    await usuario.selectOptions(await screen.findByRole("combobox", { name: "Renglón" }), "VF-009|a-mano:1");
+    await usuario.selectOptions(await screen.findByRole("combobox", { name: "Partida del presupuesto" }), "VF-009|a-mano:1");
     // La Hoja quitó VF-009: el selector solo ofrece VF-001.
     rerender(panel([FILAS[0]!]));
-    expect(screen.getByRole("combobox", { name: "Renglón" })).toHaveValue("VF-001|libro:FRENTE A!E4");
+    expect(screen.getByRole("combobox", { name: "Partida del presupuesto" })).toHaveValue("VF-001|libro:FRENTE A!E4");
     await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    expect(screen.getByText("Déjelo vacío para quitar el frente de esta partida.")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
     await waitFor(() => expect(fetchFalso.mock.calls.some(([, o]) => o?.method === "PUT")).toBe(true));
     const edicion = fetchFalso.mock.calls.find(([, o]) => o?.method === "PUT")!;
@@ -313,6 +318,7 @@ describe("El presupuesto por frente", () => {
       await usuario.click(screen.getByRole("button", { name: "Ver el presupuesto por frente" }));
       await screen.findByRole("table", { name: "Presupuesto por frente" });
       await usuario.type(screen.getByRole("textbox", { name: "Frente" }), "Norte");
+    expect(screen.getByText("Déjelo vacío para quitar el frente de esta partida.")).toBeInTheDocument();
       await usuario.click(screen.getByRole("button", { name: "Poner el frente" }));
       await waitFor(() => expect(fetchFalso.mock.calls.some(([, o]) => o?.method === "PUT")).toBe(true));
       const edicion = fetchFalso.mock.calls.find(([, o]) => o?.method === "PUT")!;

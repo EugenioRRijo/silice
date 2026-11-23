@@ -308,4 +308,24 @@ describe("ListaHallazgos", () => {
     montar({ hallazgos: [] });
     expect(screen.getByText(/no tiene hallazgos/i)).toBeInTheDocument();
   });
+
+  test("cuando hay precios atípicos muestra la etiqueta y la nota en la cabecera; sin ellos no la muestra", () => {
+    const { unmount } = montar();
+    expect(screen.queryByText(/En morado: precios muy distintos al histórico/)).toBeNull();
+    unmount();
+    montar({
+      hallazgos: [
+        {
+          codigo: "ATIPICO",
+          severidad: "ADVERTENCIA",
+          descripcion: "Precio fuera de rango histórico",
+          celda: "PRESUPUESTO!F12",
+          impacto: null,
+          accion: "Revisar",
+        },
+      ],
+    });
+    expect(screen.getByText("Precio atípico (revisar)")).toBeInTheDocument();
+    expect(screen.getByText("En morado: precios muy distintos al histórico; revise si tienen justificación")).toBeInTheDocument();
+  });
 });

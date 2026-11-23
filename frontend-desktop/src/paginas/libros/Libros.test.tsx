@@ -33,10 +33,11 @@ describe("Libro de la empresa", () => {
       </ContextoAplicacion.Provider>,
     );
     expect(screen.getByRole("heading", { level: 1, name: "Libro de la empresa" })).toBeInTheDocument();
+    expect(screen.getByText("Compare el Excel original con el recálculo de Sílice y revise cada celda marcada")).toBeInTheDocument();
     expect(container.querySelector(".silice-pagina-libro .visor")).not.toBeNull();
   });
 
-  test("la fecha de devolución va en el cuerpo de la página aunque la cabecera ofrezca una ranura (V-24)", () => {
+  test("la fecha de auditoría va en el cuerpo de la página aunque la cabecera ofrezca una ranura (V-24)", () => {
     const ranura = document.createElement("div");
     document.body.appendChild(ranura);
     const valor: Aplicacion = {
@@ -55,7 +56,7 @@ describe("Libro de la empresa", () => {
       </ContextoAplicacion.Provider>,
     );
     expect(container.querySelector(".silice-pagina-libro")).toContainElement(
-      screen.getByLabelText("Fecha de devolución"),
+      screen.getByLabelText("Fecha de la revisión"),
     );
     expect(ranura).toBeEmptyDOMElement();
     ranura.remove();

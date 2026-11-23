@@ -162,4 +162,24 @@ describe("TablaInsumos: la celda del precio en reposo y al editarla", () => {
     render(<ConEstado precio="12,50" />);
     expect(screen.queryByText(/se leen con dos/)).not.toBeInTheDocument();
   });
+
+  test("en Equipos explica qué es la depreciación; en Materiales no", () => {
+    const nota = "Depreciación: fracción del precio del equipo que cuesta un día de uso, mayor que 0 y hasta 1 (por ejemplo, 0,005).";
+    const { unmount } = render(
+      <TablaInsumos
+        tipo="equipos"
+        filas={[{ descripcion: "Mezcladora", unidad: "día", cantidad: "1", precio: "10", depreciacion: "0,005" }]}
+        modalidades={MODALIDADES}
+        alCambiar={vi.fn()}
+        alAgregar={vi.fn()}
+        alBorrar={vi.fn()}
+        alExpirar={vi.fn()}
+        alCompletar={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(nota)).toBeInTheDocument();
+    unmount();
+    render(<ConEstado precio="12,50" />);
+    expect(screen.queryByText(nota)).not.toBeInTheDocument();
+  });
 });

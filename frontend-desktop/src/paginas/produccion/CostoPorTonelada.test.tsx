@@ -151,7 +151,9 @@ describe("Costo por tonelada", () => {
     // El exacto se lee en su propia columna, no solo en un título.
     expect(mezcla).toHaveTextContent("50,700123");
     expect(within(resultado).getByText("Producción, período 2026-11, cálculo n.º 7")).toBeInTheDocument();
-    expect(within(resultado).getByRole("columnheader", { name: /Costo por tonelada \(USD\)/ })).toBeInTheDocument();
+    expect(within(resultado).getByRole("columnheader", { name: /Costo por tonelada \(redondeado, USD\)/ })).toBeInTheDocument();
+    expect(within(resultado).getByRole("columnheader", { name: /Costo exacto \(sin redondear, USD\)/ })).toBeInTheDocument();
+    expect(within(resultado).getByText(/Código de verificación del cálculo \(SHA-256, comprueba que no cambió\):/)).toBeInTheDocument();
     expect(within(resultado).getByText(/Total de la cantera: 750,00 USD/)).toBeInTheDocument();
     // El foco queda en el resultado, no en BODY.
     await waitFor(() => expect(document.activeElement).toBe(resultado));
@@ -229,25 +231,26 @@ describe("Costo por tonelada", () => {
   test("Publicar solo aparece con la acción", async () => {
     montar(ANA);
     await calcular();
-    expect(screen.queryByRole("button", { name: /Publicar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Guardar en la lista de precios/ })).not.toBeInTheDocument();
     expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/admin/empresa")).toBe(false);
   });
 
   test("Publicar muestra la fuente con que quedará el precio y la empresa de la Cuenta", async () => {
     montar(ADMIN);
     const resultado = await calcular();
-    const seccion = within(resultado).getByRole("group", { name: "Publicar como precio propio" });
+    const seccion = within(resultado).getByRole("group", { name: "Guardar en la lista de precios de la empresa" });
+    expect(within(seccion).getByText(/Crea una lista nueva en Precios de la empresa sin modificar obras ya guardadas/)).toBeInTheDocument();
     expect(await within(seccion).findByText(/Empresa que publica \(de la Cuenta, «Empresa y tema»\)/)).toBeInTheDocument();
     expect(await within(seccion).findByText("Constructora Ficticia, C.A. (J-00000000-0)")).toBeInTheDocument();
     expect(within(seccion).getByText("Producción, período 2026-11, cálculo n.º 7")).toBeInTheDocument();
-    expect(within(seccion).getByRole("button", { name: "Publicar como precio propio" })).toBeEnabled();
+    expect(within(seccion).getByRole("button", { name: "Guardar en la lista de precios de la empresa" })).toBeEnabled();
   });
 
   test("pide confirmación y publica sin cuerpo; el foco queda en el aviso", async () => {
     montar(ADMIN);
     const resultado = await calcular();
     await within(resultado).findByText("Constructora Ficticia, C.A. (J-00000000-0)");
-    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    await usuario.click(within(resultado).getByRole("button", { name: "Guardar en la lista de precios de la empresa" }));
     const dialogo = screen.getByRole("dialog", { name: "Publicar el costo propio" });
     expect(dialogo).toHaveTextContent('Se creará la lista "Costo propio 2026-11, cálculo n.º 7"');
     expect(posts().filter((p) => p.ruta.endsWith("/publicar"))).toHaveLength(0);
@@ -263,7 +266,7 @@ describe("Costo por tonelada", () => {
     publicacion = () => json({ detalle: "Administrar la instalación requiere clave." }, 403);
     montar(ADMIN);
     const resultado = await calcular();
-    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    await usuario.click(within(resultado).getByRole("button", { name: "Guardar en la lista de precios de la empresa" }));
     const dialogo = screen.getByRole("dialog", { name: "Publicar el costo propio" });
     await usuario.click(within(dialogo).getByRole("button", { name: "Publicar" }));
     expect(await within(dialogo).findByRole("alert")).toHaveTextContent(
@@ -281,7 +284,7 @@ describe("Costo por tonelada", () => {
   test("cancelar no publica y Esc devuelve el foco al botón", async () => {
     montar(ADMIN);
     const resultado = await calcular();
-    const boton = within(resultado).getByRole("button", { name: "Publicar como precio propio" });
+    const boton = within(resultado).getByRole("button", { name: "Guardar en la lista de precios de la empresa" });
     await usuario.click(boton);
     await usuario.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -293,7 +296,7 @@ describe("Costo por tonelada", () => {
     publicacion = () => json({ detalle: "Configure la empresa en la Cuenta («Empresa y tema») antes de publicar." }, 422);
     montar(ADMIN);
     const resultado = await calcular();
-    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    await usuario.click(within(resultado).getByRole("button", { name: "Guardar en la lista de precios de la empresa" }));
     const dialogo = screen.getByRole("dialog", { name: "Publicar el costo propio" });
     await usuario.click(within(dialogo).getByRole("button", { name: "Publicar" }));
     const alerta = await within(dialogo).findByRole("alert");
@@ -306,7 +309,7 @@ describe("Costo por tonelada", () => {
       json({ detalle: "El código de insumo MZP-MEZCLA-ASFALTICA-CALIENTE-01 pasa de 20 caracteres: acórtelo antes de publicar." }, 422);
     montar(ADMIN);
     const resultado = await calcular();
-    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    await usuario.click(within(resultado).getByRole("button", { name: "Guardar en la lista de precios de la empresa" }));
     await usuario.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Publicar" }));
     expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent("pasa de 20 caracteres");
   });
@@ -369,7 +372,7 @@ describe("Costo por tonelada", () => {
     montar(ADMIN);
     const resultado = await calcular();
     await within(resultado).findByText("Constructora Ficticia, C.A. (J-00000000-0)");
-    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    await usuario.click(within(resultado).getByRole("button", { name: "Guardar en la lista de precios de la empresa" }));
     await usuario.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Publicar" }));
     await screen.findByText('Publicado: lista "Costo propio 2026-11, cálculo n.º 7".');
     await usuario.selectOptions(screen.getByLabelText("Moneda del cálculo"), "Bs");

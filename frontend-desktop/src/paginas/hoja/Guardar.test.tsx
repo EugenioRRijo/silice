@@ -419,7 +419,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
         desgloses: 1,
       });
     montar();
-    const dialogo = await abrirModal("Guardar el desglose…");
+    const dialogo = await abrirModal("Guardar ajuste de desperdicio…");
     expect(within(dialogo).getByRole("heading", { name: "Guardar el desglose" })).toBeInTheDocument();
     expect(within(dialogo).getByText(/Se guardará el desglose del desperdicio de 1 línea/)).toBeInTheDocument();
     // La traza no tiene dónde guardar una fuente: no se pide.
@@ -469,7 +469,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
     await screen.findByRole("table", { name: /^Materiales/ });
     expect(screen.queryByText(/Desglose del desperdicio guardado/)).toBeNull();
-    const dialogo = await abrirModal("Guardar el desglose…");
+    const dialogo = await abrirModal("Guardar ajuste de desperdicio…");
     guardadoPor = { responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-20T10:00:00" };
     alVivo = () => {
       const b = borrador("002", { cambios: 0, desgloses: 0 });
@@ -486,7 +486,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     montar();
     const region = await screen.findByRole("region", { name: "Estado del borrador" });
     await within(region).findByText(/1 cambio sin guardar/);
-    const dialogo = await abrirModal("Guardar el desglose…");
+    const dialogo = await abrirModal("Guardar ajuste de desperdicio…");
     // El servidor ya vació la cuenta: lo que se lee ahora es el borrador sin cambios.
     alVivo = () => {
       const b = borrador("002", { cambios: 0, desgloses: 0 });
@@ -549,7 +549,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
         ? json({ codigo: "002", proyecto: "OF-001", cambios: 0, total: m("2703.86"), primera: false, mensaje: "x", version_nueva: false, desgloses: 1 })
         : json({ detalle: sobreLa004, version_mas_nueva: "004" }, 409);
     montar();
-    const dialogo = await abrirModal("Guardar el desglose…");
+    const dialogo = await abrirModal("Guardar ajuste de desperdicio…");
     fireEvent.click(confirmar(dialogo, "Guardar el desglose"));
     expect(await within(dialogo).findByText(sobreLa004)).toBeInTheDocument();
     expect(confirmar(dialogo, "Guardar el desglose")).toBeDisabled();

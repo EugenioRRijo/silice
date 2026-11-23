@@ -103,7 +103,7 @@ describe("armarCuerpo", () => {
       ejecutado: [{ periodo: "1", partida: "A", cantidad: "2.5", fuente: "f" }],
     };
     expect(erroresDeCifras(mal)).toEqual([
-      `R (fracción no reajustable): ${MENSAJE_CIFRA}`,
+      `Parte del contrato que no se reajusta (R, en fracción): ${MENSAJE_CIFRA}`,
       `Peso, Componentes fila 1: ${MENSAJE_CIFRA}`,
       `Cantidad, Ejecutado fila 1: ${MENSAJE_CIFRA}`,
     ]);
@@ -163,7 +163,7 @@ describe("partirResultado (VB-10)", () => {
     const mecanismo = principal.find((c) => c.clave === "Mecanismo")!;
     expect(mecanismo.presentar).toBeUndefined();
     const pintar = mecanismo.celda as (fila: { id: string } & Record<string, string>) => unknown;
-    expect(pintar({ id: "0", Mecanismo: "comprobacion" })).toBe("Comprobación directa");
+    expect(pintar({ id: "0", Mecanismo: "comprobacion" })).toBe("Recálculo con precios nuevos (comprobación directa)");
     expect(pintar({ id: "1", Mecanismo: "" })).toBe("");
   });
 

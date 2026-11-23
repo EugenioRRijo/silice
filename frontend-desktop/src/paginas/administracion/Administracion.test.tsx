@@ -159,9 +159,9 @@ describe("Administracion: Cuentas y Accesos", () => {
     montar({ ...SESION, acciones: [...SESION.acciones, "activar_modulos"] }, vi.fn(), "sistema");
     await screen.findByRole("heading", { level: 2, name: "Especialidades" });
     const titulos = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(titulos.indexOf("Especialidades")).toBeLessThan(titulos.indexOf("Claves de API"));
-    expect(titulos).toContain("Claves de API");
-    expect(titulos.indexOf("Configuración del asistente")).toBeLessThan(titulos.indexOf("Claves de API"));
+    expect(titulos.indexOf("Especialidades")).toBeLessThan(titulos.indexOf("Claves para conectar otros programas (API)"));
+    expect(titulos).toContain("Claves para conectar otros programas (API)");
+    expect(titulos.indexOf("Configuración del asistente")).toBeLessThan(titulos.indexOf("Claves para conectar otros programas (API)"));
   });
 
   test("ninguna sección lleva la marca «clásica»", async () => {

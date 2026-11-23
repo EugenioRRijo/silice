@@ -74,7 +74,7 @@ describe("Empresas registradas", () => {
     montar();
     const tabla = await screen.findByRole("table", { name: "Empresas registradas" });
     // Cada encabezado termina con su título (Carbon antepone la ayuda de ordenar).
-    const titulos = ["Empresa", "Huella", "Estado", "Comprobada con", "Método"];
+    const titulos = ["Empresa", "Código de verificación (SHA-256)", "Estado", "Comprobada con", "Método"];
     const encabezados = within(tabla).getAllByRole("columnheader");
     expect(encabezados).toHaveLength(titulos.length);
     encabezados.forEach((c, i) => expect(c.textContent?.endsWith(titulos[i])).toBe(true));
@@ -98,18 +98,18 @@ describe("Empresas registradas", () => {
     fetchFalso.mockResolvedValueOnce(json({ empresa: "Contratista Ajena Demo, C.A.", huella: "K7QF-M9XR-A2PT-W4HN-C8DV" }));
     montar();
     await screen.findByText("Todavía no hay empresas registradas");
-    expect(screen.queryByLabelText("Huella leída por otro canal")).toBeNull();
+    expect(screen.queryByLabelText("Código de verificación confirmado por teléfono o en persona")).toBeNull();
     const archivo = clave();
     await usuario.upload(campoDeArchivo("adm-subir-clave"), archivo);
     expect(await screen.findByText("Contratista Ajena Demo, C.A.")).toBeInTheDocument();
     expect(screen.getByText(/Empresa declarada en el archivo/)).toBeInTheDocument();
-    expect(screen.getByText(/Huella calculada del archivo/)).toHaveTextContent("K7QF-M9XR-A2PT-W4HN-C8DV");
-    expect(screen.getByText(/Pida a la otra empresa que le lea su huella por teléfono/)).toBeInTheDocument();
+    expect(screen.getByText(/Código de verificación calculado del archivo \(SHA-256\)/)).toHaveTextContent("K7QF-M9XR-A2PT-W4HN-C8DV");
+    expect(screen.getByText(/Pida a la otra empresa que le lea su código de verificación por teléfono/)).toBeInTheDocument();
     expect(llamada(1)[0]).toBe("/v1/admin/empresas-registradas/leer");
     expect(llamada(1)[1]?.method).toBe("POST");
     expect(formulario(1).get("archivo")).toBe(archivo);
     expect(new Headers(llamada(1)[1]?.headers).get("X-Silice-CSRF")).toBe("tok");
-    expect(screen.getByLabelText("Huella leída por otro canal")).toBeInTheDocument();
+    expect(screen.getByLabelText("Código de verificación confirmado por teléfono o en persona")).toBeInTheDocument();
   });
 
   test("un archivo que no es una clave muestra el detalle de la API y no ofrece registrar", async () => {
@@ -120,7 +120,7 @@ describe("Empresas registradas", () => {
     await screen.findByText("Todavía no hay empresas registradas");
     await usuario.upload(campoDeArchivo("adm-subir-clave"), clave());
     expect(await screen.findByText("no es un archivo de clave publica de Silice")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Huella leída por otro canal")).toBeNull();
+    expect(screen.queryByLabelText("Código de verificación confirmado por teléfono o en persona")).toBeNull();
   });
 
   test("registra con la huella leída por otro canal, con quién y cómo; luego limpia el formulario", async () => {
@@ -132,7 +132,7 @@ describe("Empresas registradas", () => {
     await screen.findByText("Todavía no hay empresas registradas");
     const archivo = clave();
     await usuario.upload(campoDeArchivo("adm-subir-clave"), archivo);
-    await usuario.type(await screen.findByLabelText("Huella leída por otro canal"), "k7qf m9xr a2pt w4hn c8dv");
+    await usuario.type(await screen.findByLabelText("Código de verificación confirmado por teléfono o en persona"), "k7qf m9xr a2pt w4hn c8dv");
     await usuario.type(screen.getByLabelText("Comprobada con (persona)"), "Pedro Pérez");
     expect(screen.getByLabelText("Cómo se comprobó")).toHaveValue("telefono");
     await usuario.selectOptions(screen.getByLabelText("Cómo se comprobó"), "en persona");
@@ -145,7 +145,7 @@ describe("Empresas registradas", () => {
     expect(enviado.get("comprobada_con")).toBe("Pedro Pérez");
     expect(enviado.get("metodo")).toBe("en persona");
     expect(screen.getByRole("table", { name: "Empresas registradas" })).toHaveTextContent("Contratista Ajena Demo, C.A.");
-    expect(screen.queryByLabelText("Huella leída por otro canal")).toBeNull();
+    expect(screen.queryByLabelText("Código de verificación confirmado por teléfono o en persona")).toBeNull();
   });
 
   test("una huella que no coincide muestra el mensaje de la API y conserva lo escrito", async () => {
@@ -157,11 +157,11 @@ describe("Empresas registradas", () => {
     montar();
     await screen.findByText("Todavía no hay empresas registradas");
     await usuario.upload(campoDeArchivo("adm-subir-clave"), clave());
-    await usuario.type(await screen.findByLabelText("Huella leída por otro canal"), "0000-0000-0000-0000-0000");
+    await usuario.type(await screen.findByLabelText("Código de verificación confirmado por teléfono o en persona"), "0000-0000-0000-0000-0000");
     await usuario.type(screen.getByLabelText("Comprobada con (persona)"), "Pedro");
     await usuario.click(screen.getByRole("button", { name: "Registrar la empresa" }));
     expect(await screen.findByText(detalle)).toBeInTheDocument();
-    expect(screen.getByLabelText("Huella leída por otro canal")).toHaveValue("0000-0000-0000-0000-0000");
+    expect(screen.getByLabelText("Código de verificación confirmado por teléfono o en persona")).toHaveValue("0000-0000-0000-0000-0000");
   });
 
   describe("retirar o revocar", () => {

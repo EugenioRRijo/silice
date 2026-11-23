@@ -171,8 +171,8 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
 
   // Anexo A.6: si lo único pendiente es el desglose del desperdicio, guardar no crea versión; el botón dice lo que va a pasar.
   test.each<[string, string, number, number]>([
-    ["solo el desglose", "Guardar el desglose…", 1, 1],
-    ["solo desgloses (2)", "Guardar el desglose…", 2, 2],
+    ["solo el desglose", "Guardar ajuste de desperdicio…", 1, 1],
+    ["solo desgloses (2)", "Guardar ajuste de desperdicio…", 2, 2],
     ["una celda y un desglose", "Guardar versión…", 2, 1],
     ["solo celdas", "Guardar versión…", 2, 0],
   ])("con %s, el botón de la franja dice «%s»", async (_nombre, rotulo, cambios, desgloses) => {
@@ -180,7 +180,7 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     montar();
     const zona = await franja();
     expect(await within(zona).findByRole("button", { name: rotulo })).toBeInTheDocument();
-    expect(within(zona).queryByRole("button", { name: rotulo === "Guardar versión…" ? "Guardar el desglose…" : "Guardar versión…" })).toBeNull();
+    expect(within(zona).queryByRole("button", { name: rotulo === "Guardar versión…" ? "Guardar ajuste de desperdicio…" : "Guardar versión…" })).toBeNull();
   });
 
   test("el estado del borrador conserva el total y «Descartar cambios» (fantasma), sin el botón de guardar", async () => {

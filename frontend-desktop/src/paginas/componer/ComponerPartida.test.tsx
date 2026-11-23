@@ -554,7 +554,11 @@ describe("ComponerPartida (Tarea 9)", () => {
     const u = userEvent.setup();
     montar(2);
     await waitFor(() => expect(rutas).toContain("/v1/carpeta"), ESPERA);
-    fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: "2026-08-15" } });
+    expect(screen.getByLabelText("Tipo de obra (dominio)")).toBeInTheDocument();
+    expect(screen.getByText("Filtra partidas similares y referencias")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fecha de precios")).toBeInTheDocument();
+    expect(screen.getByText("Define la lista de precios vigente para los insumos")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Fecha de precios"), { target: { value: "2026-08-15" } });
     const materiales = screen.getByRole("region", { name: "Materiales" });
     await u.click(within(materiales).getByRole("button", { name: "Agregar fila a Materiales" }));
     await u.type(within(materiales).getByRole("combobox", { name: "Descripción, fila 1" }), "cemento");

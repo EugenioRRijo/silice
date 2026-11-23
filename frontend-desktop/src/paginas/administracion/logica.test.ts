@@ -33,7 +33,7 @@ describe("logica de Administracion", () => {
       "Cuentas",
       "Empresa y clave de firma",
       "Empresas registradas",
-      "Claves de API",
+      "Claves para conectar otros programas (API)",
       "Asistente de IA",
       "Accesos",
       "Instalación",

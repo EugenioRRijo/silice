@@ -94,7 +94,8 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("con la casilla apagada no se mandan pesos", async () => {
     await montarYElegirMoneda();
-    expect(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" })).not.toBeChecked();
+    expect(screen.getByText("Si lo deja sin marcar, el costo se divide en partes iguales por tonelada producida")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Calcular costo por tonelada" }));
     await waitFor(() => expect(posts()).toHaveLength(1));
     expect(posts()[0]!.cuerpo).toEqual({ periodo: "2026-11", moneda: "Bs" });
@@ -102,7 +103,7 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("un campo de porcentaje por agregado producido, y ninguno para las mezclas", async () => {
     await montarYElegirMoneda();
-    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" }));
     expect(await screen.findByLabelText("Porcentaje de AGR-12")).toBeInTheDocument();
     expect(screen.getByLabelText("Porcentaje de AGR-19")).toBeInTheDocument();
     expect(screen.queryByLabelText("Porcentaje de MZP-01")).not.toBeInTheDocument();
@@ -110,7 +111,7 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("Calcular se bloquea si los porcentajes no suman 100 % y dice cuánto suman", async () => {
     await montarYElegirMoneda();
-    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" }));
     await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "70");
     await usuario.type(screen.getByLabelText("Porcentaje de AGR-19"), "20,5");
     expect(screen.getByText("Los porcentajes suman 90,5 % y deben sumar 100 %.")).toBeInTheDocument();
@@ -120,7 +121,7 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("75 % y 25 % se mandan como «0.75» y «0.25»", async () => {
     await montarYElegirMoneda();
-    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" }));
     await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "75");
     await usuario.type(screen.getByLabelText("Porcentaje de AGR-19"), "25");
     const boton = screen.getByRole("button", { name: "Calcular costo por tonelada" });
@@ -132,7 +133,7 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("apagar la casilla vuelve a mandar sin pesos", async () => {
     await montarYElegirMoneda();
-    const casilla = screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" });
+    const casilla = screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" });
     await usuario.click(casilla);
     await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "75");
     await usuario.click(casilla);
@@ -143,7 +144,7 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("un porcentaje mal escrito se dice junto al campo", async () => {
     await montarYElegirMoneda();
-    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" }));
     await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "7.5");
     expect(screen.getByText(/Use la coma para los decimales/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
@@ -156,7 +157,7 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("con porcentajes a medias, cambiar a un mes sin producción deja Calcular habilitado y sin pesos", async () => {
     await montarYElegirMoneda();
-    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" }));
     await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "70");
     await cambiarMes("2026-10");
     const boton = screen.getByRole("button", { name: "Calcular costo por tonelada" });
@@ -168,11 +169,11 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("con un reparto válido, cambiar de mes apaga la casilla y no manda los pesos del mes anterior", async () => {
     await montarYElegirMoneda();
-    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" }));
     await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "75");
     await usuario.type(screen.getByLabelText("Porcentaje de AGR-19"), "25");
     fireEvent.change(screen.getByLabelText("Mes"), { target: { value: "2026-09" } });
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" })).not.toBeChecked());
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" })).not.toBeChecked());
     await usuario.click(screen.getByRole("button", { name: "Calcular costo por tonelada" }));
     await waitFor(() => expect(posts()).toHaveLength(1));
     expect(posts()[0]!.cuerpo).toEqual({ periodo: "2026-09", moneda: "Bs" });
@@ -180,7 +181,7 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("un porcentaje en cero o vacío bloquea Calcular y nombra el agregado", async () => {
     await montarYElegirMoneda();
-    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" }));
     await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "100");
     await usuario.type(screen.getByLabelText("Porcentaje de AGR-19"), "0");
     expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
@@ -192,7 +193,7 @@ describe("Reparto de la cantera por pesos", () => {
 
   test("pide las recetas vigentes en una sola petición y nunca consulta la receta por producto", async () => {
     await montarYElegirMoneda();
-    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir el costo de la cantera por porcentaje manual" }));
     expect(await screen.findByLabelText("Porcentaje de AGR-12")).toBeInTheDocument();
     expect(screen.getByLabelText("Porcentaje de AGR-19")).toBeInTheDocument();
 

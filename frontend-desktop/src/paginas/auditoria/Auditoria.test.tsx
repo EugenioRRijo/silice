@@ -91,6 +91,7 @@ describe("Inicio de auditoría", () => {
   test("su h1 es «Inicio de auditoría» y no trae «Herramientas principales» ni la arenera", async () => {
     montar();
     expect(screen.getByRole("heading", { level: 1, name: "Inicio de auditoría" })).toHaveClass("cds--type-heading-04");
+    expect(screen.getByText("Suba un presupuesto en Excel para recalcular sus partidas y detectar errores")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Arenera: lo que requiere atención" })).not.toBeInTheDocument();

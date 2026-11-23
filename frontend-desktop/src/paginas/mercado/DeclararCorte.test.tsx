@@ -52,7 +52,7 @@ const COMPRA: Estudio = {
 };
 const COBRO: Estudio = { ...COMPRA, lado: "cobro", codigo: "OBRA-04", piso: "41.40", precio_unitario: "45.54" };
 const CONFIRMADO = "Declarado precio del corte de la obra «Vivienda demo» desde el 26/10/2026.";
-const CASILLA = "Declararlo precio del corte de la obra Vivienda demo";
+const CASILLA = "Usar también como precio real en Control de obra (Vivienda demo)";
 
 const fetchFalso = vi.fn<typeof fetch>();
 
@@ -109,12 +109,12 @@ describe("Declararlo precio del corte", () => {
     const casilla = screen.getByRole("checkbox", { name: CASILLA });
     expect(casilla).not.toBeChecked();
     expect(
-      screen.getByText("Control de obra lo usará para separar el desvío de precio («Precios declarados de insumos»)."),
+      screen.getByText("Permite ver en Control de obra cuánto cambió el gasto por variación de precios."),
     ).toBeInTheDocument();
     await u.click(casilla);
     await u.click(screen.getByRole("button", { name: "Usar este precio" }));
     expect(
-      await screen.findByText("También quedará como precio del corte de la obra Vivienda demo desde hoy."),
+      await screen.findByText("También quedará como precio real en Control de obra (Vivienda demo) desde hoy."),
     ).toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "Confirmar" }));
     await screen.findByText(`Precio guardado en «Lista demo al 26/10/2026». ${CONFIRMADO}`);
@@ -160,7 +160,7 @@ describe("Declararlo precio del corte", () => {
     const u = montar(COMPRA);
     await u.click(screen.getByRole("button", { name: "Usar este precio" }));
     await screen.findByRole("button", { name: "Confirmar" });
-    expect(screen.queryByText(/precio del corte de la obra/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/precio real en Control de obra/)).not.toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "Confirmar" }));
     await screen.findByText("Precio guardado en «Lista demo al 26/10/2026».");
     expect(cuerpos()).toEqual([{ precio: "20,00", observacion_id: null }]);
@@ -209,7 +209,7 @@ describe("Declararlo precio del corte", () => {
     const u = montar(COMPRA, {}, obraConFicha(false));
     expect(screen.queryByRole("checkbox", { name: CASILLA })).toBeNull();
     expect(
-      screen.getByText("La obra Vivienda demo aún no tiene línea base de control: sin ella no hay precio del corte que declarar."),
+      screen.getByText("Para declararlo en Control de obra (Vivienda demo), primero fije la versión del contrato en Control de obra › Línea base."),
     ).toBeInTheDocument();
     await usarYConfirmar(u);
     await waitFor(() => expect(cuerpos()).toEqual([{ precio: "20,00", observacion_id: null }]));

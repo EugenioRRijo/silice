@@ -86,15 +86,16 @@ describe("Asistente de IA", () => {
     montar();
     expect(await screen.findByText(AVISO_DE_NUBE)).toBeInTheDocument();
     expect(llamada(0)[0]).toBe("/v1/admin/asistente");
+    expect(screen.getByText("Configure la ayuda con inteligencia artificial (opcional; requiere soporte técnico)")).toBeInTheDocument();
     expect(screen.getByLabelText("Activar el asistente de IA (viene apagado)")).not.toBeChecked();
     expect(screen.getByLabelText("Proveedor por defecto")).toHaveValue("claude");
     expect(screen.getByRole("option", { name: "Ollama (local, en este equipo)" })).toBeInTheDocument();
     expect(screen.getByLabelText("Modelo de Claude")).toHaveValue("claude-opus-5-5");
-    expect(screen.getByLabelText("Modelo local (Ollama)")).toHaveValue("");
-    expect(screen.getByLabelText("Dirección de Ollama")).toHaveValue("http://127.0.0.1:11434");
+    expect(screen.getByLabelText("Modelo de IA instalado en este equipo (opcional)")).toHaveValue("");
+    expect(screen.getByLabelText("Dirección del servidor local de IA")).toHaveValue("http://127.0.0.1:11434");
     expect(screen.getByLabelText("Tope de costo por sesión (USD)")).toHaveValue("2,50");
     expect(screen.getByText(`Mayor que cero. ${AYUDA_CIFRAS}`)).toBeInTheDocument();
-    expect(screen.getByText(/Si la dirección de Ollama no es de este equipo/)).toBeInTheDocument();
+    expect(screen.getByText(/Si la dirección del servidor local no es de este equipo/)).toBeInTheDocument();
     expect(screen.getByText("Clave registrada: ninguna")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar la configuración" })).toHaveClass("cds--btn--primary");
     expect(screen.getByRole("button", { name: "Registrar la clave" })).toHaveClass("cds--btn--secondary");
@@ -109,7 +110,7 @@ describe("Asistente de IA", () => {
     montar();
     await usuario.click(await screen.findByLabelText("Activar el asistente de IA (viene apagado)"));
     await usuario.selectOptions(screen.getByLabelText("Proveedor por defecto"), "ollama");
-    await usuario.type(screen.getByLabelText("Modelo local (Ollama)"), "llama-ficticio");
+    await usuario.type(screen.getByLabelText("Modelo de IA instalado en este equipo (opcional)"), "llama-ficticio");
     const tope = screen.getByLabelText("Tope de costo por sesión (USD)");
     await usuario.clear(tope);
     // con blancos alrededor: viaja TAL CUAL (los recorta el servidor con el conjunto BLANCOS)
@@ -208,7 +209,7 @@ describe("Asistente de IA", () => {
     montar();
     await usuario.type(await screen.findByLabelText("Clave de IA de la empresa"), CLAVE);
     await usuario.type(
-      screen.getByLabelText("Contraseña del respaldo cifrado (solo si el almacén de credenciales no está)"),
+      screen.getByLabelText("Contraseña del respaldo cifrado (solo si el almacén seguro de contraseñas no está)"),
       RESPALDO,
     );
     await usuario.click(screen.getByRole("button", { name: "Registrar la clave" }));

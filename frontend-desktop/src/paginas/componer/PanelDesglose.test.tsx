@@ -81,12 +81,28 @@ describe("PanelDesglose", () => {
         error={null}
       />,
     );
-    expect(screen.getByRole("heading", { name: /Contraste con la estimación por reglas/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Referencia estadística del precio \(AACE\)/ })).toBeInTheDocument();
     expect(screen.getByText(/regla ficticia/)).toBeInTheDocument();
+    expect(screen.getByText(/4 partidas de este tipo de obra/)).toBeInTheDocument();
     expect(screen.getByText(/28,00/)).toBeInTheDocument();
-    expect(screen.getByText(/dentro del rango/i)).toBeInTheDocument();
+    expect(screen.getByText(/dentro del rango esperado/i)).toBeInTheDocument();
     // «compuerta G2» es del expediente de la tesis, no de quien compone (prueba en vivo 2026-10-25).
     expect(document.body.textContent).not.toMatch(/compuerta|G2/);
+  });
+
+  test("si la referencia estadística queda fuera de rango indica qué revisar", () => {
+    render(
+      <PanelDesglose
+        evaluacion={{
+          ...BASE,
+          contraste: { tecnica: "regla ficticia", registros: 1, pu_estimado: "28.00", dentro_de_rango: false },
+        }}
+        cargando={false}
+        error={null}
+      />,
+    );
+    expect(screen.getByText(/1 partida de este tipo de obra/)).toBeInTheDocument();
+    expect(screen.getByText(/fuera del rango esperado.*revise rendimientos o precios/i)).toBeInTheDocument();
   });
 
   test("un error de la API se muestra con su detalle", () => {

@@ -177,9 +177,13 @@ describe("Precios de la empresa", () => {
     expect(screen.getByRole("heading", { name: "Precios de la empresa" })).toBeInTheDocument();
     expect(screen.getByText(/La lista de su empresa: una copia de la lista base/)).toBeInTheDocument();
     expect(screen.getByText(/No cambia la valoración de ninguna obra que no la use\./)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "1. La referencia MaPreX en bolívares" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "2. La lista de la empresa" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "3. Precios vencidos o fuera de rango (R11 y R12)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "La referencia MaPreX en bolívares" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "La lista de la empresa" })).toBeInTheDocument();
+    expect(screen.getByText("Toma una lista base y aplica encima los precios de su archivo.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Revisar precios vencidos o fuera de rango" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Muestra qué insumos de la lista tienen fecha vencida o un precio muy distinto al esperado."),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Fecha de la lista")).toHaveValue(hoyIso());
     expect(screen.getByLabelText("Moneda de la lista")).toHaveValue("");
     expect(screen.getByText("Todavía no hay listas de empresa en esta carpeta.")).toBeInTheDocument();
@@ -292,7 +296,7 @@ describe("Precios de la empresa", () => {
     expect(within(tabla).getByText("Bloque de prueba")).toBeInTheDocument();
     expect(within(tabla).getByText("0,80")).toBeInTheDocument();
     expect(screen.getByText(/«Arena de prueba» viene en saco y el catálogo lo tiene en m3/)).toBeInTheDocument();
-    const alta = screen.getByRole("checkbox", { name: "Dar de alta en el catálogo los insumos nuevos al crear la lista" });
+    const alta = screen.getByRole("checkbox", { name: "Agregar al catálogo los insumos nuevos del archivo" });
     expect(alta).not.toBeChecked();
     // sin marcar: la primera creacion no los da de alta
     await waitFor(() => expect(llamadas("/v1/precios-empresa/listas", "POST")).toHaveLength(1));
@@ -331,7 +335,7 @@ describe("Precios de la empresa", () => {
       const altas = screen.getByRole("table", { name: "Insumos dados de alta en el catálogo" });
       expect(within(altas).getByText("Bloque de prueba")).toBeInTheDocument();
       expect(screen.getAllByText(/«Arena de prueba» viene en saco/).length).toBeGreaterThan(0);
-      await usuario.click(screen.getByRole("button", { name: "Usarla como lista para armar" }));
+      await usuario.click(screen.getByRole("button", { name: "Usarla para armar presupuestos" }));
       await waitFor(() => expect(llamadas("/v1/carpeta/lista-para-armar", "POST")).toHaveLength(1));
       const [, opciones] = llamadas("/v1/carpeta/lista-para-armar", "POST")[0];
       expect(JSON.parse(String(opciones?.body))).toEqual({ desde: "empresa", lista_id: 9 });
@@ -352,7 +356,7 @@ describe("Precios de la empresa", () => {
     montar(vi.fn(), SESION_ARMA);
     await llenarYEnviar("Bs");
     expect(await screen.findByText(aviso)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Usarla como lista para armar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Usarla para armar presupuestos" })).toBeNull();
   });
 
   test("sin permiso de armar no se ofrece usarla como lista para armar y se dice quién la crea (árbitro 13/11, M4)", async () => {
@@ -360,7 +364,7 @@ describe("Precios de la empresa", () => {
     montar();
     await llenarYEnviar("USD");
     expect(await screen.findByText(/creada con/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Usarla como lista para armar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Usarla para armar presupuestos" })).toBeNull();
     expect(screen.getByText("La lista para armar la crea quien arma el presupuesto, desde Componer.")).toBeInTheDocument();
   });
 

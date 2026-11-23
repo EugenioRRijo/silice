@@ -56,15 +56,15 @@ describe("logica de Revisar un paquete", () => {
   test("las columnas de quien cambio que son las de la hoja Cambios del Excel", () => {
     expect(COLUMNAS_CAMBIOS.map((c) => c.titulo)).toEqual([
       "Versión",
-      "Objeto",
-      "Clave",
+      "Qué cambió",
+      "Partida o insumo",
       "Campo",
       "Antes",
       "Después",
       "Fuente",
       "Responsable",
       "Fecha",
-      "Marca",
+      "Observación",
     ]);
     const [fila] = filasDeCambios([{ version: "005", objeto: "apu" }]);
     expect(fila).toMatchObject({ id: "0", version: "005", objeto: "apu", marca: "" });

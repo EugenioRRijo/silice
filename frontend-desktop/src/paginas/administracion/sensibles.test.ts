@@ -39,9 +39,9 @@ describe("lógica de las pestañas sensibles", () => {
   });
 
   test("dice la red y ya no dice nada de la API: es el mismo proceso", () => {
-    expect(textoDeRed(BASE)).toBe("Red local: apagada (solo http://127.0.0.1:8501)");
+    expect(textoDeRed(BASE)).toBe("Acceso desde otros equipos: apagado (solo funciona en este equipo)");
     expect(textoDeRed({ ...BASE, red_local: true, direccion: "192.168.1.20" })).toBe(
-      "Red local: encendida en http://192.168.1.20:8501",
+      "Acceso desde otros equipos: encendido (http://192.168.1.20:8501)",
     );
     expect("textoDeApi" in sensibles).toBe(false);
   });

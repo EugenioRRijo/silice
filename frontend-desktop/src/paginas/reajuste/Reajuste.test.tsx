@@ -133,7 +133,7 @@ describe("Reajuste de precios", () => {
     await u.type(screen.getByLabelText("Inicio del contrato"), "2026-01-15");
     await u.type(screen.getByLabelText("Duración (meses)"), "24");
     // Regla de Eugenio (2026-10-25): coma decimal al escribir; la API recibe «0.10».
-    await u.type(screen.getByLabelText("R (fracción no reajustable)"), "0,10");
+    await u.type(screen.getByLabelText("Parte del contrato que no se reajusta (R, en fracción)"), "0,10");
     await u.type(screen.getByLabelText("Serie, Componentes fila 1"), "FIC-MAT");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.type(screen.getByLabelText("Desde, Períodos fila 1"), "2027-02-01");
@@ -143,18 +143,22 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
-    await u.type(screen.getByLabelText("R (fracción no reajustable)"), "0.10");
-    expect(screen.getAllByText(AYUDA_CIFRAS).length).toBeGreaterThan(0);
+    await u.type(screen.getByLabelText("Parte del contrato que no se reajusta (R, en fracción)"), "0.10");
+    expect(
+      screen.getByText(`Ejemplo: 0,10 equivale a 10 % fijo; escriba 0 si se reajusta todo. ${AYUDA_CIFRAS}`),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Cláusula o documento que fija R")).toBeInTheDocument();
+    expect(screen.getByLabelText("Descontar también esa parte fija (R) al calcular la comprobación directa")).toBeInTheDocument();
     await irA(u, "2. Períodos y lo ejecutado");
     await u.type(screen.getByLabelText("Cantidad, Ejecutado fila 1"), "1.5");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     // El aviso nombra cada cifra mal escrita; la celda visible se marca.
     const aviso = await waitFor(() => {
-      const alerta = screen.getAllByRole("alert").find((a) => (a.textContent ?? "").includes("R (fracción"));
+      const alerta = screen.getAllByRole("alert").find((a) => (a.textContent ?? "").includes("Parte del contrato que no se reajusta"));
       if (!alerta) throw new Error("sin aviso");
       return alerta;
     });
-    expect(aviso).toHaveTextContent(`R (fracción no reajustable): ${MENSAJE_CIFRA}`);
+    expect(aviso).toHaveTextContent(`Parte del contrato que no se reajusta (R, en fracción): ${MENSAJE_CIFRA}`);
     expect(aviso).toHaveTextContent(`Cantidad, Ejecutado fila 1: ${MENSAJE_CIFRA}`);
     expect(screen.getByLabelText("Cantidad, Ejecutado fila 1")).toHaveAttribute("aria-invalid", "true");
     expect(post("/v1/reajuste/calcular")).toBeUndefined();
@@ -162,6 +166,7 @@ describe("Reajuste de precios", () => {
 
   test("sin proyecto abierto dice qué hacer", async () => {
     montar(null);
+    expect(screen.getByText("Calcula cuánto debe ajustarse el pago de lo ejecutado por variación de precios")).toBeInTheDocument();
     // Tanda 2 del pulido F5 (Tarea 7): la barra superior ya no tiene «Proyecto»; la obra se elige en el árbol o con Ctrl+K.
     expect(await screen.findByText("Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios")).toBeInTheDocument();
   });
@@ -180,7 +185,8 @@ describe("Reajuste de precios", () => {
     expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveValue("Equipos");
     expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveAttribute("readonly");
     await irA(u, "2. Períodos y lo ejecutado");
-    expect(screen.getByText("Versiones revaloradas para la comprobación directa: 002")).toBeInTheDocument();
+    expect(screen.getByText("Versiones con precios actualizados para la comprobación directa: 002")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Excepción (opcional)" })).toBeInTheDocument();
   });
 
   test("los textos visibles no llevan jerga interna de las especificaciones (V-17)", async () => {
@@ -197,17 +203,19 @@ describe("Reajuste de precios", () => {
     const visible = () => document.body.textContent ?? "";
     expect(visible()).not.toMatch(/comprobacion|por_partida|mano_obra/);
     expect(screen.getByLabelText("Componente, Componentes fila 3")).toHaveValue("Mano de obra");
-    const mecanismo = screen.getByLabelText("Mecanismo");
-    expect(within(mecanismo).getByRole("option", { name: "Comprobación directa" })).toHaveValue("comprobacion");
-    expect(within(mecanismo).getByRole("option", { name: "Ambos (escalatoria y comprobación)" })).toHaveValue("ambos");
-    const estructura = screen.getByLabelText("Estructura");
-    expect(within(estructura).getByRole("option", { name: "Por partida" })).toHaveValue("por_partida");
+    const mecanismo = screen.getByLabelText("Método de reajuste");
+    expect(within(mecanismo).getByRole("option", { name: "Fórmula por índices (escalatoria)" })).toHaveValue("escalatoria");
+    expect(within(mecanismo).getByRole("option", { name: "Recálculo con precios nuevos (comprobación directa)" })).toHaveValue("comprobacion");
+    expect(within(mecanismo).getByRole("option", { name: "Comparar ambos métodos" })).toHaveValue("ambos");
+    const estructura = screen.getByLabelText("Pesos de materiales, equipos y mano de obra");
+    expect(within(estructura).getByRole("option", { name: "Calculados de cada partida del presupuesto" })).toHaveValue("por_partida");
+    expect(within(estructura).getByRole("option", { name: "Pesos fijos del contrato" })).toHaveValue("declarada");
     expect(within(screen.getByLabelText("Periodicidad")).getByRole("option", { name: "Mensual" })).toHaveValue("mensual");
-    expect(within(screen.getByLabelText(/Mecanismo pagadero/)).getByRole("option", { name: "Ninguno" })).toHaveValue("");
-    await u.selectOptions(mecanismo, "Comprobación directa");
+    expect(within(screen.getByLabelText(/Método que rige para el pago/)).getByRole("option", { name: "Ninguno" })).toHaveValue("");
+    await u.selectOptions(mecanismo, "Recálculo con precios nuevos (comprobación directa)");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     const cuerpo = post("/v1/reajuste/calcular") as { clausula: Record<string, string>; componentes: Record<string, string>[] };
     expect(cuerpo.clausula.mecanismo).toBe("comprobacion");
     expect(cuerpo.componentes[2]).toEqual({ componente: "mano_obra", serie: "", peso: "" });
@@ -219,7 +227,9 @@ describe("Reajuste de precios", () => {
     montar();
     await screen.findByLabelText("Versión del contrato");
     await irA(u, "2. Períodos y lo ejecutado");
-    expect(await screen.findByText(/ninguna \(la comprobación quedará «no disponible»\)/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Para la comprobación directa necesita una versión con precios actualizados (se crea en Mercado › Actualizar precios)."),
+    ).toBeInTheDocument();
   });
 
   test("AC4: la versión de comprobación se elige entre las revaloradas y viaja la elegida", async () => {
@@ -237,7 +247,7 @@ describe("Reajuste de precios", () => {
     expect(campo).toHaveValue("");
     await u.selectOptions(campo, "003");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     const cuerpo = post("/v1/reajuste/calcular") as { periodos: Record<string, string>[] };
     expect(cuerpo.periodos[0].version_comprobacion).toBe("003");
   });
@@ -258,7 +268,7 @@ describe("Reajuste de precios", () => {
     await screen.findByLabelText("Versión del contrato");
     await llenar(u);
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    const tabla = await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    const tabla = await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     expect(within(tabla).getAllByText("15.300,00").length).toBeGreaterThan(0);
     expect(within(tabla).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
     expect(within(tabla).queryByText("15300.00")).toBeNull();
@@ -301,14 +311,14 @@ describe("Reajuste de precios", () => {
     await screen.findByLabelText("Versión del contrato");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    const principal = await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    const principal = await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     expect(within(principal).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
       "Período", "Escalatoria", "Comprobación", "Diferencia", "Reconocido", "Mecanismo", "Moneda",
     ]);
     expect(within(principal).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
     expect(within(principal).getAllByText("16.000,00")[0]).toHaveAttribute("title", "16000.00");
     // VD-5: el mecanismo se lee con su rotulo y sin el valor interno en el title; solo las cifras llevan el exacto
-    expect(within(principal).getAllByText("Escalatoria", { selector: "td" })[0]).toBeInTheDocument();
+    expect(within(principal).getAllByText("Fórmula por índices (escalatoria)", { selector: "td" })[0]).toBeInTheDocument();
     expect(within(principal).queryByTitle("escalatoria")).toBeNull();
     const otra = screen.getByRole("table", { name: "En la otra moneda" });
     expect(within(otra).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
@@ -320,7 +330,7 @@ describe("Reajuste de precios", () => {
     expect(within(marcas).getAllByRole("listitem").map((l) => l.textContent)).toEqual([
       "01/02/2027 a 28/02/2027: precios fijos el primer año (art. 134, a cotejar)",
     ]);
-    expect(screen.getByText("Estado del estudio: cerrado.")).toBeInTheDocument();
+    expect(screen.getByText("Estado: definitivo")).toBeInTheDocument();
   });
 
   test("los avisos y el estudio parcial se dicen", async () => {
@@ -337,6 +347,7 @@ describe("Reajuste de precios", () => {
     await screen.findByLabelText("Versión del contrato");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
+    expect(await screen.findByText("Estado: preliminar (faltan índices publicados)")).toBeInTheDocument();
     expect(await screen.findByText(/La comprobación del periodo 2 no está disponible/)).toBeInTheDocument();
     expect(screen.getByText(/El ultimo periodo aun no cierra/)).toBeInTheDocument();
   });
@@ -349,7 +360,7 @@ describe("Reajuste de precios", () => {
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     expect((await alertaConTexto()).textContent).toContain("Escriba «Inicio del contrato»");
-    expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" })).not.toBeInTheDocument();
   });
 
   test("tras calcular, el foco va al título del resultado (VB-13)", async () => {
@@ -358,7 +369,7 @@ describe("Reajuste de precios", () => {
     await screen.findByLabelText("Versión del contrato");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    const titulo = await screen.findByRole("heading", { name: "Escalatoria y comprobación, lado a lado" });
+    const titulo = await screen.findByRole("heading", { name: "Resultado: escalatoria frente a comprobación directa" });
     await waitFor(() => expect(titulo).toHaveFocus());
   });
 
@@ -370,7 +381,7 @@ describe("Reajuste de precios", () => {
     await screen.findByLabelText("Versión del contrato");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    const titulo = await screen.findByRole("heading", { name: "Escalatoria y comprobación, lado a lado" });
+    const titulo = await screen.findByRole("heading", { name: "Resultado: escalatoria frente a comprobación directa" });
     await waitFor(() => expect(alVer).toHaveBeenCalledWith({ block: "start", behavior: "instant" }));
     expect(alVer.mock.contexts.at(-1)).toBe(titulo);
     // ronda 2: «start» se detiene en su scroll-margin, que deja libre la cabecera fija (estilos.test.ts; medido en
@@ -403,7 +414,7 @@ describe("Reajuste de precios", () => {
     expect(container.querySelector(".silice-reajuste__zona-error")).toBeNull();
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     expect(container.querySelector(".silice-reajuste__zona-error")).toBeNull();
   });
 
@@ -437,10 +448,10 @@ describe("Reajuste de precios", () => {
     await screen.findByLabelText("Versión del contrato");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     await irA(u, "1. La cláusula");
     await u.type(screen.getByLabelText("Duración (meses)"), "2");
-    expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" })).not.toBeInTheDocument();
   });
 
   test("guardar manda la fuente y el responsable y dice el número del estudio", async () => {
@@ -467,7 +478,7 @@ describe("Reajuste de precios", () => {
     await screen.findByLabelText("Versión del contrato");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    const lista = await screen.findByLabelText("Reemplaza al estudio parcial");
+    const lista = await screen.findByLabelText("Estudio preliminar al que reemplaza este cálculo definitivo (opcional)");
     expect(within(lista).getByRole("option", { name: "Ninguno" })).toHaveValue("");
     expect(within(lista).getByRole("option", { name: "3 (calculado el 10/02/2027)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Calcular" })).toHaveClass("cds--btn--secondary");
@@ -502,7 +513,7 @@ describe("Reajuste de precios", () => {
     soltar(json(calculo()));
     await irA(u, "2. Períodos y lo ejecutado");
     await waitFor(() => expect(screen.getByRole("button", { name: "Calcular" })).toBeEnabled());
-    expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" })).not.toBeInTheDocument();
   });
 
   test("un error que llega despues de editar se descarta: no queda un aviso viejo sobre lo editado", async () => {
@@ -541,7 +552,7 @@ describe("Reajuste de precios", () => {
     await u.click(screen.getByLabelText(/Tomar lo ejecutado de las valuaciones registradas/));
     expect(screen.queryByRole("table", { name: "Ejecutado" })).not.toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     expect((post("/v1/reajuste/calcular") as Record<string, unknown>).con_valuaciones).toBe(true);
   });
 
@@ -603,7 +614,7 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
-    for (const nombre of ["Inicio del contrato", "El primer año corre desde", "Mes base de los índices"]) {
+    for (const nombre of ["Inicio del contrato", "Inicio del primer año de obra", "Mes base de los índices"]) {
       expect(screen.getByLabelText(nombre)).toHaveAttribute("type", "date");
     }
     expect(screen.getByRole("tab", { name: "1. La cláusula" })).toBeInTheDocument();

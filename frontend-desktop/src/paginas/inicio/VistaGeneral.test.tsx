@@ -223,6 +223,7 @@ describe("Vista general: el orden de los bloques", () => {
     expect(h1).toHaveLength(1);
     expect(h1[0]).toHaveTextContent("Vista general");
     expect(h1[0]).toHaveClass("cds--type-heading-04");
+    expect(screen.getByText("Estado de todas sus obras, lo que requiere atención hoy y accesos rápidos")).toBeInTheDocument();
     const barra = screen.getByRole("navigation", { name: "Inicio" });
     expect(within(barra).getByRole("link", { name: "Vista general" })).toHaveAttribute("aria-current", "page");
     expect(within(barra).getByRole("link", { name: "Pendientes" })).not.toHaveAttribute("aria-current");
@@ -748,7 +749,7 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
 describe("Vista general: los lanzadores de los espacios", () => {
   test("cada lanzador lleva el nombre de su espacio y abre su primera herramienta usable", async () => {
     montar();
-    const lanzadores = await bloque("Herramientas dedicadas");
+    const lanzadores = await bloque("Herramientas de la empresa");
     expect(within(lanzadores).getByText("Espacios de trabajo de la empresa")).toBeInTheDocument();
     expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
     expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
@@ -759,7 +760,7 @@ describe("Vista general: los lanzadores de los espacios", () => {
 
   test("cada lanzador describe las herramientas de su espacio que la cuenta puede usar, con sus nombres", async () => {
     montar();
-    const lanzadores = await bloque("Herramientas dedicadas");
+    const lanzadores = await bloque("Herramientas de la empresa");
     expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAccessibleDescription(
       "Subir y auditar Excel · Libro de la empresa · Historial de auditorías",
     );
@@ -772,7 +773,7 @@ describe("Vista general: los lanzadores de los espacios", () => {
   test("con la especialidad de producción apagada no se ofrece su lanzador", async () => {
     apagados = ["produccion"];
     montar();
-    const lanzadores = await bloque("Herramientas dedicadas");
+    const lanzadores = await bloque("Herramientas de la empresa");
     await waitFor(() => expect(within(lanzadores).queryByRole("link", { name: "Costos de producción" })).toBeNull());
     expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toBeInTheDocument();
   });

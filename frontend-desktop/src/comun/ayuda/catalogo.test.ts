@@ -107,9 +107,46 @@ describe("Guías por tarea (A2)", () => {
 describe("Glosario (A3)", () => {
   test("trae los términos que pidió el plan, con un id estable para enlazarlos", () => {
     const ids = GLOSARIO.map((t) => t.id);
-    for (const id of ["apu", "fcas", "valor-ganado", "reajuste", "linea-base", "lista-para-armar"]) expect(ids, id).toContain(id);
+    for (const id of [
+      "apu",
+      "fcas",
+      "valor-ganado",
+      "reajuste",
+      "linea-base",
+      "lista-para-armar",
+      "aace",
+      "asistente-ia",
+      "bac",
+      "clave-api",
+      "clave-de-firma",
+      "codigo-verificacion",
+      "comprobacion-directa",
+      "comprobacion-hacia-atras",
+      "cpi",
+      "cuartil-y-mediana",
+      "depreciacion-equipo",
+      "eac",
+      "erosion",
+      "escalatoria",
+      "factor-km",
+      "incidencia",
+      "inpc",
+      "lista-base",
+      "pareto",
+      "perfil-libro",
+      "procura",
+      "punto-de-equilibrio",
+      "pv-ev-ac",
+      "reparto-cantera",
+      "reserva-contingencia",
+      "simulacion",
+      "spi",
+    ])
+      expect(ids, id).toContain(id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) expect(id).toMatch(/^[a-z0-9-]+$/);
+    expect(GLOSARIO.find((t) => t.id === "spi")!.definicion).toContain("1,00");
+    expect(GLOSARIO.find((t) => t.id === "cpi")!.definicion).toContain("1,00");
   });
 
   test("va en orden alfabético (español) y cada definición es una o dos frases terminadas en punto", () => {

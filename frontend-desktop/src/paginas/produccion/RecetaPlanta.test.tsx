@@ -81,13 +81,13 @@ describe("Receta de la planta", () => {
   async function llenarComponente(dialogo: HTMLElement, n: number, codigo: string, cantidad: string, unidad = "t", tipo = "propio") {
     const fila = within(dialogo).getByRole("group", { name: `Componente ${n}` });
     await usuario.type(within(fila).getByLabelText("Código"), codigo);
-    await usuario.type(within(fila).getByLabelText("Cantidad por t"), cantidad);
+    await usuario.type(within(fila).getByLabelText("Cantidad por tonelada"), cantidad);
     await usuario.selectOptions(within(fila).getByLabelText("Unidad"), unidad);
     await usuario.selectOptions(within(fila).getByLabelText("Tipo"), tipo);
   }
 
   async function llenarCabecera(dialogo: HTMLElement) {
-    await usuario.type(within(dialogo).getByLabelText("Producto (código)"), "MZP-01");
+    await usuario.type(within(dialogo).getByLabelText("Mezcla (escriba código o nombre)"), "MZP-01");
     await usuario.type(within(dialogo).getByLabelText("Vigente desde"), "2026-11-01");
     await usuario.type(within(dialogo).getByLabelText("Fuente (dosificación)"), "dosificación ficticia 12");
   }
@@ -128,19 +128,19 @@ describe("Receta de la planta", () => {
 
   test("muestra la receta vigente con la suma de masa, sin contar los litros", async () => {
     montar();
-    await usuario.type(screen.getByLabelText("Producto (código)"), "MZP-01");
+    await usuario.type(screen.getByLabelText("Mezcla (escriba código o nombre)"), "MZP-01");
     await usuario.click(screen.getByRole("button", { name: "Ver la receta vigente" }));
     const region = await screen.findByRole("region", { name: "Receta vigente" });
     expect(within(region).getByText(/Receta n\.º 3 de MZP-01/)).toHaveTextContent("vigente desde 01/11/2026");
     expect(within(region).getByRole("row", { name: /AGR-12/ })).toHaveTextContent("0,94");
-    expect(within(region).getByText("Suma de masa: 0,99 t por t de mezcla")).toBeInTheDocument();
+    expect(within(region).getByText("Peso total de los componentes: 0,99 toneladas por tonelada de mezcla")).toBeInTheDocument();
     expect(fetchFalso.mock.calls.map((c) => String(c[0]))).toContain("/v1/produccion/recetas/vigente?producto=MZP-01&fecha=2026-11-15");
   });
 
   test("sin receta vigente dice lo que dijo el servidor", async () => {
     vigente = () => json({ detalle: "No hay receta vigente de MZP-09 el 2026-11-15." }, 404);
     montar();
-    await usuario.type(screen.getByLabelText("Producto (código)"), "MZP-09");
+    await usuario.type(screen.getByLabelText("Mezcla (escriba código o nombre)"), "MZP-09");
     await usuario.click(screen.getByRole("button", { name: "Ver la receta vigente" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No hay receta vigente de MZP-09 el 2026-11-15.");
   });
@@ -149,19 +149,19 @@ describe("Receta de la planta", () => {
     montar();
     const dialogo = await abrir();
     const guardar = within(dialogo).getByRole("button", { name: "Registrar receta" });
-    const suma = within(dialogo).getByRole("status", { name: "Suma de masa" });
-    expect(suma).toHaveTextContent("0 t por t de mezcla");
+    const suma = within(dialogo).getByRole("status", { name: "Peso total de los componentes" });
+    expect(suma).toHaveTextContent("0 toneladas por tonelada de mezcla");
     expect(suma).toHaveTextContent("entre 0,98 y 1,02");
     await llenarCabecera(dialogo);
     await llenarComponente(dialogo, 1, "AGR-12", "0,90");
     await usuario.click(within(dialogo).getByRole("button", { name: "Agregar un componente" }));
     await llenarComponente(dialogo, 2, "CA-30", "0,05", "t", "comprado");
-    expect(suma).toHaveTextContent("0,95 t por t de mezcla");
+    expect(suma).toHaveTextContent("0,95 toneladas por tonelada de mezcla");
     expect(suma).toHaveTextContent("fuera del rango");
     expect(guardar).toBeDisabled();
-    await usuario.clear(within(dialogo).getAllByLabelText("Cantidad por t")[0]!);
-    await usuario.type(within(dialogo).getAllByLabelText("Cantidad por t")[0]!, "0,94");
-    expect(suma).toHaveTextContent("0,99 t por t de mezcla");
+    await usuario.clear(within(dialogo).getAllByLabelText("Cantidad por tonelada")[0]!);
+    await usuario.type(within(dialogo).getAllByLabelText("Cantidad por tonelada")[0]!, "0,94");
+    expect(suma).toHaveTextContent("0,99 toneladas por tonelada de mezcla");
     expect(suma).not.toHaveTextContent("fuera del rango");
     expect(guardar).toBeEnabled();
     expect(posts()).toHaveLength(0);
@@ -211,7 +211,7 @@ describe("Receta de la planta", () => {
 
   test("la receta vigente dice cuál componente es el ligante", async () => {
     montar();
-    await usuario.type(screen.getByLabelText("Producto (código)"), "MZP-01");
+    await usuario.type(screen.getByLabelText("Mezcla (escriba código o nombre)"), "MZP-01");
     await usuario.click(screen.getByRole("button", { name: "Ver la receta vigente" }));
     const region = await screen.findByRole("region", { name: "Receta vigente" });
     expect(within(region).getByRole("row", { name: /CA-30/ })).toHaveTextContent("Sí");
@@ -228,7 +228,7 @@ describe("Receta de la planta", () => {
     await usuario.click(within(dialogo).getByRole("button", { name: "Agregar un componente" }));
     await llenarComponente(dialogo, 3, "CA-30", "0,05", "t", "comprado");
     const fila = within(dialogo).getByRole("group", { name: "Componente 3" });
-    const casilla = within(fila).getByRole("checkbox", { name: "Es el ligante" });
+    const casilla = within(fila).getByRole("checkbox", { name: "Es el asfalto (ligante)" });
     expect(casilla).not.toBeChecked();
     await usuario.click(casilla);
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar receta" }));
@@ -243,7 +243,7 @@ describe("Receta de la planta", () => {
   test("sin permiso para operar la arenera no aparece la casilla del ligante", async () => {
     montar({ ...SESION, acciones: ["registrar_costos_produccion"] });
     const dialogo = await abrir();
-    expect(within(dialogo).queryByRole("checkbox", { name: "Es el ligante" })).not.toBeInTheDocument();
+    expect(within(dialogo).queryByRole("checkbox", { name: "Es el asfalto (ligante)" })).not.toBeInTheDocument();
   });
 
   test("un componente propio en litros se rechaza antes de enviar", async () => {
@@ -324,7 +324,7 @@ describe("Receta de la planta", () => {
   test("el producto se busca entre los materiales de la arenera y cada componente, también entre los insumos del catálogo", async () => {
     montar();
     const dialogo = await abrir();
-    const producto = within(dialogo).getByRole("combobox", { name: "Producto (código)" });
+    const producto = within(dialogo).getByRole("combobox", { name: "Mezcla (escriba código o nombre)" });
     await usuario.type(producto, "agre");
     const lista = await within(dialogo).findByRole("listbox");
     // La sugerencia y, al final, usar lo escrito tal cual.
@@ -359,7 +359,7 @@ describe("Receta de la planta", () => {
   test("un código que no está en la lista se puede usar tal cual", async () => {
     montar();
     const dialogo = await abrir();
-    const producto = within(dialogo).getByRole("combobox", { name: "Producto (código)" });
+    const producto = within(dialogo).getByRole("combobox", { name: "Mezcla (escriba código o nombre)" });
     await usuario.type(producto, "MZP-77");
     expect(producto).toHaveValue("MZP-77");
   });

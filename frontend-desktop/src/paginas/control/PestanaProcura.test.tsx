@@ -303,11 +303,11 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     const tabla = await abrirProcura(u);
     await u.click(within(tabla).getByRole("button", { name: "Recibida…: Cemento gris (saco)" }));
     const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
-    const casilla = within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" });
+    const casilla = within(dialogo).getByRole("checkbox", { name: "Usar como precio real en Control de obra" });
     expect(casilla).not.toBeChecked();
     expect(
       within(dialogo).getByText(
-        "Desde la fecha de llegada, Control de obra lo usará para separar el desvío de precio («Precios declarados de insumos»).",
+        "Si la marca, servirá para distinguir si un sobrecosto viene de subida de precios o de mayor consumo de material.",
       ),
     ).toBeInTheDocument();
     await u.type(within(dialogo).getByLabelText("Precio unitario (por saco, opcional)"), "20,00");
@@ -352,7 +352,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     await u.click(within(tabla).getByRole("button", { name: "Recibida…: Cemento gris (saco)" }));
     const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
     await u.type(within(dialogo).getByLabelText("Precio unitario (por saco, opcional)"), "146,00");
-    await u.click(within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" }));
+    await u.click(within(dialogo).getByRole("checkbox", { name: "Usar como precio real en Control de obra" }));
     await u.click(within(dialogo).getByRole("button", { name: "Anotar recepción" }));
     expect(
       await screen.findByText(
@@ -366,7 +366,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     const tabla = await abrirProcura(u);
     await u.click(within(tabla).getByRole("button", { name: "Recibida…: Cemento gris (saco)" }));
     const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
-    const casilla = within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" });
+    const casilla = within(dialogo).getByRole("checkbox", { name: "Usar como precio real en Control de obra" });
     expect(within(dialogo).getByLabelText("Precio unitario (por saco, opcional)")).toBeInTheDocument();
     await u.click(casilla);
     expect(within(dialogo).getByLabelText("Precio unitario (por saco)")).toBeInTheDocument();
@@ -380,7 +380,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     const tabla = await abrirProcura(u);
     await u.click(within(tabla).getByRole("button", { name: "Recibida…: Cemento gris (saco)" }));
     const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
-    await u.click(within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" }));
+    await u.click(within(dialogo).getByRole("checkbox", { name: "Usar como precio real en Control de obra" }));
     await u.click(within(dialogo).getByRole("button", { name: "Anotar recepción" }));
     const precio = within(dialogo).getByLabelText("Precio unitario (por saco)");
     expect(
@@ -556,7 +556,7 @@ describe("Valuaciones: la causa que sugiere la procura (Tarea 24)", () => {
     expect(screen.getByRole("combobox", { name: "Causa del retraso 2" })).toHaveValue("");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
     await u.type(screen.getByLabelText("Cantidad 2"), "1");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect(lineasEnviadas().map((l) => [l.partida, l.causa])).toEqual([
       ["OBRA-02", "compra_tardia"],
@@ -600,7 +600,7 @@ describe("Valuaciones: la causa que sugiere la procura (Tarea 24)", () => {
     expect(segunda).toHaveValue("");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
     await u.type(screen.getByLabelText("Cantidad 2"), "1");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect(lineasEnviadas().map((l) => l.causa)).toEqual(["clima", null]);
   });

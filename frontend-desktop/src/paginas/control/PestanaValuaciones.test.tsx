@@ -186,7 +186,7 @@ describe("Pestaña de valuaciones", () => {
     await u.type(screen.getByLabelText("Número"), "V-03");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     const aviso = await screen.findByText(/la revisión encontró 1 error/);
     expect(aviso.textContent).toBe("Valuación registrada (corte 13/11/2026), pero la revisión encontró 1 error.");
     const notificacion = aviso.closest(".cds--inline-notification");
@@ -197,8 +197,8 @@ describe("Pestaña de valuaciones", () => {
     expect(aviso.closest("#val-resultado")).toBe(regionViva);
     expect(within(notificacion as HTMLElement).queryByRole("list")).toBeNull();
     const lista = screen.getByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" });
-    expect(within(lista).getByText("Error (R14): La valuación V-03 no tiene inspector.")).toBeInTheDocument();
-    expect(within(lista).getByText(/^Información \(R14\): Entre las valuaciones/)).toBeInTheDocument();
+    expect(within(lista).getByText("Error: La valuación V-03 no tiene inspector.")).toBeInTheDocument();
+    expect(within(lista).getByText(/^Información: Entre las valuaciones/)).toBeInTheDocument();
     expect(screen.queryByText(/^Valuación registrada: corte/)).toBeNull();
   });
 
@@ -207,7 +207,7 @@ describe("Pestaña de valuaciones", () => {
     await screen.findByLabelText("Valuación");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(await screen.findByText("Valuación registrada: corte 13/11/2026, sin hallazgos en la revisión.")).toBeInTheDocument();
   });
 
@@ -223,12 +223,12 @@ describe("Pestaña de valuaciones", () => {
     await screen.findByLabelText("Valuación");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(await screen.findByText(/la revisión encontró 1 error/)).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" })).toBeInTheDocument();
     await u.clear(screen.getByLabelText("Cantidad 1"));
     await u.type(screen.getByLabelText("Cantidad 1"), "abc");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(screen.getByLabelText("Cantidad 1")).toBeInvalid();
     expect(screen.queryByText(/Valuación registrada/)).toBeNull();
     expect(screen.queryByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" })).toBeNull();
@@ -242,11 +242,11 @@ describe("Pestaña de valuaciones", () => {
     await screen.findByLabelText("Valuación");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(await screen.findByText("Ya existe una valuación con ese número.")).toBeInTheDocument();
     await u.clear(screen.getByLabelText("Cantidad 1"));
     await u.type(screen.getByLabelText("Cantidad 1"), "abc");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(screen.getByLabelText("Cantidad 1")).toBeInvalid();
     expect(screen.queryByText("Ya existe una valuación con ese número.")).toBeNull();
   });
@@ -255,7 +255,7 @@ describe("Pestaña de valuaciones", () => {
     hallazgosDeLaLista = [{ valuacion: "V-02", regla: "R14", severidad: "Error", mensaje: "La valuación V-02 no tiene inspector." }];
     montar();
     const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de las valuaciones" });
-    expect(within(lista).getByText("V-02 · Error (R14): La valuación V-02 no tiene inspector.")).toBeInTheDocument();
+    expect(within(lista).getByText("V-02 · Error: La valuación V-02 no tiene inspector.")).toBeInTheDocument();
   });
 
   // Prueba en vivo del 2026-11-18, hallazgo 3: un costo anotado no se podía ver.

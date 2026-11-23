@@ -99,6 +99,7 @@ describe("Resumen de la obra abierta", () => {
     montar();
     expect(await screen.findAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Resumen" })).toBeInTheDocument();
+    expect(screen.getByText("Cifras principales, avance y tareas pendientes de esta obra")).toBeInTheDocument();
   });
 
   it("las cifras son las de esta obra, en es-VE y con la etapa en palabras", async () => {
@@ -123,22 +124,22 @@ describe("Resumen de la obra abierta", () => {
     expect(within(cifras).getByText("1.234.567,89 Bs").closest("dd")).not.toHaveClass("silice-resumen__valor--texto");
   });
 
-  it("con línea base la cifra de versión se rotula «Versión de la línea base»", async () => {
+  it("con línea base la cifra de versión se rotula «Versión del contrato (línea base)»", async () => {
     montar();
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
     const cifras = screen.getByRole("group", { name: "Cifras de la obra" });
-    const rotulo = within(cifras).getByText("Versión de la línea base", { selector: "dt" });
+    const rotulo = within(cifras).getByText("Versión del contrato (línea base)", { selector: "dt" });
     expect(rotulo.nextElementSibling).toHaveTextContent("002");
-    expect(within(cifras).getAllByText(/^Versión/, { selector: "dt" })).toHaveLength(1);
+    expect(within(cifras).queryByText("Última versión guardada", { selector: "dt" })).toBeNull();
   });
 
-  it("sin línea base la cifra de versión se rotula «Versión vigente»", async () => {
+  it("sin línea base la cifra de versión se rotula «Última versión guardada»", async () => {
     montar({ ficha: { estado: "lista", obra: { ...FILA, version_de_linea_base: false } } });
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
     const cifras = screen.getByRole("group", { name: "Cifras de la obra" });
-    const rotulo = within(cifras).getByText("Versión vigente", { selector: "dt" });
+    const rotulo = within(cifras).getByText("Última versión guardada", { selector: "dt" });
     expect(rotulo.nextElementSibling).toHaveTextContent("002");
-    expect(within(cifras).getAllByText(/^Versión/, { selector: "dt" })).toHaveLength(1);
+    expect(within(cifras).queryByText("Versión del contrato (línea base)", { selector: "dt" })).toBeNull();
   });
 
   it("lo que falta va en la franja y su único botón lleva a la sección", async () => {

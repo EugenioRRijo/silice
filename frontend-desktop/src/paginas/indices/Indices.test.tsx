@@ -124,7 +124,7 @@ describe("Índices del BCV", () => {
     const tipo = screen.getByLabelText("Qué archivo es");
     const opciones = within(tipo).getAllByRole("option").map((o) => o.textContent);
     expect(opciones).toEqual(CONTEXTO.tipos.map((t) => t.rotulo));
-    expect(screen.getByText(/«Leer» no escribe nada/)).toBeInTheDocument();
+    expect(screen.getByText(/«Leer» muestra un adelanto sin guardar/)).toBeInTheDocument();
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/indices/contexto");
   });
 
@@ -155,7 +155,7 @@ describe("Índices del BCV", () => {
     const resumen = screen.getByRole("region", { name: "Resumen de la lectura" });
     expect(within(resumen).getByText("Filas leídas").nextSibling).toHaveTextContent("4");
     expect(within(resumen).getByText("Rechazadas").nextSibling).toHaveTextContent("1");
-    expect(within(resumen).getByText("Provisionales").nextSibling).toHaveTextContent("1");
+    expect(within(resumen).getByText("Provisionales (datos preliminares)").nextSibling).toHaveTextContent("1");
     const series = screen.getByRole("table", { name: "Series leídas" });
     expect(within(series).getByText("INDICE-A")).toBeInTheDocument();
     // Las fechas de cada serie se leen como en el resto de Sílice: dd/mm/aaaa, nunca aaaa-mm-dd (prueba en vivo del 18/11/2026).
@@ -196,7 +196,7 @@ describe("Índices del BCV", () => {
     const resumen = screen.getByRole("region", { name: "Resumen de la lectura" });
     expect(within(resumen).getByText("Filas leídas").nextSibling).toHaveTextContent("1.200");
     expect(within(resumen).getByText("Rechazadas").nextSibling).toHaveTextContent("1.050");
-    expect(within(resumen).getByText("Provisionales").nextSibling).toHaveTextContent("1.001");
+    expect(within(resumen).getByText("Provisionales (datos preliminares)").nextSibling).toHaveTextContent("1.001");
   });
 
   test("confirmar reenvía el archivo con la huella y las definiciones, y muestra los mensajes", async () => {
@@ -280,7 +280,7 @@ describe("Índices del BCV", () => {
     contexto = () => json({ ...CONTEXTO, lee_xls: false });
     montar();
     await elegirArchivo("4_5_7.xls", "inpc");
-    expect(screen.getByText(/falta el componente xlrd/)).toBeInTheDocument();
+    expect(screen.getByText(/Guárdelo en Excel como \.xlsx o \.csv/)).toBeInTheDocument();
   });
 
   test("la API que contesta 401 avisa a la aplicación", async () => {
