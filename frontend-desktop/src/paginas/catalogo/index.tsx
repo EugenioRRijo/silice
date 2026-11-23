@@ -90,7 +90,7 @@ export default function PaginaCatalogo() {
         onChange={(e: { target: { value: string } }) => setBusqueda(e.target.value)}
       />
       <Tabs>
-        <TabList aria-label="Catálogo">
+        <TabList aria-label="Catálogo" contained>
           <Tab>Partidas ({formatoEsVe(String(filasPartidas.length))})</Tab>
           <Tab>Insumos ({formatoEsVe(String(filasInsumos.length))})</Tab>
         </TabList>

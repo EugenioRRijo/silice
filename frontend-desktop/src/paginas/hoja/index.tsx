@@ -277,7 +277,7 @@ function CuerpoDeLaHoja() {
               irAPestana(visibles[selectedIndex]!.id);
             }}
           >
-            <TabList aria-label={SECCIONES}>
+            <TabList aria-label={SECCIONES} contained>
               {visibles.map((p) => (
                 <Tab key={p.id}>{p.titulo}</Tab>
               ))}

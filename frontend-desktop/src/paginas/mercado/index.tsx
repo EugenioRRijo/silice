@@ -56,7 +56,7 @@ export default function PaginaMercado() {
             : "Vea cómo cambiaron los precios de los insumos y las cotizaciones de la obra."}
         </p>
         <Tabs onChange={({ selectedIndex }) => setElegida(selectedIndex)}>
-          <TabList aria-label="Qué estudiar">
+          <TabList aria-label="Qué estudiar" contained>
             {pestanas.map((p) => (
               <Tab key={p.titulo}>{p.titulo}</Tab>
             ))}

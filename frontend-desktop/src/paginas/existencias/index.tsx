@@ -81,7 +81,7 @@ export default function PaginaExistencias() {
       </p>
       {puedeRegistrarCostos && <EnlacesDeCostos />}
       <Tabs selectedIndex={pestana} onChange={({ selectedIndex }) => setPestana(selectedIndex)}>
-        <TabList aria-label="Secciones de la arenera">
+        <TabList aria-label="Secciones de la arenera" contained>
           <Tab>Existencias</Tab>
           <Tab>Registrar</Tab>
           <Tab>Importar báscula</Tab>
