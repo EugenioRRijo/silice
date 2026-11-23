@@ -109,7 +109,7 @@ def test_exhaustividad_con_lo_que_se_le_escapo():
     assert m.exhaustividad(verdaderos=0, escapados=0).valor is None
 
 
-# --- formato de salida -----------------------------------------------------------------------------
+# --- formato de salida ---------------------------------------------------------------------------
 
 
 def test_porcentaje_con_coma_decimal():
@@ -191,21 +191,33 @@ def test_clave_de_siembra_ida_y_vuelta(fuera: Path):
     ]
 
 
-# --- de punta a punta con un libro sintético -------------------------------------------------------
+# --- de punta a punta con un libro sintético -----------------------------------------------------
 
 
-def test_exportar_un_libro_sintetico(fuera: Path):
-    from tests.fixtures.libros_empresa import libro_limpio
+def test_exportar_un_libro_sintetico_con_errores_sembrados(fuera: Path):
+    import hashlib
 
+    from fusion.proceso import procesar_libro
+    from tests.fixtures.libros_empresa import APUS_LIMPIOS, Siembra, construir_libro
+
+    datos = construir_libro(APUS_LIMPIOS, Siembra(resumen_ref_rota=True, procura_dif=Decimal("5"))
+                            ).datos
+    esperados = procesar_libro(datos, "libro.xlsx",
+                               fecha_devolucion=date(2026, 10, 13)).informe.hallazgos
+    assert esperados  # la siembra produce hallazgos: si no, la prueba no prueba nada
     fuera.mkdir()
     origen = fuera / "libro.xlsx"
-    origen.write_bytes(libro_limpio().datos)
+    origen.write_bytes(datos)
     destino = fuera / "planilla.xlsx"
     codigo = m.main(["exportar", str(origen), "--salida", str(destino),
                      "--fecha", "2026-10-13", "--raiz-repo", str(fuera.parent / "repo")])
     assert codigo == 0
-    hoja = openpyxl.load_workbook(destino)["Hallazgos"]
-    assert hoja.max_row >= 1  # el limpio puede no tener hallazgos: igual sale la planilla
+    filas = m.leer_filas(destino)
+    assert [(f.regla, f.celdas) for f in filas] == [(h.regla, h.origen_ids) for h in esperados]
+    instrucciones = [c.value for c in openpyxl.load_workbook(destino)["Instrucciones"]["A"]]
+    assert f"SHA-256 del libro auditado: {hashlib.sha256(datos).hexdigest()}" in instrucciones
+    marcas, escapados = m.leer_marcas(destino)
+    assert set(marcas.values()) == {""} and escapados == 0  # nada marcado todavía
 
 
 def test_calcular_desde_la_linea_de_comandos(fuera: Path, capsys):
