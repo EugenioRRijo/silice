@@ -39,6 +39,11 @@ description: Use when designing, changing or reviewing any screen, form, table o
 | Campo de texto con coma decimal | `comun/CampoTexto.tsx` |
 | Carga de página | `comun/EsqueletoPagina.tsx` |
 | Glosario | `comun/ayuda/textos.ts` (`GLOSARIO`, en orden alfabético) |
+| Borrador abierto de la obra y si se puede editar (para pantallas que no son la Hoja) | `comun/borradorAbierto.ts` (`ContextoDelBorradorAbierto`, `ContextoDeLaEdicionDelBorrador`, `rutaDeVista`) |
+
+**Fronteras:** una página no importa de otra (`comun/arquitectura.test.ts`). Lo que dos páginas comparten va en
+`comun/`, y antes de crear un archivo ahí, busca uno que ya cumpla ese papel. El 2026-11-23 se creó
+`presupuestoAbierto.ts` y hubo que borrarlo, porque `borradorAbierto.ts` ya existía.
 
 ## Reglas propias de Sílice (además de la ficha)
 
