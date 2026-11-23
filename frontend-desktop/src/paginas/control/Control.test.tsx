@@ -517,6 +517,43 @@ describe("Control de obra", () => {
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "", causa: null }]);
   });
 
+  // Juez F2 (2026-11-23): el servidor acepta dos valuaciones con el mismo número y el avance se duplica. Decisión de
+  // Eugenio: avisar y pedir confirmar (no rechazar). El número se compara con los de las valuaciones que cuentan.
+  async function llenarValuacion(u: ReturnType<typeof montar>, numero: string) {
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.type(screen.getByLabelText("Número"), numero);
+    await u.type(screen.getByLabelText("Período desde"), "2026-11-16");
+    await u.type(screen.getByLabelText("Período hasta"), "2026-11-20");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "50");
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
+  }
+
+  test("un número de valuación ya registrado avisa que duplica el avance y no registra hasta confirmar", async () => {
+    const u = montar();
+    await llenarValuacion(u, " v-01 ");
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent(
+      "Ya hay una valuación V-01 registrada en esta obra. Registrar otra con el mismo número suma su avance dos veces; si quiere reemplazarla, anule primero la anterior.",
+    );
+    expect(cuerpoDe("/v1/control/valuaciones")).toBeUndefined();
+    // Lo destructivo no es la opción por omisión: el foco empieza en «Cancelar».
+    await waitFor(() => expect(within(aviso).getByRole("button", { name: "Cancelar" })).toHaveFocus());
+    await u.click(within(aviso).getByRole("button", { name: "Registrar otra V-01 de todos modos" }));
+    await waitFor(() => expect(cuerpoDe("/v1/control/valuaciones")).toMatchObject({ numero: " v-01 " }));
+  });
+
+  test("«Cancelar» quita el aviso del número repetido sin registrar ni borrar lo escrito", async () => {
+    const u = montar();
+    await llenarValuacion(u, "V-01");
+    const aviso = await screen.findByRole("alert");
+    await u.click(within(aviso).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByText(/Ya hay una valuación V-01/)).toBeNull();
+    expect(cuerpoDe("/v1/control/valuaciones")).toBeUndefined();
+    expect(screen.getByLabelText("Número")).toHaveValue("V-01");
+  });
+
   test("los hallazgos de valuación muestran el nombre llano de la regla junto a su código", async () => {
     valuaciones = () =>
       json({
