@@ -520,13 +520,15 @@ def test_dinero_del_pdf_de_un_monto_con_exponente_no_falla():
     assert presupuesto_pdf._dinero(D("1E+58")) == "10" + ".000" * 19 + ",00"
 
 
-# Juez F2 (2026-11-23): una partida pendiente no siempre es «sin APU en el catálogo»; a menudo le faltan precios en la
-# lista de la versión. La nota del PDF dice lo que siempre es cierto: no tiene precio con esa lista y no suma al total.
+# Juez F2 (2026-11-23): una partida pendiente no siempre es «sin APU en el catálogo»; a menudo
+# le faltan precios en la lista de la versión. La nota del PDF dice lo que siempre es cierto: no
+# tiene precio con esa lista y no suma al total.
 def test_la_nota_de_pendientes_dice_sin_precio_con_la_lista_de_la_version():
     from types import SimpleNamespace
 
     from aplicacion import presupuesto_pdf
 
-    notas = presupuesto_pdf._notas(SimpleNamespace(version=None), SimpleNamespace(cambios=0, hallazgos=[]), 2)
+    resumen = SimpleNamespace(cambios=0, hallazgos=[])
+    notas = presupuesto_pdf._notas(SimpleNamespace(version=None), resumen, 2)
     assert "2 partidas sin precio con la lista de esta versión: no suman al total." in notas
     assert not any("sin APU" in nota for nota in notas)

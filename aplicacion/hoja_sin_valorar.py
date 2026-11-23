@@ -2,7 +2,8 @@
 
 La Hoja arma el APU de cada partida nueva del borrador desde el catálogo, con la lista de la
 versión abierta y a la fecha del borrador (`hoja_edicion.completar`); si no puede, la deja
-PENDIENTE («PENDIENTE: sin APU en el catálogo») sin decir por qué. Quien decide es siempre la Hoja;
+PENDIENTE («PENDIENTE: sin precio con la lista de esta versión») sin decir por qué. Quien decide
+es siempre la Hoja;
 este módulo solo **redacta** el motivo: qué insumos no tienen precio en qué lista, en qué otras
 listas están, qué rendimiento falta a esa fecha y qué hacer.
 

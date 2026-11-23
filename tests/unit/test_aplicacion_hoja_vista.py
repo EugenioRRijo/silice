@@ -639,7 +639,9 @@ def test_una_partida_sin_apu_no_tiene_precio_ni_total_y_queda_pendiente(_of001):
     salida = _fila_de(v, "AF-SALIDA")
     assert (salida.pu, salida.total) == (None, None)
     assert salida.estado.severidad == "ERROR"
-    assert salida.estado.texto.startswith("PENDIENTE: sin precio con la lista de esta versión (AF-SALIDA)")
+    assert salida.estado.texto.startswith(
+        "PENDIENTE: sin precio con la lista de esta versión (AF-SALIDA)"
+    )
     assert len(v.filas) == 30
 
 

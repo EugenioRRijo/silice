@@ -734,7 +734,7 @@ export function TablaConRespuesta({ pregunta, respuesta, ...tabla }: Props) {
 - Cada campo declara su valor por omisión, si va a la vista o plegado, de qué depende y cómo se describe en la frase de
   resumen.
 - El *reducer* por omisión hace cumplir la regla previa 3: un campo dependiente que deja de aplicar vuelve a vacío.
-- Una página puede sustituir el *reducer* (Dodds), pero solo si un segundo caso real lo pide (AHA).
+- Una página puede sustituir el *reducer* (Dodds), pero solo si un segundo caso concreto lo pide (AHA).
 
 ```tsx
 // comun/useFormulario.ts
