@@ -363,6 +363,14 @@
 // salían de la página (medición responsive, 2026-11-22). Con letra Normal no cambia nada.
 @include u.con-letra-grande {
   .silice-pagina {
+    // Una ruta o un nombre de archivo sin espacios parte línea en vez de estirar la página.
+    overflow-wrap: anywhere;
+
+    // El navegador da al fieldset `min-inline-size: min-content`: con letra grande no encogía.
+    fieldset {
+      min-inline-size: 0;
+    }
+
     .cds--inline-notification,
     .cds--actionable-notification {
       min-inline-size: 0;
@@ -383,6 +391,11 @@
       table-layout: fixed;
       inline-size: 100%;
       overflow-wrap: anywhere;
+    }
+
+    // Carbon pone `white-space: nowrap` en algunas celdas («Base de la carpeta abierta»): con letra grande se salían.
+    .cds--structured-list-content--nowrap {
+      white-space: normal;
     }
   }
 }
