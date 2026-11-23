@@ -119,6 +119,7 @@
 
 // La carpeta abierta, junto a la marca: cede despues del buscador y, si no cabe, se recorta con puntos suspensivos.
 .silice-marco-barra__carpeta {
+  position: relative;
   flex: 0 1 auto;
   min-inline-size: 0;
   overflow: hidden;
