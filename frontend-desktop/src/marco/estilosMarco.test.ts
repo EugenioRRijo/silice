@@ -232,3 +232,26 @@ describe("la Cuenta cabe a 768 px con letra Muy grande", () => {
     expect(regla).toMatch(/white-space:\s*normal/);
   });
 });
+
+// Cuarta medición (2026-11-22): con letra grande y la barra lateral abierta en una tablet, los componentes de Carbon con
+// ancho propio (avisos de 18 rem, botones en `max-content`, tablas y listas estructuradas) se salían de la página.
+describe("componentes de Carbon dentro de una página con letra grande", () => {
+  const marco = leer("marco/marco.scss");
+  const bloque = bloqueDe(marco, "@include u.con-letra-grande {") ?? "";
+
+  test("marco.scss usa los umbrales y tiene un bloque para letra grande", () => {
+    expect(marco).toMatch(/@use "umbrales" as u;/);
+    expect(bloque).toContain(".silice-pagina");
+  });
+
+  test("avisos y botones no pasan del ancho de la página", () => {
+    expect(bloque).toMatch(/\.cds--inline-notification[^{]*\{[^}]*min-inline-size:\s*0/);
+    expect(bloque).toMatch(/\.cds--btn[^{]*\{[^}]*max-inline-size:\s*100%[^}]*white-space:\s*normal/);
+  });
+
+  test("las tablas se desplazan por dentro y las listas estructuradas reparten su ancho", () => {
+    expect(bloque).toMatch(/\.cds--data-table-content[^{]*\{[^}]*overflow-x:\s*auto/);
+    expect(bloque).toMatch(/\.cds--structured-list[^{-]*\{[^}]*table-layout:\s*fixed/);
+  });
+});
+
