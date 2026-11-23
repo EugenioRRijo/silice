@@ -48,7 +48,14 @@ export function UltimasAuditorias({ carga, desde = "auditoria" }: Props) {
       />
     );
   }
-  if (carga.estado === "sin_permiso") return <EstadoVacio titulo="Sin historial de auditorías para su cuenta" />;
+  if (carga.estado === "sin_permiso") {
+    return (
+      <EstadoVacio
+        titulo="Sin historial de auditorías para su cuenta"
+        descripcion="Ver las auditorías guardadas pide el papel «arma presupuestos» o «revisa paquetes»: pídaselo a quien administra Sílice."
+      />
+    );
+  }
   if (carga.estado === "error") return <AvisoError error={carga.error} titulo="No se pudo leer el historial" />;
   if (carga.datos.length === 0) {
     return (

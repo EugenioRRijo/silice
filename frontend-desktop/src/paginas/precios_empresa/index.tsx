@@ -24,6 +24,7 @@ import {
   SIN_BASES,
   SIN_BASES_QUE_HACER,
   SIN_LISTAS,
+  SIN_LISTAS_QUE_HACER,
   TITULO,
   TITULO_HALLAZGOS,
   TITULO_LISTA,
@@ -461,7 +462,7 @@ function SeccionHallazgos({ listas, alExpirar }: PropsSeccion & { listas: ListaE
         Muestra qué insumos de la lista tienen fecha vencida o un precio muy distinto al esperado.
       </p>
       {listas.length === 0 ? (
-        <EstadoVacio titulo={SIN_LISTAS} />
+        <EstadoVacio titulo={SIN_LISTAS} descripcion={SIN_LISTAS_QUE_HACER} />
       ) : (
         <>
           <div className="silice-precios-empresa__campos">

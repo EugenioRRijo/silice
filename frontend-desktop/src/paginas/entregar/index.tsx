@@ -171,7 +171,10 @@ function Seleccion({
         <EsqueletoPagina etiqueta="Cargando las versiones" />
       )}
       {versiones.estado === "listo" && lista.length === 0 && (
-        <EstadoVacio titulo="Esta obra todavía no tiene versiones" />
+        <EstadoVacio
+          titulo="Esta obra todavía no tiene versiones"
+          descripcion="Guarde su primera versión en la sección «Presupuesto» de esa obra, con «Guardar primera versión…»; después podrá entregarla aquí."
+        />
       )}
       <MensajeDeCarga carga={versiones} />
       {elegida && noAprobada && aprobada !== undefined && (

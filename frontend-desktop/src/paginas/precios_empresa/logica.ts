@@ -23,6 +23,9 @@ export const SIN_BASES_QUE_HACER =
   "Cree una con «Cargar la referencia MaPreX en Bs», arriba en esta página: queda como lista base y aquí aparece el formulario de la lista de su empresa.";
 export const TITULO_HALLAZGOS = "Revisar precios vencidos o fuera de rango";
 export const SIN_LISTAS = "Todavía no hay listas de empresa en esta carpeta.";
+// El camino está en la misma página: el bloque «La lista de la empresa», arriba, con su botón.
+export const SIN_LISTAS_QUE_HACER =
+  "Cree una arriba, en «La lista de la empresa», con «Crear la lista de la empresa»; después revise aquí sus precios.";
 export const MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto.";
 export const EXTENSIONES = [".csv", ".xlsx"];
 

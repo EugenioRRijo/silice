@@ -465,7 +465,14 @@ export function Recuperacion({
           <TablaDensa etiqueta="Decisiones tomadas" columnas={columnasDe(COLUMNAS_DECISIONES)} filas={conId(calculo.decisiones)} />
         </section>
       ) : (
-        <EstadoVacio titulo="Aún no se ha tomado ninguna decisión de recuperación" />
+        <EstadoVacio
+          titulo="Aún no se ha tomado ninguna decisión de recuperación"
+          descripcion={
+            puedeDecidir
+              ? "Pulse «Calcular opciones», arriba, y elija una con «Elegir y crear la versión»."
+              : "Las decide quien arma la obra; cuando elija una, aparecerá aquí."
+          }
+        />
       )}
     </>
   );

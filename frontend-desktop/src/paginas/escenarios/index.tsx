@@ -24,6 +24,7 @@ import {
   NOTA_PRECIOS,
   SIN_ESCENARIOS,
   SIN_PRESUPUESTOS,
+  SIN_PRESUPUESTOS_QUE_HACER,
   TITULO_COMPARACION,
   armarEscenario,
   campoNombrado,
@@ -222,7 +223,7 @@ export default function PaginaEscenarios() {
     return (
       <div className="silice-escenarios silice-pagina">
         {encabezado}
-        <EstadoVacio titulo={SIN_PRESUPUESTOS} />
+        <EstadoVacio titulo={SIN_PRESUPUESTOS} descripcion={SIN_PRESUPUESTOS_QUE_HACER} />
       </div>
     );
   }

@@ -33,7 +33,7 @@ export default function PaginaArchivos() {
     <section className="silice-pagina silice-archivos">
       <h1 className="cds--type-heading-04">{TEXTOS.titulo}</h1>
       {proyecto === null ? (
-        <EstadoVacio titulo={TEXTOS.sinObra} />
+        <EstadoVacio titulo={TEXTOS.sinObra} descripcion={TEXTOS.sinObraQueHacer} />
       ) : deLaObra !== null ? (
         <Cuerpo proyecto={proyecto} />
       ) : (

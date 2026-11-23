@@ -22,6 +22,7 @@ export const TEXTOS = {
   falloDelBorrador: "No se pudo abrir el borrador",
   abrirDeNuevo: "Abrir de nuevo",
   sinObra: "Elija una obra",
+  sinObraQueHacer: "Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para subir sus planos o cómputos.",
   cerrar: "Cerrar",
 } as const;
 

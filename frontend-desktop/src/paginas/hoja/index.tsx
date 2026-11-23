@@ -383,7 +383,7 @@ export default function PaginaHoja() {
         {TITULO}
       </h1>
       {proyecto === null ? (
-        <EstadoVacio titulo="Elija una obra" />
+        <EstadoVacio titulo="Elija una obra" descripcion="Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K." />
       ) : deLaObra !== null ? (
         <CuerpoDeLaHoja />
       ) : (

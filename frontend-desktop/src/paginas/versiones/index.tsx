@@ -47,7 +47,7 @@ export default function PaginaVersiones() {
         {T.titulo}
       </h1>
       {/* Fuera de una obra (una dirección vieja) no hay borrador que compartir. */}
-      {proyecto === null || hoja === null ? <EstadoVacio titulo="Elija una obra" /> : <CuerpoDeVersiones />}
+      {proyecto === null || hoja === null ? <EstadoVacio titulo="Elija una obra" descripcion="Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K." /> : <CuerpoDeVersiones />}
     </section>
   );
 }

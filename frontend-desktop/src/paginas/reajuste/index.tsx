@@ -182,7 +182,10 @@ function Estudio({ proyecto, alExpirar }: { proyecto: string; alExpirar: () => v
   if (contexto.estado !== "listo") return <MensajeDeCarga carga={contexto} />;
   if (contexto.datos.versiones.length === 0) {
     return (
-      <EstadoVacio titulo="La obra no tiene versiones guardadas: guarde la del contrato primero" />
+      <EstadoVacio
+        titulo="La obra no tiene versiones guardadas: guarde la del contrato primero"
+        descripcion="Guárdela en la sección «Presupuesto» de la obra, con «Guardar primera versión…»; después vuelva aquí para reajustar sus precios."
+      />
     );
   }
   return <Formulario proyecto={proyecto} contexto={contexto.datos} alExpirar={alExpirar} />;
