@@ -367,6 +367,44 @@ describe("Componer una partida", () => {
     expect(screen.queryByRole("button", { name: /al presupuesto$/ })).toBeNull();
   });
 
+  // Ficha de Componer, lote 3 (aprobado por Eugenio el 2026-11-23): lo que casi siempre se deja como viene (tipo de obra,
+  // fecha de precios y parámetros del precio) va plegado en «Más opciones de la partida», con su resumen a la vista. Un
+  // error en lo plegado lo abre: nunca se esconde un error.
+  const plegado = (elemento: Element) => {
+    const pliegue = elemento.closest("details");
+    return pliegue !== null && !pliegue.open;
+  };
+
+  test("tipo de obra, fecha y parámetros van plegados en «Más opciones de la partida», con su resumen a la vista", async () => {
+    montar();
+    await waitFor(() => expect(screen.getByLabelText("Tipo de obra (dominio)")).toHaveValue("civil"));
+    const resumen = screen.getByText(/^Más opciones de la partida/);
+    expect(resumen.closest("summary")).not.toBeNull();
+    expect(resumen.closest("summary")).toHaveTextContent(/Tipo de obra: Civil · precios al \d{2}\/\d{2}\/\d{4}/);
+    expect(plegado(screen.getByLabelText("Tipo de obra (dominio)"))).toBe(true);
+    expect(plegado(screen.getByLabelText("Fecha de precios"))).toBe(true);
+    expect(plegado(screen.getByRole("region", { name: "Parámetros del precio unitario" }))).toBe(true);
+    // El aviso de los precios de otra lista no se pliega: se lee sin abrir nada.
+    expect(document.getElementById("componer-fecha-estado")!.closest("details")).toBeNull();
+    // El párrafo de entrada con jerga («declare su cabecera y sus tres tablas») ya no está.
+    expect(screen.queryByText(/Componga una partida a mano/)).toBeNull();
+  });
+
+  test("en la cabecera quedan a la vista solo código, descripción y unidad (8 o menos, umbral F0)", async () => {
+    montar();
+    await waitFor(() => expect(screen.getByLabelText("Tipo de obra (dominio)")).toHaveValue("civil"));
+    const cabecera = screen.getByRole("region", { name: "Cabecera de la partida" });
+    const visibles = [...cabecera.querySelectorAll("input, select, textarea")].filter((c) => !plegado(c));
+    expect(visibles.length).toBeLessThanOrEqual(8);
+    expect(visibles.map((c) => (c as HTMLInputElement).labels?.[0]?.textContent?.trim())).toEqual(["Código", "Descripción", "Unidad"]);
+  });
+
+  test("un parámetro mal escrito abre «Más opciones de la partida» para que el error se vea", async () => {
+    evaluacion = () => json({ ...VACIA, aviso: "Parámetros del precio unitario. Utilidad: Use la coma para los decimales." });
+    montar();
+    await waitFor(() => expect(plegado(screen.getByRole("region", { name: "Parámetros del precio unitario" }))).toBe(false), ESPERA);
+  });
+
   test("sin advertencia de rendimiento la justificación viaja nula", async () => {
     const usuario = userEvent.setup();
     montar();
