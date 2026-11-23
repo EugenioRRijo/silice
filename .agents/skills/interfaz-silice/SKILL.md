@@ -57,9 +57,12 @@ description: Use when designing, changing or reviewing any screen, form, table o
   «¿Qué es esto?» en el mismo lugar, y pestañas internas con fondo.
 - `core/` no cambia. Un mensaje del núcleo con jerga («ADVERTENCIA: … no es derivable ni reproducible») se traduce en
   `aplicacion/`; por ejemplo, el de la regla R1 se reconoce en `aplicacion/hoja_partidas.py:114`.
-- Ninguna sigla sola como rótulo (R, Km, SPI, CPI, EAC, P80, FCAS): primero la palabra. **Hoy no hay guardia que lo
-  vigile**: `paginas/sinJergaInterna.test.ts` solo busca códigos internos (UC/RF/RNF) y palabras del marco. Ampliarla es
-  una tarea de F3.
+- Ninguna sigla sola como rótulo (R, Km, SPI, CPI, EAC, P80, FCAS): primero la palabra, o la sigla con su explicación
+  entre paréntesis.
+- **La guardia de interfaz** (`comun/guardiaInterfaz.test.ts`, norma en `docs/especificaciones/2026-11-23-norma-de-interfaz.md`)
+  vigila en la CI el trato de tú, las siglas sueltas en rótulos, la severidad en mayúsculas y los `EstadoVacio` sin paso
+  siguiente, en modo trinquete con `guardiaInterfaz.deuda.json`. Si arreglas un caso de la deuda, borra su línea; si la
+  guardia marca algo nuevo, arréglalo: no lo agregues a la deuda.
 - TDD: la prueba en rojo antes del código, y suite completa al cerrar.
 - No se corre `prettier --write`: el repo no sigue ese formato, y reformatea cientos de líneas ajenas. Lo que manda es
   `npm run lint`.
