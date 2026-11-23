@@ -1,10 +1,20 @@
 import { Button } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import type { Guardado } from "./cliente";
+
+// El paso que sigue a guardar, cuando la composición se hizo dentro de una tarea más larga (en la obra: llevar la partida
+// al presupuesto). Ficha de Componer, lote 1: un estado de éxito sin paso siguiente deja a la persona perdida.
+export interface PasoSiguiente {
+  // Qué falta todavía, en una frase («Todavía no está en el presupuesto de esta obra.»).
+  aviso: string;
+  // El rótulo del botón: verbo y objeto («Agregar FIC-1 al presupuesto»).
+  boton: string;
+  alPulsar: () => void;
+}
 
 export interface Props {
   // Las condiciones del rendimiento estan vacias (RF-33): el boton queda deshabilitado.
@@ -23,6 +33,8 @@ export interface Props {
   refBoton?: RefObject<HTMLButtonElement | null>;
   // El nivel de su titulo: h2 en la pantalla, h3 en el panel de «Agregar partida» (plan F4, Tarea 9).
   nivel?: 2 | 3;
+  // Lo que sigue tras guardar con éxito, o null si guardar termina la tarea (el panel de «Agregar partida» se cierra solo).
+  siguiente?: PasoSiguiente | null;
 }
 
 export function Guardar({
@@ -36,9 +48,16 @@ export function Guardar({
   codigoInvalido = false,
   refBoton,
   nivel = 2,
+  siguiente = null,
 }: Props) {
   const Titulo = `h${nivel}` as const;
   const [justificacion, setJustificacion] = useState("");
+  // Con éxito y un paso siguiente, ese paso es el único botón principal y recibe el foco; guardar otra vez baja a secundario.
+  const conSiguiente = resultado !== null && siguiente !== null;
+  const botonSiguiente = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (conSiguiente) botonSiguiente.current?.focus();
+  }, [conSiguiente, resultado]);
   const guardar = () => alGuardar(requiereJustificacion ? justificacion.trim() || null : null);
 
   return (
@@ -74,7 +93,7 @@ export function Guardar({
       <div>
         <Button
           ref={refBoton}
-          kind="primary"
+          kind={conSiguiente ? "secondary" : "primary"}
           size="md"
           disabled={sinCondiciones || guardando || sinLista || codigoInvalido}
           onClick={guardar}
@@ -96,6 +115,14 @@ export function Guardar({
           {resultado.avisos.map((a, i) => (
             <InlineNotification key={i} kind="info" lowContrast hideCloseButton role="status" title="Aviso" subtitle={a} />
           ))}
+          {siguiente !== null && (
+            <div className="silice-componer__siguiente">
+              <p className="cds--type-body-compact-01">{siguiente.aviso}</p>
+              <Button ref={botonSiguiente} kind="primary" size="md" onClick={siguiente.alPulsar}>
+                {siguiente.boton}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </section>

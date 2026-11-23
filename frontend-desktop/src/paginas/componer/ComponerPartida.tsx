@@ -45,6 +45,7 @@ import type { OrigenDeParametros } from "./ParametrosDelPrecio";
 import "./componer.scss";
 import { DialogoVariantes } from "./DialogoVariantes";
 import { Guardar } from "./Guardar";
+import type { PasoSiguiente } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
 import { Similares } from "./Similares";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
@@ -120,6 +121,9 @@ interface Props {
   // El nivel del titulo que la encabeza (el h1 de la pantalla o el h2 del panel): sus bloques van un nivel por debajo.
   nivelDelTitulo: 1 | 2;
   alGuardar: (partida: PartidaCompuesta) => void;
+  // Qué sigue tras guardar (ficha de Componer, lote 1): en la obra, llevar la partida al presupuesto. Sin él, guardar
+  // termina aquí (el panel de «Agregar partida» se cierra solo y ya deja la partida elegida).
+  pasoSiguiente?: (partida: PartidaCompuesta) => PasoSiguiente;
 }
 
 // Por que existe (plan F4, Tarea 9): la composicion de una partida sin h1 ni navegacion, para la pantalla «Componer una
@@ -131,7 +135,9 @@ interface Props {
 // UC-10 (componer) y UC-11 (editar) una partida a mano. El navegador no calcula nada: el desglose, las advertencias
 // y el guardado los hace la API. La cola de la pagina clasica (cantidades de obra, elaborar) vive en Archivos y planos ›
 // «Cargar cómputo» (F4, Tarea 12, baja 19; antes, «Elaborar un presupuesto», RB-1).
-export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelDelTitulo, alGuardar }: Props): JSX.Element {
+export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelDelTitulo, alGuardar, pasoSiguiente }: Props): JSX.Element {
+  // La partida del último guardado con éxito, para su paso siguiente.
+  const [guardada, setGuardada] = useState<PartidaCompuesta | null>(null);
   const nivel = nivelDelTitulo === 1 ? 2 : 3;
   const Titulo = `h${nivel}` as const;
   const { alExpirar } = useAplicacion();
@@ -471,7 +477,9 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     setGuardando(true);
     try {
       setResultado(await guardar(cabecera, tablas, datos, parametros));
-      alGuardar({ codigo: cabecera.codigo.trim(), descripcion: cabecera.descripcion.trim(), unidad: cabecera.unidad.trim() });
+      const partida = { codigo: cabecera.codigo.trim(), descripcion: cabecera.descripcion.trim(), unidad: cabecera.unidad.trim() };
+      setGuardada(partida);
+      alGuardar(partida);
     } catch (e) {
       fallarGuardado(e);
     } finally {
@@ -699,6 +707,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         codigoInvalido={cabecera.codigo.trim() !== "" && !esCodigoValido(cabecera.codigo)}
         refBoton={botonGuardar}
         nivel={nivel}
+        siguiente={guardada !== null && pasoSiguiente !== undefined ? pasoSiguiente(guardada) : null}
       />
       {porConfirmar && (
         <DialogoVariantes

@@ -1,6 +1,7 @@
 import { Button } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import type { PartidaCompuesta } from "../componer/ComponerPartida";
 import { pedir } from "../../api/cliente";
 import { unidadEscrita } from "../../comun/unidades";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -60,6 +61,10 @@ interface Props {
   // cuanto tiene la vista y avisa que lo atendió (así volver a la pestaña no lo abre otra vez).
   pedirAgregar?: boolean;
   alAtenderAgregar?: () => void;
+  // Con ese pedido puede venir la partida recién compuesta (ficha de Componer, lote 1): el diálogo abre con ella elegida.
+  partidaPedida?: PartidaCompuesta | null;
+  // El diálogo se cerró: la partida pedida ya se usó (o se descartó) y no vuelve a precargarse.
+  alSoltarPartidaPedida?: () => void;
 }
 
 interface PropsContenido extends Props {
@@ -364,9 +369,11 @@ function EditorDePresupuesto({
 // La pestaña: la barra de herramientas (su explicación y «Agregar partida», también con el presupuesto vacío) y la tabla.
 function ContenidoPresupuesto(props: PropsContenido) {
   const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador, pedirAgregar, alAtenderAgregar } = props;
+  const { partidaPedida = null, alSoltarPartidaPedida } = props;
   const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
-  // El pedido de la franja (Tarea 5) se atiende una vez: se abre el diálogo, que es el mismo de «Agregar partida».
+  // El pedido de la franja (Tarea 5) o de Componer se atiende una vez: se abre el diálogo, el mismo de «Agregar partida».
+  // La partida que trae Componer la toma el diálogo al abrirse y se suelta al cerrarlo (luego abre en blanco).
   useEffect(() => {
     if (!pedirAgregar) return;
     alAtenderAgregar?.();
@@ -449,9 +456,16 @@ function ContenidoPresupuesto(props: PropsContenido) {
         <DialogoAgregarPartida
           id={id}
           anfitrion={anfitrion}
+          partidaInicial={partidaPedida}
           revActual={revActual}
-          alAgregada={alAgregada}
-          alCancelar={() => cerrar(true)}
+          alAgregada={(...agregada) => {
+            alSoltarPartidaPedida?.();
+            alAgregada(...agregada);
+          }}
+          alCancelar={() => {
+            alSoltarPartidaPedida?.();
+            cerrar(true);
+          }}
           alAusente={alAusente}
           alReleer={releer}
         />
