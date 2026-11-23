@@ -203,7 +203,15 @@ describe("Precios de la empresa", () => {
   test("sin listas de precios en el caso no ofrece el formulario", async () => {
     estado = () => json({ bases: [], listas: [] });
     montar();
-    expect(await screen.findByText("La carpeta no tiene listas de precios: cargue una en Actualizar precios.")).toBeInTheDocument();
+    // Juez F2 (2026-11-23): «Actualizar precios» vive en Mercado de una obra y no tiene enlace desde aquí; el camino real
+    // es el botón de MaPreX de esta misma página, que crea la lista base y recarga la página.
+    expect(await screen.findByText("La carpeta todavía no tiene una lista base de precios.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Cree una con «Cargar la referencia MaPreX en Bs», arriba en esta página: queda como lista base y aquí aparece el formulario de la lista de su empresa.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Actualizar precios/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Crear la lista de la empresa" })).toBeNull();
     expect(screen.getByRole("button", { name: "Cargar la referencia MaPreX en Bs" })).toBeInTheDocument();
   });
