@@ -41,6 +41,7 @@ import type {
 } from "./cliente";
 import { ContextoDelBorradorAbierto, rutaDeVista } from "../../comun/borradorAbierto";
 import { ParametrosDelPrecio, esAvisoDeParametros, valoresDe } from "./ParametrosDelPrecio";
+import { AYUDA_CONDICIONES, AYUDA_DESCRIPCION, ayudaDelConsumo, ayudaDelRendimiento } from "./ayudas";
 import type { OrigenDeParametros } from "./ParametrosDelPrecio";
 import "./componer.scss";
 import { DialogoVariantes } from "./DialogoVariantes";
@@ -554,6 +555,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             id="componer-descripcion"
             size="sm"
             labelText="Descripción"
+            helperText={AYUDA_DESCRIPCION}
             value={cabecera.descripcion}
             onChange={(e) => {
               cambiarCabecera({ descripcion: e.target.value });
@@ -647,6 +649,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             id="componer-rendimiento-valor"
             size="sm"
             labelText="Rendimiento: unidades por día"
+            helperText={ayudaDelRendimiento(parecidas, cabecera.unidad)}
             value={cabecera.rendimiento}
             onChange={(e) => cambiarCabecera({ rendimiento: e.target.value })}
           />
@@ -660,7 +663,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         <AreaTexto
           id="componer-condiciones"
           labelText="Condiciones del rendimiento"
-          helperText="Obligatorio: Sílice no guarda una composición sin las condiciones en que se obtuvo su rendimiento."
+          helperText={AYUDA_CONDICIONES}
           rows={2}
           value={condiciones}
           onChange={(e) => {
@@ -678,6 +681,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         {carpeta?.moneda && (
           <p className="silice-componer__moneda cds--type-body-compact-01">{`Precios en ${carpeta.moneda}`}</p>
         )}
+        <p className="silice-componer__nota cds--type-body-compact-01">{ayudaDelConsumo(cabecera.unidad)}</p>
         <p className="silice-componer__nota cds--type-body-compact-01">
           {AYUDA_CIFRAS}
         </p>
