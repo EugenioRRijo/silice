@@ -341,7 +341,7 @@ def test_un_item_pendiente_no_se_confunde_con_un_error_de_medida_en_el_estado():
     estado = _elaborar_sin_apu(_limpio()).estado
     p1 = estado["esp_puntos:P1"]
     assert p1.severidad is Severidad.ERROR  # el informe lo declara ERROR: no cumple
-    assert p1.texto.startswith("PENDIENTE: sin APU en el catálogo")
+    assert p1.texto.startswith("PENDIENTE: sin precio con la lista de esta versión")
     assert "AF-SALIDA" in p1.texto  # dice que partida falta
     assert "fuera del ambiente" not in p1.texto and "origen" not in p1.texto
     assert "no tiene composicion" not in p1.texto  # el texto largo del nucleo no va en la fila
@@ -359,12 +359,12 @@ def test_una_fila_con_error_de_medida_y_partida_pendiente_dice_las_dos_cosas_por
     texto = _elaborar_sin_apu(fuera).estado["esp_puntos:P1"].texto
     medida, pendiente = texto.split(" | ")
     assert medida.startswith("ERROR: ") and "fuera del ambiente" in medida
-    assert pendiente.startswith("PENDIENTE: sin APU en el catálogo")
+    assert pendiente.startswith("PENDIENTE: sin precio con la lista de esta versión")
 
 
 def test_con_las_partidas_en_el_catalogo_ninguna_fila_dice_pendiente():
     estado = _elaborar(_limpio()).estado
-    assert all("PENDIENTE" not in e.texto and "sin APU" not in e.texto for e in estado.values())
+    assert all("PENDIENTE" not in e.texto and "sin precio" not in e.texto for e in estado.values())
 
 
 # --- SF2: las tres especialidades en la hoja -----------------------------------------------------
