@@ -170,6 +170,17 @@ describe("Precios de la empresa", () => {
     return usuario;
   }
 
+  // Juez F2 (2026-11-23): la página no decía qué columnas exige el archivo (`core/catalog/precios.py`, COLUMNAS_ARCHIVO
+  // y COLUMNAS_OPCIONALES; fechas AAAA-MM-DD), así que casi todo primer intento fallaba. Se dice antes de subir.
+  test("antes del cuadro de subida dice qué columnas lleva el archivo y cómo se escriben tipo y fecha", async () => {
+    montar();
+    const ayuda = await screen.findByText(/^El archivo lleva una fila de títulos con las columnas «tipo», «insumo», «unidad» y «precio»/);
+    expect(ayuda).toHaveTextContent("«tipo» es material, equipo o mano de obra");
+    expect(ayuda).toHaveTextContent("Opcionales: «fecha» (AAAA-MM-DD, por ejemplo 2026-11-23) y «fuente».");
+    const subida = screen.getByText(/^Archivo de precios \(CSV o XLSX\)/);
+    expect(ayuda.compareDocumentPosition(subida) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   test("muestra la ayuda, las tres secciones y las listas base como «nombre (moneda)»", async () => {
     montar();
     expect(await screen.findByRole("option", { name: "MaPreX julio 2026 en Bs (Bs)" })).toBeInTheDocument();
