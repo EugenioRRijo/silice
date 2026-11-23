@@ -92,7 +92,12 @@ export function BarraSuperior({
           )}
         </Link>
         {/* Auditoría, Precios y Producción trabajan con la carpeta abierta: se dice también en la ventana dedicada. */}
-        {carpeta && <span className="silice-marco-barra__carpeta">{`Carpeta activa: ${carpeta}`}</span>}
+        {carpeta && (
+          <span className="silice-marco-barra__carpeta" title={`Carpeta activa: ${carpeta}`}>
+            <span className="silice-marco-barra__carpeta-rotulo">{"Carpeta activa: "}</span>
+            {carpeta}
+          </span>
+        )}
         {!enVentanaDedicada && (
           <span className="silice-marco-barra__contexto">
             {migaContextual ? (

@@ -301,8 +301,13 @@
 
 .silice-cuenta-recorridos {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   justify-items: start;
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
   padding: 1.25rem;
   background-color: var(--silice-surface);
   border: 1px solid var(--silice-border);
@@ -311,12 +316,26 @@
   h2,
   p {
     margin: 0;
+    max-inline-size: 100%;
+    overflow-wrap: anywhere;
   }
 
   &__lista {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+
+    .cds--btn {
+      flex: 0 1 auto;
+      inline-size: auto;
+      max-inline-size: 100%;
+      min-inline-size: 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
   }
 }
 

@@ -312,3 +312,21 @@
     }
   }
 }
+
+// Con letra Grande o Muy grande por debajo de su umbral, el rotulo «Carpeta activa: » se oculta visualmente (el lector
+// de pantalla y el atributo title lo conservan) para que quepa el nombre de la carpeta sin recortarse.
+@each $escala in ("grande", "muy-grande") {
+  @include u.por-debajo-del-umbral($escala) {
+    .silice-marco-barra__carpeta-rotulo {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      border: 0;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+}

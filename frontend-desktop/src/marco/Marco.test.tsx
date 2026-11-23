@@ -443,7 +443,8 @@ describe("Marco: la obra como espacio de trabajo", () => {
     expect(cabecera).not.toHaveTextContent("de trabajo");
     expect(cabecera).toHaveTextContent("Versión: 002");
     expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
-    expect(await screen.findByText("Carpeta activa: Carpeta Sur")).toBeInTheDocument();
+    // El rótulo y el nombre van en dos partes (con letra grande el rótulo se oculta a la vista); la frase sigue entera.
+    expect(await screen.findByTitle("Carpeta activa: Carpeta Sur")).toHaveTextContent("Carpeta activa: Carpeta Sur");
     expect(await screen.findByText("Obras / Galpón Sur")).toBeInTheDocument();
     expect(document.title).toBe("Presupuesto · Galpón Sur · Sílice");
   });
