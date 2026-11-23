@@ -57,3 +57,44 @@ describe("Similares", () => {
     expect(screen.getByText(/Desglose incompleto en la lista vigente: falta un precio\./)).toBeInTheDocument();
   });
 });
+
+// Decisión de Eugenio (2026-11-23): «Empezar desde esta». Quien no domina el oficio parte de una partida real parecida
+// en vez de copiar tres tablas a mano. Lo pulsa la persona, todo se puede corregir y nada se guarda hasta guardar.
+describe("Similares: empezar desde una partida parecida", () => {
+  test("cada parecida con tablas ofrece «Empezar desde» y, sin nada escrito, la entrega de una vez", async () => {
+    const usuario = userEvent.setup();
+    const elegidas: string[] = [];
+    render(<Similares similares={[UNA]} alEmpezarDesde={(s) => elegidas.push(s.codigo)} conAlgoEscrito={false} />);
+    await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
+    await usuario.click(screen.getByRole("button", { name: "Empezar desde FIC-001" }));
+    expect(elegidas).toEqual(["FIC-001"]);
+  });
+
+  test("una parecida sin tablas (desglose incompleto) no ofrece empezar desde ella", async () => {
+    const usuario = userEvent.setup();
+    render(<Similares similares={[{ ...UNA, tablas: null, aviso: "Desglose incompleto." }]} alEmpezarDesde={() => undefined} conAlgoEscrito={false} />);
+    await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
+    expect(screen.queryByRole("button", { name: /^Empezar desde/ })).toBeNull();
+  });
+
+  test("con insumos ya escritos pregunta antes de reemplazarlos, con el foco en «Cancelar»", async () => {
+    const usuario = userEvent.setup();
+    const elegidas: string[] = [];
+    render(<Similares similares={[UNA]} alEmpezarDesde={(s) => elegidas.push(s.codigo)} conAlgoEscrito />);
+    await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
+    await usuario.click(screen.getByRole("button", { name: "Empezar desde FIC-001" }));
+    const aviso = screen.getByRole("alert");
+    expect(aviso).toHaveTextContent("Se reemplazarán los insumos y el rendimiento que ya escribió por los de FIC-001.");
+    expect(elegidas).toEqual([]);
+    expect(within(aviso).getByRole("button", { name: "Cancelar" })).toHaveFocus();
+    await usuario.click(within(aviso).getByRole("button", { name: "Reemplazar por los de FIC-001" }));
+    expect(elegidas).toEqual(["FIC-001"]);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("la nota ya no dice «solo lectura»: dice cómo empezar desde una y que nada se guarda solo", () => {
+    render(<Similares similares={[UNA]} alEmpezarDesde={() => undefined} conAlgoEscrito={false} />);
+    expect(screen.queryByText(/solo lectura/)).toBeNull();
+    expect(screen.getByText(/Puede empezar desde una de ellas/)).toBeInTheDocument();
+  });
+});

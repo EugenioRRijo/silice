@@ -88,6 +88,7 @@ describe("Componer una partida", () => {
   let carpeta: () => Response;
   let vistaPresupuesto: () => Response;
   let parametrosDeOmision: () => Response;
+  let similaresDeLaApi: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -98,6 +99,8 @@ describe("Componer una partida", () => {
     carpeta = () => json(estadoDeCarpeta("Lista ficticia 2026-01"));
     vistaPresupuesto = () => json({ filas: [{ partida: "FIC-7" }] });
     parametrosDeOmision = () => json({ detalle: "No encontrado." }, 404);
+    similaresDeLaApi = () =>
+      json([{ codigo: "FIC-009", descripcion: "Muro ficticio", puntaje: 0.91, rendimiento: "8.00", unidad: "m2", tablas: null, aviso: null }]);
     guardado = () => json({ precio_unitario: "29.70", mensaje: "Composición guardada para la partida FIC-1: precio unitario 29.70.", justificada: false, avisos: [] });
     fetchFalso.mockImplementation(async (entrada, init) => {
       const ruta = String(entrada);
@@ -111,7 +114,7 @@ describe("Componer una partida", () => {
         return json([{ etiqueta: "Cemento ficticio", ref_maprex: "REF-FICT-001", fila: { descripcion: "Cemento ficticio", unidad: "saco", cantidad: "", precio: "9.90" } }]);
       }
       if (ruta.startsWith("/v1/composicion/similares")) {
-        return json([{ codigo: "FIC-009", descripcion: "Muro ficticio", puntaje: 0.91, rendimiento: "8.00", unidad: "m2", tablas: null, aviso: null }]);
+        return similaresDeLaApi();
       }
       // Guardar pregunta antes a `prever` (Tarea 3 del plan de montar); sin variantes, guarda de una vez.
       if (ruta === "/v1/composicion/prever") {
@@ -483,6 +486,30 @@ describe("Componer una partida", () => {
     await usuario.type(screen.getByLabelText("Unidad"), "m2");
     await usuario.type(screen.getByLabelText("Descripción"), "Muro");
     expect(await screen.findByText(/Por ejemplo, la partida parecida FIC-009 \(Muro ficticio\) rinde 8,00 m² por día\.$/, {}, ESPERA)).toBeInTheDocument();
+  });
+
+  // Decisión de Eugenio (2026-11-23): «Empezar desde esta» copia los insumos y el rendimiento de la parecida real.
+  test("«Empezar desde FIC-009» llena los insumos y el rendimiento con los de la partida parecida", async () => {
+    similaresDeLaApi = () =>
+      json([
+        {
+          codigo: "FIC-009",
+          descripcion: "Muro ficticio",
+          puntaje: 0.91,
+          rendimiento: "8.00",
+          unidad: "m2",
+          tablas: { materiales: [{ descripcion: "Bloque ficticio", unidad: "u", cantidad: "12,5", precio: "0,80" }], equipos: [], mano_obra: [] },
+          aviso: null,
+        },
+      ]);
+    const usuario = userEvent.setup();
+    montar();
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro");
+    await usuario.click(await screen.findByRole("button", { name: /FIC-009 · Muro ficticio/ }, ESPERA));
+    await usuario.click(screen.getByRole("button", { name: "Empezar desde FIC-009" }));
+    expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("8,00");
+    expect(await screen.findByDisplayValue("Bloque ficticio")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("12,5")).toBeInTheDocument();
   });
 
   test("sin advertencia de rendimiento la justificación viaja nula", async () => {
