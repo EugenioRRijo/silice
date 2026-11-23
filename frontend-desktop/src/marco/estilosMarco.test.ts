@@ -165,6 +165,10 @@ describe("responsive con letra Grande y Muy grande", () => {
     expect(rotulo).toMatch(/clip-path:\s*inset\(50%\)/);
     expect(rotulo).toMatch(/white-space:\s*nowrap/);
     expect(rotulo).not.toMatch(/display:\s*none/);
+    // El rótulo oculto se ancla en la propia etiqueta: sin un contenedor posicionado, el `absolute` lo saca de su caja
+    // y el texto de la etiqueta mide 122 px en una caja de 42 (segunda medición responsive, 2026-11-22).
+    const carpeta = bloqueDe(fuente, ".silice-marco-barra__carpeta {") ?? "";
+    expect(carpeta).toMatch(/position:\s*relative/);
   });
 
   test("en marco.scss, Recorridos guiados encoge sin desbordar y parte el texto del párrafo y los botones", () => {
