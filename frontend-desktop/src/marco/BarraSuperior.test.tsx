@@ -48,7 +48,10 @@ describe("BarraSuperior: la carpeta activa, el contexto y el modo ventana dedica
 
   it("dice la carpeta activa", () => {
     pintar({ carpeta: "Carpeta de la empresa" });
-    expect(screen.getByText("Carpeta activa: Carpeta de la empresa")).toHaveClass("silice-marco-barra__carpeta");
+    const carpeta = screen.getByTitle("Carpeta activa: Carpeta de la empresa");
+    expect(carpeta).toHaveClass("silice-marco-barra__carpeta");
+    expect(carpeta).toHaveTextContent("Carpeta activa: Carpeta de la empresa");
+    expect(carpeta.querySelector(".silice-marco-barra__carpeta-rotulo")?.textContent).toBe("Carpeta activa: ");
   });
 
   it("sin carpeta que decir no pinta el rótulo vacío", () => {
@@ -62,7 +65,7 @@ describe("BarraSuperior: la carpeta activa, el contexto y el modo ventana dedica
         <BarraSuperior alAbrirBuscador={vi.fn()} nombre="Ana" carpeta="Carpeta Sur" migaContextual="Obras / Galpón Sur" />
       </MemoryRouter>,
     );
-    expect(screen.getByText("Carpeta activa: Carpeta Sur")).toBeInTheDocument();
+    expect(screen.getByTitle("Carpeta activa: Carpeta Sur")).toHaveTextContent("Carpeta activa: Carpeta Sur");
     expect(screen.getByText("Obras / Galpón Sur")).toBeInTheDocument();
   });
 
@@ -94,7 +97,7 @@ describe("BarraSuperior: la carpeta activa, el contexto y el modo ventana dedica
     );
     expect(screen.getByRole("link", { name: "Volver a obras" })).toHaveAttribute("href", "/inicio/general");
     // Auditoría, Precios y Producción trabajan con la carpeta abierta: la ventana dedicada también la dice.
-    expect(screen.getByText("Carpeta activa: Carpeta de la empresa")).toBeInTheDocument();
+    expect(screen.getByTitle("Carpeta activa: Carpeta de la empresa")).toHaveTextContent("Carpeta activa: Carpeta de la empresa");
     const selector = screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" });
     expect(selector).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Auditoría" })).toHaveAttribute("aria-current", "page");

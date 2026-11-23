@@ -15,6 +15,17 @@ function reglaDe(fuente: string, selector: string): string | null {
   return fuente.slice(i, fuente.indexOf("}", abre));
 }
 
+function bloqueDe(fuente: string, apertura: string): string | null {
+  const i = fuente.indexOf(apertura);
+  if (i < 0) return null;
+  let nivel = 0;
+  for (let j = fuente.indexOf("{", i); j < fuente.length; j++) {
+    if (fuente[j] === "{") nivel++;
+    if (fuente[j] === "}" && --nivel === 0) return fuente.slice(i, j + 1);
+  }
+  return null;
+}
+
 // Pasada en el navegador del cierre de F2: el cuerpo reserva 3 rem arriba para una cabecera fija (la de Carbon de las
 // pantallas sin marco, visor.scss); la barra del marco iba en el flujo y quedaba una franja vacía encima. La barra del
 // marco también es fija, a lo ancho, y el marco ocupa el alto que queda debajo.
@@ -135,5 +146,61 @@ describe("la barra de espacio no declara anchos fijos", () => {
     const fuente = leer("marco/BarraDeEspacio.scss");
     expect(fuente.match(/(?:^|[\s;{])(?:min-|max-)?(?:width|inline-size)\s*:\s*[\d.]+(?:px|rem|em)\b/g)).toBeNull();
     expect(fuente).toMatch(/flex-wrap:\s*wrap/);
+  });
+});
+
+// Recorrido responsive con letra Grande y Muy grande (2026-11-22): la carpeta activa cede el rótulo «Carpeta activa: »
+// visualmente sin quitarlo al lector de pantalla; Recorridos guiados no desborda en horizontal; y las pestañas de la
+// barra de espacio pueden partir línea solo con letra Grande o Muy grande.
+describe("responsive con letra Grande y Muy grande", () => {
+  test("en BarraSuperior.scss, por debajo del umbral de grande y muy-grande, el rótulo de carpeta se oculta solo visualmente", () => {
+    const fuente = leer("marco/BarraSuperior.scss");
+    const bloqueEscalas = bloqueDe(fuente, '@each $escala in ("grande", "muy-grande") {') ?? "";
+    expect(bloqueEscalas).toMatch(/@include u\.por-debajo-del-umbral\(\$escala\)/);
+    const rotulo = bloqueDe(bloqueEscalas, ".silice-marco-barra__carpeta-rotulo {") ?? "";
+    expect(rotulo).toMatch(/position:\s*absolute/);
+    expect(rotulo).toMatch(/inline-size:\s*1px/);
+    expect(rotulo).toMatch(/block-size:\s*1px/);
+    expect(rotulo).toMatch(/overflow:\s*hidden/);
+    expect(rotulo).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(rotulo).toMatch(/white-space:\s*nowrap/);
+    expect(rotulo).not.toMatch(/display:\s*none/);
+  });
+
+  test("en marco.scss, Recorridos guiados encoge sin desbordar y parte el texto del párrafo y los botones", () => {
+    const recorridos = bloqueDe(leer("marco/marco.scss"), ".silice-cuenta-recorridos {") ?? "";
+    expect(recorridos).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+    expect(recorridos).toMatch(/max-inline-size:\s*100%/);
+    expect(recorridos).toMatch(/min-inline-size:\s*0/);
+    expect(recorridos.match(/(?:^|[\s;{])(?:min-|max-)?(?:width|inline-size)\s*:\s*[\d.]+(?:px|rem|em)\b/g)).toBeNull();
+
+    const parrafo = bloqueDe(recorridos, "p {") ?? "";
+    expect(parrafo).toMatch(/max-inline-size:\s*100%/);
+    expect(parrafo).toMatch(/overflow-wrap:\s*anywhere/);
+
+    const lista = bloqueDe(recorridos, "&__lista {") ?? "";
+    expect(lista).toMatch(/display:\s*flex/);
+    expect(lista).toMatch(/flex-wrap:\s*wrap/);
+    expect(lista).toMatch(/max-inline-size:\s*100%/);
+    expect(lista).toMatch(/min-inline-size:\s*0/);
+
+    const boton = bloqueDe(lista, ".cds--btn {") ?? "";
+    expect(boton).toMatch(/max-inline-size:\s*100%/);
+    expect(boton).toMatch(/min-inline-size:\s*0/);
+    expect(boton).toMatch(/white-space:\s*normal/);
+    expect(boton).toMatch(/overflow-wrap:\s*anywhere/);
+  });
+
+  test("en BarraDeEspacio.scss, las pestañas parten línea solo con letra grande o muy grande (Normal conserva nowrap)", () => {
+    const fuente = leer("marco/BarraDeEspacio.scss");
+    const base = bloqueDe(fuente, ".silice-barra-espacio__pestana {") ?? "";
+    expect(base).toMatch(/white-space:\s*nowrap/);
+
+    const grande = bloqueDe(fuente, "@include u.con-letra-grande {") ?? "";
+    const pestanaGrande = bloqueDe(grande, ".silice-barra-espacio__pestana {") ?? "";
+    expect(pestanaGrande).toMatch(/white-space:\s*normal/);
+    expect(pestanaGrande).toMatch(/max-inline-size:\s*100%/);
+    expect(pestanaGrande).toMatch(/min-inline-size:\s*0/);
+    expect(pestanaGrande).toMatch(/overflow-wrap:\s*anywhere/);
   });
 });
