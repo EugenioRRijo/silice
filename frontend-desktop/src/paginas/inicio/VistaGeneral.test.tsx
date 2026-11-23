@@ -743,8 +743,8 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
 
 
 // Los lanzadores de los espacios de la empresa (rediseño 2026-11-21): cada uno se llama como su espacio en `marco/espacios.ts`
-// (el mismo nombre de la barra lateral), no con un nombre propio, y dice las herramientas que la cuenta puede abrir allí. El
-// número de orden («01») es adorno: no entra en el nombre del enlace. Oráculos escritos a mano.
+// (el mismo nombre de la barra lateral), no con un nombre propio, y dice las herramientas que la cuenta puede abrir allí.
+// Sin numeración decorativa ni «Ventana dedicada». Oráculos escritos a mano.
 describe("Vista general: los lanzadores de los espacios", () => {
   test("cada lanzador lleva el nombre de su espacio y abre su primera herramienta usable", async () => {
     montar();
@@ -754,6 +754,7 @@ describe("Vista general: los lanzadores de los espacios", () => {
     expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
     expect(within(lanzadores).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/resumen");
     expect(lanzadores.textContent).not.toMatch(/Auditor Forense|Precios, Catálogo|Índices BCV|Cantera/);
+    expect(lanzadores.textContent).not.toMatch(/ventana dedicada|\b0[123]\s*·/i);
   });
 
   test("cada lanzador describe las herramientas de su espacio que la cuenta puede usar, con sus nombres", async () => {

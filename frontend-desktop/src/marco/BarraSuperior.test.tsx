@@ -75,7 +75,7 @@ describe("BarraSuperior: la carpeta activa, el contexto y el modo ventana dedica
     expect(screen.getByText("Obras / Galpón Sur")).toBeInTheDocument();
   });
 
-  it("en ventana dedicada muestra Volver a Obras y el selector 01/02/03", () => {
+  it("en ventana dedicada muestra Volver a obras y el selector de espacios sin numeración", () => {
     render(
       <MemoryRouter initialEntries={["/auditoria/subir"]}>
         <BarraSuperior
@@ -92,14 +92,15 @@ describe("BarraSuperior: la carpeta activa, el contexto y el modo ventana dedica
         />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: "Volver a Obras" })).toHaveAttribute("href", "/inicio/general");
+    expect(screen.getByRole("link", { name: "Volver a obras" })).toHaveAttribute("href", "/inicio/general");
     // Auditoría, Precios y Producción trabajan con la carpeta abierta: la ventana dedicada también la dice.
     expect(screen.getByText("Carpeta activa: Carpeta de la empresa")).toBeInTheDocument();
     const selector = screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" });
     expect(selector).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "01 · Auditoría" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "02 · Precios y Catálogo" })).toHaveAttribute("href", "/precios/catalogo");
-    expect(screen.getByRole("link", { name: "03 · Producción" })).toHaveAttribute("href", "/produccion/resumen");
+    expect(screen.getByRole("link", { name: "Auditoría" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
+    expect(screen.getByRole("link", { name: "Producción" })).toHaveAttribute("href", "/produccion/resumen");
+    expect(selector.textContent).not.toMatch(/\b0[123]\s*·/);
   });
 });
 

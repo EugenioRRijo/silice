@@ -62,10 +62,14 @@ describe("ModeTransitionOverlay", () => {
     expect(container.querySelector(".silice-transicion__progreso")).not.toBeNull();
   });
 
-  test("dice el mismo nombre del espacio que la barra lateral y el selector", () => {
-    render(<ModeTransitionOverlay destino="precios" alTerminar={vi.fn()} />);
-    expect(screen.getByRole("status")).toHaveAccessibleName(`Cargando ${ESPACIOS.precios.titulo}`);
-    expect(screen.getByText(ESPACIOS.precios.titulo)).toBeInTheDocument();
+  test("dice el mismo nombre del espacio que la barra lateral y el selector, sin numeración ni «Ventana dedicada»", () => {
+    const { container } = render(<ModeTransitionOverlay destino="precios" alTerminar={vi.fn()} />);
+    const cortina = screen.getByRole("status");
+    expect(cortina).toHaveAccessibleName(`Cargando ${ESPACIOS.precios.titulo}`);
+    expect(screen.getAllByText(ESPACIOS.precios.titulo)).toHaveLength(1);
+    expect(cortina.textContent).not.toMatch(/ventana dedicada|\b0[123]\s*·/i);
+    expect(container.querySelector(".silice-transicion__codigo")).toBeNull();
+    expect(container.querySelector(".silice-transicion__cabecera")).toBeNull();
   });
 
   test("con movimiento reducido no anima: no pinta la cortina y termina enseguida", () => {

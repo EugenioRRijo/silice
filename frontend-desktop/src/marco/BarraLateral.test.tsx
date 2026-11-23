@@ -278,6 +278,7 @@ describe("BarraLateral: Vista general y «Costos y producción»", () => {
     const enlaces = within(zona).getAllByRole("link");
     expect(enlaces.map((e) => e.textContent)).toEqual(["Auditar un presupuesto", "Precios y catálogo", "Costos de producción"]);
     expect(enlaces.map((e) => e.getAttribute("href"))).toEqual(["/auditoria/subir", "/precios/listas", "/produccion/resumen"]);
+    for (const enlace of enlaces) expect(enlace).not.toHaveAttribute("data-prefijo");
     expect(enlaces[1]).toHaveAttribute("aria-current", "page");
     expect(zona.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     expect(within(zona).getByRole("heading", { level: 2, name: "Costos y producción" })).toBeInTheDocument();
@@ -994,9 +995,9 @@ describe("BarraLateral: «Costos y producción» plegable con letra grande (F4, 
     expect(regla(compacta, ".silice-marco-lateral__costos-boton")).toMatch(/min-block-size:\s*1\.5rem/);
   });
 
-  it("no quedan reglas de la zona «Empresa» ni de su subtítulo en la hoja de estilos", () => {
+  it("no quedan reglas de la zona «Empresa», de su subtítulo ni de prefijos numéricos en la hoja de estilos", () => {
     const hoja = leer("marco/BarraLateral.scss");
-    expect(hoja).not.toMatch(/__empresa|__subtitulo/);
+    expect(hoja).not.toMatch(/__empresa|__subtitulo|data-prefijo|__prefijo/);
   });
 });
 

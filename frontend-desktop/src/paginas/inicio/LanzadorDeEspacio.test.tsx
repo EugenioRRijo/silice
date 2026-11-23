@@ -8,17 +8,19 @@ import { LanzadorDeEspacio } from "./LanzadorDeEspacio";
 function montar(herramientas: string) {
   return render(
     <MemoryRouter>
-      <LanzadorDeEspacio id="precios" codigo="02" titulo="Precios y catálogo" ruta="/precios/catalogo" herramientas={herramientas} />
+      <LanzadorDeEspacio id="precios" titulo="Precios y catálogo" ruta="/precios/catalogo" herramientas={herramientas} />
     </MemoryRouter>,
   );
 }
 
 describe("LanzadorDeEspacio", () => {
-  test("se llama como su espacio y su descripción son las herramientas que puede usar", () => {
-    montar("Catálogo de partidas e insumos · Simulador de listas");
+  test("se llama como su espacio y su descripción son las herramientas que puede usar, sin numeración ni «Ventana dedicada»", () => {
+    const { container } = montar("Catálogo de partidas e insumos · Simulador de listas");
     const enlace = screen.getByRole("link", { name: "Precios y catálogo" });
     expect(enlace).toHaveAttribute("href", "/precios/catalogo");
     expect(enlace).toHaveAccessibleDescription("Catálogo de partidas e insumos · Simulador de listas");
+    expect(enlace.textContent).not.toMatch(/ventana dedicada|\b0[123]\s*·/i);
+    expect(container.querySelector(".silice-lanzador__codigo")).toBeNull();
   });
 
   test("sin herramientas que decir no apunta a una descripción vacía", () => {

@@ -251,7 +251,7 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
     expect(ruta()).toBe("/precios/simulador");
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
-    expect(within(barra).getByRole("link", { name: "Volver a Obras" })).toBeInTheDocument();
+    expect(within(barra).getByRole("link", { name: "Volver a obras" })).toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: "Barra lateral" })).toBeNull();
     expect(within(barra).queryByRole("navigation", { name: "Ruta" })).toBeNull();
     expect(within(screen.getByRole("navigation", { name: "Precios y catálogo" })).getByRole("link", { name: "Simulador de listas" })).toHaveAttribute("aria-current", "page");
@@ -367,8 +367,8 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
     montar({ en: "/auditoria/historial" });
     await titulo("Historial de auditorías");
     const selector = screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" });
-    expect(within(selector).getByRole("link", { name: "01 · Auditoría" })).toHaveAttribute("aria-current", "page");
-    expect(within(selector).getByRole("link", { name: "03 · Producción" })).not.toHaveAttribute("aria-current");
+    expect(within(selector).getByRole("link", { name: "Auditoría" })).toHaveAttribute("aria-current", "page");
+    expect(within(selector).getByRole("link", { name: "Producción" })).not.toHaveAttribute("aria-current");
   });
 
   test("Ctrl+K lleva a las rutas nuevas", async () => {
