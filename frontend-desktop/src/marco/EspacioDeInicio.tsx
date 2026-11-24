@@ -36,7 +36,7 @@ export function EspacioDeInicio({ general, pendientes }: Props) {
         <p className="silice-espacio-cabecera__titulo">Vista general</p>
       </section>
       <BarraDeEspacio etiqueta="Inicio" pestanas={pestanas} activa={vista} nivel="espacio" />
-      {/* F7, A1: la bandeja lleva su «¿Qué es esto?»; la Vista general trae el suyo en la cartera y «Empieza aquí». */}
+      {/* F7, A1: la bandeja lleva su «¿Qué es esto?»; la Vista general trae el suyo en la cartera y «Empiece aquí». */}
       {vista === "pendientes" && <AyudaDeLaPantalla pagina="pendientes" />}
       <LimiteDeError key={vista}>
         <Suspense fallback={<EsqueletoPagina />}>{vista === "general" ? general : pendientes}</Suspense>

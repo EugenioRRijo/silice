@@ -4,7 +4,7 @@ import type { PasoId } from "./empiezaAqui";
 import { rutaDeTema } from "./temas";
 import "./ayuda.scss";
 
-// Un paso de «Empieza aquí»: qué hacer, en negrita, para qué y con qué control, y el enlace que lleva a hacerlo (solo si la
+// Un paso de «Empiece aquí»: qué hacer, en negrita, para qué y con qué control, y el enlace que lleva a hacerlo (solo si la
 // cuenta puede usar su destino). Lo pintan igual la Vista general y la Ayuda.
 export function PasoDeEmpiezaAqui({ id, acciones }: { id: PasoId; acciones: readonly string[] }) {
   const paso = PASOS_DE_EMPIEZA_AQUI[id];
@@ -23,7 +23,7 @@ export function PasoDeEmpiezaAqui({ id, acciones }: { id: PasoId; acciones: read
   );
 }
 
-// «Empieza aquí» en la Vista general (F7, tarea A4): va primero, porque en una instalación o una carpeta que se estrena no
+// «Empiece aquí» en la Vista general (F7, tarea A4): va primero, porque en una instalación o una carpeta que se estrena no
 // hay nada que bloquee, y desaparece cuando ya no hace falta (`pasosDeEmpiezaAqui`). No trae botones: la única acción de la
 // pantalla sigue siendo la del estado vacío de la cartera («Nueva obra»), y el resto son enlaces a donde se hace.
 export function EmpiezaAqui({ pasos, acciones }: { pasos: readonly PasoId[]; acciones: readonly string[] }) {
@@ -31,7 +31,7 @@ export function EmpiezaAqui({ pasos, acciones }: { pasos: readonly PasoId[]; acc
   return (
     <section className="silice-inicio__bloque silice-empieza-aqui" aria-labelledby="inicio-empieza-aqui">
       <h2 id="inicio-empieza-aqui" className="cds--type-heading-compact-02">
-        Empieza aquí
+        Empiece aquí
       </h2>
       <ol className="silice-empieza-aqui__pasos cds--type-body-compact-01">
         {pasos.map((id) => (
