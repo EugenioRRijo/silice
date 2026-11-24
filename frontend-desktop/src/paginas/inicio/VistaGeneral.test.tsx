@@ -662,14 +662,14 @@ describe("Inicio: las rutas", () => {
   });
 });
 
-// F7, tarea A4: «Empieza aquí» la primera vez, derivado de los datos (sin guardar nada en el navegador). Va primero, antes de lo
+// F7, tarea A4: «Empiece aquí» la primera vez, derivado de los datos (sin guardar nada en el navegador). Va primero, antes de lo
 // que requiere atención, y solo mientras la cuenta tenga algo por estrenar: quien administra, con su cuenta como única activa;
 // quien arma o revisa, sin ninguna obra. Oráculos a mano.
-describe("Vista general: «Empieza aquí» la primera vez", () => {
+describe("Vista general: «Empiece aquí» la primera vez", () => {
   test("quien administra, con su cuenta como única activa, ve cómo crear las cuentas y poner la empresa", async () => {
     pendientes = lista();
     montar({ sesion: sesionDe("admin") });
-    const b = await bloque("Empieza aquí");
+    const b = await bloque("Empiece aquí");
     const pasos = within(b).getAllByRole("listitem");
     expect(pasos).toHaveLength(2);
     expect(pasos[0]).toHaveTextContent("Cree las cuentas de las personas");
@@ -688,13 +688,13 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
     await bloque("Lo que requiere atención");
     await waitFor(() => expect(pedidas(RUTA_CUENTAS)).toBe(1));
     await new Promise((r) => setTimeout(r, 30));
-    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Empiece aquí" })).toBeNull();
   });
 
   test("una cuenta desactivada no cuenta: con el administrador y una desactivada sigue apareciendo", async () => {
     cuentas = () => json({ cuentas: [CUENTA_ADMIN, { ...CUENTA_ANA, activa: false }], aviso_arma_y_revisa: "" });
     montar({ sesion: sesionDe("admin") });
-    expect(await bloque("Empieza aquí")).toBeInTheDocument();
+    expect(await bloque("Empiece aquí")).toBeInTheDocument();
   });
 
   test("si la lista de cuentas falla, no se inventa nada: no aparece", async () => {
@@ -703,14 +703,14 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
     await bloque("Lo que requiere atención");
     await waitFor(() => expect(pedidas(RUTA_CUENTAS)).toBe(1));
     await new Promise((r) => setTimeout(r, 30));
-    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Empiece aquí" })).toBeNull();
   });
 
   test("quien arma, sin obras, ve los tres pasos y las guías; la lista de cuentas no se pide", async () => {
     cartera = () => json(SIN_OBRAS);
     pendientes = lista();
     montar();
-    const b = await bloque("Empieza aquí");
+    const b = await bloque("Empiece aquí");
     const pasos = within(b).getAllByRole("listitem");
     expect(pasos.map((p) => p.querySelector("strong")?.textContent)).toEqual(["Cree la obra", "Arme el presupuesto", "Envíelo a aprobación"]);
     expect(within(b).getByRole("link", { name: "Guía «Montar un presupuesto»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-presupuesto");
@@ -725,20 +725,20 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
     montar();
     await bloque("Cartera por moneda");
     await new Promise((r) => setTimeout(r, 30));
-    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Empiece aquí" })).toBeNull();
   });
 
   test("quien arma, con obras, no lo ve", async () => {
     montar();
     await bloque("Cartera por moneda");
-    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Empiece aquí" })).toBeNull();
   });
 
   test("quien revisa, sin obras, ve cómo auditar un libro y cómo dar el dictamen", async () => {
     cartera = () => json(SIN_OBRAS);
     pendientes = lista();
     montar({ sesion: sesionDe("rita") });
-    const b = await bloque("Empieza aquí");
+    const b = await bloque("Empiece aquí");
     expect(within(b).getByRole("link", { name: "Ir a Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
     expect(within(b).getByRole("link", { name: "Guía «Enviarlo a aprobación»" })).toBeInTheDocument();
   });
