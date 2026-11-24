@@ -222,9 +222,9 @@ def test_fcas_menor_que_uno_no_se_puede_interpretar():
 
 
 def test_un_apu_que_no_se_puede_recalcular_se_informa_y_la_auditoria_sigue():
-    # Antes un dato inválido en UNA partida (un rendimiento 0, un precio negativo) rechazaba el libro
-    # entero y el presupuestista se quedaba sin ningún hallazgo. Ahora esa partida entra con su monto
-    # guardado, se informa un ERROR que dice qué dato está mal y las demás se auditan igual.
+    # Antes un dato inválido en UNA partida (un rendimiento 0, un precio negativo) rechazaba el
+    # libro entero y el presupuestista se quedaba sin ningún hallazgo. Ahora esa partida entra con
+    # su monto guardado, se informa un ERROR que dice qué dato está mal y las demás se auditan igual.
     # Lo encontró el inyector de fallas del plan no circular (2026-11-23).
     c = construir_libro(siembra=Siembra(parches={"APU-01!F19": (D("0"), None)}))
     r = procesar_libro(c.datos, "rend0.xlsx", fecha_devolucion=HOY)
@@ -232,7 +232,8 @@ def test_un_apu_que_no_se_puede_recalcular_se_informa_y_la_auditoria_sigue():
                         if h.regla == "F1" and "no se puede recalcular" in h.descripcion]
     assert len(no_recalculables) == 1
     h = no_recalculables[0]
-    assert h.severidad.name == "ERROR" and "APU-01" in h.descripcion and "partida 1" in h.descripcion
+    assert h.severidad.name == "ERROR"
+    assert "APU-01" in h.descripcion and "partida 1" in h.descripcion
     assert set(r.calculos) == {"APU-02", "APU-03"}  # las otras partidas se recalculan igual
     assert any("no se puede recalcular" in t.nota for t in r.trazabilidad)
     assert not r.informe.cumple
