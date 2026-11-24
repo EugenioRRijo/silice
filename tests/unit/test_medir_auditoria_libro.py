@@ -59,6 +59,15 @@ def test_filas_numeran_desde_uno_y_conservan_todas_las_celdas():
     assert filas[1].celdas == ()
 
 
+def test_las_reglas_no_aplicables_no_se_exportan_para_marcar():
+    # R2 y R7 «no aplicable» salen en todo libro sin curva ni plan: no son errores que marcar.
+    no_aplica = Hallazgo(regla="R2", severidad=Severidad.INFO,
+                         descripcion="R2 no aplicable: el presupuesto no declara curva de inversion")
+    filas = m.filas_de_hallazgos([no_aplica, _h("L1", "PRES!G10")])
+    assert [(f.numero, f.regla) for f in filas] == [(1, "L1")]
+    assert m.reglas_no_aplicables([no_aplica, _h("L1")]) == ["R2"]
+
+
 # --- precisión, detección y exhaustividad --------------------------------------------------------
 
 
