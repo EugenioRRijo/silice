@@ -16646,6 +16646,48 @@
         ],
         "title": "CasosRespuesta"
       },
+      "CausaRaizRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre_regla": {
+            "type": "string",
+            "title": "Nombre Regla",
+            "default": ""
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "ocurrencias": {
+            "type": "integer",
+            "title": "Ocurrencias"
+          },
+          "indices": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Indices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "severidad",
+          "descripcion",
+          "ocurrencias",
+          "indices"
+        ],
+        "title": "CausaRaizRespuesta",
+        "description": "Hallazgos con la misma regla y la misma causa (`aplicacion/causas_raiz.py`): una fórmula\ncopiada con una fila fija es una causa con un caso por partida. `indices` son las posiciones\nde sus casos en `hallazgos`; `descripcion` es la del primero y `severidad`, la más grave."
+      },
       "CausaRespuesta": {
         "properties": {
           "clave": {
@@ -23124,6 +23166,22 @@
               }
             ],
             "title": "Aviso Historial"
+          },
+          "causas": {
+            "items": {
+              "$ref": "#/components/schemas/CausaRaizRespuesta"
+            },
+            "type": "array",
+            "title": "Causas",
+            "default": []
+          },
+          "no_aplicables": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "No Aplicables",
+            "default": []
           }
         },
         "type": "object",

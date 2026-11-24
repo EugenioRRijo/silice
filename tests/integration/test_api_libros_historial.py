@@ -181,7 +181,7 @@ def test_la_respuesta_solo_suma_el_aviso_al_contrato(cliente, limpio) -> None:
     assert set(r) == {
         "libro", "fecha_libro", "fecha_devolucion", "cumple", "por_severidad", "totales_libro",
         "totales_silice", "indicadores", "partidas_con_omision", "hallazgos", "alertas",
-        "trazabilidad", "metadatos", "aviso_historial",
+        "trazabilidad", "metadatos", "aviso_historial", "causas", "no_aplicables",
     }  # fmt: skip
 
 
