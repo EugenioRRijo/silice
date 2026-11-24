@@ -515,7 +515,7 @@ def test_una_fila_sin_apu_dice_pendiente_y_cuenta_como_pendiente_del_catalogo(_o
     p = hoja_vista.vista_espacio(_vivo(_of001, sin_apu))
     assert p.estado["esp_puntos:P1"].severidad == "ERROR"
     assert p.estado["esp_puntos:P1"].texto.startswith(
-        "PENDIENTE: sin precio con la lista de esta versión (AF-SALIDA)"
+        "PENDIENTE: sin APU en el catálogo (AF-SALIDA)"
     )
     assert p.pendientes == 1
 
@@ -639,9 +639,7 @@ def test_una_partida_sin_apu_no_tiene_precio_ni_total_y_queda_pendiente(_of001):
     salida = _fila_de(v, "AF-SALIDA")
     assert (salida.pu, salida.total) == (None, None)
     assert salida.estado.severidad == "ERROR"
-    assert salida.estado.texto.startswith(
-        "PENDIENTE: sin precio con la lista de esta versión (AF-SALIDA)"
-    )
+    assert salida.estado.texto.startswith("PENDIENTE: sin APU en el catálogo (AF-SALIDA)")
     assert len(v.filas) == 30
 
 

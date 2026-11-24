@@ -305,10 +305,8 @@ TEXTO_OK = "OK"
 #: S4 §5.4): el asistente lo escribe y el Estado de la fila lo muestra como «Propuesta de IA».
 PREFIJO_ORIGEN_IA = "ia:"
 
-#: Estado de una fila cuyas partidas no se pudieron valorar con la lista de la versión (no es
-#: error de medida). Juez F2 (2026-11-23): antes decía «sin APU en el catálogo», y a menudo lo
-#: que falta son precios en la lista; el motivo exacto lo redacta `hoja_sin_valorar`.
-TEXTO_PENDIENTE = "PENDIENTE: sin precio con la lista de esta versión"
+#: Estado de una fila cuyos items citan partidas sin APU en el catalogo (no es error de medida).
+TEXTO_PENDIENTE = "PENDIENTE: sin APU en el catálogo"
 
 _SI, _NO = "si", "no"
 
@@ -1683,8 +1681,7 @@ def estado_de_filas(espacio: Espacio, informe: InformeAuditoria) -> dict[str, Es
     mas grave a la menos, cada severidad con su rotulo una sola vez: `ADVERTENCIA: a; b`.
 
     Un item sin APU en el catalogo (hallazgo `PENDIENTE` del nucleo, ERROR) no es un error de la
-    medida: la fila lo dice aparte,
-    `PENDIENTE: sin precio con la lista de esta versión (AF-SALIDA; ...)`, con las
+    medida: la fila lo dice aparte, `PENDIENTE: sin APU en el catálogo (AF-SALIDA; ...)`, con las
     partidas que faltan, y va despues del `ERROR:` de medida si lo hay. La severidad de la fila
     sigue siendo la del informe.
     """

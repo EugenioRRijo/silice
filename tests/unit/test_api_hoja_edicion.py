@@ -385,8 +385,7 @@ def test_e1_una_partida_sin_apu_en_el_catalogo_queda_pendiente_y_no_suma(_casos)
     assert resumen["total"]["exacto"] == "0"  # los pendientes no suman al total
     assert hoja_borradores.obtener(_huella(ficha), id_).borrador.composiciones == {}
     estados = [f["estado"] for f in _vista(navegador, id_, "presupuesto").json()["filas"]]
-    pendiente = "PENDIENTE: sin precio con la lista"
-    assert estados and all(e["texto"].startswith(pendiente) for e in estados)
+    assert estados and all(e["texto"].startswith("PENDIENTE: sin APU en el catálogo") for e in estados)
 
 
 # --- 3c-B15: R17 en cada elaboracion ---
