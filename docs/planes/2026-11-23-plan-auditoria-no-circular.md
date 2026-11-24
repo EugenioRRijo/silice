@@ -107,6 +107,19 @@ tres, la tesis afirma solo «herramienta de apoyo con cobertura limitada», y lo
 Esta semana, conseguir el **compromiso escrito del ingeniero de costos externo**, con las fechas de marca ciega. Sin
 eso no hay verdad independiente, y todo lo demás solo mide consistencia.
 
+## Primeros resultados de la Fase 1 (2026-11-23, con datos ficticios)
+
+| Hallazgo | Qué se hizo |
+|---|---|
+| El inyector puso un precio negativo y **Sílice rechazó el libro entero** («no se puede recalcular»), sin dar ni un hallazgo | Corregido (`fusion/proceso.py`): la partida entra con su monto guardado, F1 informa un ERROR con el dato que falla y se audita el resto. El FCAS global inválido sigue rechazando el libro, porque sin él no se interpreta nada |
+| Una cifra con espacio de miles («9 999,90») **partía una misma causa en dos** | Corregido en `aplicacion/causas_raiz.py` |
+| `Constante.supuesto_declarado` (umbrales viales) **solo reconoce 4 de los 8 supuestos**: compara el texto exacto y otros 4 llevan una nota pegada | Pendiente. Hoy no lo usa ningún código del producto; la herramienta de sensibilidad ya compara por contenido |
+| Escalar los precios por k **no se puede probar sin recalcular el libro**: Sílice lee los valores que guardó Excel | Queda para cuando esté el oráculo de LibreOffice |
+| Primer ensayo de detección: **7 de 12 fallas inyectadas**, solo por celda (58,3 %). Se escaparon un error de escala, dos rangos recortados, una fórmula borrada y un signo | Varias no se pueden detectar porque **el libro inyectado no se recalculó**: Excel siempre guarda valores recalculados. La medición válida es **inyectar → recalcular con LibreOffice → auditar** |
+
+Las pruebas metamórficas que sí se cumplen hoy: cambiar el nombre del archivo, mover una hoja de lugar y auditar dos veces
+dan las mismas causas.
+
 ## Estado (2026-11-23)
 
 Ya está hecho:
