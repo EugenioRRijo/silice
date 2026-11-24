@@ -23230,7 +23230,7 @@
           "metadatos"
         ],
         "title": "LibroAuditadoRespuesta",
-        "description": "`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la\npantalla muestra (la auditoría es válida igual, RF-144).\n\n`partidas_con_omision` (V-16, etiqueta del libro menor): los números de las partidas cuyo\nAPU tiene un hallazgo L4 (el costo directo del libro deja fuera componentes o no es la suma de\nellos), ordenados y sin repetir. Es el único rastro de «costos omitidos» que el auditor deja de\nforma estructurada; una lista vacía NO prueba que el libro esté completo (una partida\nentera que falta en el libro no tiene contraparte que comparar). Campo aditivo."
+        "description": "`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la\npantalla muestra (la auditoría es válida igual, RF-144).\n\n`partidas_con_omision` (V-16, etiqueta del libro menor): los números de las partidas cuyo\nAPU tiene un hallazgo L4 de gravedad ERROR (el costo directo del libro deja fuera componentes\no no es la suma de ellos; la advertencia por un componente en 0 no omite costos), ordenados y\nsin repetir. Es el único rastro de «costos omitidos» que el auditor deja de\nforma estructurada; una lista vacía NO prueba que el libro esté completo (una partida\nentera que falta en el libro no tiene contraparte que comparar). Campo aditivo."
       },
       "LibroLlevadoRespuesta": {
         "properties": {

@@ -44,15 +44,21 @@ from adapters.hoja_empresa.reglas_contexto import (
 )
 from core.contracts.verificacion import Hallazgo, Severidad
 
-__all__ = ["l1_buscarv", "l4", "l5_celdas_con_error"]
+__all__ = ["ERRORES_DE_CALCULO", "l1_buscarv", "l4", "l5_celdas_con_error"]
 
 #: Componentes del costo directo (L4).
 _COMPONENTES = (Rotulo.MAT, Rotulo.MO, Rotulo.EQ, Rotulo.TR)
 _UNO = Decimal(1)
 #: `VLOOKUP(B10,PRECIOS,k` dentro de la fórmula (con o sin IF/IFERROR alrededor).
 _BUSCARV = re.compile(r"VLOOKUP\(\s*\$?([A-Z]{1,3})\$?(\d+)\s*,\s*PRECIOS\s*,\s*(\d+)", re.I)
-#: Errores de cálculo de Excel que una celda puede guardar. #REF! va aparte (lo informa L5).
-_ERRORES = frozenset({"#N/A", "#VALUE!", "#DIV/0!", "#NUM!", "#NAME?", "#NULL!", "#SPILL!"})
+#: Errores de cálculo que Excel puede guardar en una celda. #REF! va aparte: lo informa L5 por la
+#: fórmula que cita la celda borrada (un #REF! que llega por INDIRECT no se ve; límite declarado).
+ERRORES_DE_CALCULO = frozenset(
+    {
+        "#N/A", "#VALUE!", "#DIV/0!", "#NUM!", "#NAME?", "#NULL!", "#SPILL!", "#CALC!",
+        "#FIELD!", "#CONNECT!", "#BLOCKED!", "#UNKNOWN!", "#GETTING_DATA",
+    }
+)  # fmt: skip
 
 
 # --- L1: BUSCARV con el código de otra fila -----------------------------------------------------
@@ -68,6 +74,11 @@ def _hay(v: object) -> bool:
     return v is not None and str(v).strip() != ""
 
 
+def _mismo_codigo(a: object, b: object) -> bool:
+    """Como BUSCARV de Excel: sin distinguir mayúsculas ni espacios a los lados."""
+    return str(a).strip().casefold() == str(b).strip().casefold()
+
+
 def l1_buscarv(ctx: _Contexto) -> list[Hallazgo]:
     out: list[Hallazgo] = []
     for k in ctx.orden:
@@ -81,13 +92,15 @@ def l1_buscarv(ctx: _Contexto) -> list[Hallazgo]:
             codigo, codigo_citado = ctx.an.valor(propia), ctx.an.valor(citada)
             if fila_citada == fila or not _hay(codigo):
                 continue
-            if _hay(codigo_citado) and str(codigo).strip() == str(codigo_citado).strip():
+            if _hay(codigo_citado) and _mismo_codigo(codigo, codigo_citado):
                 continue
-            guardado = ctx.libro.valores.get(k)
+            # Se compara lo que trae cada búsqueda, no la cifra guardada: la fórmula puede hacer
+            # cuentas alrededor del BUSCARV.
+            trae = _de_lista(ctx, columna, fila_citada, m.group(3), hoja)
             esperado = _de_lista(ctx, columna, fila, m.group(3), hoja)
-            mueve = _num(esperado) is not None and not _iguales(guardado, esperado)
+            mueve = _num(esperado) is not None and not _iguales(trae, esperado)
             efecto = (
-                f"el renglón usa {_valor(guardado)} en vez de {_valor(esperado)}, la cifra de su "
+                f"la búsqueda trae {_valor(trae)} en vez de {_valor(esperado)}, la cifra de su "
                 "propio insumo, y el APU la arrastra al precio de la partida."
                 if mueve
                 else "el renglón muestra el dato de otro insumo."
@@ -102,7 +115,7 @@ def l1_buscarv(ctx: _Contexto) -> list[Hallazgo]:
                         f"{propia} ({_valor(codigo)}). Efecto: {efecto}"
                     ),
                     origen_ids=(k, str(citada), str(propia)),
-                    valor_observado=_num(guardado),
+                    valor_observado=_num(trae),
                     valor_esperado=_num(esperado),
                 )
             )
@@ -130,13 +143,14 @@ def l4(ctx: _Contexto) -> list[Hallazgo]:
             celda, equivalentes = ctx.equivalentes(apu, r)
             if celda is None:
                 continue
-            v = _n0(ctx.an.valor(celda))
+            leido = ctx.an.valor(celda)
+            v = _n0(leido)
             suma += v
             if not f_cd or citadas & equivalentes:
                 continue
             if v != 0:
                 fuera.append((r, celda, v))
-            else:
+            elif not isinstance(leido, str):  # un texto o un error no «vale 0» (L5 lo informa)
                 en_cero.append((r, celda))
         if fuera or abs(suma - cd) > _TOL_CUADRE:
             out.append(_l4_error(apu, p.numero, p.cantidad, (celda_cd, f_cd), cd, suma, fuera))
@@ -204,13 +218,14 @@ def _l4_en_cero(
 
 
 def l5_celdas_con_error(ctx: _Contexto) -> list[Hallazgo]:
+    # Como L4 y L6, solo los APU unidos a una partida: una plantilla no entra al presupuesto.
     resumen = ctx.an.hoja(ctx.perfil.hoja("RESUMEN"))
-    cadena = ctx.hojas_apu | {ctx.h_pres} | ({resumen} if resumen else set())
+    cadena = set(ctx.partida_de_apu) | {ctx.h_pres} | ({resumen} if resumen else set())
     por_hoja: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for k in ctx.orden:
         hoja = k.split("!", 1)[0]
         v = ctx.libro.valores.get(k)
-        if hoja in cadena and isinstance(v, str) and v.strip().upper() in _ERRORES:
+        if hoja in cadena and isinstance(v, str) and v.strip().upper() in ERRORES_DE_CALCULO:
             por_hoja[hoja].append((k, v.strip().upper()))
     out: list[Hallazgo] = []
     for hoja in sorted(por_hoja, key=ctx.libro.hojas.index):

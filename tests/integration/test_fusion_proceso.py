@@ -229,8 +229,11 @@ def test_un_apu_que_no_se_puede_recalcular_se_informa_y_la_auditoria_sigue():
     # Lo encontró el inyector de fallas del plan no circular (2026-11-23).
     c = construir_libro(siembra=Siembra(parches={"APU-01!F19": (D("0"), None)}))
     r = procesar_libro(c.datos, "rend0.xlsx", fecha_devolucion=HOY)
-    no_recalculables = [h for h in r.informe.hallazgos
-                        if h.regla == "F1" and "no se puede recalcular" in h.descripcion]
+    no_recalculables = [
+        h
+        for h in r.informe.hallazgos
+        if h.regla == "F1" and "no se puede recalcular" in h.descripcion
+    ]
     assert len(no_recalculables) == 1
     h = no_recalculables[0]
     assert h.severidad.name == "ERROR"

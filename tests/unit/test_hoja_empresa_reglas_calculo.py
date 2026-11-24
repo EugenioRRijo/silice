@@ -165,7 +165,7 @@ def test_l4_componente_con_error_no_es_un_componente_en_cero():
     """Si el transporte da #VALUE!, no «vale 0»: lo informa L5 y L4 no repite el aviso."""
     hs = _hallazgos(
         **{
-            "APU-02!G35": ("#VALUE!", "=1/\"x\""),
+            "APU-02!G35": ("#VALUE!", '=1/"x"'),
             "APU-02!G36": (D("24.96875"), "=SUM(G32:G34)"),
         }
     )

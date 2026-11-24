@@ -41,6 +41,7 @@ from collections import defaultdict
 from collections.abc import Iterator
 from decimal import Decimal
 
+from adapters.hoja_empresa import reglas_calculo as calc
 from adapters.hoja_empresa.guardia import MAX_FILAS_HOJA
 from adapters.hoja_empresa.modelo import (
     VINCULO_ILEGIBLE,
@@ -1129,15 +1130,13 @@ def _l9(ctx: _Contexto) -> list[Hallazgo]:
 
 
 def reglas_del_libro(libro: LibroLeido, perfil: Perfil | None = None) -> list[Hallazgo]:
-    """Aplica L1-L9 al libro y devuelve los hallazgos en orden de regla y de celda.
+    """Aplica L1-L9 al libro y devuelve los hallazgos en orden de regla; dentro de una regla, cada
+    revisión va completa y en orden de celda (L1 de `reglas.py` y después la del BUSCARV).
 
     `perfil` es la plantilla con que se leyó el libro (por defecto `libro.perfil`). Las reglas no
     modifican el libro ni lanzan por una rareza: lo que no se puede juzgar se omite (ver los
     límites declarados en la cabecera del módulo).
     """
-    # Diferido: `reglas_calculo` (L4 y los complementos de L1 y L5) usa este módulo.
-    from adapters.hoja_empresa import reglas_calculo as calc
-
     ctx = _Contexto(libro, perfil or cargar_perfil(libro.perfil))
     reglas = (_l1, calc.l1_buscarv, _l2, _l3, calc.l4, _l5, calc.l5_celdas_con_error)
     hallazgos: list[Hallazgo] = []

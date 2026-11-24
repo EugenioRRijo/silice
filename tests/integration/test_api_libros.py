@@ -532,7 +532,7 @@ def test_partidas_con_omision_no_cuenta_un_componente_en_cero(cliente) -> None:
 
 
 def test_partidas_con_omision_dos_partidas_con_el_mismo_apu_cuenta_la_primera() -> None:
-    """Como `reglas._Contexto.partida_de_apu` (la PRIMERA partida que apunta a una hoja APU), no la
+    """Como `_Contexto.partida_de_apu` (la PRIMERA partida que apunta a una hoja APU), no la
     última: si las partidas 3 y 7 comparten `APU-02`, el L4 de `APU-02` es de la partida 3."""
     from types import SimpleNamespace
 
@@ -551,9 +551,9 @@ def test_partidas_con_omision_dos_partidas_con_el_mismo_apu_cuenta_la_primera() 
             ]
         ),
         hallazgos_tabla=[
-            SimpleNamespace(codigo="L4", celda="APU-02!G36"),
-            SimpleNamespace(codigo="L2", celda="APU-01!G36"),
-            SimpleNamespace(codigo="L4", celda="APU-99!G36"),
+            SimpleNamespace(codigo="L4", severidad="ERROR", celda="APU-02!G36"),
+            SimpleNamespace(codigo="L2", severidad="ERROR", celda="APU-01!G36"),
+            SimpleNamespace(codigo="L4", severidad="ERROR", celda="APU-99!G36"),
         ],
     )
     assert partidas_con_omision(resultado) == [3]
