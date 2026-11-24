@@ -20,7 +20,14 @@ const SEVERIDADES: Record<string, string> = {
 const R1_MANUAL =
   /^la cantidad de (?<codigo>.+) \((?<cifra>[\d.,]+) (?<unidad>[^()]*)\) es manual y no declara la regla que la produjo: no es derivable ni reproducible$/;
 
+// El rótulo de una fila pendiente lo escribe `aplicacion/hoja.py` (TEXTO_PENDIENTE), congelado por el experimento del
+// asistente (RS-9). Dice «sin APU en el catálogo», y a menudo lo que falta es el precio en la lista de la versión
+// (juez F2, 2026-11-23): la pantalla lo dice así, como el PDF, sin tocar el archivo congelado.
+const SIN_APU = /^sin APU en el catálogo/;
+const SIN_PRECIO = "sin precio con la lista de esta versión";
+
 function mensajeLlano(mensaje: string): string {
+  if (SIN_APU.test(mensaje)) return mensaje.replace(SIN_APU, SIN_PRECIO);
   const r1 = R1_MANUAL.exec(mensaje);
   if (r1?.groups) {
     const { codigo, cifra, unidad } = r1.groups;

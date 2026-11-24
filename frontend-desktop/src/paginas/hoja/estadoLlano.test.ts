@@ -30,6 +30,14 @@ describe("el Estado de una fila en español llano", () => {
     );
   });
 
+  test("el rótulo congelado «sin APU en el catálogo» se lee como lo que suele faltar: el precio en la lista", () => {
+    // `aplicacion/hoja.py` está congelado por el experimento del asistente (RS-9): el servidor sigue escribiendo
+    // «sin APU en el catálogo», y a menudo lo que falta es el precio en la lista de la versión (juez F2, 2026-11-23).
+    expect(estadoLlano("PENDIENTE: sin APU en el catálogo (AF-SALIDA; AF-LLAVE)", "ERROR")).toBe(
+      "Pendiente: sin precio con la lista de esta versión (AF-SALIDA; AF-LLAVE)",
+    );
+  });
+
   test("un texto sin prefijo queda igual", () => {
     expect(estadoLlano("OK", null)).toBe("OK");
     expect(estadoLlano("Cuadra con su regla (7.5 m2)", null)).toBe("Cuadra con su regla (7.5 m2)");
