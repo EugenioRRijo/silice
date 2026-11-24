@@ -54,8 +54,8 @@ def test_cada_hallazgo_queda_en_una_causa_o_entre_los_no_aplicables(cliente) -> 
 
 
 def test_cada_causa_trae_su_traza_celdas_observado_y_esperado(cliente) -> None:
-    # El economista juzga una causa sin abrir el código: dónde está y qué valor esperaba Sílice frente
-    # al que encontró. En el libro ficticio, la partida 1 guarda un P.U. de 999,99 (F1).
+    # El economista juzga una causa sin abrir el código: dónde está y qué valor esperaba Sílice
+    # frente al que encontró. En el libro ficticio, la partida 1 guarda un P.U. de 999,99 (F1).
     cuerpo = _auditar(cliente, construir())
     hallazgos = cuerpo["hallazgos"]
     for causa in cuerpo["causas"]:
