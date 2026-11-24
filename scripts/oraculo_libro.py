@@ -137,13 +137,19 @@ def main(argv: list[str] | None = None) -> int:
     analizador.add_argument("--semilla", type=int, default=None)
     analizador.add_argument("--raiz-repo", default=str(RAIZ))
     args = analizador.parse_args(argv)
-    _, texto = ejecutar(
-        Path(args.libro),
-        Path(args.salida),
-        raiz_repo=Path(args.raiz_repo),
-        configuracion_regional=args.configuracion_regional,
-        semilla=args.semilla,
-    )
+    from aplicacion.oraculo_hoja import LibreOfficeNoDisponibleError
+
+    try:
+        _, texto = ejecutar(
+            Path(args.libro),
+            Path(args.salida),
+            raiz_repo=Path(args.raiz_repo),
+            configuracion_regional=args.configuracion_regional,
+            semilla=args.semilla,
+        )
+    except LibreOfficeNoDisponibleError as error:
+        print(error)
+        return 2
     print(texto)
     return 0
 
