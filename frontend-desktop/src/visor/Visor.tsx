@@ -504,6 +504,8 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
           <aside className="visor__lista">
             <ListaHallazgos
               hallazgos={hallazgos}
+              causas={auditoria?.causas ?? []}
+              noAplicables={auditoria?.no_aplicables ?? []}
               hojas={replica.hojas}
               filtroInicial={filtro}
               alFiltrar={setFiltro}

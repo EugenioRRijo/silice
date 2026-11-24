@@ -450,7 +450,9 @@ describe("ListaHallazgos", () => {
       },
     ];
     montar({ hallazgos: conCausas, causas });
-    await usuario.click(screen.getByRole("button", { name: /^Crítico/ }));
+    // La causa crítica también empieza por «Crítico»: el clic va a la etiqueta del filtro.
+    const filtro = screen.getByRole("group", { name: "Filtrar por severidad" });
+    await usuario.click(within(filtro).getByRole("button", { name: /^Crítico/ }));
     const region = screen.getByRole("region", { name: "Por causa raíz (1)" });
     expect(within(region).getByText(/Total de presupuesto/)).toBeInTheDocument();
     expect(within(region).queryByText(/Precio distinto al de INSUMOS/)).toBeNull();

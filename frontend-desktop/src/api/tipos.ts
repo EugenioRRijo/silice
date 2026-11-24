@@ -164,6 +164,21 @@ export interface LibroAuditadoRespuesta {
   partidas_con_omision?: number[];
   // Campo aditivo de RF-144: aviso cuando no se pudo guardar la auditoria en el historial.
   aviso_historial?: string | null;
+  // Campos aditivos (2026-11-23): los hallazgos agrupados por causa raiz y las posiciones en `hallazgos` de los avisos
+  // de regla no aplicable (R2 y R7 sin curva ni plan). Una API anterior no los trae.
+  causas?: CausaRaizRespuesta[];
+  no_aplicables?: number[];
+}
+
+// Hallazgos con la misma regla y la misma causa (`aplicacion/causas_raiz.py`): `indices` son las posiciones de sus casos
+// en `hallazgos`; `descripcion` es la del primero y `severidad`, la mas grave.
+export interface CausaRaizRespuesta {
+  codigo: string;
+  nombre_regla?: string;
+  severidad: string;
+  descripcion: string;
+  ocurrencias: number;
+  indices: number[];
 }
 
 export interface EstiloVisualRespuesta {
