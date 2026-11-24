@@ -251,6 +251,10 @@ subir nada.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
+> **Lista cerrada hasta la defensa (consejo del 2026-11-24, aprobado por Eugenio):** no se programa nada nuevo
+> en auditoría, alertas ni estudio de mercado. Lo que se hace ahora y lo que espera a después de la defensa está en
+> [bitacora/2026-11-24-consejo-auditoria-alertas-mercado.md](bitacora/2026-11-24-consejo-auditoria-alertas-mercado.md).
+
 Plan detallado, con el protocolo de trabajo con Gemini Flash por `agy` (Flash construye el parche, Claude lo aplica con
 TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md).
 
