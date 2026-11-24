@@ -131,3 +131,33 @@ Ya está hecho:
 Falta:
 - todo lo de la Fase 0, que depende de personas;
 - los módulos de la Fase 1.
+
+## Segunda medición (2026-11-24): con LibreOffice y una falla por vez
+
+LibreOffice 26.8.3 quedó instalado como oráculo: es gratuito y cualquiera puede repetir la corrida. Excel queda
+como comparación eventual.
+
+| Medición | Resultado |
+|---|---|
+| Oráculo sobre el libro limpio construido | **0 discrepancias en 188 fórmulas**: LibreOffice coincide con los valores guardados |
+| Oráculo sobre el libro ficticio de 12 errores | 15 discrepancias en 189 fórmulas. Las raíces son P5 (valor a dedo, que Sílice marca con F1, L3 y L9), F7 (L3) y la cadena #REF! de RESUMEN (L5). Las demás son arrastres de P5 |
+| 12 fallas juntas, inyectadas, recalculadas y auditadas, contando solo la celda exacta | 3 de 12. El 7 de 12 anterior estaba **inflado**: sin recalcular, el valor viejo deja la falla a la vista |
+| **12 fallas una por vez** (pruebas de mutación: detectada si la auditoría da un hallazgo que el libro limpio no daba) | **5 de 12 (41,7 %)**, por debajo del umbral de fracaso del 50 % |
+
+Cómo se mide: `scripts/medir_inyeccion.py --una-por-vez`. Cada falla se inyecta sola, el libro se recalcula con
+LibreOffice y los valores recalculados se trasplantan al libro original (`aplicacion/trasplante_valores.py`, que no
+toca nada más del archivo). Después se audita y se compara con el libro limpio, pasado por la misma cadena.
+
+**Las 7 fallas escapadas**, con la taxonomía de plantilla (no es la del tercero) y el libro de desarrollo:
+
+| Falla | Qué pasó | Lectura |
+|---|---|---|
+| #9 fórmula borrada en APU-01!C10, que queda con su mismo valor | Ningún valor cambia | Casi equivalente: solo una regla de «precio escrito a mano en vez de buscarlo en la lista» la vería. Es justo el «valor a dedo» que preocupa a Eugenio |
+| #4 signo en APU-01!A25, el número de ítem | No afecta ningún monto | Equivalente: el inyector debería evitar las celdas que no son montos |
+| #3 `SUM(G32:G35)` recortado en el costo directo de APU-02 | L4 solo revisa sumas escritas con «+» | **Hueco de regla** |
+| #1 y #7 BUSCARV desplazado en APU-02 (trae el precio de otro insumo) | El APU queda coherente consigo mismo | **Hueco de regla**: comparar el precio de cada renglón con el de la lista para su código |
+| #5 y #6 `SUMPRODUCT` recortado en RESUMEN!B4 y B6 | L9 no lo ve | **Hueco de regla, por investigar** |
+
+Cambiar las reglas por estos resultados es un cambio de producto y lo decide Eugenio. Estas fallas salieron del libro
+de desarrollo, no del lote de prueba, así que corregirlas antes de congelar no contamina la medición final. Si se
+corrigen, se anota en la bitácora como cambio previo al congelamiento.
