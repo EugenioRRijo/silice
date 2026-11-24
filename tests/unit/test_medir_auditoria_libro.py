@@ -70,6 +70,67 @@ def test_las_reglas_no_aplicables_no_se_exportan_para_marcar():
     assert m.reglas_no_aplicables([no_aplica, _h("L1")]) == ["R2"]
 
 
+# --- causa raíz ----------------------------------------------------------------------------------
+
+_CRONO = ("CRONOGRAMA!D{f} (partida {p}) lee APU-0{p}!F23 (valor vacía) como rendimiento; el "
+          "rendimiento de APU-0{p} está en APU-0{p}!F2{p} (valor 0,{p}5). Efecto: la duración da {p} d")
+
+
+def _hd(regla: str, texto: str, *origen: str, sev=Severidad.ERROR) -> Hallazgo:
+    return Hallazgo(regla=regla, severidad=sev, descripcion=texto, origen_ids=origen)
+
+
+def test_la_misma_formula_copiada_es_una_sola_causa():
+    # Dos partidas con la misma fórmula del CRONOGRAMA copiada con fila fija: una causa, dos casos.
+    hallazgos = [
+        _hd("L1", _CRONO.format(f=4, p=1), "CRONOGRAMA!D4"),
+        _hd("L9", "PLAN DE PAGOS!B6 «Verificación» vale 40,00 USD", "PLAN DE PAGOS!B6"),
+        _hd("L1", _CRONO.format(f=5, p=2), "CRONOGRAMA!D5", sev=Severidad.CRITICO),
+    ]
+    causas = m.causas_de_hallazgos(hallazgos)
+    assert [(c.numero, c.regla, c.ocurrencias) for c in causas] == [(1, "L1", 2), (2, "L9", 1)]
+    assert causas[0].celdas == ("CRONOGRAMA!D4", "CRONOGRAMA!D5")
+    assert causas[0].severidad == "CRITICO"  # la más grave de sus casos
+
+
+def test_reglas_distintas_con_el_mismo_texto_no_se_juntan():
+    causas = m.causas_de_hallazgos([_hd("L5", "texto igual"), _hd("L6", "texto igual")])
+    assert [c.regla for c in causas] == ["L5", "L6"]
+
+
+def test_la_agrupacion_deja_fuera_lo_no_aplicable():
+    no_aplica = _hd("R2", "R2 no aplicable: sin curva", sev=Severidad.INFO)
+    assert m.causas_de_hallazgos([no_aplica]) == []
+
+
+def test_un_sembrado_en_cualquier_caso_de_la_causa_cuenta_como_detectado():
+    causas = m.causas_de_hallazgos([
+        _hd("L1", _CRONO.format(f=4, p=1), "CRONOGRAMA!D4"),
+        _hd("L1", _CRONO.format(f=5, p=2), "CRONOGRAMA!D5"),
+    ])
+    d = m.deteccion([m.Sembrado(1, "CRONOGRAMA!D5", "fila fija")], causas)
+    assert d.por_sembrado == {1: 1}
+
+
+def test_el_resumen_dice_cuantos_hallazgos_se_agruparon_en_cuantas_causas():
+    texto = m.resumen(precision=m.precision({1: "Verdadero"}), deteccion=None,
+                      exhaustividad=m.exhaustividad(1, 0), kappa=None, agrupacion=(3, 2))
+    assert "3 hallazgos agrupados en 2 causas" in texto
+
+
+def test_la_planilla_agrupada_conserva_las_ocurrencias(tmp_path: Path):
+    carpeta = tmp_path / "medicion"
+    carpeta.mkdir()
+    ruta = carpeta / "p.xlsx"
+    causas = m.causas_de_hallazgos([
+        _hd("L1", _CRONO.format(f=4, p=1), "CRONOGRAMA!D4"),
+        _hd("L1", _CRONO.format(f=5, p=2), "CRONOGRAMA!D5"),
+    ])
+    m.escribir_planilla(causas, ruta, raiz_repo=tmp_path / "repo")
+    assert [(f.numero, f.ocurrencias, f.celdas) for f in m.leer_filas(ruta)] == \
+        [(1, 2, ("CRONOGRAMA!D4", "CRONOGRAMA!D5"))]
+
+
 # --- precisión, detección y exhaustividad --------------------------------------------------------
 
 
@@ -220,7 +281,7 @@ def test_exportar_un_libro_sintetico_con_errores_sembrados(fuera: Path):
     origen = fuera / "libro.xlsx"
     origen.write_bytes(datos)
     destino = fuera / "planilla.xlsx"
-    codigo = m.main(["exportar", str(origen), "--salida", str(destino),
+    codigo = m.main(["exportar", str(origen), "--salida", str(destino), "--sin-agrupar",
                      "--fecha", "2026-10-13", "--raiz-repo", str(fuera.parent / "repo")])
     assert codigo == 0
     filas = m.leer_filas(destino)

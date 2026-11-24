@@ -54,4 +54,9 @@ def test_la_medicion_completa_corre_sobre_el_libro_ficticio(fuera: Path, capsys)
     assert m.main(["exportar", str(libro), "--salida", str(planilla), "--fecha", "2026-11-23",
                    "--raiz-repo", str(fuera.parent / "repo")]) == 0
     assert m.main(["calcular", "--planilla", str(planilla), "--clave", str(clave)]) == 0
-    assert "Detección de errores sembrados" in capsys.readouterr().out
+    salida = capsys.readouterr().out
+    assert "Detección de errores sembrados" in salida
+    # por omisión se exporta por causa raíz: menos filas que hallazgos
+    filas = m.leer_filas(planilla)
+    assert sum(f.ocurrencias for f in filas) > len(filas)
+    assert "hallazgos agrupados en" in salida
