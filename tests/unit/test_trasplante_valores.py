@@ -191,7 +191,7 @@ def test_trasplante_agrega_v_si_falta_y_evita_notacion_cientifica() -> None:
     wb.save(buf)
     wb.close()
     original = buf.getvalue()
-    assert "<v" not in _tag_celda(_leer_xml_hoja(original), "A1")
+    assert re.search(r"<v>[^<]", _tag_celda(_leer_xml_hoja(original), "A1")) is None  # sin valor
 
     recalculado = _libro_valores_openpyxl({"Calc": {"A1": Decimal("0.0000001"), "A2": 1e-5}})
     resultado = trasplantar(original, recalculado)

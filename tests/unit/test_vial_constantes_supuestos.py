@@ -20,4 +20,5 @@ def test_las_ocho_constantes_supuestas_se_reconocen_aunque_lleven_nota() -> None
 
 def test_una_constante_con_fuente_normativa_no_es_supuesto() -> None:
     assert not c.FUENTE_CODIGOS_VIALES.supuesto_declarado
-    assert not c.Constante("X", "x", "1", "COVENIN 2000; supuesto declarado en otra").supuesto_declarado
+    normativa = c.Constante("X", "x", "1", "COVENIN 2000; supuesto declarado en otra")
+    assert not normativa.supuesto_declarado

@@ -54,6 +54,11 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   como otra cifra. El experimento se re-congeló con acta (`docs/bitacora/2026-11-22-recongelado-experimento-3.md`).
 
 ### Agregado
+- **Cadena completa de inyección, recálculo y medición** (2026-11-24): `aplicacion/trasplante_valores.py` trasplanta
+  únicamente los valores cacheados `<v>` (y su atributo `t`) de las celdas con fórmula desde un `.xlsx` recalculado
+  sin alterar estilos ni estructura del libro original; `scripts/medir_inyeccion.py` encadena `inyectar`, recálculo
+  con LibreOffice, trasplante, `procesar_libro`, agrupación por causa raíz y `deteccion`, guardando el JSON con
+  manifiesto fuera del repositorio.
 - **Herramientas del plan del consejo para medir el TEG** (2026-11-23; PR #141). `scripts/medir_auditoria_libro.py`
   aplica el protocolo del anteproyecto v8 (§8) y no forma parte del producto: `clave` escribe la clave de la siembra,
   `exportar` audita un libro con `procesar_libro` y saca los hallazgos **agrupados por causa raíz** a una planilla para

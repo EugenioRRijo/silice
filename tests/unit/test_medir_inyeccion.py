@@ -137,7 +137,9 @@ def test_no_sobrescribe_informe_existente(tmp_path: Path) -> None:
     salida = tmp_path / "fuera"
     repo = tmp_path / "repo"
 
-    mi.ejecutar(libro, tax, salida, n=2, semilla=7, raiz_repo=repo, recalculador=_LibreOfficeFalso())
+    mi.ejecutar(
+        libro, tax, salida, n=2, semilla=7, raiz_repo=repo, recalculador=_LibreOfficeFalso()
+    )
     with pytest.raises(FileExistsError):
         mi.ejecutar(
             libro, tax, salida, n=2, semilla=7, raiz_repo=repo, recalculador=_LibreOfficeFalso()
