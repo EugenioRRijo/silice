@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 import pytest
 from sqlalchemy import select
@@ -517,3 +517,50 @@ def test_el_margen_contra_el_precio_unitario(
 def test_el_margen_sin_precio_unitario_es_un_error() -> None:
     with pytest.raises(ValueError, match="^el precio unitario debe ser mayor que cero$"):
         margen(Decimal("10"), Decimal("0"))
+
+
+def test_centimos_propuesta_y_margen_no_fallan_con_montos_de_27_o_mas_cifras() -> None:
+    """L2: `centimos` y `propuesta` (cobro) amplían la precisión decimal al cuantizar un monto; el
+    margen de dos montos de 30 cifras con una razón sensata también sale."""
+    grande = Decimal("1" + "0" * 29 + ".125")
+    assert centimos(grande) == Decimal("1" + "0" * 29 + ".13")
+    est = Estadisticas(
+        moneda="Bs",
+        n=1,
+        minimo=grande,
+        q1=grande,
+        mediana=grande,
+        promedio=grande,
+        maximo=grande,
+        ids=(1,),
+        convertidas=0,
+        sin_tasa=0,
+        dias=90,
+    )
+    prop = propuesta("cobro", est, piso=Decimal("1" + "0" * 29 + ".121"))
+    assert prop.precio == Decimal("1" + "0" * 29 + ".13")
+    # (1,1·10³⁰ − 10³⁰) / 10³⁰ = 10 %; (10²⁹ + 0,50 − 2·10²⁹) / 2·10²⁹ ≈ −50 %
+    assert margen(Decimal("11" + "0" * 29), Decimal("1" + "0" * 30)) == Decimal("10.0")
+    assert margen(Decimal("1" + "0" * 29 + ".50"), Decimal("2" + "0" * 29)) == Decimal("-50.0")
+
+
+@pytest.mark.parametrize(
+    ("objetivo", "precio_unitario"),
+    [
+        (Decimal("1" + "0" * 30), Decimal("1")),  # un margen de 10³² %
+        (Decimal("1980"), Decimal("0." + "0" * 40 + "1")),  # el `pu` diminuto de la API
+    ],
+)
+def test_un_margen_que_no_cabe_en_28_cifras_es_invalid_operation(
+    objetivo: Decimal, precio_unitario: Decimal
+) -> None:
+    """El margen es un porcentaje, no un monto: no se le amplía la precisión. Uno que no cabe en
+    las 28 cifras del contexto es absurdo y lanza `InvalidOperation`, que la API dice «sin margen»
+    (`test_un_precio_unitario_absurdo_no_tumba_la_tanda`)."""
+    with pytest.raises(InvalidOperation):
+        margen(objetivo, precio_unitario)
+
+
+def test_centimos_de_un_monto_con_exponente_no_falla() -> None:
+    """1E+58 tiene una cifra en el coeficiente pero 61 a céntimos: la precisión mira la magnitud."""
+    assert str(centimos(Decimal("1E+58"))) == "1" + "0" * 58 + ".00"

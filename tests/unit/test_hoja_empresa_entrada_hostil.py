@@ -69,8 +69,9 @@ def _jpeg_con_relleno() -> bytes:
 
 
 def test_jpeg_que_se_acaba_tras_una_marca_no_cuelga():
-    for datos in (b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe0\x00", _jpeg_con_relleno()):
+    for datos in (b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe0\x00"):
         assert _con_tope(tamano_imagen, datos) is None
+    assert _con_tope(tamano_imagen, _jpeg_con_relleno()) == (16, 16)
 
 
 def test_jpeg_con_largo_menor_que_dos_no_cuelga():
@@ -83,6 +84,20 @@ def test_jpeg_sano_sigue_dando_su_tamano():
     app0 = b"\xff\xe0\x00\x10" + b"JFIF\x00" + b"\x00" * 9
     sof = b"\xff\xc0\x00\x11\x08" + (48).to_bytes(2, "big") + (64).to_bytes(2, "big") + b"\x03"
     assert _con_tope(tamano_imagen, b"\xff\xd8" + app0 + sof + b"\x00" * 9) == (64, 48)
+
+
+def test_jpeg_con_relleno_ff_y_sof_ce_cf_da_su_tamano():
+    """L3: bytes de relleno 0xFF antes de la marca y marcadores SOF 0xCE/0xCF se leen bien."""
+    app0 = b"\xff\xff\xe0\x00\x10" + b"JFIF\x00" + b"\x00" * 9
+    for marcador in (0xCE, 0xCF):
+        sof = (
+            bytes([0xFF, 0xFF, marcador])
+            + b"\x00\x11\x08"
+            + (48).to_bytes(2, "big")
+            + (64).to_bytes(2, "big")
+            + b"\x03"
+        )
+        assert _con_tope(tamano_imagen, b"\xff\xd8" + app0 + sof + b"\x00" * 9) == (64, 48)
 
 
 # --- 1b. Imágenes cuya cabecera no da el tamaño que ve Pillow (hallazgo 5, 2026-11-20) ----------

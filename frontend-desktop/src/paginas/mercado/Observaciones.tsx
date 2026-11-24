@@ -29,7 +29,7 @@ export function Observaciones({ estudio, alCambiar }: Props) {
   const pregunta = useRef<HTMLDivElement>(null);
   const titulo = useRef<HTMLHeadingElement>(null);
   const idTitulo = `mercado-${lado}-observaciones`;
-  const nombreDeTabla = `Observaciones de los últimos ${estadisticas.dias} días`;
+  const nombreDeTabla = `Observaciones de los últimos ${formatoEsVe(String(estadisticas.dias))} días`;
 
   useEffect(() => {
     if (pidiendo) pregunta.current?.focus();

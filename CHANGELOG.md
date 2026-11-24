@@ -6,8 +6,20 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+### Corregido
+- **Ola 1121, depuración de Neon con la auditoría de Claude** (2026-11-21/22; `docs/bitacora/auditoria-agy-2026-11-21.md`).
+  Restaurar un respaldo no deja eventos perdidos ni bases a medias y, si no se puede reponer la instalación, queda el
+  aviso SEG-12; los respaldos y las cuentas responden 503 con la base ocupada y 404 con un zip ilegible; Argon2 corre
+  fuera del bloqueo al entrar; recibir un paquete de revisión es atómico; los montos de 27 o más cifras ya no fallan y
+  el margen de mercado sigue en 28 cifras; el lector de JPEG soporta el relleno `0xFF` y los marcadores SOF `0xCE`/`0xCF`.
+  En la interfaz: salir de la obra de demostración vuelve a Inicio, la Hoja guarda las ediciones pendientes antes de
+  guardar o poner frente, Control y Actualización muestran sus cifras en es-VE, Versiones refresca aprobaciones y
+  sellos, Precios de la empresa avisa el cambio de carpeta y el Visor termina de cargar si se cambia la fecha a mitad.
+- **La guarda de cifras del asistente lee el punto como separador de miles** (2026-11-22): «1.234,56» ya no se toma
+  como otra cifra. El experimento se re-congeló con acta (`docs/bitacora/2026-11-22-recongelado-experimento-3.md`).
+
 ### Agregado
-- **Sprint 1120b: el mapa de series de Riesgo se guarda y el desperdicio dice quién lo guardó** (2026-11-20; sin fusionar).
+- **Sprint 1120b: el mapa de series de Riesgo se guarda y el desperdicio dice quién lo guardó** (2026-11-20; PR #137).
   Riesgo recuerda por versión la serie que mueve cada insumo: al guardar un mapa propio se usa la vez siguiente; sin mapa
   propio toma el de otra versión de la misma obra, con una nota. Solo una cuenta con permiso de Riesgo lo guarda. En el
   desperdicio, el desglose dice quién lo guardó (Componer, Hoja y libro llevado), y el rótulo de la lista de Guardar nombra

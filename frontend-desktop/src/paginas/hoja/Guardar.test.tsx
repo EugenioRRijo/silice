@@ -788,6 +788,31 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(guardados()[0]!["rev"]).toBe(4);
   });
 
+  test("guardar con una edición esperando la pausa de 400 ms en la pestaña abierta la vacía antes y manda el rev que ella dejó", async () => {
+    let contestar: (r: Response) => void = () => undefined;
+    const puesta = new Promise<Response>((resolver) => {
+      contestar = resolver;
+    });
+    fetchFalso.mockImplementation(
+      ((impl) =>
+        async (...args: Parameters<typeof fetch>) =>
+          String(args[0]).endsWith("/parametros") && args[1]?.method === "PUT" ? puesta : impl(...args))(fetchFalso.getMockImplementation()!),
+    );
+    montar();
+    await userEvent.click(await screen.findByRole("tab", { name: "Ajustes de costo" }));
+    const campo = await screen.findByRole("textbox", { name: /^Administración/ });
+    fireEvent.change(campo, { target: { value: "0,20" } });
+    // Sin cambiar de pestaña y dentro de la pausa de 400 ms, abre el diálogo y guarda: debe vaciar la edición pendiente.
+    const dialogo = await abrirModal();
+    await escribirFuente(dialogo);
+    fireEvent.click(confirmar(dialogo));
+    await esperar(() => expect(llamadas("PUT", "/parametros")).toHaveLength(1));
+    expect(guardados()).toHaveLength(0);
+    contestar(json({ rev: 4, resumen: resumen({ rev: 4, cambios: 3 }) }));
+    await esperar(() => expect(guardados()).toHaveLength(1));
+    expect(guardados()[0]!["rev"]).toBe(4);
+  });
+
   test("409 «ya se guardó como la versión 004»: ofrece abrirla (sin pedir descartar, ya está guardado)", async () => {
     alGuardar = () => json({ detalle: "Este borrador ya se guardó como la versión 004; abra esa versión para seguir." }, 409);
     versiones = { ...VERSIONES, versiones: [fila("004", true, "002"), ...VERSIONES.versiones] };

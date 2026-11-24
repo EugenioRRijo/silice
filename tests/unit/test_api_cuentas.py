@@ -602,6 +602,18 @@ def test_error_de_base_da_503_y_no_422(admin, monkeypatch) -> None:
     assert respuesta.status_code == 503
     assert respuesta.json() == {"detalle": "La base no abre."}
     assert respuesta.headers["cache-control"] == "no-store"
+
+    def ocupada(*_a, **_k):
+        raise nucleo_cuentas.BaseOcupada(nucleo_cuentas.MENSAJE_BASE_OCUPADA)
+
+    monkeypatch.setattr(nucleo_cuentas, "desactivar", ocupada)
+    respuesta_ocupada = _post(
+        navegador, ficha, f"/v1/cuentas/{_id_de(navegador, 'ana')}/desactivar"
+    )
+    assert respuesta_ocupada.status_code == 503
+    assert respuesta_ocupada.json() == {"detalle": nucleo_cuentas.MENSAJE_BASE_OCUPADA}
+    assert respuesta_ocupada.headers["cache-control"] == "no-store"
+
     monkeypatch.setattr(ruta_cuentas, "sesion_de_instalacion", falla)
     assert navegador.get("/v1/cuentas").status_code == 503
     assert navegador.get("/v1/accesos").status_code == 503

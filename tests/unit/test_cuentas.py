@@ -476,8 +476,8 @@ def _dos_administradores(tmp_path: Path):
 
 @pytest.mark.parametrize("operacion", ["desactivar", "quitar el rol"])
 def test_una_base_ocupada_da_un_mensaje_y_no_una_traza(tmp_path: Path, operacion: str) -> None:
-    """Si otra conexión retiene el bloqueo de escritura y vence la espera, es un `ValueError`
-    con mensaje (422 en la API), no un `OperationalError` (500)."""
+    """Si otra conexión retiene el bloqueo de escritura y vence la espera, es un `BaseOcupada`
+    (subclase de `ValueError`) con mensaje (503 en la API), no un `OperationalError` (500)."""
     from sqlalchemy import text
 
     from seguridad.base import abrir_sesion
@@ -490,7 +490,7 @@ def test_una_base_ocupada_da_un_mensaje_y_no_una_traza(tmp_path: Path, operacion
         with abrir_sesion(motor) as bd:
             actor = bd.get(Usuario, id_a)
             bd.execute(text("PRAGMA busy_timeout=100"))
-            with pytest.raises(ValueError, match="La base está ocupada; reintente"):
+            with pytest.raises(cuentas.BaseOcupada, match="La base está ocupada; reintente"):
                 if operacion == "desactivar":
                     cuentas.desactivar(bd, actor, id_b, AHORA)
                 else:
@@ -528,3 +528,61 @@ def test_cuenta_por_id_da_la_cuenta_o_nada(tmp_path: Path) -> None:
 
         assert cuentas.cuenta_por_id(sesion, admin.id) is admin
         assert cuentas.cuenta_por_id(sesion, admin.id + 100) is None
+
+
+def test_dos_autenticaciones_simultaneas_del_mismo_login_sin_fila_previa_no_chocan_en_unique(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dos hilos autentican a la vez el mismo login sin fila previa en `intento_acceso`.
+    Argon2 corre sin retener escritura y el INSERT/lectura del contador ocurre bajo
+    `BEGIN IMMEDIATE` tras `_coincide`, de modo que ninguno falla con `IntegrityError`."""
+    from seguridad.base import abrir_sesion, crear_motor
+
+    with instalacion(tmp_path) as sesion:
+        administrador(sesion, tmp_path, "admina")
+    motor = crear_motor(tmp_path / "instalacion.db")
+
+    barrera = threading.Barrier(2)
+    verdadera = cuentas._coincide
+
+    def coincide_sincronizado(huella: str, contrasena: str) -> bool:
+        barrera.wait(timeout=10)
+        return verdadera(huella, contrasena)
+
+    monkeypatch.setattr(cuentas, "_coincide", coincide_sincronizado)
+    resultados: list[tuple[str, str]] = []
+    candado = threading.Lock()
+
+    def intentar() -> None:
+        with abrir_sesion(motor) as bd:
+            try:
+                cuentas.autenticar(
+                    bd,
+                    "admina",
+                    MALA,
+                    AHORA,
+                    freno=cuentas.FrenoGlobal(),
+                    dormir=lambda _s: None,
+                )
+                res = ("ok", "")
+            except Exception as error:  # noqa: BLE001
+                res = (type(error).__name__, str(error))
+        with candado:
+            resultados.append(res)
+
+    hilos = [threading.Thread(target=intentar) for _ in range(2)]
+    for h in hilos:
+        h.start()
+    for h in hilos:
+        h.join(timeout=30)
+
+    with abrir_sesion(motor) as bd:
+        fila = bd.get(IntentoAcceso, "admina")
+        fallos = 0 if fila is None else fila.fallos_seguidos
+    motor.dispose()
+
+    assert resultados == [
+        ("ErrorDeAcceso", cuentas.MENSAJE_FALLO),
+        ("ErrorDeAcceso", cuentas.MENSAJE_FALLO),
+    ]
+    assert fallos == 2

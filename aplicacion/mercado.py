@@ -43,13 +43,13 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
-from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
+from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal, localcontext
 from typing import TYPE_CHECKING
 
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
-from aplicacion.cifras import cifra_escrita, texto_de_cifra
+from aplicacion.cifras import cifra_escrita, precision_para, texto_de_cifra
 from aplicacion.listas_para_armar import (
     SinListaParaArmar,
     exigir_responsable,
@@ -126,6 +126,8 @@ _LARGO_CITAS = 400
 _CENTIMO = Decimal("0.01")
 _DECIMA = Decimal("0.1")
 _CIEN = Decimal(100)
+#: Las cifras del margen: las del contexto por omisión, como en `main` antes de L2.
+_CIFRAS_DEL_MARGEN = 28
 _Q1 = Decimal("0.25")
 _MEDIANA = Decimal("0.5")
 
@@ -183,9 +185,15 @@ class Propuesta:
 # --- utilidades -------------------------------------------------------------------------------
 
 
+def _cuantizar(valor: Decimal, paso: Decimal, rounding: str = ROUND_HALF_UP) -> Decimal:
+    with localcontext() as contexto:
+        contexto.prec = precision_para(valor)
+        return valor.quantize(paso, rounding=rounding)
+
+
 def centimos(valor: Decimal | None) -> Decimal | None:
     """`valor` como se muestra: a 0,01 con la mitad hacia arriba (`None` sigue siendo `None`)."""
-    return None if valor is None else valor.quantize(_CENTIMO, rounding=ROUND_HALF_UP)
+    return None if valor is None else _cuantizar(valor, _CENTIMO, ROUND_HALF_UP)
 
 
 def _exigir_lado(lado: str) -> None:
@@ -533,7 +541,7 @@ def propuesta(lado: str, est: Estadisticas, piso: Decimal | None) -> Propuesta:
             piso=None,
         )
     assert piso is not None
-    minimo_sin_perder = piso.quantize(_CENTIMO, rounding=ROUND_CEILING)
+    minimo_sin_perder = _cuantizar(piso, _CENTIMO, ROUND_CEILING)
     if est.q1 >= piso:
         mostrado = centimos(est.q1)
         assert mostrado is not None
@@ -546,8 +554,11 @@ def margen(objetivo: Decimal, precio_unitario: Decimal) -> Decimal:
     (`ROUND_HALF_UP`): negativo si el objetivo queda por debajo del precio con utilidad."""
     if precio_unitario <= 0:
         raise ValueError("el precio unitario debe ser mayor que cero")
-    porcentaje = (objetivo - precio_unitario) / precio_unitario * _CIEN
-    return porcentaje.quantize(_DECIMA, rounding=ROUND_HALF_UP)
+    # Un porcentaje, no un monto: con las 28 cifras del contexto por omisión (sin `precision_para`).
+    # Un margen que no cabe es absurdo y lanza `InvalidOperation`; la API lo dice «sin margen».
+    with localcontext(prec=_CIFRAS_DEL_MARGEN):
+        porcentaje = (objetivo - precio_unitario) / precio_unitario * _CIEN
+        return porcentaje.quantize(_DECIMA, rounding=ROUND_HALF_UP)
 
 
 # --- usar un precio -----------------------------------------------------------------------------
@@ -659,7 +670,7 @@ def usar_precio_de_cobro(
     confirma."""
     responsable = _responsable(responsable)
     valor = _precio_positivo(precio)
-    if valor != valor.quantize(_CENTIMO):
+    if valor != _cuantizar(valor, _CENTIMO):
         raise ReglaDeMercado("El precio objetivo admite hasta 2 decimales (céntimos).")
     codigo = exigir_codigo(sesion, "cobro", codigo_partida)
     moneda = _exigir_moneda(sesion, ahora.date())

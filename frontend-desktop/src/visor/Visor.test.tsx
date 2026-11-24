@@ -392,6 +392,29 @@ describe("Visor", () => {
     expect((ultima[1]?.body as FormData).get("fecha_devolucion")).toBe("2026-12-01");
   });
 
+  test("cambiar la fecha mientras el libro carga termina de cargar y audita con la fecha nueva", async () => {
+    const usuario = userEvent.setup();
+    let abrirPuerta: () => void = () => {};
+    const puerta = new Promise<void>((resolver) => {
+      abrirPuerta = resolver;
+    });
+    fetchFalso.mockImplementation(async (entrada) => {
+      await puerta;
+      return String(entrada).endsWith("/v1/libros/replica") ? json(replica) : json(auditoria);
+    });
+    render(<Visor crearHoja={crearHoja} />);
+    await soltar(usuario);
+    await screen.findByRole("status", { name: /Cargando el libro/ });
+    const campo = screen.getByLabelText("Fecha de devolución");
+    await usuario.clear(campo);
+    await usuario.type(campo, "2026-12-01");
+    abrirPuerta();
+    expect(await screen.findByText("El total no coincide con la suma")).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: /Cargando el libro/ })).toBeNull();
+    const auditorias = fetchFalso.mock.calls.filter((c) => String(c[0]).endsWith("/v1/libros/auditoria"));
+    expect((auditorias[auditorias.length - 1][1]?.body as FormData).get("fecha_devolucion")).toBe("2026-12-01");
+  });
+
   test("una API sin el campo indicadores no rompe la franja", async () => {
     const usuario = userEvent.setup();
     const sin = { ...auditoria, indicadores: undefined };
@@ -527,6 +550,19 @@ describe("Visor", () => {
         boton.dispatchEvent(new KeyboardEvent("keydown", { key: "+", ctrlKey: true, bubbles: true, cancelable: true }));
       });
       expect(hoja.fijarZoom).toHaveBeenLastCalledWith(1.2);
+    });
+
+    test("F7: muestra aviso_historial cuando viene en la respuesta de auditoría", async () => {
+      fetchFalso.mockImplementation(async (entrada) => {
+        const ruta = String(entrada);
+        if (ruta.endsWith("/v1/libros/replica")) return json(replica);
+        if (ruta.endsWith("/v1/libros/auditoria")) {
+          return json({ ...auditoria, aviso_historial: "No se pudo guardar en el historial." });
+        }
+        return json({ detalle: "ruta inesperada" }, 404);
+      });
+      await abierto();
+      expect(await screen.findByText("No se pudo guardar en el historial.")).toBeInTheDocument();
     });
   });
 });

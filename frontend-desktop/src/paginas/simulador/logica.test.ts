@@ -7,6 +7,7 @@ import {
   errorDeVariacion,
   filasDeTabla,
   MENSAJE_SEMILLA,
+  MENSAJE_SIN_FILAS,
   MENSAJE_TOPE_CARACTERES,
   MENSAJE_TOPE_INSUMOS,
   MENSAJE_VARIACION,
@@ -100,5 +101,9 @@ describe("insumos elegidos del simulador", () => {
   test("si el insumo ya está en la lista no lo rechaza por tope (lo atiende la selección)", () => {
     const alLimite = Array.from({ length: 200 }, (_, i) => `Insumo ${i}`);
     expect(rechazoDeInsumo(alLimite, "Insumo 0")).toBeNull();
+  });
+
+  test("F7: MENSAJE_SIN_FILAS lleva tilde en simulación", () => {
+    expect(MENSAJE_SIN_FILAS).toContain("simulación");
   });
 });

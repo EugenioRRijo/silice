@@ -36,18 +36,18 @@ export function Cifras({ estudio, obra }: Props) {
     <>
       <section className="silice-mercado__bloque" aria-labelledby={id}>
         <h2 id={id} className="cds--type-heading-compact-02">
-          {`Cifras de los últimos ${est.dias} días, en ${moneda}`}
+          {`Cifras de los últimos ${formatoEsVe(String(est.dias))} días, en ${moneda}`}
         </h2>
         {est.n === 0 ? (
           <EstadoVacio
-            titulo={`Sin observaciones en los últimos ${est.dias} días.`}
+            titulo={`Sin observaciones en los últimos ${formatoEsVe(String(est.dias))} días.`}
             descripcion="Anote el primer precio que vea en «Anotar una observación», más abajo, o amplíe los días hacia atrás."
           />
         ) : (
           <dl className="silice-mercado__cifras">
             <div className="silice-mercado__cifra">
               <dt className="cds--type-label-01">Observaciones</dt>
-              <dd className="silice-mercado__valor">{est.n}</dd>
+              <dd className="silice-mercado__valor">{formatoEsVe(String(est.n))}</dd>
             </div>
             {montos.map(([titulo, valor]) => (
               <div key={titulo} className="silice-mercado__cifra">

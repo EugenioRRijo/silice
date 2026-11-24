@@ -112,7 +112,7 @@ export function avisoDesconocidos(desconocidos: InsumoDesconocido[]): string {
 
 // La posicion hace unica cada opcion aunque el archivo repita una fila.
 export function etiquetaDeAlta(numero: number, d: InsumoDesconocido): string {
-  return `${numero}. ${d.etiqueta}, precio ${d.precio}`;
+  return `${numero}. ${d.etiqueta}, precio ${formatoEsVe(d.precio)}`;
 }
 
 export function textoDadosDeAlta(nombres: string[]): string {

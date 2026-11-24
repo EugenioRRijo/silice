@@ -35,12 +35,12 @@ import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 from io import BytesIO
 from xml.sax.saxutils import escape
 
 from aplicacion import frentes, hoja_vista
-from aplicacion.cifras import CifraInvalida, cifra_escrita, texto_de_cifra
+from aplicacion.cifras import CifraInvalida, cifra_escrita, precision_para, texto_de_cifra
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_desperdicio import DesperdicioDeLinea, TrazasDePartida
 from aplicacion.hoja_vista import FilaDePresupuesto, Monto
@@ -180,7 +180,9 @@ def _rotulo_del_subtotal(titulo: str) -> str:
 
 
 def _dinero(valor: Decimal) -> str:
-    return texto_de_cifra(valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    with localcontext() as contexto:
+        contexto.prec = precision_para(valor)
+        return texto_de_cifra(valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
 def _de_monto(monto: Monto | None) -> str:

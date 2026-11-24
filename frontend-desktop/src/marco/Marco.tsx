@@ -41,7 +41,7 @@ import "./marco.scss";
 import { carpetaDelDestino, ubicar } from "./ubicar";
 import { abrirNuevaObra, cerrarNuevaObra } from "./nuevaObra";
 import type { VigilanteDeObra } from "./otraPestana";
-import { PATRON_DE_OBRA, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
+import { PATRON_DE_OBRA, RUTA_DE_INICIO, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
 import type { SeccionId } from "./secciones";
 import { useModulos } from "./useModulos";
 import { ContextoObras, useCargaDeObras } from "./useObras";
@@ -146,6 +146,11 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // misma obra de otra carpeta (tras pasar por la empresa) vuelva a poner al día la lista.
   const recargadaPara = useRef<string | null>(null);
 
+  // Al volver desde `/obra/demostracion.db/...` navegamos a `/`: si `alCambiarCarpeta` subiera `generacion` antes de
+  // que React Router aplique la transición, `LimiteDeError` volvería a montar `EspacioDeObra` en esa ruta y
+  // `useObraDeLaRuta` reabriría `demostracion.db` (F1).
+  const saliendoDeObraDemo = useRef(false);
+
   // Abrir otra carpeta desde una pantalla (Cuenta › Carpetas, «Probar con datos de demostración», un envío por aprobar
   // de otra carpeta): se olvida la obra elegida, las pantallas se vuelven a montar y se avisa.
   const alCambiarCarpeta = useCallback(
@@ -158,7 +163,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       recargarObras();
       // Los contadores de la barra son de la carpeta abierta: se piden de nuevo (la carga de Inicio solo repite al entrar en él).
       recargarPendientes();
-      setGeneracion((g) => g + 1);
+      if (!saliendoDeObraDemo.current) setGeneracion((g) => g + 1);
+      saliendoDeObraDemo.current = false;
       setAviso({ titulo: CARPETA_CAMBIADA, texto: `Ahora trabaja con la carpeta «${carpeta}».` });
     },
     [recargarObras, recargarPendientes],
@@ -232,24 +238,48 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     [alExpirar],
   );
 
+  // El aviso es de la pantalla en que se dio: al navegar a otra se cierra. Se ajusta durante el dibujo, sin efecto.
+  // Salvo el de un cambio de carpeta que la persona pidió para ir a una herramienta (`abrirDePendiente`) o al volver
+  // de una obra de demostración: ese aviso dice dónde está trabajando ahora y sobrevive a esa navegación (incluida la
+  // redirección de `/` a la Vista general).
+  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<string | null>(null);
+
   // «Volver a la carpeta de la empresa» desde la marca de la demostración.
   const volver = useCallback(() => {
+    const enObraDeDemo =
+      carpetaDelDestino(ubicacion.pathname) === "demostracion.db" ||
+      ubicacion.pathname === "/obra/demostracion.db" ||
+      ubicacion.pathname.startsWith("/obra/demostracion.db/");
+    saliendoDeObraDemo.current = enObraDeDemo;
     volverALaEmpresa()
       .then((cambio) => {
-        if (cambio) document.getElementById("contenido")?.focus();
+        saliendoDeObraDemo.current = false;
+        if (!cambio) return;
+        if (enObraDeDemo) {
+          setRutaQueConservaElAviso(RUTA_DE_INICIO);
+          navegar(RUTA_DE_INICIO);
+        }
+        document.getElementById("contenido")?.focus();
       })
-      .catch(fallo);
-  }, [volverALaEmpresa, fallo]);
+      .catch((razon) => {
+        saliendoDeObraDemo.current = false;
+        fallo(razon);
+      });
+  }, [volverALaEmpresa, fallo, ubicacion.pathname, navegar]);
 
-  // El aviso es de la pantalla en que se dio: al navegar a otra se cierra. Se ajusta durante el dibujo, sin efecto.
-  // Salvo el de un cambio de carpeta que la persona pidió para ir a una herramienta (`abrirDePendiente`): ese aviso dice dónde
-  // está trabajando ahora y sobrevive a esa navegación, que es la intencionada.
-  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<string | null>(null);
   const [rutaDelAviso, setRutaDelAviso] = useState(ubicacion.pathname);
   if (rutaDelAviso !== ubicacion.pathname) {
     setRutaDelAviso(ubicacion.pathname);
-    if (aviso && rutaQueConservaElAviso !== ubicacion.pathname) setAviso(null);
-    if (rutaQueConservaElAviso !== null) setRutaQueConservaElAviso(null);
+    const conservaEnInicio =
+      rutaQueConservaElAviso === RUTA_DE_INICIO &&
+      (ubicacion.pathname === RUTA_DE_INICIO || ubicacion.pathname === RUTA_DE_VISTA_GENERAL);
+    if (aviso && !conservaEnInicio && rutaQueConservaElAviso !== ubicacion.pathname) setAviso(null);
+    if (
+      rutaQueConservaElAviso !== null &&
+      !(rutaQueConservaElAviso === RUTA_DE_INICIO && ubicacion.pathname === RUTA_DE_INICIO)
+    ) {
+      setRutaQueConservaElAviso(null);
+    }
   }
   // Cada vez que cambia la ruta, lo que quedó a medias de un pendiente (abrir su carpeta) ya no es lo que la persona pidió.
   const turnoDePendiente = useRef(0);
