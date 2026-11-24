@@ -13,6 +13,7 @@ import {
   COLUMNAS_CAMBIOS,
   COLUMNAS_HALLAZGOS,
   SIN_ARCHIVO,
+  SIN_ARCHIVO_QUE_HACER,
   filasDeCambios,
   filasDeHallazgos,
   formularioDictamen,
@@ -64,7 +65,7 @@ export function PestanaPaquete({ alExpirar }: { alExpirar: () => void }) {
         deshabilitada={estado.tipo === "analizando"}
         alElegir={(archivo) => void analizar(archivo)}
       />
-      {estado.tipo === "ninguno" && <EstadoVacio titulo={SIN_ARCHIVO} />}
+      {estado.tipo === "ninguno" && <EstadoVacio titulo={SIN_ARCHIVO} descripcion={SIN_ARCHIVO_QUE_HACER} />}
       {estado.tipo === "analizando" && <InlineLoading description="Verificando y reauditando el paquete…" />}
       {estado.tipo === "error" && <AvisoError error={estado.error} titulo="No se pudo revisar el paquete" />}
       {estado.tipo === "listo" && (

@@ -16,6 +16,8 @@ export const AYUDA =
   "Recalcula un presupuesto guardado variando parámetros de costo o precios de insumos. " +
   "El presupuesto base no se altera y ningún escenario se guarda.";
 export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavía: elabore uno primero.";
+export const SIN_PRESUPUESTOS_QUE_HACER =
+  "Guarde una versión del presupuesto de una obra en su sección «Presupuesto», con «Guardar primera versión…»; después podrá probar aquí qué pasa si cambian costos o precios.";
 export const NOTA_PARAMETROS = "Parámetros de costo del escenario (por defecto, los del presupuesto base).";
 export const NOTA_PRECIOS =
   "Precios de ensayo (opcional): busque el insumo, elíjalo de la lista y escriba el precio nuevo. Lo no mencionado conserva su precio vigente.";

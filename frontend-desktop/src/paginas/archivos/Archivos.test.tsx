@@ -6,6 +6,7 @@ import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { Marco } from "../../marco/Marco";
 import { estadoInicial, json, ligeras, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
+import { ContextoAplicacion } from "../../shell/contexto";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
 import { cuerpoDeVista } from "../hoja/datosDePrueba";
@@ -206,6 +207,20 @@ async function leerUnPlano(u: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Archivos y planos (Tarea 11 de F4)", () => {
+  test("fuera de una obra (una dirección vieja) dice dónde abrir una", () => {
+    render(
+      <ContextoAplicacion.Provider value={{ sesion: sesionDe("ana"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}>
+        <MemoryRouter>
+          <PaginaArchivos />
+        </MemoryRouter>
+      </ContextoAplicacion.Provider>,
+    );
+    expect(screen.getByText("Elija una obra")).toBeInTheDocument();
+    expect(
+      screen.getByText("Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para subir sus planos o cómputos."),
+    ).toBeInTheDocument();
+  });
+
   test("un h1 «Archivos y planos» y el registro de la obra, con la fecha en es-VE y lo no guardado «sin guardar»", async () => {
     montar();
     expect(await screen.findByRole("heading", { level: 1, name: "Archivos y planos" })).toBeInTheDocument();
@@ -346,7 +361,7 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
     await screen.findByRole("tab", { name: "Espacio y metrajes" });
     await irA(u, "Archivos y planos");
     const franja = await screen.findByRole("region", { name: "Siguiente paso" });
-    expect(franja).toHaveTextContent("Te falta: subir el plano o describir el espacio");
+    expect(franja).toHaveTextContent("Falta: subir el plano o describir el espacio");
     expect(principales()).toEqual(["Subir plano o cómputo"]);
     expect(within(franja).getByRole("button", { name: "Subir plano o cómputo" })).toBeInTheDocument();
     await u.click(within(franja).getByRole("button", { name: "Subir plano o cómputo" }));

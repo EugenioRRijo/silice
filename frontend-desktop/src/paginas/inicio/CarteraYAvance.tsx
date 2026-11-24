@@ -189,7 +189,7 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
       case "error":
         return <AvisoError error={carga.error} titulo={TEXTOS.cartera.error} />;
       case "no_disponible":
-        return <EstadoVacio titulo={TEXTOS.cartera.noDisponible} />;
+        return <EstadoVacio titulo={TEXTOS.cartera.noDisponible} descripcion={TEXTOS.cartera.noDisponibleQueHacer} />;
       case "listo":
         return (
           <>

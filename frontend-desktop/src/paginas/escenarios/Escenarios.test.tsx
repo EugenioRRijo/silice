@@ -170,6 +170,7 @@ describe("Escenarios de sensibilidad", () => {
     lista = [];
     montar();
     expect(await screen.findByText("No hay presupuestos guardados todavía: elabore uno primero.")).toBeInTheDocument();
+    expect(screen.getByText(/Guarde una versión del presupuesto de una obra en su sección «Presupuesto»/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Presupuesto base")).toBeNull();
   });
 

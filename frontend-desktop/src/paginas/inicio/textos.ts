@@ -22,6 +22,7 @@ export const TEXTOS = {
     cargando: "Cargando la cartera",
     error: "No se pudo leer la cartera",
     noDisponible: "La cartera aún no está disponible en esta instalación",
+    noDisponibleQueHacer: "Pídale a quien administra Sílice que actualice el programa; mientras tanto, esta parte no se puede mostrar.",
     moneda: (moneda: string) => `Cartera en ${moneda}`,
     tituloDeMoneda: (moneda: string) => `Obras en ${moneda}`,
     cifras: (moneda: string) => `Cifras de la cartera en ${moneda}`,

@@ -517,6 +517,43 @@ describe("Control de obra", () => {
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "", causa: null }]);
   });
 
+  // Juez F2 (2026-11-23): el servidor acepta dos valuaciones con el mismo número y el avance se duplica. Decisión de
+  // Eugenio: avisar y pedir confirmar (no rechazar). El número se compara con los de las valuaciones que cuentan.
+  async function llenarValuacion(u: ReturnType<typeof montar>, numero: string) {
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.type(screen.getByLabelText("Número"), numero);
+    await u.type(screen.getByLabelText("Período desde"), "2026-11-16");
+    await u.type(screen.getByLabelText("Período hasta"), "2026-11-20");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "50");
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
+  }
+
+  test("un número de valuación ya registrado avisa que duplica el avance y no registra hasta confirmar", async () => {
+    const u = montar();
+    await llenarValuacion(u, " v-01 ");
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent(
+      "Ya hay una valuación V-01 registrada en esta obra. Registrar otra con el mismo número suma su avance dos veces; si quiere reemplazarla, anule primero la anterior.",
+    );
+    expect(cuerpoDe("/v1/control/valuaciones")).toBeUndefined();
+    // Lo destructivo no es la opción por omisión: el foco empieza en «Cancelar».
+    await waitFor(() => expect(within(aviso).getByRole("button", { name: "Cancelar" })).toHaveFocus());
+    await u.click(within(aviso).getByRole("button", { name: "Registrar otra V-01 de todos modos" }));
+    await waitFor(() => expect(cuerpoDe("/v1/control/valuaciones")).toMatchObject({ numero: " v-01 " }));
+  });
+
+  test("«Cancelar» quita el aviso del número repetido sin registrar ni borrar lo escrito", async () => {
+    const u = montar();
+    await llenarValuacion(u, "V-01");
+    const aviso = await screen.findByRole("alert");
+    await u.click(within(aviso).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByText(/Ya hay una valuación V-01/)).toBeNull();
+    expect(cuerpoDe("/v1/control/valuaciones")).toBeUndefined();
+    expect(screen.getByLabelText("Número")).toHaveValue("V-01");
+  });
+
   test("los hallazgos de valuación muestran el nombre llano de la regla junto a su código", async () => {
     valuaciones = () =>
       json({
@@ -871,6 +908,8 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
     await screen.findByText(/Las opciones se calculan a pedido/);
     expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("recuperacion"))).toBe(false);
+    expect(screen.getByText("Aún no se ha tomado ninguna decisión de recuperación")).toBeInTheDocument();
+    expect(screen.getByText("Pulse «Calcular opciones», arriba, y elija una con «Elegir y crear la versión».")).toBeInTheDocument();
     await u.type(screen.getByLabelText(/Día hábil objetivo/), "11");
     await u.click(screen.getByRole("button", { name: "Calcular opciones" }));
     expect(await screen.findByRole("table", { name: "Opciones de recuperación" })).toBeInTheDocument();
@@ -931,6 +970,7 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
     await u.click(await screen.findByRole("button", { name: "Calcular opciones" }));
     expect(await screen.findByText(/pero no elegir una/)).toBeInTheDocument();
+    expect(screen.getByText("Las decide quien arma la obra; cuando elija una, aparecerá aquí.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Elegir y crear la versión" })).toBeNull();
   });
 });
@@ -1065,7 +1105,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     const selector = screen.getByLabelText("Precios actualizados al corte (para separar inflación de consumo)");
     expect(within(selector).getByRole("option", { name: "Fórmula de escalatoria (con factor Km)" })).toHaveValue("escalatoria");
     await u.selectOptions(selector, "escalatoria");
-    expect(screen.getByLabelText("Documento de respaldo de Km y R")).toBeInTheDocument();
+    expect(screen.getByLabelText("Documento que respalda el factor de escalatoria (Km) y la parte que no se reajusta (R)")).toBeInTheDocument();
     await u.type(screen.getByLabelText("Factor de escalatoria (Km)"), "1.05");
     await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
     expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();

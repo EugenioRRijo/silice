@@ -238,7 +238,7 @@ def _notas(vivo: BorradorVivo, resumen, pendientes: int) -> tuple[str, ...]:
         )
     if pendientes:
         notas.append(
-            f"{plural(pendientes, 'partida', 'partidas')} sin APU en el catálogo: "
+            f"{plural(pendientes, 'partida', 'partidas')} sin precio con la lista de esta versión: "
             "no suman al total."
         )
     notas.append(_auditoria(resumen))

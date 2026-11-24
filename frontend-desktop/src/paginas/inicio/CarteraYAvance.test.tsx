@@ -139,3 +139,17 @@ describe("Vista general: el anillo de obras por estado", () => {
     expect(within(g).getByRole("button", { name: "En ejecución 2" })).toHaveFocus();
   });
 });
+
+describe("Vista general: la cartera que el servidor aún no ofrece", () => {
+  test("un 404 dice a quién pedirle que actualice el programa", () => {
+    render(
+      <MemoryRouter>
+        <CarteraYAvance carga={{ estado: "no_disponible", error: null }} carpetas={new Map()} puedeCrear={false} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("La cartera aún no está disponible en esta instalación")).toBeInTheDocument();
+    expect(
+      screen.getByText("Pídale a quien administra Sílice que actualice el programa; mientras tanto, esta parte no se puede mostrar."),
+    ).toBeInTheDocument();
+  });
+});

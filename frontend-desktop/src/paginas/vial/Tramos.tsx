@@ -22,6 +22,7 @@ import { useTramos } from "./useTramos";
 import "./vial.scss";
 
 const SIN_OBRA = "Abra una obra para ver o importar sus tramos";
+const SIN_OBRA_DONDE = "Las obras están en «Obras» de la barra lateral; también puede buscarla con Ctrl+K.";
 const SIN_VERSIONES_TITULO = "Esta obra aún no tiene versiones guardadas";
 const SIN_VERSIONES_DESC = "Guarde una en el Presupuesto para cargar sus tramos.";
 const SIN_TRAMOS_TITULO = "Esta versión aún no tiene tramos";
@@ -118,7 +119,7 @@ export default function Tramos() {
         Columnas requeridas en el .csv (separadas por punto y coma): tramo, progresiva_ini_km, progresiva_fin_km, ancho_m,
         distancia_planta_km, elemento, tipo, espesor_m, densidad_t_m3, dosis_l_m2, lineas.
       </p>
-      {nombre === null && <EstadoVacio titulo={SIN_OBRA} />}
+      {nombre === null && <EstadoVacio titulo={SIN_OBRA} descripcion={SIN_OBRA_DONDE} />}
       {versiones.estado === "error" && <AvisoError error={versiones.error} titulo="No se pudieron leer las versiones" />}
       {versiones.estado === "listo" && ofrecidas.length === 0 && (
         <EstadoVacio titulo={SIN_VERSIONES_TITULO} descripcion={SIN_VERSIONES_DESC} />

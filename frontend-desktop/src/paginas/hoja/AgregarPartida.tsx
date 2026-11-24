@@ -89,6 +89,9 @@ interface Props {
   alAusente: () => void;
   // Vuelve a leer el borrador (su `rev`) y la vista, tras un 409 por `rev` viejo.
   alReleer: () => Promise<void>;
+  // La partida recién compuesta en la subvista Componer (ficha de Componer, lote 1): el diálogo abre con ella elegida y
+  // el foco en «Cantidad», el paso que sigue. Sin ella, abre en blanco con el foco en «Partida».
+  partidaInicial?: PartidaCompuesta | null;
 }
 
 // «Agregar partida» (Tarea 11, diseño de montar un presupuesto §5.3 y §10): una partida del catálogo con su cantidad, el
@@ -103,13 +106,15 @@ interface Props {
 // (`ComponerEnPanel`, baja 21). Mientras se compone, el diálogo espera oculto (un solo trabajo y un solo botón principal a
 // la vista) y, al guardar, vuelve con la partida nueva elegida. El archivo pasa de 250 líneas porque junta los dos
 // diálogos de las partidas del Presupuesto (agregar y quitar) y el foco que comparten al cerrarse.
-export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, alCancelar, alAusente, alReleer }: Props) {
+export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, alCancelar, alAusente, alReleer, partidaInicial = null }: Props) {
   const { alExpirar } = useAplicacion();
   const caja = useRef<HTMLDivElement>(null);
   const atrapar = useAtraparFoco(caja);
   const idTitulo = useId();
-  const [texto, setTexto] = useState("");
-  const [elegida, setElegida] = useState<Elegida | null>(null);
+  const inicial: Elegida | null =
+    partidaInicial === null ? null : { ...partidaInicial, unidad: partidaInicial.unidad === "" ? null : partidaInicial.unidad };
+  const [texto, setTexto] = useState(inicial === null ? "" : textoDeLaElegida(inicial));
+  const [elegida, setElegida] = useState<Elegida | null>(inicial);
   // Con qué se compone una partida nueva en el panel (un código, o una descripción y el código por elegir), o null.
   const [componiendo, setComponiendo] = useState<PartidaPorComponer | null>(null);
   const [cantidad, setCantidad] = useState("");
@@ -126,8 +131,10 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
   // Lo escrito cuenta como trabajo sin guardar: salir de la obra con el diálogo abierto pregunta antes de perderlo.
   useFormularioSucio("hoja", cantidad.trim() !== "" || calculo.trim() !== "" || nota.trim() !== "");
 
+  // Con la partida ya elegida, lo que falta es la cantidad: el foco va ahí.
+  const focoInicial = useRef(inicial === null ? ID_PARTIDA : ID_CANTIDAD);
   useEffect(() => {
-    document.getElementById(ID_PARTIDA)?.focus();
+    document.getElementById(focoInicial.current)?.focus();
   }, []);
 
   useEffect(() => {

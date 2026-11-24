@@ -1,6 +1,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import { ContextoDeLaEdicionDelBorrador, ContextoDelBorradorAbierto } from "../../comun/borradorAbierto";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -84,6 +86,9 @@ describe("Componer una partida", () => {
   let partida: () => Response;
   let guardado: () => Response;
   let carpeta: () => Response;
+  let vistaPresupuesto: () => Response;
+  let parametrosDeOmision: () => Response;
+  let similaresDeLaApi: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -92,6 +97,10 @@ describe("Componer una partida", () => {
     evaluacion = () => json(VACIA);
     partida = () => json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
     carpeta = () => json(estadoDeCarpeta("Lista ficticia 2026-01"));
+    vistaPresupuesto = () => json({ filas: [{ partida: "FIC-7" }] });
+    parametrosDeOmision = () => json({ detalle: "No encontrado." }, 404);
+    similaresDeLaApi = () =>
+      json([{ codigo: "FIC-009", descripcion: "Muro ficticio", puntaje: 0.91, rendimiento: "8.00", unidad: "m2", tablas: null, aviso: null }]);
     guardado = () => json({ precio_unitario: "29.70", mensaje: "Composición guardada para la partida FIC-1: precio unitario 29.70.", justificada: false, avisos: [] });
     fetchFalso.mockImplementation(async (entrada, init) => {
       const ruta = String(entrada);
@@ -105,7 +114,7 @@ describe("Componer una partida", () => {
         return json([{ etiqueta: "Cemento ficticio", ref_maprex: "REF-FICT-001", fila: { descripcion: "Cemento ficticio", unidad: "saco", cantidad: "", precio: "9.90" } }]);
       }
       if (ruta.startsWith("/v1/composicion/similares")) {
-        return json([{ codigo: "FIC-009", descripcion: "Muro ficticio", puntaje: 0.91, rendimiento: "8.00", unidad: "m2", tablas: null, aviso: null }]);
+        return similaresDeLaApi();
       }
       // Guardar pregunta antes a `prever` (Tarea 3 del plan de montar); sin variantes, guarda de una vez.
       if (ruta === "/v1/composicion/prever") {
@@ -113,6 +122,8 @@ describe("Componer una partida", () => {
       }
       if (ruta === "/v1/composicion/guardar") return guardado();
       if (ruta === "/v1/carpeta") return carpeta();
+      if (ruta === "/v1/composicion/parametros") return parametrosDeOmision();
+      if (ruta === "/v1/hoja/borradores/B-1/vistas/presupuesto") return vistaPresupuesto();
       return json({ detalle: "No encontrado." }, 404);
     });
   });
@@ -304,6 +315,201 @@ describe("Componer una partida", () => {
       justificacion: "Cuadrilla reforzada",
     });
     expect(String(envio.cuerpo?.fecha)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  // Ficha de Componer (2026-11-23, lote 1). Eugenio: «acabo de componer una partida y me perdí». Dentro de una obra, el
+  // éxito se queda en pantalla, dice que la partida todavía no está en el presupuesto y su único botón principal es el
+  // paso siguiente, que lleva al Presupuesto con la partida para ponerle cantidad.
+  // La Hoja de la obra (el borrador B-1), como la comparte `ProveedorDeLaHoja` con la subvista Componer; null = sin Hoja.
+  const hojaEditable = { borrador: "B-1", puedeEditar: true };
+
+  function montarEnObra(hoja: { borrador: string; puedeEditar: boolean } | null = hojaEditable) {
+    function Destino() {
+      const { pathname, state } = useLocation();
+      return <p data-testid="destino">{`${pathname} ${JSON.stringify(state)}`}</p>;
+    }
+    render(
+      <ContextoAplicacion.Provider value={{ sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}>
+        <ContextoDeLaObra.Provider value={{ carpeta: "demo.db", obraId: 7, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
+          <ContextoDelBorradorAbierto.Provider value={hoja?.borrador ?? null}>
+          <ContextoDeLaEdicionDelBorrador.Provider value={hoja?.puedeEditar ?? null}>
+            <MemoryRouter initialEntries={["/obra/demo.db/7/presupuesto/componer"]}>
+              <Routes>
+                <Route path="/obra/demo.db/7/presupuesto/componer" element={<PaginaComponer />} />
+                <Route path="/obra/demo.db/7/presupuesto" element={<Destino />} />
+                <Route path="/obra/demo.db/7/versiones" element={<Destino />} />
+              </Routes>
+            </MemoryRouter>
+          </ContextoDeLaEdicionDelBorrador.Provider>
+          </ContextoDelBorradorAbierto.Provider>
+        </ContextoDeLaObra.Provider>
+      </ContextoAplicacion.Provider>,
+    );
+  }
+
+  async function componerYGuardar(codigo = "FIC-1") {
+    const usuario = userEvent.setup();
+    await usuario.type(screen.getByLabelText("Código"), codigo);
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro ficticio");
+    await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
+    return usuario;
+  }
+
+  // Juez F2 (2026-11-23): «Todavía no está» se afirmaba sin comprobarlo, y con una versión de solo lectura el pedido se
+  // perdía sin aviso. El éxito ahora mira el presupuesto del borrador y la edición antes de decir qué sigue.
+  test("si la partida ya está en el presupuesto lo dice y el paso siguiente es verlo, no agregarla otra vez", async () => {
+    montarEnObra();
+    await componerYGuardar("FIC-7");
+    expect(await screen.findByText("Ya está en el presupuesto de esta obra.", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Agregar FIC-7/ })).toBeNull();
+    const ver = screen.getByRole("button", { name: "Ver el presupuesto" });
+    await waitFor(() => expect(ver).toHaveFocus());
+    await userEvent.click(ver);
+    expect(screen.getByTestId("destino")).toHaveTextContent("/obra/demo.db/7/presupuesto null");
+  });
+
+  test("con una versión de solo lectura dice por qué no se puede agregar y lleva a Versiones", async () => {
+    montarEnObra({ ...hojaEditable, puedeEditar: false });
+    await componerYGuardar();
+    expect(
+      await screen.findByText("Esta versión del presupuesto no se puede editar: abra o cree una versión editable para agregarla.", {}, ESPERA),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Ir a Versiones" }));
+    expect(screen.getByTestId("destino")).toHaveTextContent("/obra/demo.db/7/versiones");
+  });
+
+  test("sin poder mirar el presupuesto no afirma nada: ofrece agregarla «si todavía no está»", async () => {
+    montarEnObra(null);
+    await componerYGuardar();
+    expect(await screen.findByText("Si todavía no está en el presupuesto de esta obra, agréguela con su cantidad.", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar FIC-1 al presupuesto" })).toBeInTheDocument();
+  });
+
+  test("en una obra, al guardar dice que aún no está en el presupuesto y el paso siguiente es el único principal, con el foco", async () => {
+    const usuario = userEvent.setup();
+    montarEnObra();
+    await usuario.type(screen.getByLabelText("Código"), "FIC-1");
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro ficticio");
+    await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
+    expect(await screen.findByText("Todavía no está en el presupuesto de esta obra.", {}, ESPERA)).toBeInTheDocument();
+    const siguiente = screen.getByRole("button", { name: "Agregar FIC-1 al presupuesto" });
+    await waitFor(() => expect(siguiente).toHaveFocus());
+    expect(siguiente).toHaveClass("cds--btn--primary");
+    // Un solo principal: guardar de nuevo queda como secundario.
+    expect(screen.getByRole("button", { name: "Guardar composición" })).not.toHaveClass("cds--btn--primary");
+  });
+
+  test("«Agregar … al presupuesto» lleva al Presupuesto de la obra con la partida guardada", async () => {
+    const usuario = userEvent.setup();
+    montarEnObra();
+    await usuario.type(screen.getByLabelText("Código"), "FIC-1");
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro ficticio");
+    await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
+    await usuario.click(await screen.findByRole("button", { name: "Agregar FIC-1 al presupuesto" }, ESPERA));
+    expect(screen.getByTestId("destino")).toHaveTextContent(
+      '/obra/demo.db/7/presupuesto {"agregarPartida":{"codigo":"FIC-1","descripcion":"Muro ficticio","unidad":""}}',
+    );
+  });
+
+  test("fuera de una obra el guardado no ofrece llevarla a un presupuesto", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    await usuario.type(screen.getByLabelText("Código"), "FIC-1");
+    await usuario.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
+    await screen.findByText(/Composición guardada/, {}, ESPERA);
+    expect(screen.queryByRole("button", { name: /al presupuesto$/ })).toBeNull();
+  });
+
+  // Ficha de Componer, lote 3 (aprobado por Eugenio el 2026-11-23): lo que casi siempre se deja como viene (tipo de obra,
+  // fecha de precios y parámetros del precio) va plegado en «Más opciones de la partida», con su resumen a la vista. Un
+  // error en lo plegado lo abre: nunca se esconde un error.
+  const plegado = (elemento: Element) => {
+    const pliegue = elemento.closest("details");
+    return pliegue !== null && !pliegue.open;
+  };
+
+  test("tipo de obra, fecha y parámetros van plegados en «Más opciones de la partida», con su resumen a la vista", async () => {
+    montar();
+    await waitFor(() => expect(screen.getByLabelText("Tipo de obra (dominio)")).toHaveValue("civil"));
+    const resumen = screen.getByText(/^Más opciones de la partida/);
+    expect(resumen.closest("summary")).not.toBeNull();
+    expect(resumen.closest("summary")).toHaveTextContent(/Tipo de obra: Civil · precios al \d{2}\/\d{2}\/\d{4}/);
+    expect(plegado(screen.getByLabelText("Tipo de obra (dominio)"))).toBe(true);
+    expect(plegado(screen.getByLabelText("Fecha de precios"))).toBe(true);
+    expect(plegado(screen.getByRole("region", { name: "Parámetros del precio unitario" }))).toBe(true);
+    // El aviso de los precios de otra lista no se pliega: se lee sin abrir nada.
+    expect(document.getElementById("componer-fecha-estado")!.closest("details")).toBeNull();
+    // El párrafo de entrada con jerga («declare su cabecera y sus tres tablas») ya no está.
+    expect(screen.queryByText(/Componga una partida a mano/)).toBeNull();
+  });
+
+  test("en la cabecera quedan a la vista solo código, descripción y unidad (8 o menos, umbral F0)", async () => {
+    montar();
+    await waitFor(() => expect(screen.getByLabelText("Tipo de obra (dominio)")).toHaveValue("civil"));
+    const cabecera = screen.getByRole("region", { name: "Cabecera de la partida" });
+    const visibles = [...cabecera.querySelectorAll("input, select, textarea")].filter((c) => !plegado(c));
+    expect(visibles.length).toBeLessThanOrEqual(8);
+    expect(visibles.map((c) => (c as HTMLInputElement).labels?.[0]?.textContent?.trim())).toEqual(["Código", "Descripción", "Unidad"]);
+  });
+
+  // Juez F2: el resumen decía de dónde salían los parámetros, pero no cuánto valen. Ahora dice sus valores.
+  test("el resumen de «Más opciones» dice los valores de los parámetros, con la palabra antes de la sigla", async () => {
+    const campo = (clave: string, valor: string) => ({ clave, rotulo: clave, valor });
+    parametrosDeOmision = () =>
+      json({ campos: [campo("fcas", "6,00"), campo("bono_alimentacion", "1,00"), campo("administracion", "0,15"), campo("utilidad", "0,10")] });
+    montar();
+    const resumen = await screen.findByText(/^Más opciones de la partida/, {}, ESPERA);
+    await waitFor(() =>
+      expect(resumen).toHaveTextContent(
+        "parámetros de omisión: costos del salario (FCAS) 6,00 · bono de alimentación 1,00 · administración 0,15 · utilidad 0,10",
+      ),
+    );
+  });
+
+  test("un parámetro mal escrito abre «Más opciones de la partida» para que el error se vea", async () => {
+    evaluacion = () => json({ ...VACIA, aviso: "Parámetros del precio unitario. Utilidad: Use la coma para los decimales." });
+    montar();
+    await waitFor(() => expect(plegado(screen.getByRole("region", { name: "Parámetros del precio unitario" }))).toBe(false), ESPERA);
+  });
+
+  // Ficha de Componer, lote 2: las ayudas llegan a los campos; el ejemplo con cifra es de la partida parecida real.
+  test("rendimiento, condiciones e insumos traen su ayuda, y al escribir la descripción el ejemplo es de la partida parecida", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    expect(screen.getByText("Cuánto de esta partida hace la cuadrilla en un día de trabajo.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Condiciones del rendimiento")).toHaveAccessibleDescription(/^Obligatorio\. .*por ejemplo/);
+    expect(screen.getByText(/^En «Consumo por unidad» escriba cuánto de cada insumo/)).toBeInTheDocument();
+    await usuario.type(screen.getByLabelText("Unidad"), "m2");
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro");
+    expect(await screen.findByText(/Por ejemplo, la partida parecida FIC-009 \(Muro ficticio\) rinde 8,00 m² por día\.$/, {}, ESPERA)).toBeInTheDocument();
+  });
+
+  // Decisión de Eugenio (2026-11-23): «Empezar desde esta» copia los insumos y el rendimiento de la parecida real.
+  test("«Empezar desde FIC-009» llena los insumos y el rendimiento con los de la partida parecida", async () => {
+    similaresDeLaApi = () =>
+      json([
+        {
+          codigo: "FIC-009",
+          descripcion: "Muro ficticio",
+          puntaje: 0.91,
+          rendimiento: "8.00",
+          unidad: "m2",
+          tablas: { materiales: [{ descripcion: "Bloque ficticio", unidad: "u", cantidad: "12,5", precio: "0,80" }], equipos: [], mano_obra: [] },
+          aviso: null,
+        },
+      ]);
+    const usuario = userEvent.setup();
+    montar();
+    await usuario.type(screen.getByLabelText("Descripción"), "Muro");
+    await usuario.click(await screen.findByRole("button", { name: /FIC-009 · Muro ficticio/ }, ESPERA));
+    await usuario.click(screen.getByRole("button", { name: "Empezar desde FIC-009" }));
+    expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("8,00");
+    expect(await screen.findByDisplayValue("Bloque ficticio")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("12,5")).toBeInTheDocument();
   });
 
   test("sin advertencia de rendimiento la justificación viaja nula", async () => {

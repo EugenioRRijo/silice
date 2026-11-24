@@ -8,6 +8,9 @@ import { unidadEscrita } from "../../comun/unidades";
 export const SEMILLA_INICIAL = "42";
 export const VARIACION_INICIAL = "5";
 export const MENSAJE_SIN_FILAS = "La simulación no produjo ninguna fila (revise el filtro de insumos).";
+// Sin lista vigente la API contesta 409 (api/rutas/simulador.py): cero filas es lo elegido en «Insumos», que no está en la lista.
+export const MENSAJE_SIN_FILAS_QUE_HACER =
+  "Quite los insumos elegidos en «Insumos» para simular todos, o elija otros, y pulse «Generar lista simulada».";
 export const MENSAJE_SEMILLA = "La semilla debe ser un número entero mayor o igual a 0.";
 export const AVISO_HERRAMIENTA =
   "Toma la lista de precios vigente del catálogo y aplica variaciones deterministas según una semilla, en el " +

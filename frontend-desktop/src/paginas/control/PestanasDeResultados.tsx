@@ -115,7 +115,7 @@ export function BarraDeCorte({
             value={precios.r}
             onChange={(e) => cambiarPrecios({ r: e.target.value })}
           />
-          <CampoTexto id="corte-fuente" labelText="Documento de respaldo de Km y R" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
+          <CampoTexto id="corte-fuente" labelText="Documento que respalda el factor de escalatoria (Km) y la parte que no se reajusta (R)" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
         </>
       )}
       <div>
@@ -465,7 +465,14 @@ export function Recuperacion({
           <TablaDensa etiqueta="Decisiones tomadas" columnas={columnasDe(COLUMNAS_DECISIONES)} filas={conId(calculo.decisiones)} />
         </section>
       ) : (
-        <EstadoVacio titulo="Aún no se ha tomado ninguna decisión de recuperación" />
+        <EstadoVacio
+          titulo="Aún no se ha tomado ninguna decisión de recuperación"
+          descripcion={
+            puedeDecidir
+              ? "Pulse «Calcular opciones», arriba, y elija una con «Elegir y crear la versión»."
+              : "Las decide quien arma la obra; cuando elija una, aparecerá aquí."
+          }
+        />
       )}
     </>
   );

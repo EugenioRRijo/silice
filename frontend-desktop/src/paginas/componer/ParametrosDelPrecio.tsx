@@ -27,6 +27,11 @@ export function valoresDe(campos: CampoDeParametro[]): ParametrosDeTexto {
   return Object.fromEntries(campos.map((c) => [c.clave, c.valor])) as ParametrosDeTexto;
 }
 
+// Si el aviso del servidor es de un parámetro del precio (lote 3 de Componer: abre «Más opciones de la partida»).
+export function esAvisoDeParametros(aviso: string | null): boolean {
+  return aviso !== null && aviso.startsWith(PREFIJO);
+}
+
 // El motivo del aviso del servidor si es de ese campo («Parámetros del precio unitario. FCAS: <motivo>»), o null.
 function motivoDe(aviso: string | null, clave: ClaveDeParametro): string | null {
   const inicio = `${PREFIJO} ${NOMBRES[clave]}: `;

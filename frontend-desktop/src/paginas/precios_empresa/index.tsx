@@ -20,8 +20,11 @@ import {
   NOTA_ATIPICOS,
   ROTULO_ATIPICOS,
   ROTULO_REFERENCIA,
+  AYUDA_ARCHIVO,
   SIN_BASES,
+  SIN_BASES_QUE_HACER,
   SIN_LISTAS,
+  SIN_LISTAS_QUE_HACER,
   TITULO,
   TITULO_HALLAZGOS,
   TITULO_LISTA,
@@ -280,7 +283,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
       </h2>
       <p className="cds--type-body-compact-01">Toma una lista base y aplica encima los precios de su archivo.</p>
       {bases.length === 0 ? (
-        <EstadoVacio titulo={SIN_BASES} />
+        <EstadoVacio titulo={SIN_BASES} descripcion={SIN_BASES_QUE_HACER} />
       ) : (
         <form className="silice-precios-empresa__formulario" onSubmit={crear}>
           <div className="silice-precios-empresa__campos">
@@ -308,6 +311,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
             <CampoTexto id="precios-empresa-nombre" labelText="Nombre de la lista (opcional)" size="sm" value={nombre} onChange={(e) => setNombre(e.target.value)} />
           </div>
 
+          <p className="silice-precios-empresa__nota cds--type-body-compact-01">{AYUDA_ARCHIVO}</p>
           <SubidaArchivo
             id="precios-empresa-archivo"
             etiqueta="Archivo de precios (CSV o XLSX): suéltelo aquí, o haga clic para elegirlo"
@@ -458,7 +462,7 @@ function SeccionHallazgos({ listas, alExpirar }: PropsSeccion & { listas: ListaE
         Muestra qué insumos de la lista tienen fecha vencida o un precio muy distinto al esperado.
       </p>
       {listas.length === 0 ? (
-        <EstadoVacio titulo={SIN_LISTAS} />
+        <EstadoVacio titulo={SIN_LISTAS} descripcion={SIN_LISTAS_QUE_HACER} />
       ) : (
         <>
           <div className="silice-precios-empresa__campos">

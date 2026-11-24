@@ -29,7 +29,7 @@ type Carga = { tipo: "cargando" } | { tipo: "listo"; datos: PorDefectoFcas } | {
 
 const COLUMNAS: ColumnaDensa[] = [
   { clave: "nombre", titulo: "Renglón" },
-  { clave: "aporte", titulo: "Parte del FCAS", numerica: true, presentar: formatoEsVe },
+  { clave: "aporte", titulo: "Aporte al factor (FCAS)", numerica: true, presentar: formatoEsVe },
 ];
 
 // «FCAS por componentes»: el factor de costos asociados al salario que sale de los días pagados y de los aportes
@@ -224,7 +224,7 @@ function Resultado({
           </section>
         )}
       </div>
-      <TablaDensa etiqueta="Desglose del FCAS" columnas={COLUMNAS} filas={filas} />
+      <TablaDensa etiqueta="Desglose del factor de costos asociados al salario (FCAS)" columnas={COLUMNAS} filas={filas} />
       <p className="cds--type-body-compact-01">
         Esto no cambia ninguna versión. Para aplicarlo, escriba <strong>{textoParaEscribir(r.fcas)}</strong> en el
         campo FCAS de Presupuesto › Ajustes de costo de la obra; es una fracción: 0,50 equivale a 50 % y a

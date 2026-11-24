@@ -289,6 +289,7 @@ describe("Tramos de la vía", () => {
   test("sin obra abierta lo dice y no pide nada", async () => {
     montar(null);
     expect(screen.getByText("Abra una obra para ver o importar sus tramos")).toBeInTheDocument();
+    expect(screen.getByText("Las obras están en «Obras» de la barra lateral; también puede buscarla con Ctrl+K.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 

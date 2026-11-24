@@ -1,6 +1,6 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -120,11 +120,14 @@ function Registrar({
   causas,
   partidas,
   alCambiar,
+  numerosVigentes,
 }: {
   proyecto: string;
   causas: CausaDeRetraso[];
   partidas: PartidasDeLaObra;
   alCambiar: () => void;
+  // Los números de las valuaciones que ya cuentan: registrar otra con el mismo número duplica el avance (juez F2).
+  numerosVigentes: string[];
 }) {
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar, limpiar } = useAccion(alExpirar, alCambiar);
@@ -165,7 +168,14 @@ function Registrar({
       ),
     );
   };
-  const registrar = () => {
+  // El número escrito ya es de una valuación que cuenta: se avisa y se pide confirmar antes de registrar (decisión de
+  // Eugenio, 2026-11-23: avisar, no rechazar). El foco va a «Cancelar»: lo que duplica no es la opción por omisión.
+  const [repetido, setRepetido] = useState<string | null>(null);
+  const cancelarRepetido = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (repetido !== null) cancelarRepetido.current?.focus();
+  }, [repetido]);
+  const registrar = (confirmado = false) => {
     const nuevos: Record<number, string> = {};
     const fuera: Record<number, string> = {};
     lineas.forEach((l, i) => {
@@ -181,6 +191,12 @@ function Registrar({
     setRegistro(null);
     limpiar();
     if (Object.keys(nuevos).length > 0 || Object.keys(fuera).length > 0) return;
+    const yaRegistrado = numerosVigentes.find((n) => n.trim().toLowerCase() === v.numero.trim().toLowerCase());
+    if (!confirmado && v.numero.trim() !== "" && yaRegistrado !== undefined) {
+      setRepetido(yaRegistrado);
+      return;
+    }
+    setRepetido(null);
     void ejecutar(async () => {
       const r = await pedir<RegistroDeValuacion>("/v1/control/valuaciones", {
         metodo: "POST",
@@ -269,10 +285,25 @@ function Registrar({
         </fieldset>
         <CampoTexto id="val-fuente" labelText="Fuente (acta, oficio)" value={v.fuente} onChange={campo("fuente")} />
         <div>
-          <Button kind="primary" size="md" disabled={estado.enviando} onClick={registrar}>
+          <Button kind="primary" size="md" disabled={estado.enviando} onClick={() => registrar()}>
             Guardar valuación y recalcular avance
           </Button>
         </div>
+        {repetido !== null && (
+          <div role="alert" className="silice-control__repetida">
+            <p className="cds--type-body-compact-01">
+              {`Ya hay una valuación ${repetido} registrada en esta obra. Registrar otra con el mismo número suma su avance dos veces; si quiere reemplazarla, anule primero la anterior.`}
+            </p>
+            <div className="silice-control__acciones">
+              <Button ref={cancelarRepetido} kind="secondary" size="sm" onClick={() => setRepetido(null)}>
+                Cancelar
+              </Button>
+              <Button kind="danger--tertiary" size="sm" onClick={() => registrar(true)}>
+                {`Registrar otra ${repetido} de todos modos`}
+              </Button>
+            </div>
+          </div>
+        )}
         <Resultado exito={estado.exito} error={estado.error} />
         <div id="val-resultado" aria-live="polite">
           {registro && !estado.enviando && !estado.error && <AvisoDeRegistro registro={registro} />}
@@ -554,7 +585,13 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         <h2 id="control-escribir" className="cds--type-heading-compact-02">
           Registrar, importar, anular y anotar costos
         </h2>
-        <Registrar proyecto={proyecto} causas={datos.causas} partidas={partidas} alCambiar={alCambiar} />
+        <Registrar
+          proyecto={proyecto}
+          causas={datos.causas}
+          partidas={partidas}
+          alCambiar={alCambiar}
+          numerosVigentes={datos.filas.map((f) => f.Numero ?? "")}
+        />
         <Importar proyecto={proyecto} alCambiar={alCambiar} />
         <Anular proyecto={proyecto} datos={datos} alCambiar={alCambiar} />
         <Costo proyecto={proyecto} partidas={partidas} alCambiar={alCambiar} />

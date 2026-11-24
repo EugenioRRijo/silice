@@ -776,3 +776,148 @@ def test_fallos_del_visor_dicen_cuantos_errores_hay_por_fase() -> None:
         "vueltas": 2,
     }
     assert "errores por fase: abrir 40, salir 1 2" in fallos_visor(m)
+
+
+# --------------------------- la capa medida de la guardia de interfaz ---------------------------
+#
+# Norma de interfaz (2026-11-23), «Lo que revisa una persona»: R-8 (8 decisiones o menos a la vista
+# por paso) y la primera pantalla (el h1 y el botón principal sin desplazarse a 1366 × 768). Es un
+# informe para revisión humana, no una compuerta de la CI: «revisar» es una pregunta, no un fallo.
+
+
+def _carga(**extra: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "fuera_de_tablas": 5,
+        "en_tablas": 0,
+        "h1_a_la_vista": True,
+        "principal_a_la_vista": True,
+    }
+    base.update(extra)
+    return base
+
+
+def test_una_pantalla_con_pocos_controles_y_todo_a_la_vista_esta_bien() -> None:
+    from scripts.recorrido_ux_playwright import veredicto_de_carga
+
+    assert veredicto_de_carga(_carga()) == "bien"
+    # Ocho es el umbral aprobado: ocho todavía está bien; nueve ya se revisa.
+    assert veredicto_de_carga(_carga(fuera_de_tablas=8)) == "bien"
+
+
+def test_mas_de_ocho_controles_fuera_de_tablas_se_revisa() -> None:
+    from scripts.recorrido_ux_playwright import UMBRAL_DE_DECISIONES, veredicto_de_carga
+
+    assert UMBRAL_DE_DECISIONES == 8
+    assert veredicto_de_carga(_carga(fuera_de_tablas=9)) == "revisar"
+    assert veredicto_de_carga(_carga(fuera_de_tablas=40)) == "revisar"
+
+
+def test_los_controles_dentro_de_tablas_y_hojas_no_cuentan_para_el_umbral() -> None:
+    # El juez F2: las tablas y las hojas tienen muchos controles por naturaleza.
+    from scripts.recorrido_ux_playwright import veredicto_de_carga
+
+    assert veredicto_de_carga(_carga(fuera_de_tablas=3, en_tablas=120)) == "bien"
+
+
+def test_sin_principal_no_es_falla_si_el_h1_se_ve() -> None:
+    from scripts.recorrido_ux_playwright import veredicto_de_carga
+
+    assert veredicto_de_carga(_carga(principal_a_la_vista=None)) == "bien"
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"h1_a_la_vista": False},
+        {"principal_a_la_vista": False},
+        {"h1_a_la_vista": False, "principal_a_la_vista": None},
+    ],
+)
+def test_un_h1_que_no_se_ve_o_un_principal_fuera_de_la_primera_vista_falla(
+    extra: dict[str, object],
+) -> None:
+    from scripts.recorrido_ux_playwright import veredicto_de_carga
+
+    assert veredicto_de_carga(_carga(**extra)) == "falla"
+
+
+def test_la_falla_de_la_primera_pantalla_pesa_mas_que_la_revision() -> None:
+    from scripts.recorrido_ux_playwright import veredicto_de_carga
+
+    assert veredicto_de_carga(_carga(fuera_de_tablas=20, principal_a_la_vista=False)) == "falla"
+
+
+def test_la_medida_del_navegador_salta_lo_plegado_lo_cerrado_y_lo_oculto() -> None:
+    from scripts.recorrido_ux_playwright import CARGA_JS
+
+    for selector in ("input", "select", "textarea", "button", "[role=combobox]"):
+        assert selector in CARGA_JS
+    assert "details:not([open])" in CARGA_JS
+    assert '[aria-hidden="true"]' in CARGA_JS
+    assert "dialog:not([open])" in CARGA_JS
+    assert "table, [role=grid]" in CARGA_JS
+    assert ".cds--btn--primary" in CARGA_JS
+    for clave in ("fuera_de_tablas", "en_tablas", "h1_a_la_vista", "principal_a_la_vista"):
+        assert clave in CARGA_JS
+
+
+def test_la_carga_se_mide_solo_a_1366_con_letra_normal_y_si_se_pide() -> None:
+    from scripts.recorrido_ux_playwright import toca_medir_carga
+
+    assert toca_medir_carga(True, 1366, "normal")
+    assert not toca_medir_carga(False, 1366, "normal")
+    assert not toca_medir_carga(True, 1920, "normal")
+    assert not toca_medir_carga(True, 1366, "grande")
+
+
+def test_la_opcion_medir_carga_existe_y_no_viene_por_omision() -> None:
+    assert not analizador().parse_args(["--salida", "x"]).medir_carga
+    assert analizador().parse_args(["--salida", "x", "--medir-carga"]).medir_carga
+
+
+def test_el_informe_de_carga_tiene_una_fila_por_pantalla_con_su_veredicto() -> None:
+    from scripts.recorrido_ux_playwright import informe_de_carga
+
+    filas = [
+        {"id": "inicio", "titulo": "Vista general", "carga": _carga(fuera_de_tablas=4)},
+        {
+            "id": "componer",
+            "titulo": "Componer",
+            "carga": _carga(fuera_de_tablas=31, en_tablas=12, principal_a_la_vista=False),
+        },
+        {"id": "riesgo", "titulo": "Riesgo", "carga": _carga(fuera_de_tablas=12)},
+        {"id": "acerca", "titulo": "Acerca", "carga": _carga(principal_a_la_vista=None)},
+        # Medida pedida que no se pudo tomar (la pantalla no cargó): se dice, no se calla.
+        {"id": "roto", "titulo": "Rota", "error": "Timeout", "carga": None},
+        # Una fila de otro ancho o letra (sin la clave «carga») no entra en la tabla.
+        {"id": "otra", "titulo": "Otra"},
+    ]
+    informe = informe_de_carga(filas)
+    lineas = informe.splitlines()
+    assert (
+        "| Pantalla | Controles fuera de tablas | Controles en tablas | h1 a la vista "
+        "| Principal a la vista | Veredicto |"
+    ) in lineas
+    assert "| Vista general (`inicio`) | 4 | 0 | sí | sí | bien |" in lineas
+    assert "| Componer (`componer`) | 31 | 12 | sí | no | falla |" in lineas
+    assert "| Riesgo (`riesgo`) | 12 | 0 | sí | sí | revisar |" in lineas
+    assert "| Acerca (`acerca`) | 5 | 0 | sí | no hay | bien |" in lineas
+    assert "| Rota (`roto`) | — | — | — | — | sin medida |" in lineas
+    assert not any("`otra`" in linea for linea in lineas)
+    # El resumen cuenta cada veredicto, y el informe dice que «revisar» es una pregunta.
+    assert "bien: 2 · revisar: 1 · falla: 1 · sin medida: 1" in informe
+    assert "no un cupo" in informe
+
+
+def test_una_pantalla_que_el_marco_no_ofrece_al_rol_no_lleva_veredicto_de_carga() -> None:
+    # Corrida del 2026-11-23 con admin: 20 de las 32 pantallas lo llevan a «Pendientes» o a «Sin
+    # permiso», y lo contado ahí no es la pantalla pedida.
+    from scripts.recorrido_ux_playwright import informe_de_carga
+
+    filas = [
+        {"id": "componer", "titulo": "Componer", "ofrecida": False, "carga": _carga()},
+        {"id": "inicio", "titulo": "Vista general", "ofrecida": True, "carga": _carga()},
+    ]
+    informe = informe_de_carga(filas)
+    assert "| Componer (`componer`) | — | — | — | — | no ofrecida al rol |" in informe.splitlines()
+    assert "bien: 1 · revisar: 0 · falla: 0 · sin medida: 0 · no ofrecida al rol: 1" in informe

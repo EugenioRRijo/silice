@@ -1,6 +1,8 @@
 import { Button, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
 import { InlineNotification, TabList } from "../../comun/carbonEs";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useInRouterContext, useLocation, useNavigate } from "react-router";
+import type { PartidaCompuesta } from "../componer/ComponerPartida";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
@@ -48,6 +50,8 @@ function ContenidoDePestana({
   alCrearVersion,
   pedirAgregar,
   alAtenderAgregar,
+  partidaPedida,
+  alSoltarPartidaPedida,
 }: {
   pestana: PestanaId;
   borrador: BorradorAbierto | null;
@@ -62,6 +66,9 @@ function ContenidoDePestana({
   // La franja pidió «Agregar la primera partida» (Tarea 5): Partidas abre su diálogo y avisa que lo atendió.
   pedirAgregar: boolean;
   alAtenderAgregar: () => void;
+  // La partida recién compuesta con la que se abre el diálogo (llega desde Componer), o null.
+  partidaPedida: PartidaCompuesta | null;
+  alSoltarPartidaPedida: () => void;
 }) {
   if (borrador === null) return null;
   const llave = `${borrador.id}-${borrador.resumen.rev}`;
@@ -79,7 +86,16 @@ function ContenidoDePestana({
     case "espacio":
       return <PestanaEspacio key={borrador.id} {...deEdicion} />;
     case "partidas":
-      return <PestanaPresupuesto key={borrador.id} {...deEdicion} pedirAgregar={pedirAgregar} alAtenderAgregar={alAtenderAgregar} />;
+      return (
+        <PestanaPresupuesto
+          key={borrador.id}
+          {...deEdicion}
+          pedirAgregar={pedirAgregar}
+          alAtenderAgregar={alAtenderAgregar}
+          partidaPedida={partidaPedida}
+          alSoltarPartidaPedida={alSoltarPartidaPedida}
+        />
+      );
     case "apu":
       return <PestanaApu key={borrador.id} {...deEdicion} moneda={moneda} />;
     case "plan":
@@ -118,6 +134,32 @@ function ContenidoDePestana({
 }
 
 const NOTA_SOLO_LECTURA = "Está viendo este presupuesto en solo lectura.";
+
+// La partida que trae el estado de la ruta desde Componer (`{ agregarPartida: {codigo, descripcion, unidad} }`), o null si
+// el estado no la trae o no tiene esa forma.
+function partidaDelEstado(estado: unknown): PartidaCompuesta | null {
+  if (typeof estado !== "object" || estado === null || !("agregarPartida" in estado)) return null;
+  const p: unknown = estado.agregarPartida;
+  if (typeof p !== "object" || p === null) return null;
+  const { codigo, descripcion, unidad } = p as Record<string, unknown>;
+  if (typeof codigo !== "string" || codigo.trim() === "") return null;
+  return { codigo, descripcion: typeof descripcion === "string" ? descripcion : "", unidad: typeof unidad === "string" ? unidad : "" };
+}
+
+// Atiende «Agregar X al presupuesto» de Componer: lee la partida del estado de la ruta, la pasa a quien la pide y limpia el
+// estado (volver a montar la página o recargarla no vuelve a abrir el diálogo). Va aparte porque solo existe dentro de un
+// router: la Hoja también se monta sin él (pruebas de pestañas sueltas).
+function PedidoDesdeComponer({ alPedir }: { alPedir: (partida: PartidaCompuesta) => void }) {
+  const ubicacion = useLocation();
+  const navegar = useNavigate();
+  useEffect(() => {
+    const pedida = partidaDelEstado(ubicacion.state);
+    if (pedida === null) return;
+    void navegar(`${ubicacion.pathname}${ubicacion.search}`, { replace: true, state: null });
+    alPedir(pedida);
+  }, [ubicacion.state, ubicacion.pathname, ubicacion.search, navegar, alPedir]);
+  return null;
+}
 
 // El cuerpo de la Hoja: lo que se ve de la obra abierta (la oferta de retomar, la cabecera y las pestañas). La
 // versión se abre desde Versiones («Abrir», baja 9 de la Tarea 6) y el estado del borrador dice cuál es. El borrador, las
@@ -164,6 +206,20 @@ function CuerpoDeLaHoja() {
   // La franja pidió agregar la primera partida: se va a «Partidas» y su pestaña abre el diálogo (Tarea 5).
   const [pedirAgregar, setPedirAgregar] = useState(false);
   const alAtenderAgregar = () => setPedirAgregar(false);
+  // La partida con la que se abre ese diálogo, si llegó desde Componer («Agregar X al presupuesto», ficha de Componer,
+  // lote 1). El diálogo la toma al abrirse y se suelta al cerrarlo.
+  const [partidaPedida, setPartidaPedida] = useState<PartidaCompuesta | null>(null);
+  const soltarPartidaPedida = () => setPartidaPedida(null);
+  const pedirDesdeComponer = useCallback(
+    (partida: PartidaCompuesta) => {
+      setPartidaPedida(partida);
+      setFiltro(null);
+      irAPestana("partidas");
+      setPedirAgregar(true);
+    },
+    [irAPestana],
+  );
+  const enUnRouter = useInRouterContext();
   const irAPartidas = () => {
     setFiltro(null);
     irAPestana("partidas");
@@ -193,6 +249,7 @@ function CuerpoDeLaHoja() {
 
   return (
     <div className="silice-hoja__contenido" inert={inerte}>
+      {enUnRouter && <PedidoDesdeComponer alPedir={pedirDesdeComponer} />}
       {exito !== null && exito.proyecto === proyecto && (
         <AvisoDeGuardado exito={exito} alCerrar={quitarExito} />
       )}
@@ -277,7 +334,7 @@ function CuerpoDeLaHoja() {
               irAPestana(visibles[selectedIndex]!.id);
             }}
           >
-            <TabList aria-label={SECCIONES}>
+            <TabList aria-label={SECCIONES} contained>
               {visibles.map((p) => (
                 <Tab key={p.id}>{p.titulo}</Tab>
               ))}
@@ -298,6 +355,8 @@ function CuerpoDeLaHoja() {
                       alCrearVersion={alCrearVersion}
                       pedirAgregar={pedirAgregar}
                       alAtenderAgregar={alAtenderAgregar}
+                      partidaPedida={partidaPedida}
+                      alSoltarPartidaPedida={soltarPartidaPedida}
                     />
                   )}
                 </TabPanel>
@@ -324,7 +383,7 @@ export default function PaginaHoja() {
         {TITULO}
       </h1>
       {proyecto === null ? (
-        <EstadoVacio titulo="Elija una obra" />
+        <EstadoVacio titulo="Elija una obra" descripcion="Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K." />
       ) : deLaObra !== null ? (
         <CuerpoDeLaHoja />
       ) : (

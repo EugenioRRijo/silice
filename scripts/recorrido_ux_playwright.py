@@ -63,6 +63,21 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
+# CARGA_JS, UMBRAL_DE_DECISIONES e informe_de_carga se reexportan: las pruebas los toman de aquí.
+from scripts.recorrido_carga import (  # noqa: E402, F401
+    ANCHO_DE_CARGA,
+    CARGA_JS,
+    CONTROLES_JS,
+    LETRA_DE_CARGA,
+    UMBRAL_DE_DECISIONES,
+    anotar_carga,
+    escribir_informes_de_carga,
+    informe_de_carga,
+    sin_nombre,
+    toca_medir_carga,
+    veredicto_de_carga,
+)
+
 RUTAS_TS = RAIZ / "frontend-desktop" / "src" / "shell" / "rutas.ts"
 # Dónde vive cada pantalla desde F6 (contrato de rutas 2026-11-04): los espacios, las subvistas y la
 # Cuenta en `espacios.ts`; las secciones de la obra y la Vista general en `secciones.ts`.
@@ -569,52 +584,6 @@ BARRAS_JS = """() => {
 }""".replace("__TOL__", str(TOLERANCIA_SUBPIXEL))
 
 
-# Los controles de la pantalla (botones, enlaces y lo que hace de botón) con su nombre accesible
-# aproximado (aria-label, aria-labelledby, el texto, el `alt` de una imagen, `title` o el valor de
-# un botón de formulario), si están a la vista y si cuelgan de un `aria-hidden="true"`: axe no
-# revisa lo que el árbol de accesibilidad no expone, y este detector tampoco (`sin_nombre`).
-CONTROLES_JS = """() => {
-  const limpio = t => (t || '').replace(/\\s+/g, ' ').trim();
-  const nombre = el => {
-    const etiqueta = el.getAttribute('aria-label');
-    if (limpio(etiqueta)) return limpio(etiqueta);
-    const ids = (el.getAttribute('aria-labelledby') || '').split(/\\s+/).filter(Boolean);
-    const de = ids.map(i => {
-      const r = document.getElementById(i); return r ? r.textContent : ''; });
-    if (limpio(de.join(' '))) return limpio(de.join(' '));
-    if (limpio(el.textContent)) return limpio(el.textContent);
-    const img = el.querySelector('img[alt], [role="img"][aria-label]');
-    if (img && limpio(img.getAttribute('alt') || img.getAttribute('aria-label')))
-      return limpio(img.getAttribute('alt') || img.getAttribute('aria-label'));
-    if (limpio(el.getAttribute('title'))) return limpio(el.getAttribute('title'));
-    if (el.tagName === 'INPUT') return limpio(el.value);
-    return '';
-  };
-  const selector = 'button, a[href], [role="button"], [role="link"], input[type="button"],'
-    + ' input[type="submit"]';
-  return [...document.querySelectorAll(selector)].map(el => {
-    const r = el.getBoundingClientRect();
-    return {
-      rol: el.getAttribute('role') || (el.tagName === 'A' ? 'link' : 'button'),
-      nombre: nombre(el),
-      oculto: el.closest('[aria-hidden="true"]') !== null,
-      visible: r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden',
-      html: el.outerHTML.slice(0, 120),
-    };
-  });
-}"""
-
-
-def sin_nombre(controles: list[dict[str, Any]]) -> list[str]:
-    """Los botones y enlaces a la vista sin nombre accesible. Lo que cuelga de un
-    `aria-hidden="true"` (un portal cerrado de Carbon, un icono decorativo) se salta, como axe."""
-    return [
-        f"{c['rol']} {c['html']}"
-        for c in controles
-        if c.get("visible") and not c.get("oculto") and not str(c.get("nombre", "")).strip()
-    ]
-
-
 def _ir_y_esperar(pagina: Any, base: str, ruta: str) -> None:
     """`ruta` es el id de la pantalla; se abre su ruta canónica."""
     pagina.goto(f"{base}/app/{hash_de(ruta)}", wait_until="domcontentloaded")
@@ -792,6 +761,7 @@ def medir_pantalla(
     oferta: set[str],
     letra: str,
     obra: tuple[str | None, int] | None,
+    medir_carga: bool = False,
 ) -> dict[str, Any]:
     pagina = contexto.new_page()
     pagina.set_viewport_size({"width": ancho, "height": ALTO})
@@ -810,6 +780,8 @@ def medir_pantalla(
         "ofrecida": ruta["id"] in oferta,
         "obra": list(obra) if obra and es_de_la_obra(ruta["id"]) else None,
     }
+    if medir_carga:
+        fila["carga"] = None  # pedida; queda en None si la pantalla no llega a medirse
     try:
         inicio = time.monotonic()
         destino = hash_de(ruta["id"], obra if es_de_la_obra(ruta["id"]) else None)
@@ -824,6 +796,7 @@ def medir_pantalla(
         with contextlib.suppress(Exception):
             pagina.wait_for_load_state("networkidle", timeout=3000)
         fila["ms_hasta_reposo"] = round((time.monotonic() - inicio) * 1000)
+        anotar_carga(pagina, fila)
         captura = capturas / f"{rol}_{ancho}_{letra}_{ruta['id']}.png"
         _medir_cargada(pagina, fila, axe, captura)
     except Exception as error:
@@ -2121,9 +2094,10 @@ def recorrer_rol(
     resultado.setdefault("obra_por_rol", {})[rol] = list(obra) if obra else None
     for letra in letras:
         for ancho in anchos:
+            carga = toca_medir_carga(args.medir_carga, ancho, letra)
             for ruta in rutas:
                 fila = medir_pantalla(
-                    contexto, base, ruta, ancho, rol, capturas, axe, oferta, letra, obra
+                    contexto, base, ruta, ancho, rol, capturas, axe, oferta, letra, obra, carga
                 )
                 resultado["pantallas"].append(fila)
                 fallos = fallos_de_la_fila(fila)
@@ -2131,6 +2105,8 @@ def recorrer_rol(
                     f"{rol:5} {letra:10} {ancho} {ruta['id']:15} h1={fila.get('h1')} "
                     f"{fila.get('ms_hasta_h1')}ms {'; '.join(fallos) or 'ok'}"
                 )
+                if fila.get("carga"):
+                    print(f"      carga: {veredicto_de_carga(fila['carga'])} {fila['carga']}")
             # El recorrido empieza al auditar desde el inicio de Auditoría: solo quien audita.
             if not args.sin_recorrido and "libros" in oferta:
                 for fila in medir_con_recorrido(
@@ -2194,6 +2170,12 @@ def analizador() -> argparse.ArgumentParser:
     a.add_argument(
         "--visor", action="store_true", help="el visor del libro: axe, lienzo, salir y volver"
     )
+    a.add_argument(
+        "--medir-carga",
+        action="store_true",
+        help="cuenta los controles a la vista y mira la primera pantalla (a 1366 con letra "
+        "normal, que se añaden si faltan); deja carga_<rol>.md para revisión humana",
+    )
     a.add_argument("--url", help="servidor ya en marcha (usa las cuentas ficticias por omisión)")
     a.add_argument(
         "--funcional", action="store_true", help="ejecuta la acción principal de cada pantalla"
@@ -2213,8 +2195,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.funcional:
         return main_funcional(args.salida, args.acciones, args.solo)
 
-    letras = letras_pedidas(args.letras)
-    anchos = anchos_pedidos(args.anchos)
+    letras = letras_pedidas(args.letras + ([LETRA_DE_CARGA] if args.medir_carga else []))
+    anchos = anchos_pedidos(args.anchos + ([str(ANCHO_DE_CARGA)] if args.medir_carga else []))
     salida: Path = args.salida
     capturas = salida / "capturas"
     capturas.mkdir(parents=True, exist_ok=True)
@@ -2314,6 +2296,8 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(resultado, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(json.dumps(resultado["resumen"], indent=2, ensure_ascii=False))
+    if args.medir_carga:
+        escribir_informes_de_carga(salida, args.roles, resultado["pantallas"])
     return 0
 
 

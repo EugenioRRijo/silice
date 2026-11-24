@@ -716,7 +716,7 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     const u = montar();
     const dialogo = await elegirElComputo(u);
     const franja = await within(dialogo).findByRole("region", { name: "Siguiente paso" });
-    expect(franja).toHaveTextContent("Te falta: la carpeta no tiene lista de precios para armar");
+    expect(franja).toHaveTextContent("Falta: la carpeta no tiene lista de precios para armar");
     await extraerTelecom(u, dialogo);
     expect(botonLlevar(dialogo)).toBeDisabled();
     expect(llamadas("POST", "/presupuestos/calcular")).toHaveLength(0);
@@ -727,7 +727,7 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     const u = montar();
     const dialogo = await elegirElComputo(u);
     expect(await within(dialogo).findByRole("region", { name: "Siguiente paso" })).toHaveTextContent(
-      "Te falta: la carpeta no tiene lista de precios para armar",
+      "Falta: la carpeta no tiene lista de precios para armar",
     );
     await extraerTelecom(u, dialogo);
     expect(botonLlevar(dialogo)).toBeDisabled();

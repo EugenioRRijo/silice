@@ -276,7 +276,14 @@ function Cargado({ proyecto }: { proyecto: string }) {
   const carga = useCarga<TableroRespuesta>(rutaDelTablero(proyecto), alExpirar);
   if (carga.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando el tablero" />;
   if (carga.estado === "listo") return <Contenido datos={carga.datos} />;
-  if (carga.estado === "sin_permiso") return <EstadoVacio titulo="Su cuenta no puede ver el tablero" />;
+  if (carga.estado === "sin_permiso") {
+    return (
+      <EstadoVacio
+        titulo="Su cuenta no puede ver el tablero"
+        descripcion="Ver el tablero pide el papel «arma presupuestos» o «revisa paquetes»: pídaselo a quien administra Sílice."
+      />
+    );
+  }
   if (carga.estado === "no_disponible") {
     return <EstadoVacio titulo="Esa obra no está en esta carpeta" descripcion="Elija otra obra en la lista «Obras» de la barra lateral." />;
   }

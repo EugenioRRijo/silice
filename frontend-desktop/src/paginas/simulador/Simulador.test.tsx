@@ -281,6 +281,7 @@ describe("Simulador de listas", () => {
     montar();
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     expect(await screen.findByText(MENSAJE_SIN_FILAS)).toBeInTheDocument();
+    expect(screen.getByText(/Quite los insumos elegidos en «Insumos» para simular todos/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Lista simulada" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Descargar CSV" })).not.toBeInTheDocument();
   });

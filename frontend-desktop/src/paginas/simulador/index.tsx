@@ -15,6 +15,7 @@ import { useAplicacion } from "../../shell/contexto";
 import {
   AVISO_HERRAMIENTA,
   MENSAJE_SIN_FILAS,
+  MENSAJE_SIN_FILAS_QUE_HACER,
   SEMILLA_INICIAL,
   VARIACION_INICIAL,
   cuerpoDe,
@@ -185,7 +186,7 @@ export default function PaginaSimulador() {
               {cambiado ? " Cambió el formulario: pulse Generar lista simulada para actualizar." : ""}
             </p>
             {estado.filas.length === 0 ? (
-              <EstadoVacio titulo={MENSAJE_SIN_FILAS} />
+              <EstadoVacio titulo={MENSAJE_SIN_FILAS} descripcion={MENSAJE_SIN_FILAS_QUE_HACER} />
             ) : (
               <TablaDensa etiqueta="Lista simulada" columnas={COLUMNAS} filas={filasDeTabla(estado.filas)} />
             )}

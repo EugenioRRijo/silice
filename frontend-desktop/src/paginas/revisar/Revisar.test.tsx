@@ -257,6 +257,7 @@ describe("Revisar un paquete", () => {
     expect(screen.getByRole("tab", { name: "Paquete .silice" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Presupuesto en Excel" })).toBeInTheDocument();
     expect(screen.getByText("Elija el archivo .silice que recibió.")).toBeInTheDocument();
+    expect(screen.getByText(/Suéltelo en el recuadro de arriba, o haga clic en él para buscarlo en su equipo/)).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 

@@ -8,6 +8,8 @@ import type { HallazgoRevision } from "./tipos";
 
 // ui/paginas/revisar.py lo dice con Markdown («Elija el archivo `.silice` que recibió.»); aqui va sin marcas.
 export const SIN_ARCHIVO = "Elija el archivo .silice que recibió.";
+export const SIN_ARCHIVO_QUE_HACER =
+  "Suéltelo en el recuadro de arriba, o haga clic en él para buscarlo en su equipo: Sílice lo verifica y lo vuelve a auditar.";
 
 export type TipoDeAviso = "success" | "warning" | "error";
 

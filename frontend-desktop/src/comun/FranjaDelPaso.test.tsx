@@ -8,9 +8,9 @@ import { FranjaDelPaso } from "./FranjaDelPaso";
 const region = () => screen.getByRole("region", { name: "Siguiente paso" });
 
 describe("FranjaDelPaso", () => {
-  it("«falta» dice «Te falta:» y el texto", () => {
+  it("«falta» dice «Falta:» y el texto", () => {
     render(<FranjaDelPaso tipo="falta" texto="Faltan 2 precios" />);
-    expect(region()).toHaveTextContent("Te falta: Faltan 2 precios");
+    expect(region()).toHaveTextContent("Falta: Faltan 2 precios");
   });
 
   it("«siguiente» dice «Siguiente paso:» y el texto, sin ícono de advertencia", () => {

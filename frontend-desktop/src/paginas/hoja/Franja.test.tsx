@@ -149,12 +149,12 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     await screen.findByRole("table", { name: "Presupuesto" });
   }
 
-  test("borrador en blanco: «Te falta: Agregue la primera partida» y su botón abre «Agregar partida»", async () => {
+  test("borrador en blanco: «Falta: Agregue la primera partida» y su botón abre «Agregar partida»", async () => {
     versiones = SIN_VERSIONES;
     abierto = borrador({ version: null, vigente: null });
     montar();
     const zona = await franja();
-    expect(zona).toHaveTextContent("Te falta: Agregue la primera partida");
+    expect(zona).toHaveTextContent("Falta: Agregue la primera partida");
     await userEvent.click(within(zona).getByRole("button", { name: "Agregar la primera partida" }));
     expect(await screen.findByRole("dialog", { name: "Agregar partida" })).toBeInTheDocument();
   });
@@ -229,11 +229,11 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     });
   });
 
-  test("con graves: «Te falta: Hay 2 hallazgos graves…» e «Ir a Revisión» abre la pestaña «Revisión»", async () => {
+  test("con graves: «Falta: Hay 2 hallazgos graves…» e «Ir a Revisión» abre la pestaña «Revisión»", async () => {
     abierto = borrador({ hallazgos: [{ severidad: "ERROR", total: 1 }, { severidad: "CRITICO", total: 1 }, { severidad: "ADVERTENCIA", total: 4 }] });
     montar();
     const zona = await franja();
-    expect(zona).toHaveTextContent("Te falta: Hay 2 hallazgos graves: revíselos antes de enviar");
+    expect(zona).toHaveTextContent("Falta: Hay 2 hallazgos graves: revíselos antes de enviar");
     await userEvent.click(within(zona).getByRole("button", { name: "Ir a Revisión" }));
     expect(await screen.findByRole("tab", { name: "Revisión", selected: true })).toBeInTheDocument();
   });
@@ -244,7 +244,7 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     await listo();
     await userEvent.click(screen.getByRole("tab", { name: "Revisión" }));
     const zona = await franja();
-    expect(zona).toHaveTextContent("Te falta: La versión 001 fue devuelta: corrija lo observado");
+    expect(zona).toHaveTextContent("Falta: La versión 001 fue devuelta: corrija lo observado");
     await userEvent.click(within(zona).getByRole("button", { name: "Hacer una versión nueva" }));
     const partidas = await screen.findByRole("tab", { name: "Partidas", selected: true });
     // Pasada de navegador del cierre de F4 (H8): ya en «Partidas» el botón no daba respuesta (el foco se quedaba en él y la
@@ -315,7 +315,7 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
       alLeerAprobaciones = () => json(aprobacionesCon({ "001": "devuelta" }));
       montar();
       const zona = await franja();
-      expect(zona).toHaveTextContent("Te falta: La versión 001 fue devuelta: corrija lo observado");
+      expect(zona).toHaveTextContent("Falta: La versión 001 fue devuelta: corrija lo observado");
       expect(within(zona).queryByRole("button")).toBeNull();
       expect(screen.queryByRole("button", { name: DE_ESCRITURA })).toBeNull();
     });
@@ -330,7 +330,7 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
 
     test.each([
       ["guardada", "Siguiente paso: Envíe la versión 001 a aprobación"],
-      ["devuelta", "Te falta: La versión 001 fue devuelta: corrija lo observado"],
+      ["devuelta", "Falta: La versión 001 fue devuelta: corrija lo observado"],
     ])("cuenta que revisa, %s: el texto sale y ningún botón que escriba", async (estado, texto) => {
       alLeerAprobaciones = () => json(aprobacionesCon({ "001": estado }));
       montar(REVISA);
@@ -345,7 +345,7 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
       abierto = borrador({ hallazgos: [{ severidad: "ERROR", total: 1 }] });
       montar(REVISA);
       const zona = await franja();
-      expect(zona).toHaveTextContent("Te falta: Hay 1 hallazgo grave: revíselo antes de enviar");
+      expect(zona).toHaveTextContent("Falta: Hay 1 hallazgo grave: revíselo antes de enviar");
       expect(within(zona).getByRole("button", { name: "Ir a Revisión" })).toBeInTheDocument();
     });
   });

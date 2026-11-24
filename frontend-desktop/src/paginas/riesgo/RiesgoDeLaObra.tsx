@@ -41,6 +41,7 @@ import { ResultadoDeLaComprobacion, ResultadoDeLaProyeccion } from "./ResultadoD
 import "./riesgo.scss";
 
 const SIN_OBRA = "Abra una obra para ver el riesgo de precios de su presupuesto.";
+const SIN_OBRA_DONDE = "Las obras están en «Obras» de la barra lateral; también puede buscarla con Ctrl+K.";
 const SIN_VERSIONES = "Esta obra aún no tiene versiones";
 const SIN_VERSIONES_DESCRIPCION =
   "Esta obra aún no tiene versiones guardadas. Guarde una en el presupuesto para proyectar su riesgo.";
@@ -220,7 +221,7 @@ export default function RiesgoDeLaObra() {
         Cuánto puede subir el presupuesto si los precios se mueven como en los meses pasados, y qué tanto acertó esa cuenta
         con lo que de verdad pasó. El sistema hace todas las cuentas; aquí se leen.
       </p>
-      {nombre === null && <EstadoVacio titulo={SIN_OBRA} />}
+      {nombre === null && <EstadoVacio titulo={SIN_OBRA} descripcion={SIN_OBRA_DONDE} />}
       {versiones.estado === "error" && <AvisoError error={versiones.error} titulo="No se pudieron leer las versiones" />}
       {versiones.estado === "listo" && ofrecidas.length === 0 && (
         <EstadoVacio titulo={SIN_VERSIONES} descripcion={SIN_VERSIONES_DESCRIPCION}>

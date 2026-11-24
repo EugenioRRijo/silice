@@ -364,7 +364,7 @@ def test_una_fila_con_error_de_medida_y_partida_pendiente_dice_las_dos_cosas_por
 
 def test_con_las_partidas_en_el_catalogo_ninguna_fila_dice_pendiente():
     estado = _elaborar(_limpio()).estado
-    assert all("PENDIENTE" not in e.texto and "sin APU" not in e.texto for e in estado.values())
+    assert all("PENDIENTE" not in e.texto and "sin precio" not in e.texto for e in estado.values())
 
 
 # --- SF2: las tres especialidades en la hoja -----------------------------------------------------

@@ -194,6 +194,19 @@ const pausa = () =>
 const listo = () => waitFor(() => expect(fetchFalso.mock.calls.some(([e]) => String(e).startsWith("/v1/aprobaciones"))).toBe(true));
 
 describe("Versiones: la tabla de las versiones de la obra", () => {
+  test("fuera de una obra (una dirección vieja) dice dónde abrir una", () => {
+    const aplicacion: Aplicacion = { sesion: ARMA, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+    render(
+      <ContextoAplicacion.Provider value={aplicacion}>
+        <MemoryRouter>
+          <PaginaVersiones />
+        </MemoryRouter>
+      </ContextoAplicacion.Provider>,
+    );
+    expect(screen.getByText("Elija una obra")).toBeInTheDocument();
+    expect(screen.getByText("Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K.")).toBeInTheDocument();
+  });
+
   test("un h1 «Versiones» y una tabla con las siete columnas (y la de las acciones)", async () => {
     montar();
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["Versiones"]);

@@ -168,7 +168,8 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     expect(filas[1]!.querySelector("svg")).not.toBeNull(); // el color nunca va solo
     expect(
       within(filas[1]!).getByTitle(
-        "ADVERTENCIA: ambiente BAN-01: la medida es un supuesto declarado (origen O1)",
+        // El ícono dice la severidad: el texto no la repite en mayúsculas (estadoLlano, 2026-11-23).
+        "Ambiente BAN-01: la medida es un supuesto declarado (origen O1)",
       ),
     ).toBeInTheDocument();
     expect(within(filas[2]!).getByText("OK")).toBeInTheDocument();

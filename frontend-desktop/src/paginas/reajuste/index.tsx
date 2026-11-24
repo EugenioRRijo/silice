@@ -182,7 +182,10 @@ function Estudio({ proyecto, alExpirar }: { proyecto: string; alExpirar: () => v
   if (contexto.estado !== "listo") return <MensajeDeCarga carga={contexto} />;
   if (contexto.datos.versiones.length === 0) {
     return (
-      <EstadoVacio titulo="La obra no tiene versiones guardadas: guarde la del contrato primero" />
+      <EstadoVacio
+        titulo="La obra no tiene versiones guardadas: guarde la del contrato primero"
+        descripcion="Guárdela en la sección «Presupuesto» de la obra, con «Guardar primera versión…»; después vuelva aquí para reajustar sus precios."
+      />
     );
   }
   return <Formulario proyecto={proyecto} contexto={contexto.datos} alExpirar={alExpirar} />;
@@ -371,7 +374,7 @@ function Formulario({
                       value={form.clausula.r}
                       onChange={(e) => campo("r", e.target.value)}
                     />
-                    <CampoTexto id="rj-fuente-r" labelText="Cláusula o documento que fija R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
+                    <CampoTexto id="rj-fuente-r" labelText="Cláusula o documento que fija la parte que no se reajusta (R)" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
                     <CampoTexto id="rj-fuente" labelText="Fuente de la cláusula" helperText="Contrato, número, fecha." value={form.clausula.fuente} onChange={(e) => campo("fuente", e.target.value)} />
                     <CampoTexto id="rj-responsable" labelText="Responsable" helperText="En blanco, su nombre de usuario." value={form.clausula.responsable} onChange={(e) => campo("responsable", e.target.value)} />
                   </div>

@@ -151,6 +151,7 @@ describe("Inicio de producción", () => {
     existencias = () => json({ detalle: "No encontrado." }, 404);
     montar();
     expect(await screen.findByText("Sin datos de la arenera en esta instalación")).toBeInTheDocument();
+    expect(screen.getByText(/La especialidad «producción» está apagada/)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
