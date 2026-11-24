@@ -16,6 +16,16 @@
 
 Las filas en blanco se cuentan aparte como pendientes y no entran en la precisión.
 
+**La unidad es la causa raíz, no el síntoma.** Una fórmula copiada con una fila fija produce un hallazgo por cada
+partida que la repite. La planilla junta en una sola fila los hallazgos que tienen la misma regla y la misma primera
+cláusula (qué lee y de dónde). Para eso no se cuentan las celdas, los números ni el valor que se encontró en cada caso.
+La fila trae sus «Ocurrencias», todas sus celdas y la severidad más grave. En 5 libros de prueba locales, 139
+hallazgos quedaron en 76 causas, y las 29 alertas L1 de un mismo libro, en 3. El resumen informa esa compactación. Con
+`exportar --sin-agrupar` sale un hallazgo por fila, por si se quiere comparar.
+
+Los avisos de regla «no aplicable» (R2 y R7 cuando el libro no trae curva ni plan) no se exportan para marcar: se
+anotan en las instrucciones de la planilla.
+
 ## Papeles
 
 - **Quien siembra:** el autor que no escribió las reglas de auditoría (v8). Siembra a partir de un catálogo de tipos de

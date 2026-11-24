@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
@@ -41,8 +42,8 @@ FALSO = "Falso"
 MARCAS = {"verdadero": VERDADERO, "falso": FALSO}
 SEPARADOR_CELDAS = "; "
 
-ENCABEZADO_HALLAZGOS = ("N°", "Regla", "Severidad", "Celdas", "Descripción", "Impacto",
-                        "Veredicto", "Nota del evaluador")
+ENCABEZADO_HALLAZGOS = ("N°", "Regla", "Severidad", "Ocurrencias", "Celdas", "Descripción",
+                        "Impacto", "Veredicto", "Nota del evaluador")
 ENCABEZADO_ESCAPADOS = ("Celda", "Qué error es")
 ENCABEZADO_CLAVE = ("N°", "Celda", "Tipo de error", "Qué se cambió", "Detectado por hallazgo N°")
 
@@ -68,6 +69,7 @@ class FilaPlanilla:
     celdas: tuple[str, ...]
     descripcion: str
     impacto: float | None = None
+    ocurrencias: int = 1
 
 
 def _no_aplica(h) -> bool:
@@ -95,6 +97,44 @@ def filas_de_hallazgos(hallazgos: Iterable) -> list[FilaPlanilla]:
         )
         for i, h in enumerate(hallazgos, start=1)
     ]
+
+
+_CELDA = re.compile(r"\b[A-Z]{1,3}\$?\d+\b")
+_NUMERO = re.compile(r"\d+(?:[.,]\d+)*")
+_VALOR = re.compile(r"\(valor (?:«[^»]*»|[^)]*)\)")
+
+
+def patron(descripcion: str) -> str:
+    """La causa de un hallazgo: su primera cláusula (qué lee y de dónde), sin lo que cambia de un
+    caso a otro (celdas, números y el valor encontrado). Lo que sigue al primer «;» o al «Efecto:»
+    son detalles del caso. Dos partidas con la misma fórmula copiada dan el mismo patrón."""
+    causa = descripcion.split("Efecto:")[0].split(";")[0]
+    causa = _VALOR.sub("(valor #)", causa)
+    return " ".join(_NUMERO.sub("#", _CELDA.sub("#", causa)).split())
+
+
+def causas_de_hallazgos(hallazgos: Iterable) -> list[FilaPlanilla]:
+    """Una fila por causa raíz (misma regla y mismo patrón), numeradas desde 1 en el orden en que
+    aparece su primer caso. Lleva la severidad más grave, todas las celdas, la suma del impacto y
+    cuántos hallazgos agrupa. Los avisos de regla no aplicable quedan fuera."""
+    grupos: dict[tuple[str, str], list] = {}
+    for h in hallazgos:
+        if not _no_aplica(h):
+            grupos.setdefault((h.regla, patron(h.descripcion)), []).append(h)
+    filas = []
+    for numero, casos in enumerate(grupos.values(), start=1):
+        celdas = tuple(dict.fromkeys(str(c) for h in casos for c in h.origen_ids))
+        impactos = [h.impacto for h in casos if h.impacto is not None]
+        filas.append(FilaPlanilla(
+            numero=numero,
+            regla=casos[0].regla,
+            severidad=max(casos, key=lambda h: h.severidad).severidad.name,
+            celdas=celdas,
+            descripcion=casos[0].descripcion,
+            impacto=float(sum(impactos)) if impactos else None,
+            ocurrencias=len(casos),
+        ))
+    return filas
 
 
 # --- las medidas ---------------------------------------------------------------------------------
@@ -218,7 +258,8 @@ def porcentaje(valor: float | None) -> str:
 
 
 def resumen(*, precision: Medida, deteccion: Deteccion | None, exhaustividad: Medida,
-            kappa: float | None, marcados_por_los_dos: int | None = None) -> str:
+            kappa: float | None, marcados_por_los_dos: int | None = None,
+            agrupacion: tuple[int, int] | None = None) -> str:
     """Las cifras agregadas para la tesis: sin celdas, sin descripciones, sin nombres."""
     lineas = [
         "| Medida | Cuentas | Valor |",
@@ -238,6 +279,10 @@ def resumen(*, precision: Medida, deteccion: Deteccion | None, exhaustividad: Me
     texto_kappa = "sin dato (hace falta una segunda planilla con variación)" if kappa is None \
         else decimal_coma(kappa)
     lineas.append(f"| Kappa de Cohen entre los dos evaluadores | — | {texto_kappa} |")
+    if agrupacion is not None and agrupacion[1]:
+        hallazgos, causas = agrupacion
+        lineas += ["", f"{hallazgos} hallazgos agrupados en {causas} causas "
+                       f"({decimal_coma(hallazgos / causas, 1)} por causa)."]
     if marcados_por_los_dos is not None:
         lineas += ["", f"Hallazgos marcados por los dos: {marcados_por_los_dos}"]
     return "\n".join(lineas)
@@ -295,16 +340,17 @@ def escribir_planilla(filas: Sequence[FilaPlanilla], destino: Path, *, raiz_repo
     for f in filas:
         fila = hoja.max_row + 1
         hoja.cell(row=fila, column=1, value=f.numero)
-        for col, valor in ((2, f.regla), (3, f.severidad), (4, SEPARADOR_CELDAS.join(f.celdas)),
-                           (5, f.descripcion)):
+        hoja.cell(row=fila, column=4, value=f.ocurrencias)
+        for col, valor in ((2, f.regla), (3, f.severidad), (5, SEPARADOR_CELDAS.join(f.celdas)),
+                           (6, f.descripcion)):
             _texto(hoja.cell(row=fila, column=col), valor)
-        hoja.cell(row=fila, column=6, value=f.impacto)
+        hoja.cell(row=fila, column=7, value=f.impacto)
     columna = ENCABEZADO_HALLAZGOS.index("Veredicto") + 1
     letra = hoja.cell(row=1, column=columna).column_letter
     lista = DataValidation(type="list", formula1=f'"{VERDADERO},{FALSO}"', allow_blank=True)
     lista.add(f"{letra}2:{letra}{max(hoja.max_row, 2) + 500}")
     hoja.add_data_validation(lista)
-    for letra_col, ancho in zip("ABCDEFGH", (6, 8, 12, 28, 70, 12, 12, 30), strict=True):
+    for letra_col, ancho in zip("ABCDEFGHI", (6, 8, 12, 12, 28, 70, 12, 12, 30), strict=True):
         hoja.column_dimensions[letra_col].width = ancho
 
     _hoja_con_encabezado(libro, "Se le escaparon", ENCABEZADO_ESCAPADOS)
@@ -362,6 +408,7 @@ def leer_filas(ruta: Path) -> list[FilaPlanilla]:
             severidad=str(f["Severidad"] or ""),
             celdas=tuple(c for c in str(f["Celdas"] or "").split(SEPARADOR_CELDAS) if c),
             descripcion=str(f["Descripción"] or ""),
+            ocurrencias=int(f["Ocurrencias"] or 1),
         )
         for f in _filas_de_hoja(Path(ruta), "Hallazgos", ENCABEZADO_HALLAZGOS)
     ]
@@ -394,7 +441,8 @@ def _exportar(args: argparse.Namespace) -> int:
     datos = origen.read_bytes()
     resultado = procesar_libro(datos, origen.name, fecha_devolucion=args.fecha or date.today(),
                                perfil=args.perfil)
-    filas = filas_de_hallazgos(resultado.informe.hallazgos)
+    hallazgos = resultado.informe.hallazgos
+    filas = filas_de_hallazgos(hallazgos) if args.sin_agrupar else causas_de_hallazgos(hallazgos)
     destino = escribir_planilla(
         filas, Path(args.salida), raiz_repo=Path(args.raiz_repo),
         origen={"SHA-256 del libro auditado": hashlib.sha256(datos).hexdigest(),
@@ -430,8 +478,10 @@ def _calcular(args: argparse.Namespace) -> int:
         los_dos = len(comunes)
         if comunes:
             kappa = kappa_cohen([marcas[n] for n in comunes], [otras_marcas[n] for n in comunes])
+    filas = leer_filas(Path(args.planilla))
+    agrupacion = (sum(f.ocurrencias for f in filas), len(filas))
     print(resumen(precision=p, deteccion=det, exhaustividad=exhaustividad(p.aciertos, escapados),
-                  kappa=kappa, marcados_por_los_dos=los_dos))
+                  kappa=kappa, marcados_por_los_dos=los_dos, agrupacion=agrupacion))
     return 0
 
 
@@ -444,6 +494,8 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--salida", required=True)
     e.add_argument("--fecha", type=fecha_iso, default=None, help="AAAA-MM-DD (por omisión, hoy)")
     e.add_argument("--perfil", default=None)
+    e.add_argument("--sin-agrupar", action="store_true",
+                   help="un hallazgo por fila en vez de una causa raíz por fila")
     e.add_argument("--raiz-repo", default=str(RAIZ))
     e.set_defaults(funcion=_exportar)
 

@@ -73,7 +73,8 @@ def test_las_reglas_no_aplicables_no_se_exportan_para_marcar():
 # --- causa raíz ----------------------------------------------------------------------------------
 
 _CRONO = ("CRONOGRAMA!D{f} (partida {p}) lee APU-0{p}!F23 (valor vacía) como rendimiento; el "
-          "rendimiento de APU-0{p} está en APU-0{p}!F2{p} (valor 0,{p}5). Efecto: la duración da {p} d")
+          "rendimiento de APU-0{p} está en APU-0{p}!F2{p} (valor 0,{p}5). "
+          "Efecto: la duración da {p} d")
 
 
 def _hd(regla: str, texto: str, *origen: str, sev=Severidad.ERROR) -> Hallazgo:
@@ -91,6 +92,24 @@ def test_la_misma_formula_copiada_es_una_sola_causa():
     assert [(c.numero, c.regla, c.ocurrencias) for c in causas] == [(1, "L1", 2), (2, "L9", 1)]
     assert causas[0].celdas == ("CRONOGRAMA!D4", "CRONOGRAMA!D5")
     assert causas[0].severidad == "CRITICO"  # la más grave de sus casos
+
+
+def test_los_detalles_de_cada_caso_no_parten_la_causa():
+    # La causa es la primera cláusula: qué lee y de dónde. Lo que deja sin leer en cada APU o el
+    # valor que encontró en la celda equivocada son detalles del caso, no otra causa.
+    aux = ("AUX lee de APU-0{n} las filas fijas 10-17, 22-26, 34-37 para la lista de compras; deja "
+           "sin leer {lista}. Efecto: PROCURA compra de menos")
+    crono = ("CRONOGRAMA!D{n} (partida {n}) lee APU-0{n}!F23 (valor {v}) como rendimiento; el "
+             "rendimiento de APU-0{n} está en APU-0{n}!F25 (valor 0,5).")
+    causas = m.causas_de_hallazgos([
+        _hd("L1", aux.format(n=1, lista="1 línea(s): EQ-03 (fila 38)")),
+        _hd("L1", aux.format(
+            n=2, lista="3 línea(s): MO-03 (fila 27), MO-05 (fila 28), EQ-03 (fila 38)")),
+        _hd("L1", crono.format(n=4, v="vacía")),
+        _hd("L1", crono.format(n=5, v="0,75")),
+        _hd("L1", crono.format(n=6, v="«Costo/día (USD)»")),
+    ])
+    assert [c.ocurrencias for c in causas] == [2, 3]
 
 
 def test_reglas_distintas_con_el_mismo_texto_no_se_juntan():
