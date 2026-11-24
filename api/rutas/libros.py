@@ -104,8 +104,8 @@ from adapters.hoja_empresa.visual import LibroVisual, replicar_libro
 from api.dependencias import USUARIO_API, SesionDep
 from api.presentacion import exacto, exacto_o_nada, exacto_sin_ceros, monto, porcentaje
 from api.proteccion import LIMITE_CUERPO
+from api.rutas.libros_causas import CausaRaizRespuesta, causas_de_tabla
 from api.sesion_web import exigir_clave_o_sesion
-from aplicacion.causas_raiz import agrupar
 from aplicacion.nombres_reglas import nombre_de_regla
 from fusion.alertas import ContextoPrecios
 from fusion.apu_por_hoja import auditar_apu_por_hoja
@@ -170,48 +170,6 @@ def _hallazgo_libro(h) -> HallazgoLibroRespuesta:
         impacto=exacto_o_nada(h.impacto),
         accion=h.accion,
     )
-
-
-class CausaRaizRespuesta(BaseModel):
-    """Hallazgos con la misma regla y la misma causa (`aplicacion/causas_raiz.py`): una fórmula
-    copiada con una fila fija es una causa con un caso por partida. `indices` son las posiciones
-    de sus casos en `hallazgos`; `descripcion` es la del primero y `severidad`, la más grave."""
-
-    codigo: str
-    nombre_regla: str = ""
-    severidad: str
-    descripcion: str
-    ocurrencias: int
-    indices: list[int]
-    #: La traza para juzgar sin abrir el código: todas las celdas de sus casos (sin repetir) y el
-    #: valor que encontró la regla frente al que esperaba, del primer caso que los trae.
-    celdas: list[str] = []
-    observado: str | None = None
-    esperado: str | None = None
-
-
-def _causas(tabla, informe=()) -> tuple[list[CausaRaizRespuesta], list[int]]:
-    """`tabla` y `informe` (los `Hallazgo` del núcleo) van en el mismo orden
-    (`fusion.proceso._tabla`)."""
-    causas, no_aplicables = agrupar([(h.codigo, h.severidad, h.descripcion) for h in tabla])
-    informe = list(informe)
-    respuesta = []
-    for c in causas:
-        con_valores = [informe[i] for i in c.indices if i < len(informe)
-                       and informe[i].valor_observado is not None]
-        primero = con_valores[0] if con_valores else None
-        respuesta.append(CausaRaizRespuesta(
-            codigo=c.codigo,
-            nombre_regla=nombre_de_regla(c.codigo),
-            severidad=c.severidad,
-            descripcion=c.descripcion,
-            ocurrencias=len(c.indices),
-            indices=list(c.indices),
-            celdas=list(dict.fromkeys(tabla[i].celda for i in c.indices if tabla[i].celda)),
-            observado=exacto_o_nada(primero.valor_observado) if primero else None,
-            esperado=exacto_o_nada(primero.valor_esperado) if primero else None,
-        ))
-    return respuesta, no_aplicables
 
 
 class AlertaPrecioRespuesta(BaseModel):
@@ -767,7 +725,7 @@ async def auditar_libro(
     aviso = await run_in_threadpool(
         _guardar, lambda s: registrar_resultado(s, r, usuario=usuario, ahora=ahora)
     )
-    causas, no_aplicables = _causas(r.hallazgos_tabla, r.informe.hallazgos)
+    causas, no_aplicables = causas_de_tabla(r.hallazgos_tabla, r.informe.hallazgos)
     return LibroAuditadoRespuesta(
         causas=causas,
         no_aplicables=no_aplicables,
