@@ -7,8 +7,9 @@ la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, man
 de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia.md §5](metodologia.md)).
 
 > **Congelamiento del consejo (2026-11-23):** tras #138 a #141 no entran funciones nuevas; se valida con personas y se
-> mide la auditoría sin circularidad ([plan](planes/2026-11-23-plan-auditoria-no-circular.md)). #142 y #143 son lo
-> último: la pantalla por causa raíz y los instrumentos de medición (§2).
+> mide la auditoría sin circularidad ([plan](planes/2026-11-23-plan-auditoria-no-circular.md)). #142 y #143 fueron lo
+> último (fusionados el 2026-11-24). La etiqueta del congelamiento (Fase 2) espera la decisión de §4 sobre los huecos
+> de reglas.
 
 ## 1. Qué hay en `main`
 
@@ -50,7 +51,10 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   (#139), fusionados por Eugenio; la carga cognitiva con el rótulo congelado de la Hoja (#140, opción A de Eugenio) y
   la herramienta de medición de la auditoría, el respaldo local, el guion de la demo del plan B, el ensayo de la
   defensa y el esqueleto del capítulo de resultados (#141), fusionados el 2026-11-24 por Claude con la autorización
-  de Eugenio («tu puedes cerrar 140 te doy permiso y lo demas tambien»). `main` queda en `b8cafe8b`.
+  de Eugenio («tu puedes cerrar 140 te doy permiso y lo demas tambien»). El mismo día entraron #142 (la pantalla de
+  auditoría agrupa los hallazgos por causa raíz y pone aparte R2 y R7) y #143 (Fase 1 del plan no circular: oráculo
+  LibreOffice, manifiesto, inyector, trasplante de valores, medición una falla por vez, metamórficas, sensibilidad de
+  umbrales, tasa de no interpretables y traza por causa). `main` queda en `2d757e2c`.
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
@@ -62,8 +66,6 @@ instalador con huella SHA-256 firmada.
 | PR o rama | Qué trae | Estado |
 |---|---|---|
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
-| #142 `feature/causas-raiz-pantalla` | La pantalla de auditoría agrupa los hallazgos por causa raíz y pone aparte las reglas que no aplicaron (R2 y R7), en la misma pestaña; la respuesta vive en `api/rutas/libros_causas.py` | PR abierto contra `main`; Claude lo fusiona con CI verde (autorización del 2026-11-23) |
-| #143 `feature/auditoria-no-circular` | Fase 1 del plan no circular: oráculo LibreOffice, manifiesto de corrida, inyector de fallas, trasplante de valores, medición una falla por vez (`scripts/medir_inyeccion.py --una-por-vez`), metamórficas, sensibilidad de umbrales, tasa de no interpretables y traza por causa. Primera medición: 5 de 12 fallas detectadas | Apilado sobre #142; se fusiona después |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
 autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada tarea de la tanda tuvo su árbol
@@ -134,6 +136,13 @@ subir nada.
 
 ## 4. Lo que espera a Eugenio
 
+0. **Huecos de reglas que halló la medición (2026-11-24).** Una falla por vez, Sílice detecta 5 de 12 (41,7 %), bajo
+   el umbral de fracaso del 50 %. Tres huecos reales: L4 no revisa los rangos de `SUM`; un BUSCARV desplazado no se
+   compara con la lista de precios; L9 no ve un `SUMPRODUCT` recortado en RESUMEN
+   ([plan, segunda medición](planes/2026-11-23-plan-auditoria-no-circular.md)). Corregirlos es un cambio de producto
+   dentro del congelamiento: lo decide Eugenio. Recomendación de Claude: corregirlos antes de etiquetar, porque las
+   fallas salieron del libro de desarrollo y no contaminan la prueba final. Después: etiqueta de la Fase 2. Firmar
+   también el [registro de decisiones](bitacora/registro-de-decisiones.md).
 1. **Hecho el 2026-11-13:** #105, #106 y #108 (con #107) fusionados por Claude, con la CI en verde y la autorización
    de Eugenio; `feature/ola2` entró como #109. Diez ramas remotas viejas ya contenidas en `main` siguen en GitHub: el
    control de permisos no dejó borrarlas (lista en el informe del 2026-11-14).
