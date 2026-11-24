@@ -42,6 +42,12 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   lectores de pantalla. Backlog de UX en `docs/planes/2026-11-22-backlog-ux.md`.
 
 ### Corregido
+- **Tres huecos de reglas que halló la medición una falla por vez, cerrados antes del congelamiento** (2026-11-24;
+  `docs/bitacora/2026-11-24-huecos-de-reglas-antes-del-congelamiento.md`). L1 avisa del BUSCARV que busca el código de
+  otra fila; L4 avisa del costo directo que deja fuera un componente que hoy vale 0; L5 avisa de las celdas de un APU,
+  del PRESUPUESTO o del RESUMEN que dan un error de cálculo (#VALUE!, #N/A…). El contexto común de las reglas pasa a
+  `adapters/hoja_empresa/reglas_contexto.py` (sin ciclo de importación). La medición en el libro de desarrollo sube de
+  5 a 10 de 12, sin cambios en los libros reales; no es la cifra de la tesis.
 - **Ola 1121, depuración de Neon con la auditoría de Claude** (2026-11-21/22; `docs/bitacora/auditoria-agy-2026-11-21.md`).
   Restaurar un respaldo no deja eventos perdidos ni bases a medias y, si no se puede reponer la instalación, queda el
   aviso SEG-12; los respaldos y las cuentas responden 503 con la base ocupada y 404 con un zip ilegible; Argon2 corre

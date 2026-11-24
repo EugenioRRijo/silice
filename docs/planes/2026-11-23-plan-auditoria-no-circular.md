@@ -161,3 +161,16 @@ toca nada más del archivo). Después se audita y se compara con el libro limpio
 Cambiar las reglas por estos resultados es un cambio de producto y lo decide Eugenio. Estas fallas salieron del libro
 de desarrollo, no del lote de prueba, así que corregirlas antes de congelar no contamina la medición final. Si se
 corrigen, se anota en la bitácora como cambio previo al congelamiento.
+
+## Enmienda (2026-11-24): huecos cerrados antes del congelamiento
+
+Eugenio pidió corregirlos («sí, corrige los huecos de reglas antes de congelar»). El acta es
+[2026-11-24-huecos-de-reglas-antes-del-congelamiento.md](../bitacora/2026-11-24-huecos-de-reglas-antes-del-congelamiento.md).
+Hay tres reglas nuevas: el BUSCARV con el código de otra fila (L1), el componente en cero fuera del costo directo (L4)
+y la celda de la cadena de montos con error de cálculo (L5). El diagnóstico de la falla #3 en la tabla anterior era
+incorrecto: L4 sí lee el rango de SUM, y lo que faltaba era el componente en cero.
+
+Con la misma medición, Sílice detecta **10 de 12 (83,3 %)**. Escapan solo #4 y #9, que son equivalentes. En los 5
+libros reales los hallazgos no cambian. **Esta cifra no es la de la tesis:** las reglas se corrigieron viendo estas
+fallas. La medición válida sigue siendo la de la Fase 3, con libros nuevos, la taxonomía del tercero y las reglas
+congeladas.
