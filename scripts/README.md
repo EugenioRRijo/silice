@@ -49,6 +49,8 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `probar_precios_maprex.py` | prueba los casos didácticos con precios de referencia publicados (MaPreX de julio de 2026 y tabulador CIV): cobertura del listado MaPreX en USD, revaloración del presupuesto 001 civil y de TC‑001/TC‑002, comprobación de MNT‑001 y SIS‑001; siempre en un directorio temporal, sin `--db` (con el extra `ml`, que instala `uv sync --all-extras`, marca los precios atípicos; sin él corre igual y lo declara) | C6 · todos |
 | `recorrido_ux_playwright.py` | recorre con Playwright todas las rutas de la interfaz a dos anchos y como cada rol, sobre una carpeta de datos temporal con la demostración ficticia: captura, un solo h1, desplazamiento horizontal, errores de consola y de red y el flujo de subir y auditar un presupuesto; solo registra en la carpeta de salida (necesita `--with playwright`; se ajusta al marco nuevo en F7) | UX · migración del front |
 | `verificar_version.py` | compara la etiqueta de git (`v` + SemVer) con la versión de `pyproject.toml` normalizada a PEP 440 y puede imprimir la versión en SemVer o la del parche siguiente (`--imprimir`) | RF‑99 · S5 |
+| `sensibilidad_umbrales.py` | barre en ±50 % los umbrales viales marcados `SUPUESTO_DECLARADO` (`aplicacion/sensibilidad_umbrales.py`) sobre `data/samples/vial/via_ficticia.csv` con desvíos ficticios e imprime la tabla Markdown con coma decimal | plan no circular · Fase 1 |
+| `tasa_no_interpretable.py` | recorre una carpeta de `.xlsx` fuera del repositorio, audita cada libro con `procesar_libro` y reporta las tasas de auditados, rechazados por la guardia y no interpretables con motivos normalizados (sin nombres ni montos) | plan no circular · Fase 1 |
 
 ## Artefactos reproducibles
 

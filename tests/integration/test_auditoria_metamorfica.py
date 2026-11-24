@@ -171,9 +171,9 @@ def test_mover_una_hoja_conserva_las_causas() -> None:
     assert _causas(r_movido) == _causas(r_base)
 
 
-# Escalar los precios de INSUMOS por k no es una relación válida sin recalcular el libro: Sílice lee
-# los valores que Excel guardó, y las fórmulas que dependen de INSUMOS conservan su valor viejo (L3 y
-# F1 nuevos). Se prueba cuando esté el oráculo de LibreOffice (plan no circular, Fase 1), que
+# Escalar los precios de INSUMOS por k no es una relación válida sin recalcular el libro: Sílice
+# lee los valores que Excel guardó, y las fórmulas que dependen de INSUMOS conservan su valor viejo
+# (L3 y F1 nuevos). Se prueba cuando esté el oráculo de LibreOffice (plan no circular, Fase 1), que
 # recalcula el libro antes de auditarlo. Hallazgo de Gemini Neon, 2026-11-23.
 
 
