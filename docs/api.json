@@ -16675,6 +16675,36 @@
             },
             "type": "array",
             "title": "Indices"
+          },
+          "celdas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Celdas",
+            "default": []
+          },
+          "observado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observado"
+          },
+          "esperado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Esperado"
           }
         },
         "type": "object",
