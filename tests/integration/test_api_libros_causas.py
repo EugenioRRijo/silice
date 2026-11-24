@@ -53,6 +53,20 @@ def test_cada_hallazgo_queda_en_una_causa_o_entre_los_no_aplicables(cliente) -> 
     assert sorted(hallazgos[i]["codigo"] for i in no_aplicables) == ["R2", "R7"]
 
 
+def test_cada_causa_trae_su_traza_celdas_observado_y_esperado(cliente) -> None:
+    # El economista juzga una causa sin abrir el código: dónde está y qué valor esperaba Sílice frente
+    # al que encontró. En el libro ficticio, la partida 1 guarda un P.U. de 999,99 (F1).
+    cuerpo = _auditar(cliente, construir())
+    hallazgos = cuerpo["hallazgos"]
+    for causa in cuerpo["causas"]:
+        esperadas = [hallazgos[i]["celda"] for i in causa["indices"] if hallazgos[i]["celda"]]
+        assert causa["celdas"] == list(dict.fromkeys(esperadas))
+    f1 = next(c for c in cuerpo["causas"] if c["codigo"] == "F1")
+    assert f1["observado"] is not None and f1["esperado"] is not None
+    assert f1["observado"] != f1["esperado"]
+    assert "999.99" in f1["observado"]
+
+
 def test_el_libro_limpio_no_tiene_causas_y_aparta_r2_y_r7(cliente) -> None:
     cuerpo = _auditar(cliente, libro_limpio().datos)
     assert cuerpo["causas"] == []
