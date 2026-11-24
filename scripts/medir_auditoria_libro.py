@@ -70,8 +70,20 @@ class FilaPlanilla:
     impacto: float | None = None
 
 
+def _no_aplica(h) -> bool:
+    """El aviso de una regla que no tuvo nada que revisar (R2 y R7 sin curva ni plan, UC-05 2a):
+    no es un error del libro y no se marca."""
+    return h.severidad.name == "INFO" and "no aplicable" in h.descripcion
+
+
+def reglas_no_aplicables(hallazgos: Iterable) -> list[str]:
+    return sorted({h.regla for h in hallazgos if _no_aplica(h)})
+
+
 def filas_de_hallazgos(hallazgos: Iterable) -> list[FilaPlanilla]:
-    """Un `Hallazgo` del núcleo por fila, numerados desde 1 en el orden del informe."""
+    """Un `Hallazgo` del núcleo por fila, numerados desde 1 en el orden del informe; los avisos de
+    regla no aplicable quedan fuera."""
+    hallazgos = [h for h in hallazgos if not _no_aplica(h)]
     return [
         FilaPlanilla(
             numero=i,
@@ -386,7 +398,9 @@ def _exportar(args: argparse.Namespace) -> int:
     destino = escribir_planilla(
         filas, Path(args.salida), raiz_repo=Path(args.raiz_repo),
         origen={"SHA-256 del libro auditado": hashlib.sha256(datos).hexdigest(),
-                "Hallazgos exportados": str(len(filas))},
+                "Hallazgos exportados": str(len(filas)),
+                "Reglas que no aplicaron a este libro (no se marcan)":
+                    ", ".join(reglas_no_aplicables(resultado.informe.hallazgos)) or "ninguna"},
     )
     print(f"Planilla con {len(filas)} hallazgos: {destino}")
     return 0

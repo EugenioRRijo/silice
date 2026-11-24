@@ -61,8 +61,10 @@ def test_filas_numeran_desde_uno_y_conservan_todas_las_celdas():
 
 def test_las_reglas_no_aplicables_no_se_exportan_para_marcar():
     # R2 y R7 «no aplicable» salen en todo libro sin curva ni plan: no son errores que marcar.
-    no_aplica = Hallazgo(regla="R2", severidad=Severidad.INFO,
-                         descripcion="R2 no aplicable: el presupuesto no declara curva de inversion")
+    no_aplica = Hallazgo(
+        regla="R2", severidad=Severidad.INFO,
+        descripcion="R2 no aplicable: el presupuesto no declara curva de inversion",
+    )
     filas = m.filas_de_hallazgos([no_aplica, _h("L1", "PRES!G10")])
     assert [(f.numero, f.regla) for f in filas] == [(1, "L1")]
     assert m.reglas_no_aplicables([no_aplica, _h("L1")]) == ["R2"]
@@ -222,7 +224,8 @@ def test_exportar_un_libro_sintetico_con_errores_sembrados(fuera: Path):
                      "--fecha", "2026-10-13", "--raiz-repo", str(fuera.parent / "repo")])
     assert codigo == 0
     filas = m.leer_filas(destino)
-    assert [(f.regla, f.celdas) for f in filas] == [(h.regla, h.origen_ids) for h in esperados]
+    a_marcar = [h for h in esperados if "no aplicable" not in h.descripcion]
+    assert [(f.regla, f.celdas) for f in filas] == [(h.regla, h.origen_ids) for h in a_marcar]
     instrucciones = [c.value for c in openpyxl.load_workbook(destino)["Instrucciones"]["A"]]
     assert f"SHA-256 del libro auditado: {hashlib.sha256(datos).hexdigest()}" in instrucciones
     marcas, escapados = m.leer_marcas(destino)
