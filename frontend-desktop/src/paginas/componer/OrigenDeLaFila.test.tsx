@@ -127,7 +127,7 @@ describe("Componer: el origen de cada dato de la fila", () => {
   const descripcion = (n = 1) => screen.getByRole("combobox", { name: `Descripción, fila ${n}` });
   const unidad = (n = 1) => screen.getByRole("combobox", { name: `Unidad, fila ${n}` });
   const precio = (n = 1) => screen.getByRole("textbox", { name: `Precio, fila ${n}` });
-  const fijarFecha = (valor: string) => fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: valor } });
+  const fijarFecha = (valor: string) => fireEvent.change(screen.getByLabelText("Fecha de precios"), { target: { value: valor } });
   const regionDeLaFecha = () => document.getElementById("componer-fecha-estado");
 
   async function elegir(u: ReturnType<typeof userEvent.setup>, buscado: string, nombre: RegExp, fila = 1) {

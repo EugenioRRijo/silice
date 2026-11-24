@@ -124,7 +124,7 @@ describe("Cálculos anteriores", () => {
     montar(ADMIN);
     await usuario.click(await screen.findByRole("button", { name: "Abrir el cálculo n.º 8" }));
     const resultado = await screen.findByRole("region", { name: "Resultado del cálculo" });
-    expect(within(resultado).queryByRole("button", { name: /Publicar/ })).not.toBeInTheDocument();
+    expect(within(resultado).queryByRole("button", { name: /Guardar en la lista de precios/ })).not.toBeInTheDocument();
     expect(within(resultado).getByText(/Ya se publicó en la lista n\.º 12/)).toBeInTheDocument();
     expect(within(resultado).getByText(/01\/12\/2026/)).toBeInTheDocument();
   });
@@ -133,7 +133,7 @@ describe("Cálculos anteriores", () => {
     montar(ADMIN);
     await usuario.click(await screen.findByRole("button", { name: "Abrir el cálculo n.º 7" }));
     const resultado = await screen.findByRole("region", { name: "Resultado del cálculo" });
-    expect(await within(resultado).findByRole("button", { name: "Publicar como precio propio" })).toBeEnabled();
+    expect(await within(resultado).findByRole("button", { name: "Guardar en la lista de precios de la empresa" })).toBeEnabled();
   });
 
   test("un 409 al publicar se muestra con su texto y recarga la lista", async () => {
@@ -143,7 +143,7 @@ describe("Cálculos anteriores", () => {
     const resultado = await screen.findByRole("region", { name: "Resultado del cálculo" });
     await within(resultado).findByText("Constructora Ficticia, C.A. (J-00000000-0)");
     const antes = lecturas("/v1/produccion/calculos?periodo=2026-11");
-    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    await usuario.click(within(resultado).getByRole("button", { name: "Guardar en la lista de precios de la empresa" }));
     await usuario.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Publicar" }));
     const alerta = await screen.findByRole("alert");
     expect(alerta).toHaveTextContent("El cálculo n.º 7 ya se publicó en la lista n.º 12.");
@@ -157,7 +157,7 @@ describe("Cálculos anteriores", () => {
     const resultado = await screen.findByRole("region", { name: "Resultado del cálculo" });
     await within(resultado).findByText("Constructora Ficticia, C.A. (J-00000000-0)");
     const antes = lecturas("/v1/produccion/calculos?periodo=2026-11");
-    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    await usuario.click(within(resultado).getByRole("button", { name: "Guardar en la lista de precios de la empresa" }));
     await usuario.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Publicar" }));
     const aviso = await screen.findByText('Publicado: lista "Costo propio 2026-11, cálculo n.º 7".');
     await waitFor(() => expect(document.activeElement).toBe(aviso.closest("[tabindex]")));

@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   buscadorDeInsumos,
+  convertidasConLaTasa,
   cotizacionEsVe,
   deObservaciones,
   diasValidos,
   enumeracion,
   rutaDelEstudio,
+  sinTasaDelDia,
   textoDeAfectados,
 } from "./logica";
 
@@ -33,8 +35,8 @@ describe("textos del estudio de mercado", () => {
   });
 
   test("la ventana de dias va de 1 a 3.650, entera y sin ceros a la izquierda", () => {
-    for (const bueno of ["1", "30", "90", "365", "3650"]) expect(diasValidos(bueno), bueno).toBe(true);
-    for (const malo of ["", "0", "-5", "3651", "9999", "12,5", "1.000", "090", "abc", " 90"]) {
+    for (const bueno of ["1", "30", "90", "365", "1.000", "3650"]) expect(diasValidos(bueno), bueno).toBe(true);
+    for (const malo of ["", "0", "-5", "3651", "9999", "12,5", "090", "abc", " 90"]) {
       expect(diasValidos(malo), malo).toBe(false);
     }
   });
@@ -127,6 +129,20 @@ describe("la cotización de un precio", () => {
     expect(cotizacionEsVe("")).toBe("");
     expect(cotizacionEsVe("COT-17 · Ferretería Demo")).toBe("COT-17 · Ferretería Demo");
     expect(cotizacionEsVe("2026-11-18")).toBe("2026-11-18");
+  });
+});
+
+describe("F7: días con punto de miles y conteos en es-VE", () => {
+  test("diasValidos acepta formato es-VE como 3.650", () => {
+    expect(diasValidos("3.650")).toBe(true);
+    expect(diasValidos("1.000")).toBe(true);
+    expect(diasValidos("3.651")).toBe(false);
+  });
+
+  test("deObservaciones, sinTasaDelDia y convertidasConLaTasa formatean >= 1000 con punto de miles", () => {
+    expect(deObservaciones(1000)).toBe("de 1.000 observaciones");
+    expect(sinTasaDelDia(1250)).toContain("1.250 observaciones");
+    expect(convertidasConLaTasa(1200)).toBe("1.200 de las observaciones estaban en otra moneda y se convirtieron con la tasa del BCV de su día.");
   });
 });
 

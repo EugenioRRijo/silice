@@ -34,7 +34,7 @@ from adapters.espacio.modelo import (
 )
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja, hoja_desperdicio
-from aplicacion.cifras import texto_de_cifra
+from aplicacion.cifras import precision_para, texto_de_cifra
 from aplicacion.desperdicio import GuardadoDelDesglose
 from aplicacion.frentes import frente_de
 from aplicacion.hoja_borradores import BorradorVivo
@@ -103,7 +103,7 @@ def monto(valor: Decimal) -> Monto:
     """`texto` como la clasica (dos decimales) y `exacto`; con precision de sobra para que una
     cifra de muchos digitos no falle al redondear (el contexto por omision tiene 28)."""
     with localcontext() as contexto:
-        contexto.prec = max(60, len(valor.as_tuple().digits) + 10)
+        contexto.prec = precision_para(valor)
         return Monto(formatear_decimal(valor, DECIMALES_PRESENTACION), format(valor, "f"))
 
 
@@ -1018,16 +1018,16 @@ def _fila_de_precio(p: hoja.FilaPrecio) -> FilaDePrecioVista:
 def vista_precios(
     precios: Sequence[hoja.FilaPrecio], moneda: str, fecha_evaluacion: date
 ) -> VistaPrecios:
-    """La pestana Precios (P:1899-2025) sobre la version GUARDADA, evaluada a `fecha_evaluacion`
-    (hoy). `precios` ya viene ordenado por codigo de insumo (`hoja.precios_de_version`)."""
+    """La pestana Precios sobre la version GUARDADA, evaluada a `fecha_evaluacion` (hoy)."""
+    rotulos = {
+        "erosion_pct": "Pérdida cambiaria (%)",
+        "erosion_indice": "Pérdida según el índice",
+    }
+    pares = zip(_CLAVES_DE_PRECIOS, hoja.COLUMNAS_PRECIOS, strict=True)
     return VistaPrecios(
-        moneda=moneda,
-        fecha_evaluacion=fecha_evaluacion.isoformat(),
+        moneda=moneda, fecha_evaluacion=fecha_evaluacion.isoformat(),
         columnas=tuple(
-            ColumnaDePrecio(clave, rotulo, numerica)
-            for (clave, numerica), rotulo in zip(
-                _CLAVES_DE_PRECIOS, hoja.COLUMNAS_PRECIOS, strict=True
-            )
+            ColumnaDePrecio(c, rotulos.get(c, r), n) for (c, n), r in pares
         ),
         filas=tuple(_fila_de_precio(p) for p in precios),
     )

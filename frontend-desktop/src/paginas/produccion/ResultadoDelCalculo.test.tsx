@@ -66,4 +66,14 @@ describe("Constancias de la Tarea 4b en el resultado", () => {
     const region = ver(c);
     expect(within(region).getByText("Este cálculo no tiene costos por tonelada: todo pasa al mes siguiente.")).toBeInTheDocument();
   });
+
+  test("muestra carpeta en lugar de caso y código de verificación del cálculo", () => {
+    const c = {
+      ...calculo({}, {}),
+      publicado: { lista_id: 12, caso: "obra_sur", registrado: "2026-11-30T10:05:00" },
+    };
+    const region = ver(c);
+    expect(within(region).getByText(/carpeta «obra_sur»/)).toBeInTheDocument();
+    expect(within(region).getByText(/Código de verificación del cálculo \(SHA-256, comprueba que no cambió\):/)).toBeInTheDocument();
+  });
 });

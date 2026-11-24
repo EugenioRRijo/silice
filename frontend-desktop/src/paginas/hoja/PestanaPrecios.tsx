@@ -43,7 +43,8 @@ function valorDeCelda(columna: ColumnaPrecio, celda: CeldaPrecio | undefined): R
 }
 
 function EstadoDelPrecio({ texto }: { texto: string }) {
-  return <EstadoDeFila estado={{ severidad: texto === ESTADO_CORRECTO ? null : "ADVERTENCIA", texto }} />;
+  const esCorrecto = texto === ESTADO_CORRECTO;
+  return <EstadoDeFila estado={{ severidad: esCorrecto ? null : "ADVERTENCIA", texto: esCorrecto ? "Sin observaciones" : texto }} />;
 }
 
 function textoDe(celda: CeldaPrecio | undefined): string {
@@ -168,7 +169,10 @@ function BuscarAtipicos({ proyecto, version }: { proyecto: string; version: stri
         <Button kind="tertiary" size="md" onClick={buscar} disabled={busqueda.tipo === "buscando"}>
           {ROTULO_ATIPICOS}
         </Button>
-        {busqueda.tipo === "buscando" && <InlineLoading description="Buscando variaciones atípicas..." status="active" />}
+        {busqueda.tipo === "buscando" && <InlineLoading description="Buscando variaciones atípicas…" status="active" />}
+        <p className="cds--type-helper-text-01">
+          Compara cada insumo con sus variaciones pasadas (en USD) y marca en morado los cambios inusuales; es solo un aviso.
+        </p>
       </div>
       <div aria-live="polite" aria-atomic="true">
         {busqueda.tipo === "error" && <AvisoError error={busqueda.error} titulo="No se buscaron las variaciones atípicas" />}

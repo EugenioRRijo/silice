@@ -6,31 +6,58 @@
 export type GuiaId = "presupuesto" | "aprobacion" | "precios" | "auditar";
 
 export type TerminoId =
+  | "aace"
   | "administracion-y-utilidad"
   | "apu"
+  | "asistente-ia"
+  | "bac"
   | "borrador"
   | "cadena-de-sellos"
   | "carpeta"
+  | "clave-api"
+  | "clave-de-firma"
+  | "codigo-verificacion"
+  | "comprobacion-directa"
+  | "comprobacion-hacia-atras"
   | "cotizacion"
+  | "cpi"
+  | "cuartil-y-mediana"
+  | "depreciacion-equipo"
   | "dictamen"
+  | "eac"
+  | "erosion"
+  | "escalatoria"
   | "etapa"
+  | "factor-km"
   | "fcas"
   | "hallazgo"
+  | "incidencia"
   | "indices-bcv"
+  | "inpc"
   | "insumo"
   | "iva"
   | "libro"
   | "linea-base"
+  | "lista-base"
   | "lista-de-precios"
   | "lista-para-armar"
   | "maprex"
   | "obra"
   | "p50-p80"
   | "paquete"
+  | "pareto"
   | "partida"
+  | "perfil-libro"
   | "precio-atipico"
+  | "procura"
+  | "punto-de-equilibrio"
+  | "pv-ev-ac"
   | "reajuste"
   | "rendimiento"
+  | "reparto-cantera"
+  | "reserva-contingencia"
+  | "simulacion"
+  | "spi"
   | "tramo"
   | "valor-ganado"
   | "valuacion"
@@ -45,6 +72,12 @@ export interface Termino {
 // En orden alfabético (lo vigila la prueba). Los nombres de los controles van con su texto exacto.
 export const GLOSARIO: readonly Termino[] = [
   {
+    id: "aace",
+    termino: "AACE (referencia de estimación)",
+    definicion:
+      "Asociación internacional de ingeniería de costos cuyas clases miden qué tan detallado es un presupuesto. Sílice usa la clase 3 como referencia estadística para comprobar si el precio que usted construye cae dentro del rango esperado.",
+  },
+  {
     id: "administracion-y-utilidad",
     termino: "Administración y utilidad",
     definicion:
@@ -57,6 +90,18 @@ export const GLOSARIO: readonly Termino[] = [
       "El desglose de lo que cuesta una unidad de una partida (un metro, un metro cúbico…): sus materiales, sus equipos y su mano de obra. Su suma es el costo directo; con la administración y la utilidad da el precio unitario.",
   },
   {
+    id: "asistente-ia",
+    termino: "Asistente de IA (nube y local)",
+    definicion:
+      "Ayuda opcional con inteligencia artificial que puede conectarse a un servicio en la nube o a un modelo instalado en su propio equipo. Si no lo configura, todas las funciones de cálculo y presupuesto de Sílice siguen trabajando igual.",
+  },
+  {
+    id: "bac",
+    termino: "BAC (presupuesto total)",
+    definicion:
+      "El presupuesto total aprobado de la obra en la línea base, es decir, lo que cuesta o vale ejecutarla completa según el contrato. Sirve de referencia fija para medir el avance y calcular si la obra terminará por encima o por debajo de lo previsto.",
+  },
+  {
     id: "borrador",
     termino: "Borrador",
     definicion:
@@ -66,7 +111,7 @@ export const GLOSARIO: readonly Termino[] = [
     id: "cadena-de-sellos",
     termino: "Cadena de sellos",
     definicion:
-      "Cada versión guardada queda sellada con una huella ligada a la de la versión anterior, así que un cambio hecho a la base por fuera de Sílice rompe la cadena y Versiones dice dónde. Con la cadena rota no se puede enviar a aprobación ni aprobar: solo devolver.",
+      "Cada versión guardada queda sellada con un código ligado al de la versión anterior, lo que garantiza la integridad de versiones. Si alguien altera la base fuera de Sílice, la cadena se rompe y Versiones dice dónde: con la cadena rota no se puede enviar a aprobación ni aprobar, solo devolver.",
   },
   {
     id: "carpeta",
@@ -75,16 +120,76 @@ export const GLOSARIO: readonly Termino[] = [
       "Donde Sílice guarda un catálogo, sus precios y sus obras, en un solo archivo de este equipo y con una moneda de trabajo. Quien administra las abre, crea y sube en la Cuenta, sección «Carpetas».",
   },
   {
+    id: "clave-api",
+    termino: "Clave de API",
+    definicion:
+      "Una contraseña especial para que otro programa externo se conecte con Sílice de forma segura. Para el uso diario del presupuesto o el control de obra no hace falta crearla.",
+  },
+  {
+    id: "clave-de-firma",
+    termino: "Clave de firma",
+    definicion:
+      "El sello digital único de su empresa para firmar paquetes .silice antes de entregarlos al cliente. Quien recibe el paquete usa el «Código de verificación de la clave (SHA-256)» para comprobar que el presupuesto es auténtico y no fue alterado.",
+  },
+  {
+    id: "codigo-verificacion",
+    termino: "Código de verificación (SHA-256)",
+    definicion:
+      "Una serie única de caracteres que identifica un archivo o un cálculo sin guardar el documento completo. Si cambia una sola coma en el archivo original, el código cambia por completo, lo que le permite comprobar si dos archivos son idénticos.",
+  },
+  {
+    id: "comprobacion-directa",
+    termino: "Comprobación directa",
+    definicion:
+      "Método de reajuste de precios que recalcula lo ejecutado usando los precios nuevos de cada insumo en lugar de aplicar índices globales. Sirve para comparar cuánto habría costado la obra a precios actualizados frente a la fórmula de escalatoria.",
+  },
+  {
     id: "cotizacion",
     termino: "Cotización",
     definicion:
       "El precio de un proveedor para un insumo, que vale solo para esta obra y manda sobre el de la lista hasta que se retira. Registrarla o retirarla crea una versión nueva desde la vigente.",
   },
   {
+    id: "cpi",
+    termino: "CPI (índice de costo)",
+    definicion:
+      "Mide cuánto valor ejecutado obtiene por cada unidad de dinero gastada en la obra (EV entre AC). Un valor de 1,00 o más es favorable; por debajo de 1,00 indica que se está gastando más de lo que vale lo ejecutado (sobrecosto).",
+  },
+  {
+    id: "cuartil-y-mediana",
+    termino: "Cuartil y mediana",
+    definicion:
+      "En el estudio de mercado, la mediana es el precio central que divide las observaciones por la mitad, y el primer cuartil deja por debajo solo al 25 % de los precios más bajos. Sílice propone el primer cuartil para ayudarle a fijar un precio competitivo.",
+  },
+  {
+    id: "depreciacion-equipo",
+    termino: "Depreciación de equipo",
+    definicion:
+      "La fracción del precio de compra de una máquina o equipo que cuesta un día de uso en obra, expresada como un número mayor que 0 y hasta 1 (por ejemplo, 0,005). Sirve para incluir el desgaste del equipo dentro del costo diario del APU.",
+  },
+  {
     id: "dictamen",
     termino: "Dictamen",
     definicion:
       "La decisión que registra quien revisa sobre una versión enviada a aprobación: «Aprobada», «Aprobada con observaciones» o «Devuelta». Devolver o aprobar con observaciones pide notas, y el dictamen no se cambia después.",
+  },
+  {
+    id: "eac",
+    termino: "EAC (costo final estimado)",
+    definicion:
+      "Lo que se estima que costará terminar la obra completa al ritmo actual de gasto. Compararlo con el presupuesto total (BAC) le permite anticipar si habrá un sobrecosto o un ahorro al cierre.",
+  },
+  {
+    id: "erosion",
+    termino: "Erosión",
+    definicion:
+      "El porcentaje en que un precio ha perdido valor o se ha quedado atrás frente a la variación de los índices desde que se fijó. Le ayuda a detectar qué insumos del presupuesto necesitan actualizarse.",
+  },
+  {
+    id: "escalatoria",
+    termino: "Escalatoria",
+    definicion:
+      "Método de reajuste de precios que ajusta el pago de lo ejecutado aplicando una fórmula basada en los índices oficiales del BCV desde el mes base. Se usa para estimar la compensación por inflación según la cláusula del contrato.",
   },
   {
     id: "etapa",
@@ -94,15 +199,39 @@ export const GLOSARIO: readonly Termino[] = [
   },
   {
     id: "fcas",
-    termino: "FCAS (factor de costos asociados al salario)",
+    termino: "Factor de costos asociados al salario (FCAS)",
     definicion:
       "Lo que se agrega al jornal de la mano de obra por las prestaciones y los demás costos del salario; no se aplica a la mano de obra a destajo. Se escribe como fracción en «Ajustes de costo» (6,00 son unas prestaciones del 600 %), y la calculadora de «Precios de la empresa» lo estima por componentes, pero no lo aplica por sí sola.",
+  },
+  {
+    id: "factor-km",
+    termino: "Factor de escalatoria (Km)",
+    definicion:
+      "El multiplicador que resume cuánto subieron los índices de precios entre el mes base del contrato y el mes del corte (por ejemplo, 1,15 equivale a un aumento del 15 %). Se usa en la fórmula de escalatoria para ajustar lo ejecutado.",
+  },
+  {
+    id: "perfil-libro",
+    termino: "Formato o perfil de libro",
+    definicion:
+      "La estructura que sigue un archivo Excel de presupuesto para que Sílice sepa en qué celdas leer códigos, cantidades, insumos y precios. Elegir el formato correcto permite auditar libros hechos fuera de Sílice sin modificarlos.",
   },
   {
     id: "hallazgo",
     termino: "Hallazgo",
     definicion:
-      "Algo que una regla de revisión encontró en un presupuesto o en un libro y conviene mirar. Su severidad dice qué tan grave es («Crítico», «Error», «Advertencia» o «Información»), y ningún hallazgo impide guardar.",
+      "Algo que una regla de revisión encontró en un presupuesto o en un libro y conviene mirar; el código entre paréntesis identifica qué regla lo detectó. Su severidad dice qué tan grave es («Crítico», «Error», «Advertencia» o «Información»), y ningún hallazgo impide guardar.",
+  },
+  {
+    id: "incidencia",
+    termino: "Incidencia en el cambio (%)",
+    definicion:
+      "El peso porcentual que tiene un insumo o una partida en el cambio total del presupuesto al actualizar precios o probar un escenario. Le muestra en qué pocos insumos o partidas se concentra casi toda la variación del costo.",
+  },
+  {
+    id: "inpc",
+    termino: "Índice Nacional de Precios al Consumidor (INPC)",
+    definicion:
+      "El índice que publica el BCV y mide la variación general de los precios en el tiempo. Sílice lo utiliza para calcular el reajuste por escalatoria y simular el riesgo de variación de precios.",
   },
   {
     id: "indices-bcv",
@@ -135,6 +264,12 @@ export const GLOSARIO: readonly Termino[] = [
       "En Control de obra, la versión del contrato contra la que se mide la obra, con su inicio, sus días hábiles y su perspectiva (costo para quien arma, precio para quien revisa); se declara en la pestaña «Línea base». Cuando existe, el Resumen y la Vista general toman el total de esa versión.",
   },
   {
+    id: "lista-base",
+    termino: "Lista base",
+    definicion:
+      "La lista de precios de partida sobre la cual se aplican los precios nuevos de la empresa o de un archivo. Lo que no venga en el archivo nuevo conserva el precio de la lista base.",
+  },
+  {
     id: "lista-de-precios",
     termino: "Lista de precios",
     definicion:
@@ -150,7 +285,7 @@ export const GLOSARIO: readonly Termino[] = [
     id: "maprex",
     termino: "MaPreX",
     definicion:
-      "La referencia externa de precios de la construcción que Sílice usa para contrastar: la lista de la empresa se revisa contra ella y una carpeta sin lista para armar puede crear la suya a partir de ella.",
+      "La referencia pública de precios de la construcción en bolívares que Sílice usa para contrastar: la lista de la empresa se revisa contra ella y una carpeta sin lista para armar puede crear la suya a partir de ella.",
   },
   {
     id: "obra",
@@ -162,13 +297,19 @@ export const GLOSARIO: readonly Termino[] = [
     id: "p50-p80",
     termino: "P50 y P80",
     definicion:
-      "En Riesgo, los totales que no superan el 50 % y el 80 % de las trayectorias simuladas de los precios. La «Reserva para cubrir el P80» es lo que va del total base al P80.",
+      "En Riesgo, P50 es el total que no se supera en la mitad de las simulaciones; P80, el que no se supera en 8 de cada 10. La reserva recomendada es la diferencia entre el total base y el P80.",
   },
   {
     id: "paquete",
     termino: "Paquete",
     definicion:
       "Un archivo .silice firmado que lleva al cliente una versión del presupuesto con su auditoría y su cadena de sellos. Quien lo recibe lo abre en «Revisar un paquete», que comprueba la firma y lo vuelve a auditar.",
+  },
+  {
+    id: "pareto",
+    termino: "Pareto",
+    definicion:
+      "Lista ordenada de mayor a menor que muestra qué pocas partidas concentran la mayor parte del costo total de la obra. Le sirve para enfocar su revisión en las partidas que realmente mueven el presupuesto.",
   },
   {
     id: "partida",
@@ -183,16 +324,64 @@ export const GLOSARIO: readonly Termino[] = [
       "Una variación de precio muy distinta de la que suele tener ese insumo en las listas de la carpeta. Se marca en morado como advertencia: ayuda a quien revisa, pero no es un error.",
   },
   {
+    id: "procura",
+    termino: "Procura",
+    definicion:
+      "El registro de las compras y llegadas de materiales o equipos a la obra, con su precio real y fecha. Permite usar esos precios reales en Control de obra para distinguir si un sobrecosto se debe a subidas de precio o a mayor consumo.",
+  },
+  {
+    id: "comprobacion-hacia-atras",
+    termino: "Prueba con meses pasados",
+    definicion:
+      "La comprobación de Riesgo que repite la proyección desde meses pasados, solo con la historia anterior a cada uno, para ver cuántas veces el P80 habría cubierto la subida real de precios. Una cobertura (% de meses cubiertos) cercana al 80 % o más indica que el método habría cubierto bien las variaciones pasadas.",
+  },
+  {
+    id: "punto-de-equilibrio",
+    termino: "Punto de equilibrio",
+    definicion:
+      "El volumen mínimo de obra que debe ejecutar para cubrir todos sus costos sin generar pérdida. Cuanto menor sea el porcentaje de equilibrio frente al total del presupuesto, mayor margen de seguridad tiene la obra.",
+  },
+  {
+    id: "pv-ev-ac",
+    termino: "PV, EV y AC",
+    definicion:
+      "Las tres cifras básicas del valor ganado: PV es el valor planificado a la fecha, EV es el valor de lo ejecutado al precio del contrato y AC es el costo real gastado. Compararlos le indica si la obra va adelantada o atrasada y si gasta más o menos de lo previsto.",
+  },
+  {
     id: "reajuste",
     termino: "Reajuste",
     definicion:
-      "La estimación de cuánto debe cambiar el pago de lo ejecutado según la cláusula del contrato y la variación de los índices de materiales, equipos y mano de obra desde el mes base. Es un indicio: hay que cotejarlo con la Gaceta.",
+      "La estimación de cuánto debe cambiar el pago de lo ejecutado según la cláusula del contrato, aplicando una fórmula de índices (escalatoria) o recalculando con precios nuevos (comprobación directa), descontando la parte fija no reajustable (R) si aplica. Un cálculo preliminar indica que faltan índices publicados; es un indicio y hay que cotejarlo con la Gaceta.",
   },
   {
     id: "rendimiento",
     termino: "Rendimiento",
     definicion:
       "Cuántas unidades de la partida se hacen en un día, con las condiciones en que se obtuvo. El costo diario de equipos y mano de obra se divide entre el rendimiento; el de los materiales, no.",
+  },
+  {
+    id: "reparto-cantera",
+    termino: "Reparto de costos de cantera",
+    definicion:
+      "Cómo se distribuyen los gastos mensuales de la cantera entre los distintos agregados producidos. Si no indica porcentajes manuales, Sílice reparte el costo en proporción a las toneladas producidas de cada material (el mismo costo por tonelada).",
+  },
+  {
+    id: "reserva-contingencia",
+    termino: "Reserva de contingencia",
+    definicion:
+      "El monto adicional sobre el presupuesto base que se recomienda apartar para cubrir subidas imprevistas de precios hasta un nivel de confianza dado (como el P80). Le ayuda a proteger la rentabilidad de la obra ante la inflación.",
+  },
+  {
+    id: "simulacion",
+    termino: "Simulación y semilla",
+    definicion:
+      "En Riesgo de la obra, cada simulación es un camino posible de los precios en los meses que vienen; correr unas 2.000 da resultados estables. La semilla es el número que fija la secuencia al azar para que usted obtenga exactamente el mismo resultado si repite el cálculo.",
+  },
+  {
+    id: "spi",
+    termino: "SPI (índice de plazo)",
+    definicion:
+      "Mide el ritmo de avance físico de la obra frente al cronograma planificado (EV entre PV). Un valor de 1,00 o más es favorable; por debajo de 1,00 indica atraso frente a lo planificado.",
   },
   {
     id: "tramo",
@@ -243,7 +432,7 @@ export const GUIAS: readonly Guia[] = [
       {
         titulo: "Crear la obra y agregar sus partidas",
         pasos: [
-          "En la barra de la izquierda, pulse «Nueva obra». Escriba el «Nombre de la obra», revise la «Moneda» y pulse «Crear obra». Se abre el «Resumen» de la obra.",
+          "En la barra de la izquierda, pulse «Nueva obra». Escriba el «Nombre de la obra», revise la «Moneda» y pulse «Crear la obra». Se abre el «Resumen» de la obra.",
           "En la barra de secciones de la obra, vaya a «Presupuesto». En la pestaña «Partidas», pulse «Agregar partida».",
           "En «Partida», busque por código o por una palabra de la descripción y elija la del catálogo. Si no está, «Buscar parecidas» propone partidas que se le parecen, o elija la última sugerencia, «Componer una partida nueva», para armar su APU en el panel (queda en el catálogo de la empresa, para todas las obras).",
           "Escriba la cantidad (o el «Cálculo (opcional)», por ejemplo 6*3-2) y pulse «Agregar al presupuesto». Repita con cada partida.",
@@ -253,7 +442,7 @@ export const GUIAS: readonly Guia[] = [
       {
         titulo: "Guardar y descargar",
         pasos: [
-          "Lo que cambia queda en el borrador. Cuando esté listo, pulse «Guardar versión…» (la primera vez, «Guardar primera versión…») en la franja de arriba, escriba de dónde salen los datos y confirme: nace una versión. Si lo único que cambió es el desglose del desperdicio de un material (la misma cantidad, con otra neta y otro porcentaje), el botón de la franja dice «Guardar el desglose…» y el del diálogo «Guardar el desglose»: guarda ese desglose, no pide la fuente y no crea versión; la versión abierta sigue siendo la misma. Bajo la tabla «Materiales» del APU, una línea dice quién guardó el desglose que se ve y cuándo (si no consta quién, lo dice).",
+          "Lo que cambia queda en el borrador. Cuando esté listo, pulse «Guardar versión…» (la primera vez, «Guardar primera versión…») en la franja de arriba, escriba de dónde salen los datos y confirme: nace una versión. Si lo único que cambió es el desglose del desperdicio de un material (la misma cantidad, con otra neta y otro porcentaje), el botón de la franja dice «Guardar ajuste de desperdicio…» y el del diálogo «Guardar el desglose»: guarda ese desglose, no pide la fuente y no crea versión; la versión abierta sigue siendo la misma. Bajo la tabla «Materiales» del APU, una línea dice quién guardó el desglose que se ve y cuándo (si no consta quién, lo dice).",
           "«Descargar Excel», al lado de la franja, baja el presupuesto en Excel; «Descargar PDF», en un PDF listo para imprimir o enviar, con el APU de cada partida después del presupuesto.",
           "Si las cantidades vienen de un archivo, en «Archivos y planos» pulse «Subir plano o cómputo»: un plano .dxf o .ifc, o un cómputo .csv que se lleva con «Llevar al presupuesto». Después guarde la versión igual.",
         ],
@@ -296,7 +485,7 @@ export const GUIAS: readonly Guia[] = [
         pasos: [
           "En la obra, vaya a «Mercado» y a la vista «Actualizar precios».",
           "Elija el «Presupuesto base» y escriba el «Código de la versión nueva», la «Fecha de vigencia», la «Moneda» y el «Nombre de la lista». Suelte la lista (.csv o .xlsx con las columnas tipo, insumo, unidad y precio).",
-          "Si trae insumos que el catálogo no tiene, márquelos en «Dar de alta». Pulse «Revalorar presupuesto».",
+          "Si trae insumos que el catálogo no tiene, márquelos en «Agregar al catálogo». Pulse «Actualizar precios del presupuesto».",
           "Revise el «Comparativo por partida» y el «Informe de auditoría de la versión nueva». Si no le sirve, «Descartar versión».",
         ],
       },
@@ -330,7 +519,7 @@ export const GUIAS: readonly Guia[] = [
         pasos: [
           "En la barra de la izquierda, pulse «Auditar un presupuesto»: se abre «Subir y auditar Excel».",
           "Suelte el libro .xlsx en la zona de arriba y pulse «Auditar con recorrido guiado» (Sílice lo acompaña paso a paso) o «Auditar por mi cuenta».",
-          "Se abre «Libro de la empresa». Revise la «Fecha de devolución»: es la fecha con la que se audita, y con la misma fecha el mismo libro da siempre el mismo resultado.",
+          "Se abre «Libro de la empresa». Revise la «Fecha de la revisión»: es la fecha con la que se audita, y con la misma fecha el mismo libro da siempre el mismo resultado.",
           "Compare el total del libro con el «Según Sílice» y revise los hallazgos, de los críticos a los informativos; elija uno para ver su celda marcada en el libro. «Filtrar por severidad» deja ver solo los de una gravedad.",
           "Si quiere llevarse el resultado, pulse «Descargar PDF» (a la derecha, bajo los indicadores): baja un informe para entregar a quien hizo el libro, con las fechas, los totales y cada hallazgo con su celda y qué corregir.",
           "El libro no se modifica ni se guarda. El resumen y los hallazgos quedan en «Historial de auditorías», donde «Ver el detalle» los vuelve a mostrar.",
@@ -372,7 +561,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
     titulo: "Componer una partida",
     parrafos: [
       "Arma el APU de una partida: su cabecera, su rendimiento y sus insumos en «Materiales», «Equipos» y «Mano de obra». Sílice calcula el precio unitario mientras usted escribe, y «Guardar composición» la guarda en el catálogo.",
-      "Los precios salen de la lista para armar de la carpeta, a la «Fecha» de la composición.",
+      "Los precios salen de la lista de precios activa, en la «Fecha de precios» de este análisis.",
     ],
     guia: "presupuesto",
     terminos: ["apu", "rendimiento", "insumo", "lista-para-armar"],
@@ -466,9 +655,9 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
   riesgo: {
     titulo: "Riesgo de la obra",
     parrafos: [
-      "Cuánto puede subir el presupuesto si los precios se mueven como en los meses pasados: «Proyectar» simula muchas trayectorias y da el P50, el P80 y la reserva para cubrir el P80. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado.",
+      "Cuánto puede subir el presupuesto si los precios se mueven como en los meses pasados: «Proyectar» corre muchas simulaciones y da el P50, el P80 y la reserva para cubrir el P80. «Probar precisión con meses pasados» mide cuántas veces acertó esa cuenta en el pasado.",
       "Si a una serie le falta historia, el aviso la nombra; quien administra los precios la carga en «Índices del BCV» (sección «Series del riesgo vial»).",
-      "Sílice recuerda en la obra la serie que eligió para cada insumo cuando «Proyectar» o «Comprobar hacia atrás» sale bien. Al volver, el selector viene con lo último que usó en esa versión o, si la versión no tiene nada propio, en otra versión de la obra, y la nota lo dice; lo que ya no vale (un insumo que ya no está o una serie que ya no se ofrece) no se precarga y se avisa.",
+      "Sílice recuerda en la obra la serie que eligió para cada insumo cuando «Proyectar» o «Probar precisión con meses pasados» sale bien. Al volver, el selector viene con lo último que usó en esa versión o, si la versión no tiene nada propio, en otra versión de la obra, y la nota lo dice; lo que ya no vale (un insumo que ya no está o una serie que ya no se ofrece) no se precarga y se avisa.",
     ],
     terminos: ["p50-p80", "indices-bcv"],
   },
@@ -524,7 +713,7 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
   libros: {
     titulo: "Libro de la empresa",
     parrafos: [
-      "El libro tal como es, con las celdas de cada hallazgo marcadas y, a la derecha, la lista de hallazgos por severidad: elija uno para ver su celda. La «Fecha de devolución» es la fecha con la que se audita. «Descargar PDF» baja el resultado en un informe para entregar a quien hizo el libro.",
+      "El libro tal como es, con las celdas de cada hallazgo marcadas y, a la derecha, la lista de hallazgos por severidad: elija uno para ver su celda. La «Fecha de la revisión» es la fecha con la que se audita. «Descargar PDF» baja el resultado en un informe para entregar a quien hizo el libro.",
     ],
     guia: "auditar",
     terminos: ["libro", "hallazgo", "precio-atipico"],

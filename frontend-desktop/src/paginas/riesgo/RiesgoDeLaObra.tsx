@@ -1,6 +1,6 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { InlineLoading } from "../../comun/carbonEs";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ErrorDeApi } from "../../api/cliente";
 import { comprobarObra, guardarMapa, proyectarObra } from "../../api/riesgo";
@@ -14,7 +14,9 @@ import type {
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
+import { EnlaceComoBoton } from "../../comun/EnlaceComoBoton";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
@@ -39,8 +41,10 @@ import { ResultadoDeLaComprobacion, ResultadoDeLaProyeccion } from "./ResultadoD
 import "./riesgo.scss";
 
 const SIN_OBRA = "Abra una obra para ver el riesgo de precios de su presupuesto.";
-const SIN_VERSIONES = "Esta obra aún no tiene versiones guardadas. Guarde una en la Hoja para proyectar su riesgo.";
-const ESPERA = "Comprobando hacia atrás: puede tardar cerca de medio minuto en una obra mediana.";
+const SIN_VERSIONES = "Esta obra aún no tiene versiones";
+const SIN_VERSIONES_DESCRIPCION =
+  "Esta obra aún no tiene versiones guardadas. Guarde una en el presupuesto para proyectar su riesgo.";
+const ESPERA = "Probando con meses pasados: puede tardar cerca de medio minuto en una obra mediana.";
 
 type Pedido<T> = { estado: "nada" } | { estado: "cargando" } | { estado: "listo"; datos: T } | { estado: "error"; error: unknown };
 const NADA = { estado: "nada" } as const;
@@ -50,12 +54,14 @@ function rutaDeInsumos(proyecto: string, version: string): string {
 }
 
 // «Riesgo de la obra»: la proyección del riesgo de precios de una versión (P50, P80, la reserva y los insumos que más
-// empujan) y su comprobación hacia atrás (cobertura y número de cortes). Todo lo calcula el servidor con semilla fija;
+// empujan) y su prueba con meses pasados (cobertura y número de cortes). Todo lo calcula el servidor con semilla fija;
 // la pantalla solo lee lo tecleado (coma decimal, punto de miles) y escribe lo que llega en centésimas. Al pie, la
 // mejora de la estimación (Tarea 15), que no lee la obra: se ofrece aunque no haya una abierta. La serie que mueve cada
 // insumo se recuerda en el caso (mejora de la DS-81): al volver, el selector viene precargado con lo último que se usó.
 export default function RiesgoDeLaObra() {
   const { nombreProyecto, alExpirar, sesion } = useAplicacion();
+  const obra = useContext(ContextoDeLaObra);
+  const obraAbierta = obra ? { carpeta: obra.carpeta, obraId: obra.obraId } : undefined;
   const nombre = nombreProyecto ?? null;
   const versiones = useCarga<VersionesRespuesta>(nombre === null ? null : rutaDeVersiones(nombre), alExpirar);
   const ofrecidas = versiones.estado === "listo" ? versionesOfrecidas(versiones.datos.versiones) : [];
@@ -216,7 +222,13 @@ export default function RiesgoDeLaObra() {
       </p>
       {nombre === null && <EstadoVacio titulo={SIN_OBRA} />}
       {versiones.estado === "error" && <AvisoError error={versiones.error} titulo="No se pudieron leer las versiones" />}
-      {versiones.estado === "listo" && ofrecidas.length === 0 && <EstadoVacio titulo={SIN_VERSIONES} />}
+      {versiones.estado === "listo" && ofrecidas.length === 0 && (
+        <EstadoVacio titulo={SIN_VERSIONES} descripcion={SIN_VERSIONES_DESCRIPCION}>
+          <EnlaceComoBoton to={rutaOPendientes("hoja", obraAbierta)} kind="primary">
+            Ir al presupuesto
+          </EnlaceComoBoton>
+        </EstadoVacio>
+      )}
       {version !== null && (
         <>
           <Select
@@ -262,7 +274,7 @@ export default function RiesgoDeLaObra() {
                 </div>
               </fieldset>
               <fieldset className="riesgo-seccion">
-                <legend className="cds--type-heading-compact-01">Comprobar hacia atrás</legend>
+                <legend className="cds--type-heading-compact-01">Probar precisión con meses pasados</legend>
                 <div className="riesgo-acciones">
                   <CampoTexto
                     id="riesgo-porCorte"
@@ -274,7 +286,7 @@ export default function RiesgoDeLaObra() {
                     onChange={(e) => cambiar("porCorte", e.target.value)}
                   />
                   <Button kind="secondary" size="md" disabled={ocupado} onClick={comprobar}>
-                    Comprobar hacia atrás
+                    Probar precisión con meses pasados
                   </Button>
                   {comprobacion.estado === "cargando" && <InlineLoading description={ESPERA} />}
                 </div>

@@ -249,7 +249,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
-    expect(texto(filas[0]!)).toEqual(["Parámetro", "Control de obra: Umbral de SPI para error", "Umbral de SPI para error", "0,90", "0,85"]);
+    expect(texto(filas[0]!)).toEqual(["Parámetro", "Control de obra: SPI mínimo antes de marcar «Error»", "SPI mínimo antes de marcar «Error»", "0,90", "0,85"]);
     expect(texto(filas[1]!)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Recorrido=R1; Orden del vértice=2; Pendiente=0,02; Vértices=(1,5; 0; 2,5), (1,5; 0; 0,6)"]);
   });
 
@@ -419,7 +419,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
         desgloses: 1,
       });
     montar();
-    const dialogo = await abrirModal("Guardar el desglose…");
+    const dialogo = await abrirModal("Guardar ajuste de desperdicio…");
     expect(within(dialogo).getByRole("heading", { name: "Guardar el desglose" })).toBeInTheDocument();
     expect(within(dialogo).getByText(/Se guardará el desglose del desperdicio de 1 línea/)).toBeInTheDocument();
     // La traza no tiene dónde guardar una fuente: no se pide.
@@ -469,7 +469,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
     await screen.findByRole("table", { name: /^Materiales/ });
     expect(screen.queryByText(/Desglose del desperdicio guardado/)).toBeNull();
-    const dialogo = await abrirModal("Guardar el desglose…");
+    const dialogo = await abrirModal("Guardar ajuste de desperdicio…");
     guardadoPor = { responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-20T10:00:00" };
     alVivo = () => {
       const b = borrador("002", { cambios: 0, desgloses: 0 });
@@ -486,7 +486,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     montar();
     const region = await screen.findByRole("region", { name: "Estado del borrador" });
     await within(region).findByText(/1 cambio sin guardar/);
-    const dialogo = await abrirModal("Guardar el desglose…");
+    const dialogo = await abrirModal("Guardar ajuste de desperdicio…");
     // El servidor ya vació la cuenta: lo que se lee ahora es el borrador sin cambios.
     alVivo = () => {
       const b = borrador("002", { cambios: 0, desgloses: 0 });
@@ -549,7 +549,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
         ? json({ codigo: "002", proyecto: "OF-001", cambios: 0, total: m("2703.86"), primera: false, mensaje: "x", version_nueva: false, desgloses: 1 })
         : json({ detalle: sobreLa004, version_mas_nueva: "004" }, 409);
     montar();
-    const dialogo = await abrirModal("Guardar el desglose…");
+    const dialogo = await abrirModal("Guardar ajuste de desperdicio…");
     fireEvent.click(confirmar(dialogo, "Guardar el desglose"));
     expect(await within(dialogo).findByText(sobreLa004)).toBeInTheDocument();
     expect(confirmar(dialogo, "Guardar el desglose")).toBeDisabled();
@@ -782,6 +782,31 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     await act(async () => {
       await new Promise<void>((r) => setImmediate(r));
     });
+    expect(guardados()).toHaveLength(0);
+    contestar(json({ rev: 4, resumen: resumen({ rev: 4, cambios: 3 }) }));
+    await esperar(() => expect(guardados()).toHaveLength(1));
+    expect(guardados()[0]!["rev"]).toBe(4);
+  });
+
+  test("guardar con una edición esperando la pausa de 400 ms en la pestaña abierta la vacía antes y manda el rev que ella dejó", async () => {
+    let contestar: (r: Response) => void = () => undefined;
+    const puesta = new Promise<Response>((resolver) => {
+      contestar = resolver;
+    });
+    fetchFalso.mockImplementation(
+      ((impl) =>
+        async (...args: Parameters<typeof fetch>) =>
+          String(args[0]).endsWith("/parametros") && args[1]?.method === "PUT" ? puesta : impl(...args))(fetchFalso.getMockImplementation()!),
+    );
+    montar();
+    await userEvent.click(await screen.findByRole("tab", { name: "Ajustes de costo" }));
+    const campo = await screen.findByRole("textbox", { name: /^Administración/ });
+    fireEvent.change(campo, { target: { value: "0,20" } });
+    // Sin cambiar de pestaña y dentro de la pausa de 400 ms, abre el diálogo y guarda: debe vaciar la edición pendiente.
+    const dialogo = await abrirModal();
+    await escribirFuente(dialogo);
+    fireEvent.click(confirmar(dialogo));
+    await esperar(() => expect(llamadas("PUT", "/parametros")).toHaveLength(1));
     expect(guardados()).toHaveLength(0);
     contestar(json({ rev: 4, resumen: resumen({ rev: 4, cambios: 3 }) }));
     await esperar(() => expect(guardados()).toHaveLength(1));

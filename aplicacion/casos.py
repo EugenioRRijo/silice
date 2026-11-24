@@ -129,7 +129,7 @@ MENSAJE_RESERVADO = "Ese nombre está reservado para la demostración."
 MENSAJE_SIN_NOMBRE = (
     "El archivo no trae un nombre utilizable: escriba un nombre para la carpeta de trabajo."
 )
-MENSAJE_GRANDE = "El archivo pasa de 20 MiB."
+MENSAJE_GRANDE = "El archivo pasa de 20 MB."
 MENSAJE_NO_ES_SQLITE = "«{nombre}» no es una base de Sílice (SQLite): no se guardó."
 MENSAJE_NO_VALIDO = "El archivo no es una carpeta de trabajo de Sílice válida: no se guardó."
 MENSAJE_PREPARACION = (

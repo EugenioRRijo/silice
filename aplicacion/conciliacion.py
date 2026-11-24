@@ -32,7 +32,7 @@ import json
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 
 from sqlalchemy.orm import Session
 
@@ -41,7 +41,7 @@ from adapters.vial.constantes import (
     TOLERANCIA_CANTIDAD_CONCILIADA,
     TOLERANCIA_PRECIO,
 )
-from aplicacion.cifras import texto_de_cifra
+from aplicacion.cifras import precision_para, texto_de_cifra
 from aplicacion.costo_propio import (
     PREFIJO_DE_AGREGADO,
     PREFIJO_DE_MEZCLA,
@@ -69,9 +69,10 @@ _NOMBRE_DE_PARTIDA = {codigo: nombre for codigo, nombre, _ in PARTIDAS_VIALES.va
 
 def _dinero(valor: Decimal) -> str:
     """Un monto con dos decimales, o con los que haga falta si tiene más (12,70; 12,661)."""
-    return texto_de_cifra(
-        valor.quantize(_CENTAVOS) if valor == valor.quantize(_CENTAVOS) else valor
-    )
+    with localcontext() as contexto:
+        contexto.prec = precision_para(valor)
+        en_centavos = valor.quantize(_CENTAVOS, rounding=ROUND_HALF_UP)
+        return texto_de_cifra(en_centavos if valor == en_centavos else valor)
 
 
 def _cantidad(valor: Decimal) -> str:

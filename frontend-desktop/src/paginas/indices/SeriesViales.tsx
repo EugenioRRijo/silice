@@ -240,10 +240,10 @@ export function SeriesViales() {
           )}
           {datos.responsable !== "" && <p className="cds--type-body-compact-01">Responsable de la importación: {datos.responsable}</p>}
           <div className="silice-indices__acciones">
-            <Button type="submit" kind="primary" size="md" disabled={enviando}>
+            <Button type="submit" kind="secondary" size="md" disabled={enviando}>
               Importar
             </Button>
-            {enviando && <InlineLoading description="Importando..." status="active" />}
+            {enviando && <InlineLoading description="Importando…" status="active" />}
           </div>
         </form>
       )}

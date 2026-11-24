@@ -3,7 +3,12 @@ import react from "@vitejs/plugin-react";
 import { esCargadorDePatrones, podarPatrones } from "./scripts/patronesDeSilabeo.mjs";
 
 // Interfaz nueva de Silice, servida por el FastAPI en /app (RS2-9).
-export default defineConfig({
+// La portada web (portada.html) es solo de pruebas: entra al dist unicamente con `vite build --mode portada`
+// (npm run build:portada) y el FastAPI la sirve en / solo con SILICE_PORTADA_WEB=1. `npm run build`, que compila la CI
+// y empaqueta el instalador, no la lleva (scripts/verificar_dist.mjs la rechaza si aparece).
+const ENTRADAS = { main: "index.html", portada: "portada.html" };
+
+export default defineConfig(({ mode }) => ({
   base: "/app/",
   plugins: [
     react(),
@@ -33,6 +38,7 @@ export default defineConfig({
   build: {
     sourcemap: false,
     rollupOptions: {
+      input: Object.fromEntries(Object.entries(ENTRADAS).filter(([nombre]) => nombre !== "portada" || mode === "portada")),
       output: {
         // react-router en un trozo con nombre fijo: scripts/verificar_dist.mjs permite sus textos de error y de aviso
         // (reactrouter.com, localhost, github.com) solo en el bundle principal o en este trozo (RNF-22, RS2B-2).
@@ -60,4 +66,4 @@ export default defineConfig({
     // todos los archivos a la vez (CI y laptops lentas): 20 s evita falsos rojos sin esconder cuelgues reales.
     testTimeout: 20_000,
   },
-});
+}));

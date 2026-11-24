@@ -39,7 +39,7 @@ export function RastroDeAprobaciones({ proyecto }: { proyecto: string }) {
   return (
     <section className="silice-aprobar__rastro" aria-labelledby={titulo}>
       <h2 id={titulo} className="cds--type-heading-compact-02">
-        Rastro de la obra
+        Historial de aprobaciones
       </h2>
       {carga.estado === "cargando" && (
         <p className="cds--type-helper-text-01" aria-live="polite">
@@ -66,7 +66,7 @@ function Contenido({ datos }: { datos: AprobacionesDeObra }) {
             columnas={[
               { clave: "movimiento", titulo: "Movimiento", ordenable: false },
               { clave: "version", titulo: "Versión", ordenable: false },
-              { clave: "desenlace", titulo: "Desenlace", ordenable: false },
+              { clave: "desenlace", titulo: "Resultado", ordenable: false },
               { clave: "por", titulo: "Quién", ordenable: false },
               { clave: "el", titulo: "Cuándo", ordenable: false, celda: (f) => fechaEsVe(f["el"] ?? "") },
               { clave: "notas", titulo: "Notas", ordenable: false },

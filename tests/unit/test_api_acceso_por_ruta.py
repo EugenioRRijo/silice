@@ -475,15 +475,20 @@ def test_la_tabla_cubre_exactamente_las_rutas_de_la_api() -> None:
 
 def test_fuera_de_las_rutas_de_la_api_solo_hay_documentacion_y_la_interfaz() -> None:
     """Lo que no es `APIRoute` (ni un router incluido) no lleva la dependencia de acceso: solo
-    puede ser la documentación (que el producto apaga) y el montaje estático de `/app`."""
+    puede ser la documentación (que el producto apaga), el montaje estático de `/app` y la raíz,
+    que redirige a `/app/` (la portada web solo existe con `SILICE_PORTADA_WEB=1`)."""
     otras = {
         (type(ruta), ruta.path)
         for ruta in app.router.routes
         if not isinstance(ruta, APIRoute) and not hasattr(ruta, "original_router")
     }
     documentacion = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
-    permitidas = {(Route, camino) for camino in documentacion} | {(Route, "/app"), (Mount, "/app")}
-    assert otras <= permitidas and (Mount, "/app") in otras
+    permitidas = {(Route, camino) for camino in documentacion} | {
+        (Route, "/"),
+        (Route, "/app"),
+        (Mount, "/app"),
+    }
+    assert otras <= permitidas and (Mount, "/app") in otras and (Route, "/") in otras
 
 
 @pytest.mark.parametrize(("metodo", "ruta"), PARES, ids=[f"{m} {r}" for m, r in PARES])

@@ -12,7 +12,7 @@ export function SeccionFcas({ alExpirar }: { alExpirar: (error: unknown) => void
         FCAS por componentes
       </h2>
       <p className="silice-precios-empresa__nota cds--type-label-01">
-        El factor de costos asociados al salario que sale de los días pagados y de los aportes patronales, con su base
+        El factor de costos asociados al salario (FCAS) que sale de los días pagados y de los aportes patronales, con su base
         legal. Se compara con el de la versión y no se aplica solo.
       </p>
       {abierta ? (

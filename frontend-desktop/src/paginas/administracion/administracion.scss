@@ -2,6 +2,7 @@
 
 .silice-adm {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
   padding: 1.5rem 1rem 2rem;
 }
@@ -9,11 +10,13 @@
 // La capa de nivel dos que envuelve los bloques de una seccion de la Cuenta (F6, T6): se apilan con el mismo espacio.
 .silice-adm__capa {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
 }
 
 .silice-adm__bloque {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
@@ -39,6 +42,7 @@
 
 .silice-adm__seccion {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   max-inline-size: 36rem;
 }
@@ -84,4 +88,10 @@
 
 .silice-adm__confirmar:focus {
   outline: 2px solid var(--silice-interactivo);
+}
+
+// Aviso «sin ningún rol»: ícono y texto en una línea, el ícono centrado con la letra.
+.silice-adm__nota .silice-sev {
+  display: inline-flex;
+  align-items: center;
 }

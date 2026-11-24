@@ -108,7 +108,7 @@ pestañas; cada quien ve solo las pestañas que puede usar:
 
 | Sección de la Cuenta | Arma | Revisa | Administra |
 |---|---|---|---|
-| «Pantalla y tamaño de letra» | Sí | Sí | Sí |
+| «Configuración» | Sí | Sí | Sí |
 | «Contraseña» | Sí | Sí | Sí |
 | «Cuentas y permisos» | No | No | Sí |
 | «Empresa y tema» | No | No | Sí |
@@ -423,7 +423,7 @@ Pulse el círculo con sus iniciales y su nombre, arriba a la derecha. Se abre su
 su nombre, su usuario y sus papeles, y el botón «Salir de la sesión». Debajo, las secciones que su papel
 puede usar:
 
-- **«Pantalla y tamaño de letra»**, para todas las cuentas. Es el único sitio donde se cambia el tamaño
+- **«Configuración»**, para todas las cuentas. Es el único sitio donde se cambia el tamaño
   de letra: «Normal», «Grande» o «Muy grande» (100 %, 125 % y 150 %). Una frase de muestra deja ver al
   instante cómo queda. Sílice recuerda su elección en ese navegador. Debajo, «Datos de la cuenta»:
   «Nombre», «Usuario» y «Rol».
@@ -439,7 +439,7 @@ puede usar:
   programa, el estado de las bases de datos y qué módulos están instalados. Al final, «Recorridos guiados»
   ofrece «Empezar el recorrido «Auditar un libro de la empresa»» (sección 12.4).
 
-La Cuenta abre siempre en «Pantalla y tamaño de letra». Lo que antes era la pantalla «Administración»
+La Cuenta abre siempre en «Configuración». Lo que antes era la pantalla «Administración»
 está repartido en las cuatro secciones de quien administra.
 
 ### 3.10 La ayuda dentro de Sílice
@@ -1751,7 +1751,7 @@ existen; su función está ahora en otro lugar:
 | Las secciones de la obra desplegadas en la barra lateral | La barra de secciones bajo el nombre de la obra; la barra lateral solo lista las obras (sección 3.6) |
 | La zona «Empresa» de la barra lateral | El grupo «Costos y producción»; «Empresa y personas» y «Ayuda» pasaron a la Cuenta |
 | La pantalla «Administración», con siete pestañas | Cuatro secciones de la Cuenta: «Cuentas y permisos», «Empresa y tema», «Carpetas» y «Especialidades, IA e instalación» (sección 2.7) |
-| Las migas («Mis obras / … / Presupuesto») y el tamaño de letra en la barra de arriba | La barra de arriba muestra la carpeta activa; el tamaño de letra está solo en la Cuenta › «Pantalla y tamaño de letra» |
+| Las migas («Mis obras / … / Presupuesto») y el tamaño de letra en la barra de arriba | La barra de arriba muestra la carpeta activa; el tamaño de letra está solo en la Cuenta › «Configuración» |
 | «Salir» en el menú de la cuenta | «Salir de la sesión», arriba de su Cuenta (sección 3.9) |
 | «Tablero del proyecto», «Componer una partida», «Entregar paquete», «Revisar un paquete», «Actualizar precios», «Reajuste de precios», «Escenarios de sensibilidad» y «Riesgo de la obra» solo con Ctrl+K | Vistas y secciones de la obra (secciones 1.3 y 3.6); Ctrl+K las sigue encontrando |
 | «Precios de la empresa», «Índices del BCV», «Libro de la empresa», «Historial de auditorías» y las pantallas de producción solo con Ctrl+K | Pestañas de «Precios y catálogo», «Auditar un presupuesto» y «Costos de producción» |

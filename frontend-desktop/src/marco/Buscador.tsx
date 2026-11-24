@@ -18,8 +18,13 @@ interface Props {
 // El botón de la barra superior que abre el buscador: a él vuelve el foco si quien lo abrió ya no está.
 const BOTON_DEL_BUSCADOR = '[aria-keyshortcuts="Control+K"]';
 
-function anuncioDe(cantidad: number): string {
-  if (cantidad === 0) return "Sin resultados";
+function anuncioDe(cantidad: number, texto: string): string {
+  if (cantidad === 0) {
+    const consulta = texto.trim();
+    return consulta
+      ? `No hay obras ni pantallas con «${consulta}». Pruebe con una palabra del nombre de la obra o de la pantalla`
+      : "Sin resultados";
+  }
   return cantidad === 1 ? "1 resultado" : `${cantidad} resultados`;
 }
 
@@ -142,7 +147,7 @@ function Caja({ alCerrar, alElegir }: Omit<Props, "abierto">) {
           </p>
         )}
         <div role="status" aria-live="polite" aria-atomic="true" className="silice-buscador__estado">
-          {anuncioDe(resultados.length)}
+          {anuncioDe(resultados.length, texto)}
         </div>
       </div>
     </div>

@@ -46,6 +46,8 @@ interface Props {
 const AVISO_PROPIA = "Descripción propia: no viene del catálogo.";
 export const NOTA_DOS_DECIMALES =
   "Los precios con más de dos decimales se leen con dos; al entrar en la celda se ve y se edita el número completo.";
+const NOTA_DEPRECIACION =
+  "Depreciación: fracción del precio del equipo que cuesta un día de uso, mayor que 0 y hasta 1 (por ejemplo, 0,005).";
 
 // Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §2): un precio con más de dos decimales que no tecleó la persona
 // (el de la lista convertido de Bs trae 28 cifras) se lee con dos en reposo, como una celda de Excel; al entrar en la celda
@@ -422,7 +424,7 @@ export function TablaInsumos({
                           value={fila[c.clave] ?? ""}
                           onChange={(e) => alCambiar(i, c.clave, e.target.value)}
                         >
-                          <SelectItem value="" text="" />
+                          <SelectItem value="" text="Sin modalidad" />
                           {modalidades.map((m) => (
                             <SelectItem key={m} value={m} text={m} />
                           ))}
@@ -508,6 +510,7 @@ export function TablaInsumos({
         </Table>
       </div>
       {algunoEnReposo && <p className="cds--type-helper-text-01">{NOTA_DOS_DECIMALES}</p>}
+      {tipo === "equipos" && <p className="cds--type-helper-text-01">{NOTA_DEPRECIACION}</p>}
       <Button kind="tertiary" size="sm" aria-label={`Agregar fila a ${titulo}`} onClick={alAgregar}>
         Agregar fila
       </Button>

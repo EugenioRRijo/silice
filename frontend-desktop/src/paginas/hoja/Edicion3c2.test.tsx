@@ -490,9 +490,14 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(campo(/^Administración/)).toHaveValue("0,15");
       expect(campo(/^Utilidad/)).toHaveValue("0,10");
       expect(screen.getAllByRole("textbox")).toHaveLength(4);
+      expect(
+        screen.getByText(
+          "FCAS (factor de costos asociados al salario), Administración y Utilidad se escriben como fracción decimal (6,00 = 600 %; 0,15 = 15 %). Cambiarlos recalcula todos los APU.",
+        ),
+      ).toBeInTheDocument();
       await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
       expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
-      expect(screen.getByText(/Cambiarlos recalcula/)).toBeInTheDocument();
+      expect(screen.getByText(/Cambiarlos recalcula todos los APU y el total\./)).toBeInTheDocument();
       expect(screen.queryByText(/solo se leen/)).toBeNull();
       // La etiqueta se ve (no está oculta): es el rótulo de la clásica.
       expect(screen.getByText(/^Administración \(fracción del costo directo\)/)).toBeVisible();
@@ -721,6 +726,9 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     test("3b-F8 con edición: la matriz tiene un campo por partida y período con nombre accesible, y la curva sigue debajo", async () => {
       await irA("Plan y equilibrio");
       const matriz = await screen.findByRole("table", { name: "Plan de trabajo" });
+      expect(
+        screen.getByText("Escriba qué fracción de cada partida se ejecuta en cada período (por ejemplo, 0,5 y 0,5). Cada fila debe sumar 1."),
+      ).toBeInTheDocument();
       expect(within(matriz).getAllByRole("columnheader").map((c) => c.textContent)).toEqual(["Partida", "Día 1", "Día 2"]);
       expect(within(matriz).getAllByRole("textbox")).toHaveLength(4);
       expect(campo("Día 1, Plan de trabajo fila 1")).toHaveValue("1");

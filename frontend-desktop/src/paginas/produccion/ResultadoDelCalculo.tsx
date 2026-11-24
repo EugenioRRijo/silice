@@ -22,8 +22,8 @@ export function ResultadoDelCalculo({ calculo, region, children }: Props): JSX.E
   const columnas: ColumnaDensa[] = [
     { clave: "codigo", titulo: "Producto" },
     { clave: "tipo", titulo: "Tipo" },
-    { clave: "presentado", titulo: `Costo por tonelada (${calculo.moneda})`, numerica: true, presentar: mostrarMonto },
-    { clave: "exacto", titulo: `Valor exacto (${calculo.moneda})`, numerica: true, presentar: formatoEsVe },
+    { clave: "presentado", titulo: `Costo por tonelada (redondeado, ${calculo.moneda})`, numerica: true, presentar: mostrarMonto },
+    { clave: "exacto", titulo: `Costo exacto (sin redondear, ${calculo.moneda})`, numerica: true, presentar: formatoEsVe },
   ];
   const filas: FilaDensa[] = calculo.productos.map((p) => ({
     id: p.codigo,
@@ -60,12 +60,12 @@ export function ResultadoDelCalculo({ calculo, region, children }: Props): JSX.E
       <ConstanciasDelCalculo calculo={calculo} />
       {calculo.publicado && (
         <p className="cds--type-body-compact-01">
-          Ya se publicó en la lista n.º {calculo.publicado.lista_id} (caso «{calculo.publicado.caso}») el{" "}
+          Ya se publicó en la lista n.º {calculo.publicado.lista_id} (carpeta «{calculo.publicado.caso}») el{" "}
           {fechaEsVe(calculo.publicado.registrado.slice(0, 10))}. Un cálculo se publica una sola vez; para otro precio, recalcule.
         </p>
       )}
       <p className="planta-nota cds--type-body-compact-01">
-        Huella del cálculo: <span className="silice-cifra">{calculo.huella}</span>. Recalcular crea otro cálculo; el anterior queda intacto.
+        Código de verificación del cálculo (SHA-256, comprueba que no cambió): <span className="silice-cifra">{calculo.huella}</span>. Recalcular crea otro cálculo; el anterior queda intacto.
       </p>
       {children}
     </section>

@@ -223,6 +223,7 @@ describe("Vista general: el orden de los bloques", () => {
     expect(h1).toHaveLength(1);
     expect(h1[0]).toHaveTextContent("Vista general");
     expect(h1[0]).toHaveClass("cds--type-heading-04");
+    expect(screen.getByText("Estado de todas sus obras, lo que requiere atención hoy y accesos rápidos")).toBeInTheDocument();
     const barra = screen.getByRole("navigation", { name: "Inicio" });
     expect(within(barra).getByRole("link", { name: "Vista general" })).toHaveAttribute("aria-current", "page");
     expect(within(barra).getByRole("link", { name: "Pendientes" })).not.toHaveAttribute("aria-current");
@@ -496,18 +497,20 @@ describe("Vista general: sin obras", () => {
     // La Vista general reúne todas las carpetas que la cuenta puede ver: no habla de «esta carpeta».
     expect(b).not.toHaveTextContent("en esta carpeta");
     expect(within(b).getByText("Cuando haya una obra registrada en las carpetas a las que tiene acceso, aparecerá aquí.")).toBeInTheDocument();
-    expect(within(b).queryByRole("button", { name: "Nueva obra" })).toBeNull();
+    expect(within(b).queryByRole("button", { name: "Crear la primera obra" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Obras y avance contra el plan" })).toBeNull();
     expect(document.querySelector(".silice-vacio")).not.toBeNull();
   });
 
-  test("quien arma ve cómo empezar y el botón «Nueva obra»", async () => {
+  test("quien arma ve cómo empezar y el botón principal «Crear la primera obra»", async () => {
     cartera = () => json(SIN_OBRAS);
     montar();
     const b = await bloque("Cartera por moneda");
     expect(await within(b).findByText("Aún no hay obras")).toBeInTheDocument();
     expect(within(b).getByText("Cree la primera obra para armar su presupuesto y seguir su avance.")).toBeInTheDocument();
-    expect(within(b).getByRole("button", { name: "Nueva obra" })).toBeInTheDocument();
+    const boton = within(b).getByRole("button", { name: "Crear la primera obra" });
+    expect(boton).toBeInTheDocument();
+    expect(boton).toHaveClass("cds--btn--primary");
   });
 });
 
@@ -712,7 +715,7 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
     expect(pasos.map((p) => p.querySelector("strong")?.textContent)).toEqual(["Cree la obra", "Arme el presupuesto", "Envíelo a aprobación"]);
     expect(within(b).getByRole("link", { name: "Guía «Montar un presupuesto»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-presupuesto");
     expect(within(b).getByRole("link", { name: "Guía «Enviarlo a aprobación»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-aprobacion");
-    // No duplica la acción: «Nueva obra» sigue siendo el único botón, el del estado vacío de la cartera.
+    // No duplica la acción: «Crear la primera obra» sigue siendo el único botón, el del estado vacío de la cartera.
     expect(within(b).queryByRole("button")).toBeNull();
     expect(pedidas(RUTA_CUENTAS)).toBe(0);
   });
@@ -741,3 +744,39 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
   });
 });
 
+
+// Los lanzadores de los espacios de la empresa (rediseño 2026-11-21): cada uno se llama como su espacio en `marco/espacios.ts`
+// (el mismo nombre de la barra lateral), no con un nombre propio, y dice las herramientas que la cuenta puede abrir allí.
+// Sin numeración decorativa ni «Ventana dedicada». Oráculos escritos a mano.
+describe("Vista general: los lanzadores de los espacios", () => {
+  test("cada lanzador lleva el nombre de su espacio y abre su primera herramienta usable", async () => {
+    montar();
+    const lanzadores = await bloque("Herramientas de la empresa");
+    expect(within(lanzadores).getByText("Espacios de trabajo de la empresa")).toBeInTheDocument();
+    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
+    expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
+    expect(within(lanzadores).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/resumen");
+    expect(lanzadores.textContent).not.toMatch(/Auditor Forense|Precios, Catálogo|Índices BCV|Cantera/);
+    expect(lanzadores.textContent).not.toMatch(/ventana dedicada|\b0[123]\s*·/i);
+  });
+
+  test("cada lanzador describe las herramientas de su espacio que la cuenta puede usar, con sus nombres", async () => {
+    montar();
+    const lanzadores = await bloque("Herramientas de la empresa");
+    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAccessibleDescription(
+      "Subir y auditar Excel · Libro de la empresa · Historial de auditorías",
+    );
+    // Quien arma no administra precios: ni «Precios de la empresa» ni «Índices del BCV».
+    expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAccessibleDescription(
+      "Catálogo de partidas e insumos · Simulador de listas",
+    );
+  });
+
+  test("con la especialidad de producción apagada no se ofrece su lanzador", async () => {
+    apagados = ["produccion"];
+    montar();
+    const lanzadores = await bloque("Herramientas de la empresa");
+    await waitFor(() => expect(within(lanzadores).queryByRole("link", { name: "Costos de producción" })).toBeNull());
+    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toBeInTheDocument();
+  });
+});

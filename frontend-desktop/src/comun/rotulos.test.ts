@@ -3,7 +3,8 @@ import { rotuloDeCampo, rotuloDeObjeto, rotuloDeParametro, valorDeCambio } from 
 
 describe("rótulos del registro de cambios", () => {
   test("un parámetro de control sale como «Control de obra: <parámetro>»", () => {
-    expect(rotuloDeParametro("control|spi_error")).toBe("Control de obra: Umbral de SPI para error");
+    expect(rotuloDeParametro("control|spi_error")).toBe("Control de obra: SPI mínimo antes de marcar «Error»");
+    expect(rotuloDeParametro("control|cpi_error")).toBe("Control de obra: CPI mínimo antes de marcar «Error»");
     expect(rotuloDeParametro("control|penalizacion_diaria")).toBe("Control de obra: Penalización diaria por retraso");
     expect(rotuloDeParametro("control|otro_nuevo")).toBe("Control de obra: Otro nuevo");
   });
@@ -13,7 +14,8 @@ describe("rótulos del registro de cambios", () => {
   });
   test("campos de control y de metraje con rótulo y tilde", () => {
     expect(rotuloDeCampo("penalizacion_diaria")).toBe("Penalización diaria por retraso");
-    expect(rotuloDeCampo("spi_error")).toBe("Umbral de SPI para error");
+    expect(rotuloDeCampo("spi_error")).toBe("SPI mínimo antes de marcar «Error»");
+    expect(rotuloDeCampo("cpi_error")).toBe("CPI mínimo antes de marcar «Error»");
     expect(rotuloDeCampo("ambiente_id")).toBe("Ambiente");
     expect(rotuloDeCampo("vertices")).toBe("Vértices");
     expect(rotuloDeCampo("x0")).toBe("Esquina X (m)");

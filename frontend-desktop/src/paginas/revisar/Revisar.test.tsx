@@ -253,6 +253,7 @@ describe("Revisar un paquete", () => {
   test("tiene un solo h1, las dos pestañas de la clasica y dice que elija el archivo", () => {
     montar();
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["Revisar un paquete"]);
+    expect(screen.getByText("Verifique un presupuesto recibido (.silice o Excel) y registre su dictamen")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Paquete .silice" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Presupuesto en Excel" })).toBeInTheDocument();
     expect(screen.getByText("Elija el archivo .silice que recibió.")).toBeInTheDocument();
@@ -274,7 +275,9 @@ describe("Revisar un paquete", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "El emisor no los declaró (1)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "En común (0)" })).toBeInTheDocument();
+    expect(screen.getAllByText("Ninguno").length).toBeGreaterThan(0);
     const nuevos = screen.getByRole("table", { name: "El emisor no los declaró" });
+    expect(within(nuevos).getByText("Qué revisó Sílice")).toBeInTheDocument();
     expect(within(nuevos).getByText("Información")).toBeInTheDocument(); // la severidad con su nombre, no solo color
     expect(screen.getByText("Esta instalación no recibió una entrega anterior de esta obra.")).toBeInTheDocument();
     const cambios = screen.getByRole("table", { name: "Quién cambió qué" });
@@ -283,7 +286,7 @@ describe("Revisar un paquete", () => {
     const celdasDelCambio = within(within(cambios).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
     expect(celdasDelCambio.slice(0, 9)).toEqual(["005", "APU", "MIN-001, Arena", "Cantidad", "1,00", "1,50", "memoria", "Ana <ana>", "02/11/2026 08:00"]);
     const filaDeControl = within(within(cambios).getAllByRole("row")[2]!).getAllByRole("cell").map((c) => c.textContent);
-    expect(filaDeControl.slice(0, 6)).toEqual(["005", "Parámetro", "Control de obra: Umbral de SPI para error", "Instantánea", "Catálogo", "Instantánea"]);
+    expect(filaDeControl.slice(0, 6)).toEqual(["005", "Parámetro", "Control de obra: SPI mínimo antes de marcar «Error»", "Instantánea", "Catálogo", "Instantánea"]);
     expect(screen.getByText(REVISION.nota_excel)).toBeInTheDocument();
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);
@@ -435,5 +438,53 @@ describe("Revisar un paquete", () => {
     expect((cuerpo.get("presupuesto") as File).name).toBe("externo.xlsx");
     expect(screen.getByText("836,80")).toHaveAttribute("title", "Valor exacto: 836,79750000");
     expect(within(screen.getByRole("table", { name: "Hallazgos del presupuesto en Excel" })).getByText("R2")).toBeInTheDocument();
+  });
+
+  test("muestra el nombre de la regla junto al código en paquete y Excel externo, y solo el código si viene vacío", async () => {
+    paquete = () =>
+      json({
+        ...REVISION,
+        reauditoria: {
+          ...REVISION.reauditoria!,
+          hallazgos: [
+            {
+              titulo: "El emisor no los declaró",
+              hallazgos: [
+                { regla: "R11", nombre_regla: "Precio fuera de rango", severidad: "INFO", descripcion: "Con nombre" },
+                { regla: "R4", nombre_regla: "", severidad: "ADVERTENCIA", descripcion: "Sin nombre" },
+              ],
+            },
+          ],
+        },
+      });
+    fetchFalso.mockImplementation(async (ruta, opciones) => {
+      const url = String(ruta);
+      if (url === "/v1/revision/paquete") return paquete();
+      if (url === "/v1/revision/contra-lista") {
+        const lista = (opciones?.body as FormData).get("lista");
+        return json(lista === "1" ? CONTRA_LA_DE_PRUEBA : CONTRA_MI_LISTA);
+      }
+      if (url === "/v1/revision/excel-externo") {
+        return json({
+          ...EXTERNO,
+          hallazgos: [
+            { regla: "R2", nombre_regla: "Consistencia de montos", severidad: "ERROR", descripcion: "La curva no cierra" },
+            { regla: "R7", nombre_regla: "", severidad: "INFO", descripcion: "Parámetro sin nombre" },
+          ],
+        });
+      }
+      return json({ detalle: "ruta inesperada " + url }, 404);
+    });
+    const usuario = await subirYEsperar();
+    const tablaPaquete = screen.getByRole("table", { name: "El emisor no los declaró" });
+    expect(within(tablaPaquete).getByText("Precio fuera de rango (R11)")).toBeInTheDocument();
+    expect(within(tablaPaquete).getByText("R4")).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole("tab", { name: "Presupuesto en Excel" }));
+    const campos = document.querySelectorAll('input[type="file"]');
+    await usuario.upload(campos[campos.length - 1] as HTMLInputElement, new File(["PK"], "externo.xlsx"));
+    const tablaExcel = await screen.findByRole("table", { name: "Hallazgos del presupuesto en Excel" });
+    expect(within(tablaExcel).getByText("Consistencia de montos (R2)")).toBeInTheDocument();
+    expect(within(tablaExcel).getByText("R7")).toBeInTheDocument();
   });
 });

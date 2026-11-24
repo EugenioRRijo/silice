@@ -7,6 +7,7 @@ es el literal del plan de la sesión 2 (Task 2.3a), escrito aquí a mano.
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,14 @@ INDICE = (
     '<body><div id="raiz"></div></body></html>'
 )
 GUION = "console.log('silice');"
+PORTADA = (
+    '<!doctype html><html lang="es"><head><title>Portada de pruebas</title></head>'
+    "<body></body></html>"
+)
+VARIABLE_PORTADA = "SILICE_PORTADA_WEB"
+MENSAJE_PORTADA_SIN_COMPILAR = (
+    "La portada de pruebas no está compilada (npm run build:portada en frontend-desktop)."
+)
 
 
 def _cliente(ip: str = IP_LOCAL[0]) -> TestClient:
@@ -153,3 +162,105 @@ def test_la_csp_no_permite_unsafe_eval_ni_anfitriones_externos() -> None:
     assert directivas["object-src"] == ["'none'"]
     assert directivas["frame-ancestors"] == ["'none'"]
     assert directivas["base-uri"] == ["'none'"]
+
+
+@pytest.fixture
+def sin_portada_web(monkeypatch: pytest.MonkeyPatch) -> None:
+    """El producto: sin la variable `SILICE_PORTADA_WEB` (la portada es solo de pruebas)."""
+    monkeypatch.delenv(VARIABLE_PORTADA, raising=False)
+
+
+@pytest.fixture
+def portada_web(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La entrada de pruebas: `SILICE_PORTADA_WEB=1`."""
+    monkeypatch.setenv(VARIABLE_PORTADA, "1")
+
+
+def _con_portada(dist: Path) -> Path:
+    (dist / "portada.html").write_text(PORTADA, encoding="utf-8")
+    return dist
+
+
+@pytest.mark.usefixtures("sin_portada_web")
+def test_sin_la_variable_la_raiz_redirige_a_app_aunque_haya_portada_compilada(dist: Path) -> None:
+    """La suite de escritorio no publica la portada: `GET /` (y `HEAD /`) lleva a `/app/`."""
+    _con_portada(dist)
+    for metodo in ("GET", "HEAD"):
+        respuesta = _cliente().request(metodo, "/", follow_redirects=False)
+        assert respuesta.status_code == 307, metodo
+        assert respuesta.headers["location"] == "/app/"
+        _cabeceras_de_seguridad(respuesta)
+        assert PORTADA not in respuesta.text
+
+
+@pytest.mark.usefixtures("sin_portada_web")
+def test_sin_la_variable_la_portada_tampoco_se_sirve_bajo_app(dist: Path) -> None:
+    _con_portada(dist)
+    respuesta = _cliente().get("/app/portada.html")
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": "No existe ese archivo de la interfaz."}
+    _cabeceras_de_seguridad(respuesta)
+
+
+@pytest.mark.usefixtures("sin_portada_web")
+@pytest.mark.parametrize(
+    "ruta",
+    [
+        "/app/Portada.html",
+        "/app/PORTADA.HTML",
+        "/app/portada.HTML",
+        "/app/portada.html.",
+        "/app/portada.html. . ",
+        "/app/portada.html::$DATA",
+        "/app/./portada.html",
+    ],
+)
+def test_sin_la_variable_la_portada_no_se_cuela_con_otra_grafia(dist: Path, ruta: str) -> None:
+    """En Windows el sistema de archivos no distingue mayúsculas, ignora puntos y espacios del
+    final y abre el flujo `::$DATA`: la guardia compara el archivo, no la grafía de la ruta."""
+    _con_portada(dist)
+    respuesta = _cliente().get(ruta)
+    assert respuesta.status_code == 404, ruta
+    assert PORTADA not in respuesta.text
+
+
+@pytest.mark.parametrize("valor", ["", "0", "si", "true", " 1"])
+def test_la_variable_solo_enciende_la_portada_con_1(
+    dist: Path, monkeypatch: pytest.MonkeyPatch, valor: str
+) -> None:
+    _con_portada(dist)
+    monkeypatch.setenv(VARIABLE_PORTADA, valor)
+    respuesta = _cliente().get("/", follow_redirects=False)
+    assert respuesta.status_code == 307 and respuesta.headers["location"] == "/app/"
+
+
+@pytest.mark.usefixtures("portada_web")
+def test_con_la_variable_la_raiz_sirve_la_portada_compilada_con_csp(dist: Path) -> None:
+    _con_portada(dist)
+    respuesta = _cliente().get("/")
+    assert respuesta.status_code == 200
+    assert respuesta.headers["content-type"].startswith("text/html")
+    assert respuesta.text == PORTADA
+    _cabeceras_de_seguridad(respuesta)
+    assert respuesta.headers["cache-control"] == "no-cache"
+    assert _cliente().head("/").status_code == 200
+    assert _cliente().get("/app/portada.html").status_code == 200
+    assert "/" not in app.openapi()["paths"]
+    assert _cliente(ip="8.8.8.8").get("/").status_code == 403
+
+
+@pytest.mark.usefixtures("portada_web")
+def test_con_la_variable_y_sin_compilar_la_portada_da_404_con_mensaje(dist: Path) -> None:
+    """Sin `npm run build:portada` no hay respaldo escrito en Python: un 404 que dice cómo
+    compilarla."""
+    respuesta = _cliente().get("/")
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": MENSAJE_PORTADA_SIN_COMPILAR}
+    _cabeceras_de_seguridad(respuesta)
+
+
+def test_no_queda_una_segunda_portada_escrita_en_python() -> None:
+    """Una sola portada: la de Vite (`frontend-desktop/portada.html`); `api/portada.py` se
+    retiró."""
+    assert importlib.util.find_spec("api.portada") is None
+    assert not hasattr(interfaz, "PORTADA_HTML")

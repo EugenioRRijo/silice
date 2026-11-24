@@ -38,14 +38,18 @@ import { ESPACIOS, SECCIONES_DE_CUENTA, esEspacio, espacioDeLaPagina, rutaDeCuen
 import type { EspacioId } from "./espacios";
 import { enfocarElTitulo } from "./focoAlTitulo";
 import "./marco.scss";
+import { ModeTransitionOverlay } from "./ModeTransitionOverlay";
+import type { EstacionMayor } from "./ModeTransitionOverlay";
+import { ofertaDe } from "./oferta";
 import { carpetaDelDestino, ubicar } from "./ubicar";
 import { abrirNuevaObra, cerrarNuevaObra } from "./nuevaObra";
 import type { VigilanteDeObra } from "./otraPestana";
-import { PATRON_DE_OBRA, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
+import { PATRON_DE_OBRA, RUTA_DE_INICIO, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
 import type { SeccionId } from "./secciones";
 import { useModulos } from "./useModulos";
 import { ContextoObras, useCargaDeObras } from "./useObras";
 import { ContextoPendientes, useCargaDePendientes } from "./usePendientes";
+import { ContextoLayoutDelMarco, guardarBarraColapsada, leerBarraColapsada } from "./useWorkspaceLayout";
 
 const CARPETA_CAMBIADA = "Carpeta cambiada";
 
@@ -146,6 +150,11 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // misma obra de otra carpeta (tras pasar por la empresa) vuelva a poner al día la lista.
   const recargadaPara = useRef<string | null>(null);
 
+  // Al volver desde `/obra/demostracion.db/...` navegamos a `/`: si `alCambiarCarpeta` subiera `generacion` antes de
+  // que React Router aplique la transición, `LimiteDeError` volvería a montar `EspacioDeObra` en esa ruta y
+  // `useObraDeLaRuta` reabriría `demostracion.db` (F1).
+  const saliendoDeObraDemo = useRef(false);
+
   // Abrir otra carpeta desde una pantalla (Cuenta › Carpetas, «Probar con datos de demostración», un envío por aprobar
   // de otra carpeta): se olvida la obra elegida, las pantallas se vuelven a montar y se avisa.
   const alCambiarCarpeta = useCallback(
@@ -158,7 +167,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       recargarObras();
       // Los contadores de la barra son de la carpeta abierta: se piden de nuevo (la carga de Inicio solo repite al entrar en él).
       recargarPendientes();
-      setGeneracion((g) => g + 1);
+      if (!saliendoDeObraDemo.current) setGeneracion((g) => g + 1);
+      saliendoDeObraDemo.current = false;
       setAviso({ titulo: CARPETA_CAMBIADA, texto: `Ahora trabaja con la carpeta «${carpeta}».` });
     },
     [recargarObras, recargarPendientes],
@@ -232,24 +242,48 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     [alExpirar],
   );
 
+  // El aviso es de la pantalla en que se dio: al navegar a otra se cierra. Se ajusta durante el dibujo, sin efecto.
+  // Salvo el de un cambio de carpeta que la persona pidió para ir a una herramienta (`abrirDePendiente`) o al volver
+  // de una obra de demostración: ese aviso dice dónde está trabajando ahora y sobrevive a esa navegación (incluida la
+  // redirección de `/` a la Vista general).
+  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<string | null>(null);
+
   // «Volver a la carpeta de la empresa» desde la marca de la demostración.
   const volver = useCallback(() => {
+    const enObraDeDemo =
+      carpetaDelDestino(ubicacion.pathname) === "demostracion.db" ||
+      ubicacion.pathname === "/obra/demostracion.db" ||
+      ubicacion.pathname.startsWith("/obra/demostracion.db/");
+    saliendoDeObraDemo.current = enObraDeDemo;
     volverALaEmpresa()
       .then((cambio) => {
-        if (cambio) document.getElementById("contenido")?.focus();
+        saliendoDeObraDemo.current = false;
+        if (!cambio) return;
+        if (enObraDeDemo) {
+          setRutaQueConservaElAviso(RUTA_DE_INICIO);
+          navegar(RUTA_DE_INICIO);
+        }
+        document.getElementById("contenido")?.focus();
       })
-      .catch(fallo);
-  }, [volverALaEmpresa, fallo]);
+      .catch((razon) => {
+        saliendoDeObraDemo.current = false;
+        fallo(razon);
+      });
+  }, [volverALaEmpresa, fallo, ubicacion.pathname, navegar]);
 
-  // El aviso es de la pantalla en que se dio: al navegar a otra se cierra. Se ajusta durante el dibujo, sin efecto.
-  // Salvo el de un cambio de carpeta que la persona pidió para ir a una herramienta (`abrirDePendiente`): ese aviso dice dónde
-  // está trabajando ahora y sobrevive a esa navegación, que es la intencionada.
-  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<string | null>(null);
   const [rutaDelAviso, setRutaDelAviso] = useState(ubicacion.pathname);
   if (rutaDelAviso !== ubicacion.pathname) {
     setRutaDelAviso(ubicacion.pathname);
-    if (aviso && rutaQueConservaElAviso !== ubicacion.pathname) setAviso(null);
-    if (rutaQueConservaElAviso !== null) setRutaQueConservaElAviso(null);
+    const conservaEnInicio =
+      rutaQueConservaElAviso === RUTA_DE_INICIO &&
+      (ubicacion.pathname === RUTA_DE_INICIO || ubicacion.pathname === RUTA_DE_VISTA_GENERAL);
+    if (aviso && !conservaEnInicio && rutaQueConservaElAviso !== ubicacion.pathname) setAviso(null);
+    if (
+      rutaQueConservaElAviso !== null &&
+      !(rutaQueConservaElAviso === RUTA_DE_INICIO && ubicacion.pathname === RUTA_DE_INICIO)
+    ) {
+      setRutaQueConservaElAviso(null);
+    }
   }
   // Cada vez que cambia la ruta, lo que quedó a medias de un pendiente (abrir su carpeta) ya no es lo que la persona pidió.
   const turnoDePendiente = useRef(0);
@@ -362,29 +396,106 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const columnaOculta = useColumnaOculta();
   const conRecorrido = recorrido !== null && !columnaOculta;
 
+  // Ventana dedicada a pantalla completa para las 3 herramientas mayores (Auditoria, Precios, Produccion).
+  const primerSegmento = ubicacion.pathname.split("/")[1] ?? "";
+  const espacioActivo: EspacioId | null = esEspacio(primerSegmento) ? primerSegmento : null;
+  const enVentanaDedicada = espacioActivo !== null;
+  const oferta = useMemo(() => ofertaDe(acciones, modoEntrega, modulosApagados), [acciones, modoEntrega, modulosApagados]);
+
+  // Barra lateral colapsable (256px <-> 48px) con persistencia local y atajo Ctrl+B.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => leerBarraColapsada());
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      guardarBarraColapsada(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    function alTeclearCtrlB(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "b" || enVentanaDedicada) return;
+      const destino = e.target as HTMLElement | null;
+      if (
+        destino instanceof HTMLInputElement ||
+        destino instanceof HTMLTextAreaElement ||
+        destino instanceof HTMLSelectElement ||
+        destino?.isContentEditable
+      ) {
+        return;
+      }
+      e.preventDefault();
+      toggleSidebar();
+    }
+    window.addEventListener("keydown", alTeclearCtrlB);
+    return () => window.removeEventListener("keydown", alTeclearCtrlB);
+  }, [enVentanaDedicada, toggleSidebar]);
+
+  // Transicion rapida al cambiar entre estaciones mayores (Obras <-> Auditoria / Precios / Produccion).
+  const estacionActual: EstacionMayor = espacioActivo ?? "obras";
+  const [estacionPrevia, setEstacionPrevia] = useState<EstacionMayor>(estacionActual);
+  const [transicion, setTransicion] = useState<EstacionMayor | null>(null);
+  if (estacionPrevia !== estacionActual) {
+    setEstacionPrevia(estacionActual);
+    setTransicion(estacionActual);
+  }
+  const alTerminarTransicion = useCallback(() => setTransicion(null), []);
+
+  // Breadcrumb contextual limpio en la barra superior (sustituye el chip tecnico de carpeta).
+  const obraActualRuta = obraDeLaRuta(ubicacion.pathname);
+  const migaContextual = useMemo(() => {
+    if (enVentanaDedicada) return null;
+    if (ubicacion.pathname === RUTA_DE_PENDIENTES) return "Inicio / Pendientes";
+    if (ubicacion.pathname === RUTA_DE_VISTA_GENERAL || ubicacion.pathname === RUTA_DE_INICIO) return "Inicio / Vista general";
+    if (ubicacion.pathname === "/cuenta" || ubicacion.pathname.startsWith("/cuenta/")) return "Perfil y configuración";
+    if (obraActualRuta !== null) {
+      const nombreObra = obras.obras.find(
+        (o) => o.carpeta === obraActualRuta.carpeta && o.obra_id === obraActualRuta.obraId,
+      )?.obra;
+      return nombreObra ? `Obras / ${nombreObra}` : "Obras";
+    }
+    return null;
+  }, [enVentanaDedicada, ubicacion.pathname, obraActualRuta, obras.obras]);
+
+  const layoutDelMarco = useMemo(
+    () => ({ sidebarCollapsed: enVentanaDedicada || sidebarCollapsed, toggleSidebar }),
+    [enVentanaDedicada, sidebarCollapsed, toggleSidebar],
+  );
+  const contenidoExpandido = enVentanaDedicada || sidebarCollapsed;
+
   return (
     <ContextoAplicacion.Provider value={aplicacion}>
       <ContextoPendientes.Provider value={pendientes}>
         <ContextoObras.Provider value={obras}>
-          <div className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`} onClickCapture={alClicAntes}>
-            {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
-            <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => contenido.current?.focus()}>
-              Saltar al contenido
-            </button>
-            <BarraSuperior
-              alAbrirBuscador={() => setBuscadorAbierto(true)}
-              nombre={sesion.nombre}
-              carpeta={carpetaActiva}
-              extra={
-                <>
-                  <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("abrir_carpeta")} alVolver={volver} />
-                  <BotonRecorrido />
-                </>
-              }
-            />
-            <div className="silice-marco__cuerpo">
-              <BarraLateral obraAbierta={obraDeLaRuta(ubicacion.pathname)} />
-              <main id="contenido" ref={contenido} className="silice-contenido" tabIndex={-1}>
+          <ContextoLayoutDelMarco.Provider value={layoutDelMarco}>
+            <div className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`} onClickCapture={alClicAntes}>
+              {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
+              <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => contenido.current?.focus()}>
+                Saltar al contenido
+              </button>
+              <BarraSuperior
+                alAbrirBuscador={() => setBuscadorAbierto(true)}
+                nombre={sesion.nombre}
+                carpeta={carpetaActiva}
+                migaContextual={migaContextual}
+                enVentanaDedicada={enVentanaDedicada}
+                espacioActivo={espacioActivo}
+                espacios={oferta.espacios}
+                extra={
+                  <>
+                    <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("abrir_carpeta")} alVolver={volver} />
+                    <BotonRecorrido />
+                  </>
+                }
+              />
+              <div className="silice-marco__cuerpo">
+                {!enVentanaDedicada && <BarraLateral obraAbierta={obraActualRuta} />}
+                <main
+                  id="contenido"
+                  ref={contenido}
+                  className={`silice-contenido${contenidoExpandido ? " silice-contenido--expandido" : ""}`}
+                  tabIndex={-1}
+                >
                 {(error !== null || aviso) && (
                   <div className="silice-avisos">
                     <AvisoError error={error} titulo="No se pudo completar la acción" alCerrar={() => setError(null)} />
@@ -429,7 +540,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                           />
                         }
                       />
-                      {/* La Cuenta (F6, T6): `/cuenta` abre «Pantalla y tamaño de letra». */}
+                      {/* La Cuenta (F6, T6): `/cuenta` abre «Configuración». */}
                       <Route path="/cuenta" element={<RaizDeLaCuenta />} />
                       <Route
                         path="/cuenta/:seccion"
@@ -472,11 +583,13 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                 </LimiteDeError>
               </main>
             </div>
-            <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
-            <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
-            {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
-            <DialogoSalida paginas={paginas} />
-          </div>
+              <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
+              <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
+              {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
+              <DialogoSalida paginas={paginas} />
+              <ModeTransitionOverlay destino={transicion} alTerminar={alTerminarTransicion} />
+            </div>
+          </ContextoLayoutDelMarco.Provider>
         </ContextoObras.Provider>
       </ContextoPendientes.Provider>
     </ContextoAplicacion.Provider>
@@ -506,7 +619,7 @@ function APendientes() {
   return <Navigate to={`${RUTA_DE_PENDIENTES}${search}`} replace />;
 }
 
-// `#/cuenta` abre la primera sección, «Pantalla y tamaño de letra», que es de toda cuenta; la consulta se conserva.
+// `#/cuenta` abre la primera sección, «Configuración», que es de toda cuenta; la consulta se conserva.
 function RaizDeLaCuenta() {
   const { search } = useLocation();
   return <Navigate to={`${rutaDeCuenta("preferencias")}${search}`} replace />;

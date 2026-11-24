@@ -1,6 +1,4 @@
-// --- Resumen de la obra abierta (Tarea 2 del plan F4) ---
-// Carbon g10: esquinas rectas, divisores de 1 px, sin sombras ni tarjetas. Las cifras se reparten en las columnas que
-// caben (con letra Muy grande pasan a una) y en la lista de pendientes el texto se parte antes que el botón.
+// Resumen de la obra abierta: banda KPI unificada con divisores finos y panel de pendientes plano.
 .silice-resumen {
   display: grid;
   align-content: start;
@@ -14,41 +12,66 @@
 
 .silice-resumen__cifras {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
-  gap: 1rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   margin: 0;
+  background-color: var(--silice-surface);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
+  overflow: hidden;
 }
 
 .silice-resumen__cifra {
   display: grid;
   align-content: start;
-  gap: 0.25rem;
+  gap: 0.5rem;
   min-inline-size: 0;
-  padding-block-start: 0.75rem;
-  border-block-start: 1px solid var(--silice-divisor);
+  padding: 1rem 1.25rem;
+  border-inline-end: 1px solid var(--silice-hairline);
+  border-block-end: 1px solid var(--silice-hairline);
+
+  &:last-child {
+    border-inline-end: 0;
+  }
 
   dt {
-    color: var(--silice-texto-secundario);
+    color: var(--silice-muted);
+    font-weight: 500;
   }
 
   dd {
     margin: 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 1.125rem;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
+    color: var(--silice-ink);
     overflow-wrap: anywhere;
+  }
+
+  dd.silice-resumen__valor--texto {
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 500;
+    font-variant-numeric: normal;
   }
 }
 
 .silice-resumen__sin-dato {
-  color: var(--silice-texto-secundario);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 1rem;
+  color: var(--silice-muted-soft);
+  font-weight: 500;
 }
 
 .silice-resumen__pendientes {
   display: grid;
   align-content: start;
-  gap: 0.75rem;
+  gap: 1rem;
   min-inline-size: 0;
-  padding-block-start: 1.5rem;
-  border-block-start: 1px solid var(--silice-divisor);
+  padding: 1.25rem;
+  background-color: var(--silice-surface);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
 }
 
 .silice-resumen__lista {
@@ -56,6 +79,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  border-block-start: 1px solid var(--silice-hairline);
 }
 
 .silice-resumen__pendiente {
@@ -64,10 +88,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem 1rem;
-  padding-block: 0.5rem;
-  border-block-end: 1px solid var(--silice-divisor);
+  padding-block: 0.75rem;
+  border-block-end: 1px solid var(--silice-hairline);
 
-  > span {
+  &:last-child {
+    border-block-end: 0;
+  }
+
+  >span {
     flex: 1 1 16rem;
     min-inline-size: 0;
     overflow-wrap: anywhere;

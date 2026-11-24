@@ -249,14 +249,17 @@ describe("Estudio de mercado", () => {
     await elegirInsumo(u);
     expect(llamadas("GET", /\/v1\/mercado\/compra\//)[0].url).toBe("/v1/mercado/compra/CEM-GRIS?dias=90");
     const franja = cifras();
+    expect(
+      within(franja).getByText("Resume las observaciones del período para ayudarle a fijar un precio competitivo."),
+    ).toBeInTheDocument();
     const pares = within(franja)
       .getAllByRole("term")
       .map((t) => [t.textContent, t.nextElementSibling?.textContent]);
     expect(pares).toEqual([
       ["Observaciones", "5"],
       ["Mínimo", "100,00 Bs"],
-      ["Primer cuartil", "120,00 Bs"],
-      ["Mediana", "130,00 Bs"],
+      ["Primer cuartil (el 25 % de los precios queda por debajo)", "120,00 Bs"],
+      ["Mediana (valor central)", "130,00 Bs"],
       ["Promedio", "140,00 Bs"],
       ["Máximo", "200,00 Bs"],
     ]);
@@ -278,6 +281,8 @@ describe("Estudio de mercado", () => {
     expect(within(tabla).getByText("No: sin tasa del BCV del 01/10/2026")).toBeInTheDocument();
     expect(tabla).not.toHaveTextContent("2026-10-20");
     expect(within(tabla).getByText("150,00 Bs")).not.toHaveAttribute("title");
+    expect(screen.getByText(/la moneda de la carpeta;/)).toBeInTheDocument();
+    expect(screen.queryByText(/carpeta de trabajo/)).toBeNull();
   });
 
   // Tarea D3: una observacion en otra moneda se cita convertida con la tasa del BCV de su dia, con la misma linea de
@@ -357,6 +362,7 @@ describe("Estudio de mercado", () => {
       ["Su costo (piso)", "2.010,50 Bs"],
       ["Precio con utilidad", "2.074,44 Bs"],
     ]);
+    expect(within(costo).getByText("Costo directo más administración")).toBeInTheDocument();
     expect(within(costo).getByText(/Vivienda unifamiliar 80 m²/)).toBeInTheDocument();
     const razon = screen.getByText("La competencia cobra menos que su costo: se propone su costo.");
     expect(razon).toBeInTheDocument();
@@ -547,7 +553,8 @@ describe("Estudio de mercado", () => {
     );
     montar();
     await elegirInsumo(u);
-    expect(screen.getByText("Sin observaciones en los últimos 90 días.")).toBeInTheDocument();
+    expect(within(cifras()).getByText("Sin observaciones en los últimos 90 días")).toBeInTheDocument();
+    expect(screen.queryByText("Sin observaciones en los últimos 90 días.")).toBeNull();
     expect(screen.getByText(/Anote el primer precio que vea/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(campoPrecio()).toHaveValue("");
@@ -697,5 +704,36 @@ describe("Estudio de mercado", () => {
     await u.click(within(dialogo).getByRole("button", { name: "Cambiar y descartar" }));
     await waitFor(() => expect(llamadas("GET", /\/v1\/mercado\/compra\/ARE-LAV/)).toHaveLength(1));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  test("«Poner la propuesta en «Su precio»» rellena el campo, limpia errores y no guarda", async () => {
+    const u = userEvent.setup();
+    montar();
+    await elegirInsumo(u);
+    await u.clear(campoPrecio());
+    await u.type(campoPrecio(), "150.5");
+    await u.click(screen.getByRole("button", { name: "Usar este precio" }));
+    expect(campoPrecio()).toHaveAttribute("aria-invalid", "true");
+
+    await u.click(screen.getByRole("button", { name: "Poner la propuesta en «Su precio»" }));
+    expect(campoPrecio()).toHaveValue("130,00");
+    expect(campoPrecio()).not.toHaveAttribute("aria-invalid", "true");
+    expect(llamadas("POST", /\/usar$/)).toEqual([]);
+    expect(llamadas("GET", /\/afectados$/)).toEqual([]);
+  });
+
+  test("sin propuesta no se muestra el botón «Poner la propuesta en «Su precio»»", async () => {
+    const u = userEvent.setup();
+    responder("GET", /^\/v1\/mercado\/compra\/CEM-GRIS\?/, () =>
+      json({
+        ...ESTUDIO_COMPRA,
+        estadisticas: { n: 0, minimo: null, q1: null, mediana: null, promedio: null, maximo: null, ids: [], convertidas: 0, sin_tasa: 0, dias: 90 },
+        propuesta: { precio: null, razon: "Sin observaciones en los últimos 90 días." },
+        observaciones: [],
+      }),
+    );
+    montar();
+    await elegirInsumo(u);
+    expect(screen.queryByRole("button", { name: "Poner la propuesta en «Su precio»" })).not.toBeInTheDocument();
   });
 });

@@ -140,7 +140,7 @@ def test_el_tope_deja_pasar_el_limite_exacto_y_corta_uno_mas() -> None:
     cliente = _app_con_tope(10)
     assert cliente.post("/eco", content=b"x" * 10).json() == {"bytes": 10}
     respuesta = cliente.post("/eco", content=b"x" * 11)
-    assert respuesta.status_code == 413 and "20 MiB" in respuesta.json()["detalle"]
+    assert respuesta.status_code == 413 and "20 MB" in respuesta.json()["detalle"]
 
 
 def test_el_tope_cuenta_los_bytes_cuando_no_hay_content_length() -> None:
@@ -174,7 +174,7 @@ def test_el_cuerpo_por_partes_de_mas_del_tope_en_una_ruta_con_cuerpo_json_es_413
             yield b"x"
         yield b'"}'
 
-    esperado = {"detalle": "El cuerpo de la peticion excede el maximo de 20 MiB."}
+    esperado = {"detalle": "El envío pasa del máximo de 20 MB."}
     respuesta = cliente.post(
         "/json", content=partes(200), headers={"Content-Type": "application/json"}
     )

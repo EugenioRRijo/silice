@@ -245,13 +245,14 @@ describe("Marco: las direcciones viejas se retiraron (F8, C1)", () => {
 
 // F6, T4: Producción, Auditoría y Precios son espacios con su barra de herramientas (/<espacio>/<herramienta>).
 describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", () => {
-  test("#/precios/simulador se abre dentro del marco nuevo", async () => {
+  test("#/precios/simulador se abre en ventana dedicada sin barra lateral de obras", async () => {
     montar({ en: "/precios/simulador" });
     expect(await titulo("Simulador de listas")).toBeInTheDocument();
     expect(ruta()).toBe("/precios/simulador");
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "Barra lateral" })).toBeInTheDocument();
+    expect(within(barra).getByRole("link", { name: "Volver a obras" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Barra lateral" })).toBeNull();
     expect(within(barra).queryByRole("navigation", { name: "Ruta" })).toBeNull();
     expect(within(screen.getByRole("navigation", { name: "Precios y catálogo" })).getByRole("link", { name: "Simulador de listas" })).toHaveAttribute("aria-current", "page");
   });
@@ -362,12 +363,12 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
     expect(within(barra).getByRole("link", { name: "Libro de la empresa" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("la barra lateral marca el espacio abierto", async () => {
+  test("en ventana dedicada el selector superior marca el espacio abierto", async () => {
     montar({ en: "/auditoria/historial" });
     await titulo("Historial de auditorías");
-    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    expect(within(lateral).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("aria-current", "page");
-    expect(within(lateral).getByRole("link", { name: "Costos de producción" })).not.toHaveAttribute("aria-current");
+    const selector = screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" });
+    expect(within(selector).getByRole("link", { name: "Auditoría" })).toHaveAttribute("aria-current", "page");
+    expect(within(selector).getByRole("link", { name: "Producción" })).not.toHaveAttribute("aria-current");
   });
 
   test("Ctrl+K lleva a las rutas nuevas", async () => {
@@ -442,7 +443,9 @@ describe("Marco: la obra como espacio de trabajo", () => {
     expect(cabecera).not.toHaveTextContent("de trabajo");
     expect(cabecera).toHaveTextContent("Versión: 002");
     expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
-    expect(await screen.findByText("Carpeta activa: Carpeta Sur")).toBeInTheDocument();
+    // El rótulo y el nombre van en dos partes (con letra grande el rótulo se oculta a la vista); la frase sigue entera.
+    expect(await screen.findByTitle("Carpeta activa: Carpeta Sur")).toHaveTextContent("Carpeta activa: Carpeta Sur");
+    expect(await screen.findByText("Obras / Galpón Sur")).toBeInTheDocument();
     expect(document.title).toBe("Presupuesto · Galpón Sur · Sílice");
   });
 
@@ -1077,6 +1080,53 @@ describe("Marco: lo que se monta con él", () => {
     ).toBeInTheDocument();
   });
 
+  // F1: desde una obra de demostracion.db, «Volver a la carpeta de la empresa» debe salir de /obra/demostracion.db/...
+  // hacia Inicio y conservar el aviso de cambio de carpeta sin que useObraDeLaRuta reabra demostracion.db.
+  test("F1: desde una obra de demostracion.db, «Volver a la carpeta de la empresa» lleva a Inicio con el aviso y no la reabre", async () => {
+    const u = userEvent.setup();
+    instalar((estado) => {
+      estado.casos = [...estado.casos, caso("demostracion.db")];
+      estado.actual = caso("demostracion.db");
+    });
+    const base = servidor.fetchFalso;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+        if (String(entrada) === "/v1/obras/todas" && (init?.method ?? "GET") === "GET") {
+          const baseTodas = obrasTodas(servidor.estado);
+          return json({
+            ...baseTodas,
+            obras: [
+              ...baseTodas.obras,
+              {
+                carpeta: "demostracion.db",
+                carpeta_titulo: "demostracion",
+                obra_id: 10,
+                obra: "Obra Demo",
+                version_codigo: "001",
+              },
+            ],
+          });
+        }
+        return base(entrada, init);
+      }),
+    );
+
+    montar({ en: "/obra/demostracion.db/10/presupuesto" });
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
+    const barra = screen.getByRole("banner");
+    await u.click(await within(barra).findByRole("button", { name: "Demostración: está viendo datos inventados" }));
+    await u.click(within(barra).getByRole("button", { name: "Volver a la carpeta de la empresa" }));
+
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
+    expect(await screen.findByText("Carpeta cambiada")).toBeInTheDocument();
+    expect(screen.getByText("Ahora trabaja con la carpeta «silice».")).toBeInTheDocument();
+    expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1);
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+    expect(await within(barra).findByText("Inicio / Vista general")).toBeInTheDocument();
+  });
+
   test("con un recorrido en curso su columna acompaña al contenido", async () => {
     iniciarRecorrido(RECORRIDO_AUDITAR);
     montar({ en: "/auditoria/libros" });
@@ -1337,8 +1387,8 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
 
   test("un enlace de la barra lateral conserva el foco: solo se mueve si se perdió", async () => {
     const u = userEvent.setup();
-    montar({ en: "/precios/simulador" });
-    await titulo("Simulador de listas");
+    montar({ en: "/obra/empresa/7/resumen" });
+    await titulo("Resumen de la obra");
     const enlace = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" });
     await u.click(enlace);
     await titulo("Vista general");
@@ -1365,7 +1415,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await titulo("Presupuesto");
     const enlace = within(screen.getByRole("banner")).getByRole("link", { name: "Cuenta de Ana Pérez" });
     await u.click(enlace);
-    await titulo("Pantalla y tamaño de letra");
+    await titulo("Configuración");
     expect(ruta()).toBe("/cuenta/preferencias");
     await new Promise((r) => setTimeout(r, 80));
     expect(enlace).toHaveFocus();
@@ -1552,12 +1602,70 @@ describe("Marco: especialidades apagadas", () => {
     expect(ruta()).toBe("/produccion/resumen");
     // La barra del espacio no ofrece pestañas que la cuenta no puede usar, y sin ninguna no se pinta vacía.
     expect(screen.queryByRole("navigation", { name: "Costos de producción" })).toBeNull();
-    // La barra lateral tampoco la ofrece.
-    expect(within(screen.getByRole("complementary", { name: "Barra lateral" })).queryByRole("link", { name: "Costos de producción" })).toBeNull();
+    // El selector superior de ventana dedicada tampoco ofrece Producción.
+    expect(within(screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" })).queryByRole("link", { name: /Producción/ })).toBeNull();
   });
 
   test("si no se puede leer el estado, nada se oculta (la API sigue cortando)", async () => {
     montar({ sesion: sesionDe("ana"), en: "/obra/empresa/7/riesgo" });
     expect(await titulo("Riesgo de la obra")).toBeInTheDocument();
+  });
+});
+
+describe("Marco: barra lateral plegable (Ocultar / Mostrar y Ctrl+B)", () => {
+  afterEach(() => {
+    window.localStorage.removeItem("silice_sidebar_collapsed");
+  });
+
+  test("el botón de la barra lateral la pliega a riel compacto y el atajo Ctrl+B la vuelve a expandir", async () => {
+    const usuario = userEvent.setup();
+    montar({ en: "/inicio/pendientes" });
+    await titulo("Pendientes");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    expect(lateral).not.toHaveAttribute("data-collapsed", "true");
+    await usuario.click(within(lateral).getByRole("button", { name: "Ocultar barra lateral" }));
+    expect(lateral).toHaveAttribute("data-collapsed", "true");
+    expect(window.localStorage.getItem("silice_sidebar_collapsed")).toBe("1");
+    expect(within(lateral).getByRole("button", { name: "Mostrar barra lateral" })).toBeInTheDocument();
+    await usuario.keyboard("{Control>}b{/Control}");
+    expect(lateral).not.toHaveAttribute("data-collapsed", "true");
+    expect(window.localStorage.getItem("silice_sidebar_collapsed")).toBe("0");
+  });
+
+  // Como en «el foco no se pierde cuando la acción quita el control»: el botón pulsado se desmonta (el riel y la barra
+  // abierta son ramas distintas) y el foco caía en el cuerpo del documento (WCAG 2.4.3). Pasa al botón equivalente.
+  test("con el teclado, Ocultar deja el foco en Mostrar y Mostrar lo deja en Ocultar", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/inicio/pendientes" });
+    await titulo("Pendientes");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    within(lateral).getByRole("button", { name: "Ocultar barra lateral" }).focus();
+    await u.keyboard("{Enter}");
+    expect(within(lateral).getByRole("button", { name: "Mostrar barra lateral" })).toHaveFocus();
+    await u.keyboard("{Enter}");
+    expect(within(lateral).getByRole("button", { name: "Ocultar barra lateral" })).toHaveFocus();
+  });
+
+  test("Ctrl+B con el foco en una obra de la lista lo deja en Mostrar barra lateral, no en el cuerpo", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/inicio/pendientes" });
+    await titulo("Pendientes");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    const lista = await within(lateral).findByRole("list", { name: "Obras" });
+    within(lista).getAllByRole("link")[0]!.focus();
+    await u.keyboard("{Control>}b{/Control}");
+    expect(lateral).toHaveAttribute("data-collapsed", "true");
+    expect(within(lateral).getByRole("button", { name: "Mostrar barra lateral" })).toHaveFocus();
+  });
+
+  test("Ctrl+B con el foco en el contenido no lo mueve", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/inicio/pendientes" });
+    await titulo("Pendientes");
+    const contenido = document.getElementById("contenido")!;
+    contenido.focus();
+    await u.keyboard("{Control>}b{/Control}");
+    expect(screen.getByRole("complementary", { name: "Barra lateral" })).toHaveAttribute("data-collapsed", "true");
+    expect(contenido).toHaveFocus();
   });
 });

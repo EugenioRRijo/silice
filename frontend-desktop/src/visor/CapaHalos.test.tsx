@@ -50,7 +50,7 @@ describe("CapaHalos", () => {
   test("pone un halo con texto accesible solo en las celdas de la hoja que se ve", () => {
     montar();
     expect(screen.getByRole("button", { name: /Crítico.*PRESUPUESTO!F12/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Atípico.*PRESUPUESTO!B3/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Precio atípico \(revisar\).*PRESUPUESTO!B3/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /APU-01!G48/ })).not.toBeInTheDocument();
   });
 
@@ -67,7 +67,7 @@ describe("CapaHalos", () => {
   test("el color sale del token de severidad y el atipico del morado", () => {
     montar();
     const critico = screen.getByRole("button", { name: /Crítico/ }).closest(".halo") as HTMLElement;
-    const atipico = screen.getByRole("button", { name: /Atípico/ }).closest(".halo") as HTMLElement;
+    const atipico = screen.getByRole("button", { name: /Precio atípico \(revisar\)/ }).closest(".halo") as HTMLElement;
     expect(critico.style.getPropertyValue("--halo-color")).toBe("var(--silice-sev-critico)");
     expect(atipico.style.getPropertyValue("--halo-color")).toBe("var(--silice-atipico)");
   });
@@ -97,8 +97,8 @@ describe("CapaHalos", () => {
 
   test("el title dice la severidad en texto visible (WCAG 1.4.1): el atipico no se distingue solo por el color", () => {
     montar();
-    const atipico = screen.getByRole("button", { name: /Atípico/ }).closest(".halo__insignia");
-    expect(atipico?.getAttribute("title")).toBe("Atípico: Precio atipico");
+    const atipico = screen.getByRole("button", { name: /Precio atípico \(revisar\)/ }).closest(".halo__insignia");
+    expect(atipico?.getAttribute("title")).toBe("Precio atípico (revisar): Precio atipico");
     const critico = screen.getByRole("button", { name: /Crítico/ }).closest(".halo__insignia");
     expect(critico?.getAttribute("title")).toBe("Crítico: El total no coincide");
   });

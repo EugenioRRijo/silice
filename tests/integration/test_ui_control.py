@@ -127,8 +127,12 @@ def test_la_tabla_de_valuaciones_muestra_la_fecha_de_registro_y_el_peor_hallazgo
     assert [f["Numero"] for f in filas] == ["V-01", "V-02", "V-03"]
     assert filas[0]["Registrada"] == "09/11/2026 09:00" and filas[0]["Estado"] == "sin hallazgos"
     # V-S trae seis hallazgos, todos ERROR (memoria §10); el informe lista primero R13 y, ante un
-    # empate de severidad, la columna conserva el primero.
-    assert filas[2]["Estado"] == "ERROR: R13"
+    # empate de severidad, la columna conserva el primero. La columna dice la severidad y el
+    # mensaje en español llano, con el código de la regla al final (pasada de claridad).
+    assert filas[2]["Estado"] == (
+        "Error: La partida OB-B lleva 210 valuados y la línea base presupuesta 200: exceso de 10 "
+        "desde la valuación V-03. (R13)"
+    )
     assert filas[1]["Estado"] == "sin hallazgos"  # el solape se reporta en V-03, no en V-02
     assert tuple(filas[0]) == control.COLUMNAS_VALUACIONES
 
@@ -144,10 +148,11 @@ def test_los_indicadores_salen_en_las_dos_monedas_con_la_tasa_del_corte(obra):
         obra, ob.NOMBRE, Catalogo(obra), precios=ob.precios_del_corte()
     )
     filas = {f["Indicador"]: f for f in control.filas_de_indicadores(obra, resultado)}
-    assert filas["PV (USD)"]["Valor"] == "1500.00"
-    assert filas["PV (USD)"]["En la otra moneda"] == "1275000.00 Bs"
-    assert filas["SPI"]["Valor"] == "0.8000" and filas["CPI"]["Valor"] == "0.9375"
-    assert filas["EAC (sistema) (USD)"]["Valor"] == "4480.00"
+    assert filas["PV (planificado) (USD)"]["Valor"] == "1500.00"
+    assert filas["PV (planificado) (USD)"]["En la otra moneda"] == "1275000.00 Bs"
+    assert filas["SPI (índice de plazo)"]["Valor"] == "0.8000"
+    assert filas["CPI (índice de costo)"]["Valor"] == "0.9375"
+    assert filas["EAC (costo final estimado, sistema) (USD)"]["Valor"] == "4480.00"
     assert filas["Desvío de precio (USD)"]["Valor"] == "-60.00"
     assert filas["Desvío de consumo (USD)"]["Valor"] == "-20.00"
     assert filas["Método y fuente del precio del corte"]["Valor"] == "comprobacion"
@@ -157,7 +162,7 @@ def test_sin_tasa_del_corte_la_otra_moneda_dice_no_disponible(obra):
     ob.registrar_v01_y_v02(obra)
     resultado = control.calcular_el_control(obra, ob.NOMBRE, Catalogo(obra))
     filas = {f["Indicador"]: f for f in control.filas_de_indicadores(obra, resultado)}
-    assert filas["PV (USD)"]["En la otra moneda"] == "no disponible"
+    assert filas["PV (planificado) (USD)"]["En la otra moneda"] == "no disponible"
     assert filas["Tasa del corte"]["Valor"] == "no disponible"
     assert filas["Desvío de precio (USD)"]["Valor"] == "no disponible"  # sin precios del corte
     assert "sin precios del corte" in filas["Desvío de precio (USD)"]["Nota"]
@@ -176,7 +181,7 @@ def test_con_tasa_y_sin_valor_la_otra_moneda_dice_no_disponible_sin_moneda(obra)
     filas = {f["Indicador"]: f for f in control.filas_de_indicadores(obra, resultado)}
     assert filas["Desvío de precio (USD)"]["Valor"] == "no disponible"
     assert filas["Desvío de precio (USD)"]["En la otra moneda"] == "no disponible"
-    assert filas["PV (USD)"]["En la otra moneda"] == "1275000.00 Bs"
+    assert filas["PV (planificado) (USD)"]["En la otra moneda"] == "1275000.00 Bs"
 
 
 def test_las_alertas_y_la_reproyeccion_se_muestran_siempre(obra):

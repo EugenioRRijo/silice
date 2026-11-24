@@ -4,6 +4,7 @@ import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { presentarClave, presentarValor } from "../../comun/presentarCambio";
 import { rotuloDeCampo as rotuloDeCampoDeCambio, rotuloDeObjeto } from "../../comun/rotulos";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import type { HallazgoRevision } from "./tipos";
 
 // ui/paginas/revisar.py lo dice con Markdown («Elija el archivo `.silice` que recibió.»); aqui va sin marcas.
 export const SIN_ARCHIVO = "Elija el archivo .silice que recibió.";
@@ -51,16 +52,16 @@ export function formularioExcel(archivo: File, tipo: "presupuesto" | "revision")
 // Las columnas de «Quién cambió qué»: las de la hoja «Cambios» del Excel de la revision.
 export const COLUMNAS_CAMBIOS: ColumnaDensa[] = [
   { clave: "version", titulo: "Versión" },
-  { clave: "objeto", titulo: "Objeto", presentar: rotuloDeObjeto },
+  { clave: "objeto", titulo: "Qué cambió", presentar: rotuloDeObjeto },
   // Clave, antes y después dependen del objeto y del campo de la misma fila: se pintan con la fila y el valor crudo va en el `title`.
-  { clave: "clave", titulo: "Clave", celda: (f) => <span title={f.clave}>{presentarClave(f.objeto ?? "", f.clave ?? "")}</span> },
+  { clave: "clave", titulo: "Partida o insumo", celda: (f) => <span title={f.clave}>{presentarClave(f.objeto ?? "", f.clave ?? "")}</span> },
   { clave: "campo", titulo: "Campo", presentar: rotuloDeCampoDeCambio },
   { clave: "antes", titulo: "Antes", celda: (f) => <span title={f.antes}>{presentarValor(f.campo ?? "", f.antes ?? "", f.clave ?? "")}</span> },
   { clave: "despues", titulo: "Después", celda: (f) => <span title={f.despues}>{presentarValor(f.campo ?? "", f.despues ?? "", f.clave ?? "")}</span> },
   { clave: "fuente", titulo: "Fuente" },
   { clave: "responsable", titulo: "Responsable" },
   { clave: "fecha", titulo: "Fecha", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
-  { clave: "marca", titulo: "Marca" },
+  { clave: "marca", titulo: "Observación" },
 ];
 
 export function filasDeCambios(cambios: Record<string, string>[]): FilaDensa[] {
@@ -72,10 +73,22 @@ export function filasDeCambios(cambios: Record<string, string>[]): FilaDensa[] {
 }
 
 export const COLUMNAS_HALLAZGOS: ColumnaDensa[] = [
-  { clave: "regla", titulo: "Regla" },
+  { clave: "regla", titulo: "Qué revisó Sílice" },
   { clave: "severidad", titulo: "Severidad", celda: "severidad" },
   { clave: "descripcion", titulo: "Descripción" },
 ];
+
+export function filasDeHallazgos(hallazgos: HallazgoRevision[]): FilaDensa[] {
+  return hallazgos.map((h, i) => {
+    const nombre = h.nombre_regla?.trim();
+    return {
+      id: String(i),
+      regla: nombre ? `${nombre} (${h.regla})` : h.regla,
+      severidad: h.severidad,
+      descripcion: h.descripcion,
+    };
+  });
+}
 
 // El campo que la reauditoria compara llega como identificador interno («precio_unitario»): se lee como rotulo.
 const ROTULOS_DE_CAMPO: Record<string, string> = { precio_unitario: "Precio unitario", total: "Total" };

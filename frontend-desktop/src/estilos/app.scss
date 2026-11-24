@@ -1,6 +1,7 @@
-// Estilos propios de la aplicacion. Carbon pone la gramatica visual; aqui solo van los ajustes minimos.
+// Estilos propios de la aplicacion. Carbon pone la gramatica visual; editorial.scss aplica el sistema Swiss-industrial.
 @use "./fuentes";
 @use "./tokens";
+@use "./editorial";
 @use "../indicadores/indicadores";
 @use "../visor/visor";
 @use "../comun/comun";
@@ -43,12 +44,202 @@ body {
   display: grid;
   align-content: start;
   gap: 1rem;
-  max-inline-size: 36rem;
-  padding: 2rem 1rem;
+  max-inline-size: 38rem;
+  padding: 2rem 1.25rem;
+  margin-block-start: 3rem;
+}
+
+.silice-entrada--dividida {
+  max-inline-size: none;
+  margin-block-start: 0;
+  min-block-size: calc(100dvh - 3rem);
+  place-items: center;
+  padding: 4.5rem 1.5rem 2.5rem;
+  background-color: var(--silice-stone);
+}
+
+.silice-entrada__rejilla {
+  inline-size: 100%;
+  max-inline-size: 56rem;
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.85fr) minmax(20rem, 1.15fr);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
+  overflow: hidden;
+  background-color: var(--silice-surface);
+
+  @media (max-width: 48rem) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.silice-entrada__marca-panel {
+  display: grid;
+  align-content: space-between;
+  gap: 2rem;
+  padding: 2.25rem;
+  background-color: var(--silice-charcoal);
+  color: var(--cds-text-on-color);
+}
+
+.silice-entrada__marca-arriba {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.silice-entrada__etiqueta {
+  margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  color: var(--silice-gold);
+}
+
+.silice-entrada .silice-entrada__marca-titulo {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--cds-text-on-color);
+  letter-spacing: 0;
+}
+
+.silice-entrada__marca-texto {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.silice-entrada__fichas {
+  margin: 0;
+  display: grid;
+}
+
+.silice-entrada__ficha {
+  padding-block: 0.75rem;
+  border-block-start: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  gap: 0.25rem;
+
+  &:last-child {
+    padding-block-end: 0;
+  }
+}
+
+.silice-entrada__clave {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--silice-gold);
+}
+
+.silice-entrada__valor {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.silice-entrada__panel {
+  display: grid;
+  align-content: center;
+  gap: 1.25rem;
+  padding: 2.25rem;
+  background-color: var(--silice-surface);
+}
+
+.silice-entrada__cabecera {
+  display: grid;
+  gap: 0.25rem;
+
+  h1 {
+    margin: 0;
+  }
+}
+
+.silice-entrada__formulario {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-entrada__acciones {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  margin-block-start: 0.25rem;
+}
+
+.silice-entrada__enviar {
+  inline-size: 100%;
+  max-inline-size: 100%;
+  justify-content: center;
+  border-radius: var(--silice-radio-sm);
+
+  svg {
+    fill: currentcolor;
+  }
+}
+
+.silice-entrada__pie-seguridad {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--silice-hairline);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--silice-muted);
+}
+
+.silice-entrada__aviso {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background-color: var(--silice-warn-bg);
+  border: 1px solid var(--silice-warn-border);
+  border-radius: var(--silice-radio-md);
+  color: var(--silice-warn);
+}
+
+header.cds--header.silice-marco-barra {
+  background-color: var(--silice-charcoal);
+  border-block-end: 2px solid var(--silice-gold);
+  color: var(--cds-text-on-color);
+
+  .cds--header__name,
+  .cds--header__name:hover,
+  a.cds--header__name {
+    color: var(--cds-text-on-color);
+    gap: 0.5rem;
+    font-weight: 600;
+  }
+}
+
+.silice-sin-marco__sello {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border-radius: var(--silice-radio-sm);
+  background-color: var(--silice-gold);
+  color: var(--silice-charcoal-ink);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.silice-marco-barra .silice-letra__etiqueta,
+.silice-marco-barra .silice-letra__opcion {
+  color: var(--cds-text-on-color);
+}
+
+.silice-marco-barra .silice-letra__opcion[aria-pressed="true"] {
+  color: var(--silice-ink);
+  background-color: var(--silice-surface);
 }
 
 .silice-entrada__texto {
-  color: var(--silice-texto-secundario);
+  margin: 0;
+  color: var(--silice-muted);
   max-inline-size: 65ch;
 }
 

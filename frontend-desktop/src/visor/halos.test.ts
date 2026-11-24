@@ -61,7 +61,7 @@ describe("estiloDeHallazgo", () => {
     for (const severidad of ["CRITICO", "ERROR", "ADVERTENCIA", "INFO"]) {
       const estilo = estiloDeHallazgo(hallazgo({ codigo: "ATIPICO", severidad }));
       expect(estilo.token).toBe("--silice-atipico");
-      expect(estilo.texto).toBe("Atípico");
+      expect(estilo.texto).toBe("Precio atípico (revisar)");
     }
   });
 

@@ -124,7 +124,7 @@ describe("Índices del BCV", () => {
     const tipo = screen.getByLabelText("Qué archivo es");
     const opciones = within(tipo).getAllByRole("option").map((o) => o.textContent);
     expect(opciones).toEqual(CONTEXTO.tipos.map((t) => t.rotulo));
-    expect(screen.getByText(/«Leer» no escribe nada/)).toBeInTheDocument();
+    expect(screen.getByText(/«Leer» muestra un adelanto sin guardar/)).toBeInTheDocument();
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/indices/contexto");
   });
 
@@ -155,7 +155,7 @@ describe("Índices del BCV", () => {
     const resumen = screen.getByRole("region", { name: "Resumen de la lectura" });
     expect(within(resumen).getByText("Filas leídas").nextSibling).toHaveTextContent("4");
     expect(within(resumen).getByText("Rechazadas").nextSibling).toHaveTextContent("1");
-    expect(within(resumen).getByText("Provisionales").nextSibling).toHaveTextContent("1");
+    expect(within(resumen).getByText("Provisionales (datos preliminares)").nextSibling).toHaveTextContent("1");
     const series = screen.getByRole("table", { name: "Series leídas" });
     expect(within(series).getByText("INDICE-A")).toBeInTheDocument();
     // Las fechas de cada serie se leen como en el resto de Sílice: dd/mm/aaaa, nunca aaaa-mm-dd (prueba en vivo del 18/11/2026).
@@ -177,7 +177,26 @@ describe("Índices del BCV", () => {
     expect(screen.getByLabelText("Nombre de INDICE-A")).toHaveValue("INDICE-A");
     expect(screen.getByLabelText("Organismo de INDICE-A")).toHaveValue("");
     expect(screen.getByLabelText("Unidad de INDICE-B")).toHaveValue("indice_bs");
-    expect(screen.getByLabelText("Periodicidad de INDICE-B")).toHaveValue("mensual");
+    const periodicidad = screen.getByLabelText("Periodicidad de INDICE-B");
+    expect(periodicidad).toHaveValue("mensual");
+    expect(within(periodicidad).getAllByRole("option").map((o) => [o.textContent, (o as HTMLOptionElement).value])).toEqual([
+      ["Diaria", "diaria"],
+      ["Mensual", "mensual"],
+      ["Trimestral", "trimestral"],
+      ["Anual", "anual"],
+    ]);
+    expect(screen.getByRole("button", { name: "Leer" })).toHaveClass("cds--btn--secondary");
+    expect(screen.getByRole("button", { name: "Confirmar la importación" })).toHaveClass("cds--btn--primary");
+  });
+
+  test("los conteos de filas leídas, rechazadas y provisionales llevan punto de miles", async () => {
+    leer = () => json({ ...INFORME, filas_leidas: 1200, filas_rechazadas: 1050, provisionales: 1001 });
+    montar();
+    await leerCsv();
+    const resumen = screen.getByRole("region", { name: "Resumen de la lectura" });
+    expect(within(resumen).getByText("Filas leídas").nextSibling).toHaveTextContent("1.200");
+    expect(within(resumen).getByText("Rechazadas").nextSibling).toHaveTextContent("1.050");
+    expect(within(resumen).getByText("Provisionales (datos preliminares)").nextSibling).toHaveTextContent("1.001");
   });
 
   test("confirmar reenvía el archivo con la huella y las definiciones, y muestra los mensajes", async () => {
@@ -261,7 +280,7 @@ describe("Índices del BCV", () => {
     contexto = () => json({ ...CONTEXTO, lee_xls: false });
     montar();
     await elegirArchivo("4_5_7.xls", "inpc");
-    expect(screen.getByText(/falta el componente xlrd/)).toBeInTheDocument();
+    expect(screen.getByText(/Guárdelo en Excel como \.xlsx o \.csv/)).toBeInTheDocument();
   });
 
   test("la API que contesta 401 avisa a la aplicación", async () => {

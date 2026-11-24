@@ -635,12 +635,17 @@ def test_el_libro_de_ob_s2_trae_las_valuaciones_y_el_valor_ganado_de_la_memoria(
     assert list(celdas) == [*NUEVE_HOJAS, *HOJAS_DEL_ESPACIO, *HOJAS_DE_CONTROL]
     valuaciones = [(f[0], f[5], f[6]) for f in celdas["Valuaciones"][1:]]
     assert valuaciones == [("V-01", "OB-A", 40), ("V-02", "OB-A", 50), ("V-02", "OB-B", 60)]
+    # Cada indicador lleva su nombre en palabras antes de la sigla (pasada de claridad).
     ganado = {f[0]: f[1] for f in celdas["Valor ganado"][1:]}
-    assert ganado["BAC (USD)"] == "4000.00" and ganado["PV (USD)"] == "1500.00"
-    assert ganado["EV (USD)"] == "1200.00" and ganado["AC (USD)"] == "1280.00"
-    assert (ganado["SV (plazo) (USD)"], ganado["CV (USD)"]) == ("-300.00", "-80.00")  # EV-PV, EV-AC
-    assert (ganado["SPI"], ganado["CPI"]) == ("0.8000", "0.9375")  # 1 200 / 1 500 y 1 200 / 1 280
-    assert ganado["EAC (índice BAC/CPI) (USD)"] == "4266.67"  # 4 000 / 0,9375
+    assert ganado["BAC (presupuesto total) (USD)"] == "4000.00"
+    assert ganado["PV (planificado) (USD)"] == "1500.00"
+    assert ganado["EV (ejecutado) (USD)"] == "1200.00"
+    assert ganado["AC (gastado) (USD)"] == "1280.00"
+    assert ganado["SV (diferencia de plazo) (USD)"] == "-300.00"  # EV - PV
+    assert ganado["CV (diferencia de costo) (USD)"] == "-80.00"  # EV - AC
+    assert ganado["SPI (índice de plazo)"] == "0.8000"  # 1 200 / 1 500
+    assert ganado["CPI (índice de costo)"] == "0.9375"  # 1 200 / 1 280
+    assert ganado["EAC (costo final estimado, índice BAC/CPI) (USD)"] == "4266.67"  # 4 000 / 0,9375
 
 
 # --- ronda 1 del arbitro: trazabilidad de la version abierta, fecha de los precios, caracteres ---

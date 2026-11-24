@@ -145,7 +145,7 @@ export default function Empresa() {
         <CampoTexto id="adm-empresa-nombre" labelText="Nombre de la empresa" value={nombre} onChange={(e) => setNombre(e.target.value)} />
         <CampoTexto id="adm-empresa-rif" labelText="RIF" value={rif} onChange={(e) => setRif(e.target.value)} />
         <CampoTexto id="adm-empresa-ciudad" labelText="Ciudad" value={ciudad} onChange={(e) => setCiudad(e.target.value)} />
-        <Button type="submit" kind="primary" size="md" disabled={ocupada}>
+        <Button type="submit" kind={hayEmpresa && clave === null ? "secondary" : "primary"} size="md" disabled={ocupada}>
           Guardar la empresa
         </Button>
       </form>
@@ -162,6 +162,9 @@ export default function Empresa() {
         ) : (
           <form className="silice-adm__seccion" onSubmit={generar} autoComplete="off">
             <h2 className="cds--type-heading-compact-02">Generar la clave de firma</h2>
+            <p className="silice-adm__nota cds--type-body-compact-01">
+              Sello digital de su empresa para demostrar que un presupuesto entregado no fue alterado
+            </p>
             <PasswordInput
               id="adm-clave-uno"
               labelText="Contraseña de la clave (12 a 128 caracteres)"
@@ -184,8 +187,11 @@ export default function Empresa() {
       ) : (
         <div className="silice-adm__seccion">
           <h2 className="cds--type-heading-compact-02">Clave de firma</h2>
+          <p className="silice-adm__nota cds--type-body-compact-01">
+            Sello digital de su empresa para demostrar que un presupuesto entregado no fue alterado
+          </p>
           <p className="cds--type-body-compact-01">
-            Huella de la clave de firma: <strong>{clave.huella}</strong>
+            Código de verificación de la clave (SHA-256): <strong>{clave.huella}</strong>
           </p>
           <p className="silice-adm__nota cds--type-label-01">
             Léala por teléfono a quien reciba sus paquetes: es lo que comprueba su clave.
@@ -225,10 +231,10 @@ export default function Empresa() {
           {baja === null ? (
             <div className="silice-adm__acciones">
               <Button kind="tertiary" size="md" disabled={ocupada || !sensible.permitida} onClick={() => setBaja({ tipo: "retirar" })}>
-                Retirar
+                Cambiar de clave (retirar)
               </Button>
               <Button kind="danger--tertiary" size="md" disabled={ocupada || !sensible.permitida} onClick={() => setBaja({ tipo: "revocar" })}>
-                Revocar
+                Anular clave comprometida (revocar)
               </Button>
             </div>
           ) : (

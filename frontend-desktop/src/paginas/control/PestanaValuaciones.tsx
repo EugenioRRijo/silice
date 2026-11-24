@@ -270,7 +270,7 @@ function Registrar({
         <CampoTexto id="val-fuente" labelText="Fuente (acta, oficio)" value={v.fuente} onChange={campo("fuente")} />
         <div>
           <Button kind="primary" size="md" disabled={estado.enviando} onClick={registrar}>
-            Registrar y controlar
+            Guardar valuación y recalcular avance
           </Button>
         </div>
         <Resultado exito={estado.exito} error={estado.error} />

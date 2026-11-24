@@ -47,7 +47,7 @@ describe("Perfiles de los libros de la empresa", () => {
   test("sube el JSON y dice qué hojas lee el perfil puesto", async () => {
     montar();
     expect(screen.getByRole("heading", { name: "Perfiles de los libros de la empresa" })).toBeInTheDocument();
-    const boton = screen.getByRole("button", { name: "Poner el perfil" });
+    const boton = screen.getByRole("button", { name: "Guardar formato de libro" });
     expect(boton).toBeDisabled();
     await usuario.upload(campo(), new File(['{"nombre":"obra_local"}'], "obra_local.json", { type: "application/json" }));
     await usuario.click(boton);
@@ -68,11 +68,11 @@ describe("Perfiles de los libros de la empresa", () => {
     );
     montar();
     await usuario.upload(campo(), new File(["{}"], "obra_local.json", { type: "application/json" }));
-    await usuario.click(screen.getByRole("button", { name: "Poner el perfil" }));
+    await usuario.click(screen.getByRole("button", { name: "Guardar formato de libro" }));
     expect(await screen.findByText(/Ya hay un perfil «obra_local»/)).toBeInTheDocument();
     await usuario.click(screen.getByRole("checkbox", { name: "Reemplazar el que ya está con ese nombre" }));
     fetchFalso.mockResolvedValueOnce(json(PUESTO, 200));
-    await usuario.click(screen.getByRole("button", { name: "Poner el perfil" }));
+    await usuario.click(screen.getByRole("button", { name: "Guardar formato de libro" }));
     await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(2));
     expect((fetchFalso.mock.calls[1]![1]?.body as FormData).get("reemplazar")).toBe("true");
     expect(await screen.findByText(/Perfil «obra_local» puesto en esta instalación/)).toBeInTheDocument();

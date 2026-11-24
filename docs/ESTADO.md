@@ -1,10 +1,13 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-20 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-22 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
 de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia.md §5](metodologia.md)).
+
+> **Ola 1121 (2026-11-21/22):** la depuración va en el PR #138 y el front (aspecto de Neon, portada solo de pruebas,
+> pulido unslop y responsive con letra grande) en `feature/ui-aistudio-correcciones`, apilado sobre él (§2).
 
 ## 1. Qué hay en `main`
 
@@ -39,6 +42,9 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   cuando terminen»): el PDF de hallazgos en el Visor (#133; el botón se llama «Descargar PDF» por pedido de
   Eugenio), Riesgo en la obra de la demo (#134) y la carga de las series viales en Índices del BCV, con la unión de la
   ola y el acta DS-77 a DS-89 (#135).
+- **«Descargar PDF» y sprint 1120b** (PR #136 y #137, fusionados por Eugenio): el mapa de series de Riesgo guardado
+  por versión, quién guardó el desperdicio y la depuración de la auditoría de Neon del 2026-11-20. `main` queda en
+  `df91d176`.
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
@@ -50,7 +56,8 @@ instalador con huella SHA-256 firmada.
 | PR o rama | Qué trae | Estado |
 |---|---|---|
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
-| `union/sprint-1120b` (punta `e7f7c2dd`) | Unión de cinco ramas del sprint 1120b, con el re-encadenado de la migración 0024 sobre la 0023 y las correcciones del árbitro (`04180142`, `e7f7c2dd`): `feature/riesgo-mapa-guardado` (Riesgo recuerda por versión la serie que mueve cada insumo; migración 0023), `feature/desperdicio-responsable` (quién guardó el desglose; migración 0024), `feature/depurar-logica-1120`, `feature/depurar-front-1120` y `feature/depurar-api-1120` (hallazgos de la auditoría de Neon del 2026-11-20) | **Por subir**: sin push ni PR. Las ramas sueltas no traen el re-encadenado de la 0024: se fusiona la unión, no ellas. Fusión solo con autorización de Eugenio |
+| #138 `feature/ola-1121-depuracion` | La ola 1121 de Neon (operación O1-O4, lógica L1-L3, front F1-F7) con las tres correcciones de la auditoría de Claude (Visor, margen de `mercado`, aviso SEG-12) y la guarda de miles del asistente con el experimento re-congelado ([auditoría](bitacora/auditoria-agy-2026-11-21.md)) | PR abierto; fusión solo con autorización de Eugenio |
+| `feature/ui-aistudio-correcciones` | El rediseño de Neon (aspecto de Google AI Studio) con sus correcciones, la portada solo para pruebas (`SILICE_PORTADA_WEB=1`) y los medidores; apilado sobre la depuración | PR #139 abierto, apilado sobre #138 (revisado por Eugenio en el navegador el 2026-11-22: «me gusta como se ve»). Desde el 2026-11-23 trae también la claridad (fuera el «tablero de avión»), las tareas rápidas 1-15 del backlog de UX y los rótulos del back en español llano. La pasada goldfish de `planes/2026-11-23-pasada-goldfish.md` está hecha (Claude, 2026-11-23: N1 y N2, un nombre por idea, y en la curva AC con su propio trazo). Fusión solo con autorización de Eugenio |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
 autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada tarea de la tanda tuvo su árbol
@@ -300,10 +307,10 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
 ### Declarado fuera de alcance (sprint 1120b, 2026-11-20)
 
 - Tildes en `adapters/espacio/planos/`: el módulo entero va sin tildes.
-- JPEG del aviso de imágenes (B5): el relleno `0xFF` y los marcadores sin longitud desincronizan el lector y la escala de
-  la imagen se pierde al exportar. El cero ya no da 500; esto es la parte opcional.
+- ~~JPEG del aviso de imágenes (B5)~~: resuelto en la ola 1121 (L3, `e5df9a3b`).
 - Carrera estrecha entre `GET /insumos` y un guardado en vuelo de Riesgo.
-- `aplicacion/revision.py` ronda las 979 líneas; el tope de la guardia es 1000.
+- `aplicacion/revision.py` llega a 992 líneas tras la ola 1121 (L1); el tope de la guardia es 1000 y conviene partirlo
+  antes del siguiente cambio.
 - El patrón de DS-58 (A5) quedó copiado en `aplicacion/elaboracion.py`, `aplicacion/hoja_vial.py` y
   `aplicacion/libro_a_la_hoja.py` (nota 5 del árbitro): un ayudante común es una mejora opcional.
 - Sin cambio de código por decisión: DS-100 (C4, cerrar el diálogo de anular conteo) y DS-109 (A13, prueba de guarda).
@@ -316,7 +323,8 @@ Cuando otro agente (por ejemplo, Antigravity) audita a la vez, sus hallazgos van
 falso positivo o ya resuelto en una rama). Lista abierta:
 [bitacora/auditoria-agy-2026-11-04.md](bitacora/auditoria-agy-2026-11-04.md) y
 [bitacora/auditoria-agy-2026-11-20.md](bitacora/auditoria-agy-2026-11-20.md) (Neon sobre el diff `5f910132..main`, con los
-diez detalles del 2026-11-04 resueltos).
+diez detalles del 2026-11-04 resueltos) y [bitacora/auditoria-agy-2026-11-21.md](bitacora/auditoria-agy-2026-11-21.md)
+(la ola 1121, con veredicto por fila).
 
 En la otra dirección, el orquestador le encarga trabajo a Antigravity con el subagente
 `silice-antigravity` (`.claude/agents/silice-antigravity.md`), que llama a

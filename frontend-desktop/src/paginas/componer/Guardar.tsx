@@ -63,7 +63,7 @@ export function Guardar({
       )}
       {sinLista && (
         <p className="silice-componer__nota cds--type-body-compact-01">
-          Para guardar hace falta la lista de precios para armar de la carpeta de trabajo: créela con el aviso de arriba.
+          Para guardar hace falta la lista de precios para armar de la carpeta: créela con el aviso de arriba.
         </p>
       )}
       {codigoInvalido && (

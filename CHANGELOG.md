@@ -6,14 +6,68 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+### Cambiado
+- **Fuera el «tablero de avión»: la interfaz se entiende sin saber de software** (2026-11-22/23; pedido de Eugenio:
+  «es como una persona entrar y ver un tablero de avion ... terminos que estan abreviados»). Auditada por tres
+  lectores de Gemini (10 pantallas eran «tablero de avión») y construida por Neon y Hydrogen con la skill
+  `constructor-gemini`, revisada por Claude: cada pantalla con cifras dice bajo su título para qué sirve; las siglas
+  técnicas (EAC, SPI, CPI, P50, P80, FCAS) llevan su explicación la primera vez; textos llanos («Precio unitario»,
+  «¿Coincide?», «Código de verificación (SHA-256)», «Fecha de la revisión»); unos 25 términos nuevos en el glosario.
+  El back manda sus rótulos en español llano («Avance físico», «Error: …», «Pérdida cambiaria (%)», que mide la tasa
+  Bs/USD) y el nombre de cada regla en los hallazgos (`nombre_regla`, `aplicacion/nombres_reglas.py`); el código de una
+  regla solo se muestra junto a su nombre. Las tareas rápidas 1 a 15 del backlog de UX; «Plan a la fecha» bajo el
+  anillo de avance; los mensajes de tamaño dicen «20 MB». Un revisor goldfish (lectura en frío) encontró dos
+  definiciones al revés en el glosario (CPI y P50/P80), ya corregidas. Claude hizo el resto de esa pasada (lotes N1 y N2
+  de `docs/planes/2026-11-23-pasada-goldfish.md`; los créditos de Gemini se agotaron) para dejar un solo nombre por
+  idea:
+  - Riesgo habla solo de «simulaciones», y su comprobación se llama «Prueba con meses pasados».
+  - «Incidencia en el cambio (%)» en Actualizar precios y en Escenarios.
+  - «SPI/CPI mínimo antes de marcar «Error»».
+  - «Parte del contrato que no se reajusta (R)».
+  - «Código de verificación de la clave (SHA-256)».
+  - «Fecha de la revisión» en el Visor.
+  - El reparto de cantera es «en proporción a las toneladas producidas».
+  - En la curva del valor ganado, lo gastado (AC) va con su propio trazo, grueso y punteado, y ya no se confunde con lo
+    ejecutado (EV).
+
+  Front completo: 4.927 pruebas en verde; recorrido responsive: 384 mediciones sin fallos.
+- **Front menos genérico y responsive con letra grande** (2026-11-22, rama `feature/ui-aistudio-correcciones`; pedido de
+  Eugenio: «pulas y me des un front menos ia y generico»). Sobre el aspecto de Neon (carbón y dorado), construido por
+  Neon y Hydrogen con revisión de Claude: la entrada sin jerga y en usted; la cortina entre espacios sin vidrio ni sombra
+  (la animación se queda); sin numeración «01 · 02 · 03» ni «Ventana dedicada»; un solo botón principal por zona; plurales
+  reales, «Sin observaciones», conteos con punto de miles y títulos sin punto final; pesos de 600 como máximo, letra mínima
+  de 0,75 rem, radios y espaciados en la rejilla de 4 px. La sección de la Cuenta se llama «Configuración» y es el único
+  lugar del tamaño de letra. Con letra Grande o Muy grande todas las pantallas caben a 768, 1024, 1366 y 1920 px (384
+  mediciones del recorrido automático sin fallos), y el recorrido ya no cuenta como recortado el texto oculto para
+  lectores de pantalla. Backlog de UX en `docs/planes/2026-11-22-backlog-ux.md`.
+
+### Corregido
+- **Ola 1121, depuración de Neon con la auditoría de Claude** (2026-11-21/22; `docs/bitacora/auditoria-agy-2026-11-21.md`).
+  Restaurar un respaldo no deja eventos perdidos ni bases a medias y, si no se puede reponer la instalación, queda el
+  aviso SEG-12; los respaldos y las cuentas responden 503 con la base ocupada y 404 con un zip ilegible; Argon2 corre
+  fuera del bloqueo al entrar; recibir un paquete de revisión es atómico; los montos de 27 o más cifras ya no fallan y
+  el margen de mercado sigue en 28 cifras; el lector de JPEG soporta el relleno `0xFF` y los marcadores SOF `0xCE`/`0xCF`.
+  En la interfaz: salir de la obra de demostración vuelve a Inicio, la Hoja guarda las ediciones pendientes antes de
+  guardar o poner frente, Control y Actualización muestran sus cifras en es-VE, Versiones refresca aprobaciones y
+  sellos, Precios de la empresa avisa el cambio de carpeta y el Visor termina de cargar si se cambia la fecha a mitad.
+- **La guarda de cifras del asistente lee el punto como separador de miles** (2026-11-22): «1.234,56» ya no se toma
+  como otra cifra. El experimento se re-congeló con acta (`docs/bitacora/2026-11-22-recongelado-experimento-3.md`).
+
 ### Agregado
-- **Herramienta local para medir la auditoría de un libro** (2026-11-23; sin fusionar). `scripts/medir_auditoria_libro.py`
-  aplica el protocolo del anteproyecto v8 (§8) y no forma parte del producto. `clave` escribe la clave de la siembra,
-  `exportar` audita un libro con `procesar_libro` y saca los hallazgos a una planilla para marcar (Verdadero o Falso, más
-  la hoja «Se le escaparon») y `calcular` da la precisión, la detección de lo sembrado, la exhaustividad aproximada y el
-  kappa de Cohen entre dos evaluadores. Se niega a escribir dentro del repositorio y a sobrescribir una planilla. El
-  resumen sale sin celdas ni descripciones. Protocolo en `docs/tesis/2026-11-23-protocolo-medicion-auditoria.md`.
-- **Sprint 1120b: el mapa de series de Riesgo se guarda y el desperdicio dice quién lo guardó** (2026-11-20; sin fusionar).
+- **Herramientas del plan del consejo para medir el TEG** (2026-11-23; PR #141). `scripts/medir_auditoria_libro.py`
+  aplica el protocolo del anteproyecto v8 (§8) y no forma parte del producto: `clave` escribe la clave de la siembra,
+  `exportar` audita un libro con `procesar_libro` y saca los hallazgos **agrupados por causa raíz** a una planilla para
+  marcar (Verdadero o Falso, más «Se le escaparon»; sin los avisos «no aplicable») y `calcular` da precisión, detección de
+  lo sembrado, exhaustividad aproximada y kappa de Cohen. `scripts/libro_ficticio_con_errores.py` escribe un libro ficticio
+  con 12 errores sembrados y su clave; `scripts/respaldo_local.py` respalda fuera de OneDrive con manifiesto SHA-256. Ninguno
+  escribe dentro del repositorio. Documentos en `docs/tesis/`: protocolo de medición, guion de la demo del plan B, ensayo de
+  la defensa (un APU vial a mano) y esqueleto del capítulo de resultados.
+- **Portada solo de pruebas y entrada de la suite** (2026-11-21, Neon; corregido el 2026-11-22). `GET /` redirige a `/app/`
+  salvo con `SILICE_PORTADA_WEB=1` y un paquete hecho con `npm run build:portada`: la portada web con «Descargar» sirve
+  solo para probar y no va en el instalador ni en la suite (decisión de Eugenio). La entrada es un solo formulario de
+  usuario y contraseña con el panel de la marca y «Perdí el acceso de administrador», sin pestañas de rol; la primera vez
+  se entra con el código de instalación. En Cuentas, «Elegir» selecciona una cuenta de la tabla.
+- **Sprint 1120b: el mapa de series de Riesgo se guarda y el desperdicio dice quién lo guardó** (2026-11-20; PR #137).
   Riesgo recuerda por versión la serie que mueve cada insumo: al guardar un mapa propio se usa la vez siguiente; sin mapa
   propio toma el de otra versión de la misma obra, con una nota. Solo una cuenta con permiso de Riesgo lo guarda. En el
   desperdicio, el desglose dice quién lo guardó (Componer, Hoja y libro llevado), y el rótulo de la lista de Guardar nombra

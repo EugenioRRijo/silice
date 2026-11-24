@@ -121,7 +121,8 @@ describe("IndicadorFiori", () => {
     // La palabra es hija de la misma linea de texto (no un elemento aparte del contenedor flex: eso
     // produce un salto de linea al leer o copiar el texto).
     expect(linea.querySelector(".fiori-kpi__semantica")?.textContent).toBe("desfavorable");
-    expect(linea.textContent).toBe("desfavorable Δ 12,50 (15,89 %)");
+    expect(linea.textContent).toBe("desfavorable Diferencia: 12,50 (15,89 %)");
+    expect(linea.textContent).not.toContain("Δ");
   });
 
   test("la mini barra marca el real con relleno y la meta con contorno", () => {

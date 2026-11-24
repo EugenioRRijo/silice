@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -57,12 +57,18 @@ const DETALLE_PDF = {
   hallazgos: [],
 };
 
+function Ubicacion() {
+  const { pathname } = useLocation();
+  return <p data-testid="ubicacion">{pathname}</p>;
+}
+
 function dibujar(alExpirar = vi.fn()) {
   const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar };
   render(
     <ContextoAplicacion.Provider value={valor}>
       <MemoryRouter>
         <PaginaHistorial />
+        <Ubicacion />
       </MemoryRouter>
     </ContextoAplicacion.Provider>,
   );
@@ -158,12 +164,26 @@ describe("Historial de auditorías", () => {
     expect(screen.getByText("presupuesto-c.xlsx")).toBeInTheDocument();
   });
 
-  test("sin auditorías guardadas enseña cómo llenar el historial", async () => {
+  test("sin auditorías guardadas enseña cómo llenar el historial con botón principal", async () => {
+    const u = userEvent.setup();
     lista = () => json([]);
     dibujar();
     expect(await screen.findByText("Todavía no hay auditorías guardadas")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ir a Libro de la empresa" })).toHaveAttribute("href", "/auditoria/libros");
+    const boton = screen.getByRole("button", { name: "Auditar un libro" });
+    expect(boton).toHaveClass("cds--btn--primary");
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    await u.click(boton);
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/auditoria/libros");
+  });
+
+  test("con auditorías guardadas ofrece el botón terciario «Auditar un libro» junto al h1", async () => {
+    const u = userEvent.setup();
+    dibujar();
+    await screen.findByText("presupuesto-c.xlsx");
+    const boton = screen.getByRole("button", { name: "Auditar un libro" });
+    expect(boton).toHaveClass("cds--btn--tertiary");
+    await u.click(boton);
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/auditoria/libros");
   });
 
   test("un error de la API se muestra con su detalle", async () => {
@@ -195,6 +215,8 @@ describe("Historial de auditorías", () => {
     const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
     expect(within(panel).getByRole("heading", { level: 2, name: "Detalle de la auditoría" })).toBeInTheDocument();
     expect(within(panel).getByText("Ana Pérez <ana>")).toBeInTheDocument();
+    expect(within(panel).getByText("Código de verificación del archivo (SHA-256)")).toBeInTheDocument();
+    expect(within(panel).getByText("Sirve para comprobar que corresponde al mismo archivo original")).toBeInTheDocument();
     expect(within(panel).getByText("ab".repeat(32))).toBeInTheDocument();
     expect(within(panel).getByText("31/07/2026")).toBeInTheDocument();
     // VB-7: como el Libro, el total en centesimas y el exacto (en es-VE, sin redondear) en un Tooltip que se abre
@@ -205,6 +227,7 @@ describe("Historial de auditorías", () => {
     expect(silice).toHaveAccessibleDescription("Valor exacto: 1.234.500,5");
     expect(within(panel).queryByText("1.234.567,891000", { selector: "button" })).toBeNull();
     const tabla = within(panel).getByRole("table", { name: "Hallazgos guardados" });
+    expect(within(tabla).getByText("Qué revisó Sílice")).toBeInTheDocument();
     expect(within(tabla).getByText("El CD no cuadra con la suma.")).toBeInTheDocument();
     expect(within(tabla).getByText("APU-02")).toBeInTheDocument();
     expect(within(tabla).getByText("Advertencia")).toBeInTheDocument(); // la severidad con su nombre
@@ -268,6 +291,32 @@ describe("Historial de auditorías", () => {
     await waitFor(() =>
       expect(screen.queryByRole("region", { name: "Detalle de la auditoría" })).not.toBeInTheDocument(),
     );
+  });
+
+  test("el detalle muestra «Nombre (código)» si el hallazgo trae nombre_regla y solo el código si no", async () => {
+    detalle = () =>
+      json({
+        ...DETALLE_LIBRO,
+        hallazgos: [
+          {
+            regla: "L4",
+            nombre_regla: "Costo directo incompleto",
+            hoja: "APU-02",
+            celda: "G7",
+            severidad: "ADVERTENCIA",
+            mensaje: "El CD no cuadra con la suma.",
+          },
+          { regla: "R2", hoja: "INSUMOS", celda: "E3", severidad: "INFO", mensaje: "Precio en bolívares." },
+        ],
+      });
+    const u = userEvent.setup();
+    dibujar();
+    await screen.findByText("presupuesto-a.xlsx");
+    await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
+    const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+    const tabla = within(panel).getByRole("table", { name: "Hallazgos guardados" });
+    expect(within(tabla).getByText("Costo directo incompleto (L4)")).toBeInTheDocument();
+    expect(within(tabla).getByText("R2")).toBeInTheDocument();
   });
 
   test("no ofrece descargar nada: el libro y el PDF no se guardan, y lo explica", async () => {

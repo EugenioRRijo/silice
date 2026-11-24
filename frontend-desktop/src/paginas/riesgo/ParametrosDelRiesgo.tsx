@@ -49,6 +49,7 @@ export function CamposDeProyectar({ campos, errores, alCambiar, insumos }: Props
       <CampoTexto
         id="riesgo-trayectorias"
         labelText={ROTULOS.trayectorias}
+        helperText="2.000 ofrece resultados estables"
         inputMode="numeric"
         value={campos.trayectorias}
         invalid={errores.trayectorias !== undefined}
@@ -59,6 +60,10 @@ export function CamposDeProyectar({ campos, errores, alCambiar, insumos }: Props
   );
 }
 
+const AYUDA_DE_CAMPO: Partial<Record<Exclude<keyof Campos, "inicio">, string>> = {
+  semilla: "Déjelo en 1; con el mismo número repite exactamente el resultado",
+};
+
 // Los parámetros de la proyección (D-V-3) y la serie que mueve cada insumo. Un insumo sin serie sigue a la tasa del BCV
 // en un presupuesto en Bs y queda fijo en uno en USD (lo dice el servidor en los supuestos). Las cifras se escriben con
 // punto de miles: «2.000».
@@ -67,6 +72,7 @@ export function ParametrosDelRiesgo({ campos, errores, alCambiar, insumos, mapa,
     <CampoTexto
       id={`riesgo-${clave}`}
       labelText={ROTULOS[clave]}
+      helperText={AYUDA_DE_CAMPO[clave]}
       inputMode="numeric"
       value={campos[clave]}
       invalid={errores[clave] !== undefined}

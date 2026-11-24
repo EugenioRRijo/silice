@@ -35,7 +35,7 @@ const TITULO_ADVERTENCIA: Record<Advertencia["tipo"], string> = {
   rendimiento: "Rendimiento",
   rendimiento_ml: "Rendimiento atípico",
   precio_atipico: "Precio atípico",
-  contraste_aace: "Contraste con la estimación por reglas",
+  contraste_aace: "Referencia estadística del precio (AACE)",
   partida_nueva: "Partida nueva",
 };
 
@@ -61,19 +61,20 @@ function TablaDeMontos({ desglose, moneda }: { desglose: Desglose; moneda: strin
 
 function BloqueContraste({ contraste, moneda, nivel }: { contraste: Contraste; moneda: string | null; nivel: 3 | 4 }) {
   const Titulo = `h${nivel}` as const;
+  const cantidad = formatoEsVe(String(contraste.registros));
+  const partidas = contraste.registros === 1 ? "partida de este tipo de obra" : "partidas de este tipo de obra";
   return (
     <div className="silice-componer__contraste">
-      <Titulo className="cds--type-heading-compact-02">Contraste con la estimación por reglas (AACE)</Titulo>
+      <Titulo className="cds--type-heading-compact-02">Referencia estadística del precio (AACE)</Titulo>
       <p className="cds--type-body-compact-01">
-        Técnica de estimación que corresponde a este dominio: {contraste.tecnica} ({contraste.registros} registro(s)).
-        Precio unitario estimado por reglas: {conMoneda(contraste.pu_estimado, moneda)}.
+        Precio unitario estimado por reglas ({contraste.tecnica}, {cantidad} {partidas}):{" "}
+        {conMoneda(contraste.pu_estimado, moneda)}.
       </p>
-      {contraste.dentro_de_rango && (
-        <p className="cds--type-body-compact-01">
-          El precio construido cae dentro del rango de la clase 3 de AACE International frente a la estimación por
-          reglas.
-        </p>
-      )}
+      <p className="cds--type-body-compact-01">
+        {contraste.dentro_de_rango
+          ? "Su precio está dentro del rango esperado para un presupuesto detallado (clase 3 de AACE)."
+          : "Su precio queda fuera del rango esperado para un presupuesto detallado (clase 3 de AACE); revise rendimientos o precios."}
+      </p>
     </div>
   );
 }

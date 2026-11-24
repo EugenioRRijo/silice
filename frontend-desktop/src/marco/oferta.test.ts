@@ -172,7 +172,7 @@ describe("ofertaDe (F6, T5): secciones con una subvista usable", () => {
 
 // F6, T6 (contrato de rutas §3): las secciones de la Cuenta que ofrece la barra, el buscador y quien enlaza. Tabla escrita
 // a mano: «Carpetas» pide `administrar_cuentas` Y `cambiar_caso`; las demás de administración, solo `administrar_cuentas`;
-// «Pantalla y tamaño de letra» y «Ayuda» son de toda cuenta (también en modo entrega).
+// «Configuración» y «Ayuda» son de toda cuenta (también en modo entrega).
 describe("ofertaDe: las secciones de la Cuenta (F6, T6)", () => {
   const cuenta = (acciones: string[], entrega = false) => ofertaDe(acciones, entrega).cuenta.map((c) => c.id);
 

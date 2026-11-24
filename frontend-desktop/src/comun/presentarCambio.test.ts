@@ -4,7 +4,7 @@ import { presentarClave, presentarValor } from "./presentarCambio";
 describe("presentador común de las filas del registro de cambios", () => {
   test("la clave de un parámetro de costo o de control sale con su rótulo", () => {
     expect(presentarClave("parametro", "administracion")).toBe("Administración");
-    expect(presentarClave("parametro", "control|spi_error")).toBe("Control de obra: Umbral de SPI para error");
+    expect(presentarClave("parametro", "control|spi_error")).toBe("Control de obra: SPI mínimo antes de marcar «Error»");
   });
 
   test("la clave de una fila del metraje o de un renglón sale como la nombra la persona", () => {

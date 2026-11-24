@@ -20,7 +20,7 @@ export function formatoNumeroEsVe(valor: unknown): string {
 
 // Colores de las series de una curva por su rol (DESIGN.md: real = oscuro y grueso, plan = gris claro, pronostico =
 // gris medio discontinuo). Una segunda serie real toma el verde azulado para distinguirse de la primera.
-export function colorPorSerie(series: { nombre: string; rol: "plan" | "real" | "pronostico" }[]): {
+export function colorPorSerie(series: { nombre: string; rol: "plan" | "real" | "gastado" | "pronostico" }[]): {
   scale: Record<string, string>;
 } {
   const scale: Record<string, string> = {};

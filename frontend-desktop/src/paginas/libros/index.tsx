@@ -8,6 +8,9 @@ export default function PaginaLibros() {
   return (
     <div className="silice-pagina-libro">
       <h1 className="cds--type-heading-04">Libro de la empresa</h1>
+      <p className="cds--type-body-compact-01">
+        Compare el Excel original con el recálculo de Sílice y revise cada celda marcada
+      </p>
       <Visor
         alExpirar={alExpirar}
         almacen={almacenDelLibro}

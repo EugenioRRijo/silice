@@ -384,16 +384,37 @@ def _tamano_de_la_cabecera(datos: bytes) -> tuple[int, int] | None:
         flujo = io.BytesIO(datos)
         flujo.read(2)
         for _ in range(_MAX_SEGMENTOS_JPEG):
-            marca = flujo.read(2)
-            if len(marca) < 2 or marca[0] != 0xFF:
+            if flujo.read(1) != b"\xff":
                 return None
+            codigo = flujo.read(1)
+            for _ in range(64):
+                if codigo != b"\xff":
+                    break
+                codigo = flujo.read(1)
+            if not codigo or codigo == b"\xff":
+                return None
+            marca_tipo = codigo[0]
             crudo = flujo.read(2)
             largo = int.from_bytes(crudo, "big")
             # El largo cuenta sus propios 2 bytes: menos que eso (o el archivo acabado tras la
             # marca) volvería a leer la misma marca sin fin.
             if len(crudo) < 2 or largo < 2:
                 return None
-            if marca[1] in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD):
+            if marca_tipo in (
+                0xC0,
+                0xC1,
+                0xC2,
+                0xC3,
+                0xC5,
+                0xC6,
+                0xC7,
+                0xC9,
+                0xCA,
+                0xCB,
+                0xCD,
+                0xCE,
+                0xCF,
+            ):
                 bloque = flujo.read(5)
                 if len(bloque) < 5:
                     return None

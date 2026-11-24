@@ -329,3 +329,18 @@ def test_los_costos_propios_son_los_del_ultimo_calculo_publicado(ins, caso):
     assert {c.id for c in publicados.values()} == {segundo.id}
     assert publicados["MZP-MZ-1"].por_tonelada["MZ-1"] == D("50.70")
     assert tercero.id == 3
+
+
+def test_conciliar_no_falla_al_formatear_montos_de_27_o_mas_cifras_enteras():
+    """L2: `_dinero` en `conciliacion` no lanza `InvalidOperation` con montos de >= 27 cifras."""
+    grande = "1" + "0" * 29 + ".50"
+    otro = "1" + "0" * 29 + ".555"
+    h = _solo(_conciliar(_presupuesto(pu={CARPETA: grande})), "CV1")
+    assert "100.000.000.000.000.000.000.000.000.000,50" in h.descripcion
+    h3 = _solo(_conciliar(costos=_costos(otro)), "CV3")
+    assert "100.000.000.000.000.000.000.000.000.000,555" in h3.descripcion
+
+
+def test_dinero_de_un_monto_con_exponente_no_falla():
+    """1E+58 tiene una cifra en el coeficiente pero 61 a céntimos: la precisión mira la magnitud."""
+    assert conciliacion._dinero(D("1E+58")) == "10" + ".000" * 19 + ",00"

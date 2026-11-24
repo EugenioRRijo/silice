@@ -99,6 +99,10 @@ describe("Un índice en USD (RF-214)", () => {
     expect(within(indice).getAllByRole("option").map((o) => o.textContent)).toEqual(["FIC-INPC · INPC ficticio"]);
     const lado = screen.getByRole("combobox", { name: "Tasa del BCV" });
     expect(lado).toHaveValue("venta");
+    expect(within(lado).getAllByRole("option").map((o) => [o.textContent, (o as HTMLOptionElement).value])).toEqual([
+      ["Venta", "venta"],
+      ["Compra", "compra"],
+    ]);
   });
 
   test("«Revisar» manda la serie y el lado y muestra la cuenta tal cual la da el servidor", async () => {
@@ -122,7 +126,9 @@ describe("Un índice en USD (RF-214)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Expresar un índice en USD" }));
     await screen.findByRole("combobox", { name: "Índice en bolívares" });
     await userEvent.click(screen.getByRole("button", { name: "Revisar" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Guardar la serie en USD" }));
+    const guardar = await screen.findByRole("button", { name: "Guardar la serie en USD" });
+    expect(guardar).toHaveClass("cds--btn--secondary");
+    await userEvent.click(guardar);
     expect(await screen.findByText("FIC-INPC-USD: guardada con 2 meses en USD.")).toBeInTheDocument();
     expect(cuerpos("/v1/indices/en-usd/confirmar")).toEqual([{ serie: "FIC-INPC", lado: "venta", huella: "b".repeat(64) }]);
   });
@@ -134,7 +140,9 @@ describe("Un índice en USD (RF-214)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Expresar un índice en USD" }));
     await screen.findByRole("combobox", { name: "Índice en bolívares" });
     await userEvent.click(screen.getByRole("button", { name: "Revisar" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Guardar la serie en USD" }));
+    const guardar = await screen.findByRole("button", { name: "Guardar la serie en USD" });
+    expect(guardar).toHaveClass("cds--btn--secondary");
+    await userEvent.click(guardar);
     expect(screen.getByRole("button", { name: "Revisar" })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "Revisar" }));
     // Si «Revisar» siguiera vivo, la vista nueva traería un «Guardar» habilitado con el primero aún en vuelo.
@@ -153,7 +161,9 @@ describe("Un índice en USD (RF-214)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Expresar un índice en USD" }));
     await screen.findByRole("combobox", { name: "Índice en bolívares" });
     await userEvent.click(screen.getByRole("button", { name: "Revisar" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Guardar la serie en USD" }));
+    const guardar = await screen.findByRole("button", { name: "Guardar la serie en USD" });
+    expect(guardar).toHaveClass("cds--btn--secondary");
+    await userEvent.click(guardar);
     expect(await alertaConTexto()).toHaveTextContent(detalle);
   });
 
@@ -162,6 +172,8 @@ describe("Un índice en USD (RF-214)", () => {
     montar();
     await userEvent.click(screen.getByRole("button", { name: "Expresar un índice en USD" }));
     expect(await screen.findByText(/No hay índices mensuales en bolívares importados/)).toBeInTheDocument();
+    expect(screen.getByText(/expresada en bolívares/)).toBeInTheDocument();
+    expect(screen.queryByText(/indice_bs/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Revisar" })).toBeNull();
   });
 
@@ -180,5 +192,6 @@ describe("Un índice en USD (RF-214)", () => {
     expect(textoDelResumen({ ...VISTA, meses: 1, desde: "01/2026", hasta: "01/2026" })).toBe("1 mes en USD, de 01/2026 a 01/2026.");
     expect(textoDelResumen({ ...VISTA, provisionales: 1 })).toBe("2 meses en USD, de 01/2026 a 02/2027 (1 provisional).");
     expect(textoDelResumen({ ...VISTA, provisionales: 2 })).toBe("2 meses en USD, de 01/2026 a 02/2027 (2 provisionales).");
+    expect(textoDelResumen({ ...VISTA, meses: 1200, provisionales: 1000 })).toBe("1.200 meses en USD, de 01/2026 a 02/2027 (1.000 provisionales).");
   });
 });

@@ -83,7 +83,7 @@ def test_las_notas_de_los_indicadores_salen_con_tilde(monkeypatch: pytest.Monkey
         f["Indicador"]: f
         for f in control.filas_de_indicadores(None, resultado)  # type: ignore[arg-type]
     }
-    assert filas["CPI"]["Nota"] == "AC = 0: aún no hay costos reales"
+    assert filas["CPI (índice de costo)"]["Nota"] == "AC = 0: aún no hay costos reales"
     # El «(S1)» es texto del núcleo (`core/budget/valor_ganado.py`): solo se le restituyen tildes.
     assert filas["Desvío de precio (USD)"]["Nota"] == (
         "sin precios del corte (S1): la separación no está disponible"
@@ -102,17 +102,17 @@ def test_los_nombres_de_los_indicadores_llevan_tilde_y_sin_codigos_de_la_spec(
     resultado = _resultado_de_indicadores({}, {}, fuente="f")
     filas = control.filas_de_indicadores(None, resultado)  # type: ignore[arg-type]
     assert [f["Indicador"] for f in filas] == [
-        "BAC (USD)",
-        "PV (USD)",
-        "EV (USD)",
-        "AC (USD)",
-        "SV (plazo) (USD)",
-        "CV (USD)",
-        "SPI",
-        "CPI",
-        "EAC (índice BAC/CPI) (USD)",
-        "EAC (sistema) (USD)",
-        "VAC (USD)",
+        "BAC (presupuesto total) (USD)",
+        "PV (planificado) (USD)",
+        "EV (ejecutado) (USD)",
+        "AC (gastado) (USD)",
+        "SV (diferencia de plazo) (USD)",
+        "CV (diferencia de costo) (USD)",
+        "SPI (índice de plazo)",
+        "CPI (índice de costo)",
+        "EAC (costo final estimado, índice BAC/CPI) (USD)",
+        "EAC (costo final estimado, sistema) (USD)",
+        "VAC (diferencia al terminar) (USD)",
         "Término por el índice (día hábil)",
         "Desvío de precio (USD)",
         "Desvío de consumo (USD)",

@@ -59,7 +59,7 @@ function hoja(nombre: string, extra: Partial<HojaVisualRespuesta> = {}): HojaVis
 function montar(extra: Partial<React.ComponentProps<typeof ListaHallazgos>> = {}) {
   const irACelda = vi.fn();
   const onElegir = vi.fn();
-  render(
+  const vista = render(
     <ListaHallazgos
       hallazgos={hallazgos}
       seleccionado={null}
@@ -68,7 +68,7 @@ function montar(extra: Partial<React.ComponentProps<typeof ListaHallazgos>> = {}
       {...extra}
     />,
   );
-  return { irACelda, onElegir };
+  return { irACelda, onElegir, unmount: vista.unmount };
 }
 
 function fila(descripcion: string): HTMLElement {
@@ -162,6 +162,34 @@ describe("ListaHallazgos", () => {
   test("sin texto de contexto no se pinta la linea", () => {
     montar({ seleccionado: 1, contextoDeCelda: () => null });
     expect(document.querySelector(".hallazgo__contexto")).toBeNull();
+  });
+
+  test("la fila elegida muestra la acción que manda el servidor; las demás y una acción vacía no la pintan", () => {
+    const { unmount } = montar({ seleccionado: 1 });
+    const elegida = fila("Precio unitario distinto al de INSUMOS");
+    expect(within(elegida).getByText("Acción: Igualar el precio")).toHaveClass("hallazgo__accion");
+    expect(within(fila("El total no coincide con la suma de las partidas")).queryByText(/^Acción:/)).toBeNull();
+    unmount();
+    montar({ hallazgos: [{ ...hallazgos[0], accion: "" }], seleccionado: 0 });
+    expect(document.querySelector(".hallazgo__accion")).toBeNull();
+  });
+
+  test("muestra el nombre de la regla junto al código cuando el servidor lo manda, y solo el código si viene vacío", () => {
+    montar({
+      hallazgos: [
+        { ...hallazgos[0], codigo: "L4", nombre_regla: "Componente fuera del total" },
+        { ...hallazgos[1], codigo: "L5", nombre_regla: "" },
+      ],
+    });
+    const conNombre = fila("El total no coincide con la suma de las partidas");
+    expect(conNombre.querySelector(".hallazgo__encabezado")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "PRESUPUESTO!F12 · Crítico · Componente fuera del total (L4) · Impacto 238,407",
+    );
+    expect(within(conNombre).getByText("L4")).toHaveClass("silice-codigo");
+    const sinNombre = fila("Precio unitario distinto al de INSUMOS");
+    expect(sinNombre.querySelector(".hallazgo__encabezado")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "APU-01!G48 · Error · L5 · Impacto 12,50",
+    );
   });
 
   test("los filtros por severidad llevan icono ademas del texto y el numero (el color nunca va solo)", () => {
@@ -307,5 +335,25 @@ describe("ListaHallazgos", () => {
   test("sin hallazgos dice que el libro no tiene ninguno", () => {
     montar({ hallazgos: [] });
     expect(screen.getByText(/no tiene hallazgos/i)).toBeInTheDocument();
+  });
+
+  test("cuando hay precios atípicos muestra la etiqueta y la nota en la cabecera; sin ellos no la muestra", () => {
+    const { unmount } = montar();
+    expect(screen.queryByText(/En morado: precios muy distintos al histórico/)).toBeNull();
+    unmount();
+    montar({
+      hallazgos: [
+        {
+          codigo: "ATIPICO",
+          severidad: "ADVERTENCIA",
+          descripcion: "Precio fuera de rango histórico",
+          celda: "PRESUPUESTO!F12",
+          impacto: null,
+          accion: "Revisar",
+        },
+      ],
+    });
+    expect(screen.getByText("Precio atípico (revisar)")).toBeInTheDocument();
+    expect(screen.getByText("En morado: precios muy distintos al histórico; revise si tienen justificación")).toBeInTheDocument();
   });
 });

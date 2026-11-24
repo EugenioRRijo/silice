@@ -20,7 +20,7 @@ type Vista = { estado: "ninguna" } | { estado: "listo"; receta: RecetaRespuesta 
 
 const COLUMNAS: ColumnaDensa[] = [
   { clave: "codigo", titulo: "Código" },
-  { clave: "cantidad", titulo: "Cantidad por t", numerica: true, presentar: mostrarMonto },
+  { clave: "cantidad", titulo: "Cantidad por tonelada", numerica: true, presentar: mostrarMonto },
   { clave: "unidad", titulo: "Unidad" },
   { clave: "tipo", titulo: "Tipo" },
   { clave: "ligante", titulo: "Ligante" },
@@ -72,7 +72,7 @@ export default function RecetaPlanta() {
         Lo que lleva una tonelada de cada mezcla. Una receta nueva no cambia las anteriores: la producción usa la que rige en su fecha.
       </p>
       <div className="planta-barra">
-        <CampoDeConsulta id="receta-producto" etiqueta="Producto (código)" tabla="materiales_produccion" texto={producto} alCambiarTexto={setProducto} alExpirar={alExpirar} />
+        <CampoDeConsulta id="receta-producto" etiqueta="Mezcla (escriba código o nombre)" tabla="materiales_produccion" texto={producto} alCambiarTexto={setProducto} alExpirar={alExpirar} />
         <CampoTexto id="receta-fecha" type="date" labelText="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         <Button kind="secondary" size="md" disabled={producto.trim() === "" || fecha === ""} onClick={() => void consultar(true)}>
           Ver la receta vigente
@@ -90,7 +90,7 @@ export default function RecetaPlanta() {
             Receta n.º {receta.id} de {receta.producto}, vigente desde {fechaEsVe(receta.vigente_desde)}. Fuente: {receta.fuente}.
           </p>
           <TablaDensa etiqueta={`Componentes de la receta de ${receta.producto}`} columnas={COLUMNAS} filas={filas} />
-          <p className="cds--type-body-compact-01">Suma de masa: {masa.texto} t por t de mezcla</p>
+          <p className="cds--type-body-compact-01">Peso total de los componentes: {masa.texto} toneladas por tonelada de mezcla</p>
         </section>
       )}
       {registrando && (

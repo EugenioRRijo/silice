@@ -8,7 +8,7 @@ import type { Severidad } from "../indicadores/tipos";
 import { IconoDeSeveridad } from "../severidad/IconoDeSeveridad";
 import { SEVERIDADES, estiloDeSeveridad, normalizarSeveridad } from "../severidad/severidad";
 import { parsearCelda } from "./celdas";
-import { construirHalos, estiloDeHallazgo } from "./halos";
+import { CODIGO_ATIPICO, construirHalos, estiloDeHallazgo } from "./halos";
 import type { CeldaRef } from "./hojaVisor";
 
 interface Props {
@@ -52,8 +52,11 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
     const h = hallazgos[indice];
     const estilo = estiloDeHallazgo(h);
     const motivo = motivos?.get(indice);
-    const celda = seleccionado === indice && contextoDeCelda ? parsearCelda(h.celda) : null;
+    const elegida = seleccionado === indice;
+    const celda = elegida && contextoDeCelda ? parsearCelda(h.celda) : null;
     const contexto = celda ? contextoDeCelda?.(celda) : null;
+    const accion = elegida ? (h.accion ?? "").trim() : "";
+    const nombreRegla = h.nombre_regla?.trim();
     return {
       id: String(indice),
       hallazgo: (
@@ -66,7 +69,13 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
             <span aria-hidden="true"> · </span>
             <span>{estilo.texto}</span>
             <span aria-hidden="true"> · </span>
-            <span className="silice-codigo">{h.codigo}</span>
+            {nombreRegla ? (
+              <span>
+                {nombreRegla} (<span className="silice-codigo">{h.codigo}</span>)
+              </span>
+            ) : (
+              <span className="silice-codigo">{h.codigo}</span>
+            )}
             {h.impacto !== null && (
               <>
                 <span aria-hidden="true"> · </span>
@@ -79,6 +88,7 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
           </div>
           <div className="hallazgo__descripcion cds--type-body-compact-01">{h.descripcion}</div>
           {contexto && <div className="hallazgo__contexto cds--type-label-01">{contexto}</div>}
+          {accion && <div className="hallazgo__accion cds--type-label-01">{`Acción: ${accion}`}</div>}
           {motivo && <div className="hallazgo__motivo cds--type-label-01">{motivo}</div>}
         </div>
       ),
@@ -160,6 +170,7 @@ export function ListaHallazgos({
   const idOcultos = useId();
 
   const { sinCelda, ocultos } = useMemo(() => construirHalos(hallazgos, hojas), [hallazgos, hojas]);
+  const hayAtipicos = useMemo(() => hallazgos.some((h) => h.codigo === CODIGO_ATIPICO), [hallazgos]);
   const sinCeldaSet = useMemo(() => new Set(sinCelda), [sinCelda]);
   const motivos = useMemo(() => new Map(ocultos.map((o) => [o.indice, o.motivo])), [ocultos]);
   const ocultosIndices = useMemo(() => ocultos.map((o) => o.indice), [ocultos]);
@@ -260,6 +271,11 @@ export function ListaHallazgos({
             />
           ))}
         </div>
+        {hayAtipicos && (
+          <p className="cds--type-body-compact-01">
+            En morado: precios muy distintos al histórico; revise si tienen justificación
+          </p>
+        )}
         {aviso && (
           <InlineNotification
             kind="info"

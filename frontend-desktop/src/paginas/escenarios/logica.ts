@@ -32,9 +32,14 @@ export const CAMPOS_PARAMETROS: CampoParametro[] = ["fcas", "bono_alimentacion",
 export const ROTULOS_PARAMETROS: Record<CampoParametro, string> = {
   fcas: "FCAS (fracción; 6,00 = prestaciones del 600 %)",
   bono_alimentacion: "Bono de alimentación",
-  administracion: "Administración",
-  utilidad: "Utilidad",
+  administracion: "Administración (fracción; ej. 0,15 = 15 %)",
+  utilidad: "Utilidad (fracción; ej. 0,10 = 10 %)",
 };
+
+export function rotuloDeParametro(campo: CampoParametro, moneda: string): string {
+  if (campo === "bono_alimentacion" && moneda) return `Bono de alimentación (${moneda})`;
+  return ROTULOS_PARAMETROS[campo];
+}
 
 // Si el detalle de un rechazo nombra un parametro, ese campo se marca ademas del aviso.
 export function campoNombrado(detalle: string): CampoParametro | null {
@@ -163,9 +168,9 @@ export const COLUMNAS_PARTIDAS: ColumnaDensa[] = [
   { clave: "total_anterior", titulo: "Total anterior", numerica: true, presentar: formatoMontoEsVe },
   { clave: "total_nuevo", titulo: "Total nuevo", numerica: true, presentar: formatoMontoEsVe },
   { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
-  { clave: "incidencia_pct", titulo: "Incidencia %", numerica: true, celda: "variacion" },
-  { clave: "pu_anterior", titulo: "P.U. anterior", numerica: true, presentar: formatoMontoEsVe },
-  { clave: "pu_nuevo", titulo: "P.U. nuevo", numerica: true, presentar: formatoMontoEsVe },
+  { clave: "incidencia_pct", titulo: "Incidencia en el cambio (%)", numerica: true, celda: "variacion" },
+  { clave: "pu_anterior", titulo: "Precio unitario anterior", numerica: true, presentar: formatoMontoEsVe },
+  { clave: "pu_nuevo", titulo: "Precio unitario nuevo", numerica: true, presentar: formatoMontoEsVe },
   { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoMontoEsVe },
 ];
 
@@ -195,10 +200,7 @@ export function filasPartidas(partidas: FilaComparativo[]): FilaDensa[] {
 }
 
 export function notaHallazgos(e: EscenarioRespuesta): string {
-  return (
-    `Hallazgos de la auditoría del escenario: ${e.hallazgos} (el informe se genera siempre). ` +
-    `Insumos variados: ${e.insumos_variados}.`
-  );
+  return `Hallazgos de revisión en este escenario: ${e.hallazgos}. Insumos con precio modificado: ${e.insumos_variados}.`;
 }
 
 // «A», «B» y «C»

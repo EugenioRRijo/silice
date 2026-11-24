@@ -57,7 +57,7 @@ export function errorDeCarga(carga: Carga<unknown>): unknown {
 // cifras): se pinta con `celda` (ver `sinTitulo`) y el valor de la fila no cambia.
 const ETIQUETAS_DE_CODIGO: Record<string, string> = {
   ...PARAMETROS_DE_CONTROL,
-  SUPUESTO_DECLARADO: "Supuesto declarado",
+  SUPUESTO_DECLARADO: "Valor de referencia",
   DATO_DEL_CONTRATO: "Dato del contrato",
   FUENTE_VERIFICADA: "Fuente verificada",
   "AL-1": "Retraso (SPI)",
@@ -155,11 +155,13 @@ export interface Valuaciones {
   hallazgos?: HallazgoDeValuacion[];
 }
 
-// Un hallazgo de la revisión de una valuación: la valuación que lo trae (vacía si es de una partida), la regla, la
-// severidad con su nombre para la persona («Error», «Advertencia», «Información») y el mensaje.
+// Un hallazgo de la revisión de una valuación: la valuación que lo trae (vacía si es de una partida), la regla, su
+// nombre llano (si lo manda el servidor), la severidad con su nombre para la persona («Error», «Advertencia»,
+// «Información») y el mensaje.
 export interface HallazgoDeValuacion {
   valuacion: string;
   regla: string;
+  nombre_regla?: string;
   severidad: string;
   mensaje: string;
 }
@@ -172,8 +174,18 @@ export interface RegistroDeValuacion {
   detalle?: HallazgoDeValuacion[];
 }
 
+export function reglaDeHallazgo(h: Pick<HallazgoDeValuacion, "regla" | "nombre_regla">): string {
+  const nombre = h.nombre_regla?.trim() ?? "";
+  const codigo = h.regla.trim();
+  if (nombre && codigo) return `${nombre} (${codigo})`;
+  return nombre || codigo;
+}
+
+// El código de la regla solo acompaña a su nombre llano («Fuente y fechas de la valuación (R14)»): un código suelto
+// («R14») no le dice nada a quien lee (pedido de Eugenio, «tablero de avión», 2026-11-22).
 export function textoDeHallazgo(h: HallazgoDeValuacion): string {
-  return `${h.severidad} (${h.regla}): ${h.mensaje}`;
+  const regla = h.nombre_regla?.trim() ? reglaDeHallazgo(h) : "";
+  return regla ? `${h.severidad} · ${regla}: ${h.mensaje}` : `${h.severidad}: ${h.mensaje}`;
 }
 
 // MP-7: una partida que termina despues de su plan. El texto ya viene armado por la API («A atrasada 5 días: Compra
@@ -213,6 +225,7 @@ export interface Calculo {
   atrasos: AtrasoDePartida[];
   // Con `metodo=declarados`, los precios del corte vigentes que se convirtieron de otra moneda (Tarea D2).
   precios_convertidos: PrecioConvertido[];
+  motivo_otra_moneda?: string;
 }
 
 export interface PrecioConvertido {
@@ -304,7 +317,7 @@ export const FILTROS_INICIALES: Filtros = { corte: "", precios: PRECIOS_INICIALE
 export const ROTULO_DE_METODO: Record<MetodoDePrecios, string> = {
   ninguno: "Sin precios del corte",
   comprobacion: "Comprobación directa (versión revalorada)",
-  escalatoria: "Escalatoria (un Km declarado)",
+  escalatoria: "Fórmula de escalatoria (con factor Km)",
   declarados: "Precios declarados de insumos",
 };
 

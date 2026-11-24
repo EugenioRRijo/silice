@@ -1,0 +1,523 @@
+// Medidores de Silice (VisualMeters.tsx): anillo, anillo por partes, barras de avance y rango de riesgo.
+// Todo tamano de texto en rem (estilosLetra.test.ts) y cifras en tabular-nums. Los colores son tokens: lo real va relleno en
+// la tinta, lo previsto (plan) en contorno y lo pronosticado achurado (IBCS, DESIGN.md); cada marca llega a 3:1 sobre la
+// superficie (WCAG 1.4.11, VisualMeters.test.tsx). Las cifras van en las tintas de texto, nunca en el color de la serie.
+
+.silice-sin-dato {
+  color: var(--silice-muted);
+}
+
+.silice-radial {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-radial__aro {
+  position: relative;
+  flex: none;
+}
+
+.silice-radial__svg {
+  transform: rotate(-90deg);
+  display: block;
+}
+
+.silice-radial__pista {
+  stroke: var(--silice-hairline);
+}
+
+.silice-radial__arco--charcoal {
+  stroke: var(--silice-ink);
+}
+
+.silice-radial__arco--emerald {
+  stroke: var(--silice-ok);
+}
+
+.silice-radial__arco--crimson {
+  stroke: var(--silice-err);
+}
+
+.silice-radial__centro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.silice-radial__cifra {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+  line-height: 1;
+}
+
+.silice-radial__texto {
+  min-inline-size: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-radial__etiqueta {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--silice-ink);
+  line-height: 1.3;
+}
+
+// La variación IBCS del anillo: el color del arco nunca va solo, la dice también su ícono y su palabra.
+.silice-radial__variacion {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+
+  svg {
+    flex: none;
+  }
+}
+
+.silice-radial__variacion--favorable {
+  color: var(--silice-ok-ink);
+
+  svg {
+    fill: var(--silice-ok);
+  }
+}
+
+.silice-radial__variacion--desfavorable {
+  color: var(--silice-err);
+
+  svg {
+    fill: var(--silice-err);
+  }
+}
+
+// Anillo por partes
+.silice-donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.silice-donut__aro {
+  position: relative;
+  flex: none;
+  margin-inline: auto;
+}
+
+.silice-donut__svg {
+  transform: rotate(-90deg);
+  display: block;
+}
+
+.silice-donut__pista {
+  stroke: var(--silice-rail-band);
+}
+
+.silice-donut__segmento {
+  cursor: pointer;
+  transition: stroke-width 180ms ease;
+}
+
+.silice-donut__centro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding-inline: 1.25rem;
+  pointer-events: none;
+}
+
+.silice-donut__centro-titulo {
+  font-size: 0.75rem;
+  color: var(--silice-muted-soft);
+  line-height: 1.2;
+}
+
+.silice-donut__centro-valor {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+  margin-block-start: 0.25rem;
+  line-height: 1.1;
+}
+
+.silice-donut__centro-unidad {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--silice-muted);
+  font-variant-numeric: tabular-nums;
+  margin-block-start: 0.25rem;
+}
+
+.silice-donut__leyenda {
+  flex: 1 1 14rem;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block: 1px solid var(--silice-hairline);
+}
+
+.silice-donut__fila {
+  border-block-end: 1px solid var(--silice-hairline);
+
+  &:last-child {
+    border-block-end: 0;
+  }
+}
+
+// Cada parte es un botón (teclado y lectora): sin el aspecto de botón, como una fila de la leyenda.
+.silice-donut__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  inline-size: 100%;
+  margin: 0;
+  padding: 0.5rem;
+  border: 0;
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+
+.silice-donut__item:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.silice-donut__item--activo {
+  background-color: var(--silice-surface-warm);
+}
+
+.silice-donut__item-izq {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-donut__muestra {
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  border-radius: 0.125rem;
+  flex: none;
+}
+
+.silice-donut__item-nombre {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--silice-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.silice-donut__item-der {
+  display: grid;
+  text-align: end;
+  flex: none;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-donut__item-valor {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--silice-ink);
+}
+
+.silice-donut__item-pct {
+  font-size: 0.75rem;
+  color: var(--silice-muted);
+}
+
+// Barras verticales de 0 a 100 % con linea base en cero
+.silice-barras-v {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.silice-barras-v__leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--silice-muted);
+}
+
+.silice-barras-v__leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.silice-barras-v__muestra {
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border-radius: 0.125rem;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+.silice-barras-v__muestra--real {
+  background-color: var(--silice-ink);
+}
+
+.silice-barras-v__muestra--plan {
+  background-color: transparent;
+  border: 0.125rem solid var(--silice-ink);
+}
+
+.silice-barras-v__lienzo {
+  padding-block-start: 1.25rem;
+}
+
+.silice-barras-v__area {
+  position: relative;
+}
+
+.silice-barras-v__rejilla {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.silice-barras-v__linea {
+  position: absolute;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transform: translateY(50%);
+}
+
+.silice-barras-v__tick {
+  inline-size: 3.5rem;
+  flex: none;
+  text-align: end;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--silice-muted-soft);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.silice-barras-v__trazo {
+  flex: 1 1 auto;
+  border-block-start: 1px dashed var(--silice-border);
+}
+
+.silice-barras-v__trazo--base {
+  border-block-start: 1px solid var(--silice-border-strong);
+}
+
+.silice-barras-v__columnas {
+  position: absolute;
+  inset-inline: 4rem 0.5rem;
+  inset-block-end: 0;
+  block-size: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 0.75rem;
+}
+
+.silice-barras-v__grupo {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  block-size: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.silice-barras-v__par {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.25rem;
+  inline-size: 100%;
+  max-inline-size: 5rem;
+}
+
+.silice-barras-v__col {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.silice-barras-v__cifra {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+  margin-block-end: 0.25rem;
+  white-space: nowrap;
+}
+
+.silice-barras-v__cifra--sec {
+  color: var(--silice-muted);
+}
+
+.silice-barras-v__barra {
+  inline-size: 100%;
+  box-sizing: border-box;
+  border-start-start-radius: var(--silice-radio-sm);
+  border-start-end-radius: var(--silice-radio-sm);
+}
+
+.silice-barras-v__barra--real {
+  background-color: var(--silice-ink);
+}
+
+.silice-barras-v__barra--plan {
+  background-color: transparent;
+  border: 0.125rem solid var(--silice-ink);
+}
+
+.silice-barras-v__eje-x {
+  padding-inline: 4rem 0.5rem;
+  margin-block-start: 0.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-around;
+  gap: 0.75rem;
+}
+
+.silice-barras-v__rotulo {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  text-align: center;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-barras-v__rotulo-principal {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--silice-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Medidor de riesgo
+.silice-riesgo-medidor {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--silice-surface);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
+}
+
+.silice-riesgo-medidor__fila {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.silice-riesgo-medidor__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.silice-riesgo-medidor__nombre {
+  font-weight: 600;
+  color: var(--silice-ink);
+}
+
+.silice-riesgo-medidor__valor {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-ink);
+}
+
+.silice-riesgo-medidor__nota {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--silice-muted);
+}
+
+.silice-riesgo-medidor__pista {
+  position: relative;
+  inline-size: 100%;
+  block-size: 0.75rem;
+  background-color: var(--silice-hairline);
+  border-radius: var(--silice-radio-sm);
+}
+
+// Lo pronosticado (P50, P80): de la base al escenario, achurado a 135 grados en la tinta con su contorno (la textura IBCS
+// del pronóstico, no un degradado de adorno). Con colores forzados queda el contorno.
+.silice-riesgo-medidor__barra {
+  position: absolute;
+  inset-block: 0;
+  box-sizing: border-box;
+  border-radius: var(--silice-radio-sm);
+}
+
+.silice-riesgo-medidor__barra--pronostico {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(135deg, var(--silice-ink) 0 0.125rem, transparent 0.125rem 0.375rem);
+  border: 0.125rem solid var(--silice-ink);
+}
+
+// Lo previsto (el presupuesto base): una marca en contorno en su lugar de la escala.
+.silice-riesgo-medidor__marca {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 0.75rem;
+  box-sizing: border-box;
+  background-color: transparent;
+  border: 0.125rem solid var(--silice-ink);
+  border-radius: var(--silice-radio-sm);
+}
+
+// La línea de la base, que cruza cada pista.
+.silice-riesgo-medidor__base {
+  position: absolute;
+  inset-block: -0.1875rem;
+  inline-size: 0.125rem;
+  background-color: var(--silice-ink);
+}
+
+// Con movimiento reducido el resalte del anillo por partes y de su leyenda cambia de una vez (el crecer al cargar lo
+// apaga VisualMeters.tsx, que no pide cuadros de animación).
+@media (prefers-reduced-motion: reduce) {
+  .silice-donut__segmento,
+  .silice-donut__item {
+    transition: none;
+  }
+}

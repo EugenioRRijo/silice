@@ -91,6 +91,7 @@ describe("Inicio de auditoría", () => {
   test("su h1 es «Inicio de auditoría» y no trae «Herramientas principales» ni la arenera", async () => {
     montar();
     expect(screen.getByRole("heading", { level: 1, name: "Inicio de auditoría" })).toHaveClass("cds--type-heading-04");
+    expect(screen.getByText("Suba un presupuesto en Excel para recalcular sus partidas y detectar errores")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Arenera: lo que requiere atención" })).not.toBeInTheDocument();
@@ -107,10 +108,15 @@ describe("Inicio de auditoría", () => {
       expect(screen.getByRole("button", { name: /Suelte aquí el libro \.xlsx/ })).toBeInTheDocument();
     });
 
-    test("sin archivo no hay botones de auditar", () => {
+    test("sin archivo los dos botones están a la vista pero deshabilitados", () => {
       montar();
-      expect(screen.queryByRole("button", { name: "Auditar con recorrido guiado" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Auditar por mi cuenta" })).not.toBeInTheDocument();
+      const guiado = screen.getByRole("button", { name: "Auditar con recorrido guiado" });
+      const propio = screen.getByRole("button", { name: "Auditar por mi cuenta" });
+      expect(guiado).toBeDisabled();
+      expect(propio).toBeDisabled();
+      expect(guiado).toHaveClass("cds--btn--primary");
+      expect(propio).toHaveClass("cds--btn--tertiary");
+      expect(guiado.compareDocumentPosition(propio) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     test("con un archivo aparecen sus dos botones y el nombre del archivo", async () => {
@@ -165,7 +171,8 @@ describe("Inicio de auditoría", () => {
       montar();
       await usuario.upload(campoArchivo(), new File(["x"], "foto.png"));
       expect(screen.getByRole("alert")).toHaveTextContent("Solo se aceptan archivos .xlsx.");
-      expect(screen.queryByRole("button", { name: "Auditar por mi cuenta" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Auditar con recorrido guiado" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Auditar por mi cuenta" })).toBeDisabled();
     });
 
     test("elegir otro archivo reemplaza al anterior", async () => {
@@ -204,10 +211,11 @@ describe("Inicio de auditoría", () => {
       expect(within(seccion).queryByText(/Recorrido en curso/)).not.toBeInTheDocument();
     });
 
-    test("dice la carpeta de trabajo abierta (no «caso»)", async () => {
-      montar();
+    test("dice la carpeta abierta sin extensión .db (no «caso»)", async () => {
+      montar({ caso: { nombre: "clinica.db", ruta_relativa: "data/clinica.db" } });
       const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
-      expect(within(seccion).getByText(/Carpeta de trabajo: clinica/)).toBeInTheDocument();
+      expect(within(seccion).getByText("Carpeta: clinica")).toBeInTheDocument();
+      expect(within(seccion).queryByText(/\.db/)).not.toBeInTheDocument();
       expect(within(seccion).queryByText(/\bcaso\b/i)).not.toBeInTheDocument();
     });
 

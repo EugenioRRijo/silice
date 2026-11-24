@@ -319,7 +319,7 @@ describe("Versiones: el registro de cambios en el panel", () => {
     const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
-    expect(texto(filas[0]!).slice(2)).toEqual(["Parámetro", "Control de obra: Umbral de SPI para error", "Umbral de SPI para error", "0,90", "0,85", "Reunión"]);
+    expect(texto(filas[0]!).slice(2)).toEqual(["Parámetro", "Control de obra: SPI mínimo antes de marcar «Error»", "SPI mínimo antes de marcar «Error»", "0,90", "0,85", "Reunión"]);
     expect(texto(filas[1]!).slice(4)).toEqual(["Ambiente", "A1.2", "Eje B2.5", "Reunión"]);
     expect(texto(filas[2]!).slice(4)).toEqual(["Instantánea", "Catálogo", "Instantánea", "Reunión"]);
   });
@@ -376,13 +376,13 @@ describe("Versiones: la franja del paso", () => {
   });
 
   // Anexo A.6: la franja de Versiones usa el mismo rótulo que la de Presupuesto, según lo pendiente.
-  test("con solo el desglose del desperdicio pendiente, el botón dice «Guardar el desglose…» y abre el diálogo de ese nombre", async () => {
+  test("con solo el desglose del desperdicio pendiente, el botón dice «Guardar ajuste de desperdicio…» y abre el diálogo de ese nombre", async () => {
     cambiosAlAbrir = 1;
     desglosesAlAbrir = 1;
     const u = montar();
     const franja = await screen.findByRole("region", { name: "Siguiente paso" });
     expect(within(franja).queryByRole("button", { name: "Guardar versión…" })).toBeNull();
-    await u.click(within(franja).getByRole("button", { name: "Guardar el desglose…" }));
+    await u.click(within(franja).getByRole("button", { name: "Guardar ajuste de desperdicio…" }));
     const dialogo = await screen.findByRole("dialog");
     expect(within(dialogo).getByRole("heading", { name: "Guardar el desglose" })).toBeInTheDocument();
   });
@@ -418,7 +418,7 @@ describe("Versiones: la franja del paso", () => {
     });
     const u = montar();
     const franja = await screen.findByRole("region", { name: "Siguiente paso" });
-    await u.click(within(franja).getByRole("button", { name: "Guardar el desglose…" }));
+    await u.click(within(franja).getByRole("button", { name: "Guardar ajuste de desperdicio…" }));
     const dialogo = await screen.findByRole("dialog");
     await u.click(within(dialogo).getByRole("button", { name: "Guardar el desglose" }));
     const aviso = await screen.findByText(/Se guardó el desglose del desperdicio de 1 línea/);
@@ -502,6 +502,15 @@ describe("Versiones: restaurar", () => {
       por_omision: "VIV-003",
       versiones: [fila("VIV-003", "2026-10-22", "restaurada", "VIV-001", true, 0), { ...VIV_002, vigente: false }, VIV_001],
     };
+    aprobaciones = () =>
+      json({
+        rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
+        fases: "VIV-001 devuelta",
+        versiones: { "VIV-001": estado("devuelta"), "VIV-002": estado("guardada"), "VIV-003": estado("guardada") },
+        eventos: [],
+        ultima_aprobada: null,
+      });
+    cadena = () => json({ ...CADENA_INTEGRA, mensaje: "Cadena íntegra: 3 versiones" });
     await u.click(within(dialogo).getByRole("button", { name: "Restaurar" }));
     expect(await screen.findByText("La versión VIV-001 se restauró como la versión VIV-003 (la vigente).")).toBeInTheDocument();
     const restaurados = fetchFalso.mock.calls
@@ -509,6 +518,8 @@ describe("Versiones: restaurar", () => {
       .map(([, init]) => JSON.parse(String(init?.body)) as unknown);
     expect(restaurados).toEqual([{ proyecto: "3", version: "VIV-001", fuente: "La VIV-002 salió con un error" }]);
     await waitFor(async () => expect((await celdas()).map((c) => c[0])).toEqual(["VIV-003 (abierta)", "VIV-002", "VIV-001"]));
+    await waitFor(async () => expect((await celdas())[0]![5]).toBe("Guardada"));
+    expect(await screen.findByText("Cadena íntegra: 3 versiones")).toBeInTheDocument();
   });
 
   test("con cambios sin guardar no se ofrece restaurar y se dice por qué", async () => {

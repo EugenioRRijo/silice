@@ -7,6 +7,7 @@ import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import type { GrupoDeResultados } from "../../comun/logicaBusqueda";
 import { plano } from "../../comun/normalizar";
 import { unidadEscrita } from "../../comun/unidades";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export type Lado = "compra" | "cobro";
 
@@ -74,9 +75,14 @@ export const RAZON_POR_DEBAJO = "La competencia cobra menos que su costo: se pro
 
 // De 1 a 3.650 dias, entero, sin signos ni ceros a la izquierda (el limite de la API). Se compara como texto: un numero
 // de dias no es un monto, pero asi la pagina no convierte nada.
+export function normalizarDias(texto: string): string {
+  return texto.replace(/\./g, "");
+}
+
 export function diasValidos(texto: string): boolean {
-  if (!/^[1-9][0-9]{0,3}$/.test(texto)) return false;
-  return texto.length < 4 || texto <= "3650";
+  if (!/^(?:[1-9][0-9]{0,3}|[1-3]\.[0-9]{3})$/.test(texto)) return false;
+  const limpio = normalizarDias(texto);
+  return limpio.length < 4 || limpio <= "3650";
 }
 
 export function rutaDelEstudio(lado: Lado, codigo: string, dias: string, proyecto: string | null): string {
@@ -119,21 +125,21 @@ export function textoDeAfectados(apus: readonly string[]): string {
 }
 
 export function deObservaciones(n: number): string {
-  return n === 1 ? "de 1 observación" : `de ${n} observaciones`;
+  return n === 1 ? "de 1 observación" : `de ${formatoEsVe(String(n))} observaciones`;
 }
 
 // Las que no tienen tasa del BCV de su dia: se ven, no entran.
 export function sinTasaDelDia(n: number): string {
   return n === 1
     ? "1 observación en otra moneda sin tasa del BCV de su día no entra en las cifras."
-    : `${n} observaciones en otra moneda sin tasa del BCV de su día no entran en las cifras.`;
+    : `${formatoEsVe(String(n))} observaciones en otra moneda sin tasa del BCV de su día no entran en las cifras.`;
 }
 
 // Las que estaban en otra moneda y entran convertidas (la linea de cada una esta en la tabla).
 export function convertidasConLaTasa(n: number): string {
   return n === 1
     ? "1 de las observaciones estaba en otra moneda y se convirtió con la tasa del BCV de su día."
-    : `${n} de las observaciones estaban en otra moneda y se convirtieron con la tasa del BCV de su día.`;
+    : `${formatoEsVe(String(n))} de las observaciones estaban en otra moneda y se convirtieron con la tasa del BCV de su día.`;
 }
 
 // Hoy, como lo da el selector de fecha (AAAA-MM-DD), en la hora local de quien usa la pagina.

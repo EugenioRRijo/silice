@@ -117,7 +117,7 @@ describe("Reajuste: autocompletado de la serie y de la partida (AC2)", () => {
     expect(screen.queryByRole("button", { name: "Borrar" })).toBeNull();
     await u.click(screen.getByRole("tab", { name: "2. Períodos y lo ejecutado" }));
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     expect(calcularBody()?.componentes[0]).toEqual({ componente: "materiales", serie: "FIC-MAT", peso: "" });
   });
 
@@ -152,7 +152,7 @@ describe("Reajuste: autocompletado de la serie y de la partida (AC2)", () => {
     expect(screen.queryByRole("button", { name: "Borrar" })).toBeNull();
     await u.type(screen.getByLabelText("Cantidad, Ejecutado fila 1"), "10");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     expect(calcularBody()?.ejecutado).toEqual([{ periodo: "1", partida: "S1-R02", cantidad: "10", fuente: "" }]);
   });
 
@@ -188,7 +188,7 @@ describe("Reajuste: autocompletado de la serie y de la partida (AC2)", () => {
     await u.type(await screen.findByLabelText("Partida, Ejecutado fila 1"), "S1-R01");
     await u.type(screen.getByLabelText("Cantidad, Ejecutado fila 1"), "10");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     expect(calcularBody()?.componentes[0]?.serie).toBe("FIC-MAT");
     expect(calcularBody()?.ejecutado[0]?.partida).toBe("S1-R01");
   });

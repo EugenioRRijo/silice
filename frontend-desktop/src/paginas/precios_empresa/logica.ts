@@ -1,17 +1,18 @@
 // Logica pura de «Precios de la empresa» (UC-17 4-5): textos de la pagina clasica y el formulario que recibe la API.
 // No calcula ni redondea: el impacto de cada hallazgo llega como texto con punto y solo se presenta en es-VE (D-8).
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
+import { TIPOS_DE_INSUMO } from "../../comun/tiposDeInsumo";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { unidadEscrita } from "../../comun/unidades";
 
 export const TITULO = "Precios de la empresa";
 export const AYUDA =
   "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con su fecha y su fuente. No cambia la valoración de ninguna obra que no la use.";
-export const TITULO_REFERENCIA = "1. La referencia MaPreX en bolívares";
+export const TITULO_REFERENCIA = "Referencia de precios MaPreX (en bolívares)";
 export const ROTULO_REFERENCIA = "Cargar la referencia MaPreX en Bs";
-export const TITULO_LISTA = "2. La lista de la empresa";
+export const TITULO_LISTA = "La lista de la empresa";
 export const SIN_BASES = "La carpeta no tiene listas de precios: cargue una en Actualizar precios.";
-export const TITULO_HALLAZGOS = "3. Precios vencidos o fuera de rango (R11 y R12)";
+export const TITULO_HALLAZGOS = "Revisar precios vencidos o fuera de rango";
 export const SIN_LISTAS = "Todavía no hay listas de empresa en esta carpeta.";
 export const MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto.";
 export const EXTENSIONES = [".csv", ".xlsx"];
@@ -59,10 +60,10 @@ export interface Revision {
   otra_unidad: string[];
 }
 
-export const ROTULO_ALTA = "Dar de alta en el catálogo los insumos nuevos al crear la lista";
+export const ROTULO_ALTA = "Agregar al catálogo los insumos nuevos del archivo";
 export const ETIQUETA_NUEVOS = "Insumos nuevos del archivo";
 export const ETIQUETA_DADOS = "Insumos dados de alta en el catálogo";
-export const ROTULO_PARA_ARMAR = "Usarla como lista para armar";
+export const ROTULO_PARA_ARMAR = "Usarla para armar presupuestos";
 export const SIN_PERMISO_PARA_ARMAR = "La lista para armar la crea quien arma el presupuesto, desde Componer.";
 
 export function textoReconocidos(n: number): string {
@@ -75,9 +76,6 @@ export const COLUMNAS_NUEVOS: ColumnaDensa[] = [
   { clave: "unidad", titulo: "Unidad" },
   { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
 ];
-
-// El tipo como lo dice la pantalla y la unidad como se escribe («m³»), no las claves del servidor (árbitro 13/11, M5).
-const TIPOS_DE_INSUMO: Record<string, string> = { material: "Material", equipo: "Equipo", mano_obra: "Mano de obra" };
 
 export function filasNuevos(nuevos: InsumoNuevo[]): FilaDensa[] {
   return nuevos.map((n, i) => ({

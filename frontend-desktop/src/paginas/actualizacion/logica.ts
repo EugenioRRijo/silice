@@ -67,12 +67,12 @@ export const COLUMNAS_COMPARATIVO: ColumnaDensa[] = [
   { clave: "codigo_partida", titulo: "Partida" },
   { clave: "descripcion", titulo: "Descripción" },
   { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoEsVe },
-  { clave: "pu_anterior", titulo: "P.U. anterior", numerica: true, presentar: formatoEsVe },
-  { clave: "pu_nuevo", titulo: "P.U. nuevo", numerica: true, presentar: formatoEsVe },
+  { clave: "pu_anterior", titulo: "Precio unitario anterior", numerica: true, presentar: formatoEsVe },
+  { clave: "pu_nuevo", titulo: "Precio unitario nuevo", numerica: true, presentar: formatoEsVe },
   { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
   { clave: "total_anterior", titulo: "Total anterior", numerica: true, presentar: formatoEsVe },
   { clave: "total_nuevo", titulo: "Total nuevo", numerica: true, presentar: formatoEsVe },
-  { clave: "incidencia_pct", titulo: "Incidencia %", numerica: true, celda: "variacion" },
+  { clave: "incidencia_pct", titulo: "Incidencia en el cambio (%)", numerica: true, celda: "variacion" },
 ];
 
 export function filasComparativo(filas: FilaComparativo[]): FilaDensa[] {
@@ -103,16 +103,21 @@ export function etiquetasDeDesconocidos(desconocidos: InsumoDesconocido[]): stri
 }
 
 export function avisoDesconocidos(desconocidos: InsumoDesconocido[]): string {
+  const n = desconocidos.length;
+  const cantidad =
+    n === 1
+      ? "1 insumo que no está en el catálogo"
+      : `${formatoEsVe(String(n))} insumos que no están en el catálogo`;
   return (
-    `El archivo trae ${desconocidos.length} insumo(s) que no están en el catálogo: ` +
-    `${etiquetasDeDesconocidos(desconocidos)}. Elija en "Dar de alta" los que quiera crear antes de revalorar; ` +
-    "los demás se ignoran."
+    `El archivo trae ${cantidad}: ` +
+    `${etiquetasDeDesconocidos(desconocidos)}. Elija en «Agregar al catálogo» ` +
+    (n === 1 ? "si quiere crearlo antes de revalorar; si no, se ignora." : "los que quiera crear antes de revalorar; los demás se ignoran.")
   );
 }
 
 // La posicion hace unica cada opcion aunque el archivo repita una fila.
 export function etiquetaDeAlta(numero: number, d: InsumoDesconocido): string {
-  return `${numero}. ${d.etiqueta}, precio ${d.precio}`;
+  return `${numero}. ${d.etiqueta}, precio ${formatoEsVe(d.precio)}`;
 }
 
 export function textoDadosDeAlta(nombres: string[]): string {
@@ -131,7 +136,7 @@ export function textoRechazados(nombres: string[]): string {
   );
 }
 export function preguntaDescartar(codigo: string): string {
-  return `¿Descartar la versión ${codigo}? La versión sigue guardada y su historial se conserva.`;
+  return `¿Marcar la versión ${codigo} como descartada? No se usará en la obra, pero se conserva en el historial.`;
 }
 export function textoDescartada(codigo: string): string {
   return `Versión ${codigo} descartada: sigue guardada como documento y su historial de cambios se conserva.`;

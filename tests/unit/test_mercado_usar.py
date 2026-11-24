@@ -595,3 +595,26 @@ def test_con_nombres_largos_la_conversion_de_la_2_no_reutiliza_la_de_la_primera(
         Decimal("10"),
         Decimal("20"),
     )
+
+
+def test_usar_precio_de_cobro_admite_montos_de_27_o_mas_cifras_enteras(s: Session) -> None:
+    """L2: `usar_precio_de_cobro` no falla con `InvalidOperation` al comprobar los 2 decimales."""
+    ids = observar(s, "OBRA-04", ["2000"], lado="cobro")
+    fila = usar_precio_de_cobro(
+        s,
+        "OBRA-04",
+        "100.000.000.000.000.000.000.000.000.000,50",
+        observaciones=ids,
+        responsable=RESPONSABLE,
+        ahora=AHORA,
+    )
+    assert fila.precio == Decimal("1" + "0" * 29 + ".50")
+    with pytest.raises(mercado.ReglaDeMercado, match="hasta 2 decimales"):
+        usar_precio_de_cobro(
+            s,
+            "OBRA-04",
+            "100.000.000.000.000.000.000.000.000.000,125",
+            observaciones=ids,
+            responsable=RESPONSABLE,
+            ahora=AHORA,
+        )

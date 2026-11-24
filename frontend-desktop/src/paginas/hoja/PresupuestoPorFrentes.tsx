@@ -10,6 +10,7 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { esBorradorAusente } from "./logica";
 import type { Monto, Resumen } from "./logica";
+import { esperarEnvios } from "./envioPendiente";
 
 // Libro por frentes (ola 2, línea 3, 2026-11-13): el presupuesto agrupado por frente (una estación, un tramo, un sector),
 // como lo trae el libro de la empresa con una hoja de presupuesto por frente. El subtotal de cada frente y el total general
@@ -72,9 +73,9 @@ const rotuloDelRenglon = (f: FilaDelPresupuesto, i: number) =>
 // D4: «póngalo abajo» solo si abajo hay con qué ponerlo. Un renglón que sale del espacio de la obra no cambia de frente
 // aquí (`aplicacion/frentes.py`, `poner_frentes`), y quien solo lee no cambia ninguno.
 function sinFrentes(editable: boolean, propias: number): string {
-  if (!editable) return "Ningún renglón tiene frente.";
-  if (propias > 0) return "Ningún renglón tiene frente: póngalo abajo, o lleve a la Hoja un libro con una hoja de presupuesto por frente.";
-  return "Ningún renglón tiene frente. Los renglones que salen del espacio de la obra no llevan frente a mano: para agruparlos, lleve a la Hoja un libro con una hoja de presupuesto por frente.";
+  if (!editable) return "Ninguna partida tiene frente de trabajo.";
+  if (propias > 0) return "Ninguna partida tiene frente de trabajo. Asígnelo con el selector de abajo o importe un Excel organizado por frentes.";
+  return "Ninguna partida tiene frente de trabajo. Las partidas que salen del espacio de la obra no admiten frente a mano: para agruparlas, importe un Excel organizado por frentes.";
 }
 
 const renglones = (f: Frente) =>
@@ -146,9 +147,11 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
     setOcupado(true);
     const pedido = ++ultimo.current;
     try {
+      const resumenes = await esperarEnvios(id);
+      const revVigente = resumenes.reduce((mayor, res) => (res !== null && res.rev > mayor ? res.rev : mayor), rev);
       const r = await pedir<{ rev: number; resumen: Resumen; frentes: VistaFrentes }>(`/v1/hoja/borradores/${id}/frentes`, {
         metodo: "PUT",
-        cuerpo: { rev, filas: [{ clave: elegido, frente }] },
+        cuerpo: { rev: revVigente, filas: [{ clave: elegido, frente }] },
       });
       setFrente("");
       // Si mientras tanto se pidió la vista de un `rev` posterior, esta respuesta ya es vieja: la Hoja va por delante.
@@ -196,7 +199,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
       )}
       {vista && puedeEditar && propias.length > 0 && (
         <div className="silice-hoja__frentes-edicion">
-          <Select id="hoja-frente-renglon" labelText="Renglón" value={elegido} onChange={(e) => setRenglon(e.target.value)} disabled={ocupado}>
+          <Select id="hoja-frente-renglon" labelText="Partida del presupuesto" value={elegido} onChange={(e) => setRenglon(e.target.value)} disabled={ocupado}>
             {propias.map((f, i) => (
               <SelectItem key={f.clave!} value={f.clave!} text={rotuloDelRenglon(f, i)} />
             ))}
@@ -204,7 +207,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
           <CampoTexto
             id="hoja-frente-nombre"
             labelText="Frente"
-            helperText="Vacío quita el frente del renglón."
+            helperText="Déjelo vacío para quitar el frente de esta partida."
             value={frente}
             maxLength={80}
             onChange={(e) => setFrente(e.target.value)}

@@ -81,7 +81,7 @@ export default function Instalacion() {
           <InlineNotification
             kind="error"
             role="alert"
-            title="Las operaciones sensibles están bloqueadas"
+            title="Algunas acciones de seguridad (firmar, descargar respaldos) están bloqueadas"
             subtitle="Se restauró un respaldo y hay eventos de seguridad perdidos sin revisar."
             lowContrast
             hideCloseButton
@@ -121,7 +121,7 @@ export default function Instalacion() {
 
       <section className="silice-adm__seccion">
         <h2 className="cds--type-heading-compact-02">Respaldos</h2>
-        <Button kind="primary" size="md" disabled={ocupada} onClick={() => void respaldar()}>
+        <Button kind="secondary" size="md" disabled={ocupada} onClick={() => void respaldar()}>
           Crear respaldo ahora
         </Button>
         {aviso !== null && (

@@ -572,6 +572,19 @@ def test_un_texto_solo_para_lectores_de_pantalla_no_cuenta_como_recortado() -> N
     assert "caja <= 1" in BARRAS_JS
 
 
+def test_el_texto_de_un_hijo_solo_para_lectores_de_pantalla_no_suma_al_ancho_medido() -> None:
+    # Medición responsive del 2026-11-22: con letra grande la etiqueta «Carpeta activa:
+    # silice» oculta su rótulo con el mismo patrón (un hijo de 1 px con `clip-path`); el
+    # rango de toda la etiqueta sumaba el ancho natural de ese texto oculto y la daba por
+    # recortada (42 px de 122) aunque el nombre visible cabía entero. El ancho se mide solo
+    # con los nodos de texto que se ven.
+    from scripts.recorrido_ux_playwright import BARRAS_JS
+
+    assert "anchoDelTextoVisible" in BARRAS_JS
+    assert "NodeFilter.SHOW_TEXT" in BARRAS_JS
+    assert "oculto(" in BARRAS_JS
+
+
 def test_el_detector_de_controles_salta_lo_aria_hidden() -> None:
     from scripts.recorrido_ux_playwright import CONTROLES_JS
 

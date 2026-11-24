@@ -198,7 +198,7 @@ describe("Pendientes: la bandeja", () => {
     test("con la lista vacía no hay resumen", async () => {
       bandeja = responder([]);
       montar();
-      await screen.findByText("No tiene pendientes.");
+      await screen.findByText("No tiene pendientes");
       expect(resumen()).toBeNull();
     });
 
@@ -285,7 +285,7 @@ describe("Pendientes: la bandeja", () => {
   test("lista vacía: lo dice y enseña qué esperar, sin «Empieza aquí»", async () => {
     bandeja = responder([]);
     montar();
-    expect(await screen.findByText("No tiene pendientes.")).toBeInTheDocument();
+    expect(await screen.findByText("No tiene pendientes")).toBeInTheDocument();
     expect(screen.getByText("Cuando una obra necesite algo de usted, aparecerá aquí.")).toBeInTheDocument();
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(screen.queryByText(/Empieza aquí/)).toBeNull();
@@ -307,7 +307,7 @@ describe("Pendientes: la bandeja", () => {
     bandeja = responder([], 1);
     montar();
     expect(await screen.findByText("No se pudo leer 1 carpeta; sus pendientes no aparecen.")).toBeInTheDocument();
-    expect(screen.getByText("No tiene pendientes.")).toBeInTheDocument();
+    expect(screen.getByText("No tiene pendientes")).toBeInTheDocument();
   });
 
   test("mientras llegan, lo dice", async () => {
@@ -336,13 +336,13 @@ describe("Pendientes: la bandeja", () => {
   test("un 403 de la API deja la lista vacía, sin error", async () => {
     bandeja = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
     montar();
-    expect(await screen.findByText("No tiene pendientes.")).toBeInTheDocument();
+    expect(await screen.findByText("No tiene pendientes")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
   test("el administrador (sin leer_proyecto) ve la lista vacía, sin error y sin pedirla", async () => {
     montar({ sesion: sesionDe("admin") });
-    expect(await screen.findByText("No tiene pendientes.")).toBeInTheDocument();
+    expect(await screen.findByText("No tiene pendientes")).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 30));
     expect(pedidas()).toBe(0);
     expect(screen.queryByRole("alert")).toBeNull();

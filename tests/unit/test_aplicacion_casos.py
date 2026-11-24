@@ -39,7 +39,7 @@ from tests.fixtures.carpetas_trabajo import HOSTILES, arbol, base_minima, copiar
 MENSAJE_TOPE = "Ya hay 100 carpetas de trabajo: retire alguna antes de crear otra."
 MENSAJE_EN_CURSO = "Hay otra creación de carpeta en curso: espere unos segundos y repita."
 MENSAJE_RESERVADO = "Ese nombre está reservado para la demostración."
-MENSAJE_GRANDE = "El archivo pasa de 20 MiB."
+MENSAJE_GRANDE = "El archivo pasa de 20 MB."
 MENSAJE_NO_VALIDO = "El archivo no es una carpeta de trabajo de Sílice válida: no se guardó."
 MENSAJE_DEMOSTRACION = (
     "No se pudo preparar la demostración. Pruebe de nuevo; si sigue, avise al administrador."

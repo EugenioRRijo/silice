@@ -585,7 +585,7 @@ def test_el_tope_exacto_pasa_y_un_byte_mas_no(monkeypatch) -> None:
 def test_el_tope_real_de_20_mib_es_413_del_middleware(_entorno: Path) -> None:
     r = _leer(b"x" * (20 * 2**20))  # con el multipart, el cuerpo pasa de 20 MiB
     assert r.status_code == 413, r.text
-    assert "20 MiB" in r.json()["detalle"]
+    assert "20 MB" in r.json()["detalle"]
     assert _valores(_entorno) == {}
 
 

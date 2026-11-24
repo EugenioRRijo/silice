@@ -15,17 +15,18 @@ interface Props {
 // Jerarquia: veredicto primero (icono y texto), luego los hallazgos y, plegadas, las reglas evaluadas.
 export function InformeAuditoria({ informe }: Props) {
   const conHallazgos = informe.reglas_evaluadas.filter((r) => r.hallazgos > 0).length;
+  const nombresDeRegla = new Map(informe.reglas_evaluadas.map((r) => [r.regla, r.nombre]));
   const hay = (campo: "impacto" | "observado" | "esperado") => informe.hallazgos.some((h) => (h[campo] ?? "") !== "");
   const columnas: ColumnaDensa[] = [
     { clave: "numero", titulo: "#", numerica: true },
-    { clave: "regla", titulo: "Regla" },
+    { clave: "regla", titulo: "Qué revisó Sílice" },
     { clave: "severidad", titulo: "Severidad", celda: "severidad" },
     { clave: "partida", titulo: "Partida", celda: (f) => <span className="silice-informe__codigo">{f["partida"]}</span> },
     { clave: "descripcion", titulo: "Descripción", celda: (f) => <span className="silice-informe__descripcion">{f["descripcion"]}</span> },
-    ...(hay("impacto") ? [{ clave: "impacto", titulo: "Impacto", numerica: true, presentar: formatoEsVe }] : []),
-    ...(hay("observado") ? [{ clave: "observado", titulo: "Observado", numerica: true, presentar: formatoEsVe }] : []),
-    ...(hay("esperado") ? [{ clave: "esperado", titulo: "Esperado", numerica: true, presentar: formatoEsVe }] : []),
-    { clave: "origen", titulo: "Origen" },
+    ...(hay("impacto") ? [{ clave: "impacto", titulo: "Diferencia en monto", numerica: true, presentar: formatoEsVe }] : []),
+    ...(hay("observado") ? [{ clave: "observado", titulo: "Valor en el presupuesto", numerica: true, presentar: formatoEsVe }] : []),
+    ...(hay("esperado") ? [{ clave: "esperado", titulo: "Valor según Sílice", numerica: true, presentar: formatoEsVe }] : []),
+    { clave: "origen", titulo: "Dónde está" },
   ];
   const Icono = informe.cumple ? CheckmarkFilled : ErrorFilled;
 
@@ -40,22 +41,28 @@ export function InformeAuditoria({ informe }: Props) {
         informe.sin_hallazgos && <p className="cds--type-label-01">{informe.sin_hallazgos}</p>
       ) : (
         <>
+          <p className="cds--type-body-compact-01">
+            Corrija los hallazgos «Crítico» y «Error» antes de enviar; compare el valor en el presupuesto con el valor según Sílice.
+          </p>
           <h3 className="cds--type-heading-compact-01 silice-informe__titulo">Hallazgos</h3>
           <TablaDensa
             etiqueta="Hallazgos"
             columnas={columnas}
-            filas={informe.hallazgos.map((h) => ({
-              id: String(h.numero),
-              numero: String(h.numero),
-              regla: h.regla,
-              severidad: h.severidad,
-              partida: h.partida ?? "-",
-              descripcion: h.descripcion,
-              impacto: h.impacto ?? "",
-              observado: h.observado ?? "",
-              esperado: h.esperado ?? "",
-              origen: h.origen.join("; "),
-            }))}
+            filas={informe.hallazgos.map((h) => {
+              const nombre = nombresDeRegla.get(h.regla);
+              return {
+                id: String(h.numero),
+                numero: String(h.numero),
+                regla: nombre ? `${nombre} (${h.regla})` : h.regla,
+                severidad: h.severidad,
+                partida: h.partida ?? "-",
+                descripcion: h.descripcion,
+                impacto: h.impacto ?? "",
+                observado: h.observado ?? "",
+                esperado: h.esperado ?? "",
+                origen: h.origen.join("; "),
+              };
+            })}
           />
         </>
       )}

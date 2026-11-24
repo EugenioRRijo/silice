@@ -17,7 +17,7 @@ const COLUMNAS: ColumnaDensa[] = [
 export function resumenDelTramo(t: TramoGuardado): string {
   const partes = [`De ${formatoEsVe(t.progresiva_ini_km)} a ${formatoEsVe(t.progresiva_fin_km)} km`, `ancho ${formatoEsVe(t.ancho_m)} m`];
   if (t.distancia_planta_km !== null) partes.push(`planta a ${formatoEsVe(t.distancia_planta_km)} km`);
-  if (t.transporte === "banda") partes.push("transporte en t por banda de distancia");
+  if (t.transporte === "banda") partes.push("transporte en toneladas por rango de distancia");
   return partes.join(" · ");
 }
 

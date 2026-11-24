@@ -406,6 +406,60 @@ def test_los_respaldos_no_se_descargan_desde_la_red() -> None:
     assert (respuesta.status_code, respuesta.json()) == (403, {"detalle": REMOTO})
 
 
+def test_respaldar_con_error_de_base_da_503_y_no_422(monkeypatch: pytest.MonkeyPatch) -> None:
+    from api.rutas import admin_instalacion
+    from operacion.base_datos import RespaldoFallido
+
+    def falla():
+        raise RespaldoFallido("No se pudo crear el respaldo: disk is full.")
+
+    monkeypatch.setattr(admin_instalacion.base_datos, "respaldar_todo", falla)
+    navegador, cab = _admin()
+    respuesta = navegador.post("/v1/admin/instalacion/respaldos", headers=cab)
+    assert respuesta.status_code == 503
+    assert respuesta.json() == {"detalle": "No se pudo crear el respaldo: disk is full."}
+    assert respuesta.headers["cache-control"] == "no-store"
+
+
+def test_bajar_respaldo_que_desaparece_al_comprimir_da_404(monkeypatch: pytest.MonkeyPatch) -> None:
+    import shutil
+
+    from api.rutas import admin_instalacion
+
+    navegador, cab = _admin()
+    nombre = navegador.post("/v1/admin/instalacion/respaldos", headers=cab).json()["nombre"]
+    real = admin_instalacion.logica.zip_del_juego
+
+    def borrar_y_comprimir(carpeta: Path) -> bytes:
+        shutil.rmtree(carpeta)
+        return real(carpeta)
+
+    monkeypatch.setattr(admin_instalacion.logica, "zip_del_juego", borrar_y_comprimir)
+    respuesta = navegador.get(f"/v1/admin/instalacion/respaldos/{nombre}")
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": "No hay un respaldo con ese nombre."}
+    assert respuesta.headers["cache-control"] == "no-store"
+
+
+def test_bajar_respaldo_con_error_de_lectura_da_503_sin_filtrar_ruta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from api.rutas import admin_instalacion
+
+    navegador, cab = _admin()
+    nombre = navegador.post("/v1/admin/instalacion/respaldos", headers=cab).json()["nombre"]
+
+    def sin_permiso(_carpeta: Path) -> bytes:
+        raise PermissionError(13, "Permission denied", "Z:/secreto/ficha.json")
+
+    monkeypatch.setattr(admin_instalacion.logica, "zip_del_juego", sin_permiso)
+    respuesta = navegador.get(f"/v1/admin/instalacion/respaldos/{nombre}")
+    assert respuesta.status_code == 503
+    assert "Z:/secreto" not in respuesta.text
+    assert "Traceback" not in respuesta.text
+    assert respuesta.headers["cache-control"] == "no-store"
+
+
 def _evento_perdido(nombre: str = "eventos_perdidos_20261110.json") -> Path:
     archivo = config.carpeta_datos() / nombre
     archivo.parent.mkdir(parents=True, exist_ok=True)

@@ -81,6 +81,10 @@ class ContrasenaInvalida(ValueError):  # noqa: N818
     """La contraseña no cumple la política (10 a 128, distinta del usuario, no común)."""
 
 
+class BaseOcupada(ValueError):  # noqa: N818
+    """Venció `busy_timeout` al tomar el bloqueo de escritura (`BEGIN IMMEDIATE`)."""
+
+
 class FrenoGlobal:
     """Espera progresiva por fallos de todo el proceso (no de un login): 20 en 10 minutos y
     cada intento nuevo espera 1, 2, 4... s, hasta 60 s. Estado del proceso, no de un usuario
@@ -159,7 +163,7 @@ def _tomar_escritura(session: Session) -> None:
             conexion.exec_driver_sql("BEGIN IMMEDIATE")
         except OperationalError as error:  # venció `busy_timeout`: otra escritura no termina
             session.rollback()
-            raise ValueError(MENSAJE_BASE_OCUPADA) from error
+            raise BaseOcupada(MENSAJE_BASE_OCUPADA) from error
 
 
 def _huella(contrasena: str) -> str:
@@ -284,20 +288,47 @@ def autenticar(
     if espera:
         dormir(espera)
     clave = clave_de_intento(login)
+    fila_previa = session.get(IntentoAcceso, clave)
+    if (
+        fila_previa is not None
+        and fila_previa.bloqueado_hasta is not None
+        and ahora < fila_previa.bloqueado_hasta
+    ):
+        session.rollback()
+        _tomar_escritura(session)
+        fila = _intento(session, clave)
+        if _bloqueado(fila, ahora):
+            eventos.registrar(
+                session, "bloqueo", ahora, login=clave, ip=ip, detalle="login bloqueado"
+            )
+            session.commit()
+            raise CuentaBloqueada(MENSAJE_BLOQUEO)
+        session.rollback()
+    usuario_previo = session.scalar(select(Usuario).where(Usuario.login == clave))
+    existe_previo = usuario_previo is not None and usuario_previo.activo
+    huella = usuario_previo.huella_clave if existe_previo else _huella_de_relleno()
+    session.rollback()
+    correcta = _coincide(huella, contrasena)
+    recalculada = (
+        _huella(contrasena)
+        if existe_previo and correcta and _hace_falta_recalcular(huella)
+        else None
+    )
+    _tomar_escritura(session)
     fila = _intento(session, clave)
     if _bloqueado(fila, ahora):
         eventos.registrar(session, "bloqueo", ahora, login=clave, ip=ip, detalle="login bloqueado")
         session.commit()
         raise CuentaBloqueada(MENSAJE_BLOQUEO)
-    usuario = session.scalar(select(Usuario).where(Usuario.login == clave))
-    existe = usuario is not None and usuario.activo
-    huella = usuario.huella_clave if existe else _huella_de_relleno()
-    correcta = _coincide(huella, contrasena)
+    usuario = session.scalar(
+        select(Usuario).where(Usuario.login == clave).execution_options(populate_existing=True)
+    )
+    existe = usuario is not None and usuario.activo and usuario.huella_clave == huella
     if existe and correcta:
         fila.fallos_seguidos, fila.bloqueado_hasta = 0, None
         eventos.registrar(session, "entrada", ahora, login=clave, usuario_id=usuario.id, ip=ip)
-        if _hace_falta_recalcular(usuario.huella_clave):
-            usuario.huella_clave = _huella(contrasena)
+        if recalculada is not None:
+            usuario.huella_clave = recalculada
         session.commit()
         return usuario
     bloquea = _fallar(session, fila, ahora, freno)

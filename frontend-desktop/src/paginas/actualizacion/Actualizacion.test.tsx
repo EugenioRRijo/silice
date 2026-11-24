@@ -148,7 +148,7 @@ describe("Actualizar precios", () => {
     expect(screen.getByLabelText("Moneda")).toHaveValue("USD");
     expect(screen.getByLabelText("Fecha de vigencia")).toHaveValue(hoyIso());
     expect(screen.getByLabelText("Nombre de la lista")).toHaveValue(nombreDeLista(hoyIso()));
-    expect(screen.getByRole("button", { name: "Revalorar presupuesto" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Actualizar precios del presupuesto" })).toBeDisabled();
   });
 
   test("AC4: la moneda se elige de una lista (Bs o USD), no se escribe a mano", async () => {
@@ -180,7 +180,7 @@ describe("Actualizar precios", () => {
     presupuestos = () => json([]);
     montar();
     expect(await screen.findByText("No hay presupuestos guardados todavía")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Revalorar presupuesto" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Actualizar precios del presupuesto" })).toBeNull();
   });
 
   test("al subir el archivo pide la vista previa y lista los desconocidos sin marcar", async () => {
@@ -188,18 +188,19 @@ describe("Actualizar precios", () => {
     await subir();
     expect(
       await screen.findByText(
-        /El archivo trae 2 insumo\(s\) que no están en el catálogo: Tornillo ficticio \(material, u\), Arandela ficticia \(material, u\)\. Elija en "Dar de alta"/,
+        /El archivo trae 2 insumos que no están en el catálogo: Tornillo ficticio \(material, u\), Arandela ficticia \(material, u\)\. Elija en «Agregar al catálogo»/,
       ),
     ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Agregar al catálogo" })).toBeInTheDocument();
     const [ruta, opciones] = llamada("vista-previa")!;
     expect(ruta).toBe("/listas-precios/vista-previa");
     expect(opciones?.method).toBe("POST");
     expect((opciones?.body as FormData).get("archivo")).toBeInstanceOf(File);
-    const uno = screen.getByRole("checkbox", { name: "1. Tornillo ficticio (material, u), precio 1.50" });
-    const dos = screen.getByRole("checkbox", { name: "2. Arandela ficticia (material, u), precio 0.25" });
+    const uno = screen.getByRole("checkbox", { name: "1. Tornillo ficticio (material, u), precio 1,50" });
+    const dos = screen.getByRole("checkbox", { name: "2. Arandela ficticia (material, u), precio 0,25" });
     expect(uno).not.toBeChecked();
     expect(dos).not.toBeChecked();
-    expect(screen.getByRole("button", { name: "Revalorar presupuesto" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Actualizar precios del presupuesto" })).toBeEnabled();
   });
 
   test("el motivo de la vista previa se muestra como aviso informativo", async () => {
@@ -245,7 +246,7 @@ describe("Actualizar precios", () => {
     const { usuario, archivo } = await subir();
     await usuario.click(await screen.findByRole("checkbox", { name: /2\. Arandela/ }));
     await usuario.selectOptions(screen.getByLabelText("Presupuesto base"), "Obra ficticia B / 007");
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     await screen.findByText("Comparativo por partida");
     const [ruta, opciones] = llamada("/revalorar")!;
     expect(ruta).toBe("/presupuestos/revalorar");
@@ -261,7 +262,7 @@ describe("Actualizar precios", () => {
     expect(f.getAll("dar_de_alta")).toEqual(["Arandela ficticia"]);
   });
 
-  test("mientras revalora dice «Revalorando...»", async () => {
+  test("mientras revalora dice «Revalorando…»", async () => {
     montar();
     const { usuario } = await subir();
     let soltar: (r: Response) => void = () => undefined;
@@ -270,9 +271,9 @@ describe("Actualizar precios", () => {
       if (url === "/presupuestos/revalorar") return new Promise<Response>((r) => (soltar = r));
       return json(VISTA);
     });
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
-    expect(await screen.findByText("Revalorando...")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Revalorar presupuesto" })).toBeDisabled();
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
+    expect(await screen.findByText("Revalorando…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Actualizar precios del presupuesto" })).toBeDisabled();
     soltar(json(REVALORACION));
     expect(await screen.findByText("Comparativo por partida")).toBeInTheDocument();
   });
@@ -280,7 +281,7 @@ describe("Actualizar precios", () => {
   test("muestra avisos, metrica, tabla de 9 columnas, altas, ignorados, rechazados e informe", async () => {
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     expect(await screen.findByText("Comparativo por partida")).toBeInTheDocument();
     expect(screen.getByText("Aviso de advertencia ficticio.")).toBeInTheDocument();
     expect(screen.getByText("Aviso informativo ficticio.")).toBeInTheDocument();
@@ -288,6 +289,9 @@ describe("Actualizar precios", () => {
     expect(screen.getByText("1.000,00 -> 1.100,00 USD (variacion 100,00 USD, 10,00 %)")).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: /Comparativo/ });
     expect(within(tabla).getAllByRole("columnheader")).toHaveLength(9);
+    for (const titulo of [/Precio unitario anterior/, /Precio unitario nuevo/, /Incidencia en el cambio \(%\)/]) {
+      expect(within(tabla).getByRole("columnheader", { name: titulo })).toBeInTheDocument();
+    }
     // El comparativo llega con punto decimal; se lee en es-VE (D-8).
     for (const cifra of ["10,00", "100,00", "110,00", "1.000,00", "1.100,00"]) {
       expect(within(tabla).getAllByText(cifra).length).toBeGreaterThan(0);
@@ -307,7 +311,7 @@ describe("Actualizar precios", () => {
   test("con version guardada ofrece Excel de esa version", async () => {
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     await screen.findByText("Comparativo por partida");
     URL.createObjectURL = vi.fn(() => "blob:x");
     URL.revokeObjectURL = vi.fn();
@@ -320,7 +324,7 @@ describe("Actualizar precios", () => {
     revalorar = () => json({ ...REVALORACION, version_guardada: null });
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     await screen.findByText("Comparativo por partida");
     expect(screen.queryByRole("button", { name: "Exportar a Excel" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Descartar versión" })).toBeNull();
@@ -329,7 +333,7 @@ describe("Actualizar precios", () => {
   test("descartar reemplaza el boton por el aviso", async () => {
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
     await usuario.click(screen.getByRole("button", { name: "Confirmar descarte" }));
     expect(
@@ -344,9 +348,11 @@ describe("Actualizar precios", () => {
   test("descartar pide confirmacion en linea y Cancelar no llama a la API", async () => {
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
-    expect(screen.getByText("¿Descartar la versión 002? La versión sigue guardada y su historial se conserva.")).toBeInTheDocument();
+    expect(
+      screen.getByText("¿Marcar la versión 002 como descartada? No se usará en la obra, pero se conserva en el historial."),
+    ).toBeInTheDocument();
     expect(llamada("/descartar")).toBeUndefined();
     await usuario.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("button", { name: "Confirmar descarte" })).toBeNull();
@@ -357,17 +363,19 @@ describe("Actualizar precios", () => {
   test("el total se muestra en cuatro datos con la variacion y el foco va al titulo del resultado", async () => {
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     const titulo = await screen.findByRole("heading", { name: "Comparativo por partida" });
     await waitFor(() => expect(titulo).toHaveFocus());
     const total = screen.getByRole("region", { name: "Total del presupuesto" });
     for (const rotulo of ["Anterior", "Nuevo", "Variación", "Variación %"]) {
       expect(within(total).getByText(rotulo)).toBeInTheDocument();
     }
-    expect(within(total).getByText("1.000,00")).toBeInTheDocument();
-    expect(within(total).getByText("1.100,00")).toBeInTheDocument();
-    expect(within(total).getByText("100,00")).toBeInTheDocument();
-    expect(within(total).getByText("10,00")).toBeInTheDocument();
+    expect(within(total).getByText("1.000,00")).toHaveClass("cds--type-heading-03", "silice-cifra");
+    expect(within(total).getByText("1.100,00")).toHaveClass("cds--type-heading-03", "silice-cifra");
+    expect(within(total).getByText("100,00").closest("dd")).toHaveClass("cds--type-heading-04", "silice-cifra");
+    expect(within(total).getByText("10,00").closest("dd")).toHaveClass("cds--type-heading-04", "silice-cifra");
+    expect(within(total).getByText("USD")).toHaveClass("cds--type-body-compact-01");
+    expect(within(total).getByText("USD")).not.toHaveClass("silice-cifra");
     expect(within(total).getAllByText(/desfavorable/).length).toBeGreaterThan(0);
   });
 
@@ -375,7 +383,7 @@ describe("Actualizar precios", () => {
     descartar = () => json({ detalle: "La version ya no existe." }, 404);
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
     await usuario.click(screen.getByRole("button", { name: "Confirmar descarte" }));
     expect(await screen.findByText("La version ya no existe.")).toBeInTheDocument();
@@ -385,11 +393,11 @@ describe("Actualizar precios", () => {
   test("una revaloracion nueva olvida el descarte anterior", async () => {
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
     await usuario.click(screen.getByRole("button", { name: "Confirmar descarte" }));
     await screen.findByText(/descartada/);
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     expect(await screen.findByRole("button", { name: "Descartar versión" })).toBeInTheDocument();
     expect(screen.queryByText(/descartada/)).toBeNull();
   });
@@ -406,7 +414,7 @@ describe("Actualizar precios", () => {
     });
     montar();
     const { usuario } = await subir();
-    const boton = screen.getByRole("button", { name: "Revalorar presupuesto" });
+    const boton = screen.getByRole("button", { name: "Actualizar precios del presupuesto" });
     await usuario.click(boton);
     await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
     await usuario.click(screen.getByRole("button", { name: "Confirmar descarte" }));
@@ -425,17 +433,17 @@ describe("Actualizar precios", () => {
     revalorar = () => json({ detalle: "Falta el precio de Arena ficticia." }, 422);
     montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     expect(await screen.findByText("Falta el precio de Arena ficticia.")).toBeInTheDocument();
     expect(screen.queryByText("Comparativo por partida")).toBeNull();
-    expect(screen.getByRole("button", { name: "Revalorar presupuesto" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Actualizar precios del presupuesto" })).toBeEnabled();
   });
 
   test("un 401 avisa a alExpirar", async () => {
     revalorar = () => json({ detalle: "Sesión ausente o vencida." }, 401);
     const alExpirar = montar();
     const { usuario } = await subir();
-    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());
   });
 

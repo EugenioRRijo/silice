@@ -62,6 +62,6 @@ export function bytesDeBase64(texto: string): Uint8Array<ArrayBuffer> {
 
 export function textoDeRed(i: InstalacionEstado): string {
   return i.red_local
-    ? `Red local: encendida en http://${i.direccion}:${i.puerto}`
-    : `Red local: apagada (solo http://127.0.0.1:${i.puerto})`;
+    ? `Acceso desde otros equipos: encendido (http://${i.direccion}:${i.puerto})`
+    : "Acceso desde otros equipos: apagado (solo funciona en este equipo)";
 }

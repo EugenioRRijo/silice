@@ -128,4 +128,38 @@ describe("Entrar", () => {
     const entrar = screen.getByRole("button", { name: "Entrar" });
     expect(entrar.compareDocumentPosition(enlace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  // Auditoría del 2026-11-21: la entrada no promete lo que el sistema no hace. Quien armó una versión puede revisarla
+  // (P2: se avisa y queda registrado, no se impide; aplicacion/revision.py), no existe un rol «aprueba», la sesión va
+  // por http://127.0.0.1 sin TLS y el asistente con proveedor en la nube sí envía datos cuando un administrador lo activa.
+  test("solo dice lo que el sistema hace: sin separación de funciones impuesta, sin «cifrada» ni «sin envío de datos»", () => {
+    render(<Entrar onEntrar={vi.fn()} />);
+    const texto = document.body.textContent ?? "";
+    for (const falso of [/separaci[oó]n de funciones/i, /RBAC/, /\baprueba\b/i, /cifrad/i, /sin env[ií]o de datos/i]) {
+      expect(texto).not.toMatch(falso);
+    }
+    expect(screen.getByText("Si quien revisa una versión también la armó, la revisión lo avisa y el dictamen queda registrado.")).toBeInTheDocument();
+    expect(
+      screen.getByText("La sesión vive en el servidor de Sílice de esta instalación · El asistente con un proveedor en la nube viene apagado"),
+    ).toBeInTheDocument();
+  });
+
+  test("usa trato de usted, sin nombres de archivo internos ni ícono decorativo en el pie", () => {
+    const { container } = render(<Entrar onEntrar={vi.fn()} />);
+    const texto = document.body.textContent ?? "";
+    expect(screen.getByText("Instalación local")).toBeInTheDocument();
+    expect(screen.getByText("Cálculo exacto de precios")).toBeInTheDocument();
+    expect(
+      screen.getByText("Cálculos de APU, auditoría de libros Excel y firmas locales en este equipo."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Escriba el usuario y la contraseña de su cuenta en esta instalación."),
+    ).toBeInTheDocument();
+    for (const retirado of [/SQLite/i, /Aritm[eé]tica Decimal/i, /instalacion\.db/i, /tu propio/i, /Usa tu/i]) {
+      expect(texto).not.toMatch(retirado);
+    }
+    const pie = container.querySelector(".silice-entrada__pie-seguridad");
+    expect(pie).not.toBeNull();
+    expect(pie?.querySelector("svg")).toBeNull();
+  });
 });

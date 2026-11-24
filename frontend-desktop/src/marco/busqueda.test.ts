@@ -150,7 +150,7 @@ describe("resultadosDe: las secciones de la Cuenta (F6, T6)", () => {
   const rutas = (texto: string, oferta = CON_CARPETAS) => resultadosDe(texto, [], oferta).map((r) => [r.texto, r.ruta]);
 
   it("encuentra cada sección por su título", () => {
-    expect(rutas("tamano de letra")).toContainEqual(["Pantalla y tamaño de letra", "/cuenta/preferencias"]);
+    expect(rutas("tamano de letra")).toContainEqual(["Configuración", "/cuenta/preferencias"]);
     expect(rutas("acerca")).toContainEqual(["Ayuda y acerca de Sílice", "/cuenta/ayuda"]);
     expect(rutas("empresa y tema")).toContainEqual(["Empresa y tema", "/cuenta/empresa"]);
     expect(rutas("carpetas")).toContainEqual(["Carpetas", "/cuenta/carpetas"]);
@@ -174,7 +174,7 @@ describe("resultadosDe: las secciones de la Cuenta (F6, T6)", () => {
     const rita = ofertaDe(["leer_proyecto", "revisar_paquete"], false);
     expect(rutas("cuentas", rita)).toEqual([]);
     expect(rutas("carpetas", rita)).toEqual([]);
-    expect(rutas("letra", rita)).toEqual([["Pantalla y tamaño de letra", "/cuenta/preferencias"]]);
+    expect(rutas("letra", rita)).toEqual([["Configuración", "/cuenta/preferencias"]]);
     expect(rutas("ayuda", rita)).toEqual([["Ayuda y acerca de Sílice", "/cuenta/ayuda"]]);
   });
 });

@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import type { ObraAbierta } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import RiesgoDeLaObra from "./RiesgoDeLaObra";
 
@@ -87,12 +89,17 @@ describe("Riesgo de la obra", () => {
   let usuario: ReturnType<typeof userEvent.setup>;
   const alExpirar = vi.fn();
 
-  function montar(sesion: SesionRespuesta = ANA) {
+  function montar(sesion: SesionRespuesta = ANA, obra?: ObraAbierta) {
+    const contenido = obra ? (
+      <ContextoDeLaObra.Provider value={obra}>
+        <RiesgoDeLaObra />
+      </ContextoDeLaObra.Provider>
+    ) : (
+      <RiesgoDeLaObra />
+    );
     render(
       <ContextoAplicacion.Provider value={{ sesion, proyecto: "7", nombreProyecto: "Vía Demo", caso: null, recargarProyectos: vi.fn(), alExpirar }}>
-        <MemoryRouter>
-          <RiesgoDeLaObra />
-        </MemoryRouter>
+        <MemoryRouter>{contenido}</MemoryRouter>
       </ContextoAplicacion.Provider>,
     );
   }
@@ -140,10 +147,13 @@ describe("Riesgo de la obra", () => {
     await usuario.selectOptions(await screen.findByLabelText("Cemento asfáltico"), "CEMENTO_ASFALTICO_PPI");
     await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
     const region = await screen.findByRole("region", { name: "Resultado de la proyección" });
-    expect(valorDe(region, "P50")).toBe("1.248,72 USD");
-    expect(valorDe(region, "P80")).toBe("1.302,46 USD");
-    expect(valorDe(region, "Reserva para cubrir el P80")).toBe("302,46 USD");
+    expect(valorDe(region, "Costo probable (P50: no se supera en la mitad de las simulaciones)")).toBe("1.248,72 USD");
+    expect(valorDe(region, "Costo conservador (P80: no se supera en 8 de cada 10 simulaciones)")).toBe("1.302,46 USD");
+    expect(valorDe(region, "Reserva recomendada para cubrir el P80")).toBe("302,46 USD");
     expect(valorDe(region, "Total base")).toBe("1.000,00 USD");
+    // Riesgo habla solo de simulaciones (pasada goldfish N1)
+    expect(within(region).getByText(/simulaciones con semilla/)).toBeInTheDocument();
+    expect(within(region).queryByText(/trayectoria|escenario/i)).toBeNull();
     const tabla = within(region).getByRole("table", { name: "Los tres insumos que más empujan" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     expect(filas.map((f) => within(f).getAllByRole("cell").map((c) => c.textContent))).toEqual([
@@ -238,28 +248,30 @@ describe("Riesgo de la obra", () => {
     vi.restoreAllMocks();
   });
 
-  test("«Trayectorias por corte» está en la sección «Comprobar hacia atrás» y no en la de «Proyectar»", async () => {
+  test("«Simulaciones por fecha probada» está en la sección «Probar precisión con meses pasados» y no en la de «Proyectar»", async () => {
     montar();
-    const porCorte = await screen.findByLabelText("Trayectorias por corte");
-    const comprobar = screen.getByRole("group", { name: "Comprobar hacia atrás" });
+    const porCorte = await screen.findByLabelText("Simulaciones por fecha probada");
+    const comprobar = screen.getByRole("group", { name: "Probar precisión con meses pasados" });
     const proyectar = screen.getByRole("group", { name: "Proyectar" });
     expect(comprobar).toContainElement(porCorte);
     expect(proyectar).not.toContainElement(porCorte);
-    expect(within(comprobar).getByRole("button", { name: "Comprobar hacia atrás" })).toBeInTheDocument();
+    expect(within(comprobar).getByRole("button", { name: "Probar precisión con meses pasados" })).toBeInTheDocument();
     expect(within(proyectar).getByRole("button", { name: "Proyectar" })).toBeInTheDocument();
   });
 
-  test("«Fecha de inicio» y «Trayectorias» están en «Proyectar», y los parámetros comunes fuera de ambos grupos", async () => {
+  test("«Fecha de inicio» y «Simulaciones a correr» están en «Proyectar», y los parámetros comunes fuera de ambos grupos", async () => {
     montar();
     const inicio = await screen.findByLabelText("Fecha de inicio");
-    const trayectorias = screen.getByLabelText("Trayectorias");
-    const porCorte = screen.getByLabelText("Trayectorias por corte");
+    const trayectorias = screen.getByLabelText("Simulaciones a correr");
+    const porCorte = screen.getByLabelText("Simulaciones por fecha probada");
     const meses = screen.getByLabelText("Meses del plazo");
-    const semilla = screen.getByLabelText("Semilla");
+    const semilla = screen.getByLabelText("Semilla (número para obtener siempre el mismo resultado)");
     const historia = screen.getByLabelText("Meses de historia");
     const proyectar = screen.getByRole("group", { name: "Proyectar" });
-    const comprobar = screen.getByRole("group", { name: "Comprobar hacia atrás" });
+    const comprobar = screen.getByRole("group", { name: "Probar precisión con meses pasados" });
 
+    expect(screen.getByText("2.000 ofrece resultados estables")).toBeInTheDocument();
+    expect(screen.getByText("Déjelo en 1; con el mismo número repite exactamente el resultado")).toBeInTheDocument();
     expect(proyectar).toContainElement(inicio);
     expect(proyectar).toContainElement(trayectorias);
     expect(comprobar).not.toContainElement(inicio);
@@ -278,7 +290,7 @@ describe("Riesgo de la obra", () => {
 
   test("una cifra mal escrita no se envía y se dice junto al campo", async () => {
     montar();
-    const trayectorias = await screen.findByLabelText("Trayectorias");
+    const trayectorias = await screen.findByLabelText("Simulaciones a correr");
     await usuario.clear(trayectorias);
     await usuario.type(trayectorias, "2.5");
     await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
@@ -291,16 +303,50 @@ describe("Riesgo de la obra", () => {
     comprobacion = () => new Promise<Response>((resolver) => (soltar = resolver));
     montar();
     await screen.findByLabelText("Cemento asfáltico");
-    await usuario.click(screen.getByRole("button", { name: "Comprobar hacia atrás" }));
+    await usuario.click(screen.getByRole("button", { name: "Probar precisión con meses pasados" }));
     // mientras tanto, el aviso de espera: con 500 trayectorias por corte tarda alrededor de medio minuto
     expect(await screen.findByText(/puede tardar/)).toBeInTheDocument();
     soltar(json(COMPROBACION));
-    const region = await screen.findByRole("region", { name: "Comprobación hacia atrás" });
-    expect(valorDe(region, "Cobertura")).toBe("84,21 %");
-    expect(valorDe(region, "Cortes dentro del P80")).toBe("16 de 19");
-    expect(valorDe(region, "Número de cortes")).toBe("19");
+    const region = await screen.findByRole("region", { name: "Prueba con meses pasados" });
+    expect(valorDe(region, "Cobertura (% de meses cubiertos)")).toBe("84,21 %");
+    expect(valorDe(region, "Meses cubiertos por el P80")).toBe("16 de 19");
+    expect(valorDe(region, "Meses probados")).toBe("19");
+    expect(
+      within(region).getByText(
+        /Cerca de 80 % o más indica que la proyección habría cubierto bien las subidas pasadas \(es una referencia histórica, no una garantía\)\./,
+      ),
+    ).toBeInTheDocument();
     expect(cuerpoDe("/v1/riesgo/comprobacion")).toMatchObject({ trayectorias_por_corte: 500, meses: 6 });
     await waitFor(() => expect(screen.queryByText(/puede tardar/)).toBeNull());
+  });
+
+  test("sin versiones guardadas remite al presupuesto con un botón principal", async () => {
+    const leer = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://prueba");
+      if (url.pathname === "/v1/hoja/versiones") return json({ proyecto: "Vía Demo", moneda: "USD", por_omision: null, versiones: [] });
+      return leer!(entrada, init);
+    });
+    montar();
+    expect(await screen.findByText("Esta obra aún no tiene versiones")).toBeInTheDocument();
+    expect(
+      screen.getByText("Esta obra aún no tiene versiones guardadas. Guarde una en el presupuesto para proyectar su riesgo."),
+    ).toBeInTheDocument();
+    const boton = screen.getByRole("link", { name: "Ir al presupuesto" });
+    expect(boton).toHaveAttribute("href", "/hoja");
+    expect(boton).toHaveClass("cds--btn", "cds--btn--primary");
+  });
+
+  test("dentro de una obra abierta sin versiones, «Ir al presupuesto» apunta al presupuesto de esa obra", async () => {
+    const leer = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://prueba");
+      if (url.pathname === "/v1/hoja/versiones") return json({ proyecto: "Vía Demo", moneda: "USD", por_omision: null, versiones: [] });
+      return leer!(entrada, init);
+    });
+    montar(ANA, { carpeta: "obra.db", obraId: 7, ficha: { estado: "cargando" }, recargarFicha: vi.fn() });
+    const boton = await screen.findByRole("link", { name: "Ir al presupuesto" });
+    expect(boton).toHaveAttribute("href", "/obra/obra.db/7/presupuesto");
   });
 
   // Hallazgo 9 del recorrido: sin línea base de control la fecha de inicio es necesaria; el aviso salía bajo el botón, lejos
@@ -380,7 +426,7 @@ describe("Riesgo de la obra", () => {
     comprobacion = () => json({ detalle: FALTA_UNA_SERIE }, 422);
     montar(ADMIN);
     await screen.findByLabelText("Cemento asfáltico");
-    await usuario.click(screen.getByRole("button", { name: "Comprobar hacia atrás" }));
+    await usuario.click(screen.getByRole("button", { name: "Probar precisión con meses pasados" }));
     expect(await screen.findByRole("link", { name: "Cargar las series en Índices del BCV" })).toBeInTheDocument();
   });
 
@@ -409,11 +455,11 @@ describe("Riesgo de la obra", () => {
     await screen.findByLabelText("Cemento asfáltico");
     await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
     await screen.findByRole("region", { name: "Resultado de la proyección" });
-    await usuario.click(screen.getByRole("button", { name: "Comprobar hacia atrás" }));
-    await screen.findByRole("region", { name: "Comprobación hacia atrás" });
+    await usuario.click(screen.getByRole("button", { name: "Probar precisión con meses pasados" }));
+    await screen.findByRole("region", { name: "Prueba con meses pasados" });
     await usuario.selectOptions(screen.getByLabelText("Versión"), "VIA-001");
     expect(screen.queryByRole("region", { name: "Resultado de la proyección" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Comprobación hacia atrás" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Prueba con meses pasados" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Descargar el informe de riesgo" })).toBeNull();
   });
 
@@ -511,8 +557,8 @@ describe("Riesgo de la obra", () => {
   test("después de comprobar bien también guarda el mapa usado", async () => {
     montar();
     await usuario.selectOptions(await screen.findByLabelText("Gasoil"), "GASOIL_USD");
-    await usuario.click(screen.getByRole("button", { name: "Comprobar hacia atrás" }));
-    await screen.findByRole("region", { name: "Comprobación hacia atrás" });
+    await usuario.click(screen.getByRole("button", { name: "Probar precisión con meses pasados" }));
+    await screen.findByRole("region", { name: "Prueba con meses pasados" });
     await waitFor(() => expect(guardados()).toHaveLength(1));
     expect(guardados()[0]).toEqual({ proyecto: "Vía Demo", version: "VIA-002", mapa: { Gasoil: "GASOIL_USD" } });
   });
@@ -558,8 +604,8 @@ describe("Riesgo de la obra", () => {
     await screen.findByRole("region", { name: "Resultado de la proyección" });
     await waitFor(() => expect(guardados()).toHaveLength(1));
     await usuario.selectOptions(screen.getByLabelText("Cemento asfáltico"), "CEMENTO_ASFALTICO_PPI");
-    await usuario.click(screen.getByRole("button", { name: "Comprobar hacia atrás" }));
-    await screen.findByRole("region", { name: "Comprobación hacia atrás" });
+    await usuario.click(screen.getByRole("button", { name: "Probar precisión con meses pasados" }));
+    await screen.findByRole("region", { name: "Prueba con meses pasados" });
     expect(guardados()).toHaveLength(1);
     soltar(json({ guardado: true }));
     await waitFor(() => expect(guardados()).toHaveLength(2));

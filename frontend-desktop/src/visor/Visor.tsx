@@ -220,7 +220,11 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
 
   const cambiarFecha = (valor: string) => {
     setFecha(valor);
-    if (fase === "listo" && archivo && ISO.test(valor)) void volverAAuditar(archivo, valor);
+    if (!archivo || !ISO.test(valor)) return;
+    // Con el libro listo basta volver a auditar. Si todavía carga, se carga de nuevo con la fecha nueva:
+    // volver a auditar solo adelantaría el turno y la réplica en vuelo se descartaría, dejando el esqueleto.
+    if (fase === "listo") void volverAAuditar(archivo, valor);
+    else if (fase === "cargando") void cargar(archivo, valor);
   };
 
   const alAgregar = (_evento: unknown, { addedFiles }: { addedFiles: File[] }) => {
@@ -230,7 +234,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
       return;
     }
     if (!ISO.test(fecha)) {
-      setError("Escriba la fecha de devolución antes de cargar el libro.");
+      setError("Escriba la fecha de la revisión antes de cargar el libro.");
       return;
     }
     void cargar(elegido, fecha);
@@ -312,7 +316,8 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
           type="date"
           size="sm"
           inline
-          labelText="Fecha de devolución"
+          labelText="Fecha de la revisión"
+          helperText="Con esta fecha se revisa el libro y se fecha el libro corregido que se devuelve"
           value={fecha}
           onChange={(e) => cambiarFecha(e.target.value)}
         />
@@ -377,6 +382,18 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
       {ranuraCabecera === undefined && <div className="visor__barra">{controles}</div>}
       {ranuraCabecera && createPortal(controles, ranuraCabecera)}
 
+      {fase === "listo" && auditoria?.aviso_historial && (
+        <InlineNotification
+          kind="warning"
+          role="status"
+          title="Historial"
+          subtitle={auditoria.aviso_historial}
+          lowContrast
+          hideCloseButton
+          className="visor__error"
+        />
+      )}
+
       {error && (
         <InlineNotification
           kind="error"
@@ -393,7 +410,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
         <div className="visor__soltar">
           <h2 className="cds--type-heading-04">Abra un libro para auditarlo</h2>
           <p className="visor__ayuda-fecha cds--type-body-compact-01">
-            La fecha de devolución (en la barra de arriba) es la fecha con la que se audita el libro: con la misma
+            La fecha de la revisión (en la barra de arriba) es la fecha con la que se audita el libro: con la misma
             fecha, el mismo libro da siempre el mismo resultado.
           </p>
           <FileUploaderDropContainer

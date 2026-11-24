@@ -375,6 +375,7 @@ def test_registrar_devuelve_cada_hallazgo_legible_y_la_lista_los_repite(
         {
             "valuacion": "V-01",
             "regla": "R14",
+            "nombre_regla": "Fuente y fechas de la valuación",
             "severidad": "Error",
             "mensaje": "La valuación V-01 no tiene inspector.",
         }
@@ -383,6 +384,7 @@ def test_registrar_devuelve_cada_hallazgo_legible_y_la_lista_los_repite(
     assert (datos["hallazgos"], datos["errores"], datos["detalle"]) == (1, 1, esperado)
     lista = navegador.get("/v1/control/valuaciones", params=P).json()
     assert lista["hallazgos"] == esperado
+    assert lista["filas"][0]["Estado"] == "Error: La valuación V-01 no tiene inspector. (R14)"
 
 
 def _caso_del_proceso() -> Path:
@@ -849,10 +851,17 @@ def test_el_calculo_trae_los_indicadores_de_la_memoria() -> None:
     assert datos["estado"] == "listo"
     assert datos["corte"] == "2026-11-13" and datos["moneda"] == "USD"
     ind = {f["Indicador"]: f for f in datos["indicadores"]}
-    assert ind["BAC (USD)"]["Valor"] == "4000.00"
-    assert ind["SPI"]["Valor"] == "0.8000"
-    assert ind["CPI"]["Valor"] == "0.9375"
-    assert ind["EAC (índice BAC/CPI) (USD)"]["Valor"] == "4266.67"
+    assert ind["BAC (presupuesto total) (USD)"]["Valor"] == "4000.00"
+    assert ind["PV (planificado) (USD)"]["Valor"] == "1500.00"
+    assert ind["EV (ejecutado) (USD)"]["Valor"] == "1200.00"
+    assert ind["AC (gastado) (USD)"]["Valor"] == "1280.00"
+    assert "SV (diferencia de plazo) (USD)" in ind
+    assert "CV (diferencia de costo) (USD)" in ind
+    assert ind["SPI (índice de plazo)"]["Valor"] == "0.8000"
+    assert ind["CPI (índice de costo)"]["Valor"] == "0.9375"
+    assert ind["EAC (costo final estimado, índice BAC/CPI) (USD)"]["Valor"] == "4266.67"
+    assert "EAC (costo final estimado, sistema) (USD)" in ind
+    assert "VAC (diferencia al terminar) (USD)" in ind
 
 
 def test_la_curva_pv_ev_ac_cierra_en_el_corte() -> None:
@@ -877,12 +886,12 @@ def test_el_corte_pedido_cambia_el_calculo() -> None:
     primero = _con_clave().get("/v1/control/calculo", params={**P, "corte": "2026-11-06"}).json()
     assert primero["corte"] == "2026-11-06"
     ind = {f["Indicador"]: f["Valor"] for f in primero["indicadores"]}
-    assert ind["EV (USD)"] != _ev_del_corte_por_defecto()
+    assert ind["EV (ejecutado) (USD)"] != _ev_del_corte_por_defecto()
 
 
 def _ev_del_corte_por_defecto() -> str:
     datos = _con_clave().get("/v1/control/calculo", params=P).json()
-    return {f["Indicador"]: f["Valor"] for f in datos["indicadores"]}["EV (USD)"]
+    return {f["Indicador"]: f["Valor"] for f in datos["indicadores"]}["EV (ejecutado) (USD)"]
 
 
 def test_la_escalatoria_sin_fuente_da_422() -> None:

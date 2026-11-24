@@ -58,6 +58,7 @@ from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import revision as logica
 from aplicacion.listas_para_armar import lista_por_id
+from aplicacion.nombres_reglas import nombre_de_regla
 from core.budget.comparacion import Diferencia
 from core.verification.texto import formatear_decimal
 from operacion.config import carpeta_datos
@@ -75,9 +76,9 @@ if TYPE_CHECKING:
 TOPE_PAQUETE = LIMITE_ARCHIVO  # 20 MiB: lo que `abrir_zip` admite
 TOPE_EXCEL = min(MAX_BYTES, LIMITE_CUERPO)  # 20 MiB: el cuerpo entero no pasa de ahí
 MENSAJE_TOPE_PAQUETE = (
-    "El archivo pesa más de 20 MiB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
+    "El archivo pesa más de 20 MB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
 )
-MENSAJE_TOPE_EXCEL = "El presupuesto en Excel supera el máximo de 20 MiB."
+MENSAJE_TOPE_EXCEL = "El presupuesto en Excel supera el máximo de 20 MB."
 MENSAJE_CUERPO_INVALIDO = (
     "Suba el archivo .silice que recibió; la lista se indica por su número, el dictamen es "
     "conforme, con observaciones o rechazado, y el Excel, presupuesto o revision."
@@ -108,6 +109,7 @@ Activa = Annotated[SesionActiva | None, REVISAR]
 
 class HallazgoRevision(BaseModel):
     regla: str
+    nombre_regla: str = ""
     severidad: str
     descripcion: str
 
@@ -238,7 +240,10 @@ def _leer(archivo: UploadFile, tope: int, mensaje: str) -> bytes:
 
 def _hallazgo(h) -> HallazgoRevision:
     return HallazgoRevision(
-        regla=h.regla, severidad=h.severidad.name, descripcion=pulir(h.descripcion)
+        regla=h.regla,
+        nombre_regla=nombre_de_regla(h.regla),
+        severidad=h.severidad.name,
+        descripcion=pulir(h.descripcion),
     )
 
 

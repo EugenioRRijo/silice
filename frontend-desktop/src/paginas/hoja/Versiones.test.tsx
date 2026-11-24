@@ -327,6 +327,14 @@ describe("Hoja de la obra: cotizar, retirar y convertir (3d-2)", () => {
 
   // --- Estática ---------------------------------------------------------------------------------------------------------------
 
+  test("Precios muestra «Sin observaciones» en lugar de «OK»", async () => {
+    montar();
+    await irA("Precios");
+    const tabla = await screen.findByRole("table", { name: "Precios" });
+    expect(within(tabla).getByText("Sin observaciones")).toBeInTheDocument();
+    expect(within(tabla).queryByText("OK")).toBeNull();
+  });
+
   test("los archivos de 3d-2 están bajo la prueba estática (sin Number, parseFloat, toFixed ni + unario)", () => {
     const fuentes = import.meta.glob("./*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
     for (const ruta of [

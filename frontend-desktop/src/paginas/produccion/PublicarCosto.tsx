@@ -70,9 +70,9 @@ export function PublicarCosto({ calculo, alPublicar, alExpirar, alConflicto }: P
 
   return (
     <fieldset className="planta-publicar">
-      <legend className="cds--type-heading-compact-02">Publicar como precio propio</legend>
+      <legend className="cds--type-heading-compact-02">Guardar en la lista de precios de la empresa</legend>
       <p className="cds--type-body-compact-01">
-        El precio de cada producto queda en una lista de precios nueva de la empresa, con esta fuente:{" "}
+        Crea una lista nueva en Precios de la empresa sin modificar obras ya guardadas. Fuente:{" "}
         <span className="silice-cifra">{fuente}</span>
       </p>
       {empresa.estado === "listo" && empresa.datos.empresa && (
@@ -97,7 +97,7 @@ export function PublicarCosto({ calculo, alPublicar, alExpirar, alConflicto }: P
         </p>
       )}
       <Button kind="primary" size="md" onClick={() => setConfirmando(true)}>
-        Publicar como precio propio
+        Guardar en la lista de precios de la empresa
       </Button>
       {confirmando && (
         <MarcoDeDialogo

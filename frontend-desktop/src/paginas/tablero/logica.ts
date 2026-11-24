@@ -18,6 +18,7 @@ export interface Anillo {
   fraccion: string | null;
   texto: string;
   favorable: boolean | null;
+  referencia?: string | null;
 }
 
 export interface ControlDelTablero {
@@ -116,6 +117,12 @@ export function seriesDeCurva(curvas: CurvasDelTablero): SerieDeCurva[] {
 export function etiquetaDePeso(desglose: Rubro[]): (d: { data: { group: string } }) => string {
   const peso = new Map(desglose.map((r) => [r.rubro, r.peso]));
   return (d) => formatoMontoEsVe(peso.get(d.data.group) ?? "");
+}
+
+// Los anillos del control que se dibujan como medidor: los de un porcentaje (el avance fisico, «62.5 %») con su fraccion.
+// SPI y CPI son indices, no partes de un todo, y siguen en sus tarjetas (V-21); sin fraccion no hay arco ni un «0 %».
+export function anillosDePorcentaje(anillos: Anillo[]): Anillo[] {
+  return anillos.filter((a) => a.fraccion !== null && a.texto.includes("%") && Number.isFinite(Number(a.fraccion)));
 }
 
 // El numero del centro del anillo: el total del contrato de la API en centesimas («95.066,60»), no la suma en float de

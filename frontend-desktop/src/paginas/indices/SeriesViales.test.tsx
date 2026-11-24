@@ -230,8 +230,10 @@ describe("Series del riesgo vial", () => {
     importar = () => new Promise<Response>((resolver) => (soltar = resolver));
     montar();
     const usuario = await elegirArchivo();
-    await usuario.click(screen.getByRole("button", { name: "Importar" }));
-    expect(await screen.findByText("Importando...")).toBeInTheDocument();
+    const boton = screen.getByRole("button", { name: "Importar" });
+    expect(boton).toHaveClass("cds--btn--secondary");
+    await usuario.click(boton);
+    expect(await screen.findByText("Importando…")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Serie" })).toBeDisabled();
     expect(screen.getByLabelText(/Fuente de la serie/)).toBeDisabled();
     expect(screen.getByLabelText("Fecha de descarga")).toBeDisabled();

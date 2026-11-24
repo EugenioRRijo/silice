@@ -48,6 +48,7 @@ from aplicacion.control_comun import (
     COLUMNAS_OPCIONES,
     COLUMNAS_REPROYECCION,
     COLUMNAS_VALUACIONES,
+    LARGO_MAXIMO_A_CORREGIR,
     MENSAJE_SIN_DECLARADOS,
     METODO_COMPROBACION,
     METODO_DECLARADOS,
@@ -59,8 +60,10 @@ from aplicacion.control_comun import (
     NO_APLICA,
     NO_DISPONIBLE,
     ControlInvalido,
+    Hueco,
     _decimal,
     _monto,
+    catalogo_de_frases,
 )
 from aplicacion.control_corte import hoy_o_el_dado, ultimo_corte
 from aplicacion.control_linea_base import (
@@ -87,11 +90,8 @@ from aplicacion.control_parametros import (
     parametros_desde_filas,
 )
 from aplicacion.control_tablas import (
-    LARGO_MAXIMO_A_CORREGIR,
     PLANTILLAS_DEL_NUCLEO,
-    Hueco,
     alertas_en_filas,
-    catalogo_de_frases,
     con_tildes,
     estado_de_valuaciones,
     filas_de_decisiones,

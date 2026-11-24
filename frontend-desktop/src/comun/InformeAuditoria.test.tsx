@@ -128,8 +128,15 @@ describe("InformeAuditoria", () => {
     const tabla = screen.getByRole("table", { name: "Hallazgos" });
     expect(within(tabla).getByText("Advertencia")).toBeInTheDocument();
     expect(within(tabla).getByText("Error")).toBeInTheDocument();
-    expect(within(tabla).queryByText("Esperado")).toBeNull(); // ningun hallazgo trae valor esperado
-    expect(within(tabla).getByText("Impacto")).toBeInTheDocument();
+    expect(within(tabla).queryByText("Valor según Sílice")).toBeNull(); // ningun hallazgo trae valor esperado
+    expect(within(tabla).getByText("Diferencia en monto")).toBeInTheDocument();
+    expect(within(tabla).getByText("Valor en el presupuesto")).toBeInTheDocument();
+    expect(within(tabla).getByText("Qué revisó Sílice")).toBeInTheDocument();
+    expect(within(tabla).getByText("Dónde está")).toBeInTheDocument();
+    expect(within(tabla).getAllByText("Subcadena (R4)")).toHaveLength(2);
+    expect(
+      screen.getByText("Corrija los hallazgos «Crítico» y «Error» antes de enviar; compare el valor en el presupuesto con el valor según Sílice."),
+    ).toBeInTheDocument();
   });
 
   test("sin hallazgos declara que se verificó y no muestra la tabla de hallazgos", () => {

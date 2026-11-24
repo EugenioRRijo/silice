@@ -105,6 +105,7 @@ from api.dependencias import USUARIO_API, SesionDep
 from api.presentacion import exacto, exacto_o_nada, exacto_sin_ceros, monto, porcentaje
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
+from aplicacion.nombres_reglas import nombre_de_regla
 from fusion.alertas import ContextoPrecios
 from fusion.apu_por_hoja import auditar_apu_por_hoja
 from fusion.historial import registrar_resultado, registrar_resultado_pdf
@@ -150,11 +151,24 @@ class LibroOrigenRespuesta(BaseModel):
 
 class HallazgoLibroRespuesta(BaseModel):
     codigo: str
+    nombre_regla: str = ""
     severidad: str
     descripcion: str
     celda: str
     impacto: str | None = None
     accion: str
+
+
+def _hallazgo_libro(h) -> HallazgoLibroRespuesta:
+    return HallazgoLibroRespuesta(
+        codigo=h.codigo,
+        nombre_regla=nombre_de_regla(h.codigo),
+        severidad=h.severidad,
+        descripcion=h.descripcion,
+        celda=h.celda,
+        impacto=exacto_o_nada(h.impacto),
+        accion=h.accion,
+    )
 
 
 class AlertaPrecioRespuesta(BaseModel):
@@ -392,7 +406,7 @@ async def _leer(archivo: UploadFile, campo: str) -> bytes:
     del cuerpo entero que pone `api.proteccion`, más estricto que los 25 MiB de la guardia)."""
     excedido = HTTPException(
         413,
-        f"'{campo}' supera el máximo de {TOPE_BYTES / 2**20:g} MiB (el tope de la petición "
+        f"'{campo}' supera el máximo de {TOPE_BYTES / 2**20:g} MB (el tope de la petición "
         "entera, con todos sus archivos).",
     )
     if archivo.size is not None and archivo.size > TOPE_BYTES:
@@ -716,17 +730,7 @@ async def auditar_libro(
         totales_silice=_montos(r.totales_silice),
         indicadores=indicadores_de(r.libro.totales or {}, r.totales_silice or {}),
         partidas_con_omision=partidas_con_omision(r),
-        hallazgos=[
-            HallazgoLibroRespuesta(
-                codigo=h.codigo,
-                severidad=h.severidad,
-                descripcion=h.descripcion,
-                celda=h.celda,
-                impacto=exacto_o_nada(h.impacto),
-                accion=h.accion,
-            )
-            for h in r.hallazgos_tabla
-        ],
+        hallazgos=[_hallazgo_libro(h) for h in r.hallazgos_tabla],
         alertas=[
             AlertaPrecioRespuesta(
                 codigo=a.codigo,
@@ -817,17 +821,7 @@ async def revisar_pdf(
         total_computos=exacto_o_nada(leido.total_computos),
         total_impreso=exacto_o_nada(leido.total_impreso),
         notas=list(leido.notas),
-        hallazgos=[
-            HallazgoLibroRespuesta(
-                codigo=h.codigo,
-                severidad=h.severidad,
-                descripcion=h.descripcion,
-                celda=h.celda,
-                impacto=exacto_o_nada(h.impacto),
-                accion=h.accion,
-            )
-            for h in r.hallazgos_tabla
-        ],
+        hallazgos=[_hallazgo_libro(h) for h in r.hallazgos_tabla],
     )
 
 
@@ -975,17 +969,7 @@ async def auditar_apu_por_hoja_ruta(
             )
             for a in r.apus
         ],
-        hallazgos=[
-            HallazgoLibroRespuesta(
-                codigo=h.codigo,
-                severidad=h.severidad,
-                descripcion=h.descripcion,
-                celda=h.celda,
-                impacto=exacto_o_nada(h.impacto),
-                accion=h.accion,
-            )
-            for h in r.hallazgos
-        ],
+        hallazgos=[_hallazgo_libro(h) for h in r.hallazgos],
         desperdicios=[
             DesperdicioLeidoRespuesta(
                 descripcion=t.descripcion,

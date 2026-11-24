@@ -112,7 +112,7 @@ describe("Visor: Descargar PDF (hallazgos de la auditoria)", () => {
       }),
     );
     // Se esta tecleando otra fecha (incompleta, asi que aun no se vuelve a auditar): el PDF lleva la del resultado.
-    const campo = screen.getByLabelText("Fecha de devolución");
+    const campo = screen.getByLabelText("Fecha de la revisión");
     await usuario.clear(campo);
     await usuario.type(campo, "2026-1");
     await usuario.click(screen.getByRole("button", BOTON));
@@ -161,7 +161,7 @@ describe("Visor: Descargar PDF (hallazgos de la auditoria)", () => {
     await usuario.click(screen.getByRole("button", BOTON));
     expect(await alertaConTexto()).toHaveTextContent("No se pudo preparar");
     // Otra fecha valida: se audita de nuevo y el resultado es otro; el aviso de antes ya no corresponde.
-    const campo = screen.getByLabelText("Fecha de devolución");
+    const campo = screen.getByLabelText("Fecha de la revisión");
     await usuario.clear(campo);
     await usuario.type(campo, "2026-11-02");
     await vi.waitFor(() => expect(screen.queryByText(/No se pudo preparar el PDF/)).toBeNull());

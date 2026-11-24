@@ -13,7 +13,6 @@ import { TORRE_B, estadoInicial, json, montarMarco, servidorFalso, sesionDe } fr
 // con la ficha de la obra de MOD-3a y la moneda de la carpeta de T2). Oraculos escritos a mano.
 
 const CONVERSION = "Esta obra se valorará convirtiendo los precios de la carpeta con la tasa del BCV del día.";
-const VACIO_DE_LA_API = "Escriba un nombre para la obra: no puede quedar vacío.";
 
 let servidor: ReturnType<typeof servidorFalso>;
 
@@ -26,13 +25,7 @@ function conTorreB(moneda: string | null = "Bs") {
 }
 
 function instalar(moneda: string | null = "Bs") {
-  servidor = servidorFalso(conTorreB(moneda), (metodo, ruta, cuerpo) => {
-    // El 422 de la API por un nombre vacío, con su texto real (`aplicacion/proyectos.py`).
-    if (metodo === "POST" && ruta === "/v1/proyectos" && !String((cuerpo as { nombre?: string }).nombre ?? "").trim()) {
-      return json({ detalle: VACIO_DE_LA_API }, 422);
-    }
-    return undefined;
-  });
+  servidor = servidorFalso(conTorreB(moneda));
   vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
 }
 
@@ -92,18 +85,43 @@ describe("«Nueva obra» (F10 adaptado)", () => {
     await waitFor(() => expect(servidor.de("GET", "/v1/carpeta").length).toBeGreaterThan(0));
     expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("");
     await u.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
-    await u.click(within(caja).getByRole("button", { name: "Crear obra" }));
+    await u.click(within(caja).getByRole("button", { name: "Crear la obra" }));
     expect(await within(caja).findByText("Elija la moneda de la obra.")).toBeInTheDocument();
     expect(servidor.de("POST", "/v1/proyectos")).toEqual([]);
   });
 
-  test("con el nombre vacío muestra en línea el mensaje de la API", async () => {
+  test("con el nombre vacío avisa antes de enviar, lleva el foco al campo y no llama a la API", async () => {
     const u = userEvent.setup();
     const caja = await abrirNuevaObra(u);
     await waitFor(() => expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
-    await u.click(within(caja).getByRole("button", { name: "Crear obra" }));
-    expect(await within(caja).findByText(VACIO_DE_LA_API)).toBeInTheDocument();
+    const botonCrear = within(caja).getByRole("button", { name: "Crear la obra" });
+    await u.click(botonCrear);
+    expect(await within(caja).findByText("Escriba el nombre de la obra")).toBeInTheDocument();
+    expect(within(caja).getByRole("textbox", { name: /^Nombre/ })).toHaveFocus();
+    expect(servidor.de("POST", "/v1/proyectos")).toEqual([]);
     expect(dialogo()).toBeInTheDocument();
+  });
+
+  test("mientras crea la obra el botón dice «Creando la obra…» y queda deshabilitado", async () => {
+    const u = userEvent.setup();
+    let resolver: (r: Response) => void = () => {};
+    servidor = servidorFalso(conTorreB("Bs"), (metodo, ruta) => {
+      if (metodo === "POST" && ruta === "/v1/proyectos") {
+        return new Promise<Response>((r) => {
+          resolver = r;
+        });
+      }
+      return undefined;
+    });
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    const caja = await abrirNuevaObra(u);
+    await waitFor(() => expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await u.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
+    await u.click(within(caja).getByRole("button", { name: "Crear la obra" }));
+    const botonOcupado = await within(caja).findByRole("button", { name: "Creando la obra…" });
+    expect(botonOcupado).toBeDisabled();
+    resolver(json({ codigo: "10", nombre: "Casa Demo", version_vigente: null, actualizado: null, cliente: "", ubicacion: "" }, 201));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).not.toBeInTheDocument());
   });
 
   test("crear manda la ficha completa, recarga las obras y abre la obra nueva", async () => {
@@ -115,7 +133,7 @@ describe("«Nueva obra» (F10 adaptado)", () => {
     await u.type(within(caja).getByRole("textbox", { name: /^Cliente/ }), "Contratista Demo, C.A.");
     await u.type(within(caja).getByRole("textbox", { name: /^Ubicación/ }), "Maracay");
     await u.selectOptions(within(caja).getByRole("combobox", { name: "Tipo de obra" }), "civil");
-    await u.click(within(caja).getByRole("button", { name: "Crear obra" }));
+    await u.click(within(caja).getByRole("button", { name: "Crear la obra" }));
     await waitFor(() =>
       expect(servidor.de("POST", "/v1/proyectos").map((l) => l.cuerpo)).toEqual([
         {
@@ -207,7 +225,7 @@ describe("«Nueva obra» dice dónde se creará", () => {
   async function llenarYCrear(u: ReturnType<typeof userEvent.setup>) {
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
     await u.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
-    await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    await u.click(screen.getByRole("button", { name: "Crear la obra" }));
   }
 
   test("nombra la carpeta, sin selector, y manda esa carpeta sin cambiar la de la sesión", async () => {
@@ -236,7 +254,7 @@ describe("«Nueva obra» dice dónde se creará", () => {
     expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("");
     expect(screen.queryByText("Es la moneda de esta carpeta (Bs).")).toBeNull();
     await u.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
-    await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    await u.click(screen.getByRole("button", { name: "Crear la obra" }));
     expect(await screen.findByText("Elija la moneda de la obra.")).toBeInTheDocument();
     expect(servidor.de("POST", "/v1/proyectos")).toEqual([]);
   });
@@ -272,10 +290,14 @@ describe("«Nueva obra» dice dónde se creará", () => {
   test("si crear falla muestra el error y no llama a alCrear ni toca la sesión", async () => {
     const u = userEvent.setup();
     const alCrear = vi.fn();
+    const errorApi = "Ya existe una obra con ese nombre.";
+    servidor = servidorFalso(conTorreB("Bs"), (metodo, ruta) =>
+      metodo === "POST" && ruta === "/v1/proyectos" ? json({ detalle: errorApi }, 422) : undefined,
+    );
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     render(<DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={alCrear} destino={DESTINO} />);
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
-    await u.click(screen.getByRole("button", { name: "Crear obra" })); // nombre vacío: 422
-    expect(await screen.findByText(VACIO_DE_LA_API)).toBeInTheDocument();
+    await llenarYCrear(u);
+    expect(await screen.findByText(errorApi)).toBeInTheDocument();
     expect(alCrear).not.toHaveBeenCalled();
     expect(servidor.llamadas.filter((l) => l.metodo !== "GET" && l.ruta !== "/v1/proyectos")).toEqual([]);
   });

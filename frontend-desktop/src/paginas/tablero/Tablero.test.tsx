@@ -1,6 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import type { ObraAbierta } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaTablero from "./index";
@@ -49,8 +52,9 @@ const TABLERO: TableroRespuesta = {
     disponible: true,
     motivo: "",
     anillos: [
-      { rotulo: "Avance fisico", fraccion: "0.3", texto: "30,0 %", favorable: null },
-      { rotulo: "SPI (plazo)", fraccion: "0.8", texto: "0,80", favorable: false },
+      // El texto como lo arma el servidor (aplicacion/estilo.py, `porcentaje`): con punto decimal. La pantalla lo lee en es-VE.
+      { rotulo: "Avance fisico", fraccion: "0.3", texto: "30.0 %", favorable: null },
+      { rotulo: "SPI (plazo)", fraccion: "0.8", texto: "0.80", favorable: false },
       { rotulo: "CPI (costo)", fraccion: null, texto: "—", favorable: false },
     ],
     tarjetas: [{ rotulo: "EAC", valor: "4266.67", detalle: "" }],
@@ -85,7 +89,7 @@ describe("Tablero de la obra", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  function montar(proyecto: string | null) {
+  function montar(proyecto: string | null, obra?: ObraAbierta) {
     const valor: Aplicacion = {
       sesion: SESION,
       proyecto,
@@ -93,16 +97,25 @@ describe("Tablero de la obra", () => {
       recargarProyectos: vi.fn(),
       alExpirar: vi.fn(),
     };
-    render(
-      <ContextoAplicacion.Provider value={valor}>
+    const contenido = obra ? (
+      <ContextoDeLaObra.Provider value={obra}>
         <PaginaTablero />
-      </ContextoAplicacion.Provider>,
+      </ContextoDeLaObra.Provider>
+    ) : (
+      <PaginaTablero />
+    );
+    render(
+      <MemoryRouter>
+        <ContextoAplicacion.Provider value={valor}>{contenido}</ContextoAplicacion.Provider>
+      </MemoryRouter>,
     );
   }
 
   test("sin proyecto invita a elegirlo y no pide nada a la API", () => {
     montar(null);
+    expect(screen.getByText("Resumen visual de cuánto cuesta la obra, qué partidas pesan más y cómo avanza")).toBeInTheDocument();
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
+    expect(screen.getByText("Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
@@ -142,18 +155,27 @@ describe("Tablero de la obra", () => {
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("/v1/tablero?proyecto=OB-S2");
     // VB-19: la fecha se lee dd/mm/aaaa
     expect(screen.getByText("Versión OB-001 del 02/11/2026 · 3 renglones · USD")).toBeInTheDocument();
+    // Solo la primera cifra (total vigente) va en heading-04; las demás tarjetas van en heading-03.
+    expect(screen.getByText("5.060,00", { selector: "dd" })).toHaveClass("cds--type-heading-04");
+    expect(screen.getByText("4.266,67", { selector: "dd" })).toHaveClass("cds--type-heading-03");
     const versiones = screen.getByRole("table", { name: "Versiones del presupuesto" });
     // VD-5: la fecha no lleva su forma ISO en el title; las cifras si llevan su exacto
     expect(within(versiones).getByText("02/11/2026")).not.toHaveAttribute("title");
     expect([...versiones.querySelectorAll("[title]")].every((e) => /^-?[0-9]+(\.[0-9]+)?$/.test(e.getAttribute("title") ?? ""))).toBe(true);
     // V-21: un indice (SPI 0,98) no es una parte de un todo: no hay donas de avance, SPI ni CPI, solo los indicadores
     expect(screen.queryByLabelText(/SPI \(plazo\)/)).toBeNull();
+    expect(
+      screen.getByText("En plazo (SPI) y costo (CPI), 1,00 o más es favorable; menos de 1,00 indica atraso o sobrecosto."),
+    ).toBeInTheDocument();
     expect(screen.getByText("EAC")).toBeInTheDocument();
     expect(await screen.findAllByTestId("grafico-anillo")).toHaveLength(1); // solo el desglose del contrato
     expect(await screen.findByTestId("grafico-linea")).toBeInTheDocument();
-    expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(2); // Pareto y versiones
+    expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(1); // solo Pareto: 1 versión no pinta «Total por versión»
     // cada grafico tiene su tabla con los montos exactos
+    expect(screen.getByText("Partidas que concentran la mayor parte del costo, de mayor a menor.")).toBeInTheDocument();
     const pareto = screen.getByRole("table", { name: "Partidas que más pesan" });
+    expect(within(pareto).getByRole("columnheader", { name: /% del total/ })).toBeInTheDocument();
+    expect(within(pareto).getByRole("columnheader", { name: /% acumulado/ })).toBeInTheDocument();
     expect(within(pareto).getByText("3.000,00")).toBeInTheDocument();
     expect(within(pareto).getByTitle("3000.00")).toBeInTheDocument(); // el exacto, a un toque (V-19)
     expect(screen.getByRole("table", { name: "Versiones del presupuesto" })).toBeInTheDocument();
@@ -221,6 +243,97 @@ describe("Tablero de la obra", () => {
     expect(anillo).toHaveAttribute("data-centro", "95.066,60");
   });
 
+  // El anillo de avance del control de obra (rediseño 2026-11-21): la cifra que se lee es el texto del servidor en es-VE, una
+  // sola vez y en el centro; la fracción solo dibuja el arco. Antes salía «62.5 %» con punto debajo y, en el centro, un número
+  // que calculaba el navegador.
+  describe("el anillo del avance físico", () => {
+    const conAvance = (texto: string, fraccion: string | null, favorable: boolean | null = null, referencia?: string | null) => ({
+      ...TABLERO,
+      control: { ...TABLERO.control!, anillos: [{ rotulo: "Avance fisico", fraccion, texto, favorable, referencia }, ...TABLERO.control!.anillos.slice(1)] },
+    });
+
+    test("dice «62,5 %» una sola vez, con coma, como lo manda la API («62.5 %»)", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625")));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      const bloque = anillo.closest(".silice-tablero__anillos") as HTMLElement;
+      expect(within(bloque).getAllByText("62,5 %")).toHaveLength(1);
+      expect(bloque.textContent).not.toMatch(/62\.5/);
+      expect(bloque.textContent).not.toMatch(/0,0 %/);
+    });
+
+    test("lo que se lee es el texto, no el número que da la fracción (0.6249 no se lee «62,49 %»)", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.6249")));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      expect((anillo.closest(".silice-tablero__anillos") as HTMLElement).textContent).not.toMatch(/62[.,]49|62,4 %/);
+    });
+
+    test("si el servidor ya lo manda en es-VE («1.062,5 %») se lee igual: el formato no se aplica dos veces", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("1.062,5 %", "10.625")));
+      montar("OB-S2");
+      expect(await screen.findByRole("img", { name: "Avance fisico: 1.062,5 %" })).toBeInTheDocument();
+    });
+
+    test("el arco dibuja la fracción de la API y lleva la tinta del real, no el ámbar", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625")));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      expect(anillo.querySelector(".silice-radial__arco")).toHaveClass("silice-radial__arco--charcoal");
+    });
+
+    test("la variación desfavorable que manda la API se dice con ícono y texto, no solo en rojo", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625", false)));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      const bloque = anillo.closest(".silice-tablero__anillos") as HTMLElement;
+      expect(anillo.querySelector(".silice-radial__arco")).toHaveClass("silice-radial__arco--crimson");
+      expect(within(bloque).getByText("desfavorable").closest(".silice-radial__variacion")!.querySelector("svg")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+    });
+
+    test("la variación favorable que manda la API se dice con ícono y texto, no solo en verde", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625", true)));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      const bloque = anillo.closest(".silice-tablero__anillos") as HTMLElement;
+      expect(anillo.querySelector(".silice-radial__arco")).toHaveClass("silice-radial__arco--emerald");
+      expect(within(bloque).getByText("favorable")).toBeInTheDocument();
+    });
+
+    test("sin variación (favorable nulo) no dice favorable ni desfavorable", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625", null)));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      expect((anillo.closest(".silice-tablero__anillos") as HTMLElement).textContent).not.toMatch(/favorable/);
+    });
+
+    test("SPI y CPI no van en anillo: son índices, no partes de un todo (V-21)", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("62.5 %", "0.625")));
+      montar("OB-S2");
+      await screen.findByRole("img", { name: "Avance fisico: 62,5 %" });
+      expect(screen.queryByRole("img", { name: /SPI|CPI/ })).toBeNull();
+    });
+
+    test("sin avance («no disponible») no hay anillo ni un «0 %» inventado", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("no disponible", null)));
+      montar("OB-S2");
+      await screen.findByText("EAC");
+      expect(screen.queryByRole("img", { name: /Avance fisico/ })).toBeNull();
+      expect(screen.queryByText(/^0([,.]0)? %$/)).toBeNull();
+    });
+
+    test("si el anillo trae referencia del servidor la muestra bajo el anillo", async () => {
+      fetchFalso.mockImplementation(async () => json(conAvance("30.0 %", "0.3", null, "Plan a la fecha: 37,5 %")));
+      montar("OB-S2");
+      const anillo = await screen.findByRole("img", { name: "Avance fisico: 30,0 %" });
+      const bloque = anillo.closest(".silice-tablero__anillos") as HTMLElement;
+      expect(within(bloque).getByText("Plan a la fecha: 37,5 %")).toBeInTheDocument();
+    });
+  });
+
   test("el punto de equilibrio nombra el período con el mismo arreglo que el eje de la curva: «Día 1» (VD-8)", async () => {
     // El texto tal como lo manda la API para DEMO-001 (core/budget/equilibrio.py arma «se alcanza en {periodo}» y
     // core/budget/curva.py nombra el periodo «Dia N [partida]»).
@@ -228,16 +341,51 @@ describe("Tablero de la obra", () => {
     fetchFalso.mockImplementation(async () => json({ ...TABLERO, tarjetas: [...TABLERO.tarjetas, equilibrio] }));
     montar("DEMO-001");
     expect(await screen.findByText("se alcanza en Día 1 [DEMO-01-INST]")).toBeInTheDocument();
+    expect(screen.getByText("82,10 %")).toHaveClass("cds--type-heading-03");
     expect(screen.queryByText(/Dia 1/)).toBeNull();
   });
 
-  test("sin control de obra lo dice con su motivo", async () => {
+  test("renglones usa formato es-VE y singular real", async () => {
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, renglones: 1 }));
+    montar("OB-S2");
+    expect(await screen.findByText("Versión OB-001 del 02/11/2026 · 1 renglón · USD")).toBeInTheDocument();
+  });
+
+  test("sin control de obra lo dice con su motivo y ofrece abrir Control de obra", async () => {
     fetchFalso.mockImplementation(async () =>
       json({ ...TABLERO, control: { disponible: false, motivo: "No hay linea base declarada.", anillos: [], tarjetas: [] } }),
     );
     montar("OB-S2");
     expect(await screen.findByText("Aún no hay control de obra")).toBeInTheDocument();
     expect(screen.getByText("No hay linea base declarada.")).toBeInTheDocument();
+    const boton = screen.getByRole("link", { name: "Abrir el control de obra" });
+    expect(boton).toHaveAttribute("href", "/control");
+    expect(boton).toHaveClass("cds--btn", "cds--btn--secondary");
+  });
+
+  test("dentro de una obra abierta, «Abrir el control de obra» apunta al Control de esa obra", async () => {
+    fetchFalso.mockImplementation(async () =>
+      json({ ...TABLERO, control: { disponible: false, motivo: "No hay linea base declarada.", anillos: [], tarjetas: [] } }),
+    );
+    montar("OB-S2", { carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha: vi.fn() });
+    const boton = await screen.findByRole("link", { name: "Abrir el control de obra" });
+    expect(boton).toHaveAttribute("href", "/obra/empresa/3/control");
+  });
+
+  test("con 1 sola versión la tabla se muestra pero no el gráfico «Total por versión»", async () => {
+    fetchFalso.mockImplementation(async () => json(TABLERO));
+    montar("OB-S2");
+    await screen.findByRole("table", { name: "Versiones del presupuesto" });
+    const barras = await screen.findAllByTestId("grafico-barras");
+    expect(barras).toHaveLength(1);
+    expect(barras[0]).toHaveAttribute("data-grupos", "P-01");
+  });
+
+  test("con 2 versiones o más sí se muestra el gráfico «Total por versión»", async () => {
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, versiones: VERSIONES_DE_TRES.slice(0, 2) }));
+    montar("OB-S2");
+    await screen.findByRole("table", { name: "Versiones del presupuesto" });
+    expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(2);
   });
 
   test("un proyecto sin version guardada explica que hacer", async () => {

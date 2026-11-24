@@ -1235,7 +1235,7 @@ def test_las_columnas_de_precios_son_las_21_con_sus_rotulos():
         "Insumo", "Código", "Tipo", "Precio", "Lista", "Moneda", "Fecha del precio", "Tasa",
         "Fecha de la tasa", "Referencia", "Cotización", "Moneda original", "Precio original",
         "Fuente de la tasa", "Fuente", "Propio/heredado", "Erosión USD", "Erosión Bs",
-        "Erosión %", "Erosión por índice", "Estado",
+        "Pérdida cambiaria (%)", "Pérdida según el índice", "Estado",
     ]  # fmt: skip
     assert [c.clave for c in columnas if c.numerica] == [
         "precio", "tasa", "precio_original", "erosion_usd", "erosion_bs", "erosion_pct",
@@ -1326,3 +1326,8 @@ def test_las_funciones_que_reciben_vivo_son_las_nueve_vistas_y_las_dos_exentas()
 def test_cada_vista_que_relee_vivo_corre_bajo_el_cerrojo(nombre):
     funcion = _publicas_que_reciben_vivo()[nombre]
     assert funcion.__code__.co_name == "con_cerrojo", f"{nombre} no lleva @_con_el_cerrojo"
+
+
+def test_el_monto_de_una_cifra_con_exponente_es_el_de_la_misma_cifra_escrita_entera() -> None:
+    """1E+58 tiene una cifra en el coeficiente pero 61 a céntimos: la precisión mira la magnitud."""
+    assert hoja_vista.monto(D("1E+58")) == hoja_vista.monto(D("1" + "0" * 58))

@@ -58,6 +58,7 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
   // La moneda de la carpeta: undefined mientras llega, null si no tiene.
   const [deLaCarpeta, setDeLaCarpeta] = useState<string | null | undefined>(undefined);
   const enOtraCarpeta = destino.enOtraCarpeta ?? false;
+  const [faltaNombre, setFaltaNombre] = useState(false);
   const [faltaMoneda, setFaltaMoneda] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -86,6 +87,11 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
   async function crear(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (nombre.trim() === "") {
+      setFaltaNombre(true);
+      document.getElementById(`${base}-nombre`)?.focus();
+      return;
+    }
     if (moneda === "") {
       setFaltaMoneda(true);
       return;
@@ -124,7 +130,7 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
             Cancelar
           </Button>
           <Button kind="primary" type="submit" form={ID_FORMULARIO} disabled={ocupado}>
-            Crear obra
+            {ocupado ? "Creando la obra…" : "Crear la obra"}
           </Button>
         </>
       }
@@ -135,7 +141,12 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
           labelText="Nombre de la obra"
           value={nombre}
           maxLength={120}
-          onChange={(e) => setNombre(e.target.value)}
+          invalid={faltaNombre}
+          invalidText="Escriba el nombre de la obra"
+          onChange={(e) => {
+            setNombre(e.target.value);
+            setFaltaNombre(false);
+          }}
         />
         <p className="silice-nueva-obra__destino cds--type-body-compact-01">Se creará en {destino.titulo}</p>
         <CampoTexto

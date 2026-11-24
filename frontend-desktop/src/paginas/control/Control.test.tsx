@@ -8,7 +8,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaControl from "./index";
-import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, notaDeOpcion, sinLineasVacias } from "./logica";
+import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, notaDeOpcion, reglaDeHallazgo, sinLineasVacias, textoDeHallazgo } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
 // VD-1: la respuesta real de POST /v1/control/recuperacion/opciones para OB-S2 (la compara con la API
 // `tests/unit/test_api_control.py::test_la_respuesta_de_opciones_del_front_es_la_de_la_api_real`).
@@ -276,8 +276,8 @@ describe("Control de obra", () => {
 
   test("cada codigo interno tiene su etiqueta en español y los desconocidos se muestran tal cual (V-22)", () => {
     const esperadas: Record<string, string> = {
-      spi_error: "Umbral de SPI para error",
-      cpi_error: "Umbral de CPI para error",
+      spi_error: "SPI mínimo antes de marcar «Error»",
+      cpi_error: "CPI mínimo antes de marcar «Error»",
       retraso_error: "Retraso del término para error",
       precio_info: "Desvío de precio que avisa",
       equilibrio_puntos: "Subida del punto de equilibrio que advierte",
@@ -289,7 +289,7 @@ describe("Control de obra", () => {
       fcas_en_horas_extra: "FCAS sobre las horas extra",
       penalizacion_diaria: "Penalización diaria por retraso",
       fuente_penalizacion: "Fuente de la penalización",
-      SUPUESTO_DECLARADO: "Supuesto declarado",
+      SUPUESTO_DECLARADO: "Valor de referencia",
       DATO_DEL_CONTRATO: "Dato del contrato",
       "AL-1": "Retraso (SPI)",
       "AL-2": "Sobrecosto (CPI)",
@@ -306,25 +306,28 @@ describe("Control de obra", () => {
     expect(textoLlano("SPI por debajo del cual el retraso es ERROR (AL-1)")).toBe("SPI por debajo del cual el retraso es ERROR");
     expect(textoLlano("Eficiencia de cada cuadrilla adicional (eta)")).toBe("Eficiencia de cada cuadrilla adicional");
     expect(textoLlano("Eficiencia de la hora extra (eta_he)")).toBe("Eficiencia de la hora extra");
-    expect(textoLlano("0.8500 (SUPUESTO_DECLARADO)")).toBe("0.8500 (supuesto declarado)");
+    expect(textoLlano("0.8500 (SUPUESTO_DECLARADO)")).toBe("0.8500 (valor de referencia)");
     expect(textoLlano("0.5 (DATO_DEL_CONTRATO)")).toBe("0.5 (dato del contrato)");
     expect(textoLlano("texto sin codigos")).toBe("texto sin codigos");
   });
 
   test("sin proyecto invita a elegirlo y no pide nada", () => {
     montar(null);
+    expect(screen.getByText("Mide si la obra va a tiempo y dentro del presupuesto, y cómo recuperar atrasos")).toBeInTheDocument();
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
+    expect(screen.getByText("Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para controlarla.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
-  test("la primera pestaña muestra la linea base y los parametros con su naturaleza", async () => {
+  test("la primera pestaña muestra la linea base y los parametros con su origen", async () => {
     montar();
     expect(await screen.findByText(/perspectiva costo, vigente desde 02\/11\/2026/)).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Parámetros de control" });
-    // V-22: la naturaleza y el parametro se leen en español. VD-5: sin el codigo en el title; solo el valor lo lleva
-    expect(within(tabla).getAllByText("Supuesto declarado")[0]).toBeInTheDocument();
+    // V-22: el origen y el parametro se leen en español. VD-5: sin el codigo en el title; solo el valor lo lleva
+    expect(within(tabla).getByRole("columnheader", { name: "Origen" })).toBeInTheDocument();
+    expect(within(tabla).getAllByText("Valor de referencia")[0]).toBeInTheDocument();
     expect(within(tabla).getByText("Dato del contrato")).toBeInTheDocument();
-    expect(within(tabla).getByText("Umbral de SPI para error")).toBeInTheDocument();
+    expect(within(tabla).getByText("SPI mínimo antes de marcar «Error»")).toBeInTheDocument();
     expect(within(tabla).getByText("SPI por debajo del cual el retraso es ERROR")).toBeInTheDocument();
     expect(titulosDe(tabla)).toEqual(["0.80", "0"]);
     expect(within(tabla).queryByText("spi_error")).toBeNull();
@@ -335,10 +338,13 @@ describe("Control de obra", () => {
   test("declarar la linea base manda los textos tal cual y confirma", async () => {
     const u = montar();
     await screen.findByText(/perspectiva costo/);
+    const baseMedicion = screen.getByLabelText("Base de medición");
+    expect(within(baseMedicion).getByRole("option", { name: "Costo directo (visión del contratista)" })).toHaveValue("costo");
+    expect(within(baseMedicion).getByRole("option", { name: "Precio de contrato (visión del cliente)" })).toHaveValue("precio");
     await u.type(screen.getByLabelText("Vigente desde"), "2026-11-02");
     await u.type(screen.getByLabelText("Inicio de obra"), "2026-11-02");
-    await u.type(screen.getByLabelText("Fuente de la línea base"), "acta 1");
-    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    await u.type(screen.getByLabelText("Documento de respaldo (contrato, acta o referencia)"), "acta 1");
+    await u.click(screen.getByRole("button", { name: "Fijar línea base de control" }));
     expect(await screen.findByText("Línea base declarada.")).toBeInTheDocument();
     expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({
       proyecto: "OB-S2",
@@ -355,8 +361,8 @@ describe("Control de obra", () => {
     async function declarar(u: ReturnType<typeof userEvent.setup>) {
       await u.type(screen.getByLabelText("Vigente desde"), "2026-11-02");
       await u.type(screen.getByLabelText("Inicio de obra"), "2026-11-02");
-      await u.type(screen.getByLabelText("Fuente de la línea base"), "acta 1");
-      await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+      await u.type(screen.getByLabelText("Documento de respaldo (contrato, acta o referencia)"), "acta 1");
+      await u.click(screen.getByRole("button", { name: "Fijar línea base de control" }));
       await screen.findByText("Línea base declarada.");
     }
 
@@ -455,7 +461,7 @@ describe("Control de obra", () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
     await screen.findByRole("table", { name: "Indicadores de valor ganado" });
-    expect(screen.getByText(/^Corte 13\/11\/2026 \(día hábil 10\)/)).toBeInTheDocument();
+    expect(screen.getByText(/^Corte al 13\/11\/2026 \(día hábil 10\)\. En SPI y CPI, 1,00 o más es favorable; menos de 1,00 indica atraso o sobrecosto\. Estas cifras no incluyen inflación futura\.$/)).toBeInTheDocument();
     expect(screen.getByText(/El costo de 10 USD del 01\/11\/2026/)).toBeInTheDocument();
     await u.click(screen.getByRole("tab", { name: "Recuperación" }));
     const decisiones = await screen.findByRole("table", { name: "Decisiones tomadas" });
@@ -468,7 +474,7 @@ describe("Control de obra", () => {
     await screen.findByText(/perspectiva costo/);
     const feriados = screen.getByLabelText("Feriados (fechas como 25/12/2026, separadas por comas)");
     await u.type(feriados, "25/12/2026, 01/01/2027");
-    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    await u.click(screen.getByRole("button", { name: "Fijar línea base de control" }));
     await screen.findByText("Línea base declarada.");
     expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({ feriados: "2026-12-25, 2027-01-01" });
   });
@@ -477,7 +483,7 @@ describe("Control de obra", () => {
     const u = montar();
     await screen.findByText(/perspectiva costo/);
     await u.type(screen.getByLabelText("Feriados (fechas como 25/12/2026, separadas por comas)"), "31/02/2026");
-    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    await u.click(screen.getByRole("button", { name: "Fijar línea base de control" }));
     expect((await alertaConTexto()).textContent).toContain(
       "Escriba los feriados como dd/mm/aaaa, separados por comas: «31/02/2026» no es una fecha.",
     );
@@ -503,12 +509,73 @@ describe("Control de obra", () => {
     await u.type(screen.getByLabelText("Cantidad 1"), "50");
     await u.click(screen.getByRole("button", { name: "Agregar línea" }));
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     // con un error en la revisión el aviso no es de éxito (prueba en vivo del 2026-11-18, hallazgo 2)
     expect(await screen.findByText("Valuación registrada (corte 20/11/2026), pero la revisión encontró 1 error.")).toBeInTheDocument();
     const cuerpo = cuerpoDe("/v1/control/valuaciones");
     expect(cuerpo).toMatchObject({ proyecto: "OB-S2", numero: "V-03", fuente: "acta 3" });
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "", causa: null }]);
+  });
+
+  test("los hallazgos de valuación muestran el nombre llano de la regla junto a su código", async () => {
+    valuaciones = () =>
+      json({
+        ...VALUACIONES,
+        hallazgos: [
+          {
+            valuacion: "V-01",
+            regla: "R13",
+            nombre_regla: "Valuación dentro del presupuesto",
+            severidad: "Error",
+            mensaje: "La valuación V-01 valúa una partida fuera de la línea base.",
+          },
+          {
+            valuacion: "",
+            regla: "R14",
+            severidad: "Advertencia",
+            mensaje: "Falta fecha de medición.",
+          },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de las valuaciones" });
+    expect(within(lista).getByText(/V-01 · Error · Valuación dentro del presupuesto \(R13\): La valuación V-01/)).toBeInTheDocument();
+    // Sin nombre llano, el código suelto no se muestra: solo la severidad y el mensaje.
+    expect(within(lista).getByText(/Advertencia: Falta fecha de medición\./)).toBeInTheDocument();
+    expect(within(lista).queryByText(/R14/)).toBeNull();
+  });
+
+  test("al registrar una valuación, el detalle muestra el nombre llano y el código de cada regla", async () => {
+    const leer = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      if (String(entrada) === "/v1/control/valuaciones" && (init?.method ?? "GET") === "POST") {
+        return json({
+          corte: "2026-11-20",
+          hallazgos: 1,
+          errores: 1,
+          detalle: [
+            {
+              valuacion: "V-03",
+              regla: "R14",
+              nombre_regla: "Fuente y fechas de la valuación",
+              severidad: "Error",
+              mensaje: "La valuación V-03 no tiene inspector.",
+            },
+          ],
+        });
+      }
+      return leer(entrada, init);
+    });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.type(screen.getByLabelText("Número"), "V-03");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "50");
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
+    const lista = await screen.findByRole("list", { name: "Hallazgos de la revisión de la valuación registrada" });
+    expect(within(lista).getByText(/Error · Fuente y fechas de la valuación \(R14\): La valuación V-03 no tiene inspector\./)).toBeInTheDocument();
   });
 
   // F4, Tarea 3 (menor 1 del árbitro): la obra ya no se vuelve a montar al cambiar de sección; tras escribir en Control la
@@ -520,7 +587,7 @@ describe("Control de obra", () => {
     await u.type(screen.getByLabelText("Vigente desde"), "2026-11-02");
     await u.type(screen.getByLabelText("Inicio de obra"), "2026-11-02");
     expect(recargarFicha).not.toHaveBeenCalled();
-    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    await u.click(screen.getByRole("button", { name: "Fijar línea base de control" }));
     expect(await screen.findByText("Línea base declarada.")).toBeInTheDocument();
     expect(recargarFicha).toHaveBeenCalledTimes(1);
   });
@@ -533,7 +600,7 @@ describe("Control de obra", () => {
     await u.type(screen.getByLabelText("Número"), "V-03");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "50");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect(recargarFicha).toHaveBeenCalledTimes(1);
   });
@@ -566,7 +633,7 @@ describe("Control de obra", () => {
     const u = montar("OB-S2", SESION, recargarFicha);
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
     await screen.findByRole("table", { name: "Valuaciones registradas" });
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText("falta la partida");
     expect(recargarFicha).not.toHaveBeenCalled();
   });
@@ -582,7 +649,7 @@ describe("Control de obra", () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
     await screen.findByRole("table", { name: "Valuaciones registradas" });
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(await screen.findByText("falta la partida")).toBeInTheDocument();
     expect(screen.queryByText(/Valuacion registrada/)).toBeNull();
   });
@@ -597,9 +664,54 @@ describe("Control de obra", () => {
     expect(screen.getByText(/no tiene tasa aplicable/)).toBeInTheDocument();
     expect(await screen.findByTestId("grafico-linea")).toBeInTheDocument();
     // el AC que falta se ve como guion en la tabla de la curva, no como cero
-    const montos = screen.getByRole("table", { name: "Montos de PV, EV y AC" });
+    const montos = screen.getByRole("table", { name: "Montos de Planificado (PV), ejecutado (EV) y gastado (AC)" });
     expect(within(montos).getByRole("columnheader", { name: "Período" })).toBeInTheDocument();
     expect(within(montos).getByText("1.000,00")).toHaveAttribute("title", "1000.00");
+    // EV y AC no comparten trazo: la leyenda nombra cada uno (pasada goldfish N1.6)
+    expect(screen.getByText("Línea fina: planificado · Línea gruesa: ejecutado (EV) · Línea gruesa punteada: gastado (AC).")).toBeInTheDocument();
+  });
+
+  test("valor ganado oculta «En la otra moneda» y «Nota» si están vacías en todas las filas y explica la falta de tasa", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(within(tabla).queryByRole("columnheader", { name: "En la otra moneda" })).toBeNull();
+    expect(within(tabla).queryByRole("columnheader", { name: "Nota" })).toBeNull();
+    expect(screen.getByText("Sin tasa del BCV para el corte: no se muestran los montos en la otra moneda.")).toBeInTheDocument();
+  });
+
+  test("valor ganado usa el motivo que manda la API cuando no muestra la otra moneda", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        indicadores: [
+          ...CALCULO.indicadores,
+          { Indicador: "Tasa del corte", Valor: "no disponible", "En la otra moneda": "", Nota: "sin tasa aplicable a la fecha del corte" },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(within(tabla).queryByRole("columnheader", { name: "En la otra moneda" })).toBeNull();
+    expect(within(tabla).getByRole("columnheader", { name: "Nota" })).toBeInTheDocument();
+    expect(screen.getByText("Sin tasa aplicable a la fecha del corte: no se muestran los montos en la otra moneda.")).toBeInTheDocument();
+  });
+
+  test("valor ganado muestra «En la otra moneda» y «Nota» cuando alguna fila tiene dato", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        indicadores: [
+          { Indicador: "BAC (USD)", Valor: "4000.00", "En la otra moneda": "146000.00 Bs", Nota: "" },
+          { Indicador: "AC (gastado) (USD)", Valor: "no disponible", "En la otra moneda": "no disponible", Nota: "faltan tasas" },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(within(tabla).getByRole("columnheader", { name: "En la otra moneda" })).toBeInTheDocument();
+    expect(within(tabla).getByRole("columnheader", { name: "Nota" })).toBeInTheDocument();
+    expect(screen.queryByText(/no se muestran los montos en la otra moneda/)).toBeNull();
   });
 
   // Tarea D2: con los precios declarados, los que se convirtieron de otra moneda salen con su cuenta, su fecha y su
@@ -654,13 +766,29 @@ describe("Control de obra", () => {
     expect(within(alertas).getByText("Retraso (SPI)")).toBeInTheDocument();
     expect(within(alertas).queryByText("AL-1")).toBeNull();
     // VD-5: el umbral lleva el exacto de su cifra; la alerta, la descripcion y la naturaleza, ningun title
-    expect(alertas.textContent).toContain("0,8500 (supuesto declarado)");
+    expect(alertas.textContent).toContain("0,8500 (valor de referencia)");
     expect(within(alertas).getByText("0,8500")).toHaveAttribute("title", "0.8500");
     expect(titulosDe(alertas)).toEqual(["0.8000", "0.8500"]);
-    expect(screen.getByText("Término por el índice: día 12 (18/11/2026)")).toBeInTheDocument();
-    expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
+    expect(screen.getByText("Fin estimado por ritmo global (SPI): día 12 (18/11/2026)")).toBeInTheDocument();
+    expect(screen.getByText("Fin estimado según avance de cada partida: día 13 (19/11/2026)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Punto de equilibrio proyectado: no disponible (requiere línea base en costo directo y costos reales registrados)."),
+    ).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Plan reproyectado" })).toBeInTheDocument();
+  });
+
+  test("alertas y reproyeccion: eac_sistema y el punto de equilibrio proyectado salen en es-VE", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        terminos: { ...CALCULO.terminos!, eac_sistema: "12345.67 USD" },
+        equilibrio: { punto: "0.7850", mensaje: "sube 3,5 puntos sobre el base" },
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
+    expect(await screen.findByText("Costo final estimado sumando cada partida (EAC): 12.345,67 USD")).toBeInTheDocument();
+    expect(screen.getByText("Punto de equilibrio proyectado: 0,7850 (sube 3,5 puntos sobre el base)")).toBeInTheDocument();
   });
 
   test("la severidad de las alertas va con su icono y su nombre, y la descripcion en es-VE (VB-4)", async () => {
@@ -781,11 +909,11 @@ describe("Control de obra", () => {
     // `ParametrosControl` (η = 0,80; 3 cuadrillas; 2 h; recargo 0,50; penalización 0).
     const comunes =
       "penalización diaria: 0 (dato del contrato); costo diario de la cuadrilla: composiciones de la línea base " +
-      "(supuesto declarado); costo fijo en el tiempo: CF' = CF · D'/D (supuesto declarado)";
+      "(valor de referencia); costo fijo en el tiempo: CF' = CF · D'/D (valor de referencia)";
     const notas = [
-      "eficiencia de la cuadrilla adicional: 0,80 (supuesto declarado); cuadrillas máximas: 3 (supuesto declarado); " + comunes,
-      "horas extra por día: 2 (supuesto declarado); eficiencia de la hora extra: 0,80 (supuesto declarado); " +
-        "recargo de las horas extra: 0,50 (fuente verificada); FCAS sobre las horas extra: sí (supuesto declarado); " +
+      "eficiencia de la cuadrilla adicional: 0,80 (valor de referencia); cuadrillas máximas: 3 (valor de referencia); " + comunes,
+      "horas extra por día: 2 (valor de referencia); eficiencia de la hora extra: 0,80 (valor de referencia); " +
+        "recargo de las horas extra: 0,50 (fuente verificada); FCAS sobre las horas extra: sí (valor de referencia); " +
         "jornada ordinaria: 8 h (fuente verificada); límites de horas extra: 10 h por semana, 100 h por año " +
         "(fuente verificada); " + comunes,
       "ninguna partida sin empezar con inicio posterior al período siguiente",
@@ -851,7 +979,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     const u = montar();
     await screen.findByRole("table", { name: "Parámetros de control" });
     await u.selectOptions(screen.getByLabelText("Parámetro a cambiar"), "spi_error");
-    const campo = screen.getByLabelText("Nuevo valor de Umbral de SPI para error");
+    const campo = screen.getByLabelText("Nuevo valor de SPI mínimo antes de marcar «Error»");
     expect(campo).toHaveValue("0,80");
     expect(screen.getAllByText(AYUDA_CIFRAS).length).toBeGreaterThan(0);
     await u.click(screen.getByRole("button", { name: "Guardar parámetros" }));
@@ -863,7 +991,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     const u = montar();
     await screen.findByRole("table", { name: "Parámetros de control" });
     await u.selectOptions(screen.getByLabelText("Parámetro a cambiar"), "spi_error");
-    const campo = screen.getByLabelText("Nuevo valor de Umbral de SPI para error");
+    const campo = screen.getByLabelText("Nuevo valor de SPI mínimo antes de marcar «Error»");
     await u.clear(campo);
     await u.type(campo, "0.85");
     await u.click(screen.getByRole("button", { name: "Guardar parámetros" }));
@@ -882,12 +1010,12 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     await screen.findByRole("table", { name: "Valuaciones registradas" });
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "2.5");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
     expect(envios("/v1/control/valuaciones")).toHaveLength(0);
     await u.clear(screen.getByLabelText("Cantidad 1"));
     await u.type(screen.getByLabelText("Cantidad 1"), "1.234,5");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect(cuerpo("/v1/control/valuaciones").lineas).toEqual([
       { partida: "OB-A", cantidad: "1234.5", fecha_medicion: "", observacion: "", causa: null },
@@ -934,15 +1062,18 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
     await screen.findByRole("table", { name: "Indicadores de valor ganado" });
-    await u.selectOptions(screen.getByLabelText("Precios del corte"), "escalatoria");
-    await u.type(screen.getByLabelText("Km declarado"), "1.05");
+    const selector = screen.getByLabelText("Precios actualizados al corte (para separar inflación de consumo)");
+    expect(within(selector).getByRole("option", { name: "Fórmula de escalatoria (con factor Km)" })).toHaveValue("escalatoria");
+    await u.selectOptions(selector, "escalatoria");
+    expect(screen.getByLabelText("Documento de respaldo de Km y R")).toBeInTheDocument();
+    await u.type(screen.getByLabelText("Factor de escalatoria (Km)"), "1.05");
     await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
     expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
     expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("metodo=escalatoria"))).toBe(false);
-    await u.clear(screen.getByLabelText("Km declarado"));
-    await u.type(screen.getByLabelText("Km declarado"), "1,05");
-    await u.clear(screen.getByLabelText("R declarado"));
-    await u.type(screen.getByLabelText("R declarado"), "0,15");
+    await u.clear(screen.getByLabelText("Factor de escalatoria (Km)"));
+    await u.type(screen.getByLabelText("Factor de escalatoria (Km)"), "1,05");
+    await u.clear(screen.getByLabelText("Parte del contrato que no se reajusta (R)"));
+    await u.type(screen.getByLabelText("Parte del contrato que no se reajusta (R)"), "0,15");
     await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
     await waitFor(() =>
       expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("km=1.05&r=0.15"))).toBe(true),
@@ -1015,7 +1146,7 @@ describe("logica del control", () => {
     const independencia = "dia, SUPUESTO_DECLARADO, 1.50, eta de cuadrillas";
     expect(
       notaDeOpcion(con([{ nombre: "independencia de las partidas", valor: independencia, naturaleza: "SUPUESTO_DECLARADO" }])),
-    ).toBe(`independencia de las partidas: ${independencia} (supuesto declarado)`);
+    ).toBe(`independencia de las partidas: ${independencia} (valor de referencia)`);
     // la cifra se pone en es-VE solo en los supuestos numéricos del núcleo, y solo si toda la ranura es una cifra
     expect(notaDeOpcion(con([{ nombre: "penalización diaria", valor: "1500.25", naturaleza: "DATO_DEL_CONTRATO" }]))).toBe(
       "penalización diaria: 1.500,25 (dato del contrato)",
@@ -1055,6 +1186,31 @@ describe("logica del control", () => {
     const vacia = { partida: "", cantidad: "", fecha_medicion: "2026-11-01", observacion: "" };
     const llena = { partida: "A", cantidad: "", fecha_medicion: "", observacion: "" };
     expect(sinLineasVacias([vacia, llena])).toEqual([llena]);
+  });
+
+  test("reglaDeHallazgo y textoDeHallazgo muestran «Nombre (código)» cuando viene nombre_regla", () => {
+    expect(reglaDeHallazgo({ regla: "R13", nombre_regla: "Valuación dentro del presupuesto" })).toBe(
+      "Valuación dentro del presupuesto (R13)",
+    );
+    expect(reglaDeHallazgo({ regla: "R13", nombre_regla: "" })).toBe("R13");
+    expect(reglaDeHallazgo({ regla: "R14" })).toBe("R14");
+    expect(
+      textoDeHallazgo({
+        valuacion: "V-01",
+        regla: "R13",
+        nombre_regla: "Valuación dentro del presupuesto",
+        severidad: "Error",
+        mensaje: "Falta unitario.",
+      }),
+    ).toBe("Error · Valuación dentro del presupuesto (R13): Falta unitario.");
+    expect(
+      textoDeHallazgo({
+        valuacion: "",
+        regla: "",
+        severidad: "Advertencia",
+        mensaje: "Aviso general.",
+      }),
+    ).toBe("Advertencia: Aviso general.");
   });
 });
 

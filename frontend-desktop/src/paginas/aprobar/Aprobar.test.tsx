@@ -169,6 +169,7 @@ describe("lo que se aprueba, en solo lectura", () => {
   test("la cabecera del envío dice la obra, la versión, la carpeta, el total, quién la envió y su nota", async () => {
     montar();
     expect(screen.getByRole("heading", { level: 1, name: "Aprobar una versión" })).toBeInTheDocument();
+    expect(screen.getByText("Revise la versión enviada a aprobación y decida si se aprueba o se devuelve")).toBeInTheDocument();
     const envio = await screen.findByRole("region", { name: "Galpón Sur · GS-001" });
     expect(within(envio).getByText("s2")).toBeInTheDocument(); // T19, punto 4: de qué carpeta es
     expect(within(envio).getByText("Carpeta")).toBeInTheDocument();
@@ -241,6 +242,12 @@ describe("lo que se aprueba, en solo lectura", () => {
     const fila = within(tabla).getAllByRole("row").find((f) => f.textContent?.includes("Y-02"))!;
     expect(within(fila).getByText("12.345,6")).toBeInTheDocument();
     expect(within(tabla).queryByText(/12\.345,600000/)).toBeNull();
+  });
+
+  test("sin partidas muestra el estado vacío sin punto final", async () => {
+    detalleDe = () => json(detalle({ partidas: [] }));
+    montar();
+    expect(await screen.findByText("Esta versión no tiene partidas")).toBeInTheDocument();
   });
 
   test("los hallazgos con el informe de auditoría", async () => {
@@ -482,10 +489,22 @@ describe("cómo se llega", () => {
     montar("/aprobar", { proyecto: "9" });
     const lista = await screen.findByRole("list", { name: "Versiones que esperan dictamen en esta carpeta" });
     expect(within(lista).getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByText("Hay 1 envío en otras carpetas: ábralo desde Pendientes.")).toBeInTheDocument();
+    expect(screen.getByText(/Hay 1 envío en otras carpetas\./)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrirlo en Pendientes" })).toHaveAttribute("href", "/inicio/pendientes");
     await u.click(within(lista).getByRole("button", { name: "Abrir el envío" }));
     expect(await screen.findByRole("region", { name: "Galpón Sur · GS-001" })).toBeInTheDocument();
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/aprobar?envio=12");
+  });
+
+  test("con varios envíos en otras carpetas ofrece el enlace «Abrirlos en Pendientes»", async () => {
+    pendientes = () =>
+      json([
+        fila("s1.db", 2, "1", "Torre", "T-001"),
+        fila("s3.db", 5, "2", "Puente", "P-001"),
+      ]);
+    montar("/aprobar", { proyecto: "9" });
+    expect(await screen.findByText(/Hay 2 envíos en otras carpetas\./)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrirlos en Pendientes" })).toHaveAttribute("href", "/inicio/pendientes");
   });
 
   test("T19, punto 5: sin `?envio=` y sin el índice (403), quien arma lo halla en el rastro de la obra elegida", async () => {
@@ -514,7 +533,7 @@ describe("cómo se llega", () => {
     );
     montar("/aprobar", { proyecto: "3", sesion: { ...SESION, acciones: [...SESION.acciones, "editar_hoja"] } });
     expect(await screen.findByText("No se pudieron leer los envíos por aprobar")).toBeInTheDocument();
-    expect(screen.queryByText("No hay versiones esperando dictamen.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No hay versiones esperando dictamen")).not.toBeInTheDocument();
     expect(alExpirar).not.toHaveBeenCalled();
   });
 
@@ -525,9 +544,14 @@ describe("cómo se llega", () => {
     expect(fetchFalso.mock.calls.map(([e]) => String(e)).some((u) => u.startsWith("/v1/aprobaciones?"))).toBe(false);
   });
 
-  test("sin envíos en ninguna carpeta lo dice", async () => {
+  test("sin envíos en ninguna carpeta muestra el estado vacío sin punto final, con descripción y enlace a Pendientes", async () => {
     montar("/aprobar");
-    expect(await screen.findByText("No hay versiones esperando dictamen.")).toBeInTheDocument();
+    expect(await screen.findByText("No hay versiones esperando dictamen")).toBeInTheDocument();
+    expect(screen.queryByText("No hay versiones esperando dictamen.")).toBeNull();
+    expect(
+      screen.getByText("Cuando alguien envíe una versión a aprobación desde Presupuesto, aparecerá aquí y en Pendientes."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver los pendientes" })).toHaveAttribute("href", "/inicio/pendientes");
   });
 });
 
@@ -549,12 +573,12 @@ describe("Rastro de la obra (Tarea 6 del plan F4)", () => {
     );
   };
 
-  test("con la sesión de «revisa», dentro de la obra, se ve el h2 «Rastro de la obra» con las fases y los movimientos", async () => {
+  test("con la sesión de «revisa», dentro de la obra, se ve el h2 «Historial de aprobaciones» con las fases y los movimientos", async () => {
     conRastro();
     montar("/aprobar?envio=12", { proyecto: "3" }, vi.fn());
-    const titulo = await screen.findByRole("heading", { level: 2, name: "Rastro de la obra" });
+    const titulo = await screen.findByRole("heading", { level: 2, name: "Historial de aprobaciones" });
     expect(titulo).toHaveClass("cds--type-heading-compact-02");
-    const region = screen.getByRole("region", { name: "Rastro de la obra" });
+    const region = screen.getByRole("region", { name: "Historial de aprobaciones" });
     expect(await within(region).findByText("GS-001 en aprobación")).toBeInTheDocument();
     expect(within(region).getByText("Rastro de aprobaciones íntegro.")).toBeInTheDocument();
     expect(within(region).getByRole("table", { name: "Movimientos de aprobación" })).toBeInTheDocument();
@@ -566,7 +590,7 @@ describe("Rastro de la obra (Tarea 6 del plan F4)", () => {
     montar("/aprobar?envio=12", { proyecto: "3", sesion: { ...SESION, acciones: ["aprobar_version"] } }, vi.fn());
     await screen.findByRole("region", { name: "Galpón Sur · GS-001" });
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.queryByRole("heading", { name: "Rastro de la obra" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Historial de aprobaciones" })).toBeNull();
     expect(fetchFalso.mock.calls.map(([e]) => String(e))).not.toContain("/v1/aprobaciones?proyecto=3");
   });
 });

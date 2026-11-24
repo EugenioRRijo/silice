@@ -27,6 +27,23 @@
   }
 }
 
+// En la barra oscura del marco, los estados de Carbon (`.cds--header__action:hover`, :active, :focus y abierto)
+// le ponían el fondo oscuro de la barra con la tinta oscura encima (captura de Eugenio, 2026-11-22). Con la barra
+// delante gana la especificidad: en todos los estados queda el fondo de aviso y la tinta normal (16,4:1).
+.silice-marco-barra .silice-demo .silice-demo__boton,
+.silice-marco-barra .silice-demo .silice-demo__boton:hover,
+.silice-marco-barra .silice-demo .silice-demo__boton:active,
+.silice-marco-barra .silice-demo .silice-demo__boton:focus-visible,
+.silice-marco-barra .silice-demo .silice-demo__boton[aria-expanded="true"] {
+  background-color: var(--silice-aviso-fondo);
+  color: var(--cds-text-primary);
+}
+
+.silice-marco-barra .silice-demo .silice-demo__boton:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
 .silice-demo__panel {
   position: absolute;
   inset-block-start: 100%;

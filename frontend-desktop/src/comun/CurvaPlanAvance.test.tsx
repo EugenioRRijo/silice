@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { aplicarTrazos, CurvaPlanAvance, filasDeGrafico, periodoLegible, periodos } from "./CurvaPlanAvance";
+import { aplicarTrazos, CurvaPlanAvance, filasDeGrafico, periodoLegible, periodos, TRAZO_DE_GASTADO, TRAZO_DE_PRONOSTICO } from "./CurvaPlanAvance";
 import type { SerieDeCurva } from "./CurvaPlanAvance";
 
 interface OpcionesFalsas {
@@ -51,7 +51,7 @@ describe("CurvaPlanAvance", () => {
     expect(screen.getByRole("table", { name: "Montos de Valor ganado" })).toBeInTheDocument();
     expect(screen.getByText("2.500,50")).toBeInTheDocument();
     expect(screen.getAllByText("—")).toHaveLength(2);
-    expect(screen.getByText(/EAC: pronostico \(discontinuo\)/)).toBeInTheDocument();
+    expect(screen.getByText("Línea fina: planificado · Línea gruesa: ejecutado (EV) · Línea discontinua: pronóstico.")).toBeInTheDocument();
   });
 
   test("el eje y el tooltip salen en es-VE y las series tienen su color sin morado (V-19, V-21)", async () => {
@@ -71,5 +71,23 @@ describe("CurvaPlanAvance", () => {
     aplicarTrazos(raiz, SERIES);
     expect(trazos.map((t) => t.style.strokeDasharray)).toEqual(["none", "none", "6 4"]);
     expect(trazos.map((t) => t.style.strokeWidth)).toEqual(["1.5", "3", "2"]);
+  });
+
+  // Pasada goldfish N1.6: EV y AC compartían el trazo grueso y la leyenda no decía cuál era cuál.
+  test("lo gastado (AC) va grueso y punteado, distinto de lo ejecutado (EV) y del pronóstico", () => {
+    const series: SerieDeCurva[] = [...SERIES, { nombre: "AC", rol: "gastado", puntos: [{ periodo: "M1", valor: "900.00" }] }];
+    const raiz = document.createElement("div");
+    raiz.innerHTML = '<svg><path class="line"></path><path class="line"></path></svg>';
+    const trazos = [...raiz.querySelectorAll<SVGPathElement>("path.line")];
+    ["EV", "AC"].forEach((name, i) => Object.assign(trazos[i]!, { __data__: { name } }));
+    aplicarTrazos(raiz, series);
+    expect(trazos.map((t) => t.style.strokeWidth)).toEqual(["3", "3"]);
+    expect(trazos[0]!.style.strokeDasharray).toBe("none");
+    expect(trazos[1]!.style.strokeDasharray).toBe(TRAZO_DE_GASTADO);
+    expect(TRAZO_DE_GASTADO).not.toBe(TRAZO_DE_PRONOSTICO);
+    render(<CurvaPlanAvance titulo="Valor ganado" series={series} unidad="USD" />);
+    expect(
+      screen.getByText("Línea fina: planificado · Línea gruesa: ejecutado (EV) · Línea gruesa punteada: gastado (AC) · Línea discontinua: pronóstico."),
+    ).toBeInTheDocument();
   });
 });

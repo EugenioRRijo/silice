@@ -1,7 +1,7 @@
-import { Button, Form, Select, SelectItem } from "@carbon/react";
+import { Button, Callout, Form, Select, SelectItem } from "@carbon/react";
 import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { Download } from "@carbon/icons-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedirBinario } from "../../api/cliente";
 import { ESTADOS_APROBADOS, versionConEstado } from "../../comun/aprobacion";
@@ -68,12 +68,15 @@ export default function PaginaEntregar() {
   return (
     <div className="silice-entregar silice-pagina">
       <h1 className="cds--type-heading-04">Entregar paquete</h1>
+      <p className="silice-entregar__nota cds--type-body-compact-01">
+        Genere el archivo firmado de una versión del presupuesto para enviarlo al cliente
+      </p>
       {proyectos.estado === "cargando" && (
         <EsqueletoPagina etiqueta="Cargando las obras" />
       )}
       {proyectos.estado === "listo" && proyectos.datos.length === 0 && (
         <EstadoVacio
-          titulo="Esta carpeta todavía no tiene obras."
+          titulo="Esta carpeta todavía no tiene obras"
           descripcion="Cree una obra y guarde una versión de su presupuesto para tener algo que entregar."
         />
       )}
@@ -120,6 +123,7 @@ function Seleccion({
     proyectos.find((p) => p.codigo === codigoAbierto) ?? proyectos[0];
   const [nombre, setNombre] = useState(inicial.nombre);
   const [version, setVersion] = useState("");
+  const selectorVersion = useRef<HTMLSelectElement>(null);
   const versiones = useCarga<VersionEntregable[]>(
     `/v1/entregas/versiones?proyecto=${encodeURIComponent(nombre)}`,
     alExpirar,
@@ -151,6 +155,7 @@ function Seleccion({
           ))}
         </Select>
         <Select
+          ref={selectorVersion}
           id="entregar-version"
           labelText="Versión"
           value={elegida}
@@ -166,19 +171,31 @@ function Seleccion({
         <EsqueletoPagina etiqueta="Cargando las versiones" />
       )}
       {versiones.estado === "listo" && lista.length === 0 && (
-        <EstadoVacio titulo="Esta obra todavía no tiene versiones." />
+        <EstadoVacio titulo="Esta obra todavía no tiene versiones" />
       )}
       <MensajeDeCarga carga={versiones} />
-      {elegida && noAprobada && (
+      {elegida && noAprobada && aprobada !== undefined && (
+        <Callout
+          kind="warning"
+          role="status"
+          statusIconDescription="Advertencia"
+          title="Esta versión no está aprobada"
+          titleId="entregar-aviso-no-aprobada"
+          subtitle={`La última aprobada es ${aprobada}. Si entrega esta, el paquete saldrá rotulado «Versión NO aprobada», con la fecha y esa última aprobada.`}
+          actionButtonLabel={`Usar la versión aprobada ${aprobada}`}
+          onActionButtonClick={() => {
+            setVersion(aprobada);
+            selectorVersion.current?.focus();
+          }}
+          lowContrast
+        />
+      )}
+      {elegida && noAprobada && aprobada === undefined && (
         <InlineNotification
           kind="warning"
           role="status"
-          title="Esta versión no está aprobada."
-          subtitle={
-            aprobada === undefined
-              ? "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha."
-              : `La última aprobada es ${aprobada}. Si entrega esta, el paquete saldrá rotulado «Versión NO aprobada», con la fecha y esa última aprobada.`
-          }
+          title="Esta versión no está aprobada"
+          subtitle="Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde Presupuesto. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha."
           lowContrast
           hideCloseButton
         />
@@ -267,7 +284,7 @@ function Entrega({
         </div>
         <div>
           <dt className="cds--type-label-01">Hallazgos</dt>
-          <dd className="cds--type-heading-03">{datos.hallazgos_total}</dd>
+          <dd className="cds--type-heading-03 silice-cifra">{formatoEsVe(String(datos.hallazgos_total))}</dd>
           {datos.hallazgos_total > 0 && (
             <dd className="cds--type-body-compact-01">
               {textoDeHallazgos(datos.hallazgos_por_severidad)}
@@ -275,9 +292,9 @@ function Entrega({
           )}
         </div>
         <div>
-          <dt className="cds--type-label-01">Cadena</dt>
+          <dt className="cds--type-label-01">Integridad de versiones</dt>
           <dd className="cds--type-heading-03">
-            {datos.cadena_integra ? "Íntegra" : "Rota"}
+            {datos.cadena_integra ? "Sin alteraciones" : "Alterada"}
           </dd>
         </div>
       </dl>
@@ -324,7 +341,7 @@ function Entrega({
         <InlineNotification
           kind="warning"
           title="Sin clave de firma"
-          subtitle="No hay clave de firma: el paquete saldrá SIN FIRMA y quien lo reciba lo verá como «no verificado»."
+          subtitle="No hay clave de firma: el paquete saldrá sin firma y quien lo reciba lo verá como «no verificado»."
           lowContrast
           hideCloseButton
         />
@@ -369,10 +386,10 @@ function Entrega({
         <div className="silice-entregar__listo" role="status">
           <p className="cds--type-heading-compact-01">
             {listo.firmado
-              ? "Paquete listo y firmado."
-              : "Paquete listo (sin firma)."}
+              ? "Paquete listo y firmado"
+              : "Paquete listo (sin firma)"}
           </p>
-          <p className="silice-entregar__sha cds--type-code-01">{`SHA-256: ${listo.sha256}`}</p>
+          <p className="silice-entregar__sha cds--type-code-01">{`Código de verificación del archivo (SHA-256): ${listo.sha256}`}</p>
           <Button
             kind="tertiary"
             size="md"
