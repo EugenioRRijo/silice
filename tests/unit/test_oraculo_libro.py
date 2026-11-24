@@ -109,3 +109,15 @@ def test_escribe_json_sin_descripciones_y_resumen_con_coma_decimal(
     assert "14,486725" in texto_pantalla
     assert "20,5" in texto_pantalla
     assert "0,005" in texto_pantalla
+
+
+def test_el_resumen_se_puede_escribir_en_la_consola_de_windows(tmp_path: Path) -> None:
+    from aplicacion.oraculo_hoja import Discrepancia
+
+    d = Discrepancia(
+        hoja="PRESUPUESTO", celda="P5", formula="=N5*O5",
+        guardado=Decimal("999.99"), recalculado=Decimal("14.486725"),
+    )  # fmt: skip
+    texto = ol.resumen_pantalla([d], total_formulas=10, destino=tmp_path / "x.json")
+    texto.encode("cp1252")  # la consola de Windows por omisión no admite «≠»
+    assert "PRESUPUESTO!P5: guardado 999,99; recalculado 14,486725" in texto
