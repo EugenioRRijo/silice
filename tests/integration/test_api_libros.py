@@ -522,6 +522,15 @@ def test_partidas_con_omision_vacio_si_el_libro_cuadra_o_sobra(cliente, limpio) 
     assert _auditar(cliente, sobreprecio.datos).json()["partidas_con_omision"] == []
 
 
+def test_partidas_con_omision_no_cuenta_un_componente_en_cero(cliente) -> None:
+    """Un CD que deja fuera el transporte en 0 no omite ningún costo hoy: su L4 es ADVERTENCIA y
+    no explica un libro menor (V-16)."""
+    cero = construir_libro(
+        siembra=Siembra(parches={"APU-02!G36": (Decimal("24.96875"), "=SUM(G32:G34)")})
+    )
+    assert _auditar(cliente, cero.datos).json()["partidas_con_omision"] == []
+
+
 def test_partidas_con_omision_dos_partidas_con_el_mismo_apu_cuenta_la_primera() -> None:
     """Como `reglas._Contexto.partida_de_apu` (la PRIMERA partida que apunta a una hoja APU), no la
     última: si las partidas 3 y 7 comparten `APU-02`, el L4 de `APU-02` es de la partida 3."""

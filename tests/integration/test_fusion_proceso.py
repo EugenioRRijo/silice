@@ -358,3 +358,25 @@ def test_servicios_desde_la_sesion_de_la_instalacion(sesion):
     # La base de prueba no tiene lista de empresa: sin precios propios no hay contraste.
     r = procesar_libro(libro_limpio().datos, "l.xlsx", fecha_devolucion=HOY, contexto=ctx)
     assert all(a.tipo != "base de la empresa" for a in r.alertas)
+
+
+def test_la_devolucion_corrige_los_huecos_de_reglas_y_informa_el_error_del_resumen():
+    """Huecos de reglas del 2026-11-24: la devolución reescribe los APU desde el modelo de Sílice
+    (cada BUSCARV con el código de su propia fila y el CD con los cuatro componentes), así que L1
+    y L4 son «corregido» y desaparecen al volver a auditar. El RESUMEN se copia con sus fórmulas:
+    un SUMPRODUCT con rangos de distinto tamaño sigue dando error, así que ese L5 es «informado»."""
+    siembra = Siembra(
+        parches={
+            "APU-02!C10": ("Arena lavada (ficticia)", "=VLOOKUP(B11,PRECIOS,2,0)"),
+            "APU-02!G36": (D("24.96875"), "=SUM(G32:G34)"),
+            "RESUMEN!B4": ("#VALUE!", "=SUMPRODUCT(PRESUPUESTO!$G$5:$G$7,PRESUPUESTO!$H$5:$H$6)"),
+        }
+    )
+    r = procesar_libro(construir_libro(siembra=siembra).datos, "huecos.xlsx", fecha_devolucion=HOY)
+    acciones = {(f.codigo, f.celda): f.accion for f in r.hallazgos_tabla}
+    assert acciones[("L1", "APU-02!C10")] == ACCION_CORREGIDO
+    assert acciones[("L4", "APU-02!G36")] == ACCION_CORREGIDO
+    assert acciones[("L5", "RESUMEN!B4")] == ACCION_INFORMADO
+
+    despues = reglas_del_libro(leer_libro(devolver(r), "devuelto.xlsx"))
+    assert not [h for h in despues if h.regla in ("L1", "L4")]
