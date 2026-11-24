@@ -104,6 +104,7 @@ from adapters.hoja_empresa.visual import LibroVisual, replicar_libro
 from api.dependencias import USUARIO_API, SesionDep
 from api.presentacion import exacto, exacto_o_nada, exacto_sin_ceros, monto, porcentaje
 from api.proteccion import LIMITE_CUERPO
+from api.rutas.libros_causas import CausaRaizRespuesta, causas_de_tabla
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion.nombres_reglas import nombre_de_regla
 from fusion.alertas import ContextoPrecios
@@ -238,6 +239,11 @@ class LibroAuditadoRespuesta(BaseModel):
     trazabilidad: list[TrazaRespuesta]
     metadatos: dict[str, str]
     aviso_historial: str | None = None
+    #: Campos aditivos (pantalla de auditoría, 2026-11-23): los hallazgos agrupados por causa raíz
+    #: y las posiciones en `hallazgos` de los avisos de regla no aplicable (R2 y R7 sin curva ni
+    #: plan), que la pantalla muestra aparte porque no son errores del libro.
+    causas: list[CausaRaizRespuesta] = []
+    no_aplicables: list[int] = []
 
 
 class PdfOrigenRespuesta(BaseModel):
@@ -719,7 +725,10 @@ async def auditar_libro(
     aviso = await run_in_threadpool(
         _guardar, lambda s: registrar_resultado(s, r, usuario=usuario, ahora=ahora)
     )
+    causas, no_aplicables = causas_de_tabla(r.hallazgos_tabla)
     return LibroAuditadoRespuesta(
+        causas=causas,
+        no_aplicables=no_aplicables,
         aviso_historial=aviso,
         libro=LibroOrigenRespuesta(nombre=r.libro.nombre, sha256=r.libro.sha256),
         fecha_libro=_iso(r.fecha_libro),

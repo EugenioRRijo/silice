@@ -356,4 +356,129 @@ describe("ListaHallazgos", () => {
     expect(screen.getByText("Precio atípico (revisar)")).toBeInTheDocument();
     expect(screen.getByText("En morado: precios muy distintos al histórico; revise si tienen justificación")).toBeInTheDocument();
   });
+
+  test("un no aplicable no cuenta en el total ni en las tablas y va a Reglas que no aplicaron", () => {
+    const mixto: HallazgoLibroRespuesta[] = [
+      hallazgos[0],
+      {
+        codigo: "R7",
+        nombre_regla: "Plan de trabajo",
+        severidad: "INFO",
+        descripcion: "Regla no aplicable: el libro no declara cronograma",
+        celda: "",
+        impacto: null,
+        accion: "",
+      },
+      hallazgos[1],
+    ];
+    montar({ hallazgos: mixto, noAplicables: [1] });
+    expect(screen.getByRole("heading", { level: 2, name: "Hallazgos (2)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crítico 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Error 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Información 0" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Sin celda en el libro/ })).toBeNull();
+
+    const region = screen.getByRole("region", { name: "Reglas que no aplicaron a este libro (1)" });
+    expect(within(region).getByText(/No son errores/)).toBeInTheDocument();
+    expect(within(region).getByText(/Plan de trabajo/)).toBeInTheDocument();
+    expect(within(region).getByText("R7")).toHaveClass("silice-codigo");
+    expect(within(region).getByText("Regla no aplicable: el libro no declara cronograma")).toBeInTheDocument();
+    expect(within(region).queryByRole("button")).toBeNull();
+    expect(region.querySelector("tr")).toBeNull();
+  });
+
+  test("con causas muestra Por causa raíz, el resumen, casos y al pulsar elige su primera celda", async () => {
+    const usuario = userEvent.setup();
+    const conCausas: HallazgoLibroRespuesta[] = [
+      { ...hallazgos[1], celda: "APU-01!G48", descripcion: "Cemento distinto al tabulador; partida 1" },
+      { ...hallazgos[1], celda: "APU-02!G48", descripcion: "Cemento distinto al tabulador; partida 2" },
+      { ...hallazgos[1], celda: "APU-03!G48", descripcion: "Cemento distinto al tabulador; partida 3" },
+      hallazgos[0],
+    ];
+    const causas = [
+      {
+        codigo: "L5",
+        nombre_regla: "Precio distinto al de INSUMOS",
+        severidad: "ERROR",
+        descripcion: "Cemento distinto al tabulador; partida 1",
+        ocurrencias: 3,
+        indices: [0, 1, 2],
+      },
+      {
+        codigo: "L3",
+        nombre_regla: "Total de presupuesto",
+        severidad: "CRITICO",
+        descripcion: "El total no coincide con la suma de las partidas",
+        ocurrencias: 1,
+        indices: [3],
+      },
+    ];
+    const { irACelda, onElegir } = montar({ hallazgos: conCausas, causas });
+    const region = screen.getByRole("region", { name: "Por causa raíz (2)" });
+    expect(within(region).getByText(/Los 4 hallazgos vienen de 2 causas/)).toBeInTheDocument();
+    expect(within(region).getByText("3 casos")).toBeInTheDocument();
+    expect(within(region).getByText("1 caso")).toBeInTheDocument();
+    expect(within(region).getByText("Cemento distinto al tabulador")).toBeInTheDocument();
+    expect(within(region).queryByText(/partida 1/)).toBeNull();
+    expect(within(region).getByText("L5")).toHaveClass("silice-codigo");
+    expect(screen.getByRole("heading", { level: 3, name: "Uno por uno (4)" })).toBeInTheDocument();
+
+    await usuario.click(within(region).getByRole("button", { name: /Precio distinto al de INSUMOS/ }));
+    expect(onElegir).toHaveBeenCalledWith(0);
+    expect(irACelda).toHaveBeenCalledWith({ hoja: "APU-01", fila0: 47, columna0: 6 }, 0);
+  });
+
+  test("el filtro por severidad oculta las causas de otra severidad", async () => {
+    const usuario = userEvent.setup();
+    const conCausas: HallazgoLibroRespuesta[] = [hallazgos[1], hallazgos[0]];
+    const causas = [
+      {
+        codigo: "L5",
+        nombre_regla: "Precio distinto al de INSUMOS",
+        severidad: "ERROR",
+        descripcion: "Precio unitario distinto al de INSUMOS",
+        ocurrencias: 1,
+        indices: [0],
+      },
+      {
+        codigo: "L3",
+        nombre_regla: "Total de presupuesto",
+        severidad: "CRITICO",
+        descripcion: "El total no coincide con la suma de las partidas",
+        ocurrencias: 1,
+        indices: [1],
+      },
+    ];
+    montar({ hallazgos: conCausas, causas });
+    // La causa crítica también empieza por «Crítico»: el clic va a la etiqueta del filtro.
+    const filtro = screen.getByRole("group", { name: "Filtrar por severidad" });
+    await usuario.click(within(filtro).getByRole("button", { name: /^Crítico/ }));
+    const region = screen.getByRole("region", { name: "Por causa raíz (1)" });
+    expect(within(region).getByText(/Total de presupuesto/)).toBeInTheDocument();
+    expect(within(region).queryByText(/Precio distinto al de INSUMOS/)).toBeNull();
+  });
+
+  test("sin la prop causas no hay apartado Por causa raíz", () => {
+    montar();
+    expect(screen.queryByRole("heading", { name: /Por causa raíz/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /Uno por uno/ })).toBeNull();
+  });
+
+  test("si todos los hallazgos son no aplicables sale el mensaje vacío y Reglas que no aplicaron", () => {
+    const soloNoAplicable: HallazgoLibroRespuesta[] = [
+      {
+        codigo: "R2",
+        nombre_regla: "Curva de inversión",
+        severidad: "INFO",
+        descripcion: "Regla no aplicable: sin curva de inversión",
+        celda: "",
+        impacto: null,
+        accion: "",
+      },
+    ];
+    montar({ hallazgos: soloNoAplicable, noAplicables: [0] });
+    expect(screen.getByRole("heading", { level: 2, name: "Hallazgos (0)" })).toBeInTheDocument();
+    expect(screen.getByText(/La auditoría terminó y el libro no tiene hallazgos\./)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Reglas que no aplicaron a este libro (1)" })).toBeInTheDocument();
+  });
 });

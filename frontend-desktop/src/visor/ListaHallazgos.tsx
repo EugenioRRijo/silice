@@ -2,7 +2,7 @@ import { DataTable, SelectableTag, Table, TableBody, TableCell, TableContainer, 
 import { InlineNotification, TableHeader } from "../comun/carbonEs";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import type { HallazgoLibroRespuesta, HojaVisualRespuesta } from "../api/tipos";
+import type { CausaRaizRespuesta, HallazgoLibroRespuesta, HojaVisualRespuesta } from "../api/tipos";
 import { formatoEsVe } from "../indicadores/formatoEsVe";
 import type { Severidad } from "../indicadores/tipos";
 import { IconoDeSeveridad } from "../severidad/IconoDeSeveridad";
@@ -13,6 +13,10 @@ import type { CeldaRef } from "./hojaVisor";
 
 interface Props {
   hallazgos: HallazgoLibroRespuesta[];
+  // Causas raiz agrupadas por el servidor (opcional: una API anterior no las manda).
+  causas?: CausaRaizRespuesta[];
+  // Posiciones en `hallazgos` de reglas no aplicables (no cuentan ni salen en las tablas).
+  noAplicables?: number[];
   // Posicion del hallazgo elegido en `hallazgos`, o null.
   seleccionado: number | null;
   // Pide mover el foco del teclado a una fila (`n` cambia en cada pedido, para repetir sobre la misma fila).
@@ -33,6 +37,22 @@ interface Props {
 const CABECERAS = [{ key: "hallazgo", header: "Hallazgo" }];
 
 const severidadDe = (h: HallazgoLibroRespuesta): Severidad => normalizarSeveridad(h.severidad);
+
+function primeraClausula(descripcion: string): string {
+  const corte = descripcion.indexOf(";");
+  return (corte >= 0 ? descripcion.slice(0, corte) : descripcion).trim();
+}
+
+function EtiquetaRegla({ codigo, nombreRegla }: { codigo: string; nombreRegla?: string }) {
+  const nombre = nombreRegla?.trim();
+  return nombre ? (
+    <span>
+      {nombre} (<span className="silice-codigo">{codigo}</span>)
+    </span>
+  ) : (
+    <span className="silice-codigo">{codigo}</span>
+  );
+}
 
 interface TablaProps {
   etiqueta: string;
@@ -56,7 +76,6 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
     const celda = elegida && contextoDeCelda ? parsearCelda(h.celda) : null;
     const contexto = celda ? contextoDeCelda?.(celda) : null;
     const accion = elegida ? (h.accion ?? "").trim() : "";
-    const nombreRegla = h.nombre_regla?.trim();
     return {
       id: String(indice),
       hallazgo: (
@@ -69,13 +88,7 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
             <span aria-hidden="true"> · </span>
             <span>{estilo.texto}</span>
             <span aria-hidden="true"> · </span>
-            {nombreRegla ? (
-              <span>
-                {nombreRegla} (<span className="silice-codigo">{h.codigo}</span>)
-              </span>
-            ) : (
-              <span className="silice-codigo">{h.codigo}</span>
-            )}
+            <EtiquetaRegla codigo={h.codigo} nombreRegla={h.nombre_regla} />
             {h.impacto !== null && (
               <>
                 <span aria-hidden="true"> · </span>
@@ -152,6 +165,8 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
 // filtros quedan fijos; solo el cuerpo desplaza.
 export function ListaHallazgos({
   hallazgos,
+  causas,
+  noAplicables,
   seleccionado,
   enfocar,
   hojas,
@@ -166,25 +181,64 @@ export function ListaHallazgos({
   // La fila que tuvo el foco por ultimo: es la parada de Tab (roving tabindex).
   const [conFoco, setConFoco] = useState<number | null>(null);
   const raiz = useRef<HTMLElement>(null);
+  const idCausas = useId();
+  const idUnoPorUno = useId();
+  const idNoAplicables = useId();
   const idSinCelda = useId();
   const idOcultos = useId();
 
+  const noAplicablesValidos = useMemo(() => {
+    const vistos = new Set<number>();
+    const lista: number[] = [];
+    for (const i of noAplicables ?? []) {
+      if (i >= 0 && i < hallazgos.length && !vistos.has(i)) {
+        vistos.add(i);
+        lista.push(i);
+      }
+    }
+    return lista;
+  }, [noAplicables, hallazgos.length]);
+
+  const noAplicablesSet = useMemo(() => new Set(noAplicablesValidos), [noAplicablesValidos]);
+  const aplicablesIndices = useMemo(
+    () => hallazgos.map((_, i) => i).filter((i) => !noAplicablesSet.has(i)),
+    [hallazgos, noAplicablesSet],
+  );
+
   const { sinCelda, ocultos } = useMemo(() => construirHalos(hallazgos, hojas), [hallazgos, hojas]);
-  const hayAtipicos = useMemo(() => hallazgos.some((h) => h.codigo === CODIGO_ATIPICO), [hallazgos]);
+  const hayAtipicos = useMemo(
+    () => aplicablesIndices.some((i) => hallazgos[i].codigo === CODIGO_ATIPICO),
+    [hallazgos, aplicablesIndices],
+  );
   const sinCeldaSet = useMemo(() => new Set(sinCelda), [sinCelda]);
   const motivos = useMemo(() => new Map(ocultos.map((o) => [o.indice, o.motivo])), [ocultos]);
   const ocultosIndices = useMemo(() => ocultos.map((o) => o.indice), [ocultos]);
+  const sinCeldaAplicables = useMemo(
+    () => sinCelda.filter((i) => !noAplicablesSet.has(i)),
+    [sinCelda, noAplicablesSet],
+  );
+  const ocultosAplicables = useMemo(
+    () => ocultosIndices.filter((i) => !noAplicablesSet.has(i)),
+    [ocultosIndices, noAplicablesSet],
+  );
 
   const cuentas = useMemo(() => {
     const c: Record<Severidad, number> = { CRITICO: 0, ERROR: 0, ADVERTENCIA: 0, INFO: 0 };
-    for (const h of hallazgos) c[severidadDe(h)] += 1;
+    for (const i of aplicablesIndices) c[severidadDe(hallazgos[i])] += 1;
     return c;
-  }, [hallazgos]);
+  }, [hallazgos, aplicablesIndices]);
 
   const pasan = (i: number) => filtro.size === 0 || filtro.has(severidadDe(hallazgos[i]));
-  const conCelda = hallazgos.map((_, i) => i).filter((i) => !sinCeldaSet.has(i) && !motivos.has(i) && pasan(i));
-  const sinCeldaVisibles = sinCelda.filter(pasan);
-  const ocultosVisibles = ocultosIndices.filter(pasan);
+  const conCelda = aplicablesIndices.filter((i) => !sinCeldaSet.has(i) && !motivos.has(i) && pasan(i));
+  const sinCeldaVisibles = sinCeldaAplicables.filter(pasan);
+  const ocultosVisibles = ocultosAplicables.filter(pasan);
+
+  const hayCausas = (causas?.length ?? 0) > 0;
+  const causasVisibles = useMemo(
+    () => (causas ?? []).filter((c) => filtro.size === 0 || filtro.has(normalizarSeveridad(c.severidad))),
+    [causas, filtro],
+  );
+  const totalCasosCausas = useMemo(() => causasVisibles.reduce((a, c) => a + c.ocurrencias, 0), [causasVisibles]);
 
   const orden = [...conCelda, ...ocultosVisibles, ...sinCeldaVisibles];
   const paradaDeTab =
@@ -255,7 +309,7 @@ export function ListaHallazgos({
       }}
     >
       <div className="lista-hallazgos__cabecera">
-        <h2 className="cds--type-heading-compact-01">Hallazgos ({hallazgos.length})</h2>
+        <h2 className="cds--type-heading-compact-01">Hallazgos ({aplicablesIndices.length})</h2>
         <div className="lista-hallazgos__filtro" role="group" aria-label="Filtrar por severidad">
           {SEVERIDADES.map((clave) => (
             <SelectableTag
@@ -290,14 +344,70 @@ export function ListaHallazgos({
       </div>
 
       <div className="lista-hallazgos__cuerpo">
-        {hallazgos.length === 0 && (
+        {aplicablesIndices.length === 0 && (
           <p className="lista-hallazgos__vacio cds--type-body-compact-01">
             La auditoría terminó y el libro no tiene hallazgos.
           </p>
         )}
 
+        {causasVisibles.length > 0 && (
+          <section aria-labelledby={idCausas}>
+            <h3 id={idCausas} className="lista-hallazgos__subtitulo cds--type-heading-compact-01">
+              Por causa raíz ({causasVisibles.length})
+            </h3>
+            <p className="lista-hallazgos__resumen cds--type-body-compact-01">
+              {totalCasosCausas === 1 ? "1 hallazgo viene" : `Los ${totalCasosCausas} hallazgos vienen`} de{" "}
+              {causasVisibles.length === 1 ? "1 causa" : `${causasVisibles.length} causas`}: corregir una causa arregla
+              todos sus casos.
+            </p>
+            <ul className="lista-hallazgos__causas">
+              {causasVisibles.map((causa, idx) => {
+                const estilo = estiloDeSeveridad(normalizarSeveridad(causa.severidad));
+                const casos = causa.ocurrencias === 1 ? "1 caso" : `${causa.ocurrencias} casos`;
+                const primerIndice = causa.indices[0];
+                return (
+                  <li key={`${causa.codigo}-${primerIndice ?? idx}`}>
+                    <button
+                      type="button"
+                      className="lista-hallazgos__causa"
+                      onClick={() => {
+                        if (primerIndice !== undefined) elegir(primerIndice);
+                      }}
+                    >
+                      <span className="hallazgo__encabezado cds--type-label-01">
+                        <span
+                          className="hallazgo__severidad"
+                          style={{ ["--halo-color" as string]: `var(${estilo.token})` }}
+                        >
+                          <IconoDeSeveridad nombre={estilo.icono} size={16} className="hallazgo__icono" />
+                        </span>
+                        <span>{estilo.texto}</span>
+                        <span aria-hidden="true"> · </span>
+                        <span className="silice-cifra">{casos}</span>
+                        <span aria-hidden="true"> · </span>
+                        <EtiquetaRegla codigo={causa.codigo} nombreRegla={causa.nombre_regla} />
+                      </span>
+                      <span className="lista-hallazgos__causa-desc cds--type-body-compact-01">
+                        {primeraClausula(causa.descripcion)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
         {conCelda.length > 0 && (
-          <section aria-label="Hallazgos con celda en el libro">
+          <section
+            aria-labelledby={hayCausas ? idUnoPorUno : undefined}
+            aria-label={hayCausas ? undefined : "Hallazgos con celda en el libro"}
+          >
+            {hayCausas && (
+              <h3 id={idUnoPorUno} className="lista-hallazgos__subtitulo cds--type-heading-compact-01">
+                Uno por uno ({conCelda.length})
+              </h3>
+            )}
             <TablaHallazgos
               etiqueta="Hallazgos con celda en el libro"
               hallazgos={hallazgos}
@@ -310,10 +420,10 @@ export function ListaHallazgos({
           </section>
         )}
 
-        {ocultosIndices.length > 0 && (
+        {ocultosAplicables.length > 0 && (
           <section aria-labelledby={idOcultos}>
             <h3 id={idOcultos} className="lista-hallazgos__subtitulo cds--type-heading-compact-01">
-              En hoja, fila o columna oculta ({ocultosIndices.length})
+              En hoja, fila o columna oculta ({ocultosAplicables.length})
             </h3>
             {ocultosVisibles.length > 0 && (
               <TablaHallazgos
@@ -330,10 +440,10 @@ export function ListaHallazgos({
           </section>
         )}
 
-        {sinCelda.length > 0 && (
+        {sinCeldaAplicables.length > 0 && (
           <section aria-labelledby={idSinCelda}>
             <h3 id={idSinCelda} className="lista-hallazgos__subtitulo cds--type-heading-compact-01">
-              Sin celda en el libro ({sinCelda.length})
+              Sin celda en el libro ({sinCeldaAplicables.length})
             </h3>
             {sinCeldaVisibles.length > 0 && (
               <TablaHallazgos
@@ -346,6 +456,30 @@ export function ListaHallazgos({
                 contextoDeCelda={contextoDeCelda}
               />
             )}
+          </section>
+        )}
+
+        {noAplicablesValidos.length > 0 && (
+          <section aria-labelledby={idNoAplicables}>
+            <h3 id={idNoAplicables} className="lista-hallazgos__subtitulo cds--type-heading-compact-01">
+              Reglas que no aplicaron a este libro ({noAplicablesValidos.length})
+            </h3>
+            <p className="lista-hallazgos__resumen cds--type-body-compact-01">
+              No son errores: la regla no tenía nada que revisar en este libro.
+            </p>
+            <ul className="lista-hallazgos__no-aplicables">
+              {noAplicablesValidos.map((indice) => {
+                const h = hallazgos[indice];
+                return (
+                  <li key={indice} className="lista-hallazgos__no-aplicable">
+                    <div className="hallazgo__encabezado cds--type-label-01">
+                      <EtiquetaRegla codigo={h.codigo} nombreRegla={h.nombre_regla} />
+                    </div>
+                    <div className="cds--type-body-compact-01">{h.descripcion}</div>
+                  </li>
+                );
+              })}
+            </ul>
           </section>
         )}
       </div>
