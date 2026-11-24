@@ -74,7 +74,7 @@ def resumen_pantalla(
     for d in discrepancias:
         guardado = _valor_pantalla(d.guardado)
         recalculado = _valor_pantalla(d.recalculado)
-        lineas.append(f"- {d.hoja}!{d.celda}: guardado {guardado} ≠ recalculado {recalculado}")
+        lineas.append(f"- {d.hoja}!{d.celda}: guardado {guardado}; recalculado {recalculado}")
     lineas.append(f"Informe JSON: {destino}")
     return "\n".join(lineas)
 
