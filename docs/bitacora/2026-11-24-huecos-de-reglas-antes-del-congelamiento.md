@@ -22,8 +22,8 @@ hueco era el componente en cero.
 
 ## El cambio
 
-Prueba en rojo `163ccc9c` (`tests/unit/test_hoja_empresa_reglas_calculo.py`, con 5 rojas y 1 de regresión) y verde `b567f4d3`. Las reglas
-nuevas viven en `adapters/hoja_empresa/reglas_calculo.py`:
+Prueba en rojo `163ccc9c` (`tests/unit/test_hoja_empresa_reglas_calculo.py`, con 5 rojas y 1 de regresión) y verde
+`b567f4d3`. Las reglas nuevas viven en `adapters/hoja_empresa/reglas_calculo.py`:
 
 - **L1, BUSCARV con el código de otra fila.** Un BUSCARV de un APU que busca en la lista de precios el código de otra
   fila. Si la cifra cambia es ERROR (por ejemplo, el precio de otro insumo); si es texto es ADVERTENCIA. Una fila sin
@@ -35,7 +35,7 @@ nuevas viven en `adapters/hoja_empresa/reglas_calculo.py`:
   por la fórmula.
 
 Para no crear un ciclo de importación, el contexto común de las reglas (analizador de fórmulas, `_Contexto` y
-utilidades) se separó en `adapters/hoja_empresa/reglas_contexto.py`. `reglas.py` baja de 1707 a 1146 líneas. El
+utilidades) se separó en `adapters/hoja_empresa/reglas_contexto.py`. `reglas.py` baja de 1707 a 1145 líneas. El
 catálogo L1-L9 no cambia, ni `core/`. El manifiesto de corrida firma también los dos módulos nuevos.
 
 ## Revisión independiente
