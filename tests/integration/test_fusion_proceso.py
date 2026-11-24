@@ -224,7 +224,8 @@ def test_fcas_menor_que_uno_no_se_puede_interpretar():
 def test_un_apu_que_no_se_puede_recalcular_se_informa_y_la_auditoria_sigue():
     # Antes un dato inválido en UNA partida (un rendimiento 0, un precio negativo) rechazaba el
     # libro entero y el presupuestista se quedaba sin ningún hallazgo. Ahora esa partida entra con
-    # su monto guardado, se informa un ERROR que dice qué dato está mal y las demás se auditan igual.
+    # su monto guardado, se informa un ERROR que dice qué dato está mal y las demás se auditan
+    # igual.
     # Lo encontró el inyector de fallas del plan no circular (2026-11-23).
     c = construir_libro(siembra=Siembra(parches={"APU-01!F19": (D("0"), None)}))
     r = procesar_libro(c.datos, "rend0.xlsx", fecha_devolucion=HOY)
