@@ -387,6 +387,26 @@ describe("ListaHallazgos", () => {
     expect(region.querySelector("tr")).toBeNull();
   });
 
+  test("una causa con traza dice el valor encontrado frente al esperado, en es-VE", () => {
+    const causas = [
+      {
+        codigo: "F1",
+        nombre_regla: "P.U. distinto del recálculo",
+        severidad: "ERROR",
+        descripcion: "partida 1: PRESUPUESTO guarda un P.U. de 999,99",
+        ocurrencias: 1,
+        indices: [0],
+        celdas: ["PRESUPUESTO!P5"],
+        observado: "999.99",
+        esperado: "14.486725",
+      },
+    ];
+    montar({ causas });
+    const apartado = screen.getByRole("region", { name: /Por causa raíz/ });
+    expect(within(apartado).getByText(/Encontrado 999,99/)).toBeInTheDocument();
+    expect(within(apartado).getByText(/esperado 14,486725/)).toBeInTheDocument();
+  });
+
   test("con causas muestra Por causa raíz, el resumen, casos y al pulsar elige su primera celda", async () => {
     const usuario = userEvent.setup();
     const conCausas: HallazgoLibroRespuesta[] = [

@@ -715,6 +715,35 @@ Commercial Building Telecommunications Cabling Standard* (edición por registrar
   edición. Mientras tanto se aplica como **supuesto declarado (RS‑5)** y R10 da ADVERTENCIA.
 - **Constante que respalda:** 90 m por enlace permanente (R10, datos).
 
+## Evaluación: usabilidad y acuerdo entre evaluadores
+
+### Sevilla-Gonzalez et al. (2020)
+
+Sevilla-Gonzalez, M. del R., Moreno Loaeza, L., Lazaro-Carrera, L. S., Bourguet Ramirez, B., Vázquez
+Rodríguez, A., Peralta-Pedrero, M. L., & Almeda-Valdes, P. (2020). Spanish version of the System
+Usability Scale for the assessment of electronic tools: Development and validation. *JMIR Human
+Factors, 7*(4), e21161. https://doi.org/10.2196/21161
+
+- **Estado:** verificada
+- **Verificación:** Crossref, 2026‑11‑24: autores, título, revista, volumen, número y DOI (publicado
+  el 2020‑12‑16). Resumen (JMIR y DOAJ), 2026‑11‑24: traducción directa e inversa, validación con 10
+  expertos, validez aparente con 10 usuarios y confiabilidad con 88 usuarios en México; α de
+  Cronbach = 0,812 (IC 95 % 0,748–0,866).
+- **Lo que respalda:** el SUS en español del guion de la prueba con usuarios (quinto instrumento).
+- **Límite:** validado en México con usuarios de aplicaciones electrónicas, no con presupuestistas.
+
+### Landis y Koch (1977)
+
+Landis, J. R., & Koch, G. G. (1977). The measurement of observer agreement for categorical data.
+*Biometrics, 33*(1), 159–174. https://doi.org/10.2307/2529310
+
+- **Estado:** pendiente
+- **Verificación:** Crossref, 2026‑11‑24: autores, título, revista, volumen, número, página inicial
+  y DOI; la página final (174) según PubMed (PMID 843571).
+- **Falta:** contrastar con el texto original la escala de interpretación del kappa (0,41–0,60
+  «moderado», 0,61–0,80 «sustancial»), que hoy solo está confirmada por fuentes que la atribuyen a
+  este artículo. Hasta entonces la escala se cita con «[verificación pendiente]».
+
 ## Consultadas y no citadas
 
 Fuera de la lista APA 7, que solo admite obras citadas (criterio T9 de la

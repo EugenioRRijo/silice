@@ -48,7 +48,7 @@ function Fila({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-// «Ayuda y acerca de Sílice» (RF-99; su h1 es el nombre de su pestaña en la Cuenta). Primero la ayuda (F7: «Empieza aquí», las
+// «Ayuda y acerca de Sílice» (RF-99; su h1 es el nombre de su pestaña en la Cuenta). Primero la ayuda (F7: «Empiece aquí», las
 // guías por tarea y el glosario, `comun/ayuda/AyudaDeSilice.tsx`), que es texto y se lee aunque falle la lectura de la
 // versión; después la versión, las revisiones de las dos bases, la carpeta de datos (solo quien administra) y los módulos
 // instalados. Solo lectura.

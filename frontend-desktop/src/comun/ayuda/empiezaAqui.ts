@@ -1,7 +1,7 @@
 import { rutaDeCuenta, rutaOPendientes } from "../../marco/espacios";
 import { rutaDeTema } from "./temas";
 
-// «Empieza aquí» (F7, tarea A4; especificación 2026-10-21 de la bienvenida, §7.6): lo primero que hace cada papel en una
+// «Empiece aquí» (F7, tarea A4; especificación 2026-10-21 de la bienvenida, §7.6): lo primero que hace cada papel en una
 // instalación o una carpeta que se estrena. Se deriva de los datos (las acciones de la cuenta, cuántas obras ve y cuántas
 // cuentas activas hay) y no guarda nada en el navegador (RT-9): desaparece solo cuando ya no hace falta. La Vista general
 // muestra los pasos que le tocan a la cuenta; la Ayuda los muestra todos, con la primera vez delante.

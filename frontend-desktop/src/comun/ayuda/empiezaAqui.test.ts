@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { ACCIONES } from "../../shell/obras/datosDePrueba";
 import { PASOS_DE_EMPIEZA_AQUI, PRIMERA_VEZ, pasosDeEmpiezaAqui } from "./empiezaAqui";
 
-// F7, tarea A4: «Empieza aquí» se deriva de los datos (no guarda nada en el navegador, RT-9). Las acciones de cada papel son
+// F7, tarea A4: «Empiece aquí» se deriva de los datos (no guarda nada en el navegador, RT-9). Las acciones de cada papel son
 // las de la prueba del marco (ana arma, rita revisa, admin administra), que copian `seguridad/permisos.py`. Oráculos a mano.
 
 const ana = [...ACCIONES.ana];
@@ -67,7 +67,7 @@ describe("los pasos", () => {
   });
 });
 
-describe("textos de «Empieza aquí» tras la ventana de escritorio (F5)", () => {
+describe("textos de «Empiece aquí» tras la ventana de escritorio (F5)", () => {
   test("el código de instalación se busca en la consola de Sílice, no en «la ventana del servidor»", () => {
     const todo = JSON.stringify({ PASOS_DE_EMPIEZA_AQUI, PRIMERA_VEZ });
     expect(todo).toContain("en la consola de Sílice");

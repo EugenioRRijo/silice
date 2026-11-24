@@ -46,6 +46,15 @@ def test_reglas_distintas_con_el_mismo_texto_no_se_juntan():
     assert [x.codigo for x in causas] == ["L5", "L6"]
 
 
+def test_una_cifra_con_espacio_de_miles_es_una_sola_cifra():
+    # Las reglas escriben los montos de mil o más con espacio de miles (`9 999,90`, a veces con
+    # espacio fino o duro): la misma causa no se parte en dos por el tamaño del monto.
+    # Hallazgo de Gemini Neon, 2026-11-23.
+    base = c.patron("RESUMEN!B6 «Verificación» vale 999,99 USD")
+    for monto in ("9 999,90", "9 999,90", "1 234 567,00"):
+        assert c.patron(f"RESUMEN!B6 «Verificación» vale {monto} USD") == base
+
+
 def test_el_patron_quita_celdas_numeros_y_el_valor_encontrado():
     assert c.patron(_CRONO.format(n=4, v="vacía")) == c.patron(_CRONO.format(n=9, v="0,75"))
     assert c.patron("AUX lee de APU-07 filas fijas; deja sin leer EQ-03") == \

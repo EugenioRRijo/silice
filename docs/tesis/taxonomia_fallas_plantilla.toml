@@ -1,0 +1,57 @@
+# Plantilla de taxonomía de fallas para evaluación no circular (`scripts/inyector_fallas.py`).
+#
+# Instrucciones para quien la completa (Nicolaz o el tutor):
+# - Redactar las categorías y sus pesos SIN abrir las reglas de auditoría de Sílice.
+# - Operaciones válidas:
+#     valor_fijo            reemplaza una fórmula por su valor guardado * (1 + delta)
+#     referencia_desplazada desplaza en 1 la fila de una referencia en la fórmula (G27 -> G28)
+#     rango_recortado       recorta en 1 el extremo de un rango (SUM(A1:A10) -> SUM(A1:A9))
+#     signo                 invierte el signo de una constante numérica distinta de 0
+#     escala                multiplica por 1000 una constante numérica distinta de 0
+#     formula_borrada       borra la fórmula y deja la celda vacía
+# - Campo opcional `hojas`: lista de nombres de hoja donde puede caer la categoría.
+#   Si se omite, la operación puede caer en cualquier hoja con celdas elegibles.
+# - Toda fuente bibliográfica marcada «por verificar» debe contrastarse antes de citarla.
+
+[[categorias]]
+id = "TAX-01"
+nombre = "Fórmula sobrescrita con valor fijo"
+fuente = "Panko y Halverson (1996): error mecánico por sobrescritura de fórmula (por verificar)"
+operacion = "valor_fijo"
+peso = 1.0
+# hojas = ["PRESUPUESTO", "APU-01"]
+
+[[categorias]]
+id = "TAX-02"
+nombre = "Referencia de fila desplazada en fórmula"
+fuente = "Panko (1998): error mecánico de referencia o puntero (por verificar)"
+operacion = "referencia_desplazada"
+peso = 1.0
+
+[[categorias]]
+id = "TAX-03"
+nombre = "Rango incompleto en agregación"
+fuente = "Rajalingham et al. (2000): error cuantitativo de omisión en rango (por verificar)"
+operacion = "rango_recortado"
+peso = 1.0
+
+[[categorias]]
+id = "TAX-04"
+nombre = "Constante numérica con signo invertido"
+fuente = "Panko y Halverson (1996): error mecánico de signo (por verificar)"
+operacion = "signo"
+peso = 1.0
+
+[[categorias]]
+id = "TAX-05"
+nombre = "Error de escala por factor 1000"
+fuente = "EuSpRIG / Powell y Baker: error de unidad o escala (por verificar)"
+operacion = "escala"
+peso = 1.0
+
+[[categorias]]
+id = "TAX-06"
+nombre = "Fórmula borrada que deja celda vacía"
+fuente = "Rajalingham et al. (2000): error de omisión estructural (por verificar)"
+operacion = "formula_borrada"
+peso = 1.0

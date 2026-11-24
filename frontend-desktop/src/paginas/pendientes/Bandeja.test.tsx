@@ -282,13 +282,13 @@ describe("Pendientes: la bandeja", () => {
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
   });
 
-  test("lista vacía: lo dice y enseña qué esperar, sin «Empieza aquí»", async () => {
+  test("lista vacía: lo dice y enseña qué esperar, sin «Empiece aquí»", async () => {
     bandeja = responder([]);
     montar();
     expect(await screen.findByText("No tiene pendientes")).toBeInTheDocument();
     expect(screen.getByText("Cuando una obra necesite algo de usted, aparecerá aquí.")).toBeInTheDocument();
     expect(screen.queryByRole("listbox")).toBeNull();
-    expect(screen.queryByText(/Empieza aquí/)).toBeNull();
+    expect(screen.queryByText(/Empiece aquí/)).toBeNull();
     expect(screen.queryByText(/por hacer/)).toBeNull();
   });
 

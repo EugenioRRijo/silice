@@ -13,7 +13,7 @@ const PAPELES: readonly Papel[] = ["administra", "arma", "revisa"];
 const PASOS = Object.keys(PASOS_DE_EMPIEZA_AQUI) as PasoId[];
 
 const INDICE: readonly { tema: string; titulo: string }[] = [
-  { tema: "empieza-aqui", titulo: "Empieza aquí" },
+  { tema: "empieza-aqui", titulo: "Empiece aquí" },
   { tema: "guias", titulo: "Guías por tarea" },
   { tema: "glosario", titulo: "Glosario" },
 ];
@@ -40,7 +40,7 @@ function Encabezado({ tema, children }: { tema: string; children: string }) {
   );
 }
 
-// La ayuda de Sílice (F7, tareas A2 a A4) en la Cuenta, sección «Ayuda y acerca de Sílice»: un índice, «Empieza aquí» (la
+// La ayuda de Sílice (F7, tareas A2 a A4) en la Cuenta, sección «Ayuda y acerca de Sílice»: un índice, «Empiece aquí» (la
 // primera vez y lo primero de cada papel), las guías por tarea y el glosario. Es texto: no pide nada al servidor, así que se
 // lee aunque la información de la versión no cargue. Los enlaces a la Cuenta solo se ofrecen a quien puede usarla.
 export function AyudaDeSilice() {
@@ -57,7 +57,7 @@ export function AyudaDeSilice() {
       </nav>
 
       <section aria-labelledby={idDeTema("empieza-aqui")} className="silice-ayuda__parte">
-        <Encabezado tema="empieza-aqui">Empieza aquí</Encabezado>
+        <Encabezado tema="empieza-aqui">Empiece aquí</Encabezado>
         <h3 className="cds--type-heading-compact-01">{PRIMERA_VEZ.titulo}</h3>
         {PRIMERA_VEZ.parrafos.map((p) => (
           <p key={p} className="cds--type-body-compact-01">

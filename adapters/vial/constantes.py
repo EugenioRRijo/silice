@@ -29,7 +29,7 @@ class Constante:
 
     @property
     def supuesto_declarado(self) -> bool:
-        return self.fuente == SUPUESTO_DECLARADO
+        return self.fuente.startswith(SUPUESTO_DECLARADO)
 
 
 #: Fracción pintada de una línea discontinua: 3 m de línea por cada 8 m (3 pintados y 5 sin

@@ -124,15 +124,15 @@ describe("Acerca de Sílice", () => {
     expect(document.body.textContent).not.toMatch(/alembic|Caso_0008|s3_paquete/i);
   });
 
-  // F7 (Ayuda), tareas A2 a A4: la Ayuda de la Cuenta reúne «Empieza aquí», las guías por tarea y el glosario, y se puede
+  // F7 (Ayuda), tareas A2 a A4: la Ayuda de la Cuenta reúne «Empiece aquí», las guías por tarea y el glosario, y se puede
   // enlazar a cada parte con `?tema=`. Oráculos a mano: los títulos y los ids que fija el plan.
   describe("la ayuda", () => {
-    test("bajo el h1 van «Empieza aquí», «Guías por tarea» y «Glosario», con las cuatro guías, antes de la versión", async () => {
+    test("bajo el h1 van «Empiece aquí», «Guías por tarea» y «Glosario», con las cuatro guías, antes de la versión", async () => {
       fetchFalso.mockResolvedValue(json(DATOS));
       montar();
       await screen.findByText("Sílice 1.2.0-dev0");
       const h2 = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-      expect(h2.slice(0, 3)).toEqual(["Empieza aquí", "Guías por tarea", "Glosario"]);
+      expect(h2.slice(0, 3)).toEqual(["Empiece aquí", "Guías por tarea", "Glosario"]);
       expect(h2.indexOf("Sílice 1.2.0-dev0")).toBeGreaterThan(2);
       const guias = within(screen.getByRole("region", { name: "Guías por tarea" }));
       expect(guias.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
@@ -145,10 +145,10 @@ describe("Acerca de Sílice", () => {
       expect(within(glosario).getByText("Factor de costos asociados al salario (FCAS)")).toBeInTheDocument();
     });
 
-    test("«Empieza aquí» explica la primera vez: el código de instalación, la cuenta del administrador y cómo recuperarla", async () => {
+    test("«Empiece aquí» explica la primera vez: el código de instalación, la cuenta del administrador y cómo recuperarla", async () => {
       fetchFalso.mockResolvedValue(json(DATOS));
       montar();
-      const empieza = await screen.findByRole("region", { name: "Empieza aquí" });
+      const empieza = await screen.findByRole("region", { name: "Empiece aquí" });
       expect(empieza).toHaveTextContent("código de instalación");
       expect(empieza).toHaveTextContent("«Crear la cuenta y entrar»");
       expect(empieza).toHaveTextContent("«Perdí el acceso de administrador»");
@@ -157,14 +157,14 @@ describe("Acerca de Sílice", () => {
     test("los enlaces a la Cuenta solo se ofrecen a quien administra", async () => {
       fetchFalso.mockResolvedValue(json(DATOS));
       montar();
-      const empieza = await screen.findByRole("region", { name: "Empieza aquí" });
+      const empieza = await screen.findByRole("region", { name: "Empiece aquí" });
       expect(within(empieza).queryByRole("link", { name: "Ir a Cuentas y permisos" })).toBeNull();
     });
 
     test("quien administra ve el enlace a «Cuentas y permisos»", async () => {
       fetchFalso.mockResolvedValue(json(DATOS));
       montar({ sesion: { ...SESION, acciones: ["administrar_cuentas", "administrar_empresa"] } });
-      const empieza = await screen.findByRole("region", { name: "Empieza aquí" });
+      const empieza = await screen.findByRole("region", { name: "Empiece aquí" });
       expect(within(empieza).getByRole("link", { name: "Ir a Cuentas y permisos" })).toHaveAttribute("href", "/cuenta/cuentas");
     });
 

@@ -44,7 +44,6 @@ from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.lector import leer_libro
 from adapters.hoja_empresa.modelo import (
     ApuCalculado,
-    ApuLeido,
     DatosDevolucion,
     FilaAlerta,
     FilaHallazgo,
@@ -328,11 +327,14 @@ class _SinRecalculo:
     nota: str
 
 
-def _sin_recalculo(partida: PartidaLeida, hoja: str, col_pu: str, col_monto: str) -> _SinRecalculo:
-    """El monto guardado de una partida sin APU (L2 la informa) o con cantidad negativa (no entra
-    al núcleo): el de la columna de monto o, si no lo hay, cantidad × P guardado; 0 si tampoco.
-    La nota de TRAZABILIDAD dice por qué y de qué celda sale."""
-    motivo = (
+def _sin_recalculo(
+    partida: PartidaLeida, hoja: str, col_pu: str, col_monto: str, motivo: str | None = None
+) -> _SinRecalculo:
+    """El monto guardado de una partida sin APU (L2 la informa), con cantidad negativa (no entra
+    al núcleo) o cuyo APU no se puede recalcular (`motivo`, F1 lo informa): el de la columna de
+    monto o, si no lo hay, cantidad × P guardado; 0 si tampoco. La nota de TRAZABILIDAD dice por
+    qué y de qué celda sale."""
+    motivo = motivo or (
         "tiene cantidad negativa y no entra al núcleo"
         if partida.cantidad < 0 and partida.hoja_apu
         else "no tiene APU (L2)"
@@ -589,20 +591,6 @@ def procesar_libro(
         ) from exc
 
 
-def _calcular(
-    partida: PartidaLeida, apu: ApuLeido, libro: LibroLeido, codigo: str, perfil: Perfil
-) -> CalculoPartida:
-    """`calcular_partida` con el nombre de la hoja en el mensaje si el núcleo no acepta el APU."""
-    try:
-        return calcular_partida(partida, apu, libro, codigo, perfil)
-    except LibroNoInterpretable:
-        raise
-    except _ERRORES_DE_DATOS as exc:
-        raise LibroNoInterpretable(
-            f"El APU {apu.hoja} (partida {partida.numero}) no se puede recalcular: {exc}. "
-            "Corríjalo en el libro (por ejemplo, un rendimiento 0) y vuelva a subirlo."
-        ) from exc
-
 
 def _procesar(
     libro: LibroLeido,
@@ -633,15 +621,34 @@ def _procesar(
 
     calculos: list[CalculoPartida] = []
     sin_recalculo: list[_SinRecalculo] = []
+    f1: list[Hallazgo] = []
+    atribucion_f1: dict[Hallazgo, str | None] = {}
     for partida in libro.partidas:
         apu = libro.apu(partida.hoja_apu) if partida.hoja_apu else None
         if apu is None or partida.cantidad < 0:
             sin_recalculo.append(_sin_recalculo(partida, hoja, col_pu, col_monto))
             continue
-        calculos.append(_calcular(partida, apu, libro, codigos[partida.fila], perfil))
-
-    f1: list[Hallazgo] = []
-    atribucion_f1: dict[Hallazgo, str | None] = {}
+        try:
+            calculos.append(calcular_partida(partida, apu, libro, codigos[partida.fila], perfil))
+        except LibroNoInterpretable:
+            raise
+        except _ERRORES_DE_DATOS as exc:
+            # Un dato inválido en UNA partida (rendimiento 0, precio negativo) no tumba la
+            # auditoría del libro: la partida entra con su monto guardado y F1 dice qué falla.
+            motivo = f"su APU {apu.hoja} no se puede recalcular ({exc})"
+            sin_recalculo.append(_sin_recalculo(partida, hoja, col_pu, col_monto, motivo))
+            hallazgo = Hallazgo(
+                regla=REGLA_F1[0],
+                severidad=Severidad.ERROR,
+                descripcion=(
+                    f"partida {partida.numero}: el APU {apu.hoja} no se puede recalcular ({exc}). "
+                    "Silice suma el monto guardado de la partida y audita el resto del libro. "
+                    "Corríjalo en el libro y vuelva a subirlo."
+                ),
+                origen_ids=(f"{hoja}!{col_pu}{partida.fila}",),
+            )
+            f1.append(hallazgo)
+            atribucion_f1[hallazgo] = codigos[partida.fila]
     for calculo in calculos:
         hallazgo = _hallazgo_f1(calculo, hoja, col_pu)
         if hallazgo is not None:

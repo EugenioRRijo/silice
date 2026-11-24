@@ -25,7 +25,7 @@ const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 const RUTA_ARENERA = "/v1/produccion/existencias";
 const RUTA_CUENTAS = "/v1/cuentas";
 
-// La Vista general (`#/inicio/general`; plan F6, T8; contrato de rutas 4; diseño visual B): la primera vez, «Empieza aquí»
+// La Vista general (`#/inicio/general`; plan F6, T8; contrato de rutas 4; diseño visual B): la primera vez, «Empiece aquí»
 // (F7, A4); después, lo que bloquea (los pendientes del marco), la cartera por moneda y el avance de cada obra contra el plan (una lectura de
 // `GET /v1/obras/resumen/todas`), las últimas auditorías y, solo con `operar_arenera` y su especialidad encendida, la arenera.
 // Cada bloque lee y falla por su cuenta: uno que falla dice su error y no tumba a los demás. La pantalla no calcula nada: las
@@ -55,7 +55,7 @@ export default function Panorama() {
   const cartera = useCarga<ResumenTodasRespuesta>(puedeLeer ? RUTA_CARTERA : null, alExpirar);
   const auditorias = useCarga<AuditoriaGuardadaRespuesta[]>(puedeLeer ? RUTA_AUDITORIAS : null, alExpirar);
   const arenera = useCarga<ExistenciaRespuesta[]>(puedeVerArenera ? RUTA_ARENERA : null, alExpirar);
-  // F7, A4: «Empieza aquí» se deriva de lo que ya se sabe (la cartera) y, para quien administra, de cuántas cuentas activas
+  // F7, A4: «Empiece aquí» se deriva de lo que ya se sabe (la cartera) y, para quien administra, de cuántas cuentas activas
   // hay. Una cartera con carpetas que no se pudieron leer no dice que no haya obras.
   const cuentas = useCarga<{ cuentas: { activa: boolean }[] }>(sesion.acciones.includes("administrar_cuentas") ? RUTA_CUENTAS : null, alExpirar);
   const pasos = pasosDeEmpiezaAqui({

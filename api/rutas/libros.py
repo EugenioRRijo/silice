@@ -725,7 +725,7 @@ async def auditar_libro(
     aviso = await run_in_threadpool(
         _guardar, lambda s: registrar_resultado(s, r, usuario=usuario, ahora=ahora)
     )
-    causas, no_aplicables = causas_de_tabla(r.hallazgos_tabla)
+    causas, no_aplicables = causas_de_tabla(r.hallazgos_tabla, r.informe.hallazgos)
     return LibroAuditadoRespuesta(
         causas=causas,
         no_aplicables=no_aplicables,

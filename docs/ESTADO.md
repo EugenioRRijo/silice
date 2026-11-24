@@ -1,13 +1,14 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-22 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-24 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
 de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia.md §5](metodologia.md)).
 
-> **Ola 1121 (2026-11-21/22):** la depuración va en el PR #138 y el front (aspecto de Neon, portada solo de pruebas,
-> pulido unslop y responsive con letra grande) en `feature/ui-aistudio-correcciones`, apilado sobre él (§2).
+> **Congelamiento del consejo (2026-11-23):** tras #138 a #141 no entran funciones nuevas; se valida con personas y se
+> mide la auditoría sin circularidad ([plan](planes/2026-11-23-plan-auditoria-no-circular.md)). #142 y #143 son lo
+> último: la pantalla por causa raíz y los instrumentos de medición (§2).
 
 ## 1. Qué hay en `main`
 
@@ -45,6 +46,11 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
 - **«Descargar PDF» y sprint 1120b** (PR #136 y #137, fusionados por Eugenio): el mapa de series de Riesgo guardado
   por versión, quién guardó el desperdicio y la depuración de la auditoría de Neon del 2026-11-20. `main` queda en
   `df91d176`.
+- **Ola 1121 y entrega del consejo** (PR #138 a #141): la depuración de Neon (#138) y el rediseño con su claridad
+  (#139), fusionados por Eugenio; la carga cognitiva con el rótulo congelado de la Hoja (#140, opción A de Eugenio) y
+  la herramienta de medición de la auditoría, el respaldo local, el guion de la demo del plan B, el ensayo de la
+  defensa y el esqueleto del capítulo de resultados (#141), fusionados el 2026-11-24 por Claude con la autorización
+  de Eugenio («tu puedes cerrar 140 te doy permiso y lo demas tambien»). `main` queda en `b8cafe8b`.
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
@@ -56,8 +62,8 @@ instalador con huella SHA-256 firmada.
 | PR o rama | Qué trae | Estado |
 |---|---|---|
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
-| #138 `feature/ola-1121-depuracion` | La ola 1121 de Neon (operación O1-O4, lógica L1-L3, front F1-F7) con las tres correcciones de la auditoría de Claude (Visor, margen de `mercado`, aviso SEG-12) y la guarda de miles del asistente con el experimento re-congelado ([auditoría](bitacora/auditoria-agy-2026-11-21.md)) | PR abierto; fusión solo con autorización de Eugenio |
-| `feature/ui-aistudio-correcciones` | El rediseño de Neon (aspecto de Google AI Studio) con sus correcciones, la portada solo para pruebas (`SILICE_PORTADA_WEB=1`) y los medidores; apilado sobre la depuración | PR #139 abierto, apilado sobre #138 (revisado por Eugenio en el navegador el 2026-11-22: «me gusta como se ve»). Desde el 2026-11-23 trae también la claridad (fuera el «tablero de avión»), las tareas rápidas 1-15 del backlog de UX y los rótulos del back en español llano. La pasada goldfish de `planes/2026-11-23-pasada-goldfish.md` está hecha (Claude, 2026-11-23: N1 y N2, un nombre por idea, y en la curva AC con su propio trazo). Fusión solo con autorización de Eugenio |
+| #142 `feature/causas-raiz-pantalla` | La pantalla de auditoría agrupa los hallazgos por causa raíz y pone aparte las reglas que no aplicaron (R2 y R7), en la misma pestaña; la respuesta vive en `api/rutas/libros_causas.py` | PR abierto contra `main`; Claude lo fusiona con CI verde (autorización del 2026-11-23) |
+| #143 `feature/auditoria-no-circular` | Fase 1 del plan no circular: oráculo LibreOffice, manifiesto de corrida, inyector de fallas, trasplante de valores, medición una falla por vez (`scripts/medir_inyeccion.py --una-por-vez`), metamórficas, sensibilidad de umbrales, tasa de no interpretables y traza por causa. Primera medición: 5 de 12 fallas detectadas | Apilado sobre #142; se fusiona después |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
 autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada tarea de la tanda tuvo su árbol
