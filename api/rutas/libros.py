@@ -105,6 +105,7 @@ from api.dependencias import USUARIO_API, SesionDep
 from api.presentacion import exacto, exacto_o_nada, exacto_sin_ceros, monto, porcentaje
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
+from aplicacion.causas_raiz import agrupar
 from aplicacion.nombres_reglas import nombre_de_regla
 from fusion.alertas import ContextoPrecios
 from fusion.apu_por_hoja import auditar_apu_por_hoja
@@ -169,6 +170,34 @@ def _hallazgo_libro(h) -> HallazgoLibroRespuesta:
         impacto=exacto_o_nada(h.impacto),
         accion=h.accion,
     )
+
+
+class CausaRaizRespuesta(BaseModel):
+    """Hallazgos con la misma regla y la misma causa (`aplicacion/causas_raiz.py`): una fórmula
+    copiada con una fila fija es una causa con un caso por partida. `indices` son las posiciones
+    de sus casos en `hallazgos`; `descripcion` es la del primero y `severidad`, la más grave."""
+
+    codigo: str
+    nombre_regla: str = ""
+    severidad: str
+    descripcion: str
+    ocurrencias: int
+    indices: list[int]
+
+
+def _causas(tabla) -> tuple[list[CausaRaizRespuesta], list[int]]:
+    causas, no_aplicables = agrupar([(h.codigo, h.severidad, h.descripcion) for h in tabla])
+    return [
+        CausaRaizRespuesta(
+            codigo=c.codigo,
+            nombre_regla=nombre_de_regla(c.codigo),
+            severidad=c.severidad,
+            descripcion=c.descripcion,
+            ocurrencias=len(c.indices),
+            indices=list(c.indices),
+        )
+        for c in causas
+    ], no_aplicables
 
 
 class AlertaPrecioRespuesta(BaseModel):
@@ -238,6 +267,11 @@ class LibroAuditadoRespuesta(BaseModel):
     trazabilidad: list[TrazaRespuesta]
     metadatos: dict[str, str]
     aviso_historial: str | None = None
+    #: Campos aditivos (pantalla de auditoría, 2026-11-23): los hallazgos agrupados por causa raíz
+    #: y las posiciones en `hallazgos` de los avisos de regla no aplicable (R2 y R7 sin curva ni
+    #: plan), que la pantalla muestra aparte porque no son errores del libro.
+    causas: list[CausaRaizRespuesta] = []
+    no_aplicables: list[int] = []
 
 
 class PdfOrigenRespuesta(BaseModel):
@@ -719,7 +753,10 @@ async def auditar_libro(
     aviso = await run_in_threadpool(
         _guardar, lambda s: registrar_resultado(s, r, usuario=usuario, ahora=ahora)
     )
+    causas, no_aplicables = _causas(r.hallazgos_tabla)
     return LibroAuditadoRespuesta(
+        causas=causas,
+        no_aplicables=no_aplicables,
         aviso_historial=aviso,
         libro=LibroOrigenRespuesta(nombre=r.libro.nombre, sha256=r.libro.sha256),
         fecha_libro=_iso(r.fecha_libro),

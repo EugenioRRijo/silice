@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import re
 import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
@@ -36,6 +35,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
+
+from aplicacion.causas_raiz import agrupar, es_no_aplicable, patron  # noqa: E402, F401
 
 VERDADERO = "Verdadero"
 FALSO = "Falso"
@@ -74,8 +75,8 @@ class FilaPlanilla:
 
 def _no_aplica(h) -> bool:
     """El aviso de una regla que no tuvo nada que revisar (R2 y R7 sin curva ni plan, UC-05 2a):
-    no es un error del libro y no se marca."""
-    return h.severidad.name == "INFO" and "no aplicable" in h.descripcion
+    no es un error del libro y no se marca. Mismo criterio que la pantalla de auditoría."""
+    return es_no_aplicable(h.severidad.name, h.descripcion)
 
 
 def reglas_no_aplicables(hallazgos: Iterable) -> list[str]:
@@ -99,30 +100,16 @@ def filas_de_hallazgos(hallazgos: Iterable) -> list[FilaPlanilla]:
     ]
 
 
-_CELDA = re.compile(r"\b[A-Z]{1,3}\$?\d+\b")
-_NUMERO = re.compile(r"\d+(?:[.,]\d+)*")
-_VALOR = re.compile(r"\(valor (?:«[^»]*»|[^)]*)\)")
-
-
-def patron(descripcion: str) -> str:
-    """La causa de un hallazgo: su primera cláusula (qué lee y de dónde), sin lo que cambia de un
-    caso a otro (celdas, números y el valor encontrado). Lo que sigue al primer «;» o al «Efecto:»
-    son detalles del caso. Dos partidas con la misma fórmula copiada dan el mismo patrón."""
-    causa = descripcion.split("Efecto:")[0].split(";")[0]
-    causa = _VALOR.sub("(valor #)", causa)
-    return " ".join(_NUMERO.sub("#", _CELDA.sub("#", causa)).split())
-
-
 def causas_de_hallazgos(hallazgos: Iterable) -> list[FilaPlanilla]:
-    """Una fila por causa raíz (misma regla y mismo patrón), numeradas desde 1 en el orden en que
-    aparece su primer caso. Lleva la severidad más grave, todas las celdas, la suma del impacto y
-    cuántos hallazgos agrupa. Los avisos de regla no aplicable quedan fuera."""
-    grupos: dict[tuple[str, str], list] = {}
-    for h in hallazgos:
-        if not _no_aplica(h):
-            grupos.setdefault((h.regla, patron(h.descripcion)), []).append(h)
+    """Una fila por causa raíz (misma regla y mismo patrón, `aplicacion/causas_raiz.py`, lo mismo
+    que muestra la pantalla de auditoría), numeradas desde 1 en el orden en que aparece su primer
+    caso. Lleva la severidad más grave, todas las celdas, la suma del impacto y cuántos hallazgos
+    agrupa. Los avisos de regla no aplicable quedan fuera."""
+    hallazgos = list(hallazgos)
+    causas, _ = agrupar([(h.regla, h.severidad.name, h.descripcion) for h in hallazgos])
     filas = []
-    for numero, casos in enumerate(grupos.values(), start=1):
+    for numero, causa in enumerate(causas, start=1):
+        casos = [hallazgos[i] for i in causa.indices]
         celdas = tuple(dict.fromkeys(str(c) for h in casos for c in h.origen_ids))
         impactos = [h.impacto for h in casos if h.impacto is not None]
         filas.append(FilaPlanilla(

@@ -41,7 +41,8 @@ def _auditar(cliente, datos: bytes) -> dict:
 
 def test_cada_hallazgo_queda_en_una_causa_o_entre_los_no_aplicables(cliente) -> None:
     cuerpo = _auditar(cliente, construir())
-    hallazgos, causas, no_aplicables = cuerpo["hallazgos"], cuerpo["causas"], cuerpo["no_aplicables"]
+    hallazgos, causas = cuerpo["hallazgos"], cuerpo["causas"]
+    no_aplicables = cuerpo["no_aplicables"]
     posiciones = [i for causa in causas for i in causa["indices"]] + no_aplicables
     assert sorted(posiciones) == list(range(len(hallazgos)))  # cada uno, una sola vez
     assert len(causas) < len(hallazgos) - len(no_aplicables)  # el libro repite causas
