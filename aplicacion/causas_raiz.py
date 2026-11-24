@@ -24,7 +24,8 @@ NO_APLICABLE = "no aplicable"
 
 _ORDEN = {"INFO": 1, "ADVERTENCIA": 2, "ERROR": 3, "CRITICO": 4}
 _CELDA = re.compile(r"\b[A-Z]{1,3}\$?\d+\b")
-_NUMERO = re.compile(r"\d+(?:[.,]\d+)*")
+# Una cifra, también con espacio de miles (normal, duro o fino: `9 999,90`), es un solo «#».
+_NUMERO = re.compile(r"\d+(?:[   ]\d{3})*(?:[.,]\d+)*")
 _VALOR = re.compile(r"\(valor (?:«[^»]*»|[^)]*)\)")
 
 
