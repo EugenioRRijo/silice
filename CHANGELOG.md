@@ -54,6 +54,14 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   como otra cifra. El experimento se re-congeló con acta (`docs/bitacora/2026-11-22-recongelado-experimento-3.md`).
 
 ### Agregado
+- **Herramientas del plan del consejo para medir el TEG** (2026-11-23; PR #141). `scripts/medir_auditoria_libro.py`
+  aplica el protocolo del anteproyecto v8 (§8) y no forma parte del producto: `clave` escribe la clave de la siembra,
+  `exportar` audita un libro con `procesar_libro` y saca los hallazgos **agrupados por causa raíz** a una planilla para
+  marcar (Verdadero o Falso, más «Se le escaparon»; sin los avisos «no aplicable») y `calcular` da precisión, detección de
+  lo sembrado, exhaustividad aproximada y kappa de Cohen. `scripts/libro_ficticio_con_errores.py` escribe un libro ficticio
+  con 12 errores sembrados y su clave; `scripts/respaldo_local.py` respalda fuera de OneDrive con manifiesto SHA-256. Ninguno
+  escribe dentro del repositorio. Documentos en `docs/tesis/`: protocolo de medición, guion de la demo del plan B, ensayo de
+  la defensa (un APU vial a mano) y esqueleto del capítulo de resultados.
 - **Portada solo de pruebas y entrada de la suite** (2026-11-21, Neon; corregido el 2026-11-22). `GET /` redirige a `/app/`
   salvo con `SILICE_PORTADA_WEB=1` y un paquete hecho con `npm run build:portada`: la portada web con «Descargar» sirve
   solo para probar y no va en el instalador ni en la suite (decisión de Eugenio). La entrada es un solo formulario de

@@ -131,6 +131,9 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `generar_ids_silice.py` | escribe (o con `--comprobar`, verifica) `data/ids/silice_instalaciones.ids`, los requisitos IDS del IFC (necesita el extra `ifc`) | S3-5 · RF-89 |
 | `sembrar_errores_planos.py` | siembra errores conocidos en el DXF de OF-001 y en el IFC de oficina (catálogo de S3) | S3-5 · RF-89 |
 | `medir_deteccion_planos.py` | mide la tasa de detección y las falsas alarmas de la auditoría de planos sobre esos errores | S3-5 · RF-89 |
+| `medir_auditoria_libro.py` | herramienta LOCAL de la medición del TEG (anteproyecto v8, §8): `clave` escribe la clave de la siembra, `exportar` audita un libro con `procesar_libro` y saca los hallazgos agrupados por causa raíz a una planilla para marcar (Verdadero/Falso y «Se le escaparon»), `calcular` da precisión, detección de lo sembrado, exhaustividad aproximada y kappa de Cohen; no escribe dentro del repositorio ni pisa una planilla | plan del consejo · TEG |
+| `libro_ficticio_con_errores.py` | escribe fuera del repositorio un libro ficticio con 12 errores sembrados (8 reglas) y su clave, para mostrar la auditoría y ensayar la medición sin un libro real | plan del consejo · TEG |
+| `respaldo_local.py` | respaldo fuera de OneDrive de lo que no se recupera desde GitHub (bundle de todas las ramas, trabajo sin commit de cada árbol, ignorados no regenerables, memoria y skills propias) con manifiesto SHA‑256; `verificar` lo comprueba; se niega a escribir en OneDrive o en el repositorio | plan del consejo |
 | `restablecer_administrador.py` | emite un código de instalación nuevo (20 caracteres, 100 bits, un solo uso) y cierra las sesiones de los administradores; exige el equipo | S3-3 · RF-80 |
 
 ## Agentes externos (2026-11-04)
