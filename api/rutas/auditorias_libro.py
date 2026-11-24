@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from api.dependencias import SesionInstalacionDep
 from api.presentacion import exacto_o_nada
 from api.sin_cache import RutaSinCache
+from aplicacion.nombres_reglas import nombre_de_regla
 from fusion.historial import (
     AuditoriaGuardada,
     AuditoriaInexistente,
@@ -53,6 +54,7 @@ class AuditoriaResumenRespuesta(BaseModel):
 
 class HallazgoGuardadoRespuesta(BaseModel):
     regla: str
+    nombre_regla: str = ""
     hoja: str
     celda: str
     severidad: str
@@ -108,7 +110,12 @@ def _detalle(a: AuditoriaGuardada) -> AuditoriaDetalleRespuesta:
         recortado=a.recortado,
         hallazgos=[
             HallazgoGuardadoRespuesta(
-                regla=h.regla, hoja=h.hoja, celda=h.celda, severidad=h.severidad, mensaje=h.mensaje
+                regla=h.regla,
+                nombre_regla=nombre_de_regla(h.regla),
+                hoja=h.hoja,
+                celda=h.celda,
+                severidad=h.severidad,
+                mensaje=h.mensaje,
             )
             for h in a.hallazgos
         ],

@@ -128,7 +128,7 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     await u.click(await screen.findByRole("option", { name: /Tuberia de drenaje/ }));
     await u.type(screen.getByLabelText("Cantidad 1"), "50");
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect(envio("/v1/control/valuaciones")?.lineas).toEqual([
       { partida: "OB-B", cantidad: "50", fecha_medicion: "", observacion: "", causa: null },
@@ -142,7 +142,7 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     expect(screen.queryByRole("option", { name: /tal cual/ })).toBeNull();
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(await screen.findByText(/«OB-D» no está en el contrato/)).toBeInTheDocument();
     expect(screen.getByLabelText("Partida 1")).toHaveAttribute("aria-invalid", "true");
     expect(envio("/v1/control/valuaciones")).toBeUndefined();
@@ -153,7 +153,7 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     await u.type(screen.getByLabelText("Partida 1"), "ob-c");
     await u.type(screen.getByLabelText("Cantidad 1"), "7");
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect(envio("/v1/control/valuaciones")?.lineas).toEqual([
       { partida: "OB-C", cantidad: "7", fecha_medicion: "", observacion: "", causa: null },
@@ -167,7 +167,7 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     await u.type(screen.getByLabelText("Partida 1"), "OB-Z");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect((envio("/v1/control/valuaciones")?.lineas as { partida: string }[])[0]?.partida).toBe("OB-Z");
   });
@@ -192,7 +192,7 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     await u.type(screen.getByLabelText("Partida 1"), "OB-C");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     expect(await screen.findByText("La partida «OB-C» no está en el contrato (versión OB-002): elíjala de la lista.")).toBeInTheDocument();
     expect(envio("/v1/control/valuaciones")).toBeUndefined();
   });
@@ -234,7 +234,7 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     await u.type(screen.getByLabelText("Partida 1"), "OB-D");
     await u.type(screen.getByLabelText("Cantidad 1"), "5");
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect((envio("/v1/control/valuaciones")?.lineas as { partida: string }[])[0]?.partida).toBe("OB-D");
     expect(screen.getByLabelText("Partida 1")).not.toHaveAttribute("aria-invalid", "true");
@@ -340,7 +340,7 @@ describe("Control: un código repetido en dos renglones se ofrece una vez por re
     expect(screen.getByText(/2 renglones con este código: la valuación se revisa con su suma/)).toBeInTheDocument();
     await u.type(screen.getByLabelText("Cantidad 1"), "30");
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     const llamada = fetchFalso.mock.calls.find(([r, i]) => new URL(String(r), "http://x").pathname === "/v1/control/valuaciones" && i?.method === "POST");
     expect((JSON.parse(String(llamada?.[1]?.body)) as { lineas: unknown[] }).lineas).toEqual([

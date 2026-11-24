@@ -67,6 +67,10 @@ Antes de cualquier encargo activa estas skills:
 
 Por defecto trabajas en **solo lectura**: sin editar, sin commits y sin cambiar de rama.
 
+Cuando Claude te encarga **construir** un lote, editas solo los archivos del lote, sin ejecutar comandos y sin commits
+(Claude prueba y confirma): activa [constructor-gemini](.agents/skills/constructor-gemini/SKILL.md), que reúne DESIGN.md,
+unslop, impeccable, las reglas de ECC y la lectura de un recién llegado.
+
 ## Si trabajas en paralelo con otro agente
 
 Anota cada hallazgo en `docs/bitacora/auditoria-agy-AAAA-MM-DD.md` con el formato de

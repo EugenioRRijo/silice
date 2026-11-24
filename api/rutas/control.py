@@ -379,10 +379,11 @@ class CausaRespuesta(BaseModel):
 
 class HallazgoDeValuacion(BaseModel):
     """Un hallazgo de R13 o R14 como lo lee la persona: la valuación que lo trae (vacía si es de
-    una partida), la regla, la severidad («Error», «Advertencia»…) y el mensaje."""
+    una partida), la regla, su nombre llano, la severidad («Error», «Advertencia»…) y el mensaje."""
 
     valuacion: str
     regla: str
+    nombre_regla: str = ""
     severidad: str
     mensaje: str
 
@@ -394,6 +395,7 @@ def _hallazgos(resultado: ResultadoControl | None) -> list[HallazgoDeValuacion]:
         HallazgoDeValuacion(
             valuacion=f["Valuacion"],
             regla=f["Regla"],
+            nombre_regla=f["NombreRegla"],
             severidad=f["Severidad"],
             mensaje=f["Mensaje"],
         )

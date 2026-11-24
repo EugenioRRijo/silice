@@ -114,7 +114,7 @@ function Cuerpo({ proyecto, alCrearVersion }: { proyecto: string; alCrearVersion
     const hay = versiones.datos.versiones.length > 0;
     return (
       <EstadoVacio
-        titulo={hay ? "Ninguna versión es la vigente todavía." : "Esta obra aún no tiene versiones guardadas."}
+        titulo={hay ? "Ninguna versión es la vigente todavía" : "Esta obra aún no tiene versiones guardadas"}
         descripcion="Guarde una versión del presupuesto para poder registrar cotizaciones."
       />
     );

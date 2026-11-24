@@ -171,11 +171,21 @@ def test_sin_indicadores_no_hay_tarjetas_de_control():
 def test_las_tarjetas_de_control_de_ob_s2_al_corte():
     tarjetas = _tarjetas(_indicadores())
     assert [(t.rotulo, t.valor, t.detalle) for t in tarjetas.values()] == [
-        ("Avance físico (EV/BAC)", "30.0 %", ""),  # 1 200 / 4 000
+        ("Avance físico (ejecutado sobre el presupuesto total)", "30.0 %", ""),  # 1 200 / 4 000
         ("SPI (plazo)", "0.80", ""),
         ("CPI (costo)", "0.94", ""),  # 0,9375 sube a 0,94
         ("EAC (costo final estimado)", "4266.67 USD", ""),  # 4 000 / 0,9375
     ]
+
+
+def test_avance_planificado_y_referencia_en_espanol():
+    assert tablero.avance_planificado(_indicadores()) == D("0.375")  # 1 500 / 4 000
+    assert tablero.referencia_avance_planificado(_indicadores()) == "Plan a la fecha: 37,5 %"
+    assert tablero.referencia_avance_planificado(_indicadores(pv=D(0))) == "Plan a la fecha: 0,0 %"
+    assert tablero.avance_planificado(_indicadores(bac=D(0))) is None
+    assert tablero.referencia_avance_planificado(_indicadores(bac=D(0))) is None
+    assert tablero.avance_planificado(None) is None
+    assert tablero.referencia_avance_planificado(None) is None
 
 
 def test_un_eac_disponible_no_lleva_el_motivo_del_eac_del_sistema():
@@ -232,7 +242,12 @@ def test_sin_pv_el_spi_dice_su_motivo_y_el_avance_con_bac_cero_no_esta():
     )
     assert tablero.avance_fisico(_indicadores(bac=D(0))) is None
     assert tablero.avance_fisico(None) is None
-    assert _tarjetas(_indicadores(bac=D(0)))["Avance físico (EV/BAC)"].valor == "no disponible"
+    assert (
+        _tarjetas(_indicadores(bac=D(0)))[
+            "Avance físico (ejecutado sobre el presupuesto total)"
+        ].valor
+        == "no disponible"
+    )
 
 
 def test_sin_version_guardada_no_hay_tablero(sesion):

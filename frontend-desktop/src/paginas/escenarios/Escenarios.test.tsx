@@ -176,9 +176,9 @@ describe("Escenarios de sensibilidad", () => {
   test("precarga los parametros del base y el nombre por omision", async () => {
     montar();
     await listo();
-    expect(screen.getByLabelText("Bono de alimentación")).toHaveValue("2,50");
-    expect(screen.getByLabelText("Administración")).toHaveValue("0,10");
-    expect(screen.getByLabelText("Utilidad")).toHaveValue("0,12");
+    expect(screen.getByLabelText("Bono de alimentación (USD)")).toHaveValue("2,50");
+    expect(screen.getByLabelText("Administración (fracción; ej. 0,15 = 15 %)")).toHaveValue("0,10");
+    expect(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)")).toHaveValue("0,12");
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 1");
     expect(fetchFalso).toHaveBeenCalledWith(
       "/presupuestos/FIC-1/escenarios/base?proyecto=Obra%20ficticia",
@@ -245,13 +245,13 @@ describe("Escenarios de sensibilidad", () => {
     await listo();
     expect(screen.getAllByText(AYUDA_CIFRAS).length).toBeGreaterThan(0);
     const usuario = userEvent.setup();
-    await usuario.clear(screen.getByLabelText("Utilidad"));
-    await usuario.type(screen.getByLabelText("Utilidad"), "0.15");
+    await usuario.clear(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)"));
+    await usuario.type(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)"), "0.15");
     await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
     await usuario.type(screen.getByLabelText("Insumo 1"), "Cemento ficticio");
     await usuario.type(screen.getByLabelText("Precio nuevo 1"), "18.50");
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
-    expect(screen.getByLabelText("Utilidad")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Precio nuevo 1")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getAllByText(MENSAJE_CIFRA).length).toBeGreaterThanOrEqual(2);
     expect(posts()).toHaveLength(0);
@@ -262,8 +262,8 @@ describe("Escenarios de sensibilidad", () => {
     montar();
     await listo();
     const usuario = userEvent.setup();
-    await usuario.clear(screen.getByLabelText("Utilidad"));
-    await usuario.type(screen.getByLabelText("Utilidad"), "-1");
+    await usuario.clear(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)"));
+    await usuario.type(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)"), "-1");
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
     expect((await screen.findAllByText("utilidad no puede ser negativa")).length).toBeGreaterThan(0);
     expect(screen.getByText("Defina un escenario para compararlo contra el presupuesto base.")).toBeInTheDocument();
@@ -276,8 +276,8 @@ describe("Escenarios de sensibilidad", () => {
         pendientes_base: [],
         escenarios: cuerpo.escenarios.map((e) => escenario(e.nombre, "1.00")),
       });
-    await usuario.clear(screen.getByLabelText("Utilidad"));
-    await usuario.type(screen.getByLabelText("Utilidad"), "0,12");
+    await usuario.clear(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)"));
+    await usuario.type(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)"), "0,12");
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
     await screen.findByText("Comparación contra el base");
     expect(cuerpoDe(posts()[1]).escenarios).toHaveLength(1);
@@ -354,14 +354,14 @@ describe("Escenarios de sensibilidad", () => {
       "Total anterior",
       "Total nuevo",
       "Variación %",
-      "Incidencia %",
-      "P.U. anterior",
-      "P.U. nuevo",
+      "Incidencia en el cambio (%)",
+      "Precio unitario anterior",
+      "Precio unitario nuevo",
       "Cantidad",
     ]);
     expect(within(tabla).getByText("1.050,00")).toHaveAttribute("title", "1050.00");
     expect(
-      screen.getByText("Hallazgos de la auditoría del escenario: 2 (el informe se genera siempre). Insumos variados: 1."),
+      screen.getByText("Hallazgos de revisión en este escenario: 2. Insumos con precio modificado: 1."),
     ).toBeInTheDocument();
   });
 
@@ -573,7 +573,7 @@ describe("Escenarios de sensibilidad", () => {
     await listo();
     await userEvent.setup().click(screen.getByRole("button", { name: "Generar escenario" }));
     await screen.findAllByText("utilidad no puede ser negativa");
-    expect(screen.getByLabelText("Utilidad")).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getByLabelText("Administración")).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Administración (fracción; ej. 0,15 = 15 %)")).not.toHaveAttribute("aria-invalid", "true");
   });
 });

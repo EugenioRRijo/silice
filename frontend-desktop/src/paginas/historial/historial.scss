@@ -1,4 +1,17 @@
-// Historial de auditorias: filtros en una fila que cabe en 1366 px, resumen en rejilla de datos y huella que corta.
+// Historial de auditorias: cabecera con accion secundaria, filtros en una fila que cabe en 1366 px, resumen en rejilla de datos y huella que corta.
+.silice-historial__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  min-inline-size: 0;
+
+  > * {
+    min-inline-size: 0;
+  }
+}
+
 .silice-historial__filtros {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 14rem));

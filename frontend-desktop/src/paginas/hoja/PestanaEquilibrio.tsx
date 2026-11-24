@@ -40,7 +40,7 @@ function ContenidoEquilibrio({ vista }: { vista: VistaEquilibrio }) {
           <Cifra monto={vista.utilidad} unidad={moneda} />
         </Metrica>
         {vista.punto !== null && (
-          <Metrica rotulo="Punto de equilibrio">
+          <Metrica rotulo="Punto de equilibrio (mínimo a ejecutar sin pérdida)">
             <Cifra monto={vista.punto} unidad={moneda} />
           </Metrica>
         )}
@@ -69,6 +69,9 @@ export function PestanaEquilibrio({ id, alAusente }: Props) {
       <h2 id={titulo} className="cds--type-heading-compact-02">
         Punto de equilibrio
       </h2>
+      <p className="cds--type-helper-text-01">
+        Indica cuánto debe ejecutar para cubrir los costos; cuanto menor sea el %, mejor
+      </p>
       <VistaCarga<VistaEquilibrio> ruta={rutaDeVista(id, "equilibrio")} etiqueta="Punto de equilibrio" alAusente={alAusente}>
         {(vista) => <ContenidoEquilibrio vista={vista} />}
       </VistaCarga>

@@ -33,6 +33,7 @@ import { ENLACE_DESDE_EL_ESPACIO } from "../archivos/textos";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 import { usePuedeEditarLaHoja } from "./puedeEditar";
 import { unidadEscrita } from "../../comun/unidades";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 interface Props {
   id: string;
@@ -138,7 +139,7 @@ function ContenidoEspacio({
                 }))
               }
             >
-              {`Ir a la fila ${ubicacion.fila} de ${rotuloDe(ubicacion.tabla)}`}
+              {`Ir a la fila ${formatoEsVe(String(ubicacion.fila))} de ${rotuloDe(ubicacion.tabla)}`}
             </Button>
           )}
         </AvisoDeEdicion>
@@ -204,8 +205,9 @@ function ContenidoEspacio({
       </section>
       {vista.pendientes > 0 && (
         <p className="cds--type-body-compact-01">
-          {vista.pendientes} partida(s) no tienen composición en el catálogo del
-          caso: quedan pendientes y no suman al total.
+          {vista.pendientes === 1
+            ? "1 partida no tiene composición en el catálogo de la carpeta: queda pendiente y no suma al total."
+            : `${formatoEsVe(String(vista.pendientes))} partidas no tienen composición en el catálogo de la carpeta: quedan pendientes y no suman al total.`}
         </p>
       )}
     </div>

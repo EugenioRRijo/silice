@@ -56,6 +56,7 @@ describe("logica de Índices del BCV", () => {
   test("el aviso de omitidos concuerda en singular y plural", () => {
     expect(textoOmitidos(1)).toBe("Hay 1 fila rechazada más que no se muestran aquí.");
     expect(textoOmitidos(3)).toBe("Hay 3 filas rechazadas más que no se muestran aquí.");
+    expect(textoOmitidos(1200)).toBe("Hay 1.200 filas rechazadas más que no se muestran aquí.");
   });
 
   test("hoyIso es la fecha local con ceros", () => {

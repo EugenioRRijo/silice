@@ -36,10 +36,6 @@ Cuenta › Carpetas):
     uv run --no-sync --with playwright python scripts/recorrido_ux_playwright.py --funcional \\
         --salida <carpeta> [--acciones scripts/recorrido_funcional.toml] [--solo componer,catalogo]
 
-F8 (C2) retiró lo que medía el menú de módulos de antes de F6: los estados del sidebar
-(`--sidebar`), los paneles de área de la barra y las medidas aparte del selector de obra y del
-diálogo de carpetas (`--especiales`).
-
 No usa `data/` del árbol ni datos reales; solo libros ficticios (`tests/fixtures/`). Cierra el
 servidor por su PID y el navegador que lanzó; nunca cierra Chrome/Edge por nombre.
 """
@@ -257,7 +253,7 @@ def patron_de_hash(id_: str) -> str:
 
 def pagina_de_la_ruta(enlace: str) -> str | None:
     """La pantalla a la que lleva un enlace (`href` o `location.hash`), o `None` si no lleva a una
-    pantalla del registro (Pendientes, «Pantalla y tamaño de letra», un segmento desconocido o una
+    pantalla del registro (Pendientes, «Configuración», un segmento desconocido o una
     dirección vieja que F8 retiró, como `#/catalogo`)."""
     ruta = enlace.split("#", 1)[1] if "#" in enlace else enlace
     partes = [p for p in ruta.split("?", 1)[0].split("/") if p]
@@ -500,14 +496,10 @@ MEDIR_JS = """() => {
 }"""
 
 
-# Las barras del marco de F6 sobre la pantalla ya cargada: la barra de arriba
-# (`header.silice-marco-barra`), la barra lateral y cada barra de pestañas de un espacio
-# (`nav.silice-barra-espacio`: secciones de la obra, vistas de una sección, herramientas de un
-# espacio, secciones de la Cuenta). Por barra: si desborda (su contenido es más ancho que ella), qué
-# pestañas salen de la ventana y qué nombres se repiten. Un texto con puntos suspensivos cuenta como
-# recortado si queda más corto que su propio tope (`max-inline-size`); recortado por su tope es a
-# propósito. Chromium guarda las medidas en unidades de 1/64 px: las dos comparaciones del recorte
-# toleran esa diferencia (un recorte real mide décimas).
+# Las barras del marco de F6 (barra de arriba, lateral y cada `nav.silice-barra-espacio`): si
+# desbordan, qué pestañas salen de la ventana y qué nombres se repiten. Un texto con puntos
+# suspensivos cuenta como recortado si queda más corto que su tope (`max-inline-size`); Chromium
+# mide en 1/64 px, así que las dos comparaciones del recorte toleran esa diferencia.
 TOLERANCIA_SUBPIXEL = 0.05
 BARRAS_JS = """() => {
   const de = document.documentElement, ancho = de.clientWidth;
@@ -515,15 +507,23 @@ BARRAS_JS = """() => {
   const visible = el => { if (!el) return false; const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
   const caja = r => [r.left, r.top, r.right, r.bottom].map(Math.round);
+  // Ancho del texto que se ve: un hijo «solo para lectores» (1 px o clip-path) no suma.
+  const oculto = (n, tope) => { for (let p = n.parentElement; p && p !== tope;
+    p = p.parentElement) { const s = getComputedStyle(p), w = p.getBoundingClientRect().width;
+    if ((s.clipPath && s.clipPath !== 'none') || w <= 1) return true; } return false; };
+  const anchoDelTextoVisible = el => { let izq = Infinity, der = -Infinity;
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) { if (!n.textContent.trim()) continue;
+      if (oculto(n, el)) continue; const r = document.createRange(); r.selectNodeContents(n);
+      const c = r.getBoundingClientRect(); if (c.width) { izq = Math.min(izq, c.left);
+        der = Math.max(der, c.right); } } return der > izq ? der - izq : 0; };
   const recortes = raiz => {
     const salida = [];
     for (const el of raiz.querySelectorAll('*')) {
       if (!visible(el)) continue;
       const cs = getComputedStyle(el);
       if (cs.textOverflow !== 'ellipsis') continue;
-      const rango = document.createRange();
-      rango.selectNodeContents(el);
-      const texto = rango.getBoundingClientRect().width;
+      const texto = anchoDelTextoVisible(el);
       const caja = el.getBoundingClientRect().width;
       // Un texto solo para lectores de pantalla (1 px, con clip-path) no se ve: no cuenta.
       if (caja <= 1 || (cs.clipPath && cs.clipPath !== 'none')) continue;

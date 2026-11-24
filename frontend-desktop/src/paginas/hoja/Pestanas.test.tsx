@@ -175,7 +175,20 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     const plan = await screen.findByRole("heading", { level: 2, name: "Curva de inversión" });
     const equilibrio = await screen.findByRole("heading", { level: 2, name: "Punto de equilibrio" });
     expect(plan.compareDocumentPosition(equilibrio) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Indica cuánto debe ejecutar para cubrir los costos; cuanto menor sea el %, mejor")).toBeInTheDocument();
     expect(await screen.findByText("Ventas (contrato)")).toBeInTheDocument();
+    expect(screen.getByText("Punto de equilibrio (mínimo a ejecutar sin pérdida)")).toBeInTheDocument();
+  });
+
+  test("en «Precios» explica qué compara la búsqueda de variaciones atípicas", async () => {
+    servidor(true);
+    montar();
+    await irA("Precios");
+    expect(
+      await screen.findByText(
+        "Compara cada insumo con sus variaciones pasadas (en USD) y marca en morado los cambios inusuales; es solo un aviso.",
+      ),
+    ).toBeInTheDocument();
   });
 
   test("baja 12: «Ajustes de costo» y «Espacio y metrajes» no repiten el total ni la moneda del proyecto", async () => {

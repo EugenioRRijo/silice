@@ -6,6 +6,9 @@ Esta página es la **única fuente del estado actual**. Los planes de la raíz y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
 de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia.md §5](metodologia.md)).
 
+> **Ola 1121 (2026-11-21/22):** la depuración va en el PR #138 y el front (aspecto de Neon, portada solo de pruebas,
+> pulido unslop y responsive con letra grande) en `feature/ui-aistudio-correcciones`, apilado sobre él (§2).
+
 ## 1. Qué hay en `main`
 
 `main` = **el programa completo** (PR #98, 2026-11-02) y, desde el 2026-11-04:
@@ -53,8 +56,8 @@ instalador con huella SHA-256 firmada.
 | PR o rama | Qué trae | Estado |
 |---|---|---|
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
-| `feature/ola-1121-depuracion` (unión `union/ola-1121-depuracion`) | La ola 1121 de Neon (operación O1-O4, lógica L1-L3, front F1-F7) con las tres correcciones de la auditoría de Claude (Visor, margen de `mercado`, aviso SEG-12) y la guarda de miles del asistente con el experimento re-congelado ([auditoría](bitacora/auditoria-agy-2026-11-21.md)) | PR abierto; fusión solo con autorización de Eugenio |
-| `feature/ui-aistudio-correcciones` | El rediseño de Neon (aspecto de Google AI Studio) con sus correcciones, la portada solo para pruebas (`SILICE_PORTADA_WEB=1`) y los medidores; apilado sobre la depuración | **Por subir**: espera la revisión de Eugenio en el navegador |
+| #138 `feature/ola-1121-depuracion` | La ola 1121 de Neon (operación O1-O4, lógica L1-L3, front F1-F7) con las tres correcciones de la auditoría de Claude (Visor, margen de `mercado`, aviso SEG-12) y la guarda de miles del asistente con el experimento re-congelado ([auditoría](bitacora/auditoria-agy-2026-11-21.md)) | PR abierto; fusión solo con autorización de Eugenio |
+| `feature/ui-aistudio-correcciones` | El rediseño de Neon (aspecto de Google AI Studio) con sus correcciones, la portada solo para pruebas (`SILICE_PORTADA_WEB=1`) y los medidores; apilado sobre la depuración | PR #139 abierto, apilado sobre #138 (revisado por Eugenio en el navegador el 2026-11-22: «me gusta como se ve»). Desde el 2026-11-23 trae también la claridad (fuera el «tablero de avión»), las tareas rápidas 1-15 del backlog de UX y los rótulos del back en español llano. La pasada goldfish de `planes/2026-11-23-pasada-goldfish.md` está hecha (Claude, 2026-11-23: N1 y N2, un nombre por idea, y en la curva AC con su propio trazo). Fusión solo con autorización de Eugenio |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
 autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada tarea de la tanda tuvo su árbol

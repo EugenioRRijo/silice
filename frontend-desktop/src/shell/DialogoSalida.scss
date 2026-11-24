@@ -17,7 +17,8 @@
   gap: 1rem;
   inline-size: min(32rem, 100%);
   max-block-size: calc(100vh - 2rem);
-  overflow-y: auto;
+  border-radius: var(--silice-radio-lg);
+  overflow: hidden;
   padding: 1rem 1rem 0;
   background: var(--cds-layer-01);
   color: var(--cds-text-primary);

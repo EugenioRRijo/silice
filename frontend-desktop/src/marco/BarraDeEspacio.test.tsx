@@ -197,14 +197,12 @@ describe("BarraDeEspacio: estilos", () => {
     expect(nav).toMatch(/display:\s*flex/);
     expect(nav).toMatch(/flex-wrap:\s*wrap/);
     expect(nav).toMatch(/align-items:\s*stretch/);
-    expect(nav).toMatch(/gap:\s*0/);
-    expect(nav).toMatch(/padding-inline:\s*1rem/);
-    expect(nav).toMatch(/background-color:\s*var\(--cds-layer-01\)/);
-    expect(nav).toMatch(/border-block-end:\s*1px solid var\(--cds-border-subtle\)/);
+    expect(nav).toMatch(/background-color:\s*var\(--silice-surface\)/);
+    expect(nav).toMatch(/border-block-end:\s*1px solid var\(--silice-border\)/);
     expect(hoja()).not.toMatch(/overflow(-x)?:\s*(auto|scroll|hidden)/);
   });
 
-  it("la pestaña del espacio: 2,5 rem, body-compact-01, raya reservada y sin subrayado", () => {
+  it("la pestaña del espacio: 2,5 rem, body-compact-01, subrayado editorial y sin subrayado de enlace", () => {
     const pestana = bloque(".silice-barra-espacio__pestana {");
     expect(pestana).toMatch(/min-block-size:\s*2\.5rem/);
     expect(pestana).toMatch(/padding-block:\s*0\.5rem/);
@@ -212,20 +210,17 @@ describe("BarraDeEspacio: estilos", () => {
     expect(pestana).toMatch(/type-style\("body-compact-01"\)/);
     expect(pestana).toMatch(/white-space:\s*nowrap/);
     expect(pestana).toMatch(/text-decoration:\s*none/);
-    expect(pestana).toMatch(/color:\s*var\(--cds-text-secondary\)/);
-    expect(pestana).toMatch(/font-weight:\s*400/);
-    expect(pestana).toMatch(/border-block-end:\s*3px solid transparent/);
+    expect(pestana).toMatch(/color:\s*var\(--silice-muted\)/);
+    expect(pestana).toMatch(/border-block-end:\s*2px solid transparent/);
   });
 
-  it("hover, activa y foco del espacio usan tokens, la raya del complementario y el foco hacia adentro", () => {
+  it("hover, activa y foco del espacio usan tokens editoriales y foco hacia adentro", () => {
     const hover = bloque("&:hover {");
-    expect(hover).toMatch(/background-color:\s*var\(--cds-layer-hover-01\)/);
-    expect(hover).toMatch(/color:\s*var\(--cds-text-primary\)/);
+    expect(hover).toMatch(/color:\s*var\(--silice-ink\)/);
     const activa = bloque('&[aria-current="page"] {');
-    expect(activa).toMatch(/color:\s*var\(--cds-text-primary\)/);
+    expect(activa).toMatch(/color:\s*var\(--silice-ink\)/);
     expect(activa).toMatch(/font-weight:\s*600/);
-    expect(activa).toMatch(/background-color:\s*var\(--cds-background\)/);
-    expect(activa).toMatch(/border-block-end:\s*3px solid var\(--silice-complementario\)/);
+    expect(activa).toMatch(/border-block-end:\s*2px solid var\(--silice-ink\)/);
     const foco = bloque("&:focus-visible {");
     expect(foco).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
     expect(foco).toMatch(/outline-offset:\s*-2px/);
@@ -239,30 +234,21 @@ describe("BarraDeEspacio: estilos", () => {
     expect(compacta).toMatch(/padding-inline:\s*0\.625rem/);
   });
 
-  it("el conmutador de subvistas: compacto, enmarcado, label-01, divisores y raya de 2 px arriba", () => {
+  it("el conmutador de subvistas: compacto, enmarcado segmentado y label-01", () => {
     const conmutador = bloque(".silice-barra-espacio--subvista {");
     expect(conmutador).toMatch(/display:\s*inline-flex/);
     expect(conmutador).toMatch(/flex-wrap:\s*wrap/);
     expect(conmutador).toMatch(/align-self:\s*flex-start/);
-    expect(conmutador).toMatch(/margin:\s*0\.75rem 1rem 0/);
     expect(conmutador).toMatch(/inline-size:\s*fit-content/);
-    expect(conmutador).toMatch(/max-inline-size:\s*calc\(100% - 2rem\)/);
-    expect(conmutador).toMatch(/border:\s*1px solid var\(--cds-border-subtle\)/);
-    expect(conmutador).toMatch(/padding-inline:\s*0/);
+    expect(conmutador).toMatch(/max-inline-size:\s*calc\(100% - 3rem\)/);
+    expect(conmutador).toMatch(/border:\s*1px solid var\(--silice-border\)/);
     const pestana = bloque(".silice-barra-espacio--subvista .silice-barra-espacio__pestana {");
     expect(pestana).toMatch(/min-block-size:\s*1\.75rem/);
     expect(pestana).toMatch(/padding-block:\s*0\.25rem/);
-    expect(pestana).toMatch(/padding-inline:\s*0\.625rem/);
     expect(pestana).toMatch(/type-style\("label-01"\)/);
-    expect(pestana).toMatch(/background-color:\s*var\(--cds-layer-01\)/);
-    expect(pestana).toMatch(/border-block-start:\s*2px solid transparent/);
-    expect(pestana).toMatch(/border-block-end:\s*0/);
-    expect(pestana).toMatch(/border-inline-end:\s*1px solid var\(--cds-border-subtle\)/);
-    expect(pestana).toMatch(/&:last-child\s*\{[^}]*border-inline-end:\s*0/);
     const activa = pestana.slice(pestana.indexOf('&[aria-current="page"]'));
-    expect(activa).toMatch(/background-color:\s*var\(--cds-layer-selected-01\)/);
-    expect(activa).toMatch(/border-block-start:\s*2px solid var\(--silice-complementario\)/);
-    expect(activa).toMatch(/font-weight:\s*600/);
+    expect(activa).toMatch(/background-color:\s*var\(--silice-surface\)/);
+    expect(activa).toMatch(/border-color:\s*var\(--silice-border-strong\)/);
   });
 
   it("el conmutador compacta con letra grande a 1,625 rem", () => {
@@ -270,9 +256,9 @@ describe("BarraDeEspacio: estilos", () => {
     expect(compacta).toMatch(/min-block-size:\s*1\.625rem/);
   });
 
-  it("sin colores nuevos: solo tokens, sin sombras ni animaciones, y sin esquinas redondeadas", () => {
+  it("sin colores crudos ni sombras: solo tokens de diseño editorial", () => {
     expect(hoja()).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
-    expect(hoja()).not.toMatch(/box-shadow|transition|animation|border-radius:\s*[1-9]/);
+    expect(hoja()).not.toMatch(/box-shadow|animation/);
   });
 });
 

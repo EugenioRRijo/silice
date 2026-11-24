@@ -75,6 +75,7 @@ describe("pestañas sensibles de Administración", () => {
       montar(<Empresa />);
       expect(await screen.findByText(/Primero guarde el nombre y el RIF/)).toBeInTheDocument();
       expect(screen.queryByLabelText(/Contraseña de la clave/)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Guardar la empresa" })).toHaveClass("cds--btn--primary");
     });
 
     test("guarda la empresa", async () => {
@@ -95,6 +96,8 @@ describe("pestañas sensibles de Administración", () => {
       fetchFalso.mockResolvedValue(json(SIN_CLAVE));
       montar(<Empresa />);
       await usuario.type(await screen.findByLabelText(/Contraseña de la clave \(12/), FRASE);
+      expect(screen.getByRole("button", { name: "Guardar la empresa" })).toHaveClass("cds--btn--secondary");
+      expect(screen.getByRole("button", { name: "Generar la clave" })).toHaveClass("cds--btn--primary");
       await usuario.type(screen.getByLabelText("Repítala"), "otra frase distinta");
       await usuario.click(screen.getByRole("button", { name: "Generar la clave" }));
       expect(await screen.findByText("Las dos contraseñas no coinciden.")).toBeInTheDocument();
@@ -141,7 +144,7 @@ describe("pestañas sensibles de Administración", () => {
       await screen.findByText("AB12 CD34");
       await usuario.type(screen.getByLabelText("Motivo"), "expuesta");
       await usuario.type(screen.getByLabelText(/Contraseña de la clave \(para firmar/), FRASE);
-      await usuario.click(screen.getByRole("button", { name: "Revocar" }));
+      await usuario.click(screen.getByRole("button", { name: "Anular clave comprometida (revocar)" }));
       await usuario.click(screen.getByRole("button", { name: "Sí, revocar" }));
       await waitFor(() => expect(fetchFalso.mock.calls[1][0]).toBe("/v1/admin/empresa/clave/revocar"));
       expect(cuerpo(1)).toEqual({ motivo: "expuesta", contrasena: FRASE });
@@ -164,10 +167,13 @@ describe("pestañas sensibles de Administración", () => {
       fetchFalso.mockResolvedValueOnce(json({ ...CON_CLAVE, clave: null }));
       montar(<Empresa />);
       expect(await screen.findByText("AB12 CD34")).toBeInTheDocument();
+      expect(screen.getByText("Sello digital de su empresa para demostrar que un presupuesto entregado no fue alterado")).toBeInTheDocument();
+      expect(screen.getByText(/Código de verificación de la clave \(SHA-256\):/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cambiar de clave (retirar)" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Descargar la clave pública" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Descargar el respaldo cifrado de la clave" })).toBeInTheDocument();
       await usuario.type(screen.getByLabelText("Motivo"), "perdida");
-      await usuario.click(screen.getByRole("button", { name: "Revocar" }));
+      await usuario.click(screen.getByRole("button", { name: "Anular clave comprometida (revocar)" }));
       expect(fetchFalso).toHaveBeenCalledTimes(1); // nada hasta confirmar
       await usuario.click(screen.getByRole("button", { name: "Sí, revocar" }));
       await waitFor(() => expect(fetchFalso.mock.calls[1][0]).toBe("/v1/admin/empresa/clave/revocar"));
@@ -193,10 +199,12 @@ describe("pestañas sensibles de Administración", () => {
     test("lista las claves sin secreto", async () => {
       fetchFalso.mockResolvedValue(json(CLAVES));
       montar(<ClavesApi />);
-      const tabla = await screen.findByRole("table", { name: "Claves de API" });
+      const tabla = await screen.findByRole("table", { name: "Claves para conectar otros programas (API)" });
+      expect(screen.getByText("Solo si conecta Sílice con otro programa externo; para el uso diario no hace falta")).toBeInTheDocument();
       expect(tabla).toHaveTextContent("api:ABCD1234");
-      expect(tabla).toHaveTextContent("nunca");
+      expect(tabla).toHaveTextContent("Nunca");
       expect(tabla).toHaveTextContent("revocada");
+      expect(screen.getByRole("button", { name: "Crear la clave de API" })).toHaveClass("cds--btn--secondary");
     });
 
     test("la clave nueva se muestra una vez y se puede cerrar", async () => {
@@ -210,7 +218,7 @@ describe("pestañas sensibles de Administración", () => {
       expect(await screen.findByTestId("secreto-de-api")).toHaveTextContent("NUEVA123.secreto-de-prueba");
       expect(fetchFalso.mock.calls[1][0]).toBe("/v1/admin/claves-api");
       expect(cuerpo(1)).toEqual({ nombre: "plugin ficticio" });
-      expect(screen.getByRole("table", { name: "Claves de API" })).not.toHaveTextContent("secreto-de-prueba");
+      expect(screen.getByRole("table", { name: "Claves para conectar otros programas (API)" })).not.toHaveTextContent("secreto-de-prueba");
       await usuario.click(screen.getByRole("button", { name: /close|cerrar/i }));
       expect(screen.queryByTestId("secreto-de-api")).not.toBeInTheDocument();
       expect(document.body.textContent).not.toContain("secreto-de-prueba");
@@ -263,10 +271,11 @@ describe("pestañas sensibles de Administración", () => {
     test("muestra la red, la API y los respaldos con su descarga", async () => {
       fetchFalso.mockResolvedValue(json(BASE));
       montar(<Instalacion />);
-      expect(await screen.findByText("Red local: apagada (solo http://127.0.0.1:8501)")).toBeInTheDocument();
+      expect(await screen.findByText("Acceso desde otros equipos: apagado (solo funciona en este equipo)")).toBeInTheDocument();
       expect(screen.queryByText(/^API:/)).toBeNull();
       expect(screen.queryByText(/silice\.toml/)).toBeNull();
       expect(screen.getByText("20261110-090000 (manual, 2 bases)")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Crear respaldo ahora" })).toHaveClass("cds--btn--secondary");
       expect(screen.getByRole("button", { name: "Descargar 20261110-090000 (.zip)" })).toBeInTheDocument();
     });
 
@@ -302,6 +311,7 @@ describe("pestañas sensibles de Administración", () => {
       fetchFalso.mockResolvedValueOnce(json(BASE));
       montar(<Instalacion />);
       expect(await screen.findByText("revocada: clave_api plugin")).toBeInTheDocument();
+      expect(screen.getByText("Algunas acciones de seguridad (firmar, descargar respaldos) están bloqueadas")).toBeInTheDocument();
       const boton = screen.getByRole("button", { name: "Marcar como revisado" });
       expect(boton).toBeDisabled();
       await usuario.click(screen.getByLabelText("Ya revisé esto"));

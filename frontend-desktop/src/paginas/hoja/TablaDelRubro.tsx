@@ -1,6 +1,7 @@
 import { Button } from "@carbon/react";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { leerCifra } from "../../indicadores/cifraEscrita";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { TablaPaginada } from "./TablaPaginada";
@@ -200,7 +201,7 @@ export function TablaDelRubro({
   return (
     <section className="silice-hoja__seccion">
       <h3 className="cds--type-heading-compact-01">
-        {grupo.rotulo} · {grupo.filas.length} línea(s)
+        {grupo.rotulo} · {formatoEsVe(String(grupo.filas.length))} {grupo.filas.length === 1 ? "línea" : "líneas"}
       </h3>
       {grupo.filas.length === 0 ? (
         <p className="cds--type-body-compact-01">Sin líneas.</p>

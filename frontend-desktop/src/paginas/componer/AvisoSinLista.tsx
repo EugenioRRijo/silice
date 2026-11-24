@@ -107,7 +107,7 @@ export function AvisoSinLista({ carpeta, creada, creando, error, alCrear }: Prop
       ))}
       <div className="silice-componer__acciones">
         {deEmpresa.map((e) => (
-          <Button key={e.id} kind="primary" size="sm" disabled={creando} onClick={() => alCrear("empresa", e.id)}>
+          <Button key={e.id} kind="secondary" size="sm" disabled={creando} onClick={() => alCrear("empresa", e.id)}>
             {`Usar la lista de la empresa «${e.nombre}»`}
           </Button>
         ))}

@@ -163,7 +163,7 @@ describe("Control de obra: causas de retraso y atraso por partida", () => {
     await u.click(screen.getByRole("button", { name: "Agregar línea" }));
     await u.type(screen.getByLabelText("Partida 2"), "B");
     await u.type(screen.getByLabelText("Cantidad 2"), "1,5");
-    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await u.click(screen.getByRole("button", { name: "Guardar valuación y recalcular avance" }));
     await screen.findByText(/Valuación registrada/);
     expect(lineasEnviadas()).toEqual([
       { partida: "A", cantidad: "5", fecha_medicion: "", observacion: "", causa: "compra_tardia" },

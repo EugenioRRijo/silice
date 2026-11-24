@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aplicacion import control
+from aplicacion.cifras import texto_de_cifra
 from aplicacion.estilo import NO_DISPONIBLE, dinero, indice, porcentaje
 from core import models
 from core.budget.edicion import version_vigente
@@ -227,6 +228,23 @@ def avance_fisico(indicadores: Indicadores | None) -> Decimal | None:
     return indicadores.ev / indicadores.bac
 
 
+def avance_planificado(indicadores: Indicadores | None) -> Decimal | None:
+    """PV / BAC, fracción planificada al corte; `None` sin control o con BAC cero."""
+    if indicadores is None or indicadores.bac == CERO:
+        return None
+    return indicadores.pv / indicadores.bac
+
+
+def referencia_avance_planificado(indicadores: Indicadores | None) -> str | None:
+    """El porcentaje planificado a la fecha en español (coma decimal y punto de miles), o `None`
+    si no hay control o BAC es cero."""
+    plan = avance_planificado(indicadores)
+    if plan is None:
+        return None
+    cifra = texto_de_cifra(Decimal(formatear_decimal(plan * 100, 1)))
+    return f"Plan a la fecha: {cifra} %"
+
+
 def tarjetas_de_control(datos: DatosControl, moneda: str) -> list[Tarjeta]:
     """Avance fisico, SPI, CPI y EAC al corte; cada «no disponible» con su motivo."""
     ind = datos.indicadores
@@ -234,7 +252,10 @@ def tarjetas_de_control(datos: DatosControl, moneda: str) -> list[Tarjeta]:
         return []
     motivo = ind.no_disponible
     return [
-        Tarjeta("Avance físico (EV/BAC)", porcentaje(avance_fisico(ind))),
+        Tarjeta(
+            "Avance físico (ejecutado sobre el presupuesto total)",
+            porcentaje(avance_fisico(ind)),
+        ),
         Tarjeta("SPI (plazo)", indice(ind.spi), motivo.get("SPI", "")),
         Tarjeta("CPI (costo)", indice(ind.cpi), motivo.get("CPI") or motivo.get("AC", "")),
         Tarjeta(

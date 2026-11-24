@@ -10,6 +10,7 @@ import { fechaEsVe } from "./logica";
 // se muestran sin pasar por Number; el libro y el PDF no estan: solo su nombre y su huella (RNF-28).
 export interface HallazgoGuardado {
   regla: string;
+  nombre_regla?: string;
   hoja: string;
   celda: string;
   severidad: string;
@@ -78,8 +79,9 @@ function Resumen({ a }: { a: AuditoriaDetalleRespuesta }) {
       <Dato rotulo="Advertencias">{a.advertencias}</Dato>
       <Dato rotulo="Informativos">{a.informativos}</Dato>
       <Dato rotulo="Precios atípicos">{a.atipicos}</Dato>
-      <Dato rotulo="Huella SHA-256 del archivo">
+      <Dato rotulo="Código de verificación del archivo (SHA-256)">
         <span className="silice-historial__huella">{a.sha256}</span>
+        <p className="cds--type-label-01">Sirve para comprobar que corresponde al mismo archivo original</p>
       </Dato>
     </dl>
   );
@@ -128,12 +130,19 @@ export function Detalle({ id, alExpirar, alCerrar }: Props) {
             etiqueta="Hallazgos guardados"
             columnas={[
               { clave: "severidad", titulo: "Severidad", celda: "severidad" },
-              { clave: "regla", titulo: "Regla" },
+              { clave: "regla", titulo: "Qué revisó Sílice" },
               { clave: "hoja", titulo: "Hoja" },
               { clave: "celda", titulo: "Celda" },
               { clave: "mensaje", titulo: "Qué se encontró" },
             ]}
-            filas={carga.datos.hallazgos.map((h, i) => ({ id: String(i), ...h }))}
+            filas={carga.datos.hallazgos.map((h, i) => ({
+              id: String(i),
+              severidad: h.severidad,
+              regla: h.nombre_regla ? `${h.nombre_regla} (${h.regla})` : h.regla,
+              hoja: h.hoja,
+              celda: h.celda,
+              mensaje: h.mensaje,
+            }))}
             vacio={{ titulo: "Esta auditoría no dejó hallazgos guardados" }}
           />
         </>

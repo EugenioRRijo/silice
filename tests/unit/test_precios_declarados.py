@@ -32,10 +32,12 @@ from aplicacion import control
 from aplicacion.mercado import NoExiste
 from aplicacion.precios_declarados import (
     ReglaDelCorte,
+    declarar_desde_el_catalogo,
     declarar_precio_del_corte,
     precios_declarados,
 )
 from aplicacion.tablas_corte import PrecioDelCorte
+from core import models
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
 from tests.fixtures import control_ob_s2 as ob
@@ -279,3 +281,22 @@ def test_una_base_sin_la_tabla_se_lee_sin_declarados_y_la_crea_al_declarar(obra)
     assert not inspect(obra.connection()).has_table("mp_precio_corte")
     _declarar(obra, TUBO, "m", "4.00", date(2026, 11, 10))
     assert _precios(obra).unitarios["OB-B"] == D("6.00")
+
+
+def test_declarar_desde_el_catalogo_confirma_precio_real_en_control_de_obra(obra) -> None:
+    insumo = obra.scalars(select(models.Insumo).where(models.Insumo.descripcion == TUBO)).one()
+    frase, equivalencia = declarar_desde_el_catalogo(
+        obra,
+        ob.NOMBRE,
+        insumo.codigo,
+        precio=D("4.00"),
+        fecha=date(2026, 11, 10),
+        fuente="Estudio de mercado: precio propio",
+        responsable=QUIEN,
+        ahora=AHORA,
+    )
+    assert equivalencia is None
+    assert frase == (
+        "Declarado como precio real en Control de obra de «OB-S2» desde el 10/11/2026."
+    )
+    assert "precio del corte" not in frase

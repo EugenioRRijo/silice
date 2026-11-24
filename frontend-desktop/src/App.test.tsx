@@ -72,13 +72,18 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Entrar" });
   });
 
-  // Antes en Cabecera.test.tsx: la persona necesita leer la pantalla de entrada; sin sesion no hay cuenta ni menu.
-  test("sin sesión la cabecera también trae el control de tamaño de letra, y no la cuenta ni el menú", async () => {
+  // Eugenio, 2026-11-22 («sigo insistiendo»): la letra y su tamaño van ÚNICAMENTE en la configuración del perfil
+  // (Cuenta › Configuración), nunca a la derecha de la cabecera. Sin sesión no hay cuenta ni menú.
+  test("sin sesión la cabecera no trae el control de tamaño de letra, ni la cuenta ni el menú", async () => {
     sesionActual = () => json({ detalle: "Sin sesión." }, 401);
     render(<App />);
     await screen.findByRole("heading", { name: "Entrar" });
     const banner = screen.getByRole("banner");
-    expect(within(banner).getByRole("group", { name: "Tamaño de letra" })).toBeInTheDocument();
+    expect(banner).toHaveClass("silice-marco-barra");
+    // La suite de escritorio no enlaza a la portada web (GET /), que es solo de pruebas (Eugenio, 2026-11-22).
+    expect(within(banner).queryByRole("link", { name: "Portada" })).not.toBeInTheDocument();
+    expect(banner.querySelector('a[href="/"]')).toBeNull();
+    expect(screen.queryByRole("group", { name: "Tamaño de letra" })).not.toBeInTheDocument();
     expect(within(banner).queryByRole("button", { name: /^Cuenta de/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
   });
@@ -409,7 +414,7 @@ describe("App", () => {
       await usuario.click(screen.getByRole("button", { name: /^Crítico/ }));
       // La sesion vence: la siguiente llamada (cambiar la fecha vuelve a auditar) da 401.
       vencida = true;
-      const fecha = screen.getByLabelText("Fecha de devolución");
+      const fecha = screen.getByLabelText("Fecha de la revisión");
       await usuario.clear(fecha);
       await usuario.type(fecha, "2026-12-01");
       await screen.findByRole("heading", { name: "Entrar" });
@@ -427,7 +432,7 @@ describe("App", () => {
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
       await screen.findByText("Ana Pérez");
       const cabecera = screen.getByRole("banner");
-      const fecha = await screen.findByLabelText("Fecha de devolución");
+      const fecha = await screen.findByLabelText("Fecha de la revisión");
       expect(cabecera).not.toContainElement(fecha);
       await subirLibro(usuario);
       expect(within(cabecera).queryByText("libro_minimo.xlsx")).toBeNull();
@@ -440,7 +445,7 @@ describe("App", () => {
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
       // En la Cuenta el nombre sale dos veces: en la barra de arriba y en la cabecera de la Cuenta.
       expect((await screen.findAllByText("Ana Pérez")).length).toBeGreaterThan(0);
-      expect(screen.queryByLabelText("Fecha de devolución")).toBeNull();
+      expect(screen.queryByLabelText("Fecha de la revisión")).toBeNull();
     });
 
     test("un 401 muestra la entrada con el aviso Su sesion vencio", async () => {

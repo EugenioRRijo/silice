@@ -145,6 +145,8 @@ export interface HallazgoLibroRespuesta {
   celda: string;
   impacto: string | null;
   accion: string;
+  // El nombre llano de la regla («Componente fuera del total»), de `aplicacion/nombres_reglas.py`; vacío si no se conoce.
+  nombre_regla?: string;
 }
 
 export interface LibroAuditadoRespuesta {

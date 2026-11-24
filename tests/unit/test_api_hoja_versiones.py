@@ -80,7 +80,7 @@ BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
     "programa."
 )
-EXCEDE = "El cuerpo de la peticion excede el maximo de 20 MiB."
+EXCEDE = "El envío pasa del máximo de 20 MB."
 CENTINELA = "VALOR-CENTINELA"
 ORIGEN = "http://127.0.0.1:8000"
 MIB = 1024 * 1024

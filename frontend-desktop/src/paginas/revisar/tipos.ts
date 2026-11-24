@@ -3,6 +3,7 @@
 
 export interface HallazgoRevision {
   regla: string;
+  nombre_regla?: string;
   severidad: string;
   descripcion: string;
 }

@@ -1018,16 +1018,16 @@ def _fila_de_precio(p: hoja.FilaPrecio) -> FilaDePrecioVista:
 def vista_precios(
     precios: Sequence[hoja.FilaPrecio], moneda: str, fecha_evaluacion: date
 ) -> VistaPrecios:
-    """La pestana Precios (P:1899-2025) sobre la version GUARDADA, evaluada a `fecha_evaluacion`
-    (hoy). `precios` ya viene ordenado por codigo de insumo (`hoja.precios_de_version`)."""
+    """La pestana Precios sobre la version GUARDADA, evaluada a `fecha_evaluacion` (hoy)."""
+    rotulos = {
+        "erosion_pct": "Pérdida cambiaria (%)",
+        "erosion_indice": "Pérdida según el índice",
+    }
+    pares = zip(_CLAVES_DE_PRECIOS, hoja.COLUMNAS_PRECIOS, strict=True)
     return VistaPrecios(
-        moneda=moneda,
-        fecha_evaluacion=fecha_evaluacion.isoformat(),
+        moneda=moneda, fecha_evaluacion=fecha_evaluacion.isoformat(),
         columnas=tuple(
-            ColumnaDePrecio(clave, rotulo, numerica)
-            for (clave, numerica), rotulo in zip(
-                _CLAVES_DE_PRECIOS, hoja.COLUMNAS_PRECIOS, strict=True
-            )
+            ColumnaDePrecio(c, rotulos.get(c, r), n) for (c, n), r in pares
         ),
         filas=tuple(_fila_de_precio(p) for p in precios),
     )

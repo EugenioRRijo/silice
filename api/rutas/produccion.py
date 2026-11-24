@@ -481,7 +481,7 @@ async def _leer_archivo(archivo: UploadFile) -> bytes:
     """Los bytes de la subida, por bloques; 413 en cuanto pasan de `TOPE_BYTES`."""
     excedido = HTTPException(
         413,
-        f"El reporte supera el máximo de {TOPE_BYTES // 2**20} MiB. Divídalo en reportes menores.",
+        f"El reporte supera el máximo de {TOPE_BYTES // 2**20} MB. Divídalo en reportes menores.",
     )
     if archivo.size is not None and archivo.size > TOPE_BYTES:
         raise excedido

@@ -136,7 +136,8 @@ describe("Tramos de la vía", () => {
   test("una versión sin tramos invita a importarlos", async () => {
     tramos = () => json(VACIA);
     montar();
-    expect(await screen.findByText("Esta versión aún no tiene tramos. Importe el archivo de la vía.")).toBeInTheDocument();
+    expect(await screen.findByText("Esta versión aún no tiene tramos")).toBeInTheDocument();
+    expect(screen.getByText("Importe el archivo de la vía.")).toBeInTheDocument();
   });
 
   test("importar manda el archivo como multipart y avisa con el foco en el aviso", async () => {
@@ -243,7 +244,7 @@ describe("Tramos de la vía", () => {
   test("sin tramos no ofrece llevarlos", async () => {
     tramos = () => json(VACIA);
     montar();
-    await screen.findByText("Esta versión aún no tiene tramos. Importe el archivo de la vía.");
+    await screen.findByText("Esta versión aún no tiene tramos");
     expect(screen.queryByRole("button", { name: "Llevar al presupuesto" })).toBeNull();
   });
 
@@ -265,9 +266,10 @@ describe("Tramos de la vía", () => {
     });
     montar();
     const grupo = await screen.findByRole("region", { name: "Reportes de la vía" });
-    for (const etiqueta of ["Cómputos por tramo", "APU con origen y conciliación", "Resumen con IVA"]) {
+    for (const etiqueta of ["Cómputos por tramo", "APU detallado con origen y totales", "Resumen con IVA"]) {
       await usuario.click(within(grupo).getByRole("button", { name: etiqueta }));
     }
+    expect(screen.getByText(/tramo, progresiva_ini_km, progresiva_fin_km, ancho_m, distancia_planta_km, elemento, tipo, espesor_m, densidad_t_m3, dosis_l_m2, lineas/)).toBeInTheDocument();
     await waitFor(() => expect(libros).toHaveLength(3));
     expect(libros.map((u) => [u.pathname, u.searchParams.get("proyecto"), u.searchParams.get("version")])).toEqual([
       ["/v1/vial/reportes/computos", "Vía Demo", "VIA-002"],
@@ -280,13 +282,13 @@ describe("Tramos de la vía", () => {
   test("sin tramos no ofrece los reportes de la vía", async () => {
     tramos = () => json(VACIA);
     montar();
-    await screen.findByText("Esta versión aún no tiene tramos. Importe el archivo de la vía.");
+    await screen.findByText("Esta versión aún no tiene tramos");
     expect(screen.queryByRole("region", { name: "Reportes de la vía" })).toBeNull();
   });
 
   test("sin obra abierta lo dice y no pide nada", async () => {
     montar(null);
-    expect(screen.getByText("Abra una obra para ver o importar sus tramos.")).toBeInTheDocument();
+    expect(screen.getByText("Abra una obra para ver o importar sus tramos")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 

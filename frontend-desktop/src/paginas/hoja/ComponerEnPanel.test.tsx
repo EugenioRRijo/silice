@@ -101,7 +101,7 @@ describe("Componer en el panel: Esc no vuelve «tecleado» lo que puso el catál
     );
     const panel = await screen.findByRole("complementary", { name: "Componer una partida" });
     await within(panel).findByText("Precios en Bs", {}, { timeout: 3000 });
-    fireEvent.change(within(panel).getByLabelText("Fecha"), { target: { value: FECHA } });
+    fireEvent.change(within(panel).getByLabelText("Fecha de precios"), { target: { value: FECHA } });
     await userEvent.click(within(panel).getByRole("button", { name: "Agregar fila a Materiales" }));
     return panel;
   }

@@ -7,8 +7,9 @@ import { TablaDensa } from "./TablaDensa";
 const GraficoCarbon = lazy(() => import("./GraficoCarbon"));
 
 // Curva comun plan / avance / pronostico (tablero y control de obra). El rol decide como se dibuja y no depende solo
-// del color: el plan va en trazo continuo fino, lo real en continuo grueso y el pronostico discontinuo.
-export type RolDeSerie = "plan" | "real" | "pronostico";
+// del color: el plan va en trazo continuo fino, lo ejecutado en continuo grueso, lo gastado en grueso punteado y el
+// pronostico discontinuo.
+export type RolDeSerie = "plan" | "real" | "gastado" | "pronostico";
 
 export interface PuntoDeCurva {
   periodo: string;
@@ -30,12 +31,17 @@ interface Props {
 }
 
 export const TRAZO_DE_PRONOSTICO = "6 4";
-export const GROSOR: Record<RolDeSerie, number> = { plan: 1.5, real: 3, pronostico: 2 };
+export const TRAZO_DE_GASTADO = "1 5";
+export const GROSOR: Record<RolDeSerie, number> = { plan: 1.5, real: 3, gastado: 3, pronostico: 2 };
+const TRAZO: Record<RolDeSerie, string> = { plan: "none", real: "none", gastado: TRAZO_DE_GASTADO, pronostico: TRAZO_DE_PRONOSTICO };
 
-const TEXTO_DE_ROL: Record<RolDeSerie, string> = {
-  plan: "plan",
-  real: "real",
-  pronostico: "pronostico (discontinuo)",
+const ORDEN_DE_ROLES: readonly RolDeSerie[] = ["plan", "real", "gastado", "pronostico"];
+
+const LEYENDA_DE_ROL: Record<RolDeSerie, string> = {
+  plan: "Línea fina: planificado",
+  real: "Línea gruesa: ejecutado (EV)",
+  gastado: "Línea gruesa punteada: gastado (AC)",
+  pronostico: "Línea discontinua: pronóstico",
 };
 
 // La API nombra los periodos del control «Dia N» (convencion de la regla R7): se leen «Día N».
@@ -65,7 +71,9 @@ export function aplicarTrazos(raiz: ParentNode, series: SerieDeCurva[]): void {
     const r = nombre === undefined ? undefined : rol.get(nombre);
     if (!r) return;
     trazo.style.strokeWidth = String(GROSOR[r]);
-    trazo.style.strokeDasharray = r === "pronostico" ? TRAZO_DE_PRONOSTICO : "none";
+    trazo.style.strokeDasharray = TRAZO[r];
+    // El punteado de lo gastado se lee como puntos redondos y no como un guion corto parecido al pronostico.
+    trazo.style.strokeLinecap = r === "gastado" ? "round" : "";
   });
 }
 
@@ -100,7 +108,7 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
   return (
     <figure className="silice-curva" aria-label={titulo}>
       <div ref={contenedor} className="silice-curva__grafico">
-        <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el grafico" />}>
+        <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el gráfico" />}>
           <GraficoCarbon
             tipo="linea"
             datos={filasDeGrafico(series)}
@@ -121,7 +129,10 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
         </Suspense>
       </div>
       <figcaption className="cds--type-helper-text-01">
-        {series.map((s) => `${s.nombre}: ${TEXTO_DE_ROL[s.rol]}`).join(" · ")}
+        {(() => {
+          const partes = ORDEN_DE_ROLES.filter((r) => series.some((s) => s.rol === r)).map((r) => LEYENDA_DE_ROL[r]);
+          return partes.length > 0 ? `${partes.join(" · ")}.` : "";
+        })()}
       </figcaption>
       <details className="silice-curva__tabla">
         <summary className="cds--type-body-compact-01">Ver los montos por período</summary>

@@ -12860,6 +12860,17 @@
               }
             ],
             "title": "Favorable"
+          },
+          "referencia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referencia"
           }
         },
         "type": "object",
@@ -12869,7 +12880,7 @@
           "texto"
         ],
         "title": "AnilloRespuesta",
-        "description": "Un anillo de progreso: `texto` es lo que se lee en el centro; `fraccion`, lo que se dibuja\n(nula si no hay dato). `favorable` es verdadero si el indice llega a 1; nulo si no aplica."
+        "description": "Un anillo de progreso: `texto` es lo que se lee en el centro; `fraccion`, lo que se dibuja\n(nula si no hay dato). `favorable` es verdadero si el indice llega a 1; nulo si no aplica.\n`referencia` es una línea opcional de contexto ya formateada en español (p. ej. el plan a la\nfecha)."
       },
       "AnotarCosto": {
         "properties": {
@@ -21796,6 +21807,11 @@
             "type": "string",
             "title": "Regla"
           },
+          "nombre_regla": {
+            "type": "string",
+            "title": "Nombre Regla",
+            "default": ""
+          },
           "severidad": {
             "type": "string",
             "title": "Severidad"
@@ -21813,13 +21829,18 @@
           "mensaje"
         ],
         "title": "HallazgoDeValuacion",
-        "description": "Un hallazgo de R13 o R14 como lo lee la persona: la valuación que lo trae (vacía si es de\nuna partida), la regla, la severidad («Error», «Advertencia»…) y el mensaje."
+        "description": "Un hallazgo de R13 o R14 como lo lee la persona: la valuación que lo trae (vacía si es de\nuna partida), la regla, su nombre llano, la severidad («Error», «Advertencia»…) y el mensaje."
       },
       "HallazgoGuardadoRespuesta": {
         "properties": {
           "regla": {
             "type": "string",
             "title": "Regla"
+          },
+          "nombre_regla": {
+            "type": "string",
+            "title": "Nombre Regla",
+            "default": ""
           },
           "hoja": {
             "type": "string",
@@ -21853,6 +21874,11 @@
           "codigo": {
             "type": "string",
             "title": "Codigo"
+          },
+          "nombre_regla": {
+            "type": "string",
+            "title": "Nombre Regla",
+            "default": ""
           },
           "severidad": {
             "type": "string",
@@ -21897,6 +21923,11 @@
           "regla": {
             "type": "string",
             "title": "Regla"
+          },
+          "nombre_regla": {
+            "type": "string",
+            "title": "Nombre Regla",
+            "default": ""
           },
           "severidad": {
             "type": "string",
@@ -31791,6 +31822,11 @@
           "regla": {
             "type": "string",
             "title": "Regla"
+          },
+          "nombre_regla": {
+            "type": "string",
+            "title": "Nombre Regla",
+            "default": ""
           },
           "severidad": {
             "type": "string",

@@ -5,6 +5,7 @@ const cifra = (n: number) => formatoEsVe(String(n));
 
 export const TEXTOS = {
   titulo: "Vista general",
+  subtitulo: "Estado de todas sus obras, lo que requiere atención hoy y accesos rápidos",
   bloquea: {
     titulo: "Lo que requiere atención",
     cargando: "Cargando lo que requiere atención",
@@ -31,7 +32,7 @@ export const TEXTOS = {
     omitidas: (n: number) =>
       n === 1 ? "No se pudo leer 1 carpeta; sus obras no aparecen en la cartera." : `No se pudieron leer ${cifra(n)} carpetas; sus obras no aparecen en la cartera.`,
     vacio: {
-      puedeCrear: { titulo: "Aún no hay obras", descripcion: "Cree la primera obra para armar su presupuesto y seguir su avance.", boton: "Nueva obra" },
+      puedeCrear: { titulo: "Aún no hay obras", descripcion: "Cree la primera obra para armar su presupuesto y seguir su avance.", boton: "Crear la primera obra" },
       soloRevisa: {
         titulo: "No hay obras que su cuenta pueda ver",
         descripcion: "Cuando haya una obra registrada en las carpetas a las que tiene acceso, aparecerá aquí.",

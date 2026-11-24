@@ -273,7 +273,7 @@ export default function PaginaActualizacion() {
                 lowContrast
                 hideCloseButton
               />
-              <CheckboxGroup legendText="Dar de alta">
+              <CheckboxGroup legendText="Agregar al catálogo">
                 {desconocidos.map((d, i) => (
                   <Checkbox
                     key={i}
@@ -289,9 +289,9 @@ export default function PaginaActualizacion() {
 
           <div className="silice-actualizacion__acciones">
             <Button type="submit" kind="primary" size="md" disabled={archivo === null || ocupada}>
-              Revalorar presupuesto
+              Actualizar precios del presupuesto
             </Button>
-            {revalorando && <InlineLoading description="Revalorando..." status="active" />}
+            {revalorando && <InlineLoading description="Revalorando…" status="active" />}
           </div>
         </form>
       )}
@@ -361,27 +361,27 @@ function ResultadoRevaloracion({
         <dl className="silice-actualizacion__datos">
           <div>
             <dt className="cds--type-label-01">Anterior</dt>
-            <dd className="cds--type-heading-04">{formatoEsVe(respuesta.total_anterior)}</dd>
+            <dd className="cds--type-heading-03 silice-cifra">{formatoEsVe(respuesta.total_anterior)}</dd>
           </div>
           <div>
             <dt className="cds--type-label-01">Nuevo</dt>
-            <dd className="cds--type-heading-04">{formatoEsVe(respuesta.total_nuevo)}</dd>
+            <dd className="cds--type-heading-03 silice-cifra">{formatoEsVe(respuesta.total_nuevo)}</dd>
           </div>
           <div>
             <dt className="cds--type-label-01">Variación</dt>
-            <dd className="cds--type-heading-04">
+            <dd className="cds--type-heading-04 silice-cifra">
               <Variacion valor={respuesta.variacion} />
             </dd>
           </div>
           <div>
             <dt className="cds--type-label-01">Variación %</dt>
-            <dd className="cds--type-heading-04">
+            <dd className="cds--type-heading-04 silice-cifra">
               <Variacion valor={respuesta.variacion_pct} />
             </dd>
           </div>
           <div>
             <dt className="cds--type-label-01">Moneda</dt>
-            <dd className="cds--type-heading-04">{respuesta.moneda}</dd>
+            <dd className="cds--type-body-compact-01">{respuesta.moneda}</dd>
           </div>
         </dl>
       </section>

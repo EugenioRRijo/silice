@@ -127,10 +127,13 @@ def test_los_hallazgos_de_las_valuaciones_dicen_valuacion_regla_severidad_y_mens
 ) -> None:
     resultado = control.calcular_el_control(sesion, ob.NOMBRE, Catalogo(sesion), hoy=HOY)
     filas = hallazgos_de_valuaciones(resultado)
+    # Tras el código de la regla va su nombre llano (`aplicacion/nombres_reglas.py`), escrito a
+    # mano aquí para que el oráculo no dependa del catálogo que se prueba.
     assert {tuple(f.values()) for f in filas} == {
         (
             "V-03",
             "R13",
+            "Valuación dentro del presupuesto",
             "Error",
             "La valuación V-03 valúa la partida OB-D, que la línea base no tiene: sin unitario, "
             "no se cuantifica.",
@@ -138,26 +141,36 @@ def test_los_hallazgos_de_las_valuaciones_dicen_valuacion_regla_severidad_y_mens
         (
             "V-03",
             "R13",
+            "Valuación dentro del presupuesto",
             "Error",
             "La partida OB-B lleva 210 valuados y la línea base presupuesta 200: exceso de 10 "
             "desde la valuación V-03.",
         ),
-        ("V-03", "R14", "Error", "La valuación V-03 no tiene inspector."),
         (
             "V-03",
             "R14",
+            "Fuente y fechas de la valuación",
+            "Error",
+            "La valuación V-03 no tiene inspector.",
+        ),
+        (
+            "V-03",
+            "R14",
+            "Fuente y fechas de la valuación",
             "Error",
             "La valuación V-03 tiene fecha 19/11/2026, anterior a su fin (20/11/2026).",
         ),
         (
             "V-03",
             "R14",
+            "Fuente y fechas de la valuación",
             "Error",
             "La valuación V-03 termina el 20/11/2026, después del corte (18/11/2026).",
         ),
         (
             "V-03",
             "R14",
+            "Fuente y fechas de la valuación",
             "Error",
             "La medición de OB-C en la valuación V-03 es del 23/11/2026, fuera de su período "
             "12/11/2026 a 20/11/2026.",
@@ -165,12 +178,13 @@ def test_los_hallazgos_de_las_valuaciones_dicen_valuacion_regla_severidad_y_mens
         (
             "V-03",
             "R14",
+            "Fuente y fechas de la valuación",
             "Error",
             "El período de la valuación V-03 (12/11/2026 a 20/11/2026) se solapa con el de la "
             "V-02 (09/11/2026 a 13/11/2026).",
         ),
     }
-    assert list(filas[0]) == ["Valuacion", "Regla", "Severidad", "Mensaje"]
+    assert list(filas[0]) == ["Valuacion", "Regla", "NombreRegla", "Severidad", "Mensaje"]
     # los errores primero
     rangos = {"Error": 0, "Advertencia": 1, "Información": 2}
     assert [rangos[f["Severidad"]] for f in filas] == sorted(rangos[f["Severidad"]] for f in filas)

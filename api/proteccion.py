@@ -166,7 +166,7 @@ class LimiteDeCuerpo:
                 await self._rechazar(send)
 
     async def _rechazar(self, send: Send) -> None:
-        cuerpo = b'{"detalle":"El cuerpo de la peticion excede el maximo de 20 MiB."}'
+        cuerpo = '{"detalle":"El envío pasa del máximo de 20 MB."}'.encode()
         await send(
             {
                 "type": "http.response.start",

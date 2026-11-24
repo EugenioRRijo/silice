@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   buscadorDeInsumos,
+  convertidasConLaTasa,
   cotizacionEsVe,
   deObservaciones,
   diasValidos,
@@ -138,9 +139,10 @@ describe("F7: días con punto de miles y conteos en es-VE", () => {
     expect(diasValidos("3.651")).toBe(false);
   });
 
-  test("deObservaciones y sinTasaDelDia formatean >= 1000 con punto de miles", () => {
+  test("deObservaciones, sinTasaDelDia y convertidasConLaTasa formatean >= 1000 con punto de miles", () => {
     expect(deObservaciones(1000)).toBe("de 1.000 observaciones");
     expect(sinTasaDelDia(1250)).toContain("1.250 observaciones");
+    expect(convertidasConLaTasa(1200)).toBe("1.200 de las observaciones estaban en otra moneda y se convirtieron con la tasa del BCV de su día.");
   });
 });
 

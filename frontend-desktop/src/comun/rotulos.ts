@@ -62,8 +62,8 @@ const CAMPOS: Record<string, string> = {
 // Los parámetros de control de la obra (`core/budget/control.py`, `ParametrosControl`): el servidor los registra con
 // objeto «parametro», clave «control|{nombre}» y campo «{nombre}». La pantalla de Control usa estos mismos rótulos.
 export const PARAMETROS_DE_CONTROL: Record<string, string> = {
-  spi_error: "Umbral de SPI para error",
-  cpi_error: "Umbral de CPI para error",
+  spi_error: "SPI mínimo antes de marcar «Error»",
+  cpi_error: "CPI mínimo antes de marcar «Error»",
   retraso_error: "Retraso del término para error",
   precio_info: "Desvío de precio que avisa",
   equilibrio_puntos: "Subida del punto de equilibrio que advierte",

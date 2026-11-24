@@ -184,7 +184,7 @@ function SeccionReferencia({ alCargada, alExpirar }: PropsSeccion & { alCargada:
         <Button kind="tertiary" size="md" onClick={cargar} disabled={referencia.tipo === "cargando"}>
           {ROTULO_REFERENCIA}
         </Button>
-        {referencia.tipo === "cargando" && <InlineLoading description="Cargando la referencia..." status="active" />}
+        {referencia.tipo === "cargando" && <InlineLoading description="Cargando la referencia…" status="active" />}
       </div>
       <div aria-live="polite" aria-atomic="true">
         {referencia.tipo === "listo" && (
@@ -278,6 +278,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
       <h2 id="precios-empresa-lista" className="cds--type-heading-compact-02">
         {TITULO_LISTA}
       </h2>
+      <p className="cds--type-body-compact-01">Toma una lista base y aplica encima los precios de su archivo.</p>
       {bases.length === 0 ? (
         <EstadoVacio titulo={SIN_BASES} />
       ) : (
@@ -315,7 +316,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
           />
           {archivo && <p className="silice-precios-empresa__nota cds--type-label-01">Archivo elegido: {archivo.name}</p>}
           <div aria-live="polite">
-            {revisado.tipo === "revisando" && <InlineLoading description="Revisando el archivo..." status="active" />}
+            {revisado.tipo === "revisando" && <InlineLoading description="Revisando el archivo…" status="active" />}
             {revisado.tipo === "error" && <AvisoError error={revisado.error} titulo="No se revisó el archivo" />}
             {revisado.tipo === "listo" && (
               <>
@@ -340,7 +341,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
             <Button type="submit" kind="primary" size="md" disabled={creacion.tipo === "enviando"}>
               Crear la lista de la empresa
             </Button>
-            {creacion.tipo === "enviando" && <InlineLoading description="Creando la lista..." status="active" />}
+            {creacion.tipo === "enviando" && <InlineLoading description="Creando la lista…" status="active" />}
           </div>
         </form>
       )}
@@ -453,6 +454,9 @@ function SeccionHallazgos({ listas, alExpirar }: PropsSeccion & { listas: ListaE
       <h2 id="precios-empresa-hallazgos" className="cds--type-heading-compact-02">
         {TITULO_HALLAZGOS}
       </h2>
+      <p className="cds--type-body-compact-01">
+        Muestra qué insumos de la lista tienen fecha vencida o un precio muy distinto al esperado.
+      </p>
       {listas.length === 0 ? (
         <EstadoVacio titulo={SIN_LISTAS} />
       ) : (
@@ -519,7 +523,7 @@ function BuscarAtipicos({ listaId, alExpirar }: PropsSeccion & { listaId: number
         <Button kind="tertiary" size="md" onClick={buscar} disabled={busqueda.tipo === "buscando"}>
           {ROTULO_ATIPICOS}
         </Button>
-        {busqueda.tipo === "buscando" && <InlineLoading description="Buscando variaciones atípicas..." status="active" />}
+        {busqueda.tipo === "buscando" && <InlineLoading description="Buscando variaciones atípicas…" status="active" />}
       </div>
       <div aria-live="polite" aria-atomic="true">
         {busqueda.tipo === "error" && <AvisoError error={busqueda.error} titulo="No se buscaron las variaciones atípicas" />}

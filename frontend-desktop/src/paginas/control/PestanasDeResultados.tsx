@@ -78,7 +78,7 @@ export function BarraDeCorte({
       />
       <Select
         id="corte-metodo"
-        labelText="Precios del corte"
+        labelText="Precios actualizados al corte (para separar inflación de consumo)"
         value={precios.metodo}
         onChange={(e) => cambiarPrecios({ metodo: e.target.value as MetodoDePrecios })}
       >
@@ -99,8 +99,8 @@ export function BarraDeCorte({
         <>
           <CampoTexto
             id="corte-km"
-            labelText="Km declarado"
-            helperText={AYUDA_CIFRAS}
+            labelText="Factor de escalatoria (Km)"
+            helperText="Relación de índices entre el mes base y el corte; por ejemplo, 1,15 = 15 % más"
             invalid={errores.km !== null}
             invalidText={errores.km ?? undefined}
             value={precios.km}
@@ -108,13 +108,14 @@ export function BarraDeCorte({
           />
           <CampoTexto
             id="corte-r"
-            labelText="R declarado"
+            labelText="Parte del contrato que no se reajusta (R)"
+            helperText="Fracción entre 0 y 1; escriba 0 si no aplica"
             invalid={errores.r !== null}
             invalidText={errores.r ?? undefined}
             value={precios.r}
             onChange={(e) => cambiarPrecios({ r: e.target.value })}
           />
-          <CampoTexto id="corte-fuente" labelText="Fuente de Km y R" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
+          <CampoTexto id="corte-fuente" labelText="Documento de respaldo de Km y R" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
         </>
       )}
       <div>
@@ -131,33 +132,51 @@ export function BarraDeCorte({
 export function ValorGanado({ calculo }: { calculo: Calculo }) {
   const moneda = calculo.moneda ?? "";
   const curva = calculo.curva;
+  const ocultarOtraMoneda =
+    calculo.indicadores.length > 0 &&
+    calculo.indicadores.every((f) => {
+      const v = (f["En la otra moneda"] ?? "").trim();
+      return v === "" || v === "no disponible";
+    });
+  const ocultarNota =
+    calculo.indicadores.length > 0 && calculo.indicadores.every((f) => (f["Nota"] ?? "").trim() === "");
+  const columnasIndicadores = COLUMNAS_INDICADORES.filter(
+    (c) => !(ocultarOtraMoneda && c === "En la otra moneda") && !(ocultarNota && c === "Nota"),
+  );
+  const notaTasa = calculo.indicadores.find((f) => f.Indicador === "Tasa del corte")?.Nota?.trim() ?? "";
+  const motivoOtraMoneda =
+    calculo.motivo_otra_moneda?.trim() ||
+    (notaTasa
+      ? `${notaTasa[0]!.toUpperCase()}${notaTasa.slice(1)}: no se muestran los montos en la otra moneda.`
+      : "Sin tasa del BCV para el corte: no se muestran los montos en la otra moneda.");
   return (
     <>
       <p className="silice-control__nota cds--type-helper-text-01">
-        {`Corte ${fechaDeRanura(calculo.corte ?? "")} (día hábil ${calculo.dia}). Las fórmulas de valor ganado son definiciones del sistema; el EAC del sistema y la separación del desvío son propios de este trabajo. Sin proyectar inflación futura.`}
+        {`Corte al ${fechaDeRanura(calculo.corte ?? "")} (día hábil ${calculo.dia}). En SPI y CPI, 1,00 o más es favorable; menos de 1,00 indica atraso o sobrecosto. Estas cifras no incluyen inflación futura.`}
       </p>
       {calculo.costos_sin_tasa.map((texto) => (
         <InlineNotification key={texto} kind="warning" lowContrast hideCloseButton role="status" title={texto} />
       ))}
       <TablaDensa
         etiqueta="Indicadores de valor ganado"
-        columnas={columnasDe(COLUMNAS_INDICADORES, ["Valor", "En la otra moneda"])}
+        columnas={columnasDe(columnasIndicadores, ["Valor", "En la otra moneda"])}
         filas={conId(calculo.indicadores)}
       />
+      {ocultarOtraMoneda && <p className="silice-control__nota cds--type-helper-text-01">{motivoOtraMoneda}</p>}
       {curva.length > 0 && (
         <section className="silice-control__bloque" aria-labelledby="control-curva">
           <h2 id="control-curva" className="cds--type-heading-compact-02">
-            PV, EV y AC al cierre de cada período
+            Planificado (PV), ejecutado (EV) y gastado (AC) por período
           </h2>
           <CurvaPlanAvance
-            titulo="PV, EV y AC"
+            titulo="Planificado (PV), ejecutado (EV) y gastado (AC)"
             unidad={moneda}
             series={[
-              { nombre: "PV", rol: "plan", puntos: curva.map((p) => ({ periodo: p.periodo, valor: p.pv })) },
-              { nombre: "EV", rol: "real", puntos: curva.map((p) => ({ periodo: p.periodo, valor: p.ev })) },
+              { nombre: "Planificado (PV)", rol: "plan", puntos: curva.map((p) => ({ periodo: p.periodo, valor: p.pv })) },
+              { nombre: "Ejecutado (EV)", rol: "real", puntos: curva.map((p) => ({ periodo: p.periodo, valor: p.ev })) },
               {
-                nombre: "AC",
-                rol: "real",
+                nombre: "Gastado (AC)",
+                rol: "gastado",
                 puntos: curva.flatMap((p) => (p.ac === null ? [] : [{ periodo: p.periodo, valor: p.ac }])),
               },
             ]}
@@ -259,17 +278,17 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
         </h2>
         {t && (
           <ul className="cds--type-body-compact-01">
-            <li>{`Término por el índice: ${t.indice}`}</li>
-            <li>{`Término por el plan reproyectado: ${t.reproyectado}`}</li>
+            <li>{`Fin estimado por ritmo global (SPI): ${t.indice}`}</li>
+            <li>{`Fin estimado según avance de cada partida: ${t.reproyectado}`}</li>
             <li>{`Término del plan base: ${t.plan_base}`}</li>
-            <li>{`EAC (sistema): ${formatoMontoEsVe(t.eac_sistema)}`}</li>
+            <li>{`Costo final estimado sumando cada partida (EAC): ${formatoMontoEsVe(t.eac_sistema)}`}</li>
           </ul>
         )}
         {calculo.motivo_termino && <p className="silice-control__nota cds--type-helper-text-01">{calculo.motivo_termino}</p>}
         <p className="cds--type-body-compact-01">
           {calculo.equilibrio
             ? `Punto de equilibrio proyectado: ${formatoMontoEsVe(calculo.equilibrio.punto)} (${calculo.equilibrio.mensaje})`
-            : "Punto de equilibrio proyectado: no disponible (perspectiva precio o AC/EAC)."}
+            : "Punto de equilibrio proyectado: no disponible (requiere línea base en costo directo y costos reales registrados)."}
         </p>
         <p className="silice-control__nota cds--type-helper-text-01">{calculo.estudios}</p>
       </section>

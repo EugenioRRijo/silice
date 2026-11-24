@@ -163,6 +163,9 @@ export default function Asistente() {
 
       <form className="silice-adm__seccion" onSubmit={guardar}>
         <h2 className="cds--type-heading-compact-02">Configuración del asistente</h2>
+        <p className="silice-adm__nota cds--type-body-compact-01">
+          Configure la ayuda con inteligencia artificial (opcional; requiere soporte técnico)
+        </p>
         <Checkbox
           id="ia-activo"
           labelText="Activar el asistente de IA (viene apagado)"
@@ -177,14 +180,14 @@ export default function Asistente() {
         <CampoTexto id="ia-modelo-claude" labelText="Modelo de Claude" value={modeloClaude} onChange={(e) => setModeloClaude(e.target.value)} />
         <CampoTexto
           id="ia-modelo-local"
-          labelText="Modelo local (Ollama)"
-          helperText="El nombre exacto de un modelo ya instalado en Ollama (el que muestra «ollama list»). Vacío: el modo local no se ofrece."
+          labelText="Modelo de IA instalado en este equipo (opcional)"
+          helperText="Nombre exacto del modelo instalado en este equipo. Si se deja vacío, el modo local no se ofrece."
           value={modeloLocal}
           onChange={(e) => setModeloLocal(e.target.value)}
         />
-        <CampoTexto id="ia-anfitrion" labelText="Dirección de Ollama" value={anfitrion} onChange={(e) => setAnfitrion(e.target.value)} />
+        <CampoTexto id="ia-anfitrion" labelText="Dirección del servidor local de IA" value={anfitrion} onChange={(e) => setAnfitrion(e.target.value)} />
         <p className="silice-adm__nota cds--type-label-01">
-          Si la dirección de Ollama no es de este equipo, el asistente la trata como un servicio en la nube y lo avisa
+          Si la dirección del servidor local no es de este equipo, el asistente la trata como un servicio en la nube y lo avisa
           antes de enviar nada.
         </p>
         <CampoTexto
@@ -212,8 +215,8 @@ export default function Asistente() {
         <div className="silice-adm__seccion">
           <h2 className="cds--type-heading-compact-02">Clave de IA de la empresa</h2>
           <p className="silice-adm__nota cds--type-body-compact-01">
-            Se registra solo desde el equipo donde está instalado Sílice y se guarda en el almacén de credenciales de
-            este usuario de Windows; no viaja en los respaldos.
+            Se registra solo desde el equipo donde está instalado Sílice y se guarda en el almacén seguro de contraseñas
+            de Windows; no viaja en los respaldos.
           </p>
           {!permitida && (
             <InlineNotification kind="info" role="status" title="Clave de IA" subtitle={sensible.motivo} lowContrast hideCloseButton />
@@ -228,7 +231,7 @@ export default function Asistente() {
                 autoComplete="off"
                 onChange={(e) => setContrasena(e.target.value)}
               />
-              <Button type="submit" kind="primary" size="md" disabled={ocupada}>
+              <Button type="submit" kind="secondary" size="md" disabled={ocupada}>
                 Reactivar la clave
               </Button>
             </form>
@@ -244,13 +247,14 @@ export default function Asistente() {
             />
             <PasswordInput
               id="ia-contrasena-respaldo"
-              labelText="Contraseña del respaldo cifrado (solo si el almacén de credenciales no está)"
+              labelText="Contraseña del respaldo cifrado"
+              helperText="Solo hace falta si su equipo no tiene almacén seguro de contraseñas."
               value={respaldo}
               autoComplete="new-password"
               disabled={!permitida}
               onChange={(e) => setRespaldo(e.target.value)}
             />
-            <Button type="submit" kind="primary" size="md" disabled={ocupada || !permitida}>
+            <Button type="submit" kind="secondary" size="md" disabled={ocupada || !permitida}>
               Registrar la clave
             </Button>
           </form>
@@ -263,7 +267,7 @@ export default function Asistente() {
           ) : (
             <div role="group" aria-label="Confirmar" className="silice-adm__acciones">
               <p className="cds--type-body-compact-01">
-                La clave de IA se borrará de este equipo (del almacén de credenciales y del respaldo cifrado). ¿Olvidarla?
+                La clave de IA se borrará de este equipo (del almacén seguro de contraseñas y del respaldo cifrado). ¿Olvidarla?
               </p>
               <Button kind="danger" size="md" onClick={() => void olvidar()}>
                 Sí, olvidar la clave

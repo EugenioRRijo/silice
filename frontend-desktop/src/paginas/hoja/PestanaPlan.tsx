@@ -369,6 +369,9 @@ function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecarg
           )}
         </AvisoDeEdicion>
       )}
+      <p className="cds--type-helper-text-01">
+        Escriba qué fracción de cada partida se ejecuta en cada período (por ejemplo, 0,5 y 0,5). Cada fila debe sumar 1.
+      </p>
       <TablaPaginada
         etiqueta="Plan de trabajo"
         desplazable

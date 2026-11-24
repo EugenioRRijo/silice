@@ -65,6 +65,8 @@ function pintar(sesion: SesionRespuesta = sesionDe("ana"), inicialAbierto = true
 const campo = () => screen.findByRole("combobox");
 const opciones = () => screen.queryAllByRole("option").map((o) => o.textContent ?? "");
 const estado = () => screen.getByRole("status").textContent;
+const sinCoincidencias = (texto: string) =>
+  `No hay obras ni pantallas con «${texto}». Pruebe con una palabra del nombre de la obra o de la pantalla`;
 
 describe("Buscador", () => {
   it("cerrado no pinta nada, y abrirlo no vuelve a pedir las obras: usa las que el marco ya leyó", async () => {
@@ -91,7 +93,7 @@ describe("Buscador", () => {
     await waitFor(() => expect(opciones()).toHaveLength(3));
     expect(c).toHaveAttribute("aria-expanded", "true");
     await userEvent.type(c, "zzzz");
-    expect(estado()).toBe("Sin resultados");
+    expect(estado()).toBe(sinCoincidencias("zzzz"));
     expect(c).toHaveAttribute("aria-expanded", "false");
     await userEvent.clear(c);
     expect(c).toHaveAttribute("aria-expanded", "true");
@@ -127,8 +129,18 @@ describe("Buscador", () => {
     expect(estado()).toBe("1 resultado");
     await userEvent.clear(c);
     await userEvent.type(c, "zzzz");
-    expect(estado()).toBe("Sin resultados");
+    expect(estado()).toBe(sinCoincidencias("zzzz"));
+    expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(opciones()).toHaveLength(0);
+  });
+
+  it("sin texto ni obras mantiene «Sin resultados» sin comillas vacías", async () => {
+    pedirFalso.mockResolvedValueOnce({ carpeta_actual: NORTE, obras: [] });
+    pintar();
+    const c = await campo();
+    await userEvent.type(c, "   ");
+    expect(estado()).toBe("Sin resultados");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
   });
 
   it("las flechas mueven la selección con aria-activedescendant y aria-selected", async () => {
@@ -185,10 +197,10 @@ describe("Buscador", () => {
     pintar(sesionDe("ana", { acciones: ["cambiar_caso"] }));
     const c = await campo();
     await userEvent.type(c, "archivos");
-    expect(estado()).toBe("Sin resultados");
+    expect(estado()).toBe(sinCoincidencias("archivos"));
     await userEvent.clear(c);
     await userEvent.type(c, "personas");
-    expect(estado()).toBe("Sin resultados");
+    expect(estado()).toBe(sinCoincidencias("personas"));
   });
 
   it("no usa las palabras prohibidas en sus textos visibles", async () => {
@@ -237,7 +249,7 @@ describe("Buscador con módulos apagados (plan vial, Tarea 19)", () => {
   it("con vial apagado, «tramos» ya no la encuentra", async () => {
     pintarConApagados(["vial"]);
     await userEvent.type(await campo(), "tramos");
-    await waitFor(() => expect(estado()).toBe("Sin resultados"));
+    await waitFor(() => expect(estado()).toBe(sinCoincidencias("tramos")));
     expect(opciones().join("|")).not.toContain("Tramos de la vía");
   });
 });

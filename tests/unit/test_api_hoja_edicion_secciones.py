@@ -70,7 +70,7 @@ FALTA = (
 )
 OTRO_CASO = "El caso cambió desde que abrió este borrador: ábralo de nuevo en el caso actual."
 REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo."
-EXCEDE = "El cuerpo de la peticion excede el maximo de 20 MiB."
+EXCEDE = "El envío pasa del máximo de 20 MB."
 FORMA_CANTIDADES = (
     "Las cantidades no tienen la forma esperada: envíe cada renglón como clave y cantidad en "
     "texto de hasta 500 caracteres, con no más de 20000 renglones."

@@ -20,7 +20,7 @@ import { Marco } from "./Marco";
 
 const SUR = "Carpeta Sur.db";
 const TITULOS = {
-  preferencias: "Pantalla y tamaño de letra",
+  preferencias: "Configuración",
   contrasena: "Contraseña",
   cuentas: "Cuentas y permisos",
   empresa: "Empresa y tema",
@@ -172,7 +172,7 @@ describe("la Cuenta: dirección, cabecera y un solo h1", () => {
   });
 });
 
-describe("la Cuenta: Pantalla y tamaño de letra (adenda C)", () => {
+describe("la Cuenta: Configuración (adenda C)", () => {
   test("toda cuenta tiene el tamaño de letra aquí y ya no en la barra de arriba", async () => {
     for (const rol of ["rita", "ana", "admin"] as const) {
       const { unmount } = montar({ sesion: sesionDe(rol) });

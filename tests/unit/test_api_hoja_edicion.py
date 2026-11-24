@@ -66,7 +66,7 @@ FORMA = (
     "500 caracteres y no pase de 5000 orígenes, 1000 ambientes, 1000 fuentes, 5000 puntos y "
     "20000 vértices."
 )
-EXCEDE = "El cuerpo de la peticion excede el maximo de 20 MiB."
+EXCEDE = "El envío pasa del máximo de 20 MB."
 CENTINELA = "VALOR-CENTINELA"
 ORIGEN = "http://127.0.0.1:8000"
 ID_AJENO = "a" * 22

@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../api/cliente";
 import { MarcaDemostracion } from "./MarcaDemostracion";
@@ -11,16 +12,29 @@ import { olvidarFormularios, useFormularioSucio } from "./sucio";
 // icono y ofrece «Volver a la carpeta de la empresa» (`DELETE /v1/casos/actual`), que pasa por la misma confirmacion
 // que cambiar de carpeta porque descarta los borradores de la Hoja (`caso_web.olvidar`).
 
+function Ubicacion() {
+  const { pathname, search } = useLocation();
+  return <span data-testid="ruta">{`${pathname}${search}`}</span>;
+}
+
 describe("MarcaDemostracion", () => {
   test("fuera de la demostración no pinta nada", () => {
-    const { container } = render(<MarcaDemostracion activa={false} puedeVolver alVolver={vi.fn()} />);
+    const { container } = render(
+      <MemoryRouter>
+        <MarcaDemostracion activa={false} puedeVolver alVolver={vi.fn()} />
+      </MemoryRouter>,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 
   test("dice «Demostración» con un ícono y abre «Está viendo datos inventados.» con «Volver a la carpeta de la empresa»", async () => {
     const u = userEvent.setup();
     const alVolver = vi.fn();
-    render(<MarcaDemostracion activa puedeVolver alVolver={alVolver} />);
+    render(
+      <MemoryRouter>
+        <MarcaDemostracion activa puedeVolver alVolver={alVolver} />
+      </MemoryRouter>,
+    );
     const boton = screen.getByRole("button", { name: /^Demostración/ });
     expect(boton).toHaveTextContent("Demostración");
     expect(boton.querySelector("svg")).not.toBeNull();
@@ -33,17 +47,46 @@ describe("MarcaDemostracion", () => {
     expect(alVolver).toHaveBeenCalled();
   });
 
-  test("sin poder cambiar de carpeta (rita) se ve la marca sin el botón de volver", async () => {
+  test("«Ver los recorridos guiados» es un botón terciario que cierra el panel y lleva a los recorridos en la Ayuda", async () => {
     const u = userEvent.setup();
-    render(<MarcaDemostracion activa puedeVolver={false} alVolver={vi.fn()} />);
+    render(
+      <MemoryRouter initialEntries={["/auditoria/libros"]}>
+        <MarcaDemostracion activa puedeVolver alVolver={vi.fn()} />
+        <Ubicacion />
+      </MemoryRouter>,
+    );
+    const boton = screen.getByRole("button", { name: /^Demostración/ });
+    await u.click(boton);
+    const ir = within(screen.getByRole("region", { name: "Demostración" })).getByRole("button", {
+      name: "Ver los recorridos guiados",
+    });
+    expect(ir).toHaveClass("cds--btn--tertiary");
+    await u.click(ir);
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("region", { name: "Demostración" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("ruta")).toHaveTextContent("/cuenta/ayuda?tema=recorridos");
+  });
+
+  test("sin poder cambiar de carpeta (rita) se ve la marca con recorridos y sin el botón de volver", async () => {
+    const u = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <MarcaDemostracion activa puedeVolver={false} alVolver={vi.fn()} />
+      </MemoryRouter>,
+    );
     await u.click(screen.getByRole("button", { name: /^Demostración/ }));
     expect(screen.getByText("Está viendo datos inventados.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver los recorridos guiados" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Volver a la carpeta de la empresa" })).not.toBeInTheDocument();
   });
 
   test("Esc cierra el panel y devuelve el foco a la marca", async () => {
     const u = userEvent.setup();
-    render(<MarcaDemostracion activa puedeVolver alVolver={vi.fn()} />);
+    render(
+      <MemoryRouter>
+        <MarcaDemostracion activa puedeVolver alVolver={vi.fn()} />
+      </MemoryRouter>,
+    );
     const boton = screen.getByRole("button", { name: /^Demostración/ });
     await u.click(boton);
     await u.keyboard("{Escape}");
@@ -53,7 +96,11 @@ describe("MarcaDemostracion", () => {
 
   test("ninguna cadena visible de la marca dice «caso» ni «proyecto»", async () => {
     const u = userEvent.setup();
-    render(<MarcaDemostracion activa puedeVolver alVolver={vi.fn()} />);
+    render(
+      <MemoryRouter>
+        <MarcaDemostracion activa puedeVolver alVolver={vi.fn()} />
+      </MemoryRouter>,
+    );
     await u.click(screen.getByRole("button", { name: /^Demostración/ }));
     for (const patron of [/\bcaso\b/i, /\bproyecto\b/i]) {
       expect(screen.queryByText(patron)).toBeNull();
@@ -144,6 +191,34 @@ describe("MarcaDemostracion en el armazón", () => {
     montarMarco(sesionDe("rita", { acciones: sesionDe("rita").acciones.filter((a) => a !== "abrir_carpeta") }), "/auditoria/libros");
     await u.click(await marca());
     expect(screen.getByText("Está viendo datos inventados.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver los recorridos guiados" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Volver a la carpeta de la empresa" })).not.toBeInTheDocument();
+  });
+
+  test("«Ver los recorridos guiados» cierra el panel y abre los recorridos guiados en la Ayuda", async () => {
+    const u = userEvent.setup();
+    montarMarco(sesionDe("ana"), "/auditoria/libros");
+    const boton = await marca();
+    await u.click(boton);
+    await u.click(screen.getByRole("button", { name: "Ver los recorridos guiados" }));
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("region", { name: "Demostración" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Ayuda y acerca de Sílice" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "Recorridos guiados" })).toBeInTheDocument();
+  });
+
+  test("con Componer a medio llenar, «Ver los recorridos guiados» pregunta antes de salir; «Quedarme» deja la pantalla", async () => {
+    const u = userEvent.setup();
+    function ComponerSucio() {
+      useFormularioSucio("componer", true);
+      return <h1>Componer una partida</h1>;
+    }
+    montarMarco(sesionDe("ana"), "/obra/demostracion.db/7/presupuesto/componer", ligeras({ componer: ComponerSucio }));
+    await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
+    await u.click(await marca());
+    await u.click(screen.getByRole("button", { name: "Ver los recorridos guiados" }));
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Componer una partida" })).toBeInTheDocument();
   });
 });

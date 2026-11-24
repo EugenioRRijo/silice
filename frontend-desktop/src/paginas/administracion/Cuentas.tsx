@@ -1,3 +1,4 @@
+import { WarningAltFilled } from "@carbon/icons-react";
 import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -30,21 +31,25 @@ type Resultado =
 
 type Pendiente = { tipo: "desactivar" | "restablecer"; id: number; login: string; propia: boolean };
 
+const AVISO_SIN_ROL = "Sin ningún rol la cuenta no podría hacer nada: marque al menos uno para crearla.";
+
 function SelectorDeRoles({
   idBase,
   leyenda,
   elegidos,
   alCambiar,
   deshabilitado = false,
+  descritoPor,
 }: {
   idBase: string;
   leyenda: string;
   elegidos: string[];
   alCambiar: (roles: string[]) => void;
   deshabilitado?: boolean;
+  descritoPor?: string;
 }) {
   return (
-    <fieldset className="cds--fieldset" disabled={deshabilitado}>
+    <fieldset className="cds--fieldset" disabled={deshabilitado} aria-describedby={descritoPor}>
       <legend className="cds--label">{leyenda}</legend>
       {ROLES.map((rol) => (
         <Checkbox
@@ -148,10 +153,12 @@ export default function Cuentas() {
   const aviso = useRef<HTMLDivElement>(null);
   const montado = useRef(true);
   const quienAbrio = useRef<HTMLElement | null>(null);
+  const selectorDeCuenta = useRef<HTMLSelectElement>(null);
 
   const [login, setLogin] = useState("");
   const [nombre, setNombre] = useState("");
   const [rolesNuevos, setRolesNuevos] = useState<string[]>([]);
+  const [rolesTocados, setRolesTocados] = useState(false);
   const [temporal, setTemporal] = useState("");
 
   const [elegidaId, setElegidaId] = useState<number | null>(null);
@@ -249,13 +256,14 @@ export default function Cuentas() {
 
   const crear = async (evento: FormEvent) => {
     evento.preventDefault();
-    if (!puedeCrear(login, nombre, temporal)) return;
+    if (!puedeCrear(login, nombre, temporal, rolesNuevos)) return;
     const cuerpo = { login, nombre, roles: rolesNuevos, contrasena_temporal: temporal };
     setTemporal(""); // se vacia al enviar, haya exito o no
     if (await ejecutar("/v1/cuentas", cuerpo) && montado.current) {
       setLogin("");
       setNombre("");
       setRolesNuevos([]);
+      setRolesTocados(false);
     }
   };
 
@@ -320,9 +328,28 @@ export default function Cuentas() {
               { clave: "nombre", titulo: "Nombre" },
               { clave: "roles", titulo: "Roles" },
               { clave: "activa", titulo: "Activa" },
+              {
+                clave: "accion",
+                titulo: "Acción",
+                ordenable: false,
+                // Cada fila dice de qué cuenta es (WCAG 2.4.6) y elige por su id; el foco pasa al selector de abajo.
+                celda: (f) => (
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    aria-label={`Elegir la cuenta ${String(f.usuario)}`}
+                    onClick={() => {
+                      setElegidaId(Number(f.id));
+                      selectorDeCuenta.current?.focus();
+                    }}
+                  >
+                    Elegir
+                  </Button>
+                ),
+              },
             ]}
             filas={filasDeCuentas(cuentas)}
-            vacio={{ titulo: "Todavía no hay cuentas." }}
+            vacio={{ titulo: "Todavía no hay cuentas" }}
           />
         )}
       </section>
@@ -367,7 +394,30 @@ export default function Cuentas() {
             onChange={(e) => setLogin(e.target.value)}
           />
           <CampoTexto id="adm-nombre" labelText="Nombre de la persona" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
-          <SelectorDeRoles idBase="adm-roles" leyenda="Qué puede hacer" elegidos={rolesNuevos} alCambiar={setRolesNuevos} />
+          <SelectorDeRoles
+            idBase="adm-roles"
+            leyenda="Qué puede hacer"
+            elegidos={rolesNuevos}
+            alCambiar={(roles) => {
+              setRolesNuevos(roles);
+              setRolesTocados(true);
+            }}
+            descritoPor="adm-roles-pista"
+          />
+          {/* La pista es neutra y describe el grupo y el boton. La region de estado queda siempre montada para que el
+              lector de pantalla anuncie el aviso al aparecer: sale tras tocar el grupo o con el resto del alta listo,
+              que es cuando explica por que el boton no deja crear. */}
+          <div className="silice-adm__nota cds--type-label-01">
+            <p id="adm-roles-pista">Marque al menos un rol.</p>
+            <p role="status">
+              {rolesNuevos.length === 0 && (rolesTocados || puedeCrear(login, nombre, temporal)) && (
+                <span className="silice-sev silice-sev--advertencia">
+                  <WarningAltFilled size={16} className="silice-sev__icono" aria-hidden="true" />
+                  {AVISO_SIN_ROL}
+                </span>
+              )}
+            </p>
+          </div>
           {avisoEnAlta && <p className="silice-adm__nota cds--type-label-01">{avisoEnAlta}</p>}
           <PasswordInput
             id="adm-temporal"
@@ -383,7 +433,13 @@ export default function Cuentas() {
             onChange={(e) => setTemporal(e.target.value)}
           />
           <div>
-            <Button type="submit" kind="primary" size="md" disabled={ocupado || !puedeCrear(login, nombre, temporal)}>
+            <Button
+              type="submit"
+              kind="primary"
+              size="md"
+              aria-describedby="adm-roles-pista"
+              disabled={ocupado || !puedeCrear(login, nombre, temporal, rolesNuevos)}
+            >
               Crear la cuenta
             </Button>
           </div>
@@ -397,6 +453,7 @@ export default function Cuentas() {
           </h2>
           <div className="silice-adm__seccion" inert={abierta}>
             <Select
+              ref={selectorDeCuenta}
               id="adm-cuenta"
               labelText="Cuenta que va a cambiar"
               value={elegida ? String(elegida.id) : ""}

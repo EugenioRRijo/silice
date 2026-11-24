@@ -28,7 +28,7 @@ const NOMBRES = [
   "Código",
   "Descripción",
   "Unidad",
-  "Fecha",
+  "Fecha de precios",
   "Rendimiento: unidades por día",
   "Buscar en la referencia MaPreX (materiales)",
   "Buscar en la referencia MaPreX (equipos)",
@@ -63,14 +63,14 @@ describe("Componer: regiones vivas vacías (VD-6)", () => {
 
   test("la página no deja regiones role=alert ni contadores vacíos", async () => {
     const { container } = montar();
-    await waitFor(() => expect(screen.getByLabelText("Dominio")).toHaveValue("civil"));
+    await waitFor(() => expect(screen.getByLabelText("Tipo de obra (dominio)")).toHaveValue("civil"));
     expect(container.querySelectorAll('[role="alert"]:empty')).toHaveLength(0);
     expect(container.querySelectorAll("[class*=\"counter-alert\"][role]")).toHaveLength(0);
   });
 
   test.each(NOMBRES)("el campo «%s» conserva su nombre accesible", async (nombre) => {
     montar();
-    await waitFor(() => expect(screen.getByLabelText("Dominio")).toHaveValue("civil"));
+    await waitFor(() => expect(screen.getByLabelText("Tipo de obra (dominio)")).toHaveValue("civil"));
     expect(screen.getByLabelText(nombre)).toBeInstanceOf(HTMLInputElement);
   });
 

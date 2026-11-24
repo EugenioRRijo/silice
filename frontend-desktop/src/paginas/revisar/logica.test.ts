@@ -3,6 +3,7 @@ import {
   COLUMNAS_CAMBIOS,
   SIN_ARCHIVO,
   filasDeCambios,
+  filasDeHallazgos,
   formularioDictamen,
   formularioExcel,
   formularioPaquete,
@@ -56,15 +57,15 @@ describe("logica de Revisar un paquete", () => {
   test("las columnas de quien cambio que son las de la hoja Cambios del Excel", () => {
     expect(COLUMNAS_CAMBIOS.map((c) => c.titulo)).toEqual([
       "Versión",
-      "Objeto",
-      "Clave",
+      "Qué cambió",
+      "Partida o insumo",
       "Campo",
       "Antes",
       "Después",
       "Fuente",
       "Responsable",
       "Fecha",
-      "Marca",
+      "Observación",
     ]);
     const [fila] = filasDeCambios([{ version: "005", objeto: "apu" }]);
     expect(fila).toMatchObject({ id: "0", version: "005", objeto: "apu", marca: "" });
@@ -79,5 +80,19 @@ describe("logica de Revisar un paquete", () => {
     const fecha = COLUMNAS_CAMBIOS.find((c) => c.clave === "fecha")!;
     expect(fecha.presentar).toBeUndefined();
     expect((fecha.celda as (f: { id: string; fecha: string }) => string)({ id: "0", fecha: "2026-11-02T08:00:00.123456" })).toBe("02/11/2026 08:00");
+  });
+
+  test("las filas de hallazgos muestran el nombre de la regla junto al código, o solo el código si viene vacío", () => {
+    expect(
+      filasDeHallazgos([
+        { regla: "R11", nombre_regla: "Precio fuera de rango", severidad: "INFO", descripcion: "3 insumos no contrastables" },
+        { regla: "R2", nombre_regla: "", severidad: "ERROR", descripcion: "Sin nombre" },
+        { regla: "R3", severidad: "ADVERTENCIA", descripcion: "Sin campo" },
+      ]),
+    ).toEqual([
+      { id: "0", regla: "Precio fuera de rango (R11)", severidad: "INFO", descripcion: "3 insumos no contrastables" },
+      { id: "1", regla: "R2", severidad: "ERROR", descripcion: "Sin nombre" },
+      { id: "2", regla: "R3", severidad: "ADVERTENCIA", descripcion: "Sin campo" },
+    ]);
   });
 });

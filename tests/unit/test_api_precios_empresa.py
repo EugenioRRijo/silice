@@ -370,7 +370,7 @@ def test_un_archivo_de_otro_formato_o_corrupto_o_enorme_se_rechaza(_entorno, mon
     r = _crear(navegador, cabeceras, base)
     assert r.status_code == 422, r.text
     assert r.json() == {
-        "detalle": "No se creó la lista: el archivo pesa más del máximo permitido (20 MiB)."
+        "detalle": "No se creó la lista: el archivo pesa más del máximo permitido (20 MB)."
     }
     assert _cuantas_listas(_entorno) == antes
 
@@ -524,7 +524,7 @@ def test_la_clave_de_api_no_escribe_es_403_en_cada_ruta_de_escritura(_entorno) -
 def test_el_tope_de_la_ruta_es_el_real_de_20_mib_y_el_413_lo_dice(_entorno) -> None:
     """BAJO-1: el middleware corta el cuerpo en 20 MiB; la ruta y su mensaje dicen lo mismo."""
     assert ruta.TOPE_BYTES == 20 * 2**20
-    assert "20 MiB" in ruta.MENSAJE_TAMANO and "25" not in ruta.MENSAJE_TAMANO
+    assert "20 MB" in ruta.MENSAJE_TAMANO and "25" not in ruta.MENSAJE_TAMANO
     navegador, cabeceras = _admin()
     _cargar_referencia(navegador, cabeceras)
     base = _id_de_la_referencia(navegador)
@@ -532,7 +532,7 @@ def test_el_tope_de_la_ruta_es_el_real_de_20_mib_y_el_413_lo_dice(_entorno) -> N
     enorme = _archivo(b"x" * ruta.TOPE_BYTES, "precios.csv")  # con el multipart, pasa de 20 MiB
     r = _crear(navegador, cabeceras, base, archivo=enorme)
     assert r.status_code == 413, r.text
-    assert "20 MiB" in r.json()["detalle"]
+    assert "20 MB" in r.json()["detalle"]
     assert _cuantas_listas(_entorno) == antes
 
 

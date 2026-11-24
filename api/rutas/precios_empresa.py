@@ -57,7 +57,7 @@ MENSAJE_INVALIDO = "Los datos enviados no son válidos."
 MENSAJE_CASO = "No se pudo leer o escribir la carpeta abierta."
 MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto."
 MENSAJE_FORMATO = "No se creó la lista: el archivo debe ser CSV o XLSX."
-MENSAJE_TAMANO = "No se creó la lista: el archivo pesa más del máximo permitido (20 MiB)."
+MENSAJE_TAMANO = "No se creó la lista: el archivo pesa más del máximo permitido (20 MB)."
 MENSAJE_REFERENCIA_ILEGIBLE = (
     "No se cargó la referencia: no se pudo leer el archivo de la referencia."
 )

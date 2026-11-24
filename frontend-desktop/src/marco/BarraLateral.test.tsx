@@ -202,7 +202,7 @@ describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () 
     expect(within(lista).queryByRole("list")).toBeNull();
     expect(lista.querySelector("ul")).toBeNull();
     expect(lista.querySelector("svg")).toBeNull();
-    expect(document.querySelector('[role="tree"], [role="treeitem"], [role="group"], [aria-expanded], [aria-level]')).toBeNull();
+    expect(lista.querySelector('[role="tree"], [role="treeitem"], [role="group"], [aria-expanded], [aria-level]')).toBeNull();
     // Las secciones de la obra ya no cuelgan de la barra lateral: están en la barra de la obra.
     for (const seccion of ["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra", "Riesgo"]) {
       expect(screen.queryByRole("link", { name: seccion })).toBeNull();
@@ -278,6 +278,7 @@ describe("BarraLateral: Vista general y «Costos y producción»", () => {
     const enlaces = within(zona).getAllByRole("link");
     expect(enlaces.map((e) => e.textContent)).toEqual(["Auditar un presupuesto", "Precios y catálogo", "Costos de producción"]);
     expect(enlaces.map((e) => e.getAttribute("href"))).toEqual(["/auditoria/subir", "/precios/listas", "/produccion/resumen"]);
+    for (const enlace of enlaces) expect(enlace).not.toHaveAttribute("data-prefijo");
     expect(enlaces[1]).toHaveAttribute("aria-current", "page");
     expect(zona.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     expect(within(zona).getByRole("heading", { level: 2, name: "Costos y producción" })).toBeInTheDocument();
@@ -369,12 +370,14 @@ describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
     expect(lista.querySelectorAll('[tabindex="-1"]')).toHaveLength(0);
   });
 
-  it("Tab recorre Vista general, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
+  it("Tab recorre Vista general, el boton de plegado, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
     const u = userEvent.setup();
     pintar({ ruta: "/inicio/pendientes" });
     await listaDeObras();
     await u.tab();
     expect(screen.getByRole("link", { name: "Vista general" })).toHaveFocus();
+    await u.tab();
+    expect(screen.getByRole("button", { name: "Ocultar barra lateral" })).toHaveFocus();
     await u.tab();
     expect(screen.getByRole("button", { name: "Nueva obra" })).toHaveFocus();
     await u.tab();
@@ -435,7 +438,7 @@ describe("BarraLateral: Nueva obra", () => {
     if (moneda) await userEvent.selectOptions(campo, moneda);
     else await waitFor(() => expect(campo).toHaveValue("Bs"));
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear la obra" }));
   }
   const envios = () => pedirFalso.mock.calls.filter(([r]) => r === "/v1/proyectos");
   const cambiosDeCarpeta = () => pedirFalso.mock.calls.filter(([r]) => r === "/v1/casos/actual");
@@ -464,7 +467,7 @@ describe("BarraLateral: Nueva obra", () => {
     expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("");
     expect(within(caja).queryByText("Es la moneda de esta carpeta (Bs).")).toBeNull();
     await userEvent.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(within(caja).getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(within(caja).getByRole("button", { name: "Crear la obra" }));
     expect(await within(caja).findByText("Elija la moneda de la obra.")).toBeInTheDocument();
     expect(envios()).toEqual([]);
   });
@@ -520,10 +523,10 @@ describe("BarraLateral: Nueva obra", () => {
     expect(foco).toContain("outline-offset: -4px");
     expect(foco).not.toContain("--silice-marco");
     expect(estilos).toContain("background-color: var(--silice-lateral)");
-    expect(estilos).toMatch(/inline-size: 14\.75rem/);
+    expect(estilos).toMatch(/inline-size: 16rem/);
     expect(estilos).toContain("var(--silice-lateral-activo)");
-    // La raya del activo es del color del marco (8,83:1 sobre el fondo del activo en el tema neutro), no del acento.
-    expect(estilos).toMatch(/&\[aria-current="page"\]\s*\{[^}]*3px solid var\(--silice-marco\)/);
+    // El borde del activo es del color del marco (8,83:1 sobre el fondo del activo en el tema neutro), no del acento.
+    expect(estilos).toMatch(/&\[aria-current="page"\]\s*\{[^}]*border-color:\s*var\(--silice-marco\)/);
     expect(estilos).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
@@ -615,7 +618,7 @@ describe("BarraLateral: carga de las obras", () => {
     });
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear la obra" }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull();
       expect(screen.getByRole("list", { name: "Obras" })).toBeInTheDocument();
@@ -642,7 +645,7 @@ describe("BarraLateral: la obra recién creada", () => {
     await screen.findByRole("dialog", { name: "Nueva obra" });
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear la obra" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
   }
 
@@ -679,7 +682,7 @@ describe("BarraLateral: la obra recién creada, con cambios sin guardar", () => 
     await screen.findByRole("dialog", { name: "Nueva obra" });
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
-    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear la obra" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
   }
 
@@ -992,9 +995,9 @@ describe("BarraLateral: «Costos y producción» plegable con letra grande (F4, 
     expect(regla(compacta, ".silice-marco-lateral__costos-boton")).toMatch(/min-block-size:\s*1\.5rem/);
   });
 
-  it("no quedan reglas de la zona «Empresa» ni de su subtítulo en la hoja de estilos", () => {
+  it("no quedan reglas de la zona «Empresa», de su subtítulo ni de prefijos numéricos en la hoja de estilos", () => {
     const hoja = leer("marco/BarraLateral.scss");
-    expect(hoja).not.toMatch(/__empresa|__subtitulo/);
+    expect(hoja).not.toMatch(/__empresa|__subtitulo|data-prefijo|__prefijo/);
   });
 });
 

@@ -96,7 +96,7 @@ SIN_DICTAMEN = (
     "dictamen. Pida al emisor uno nuevo."
 )
 MENSAJE_TOPE = (
-    "El archivo pesa más de 20 MiB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
+    "El archivo pesa más de 20 MB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
 )
 
 
@@ -260,7 +260,11 @@ def test_un_paquete_firmado_se_verifica_se_registra_y_se_reaudita() -> None:
         "En común",
     ]
     [r11] = re["hallazgos"][0]["hallazgos"]
-    assert (r11["regla"], r11["severidad"]) == ("R11", "INFO")
+    assert (r11["regla"], r11["nombre_regla"], r11["severidad"]) == (
+        "R11",
+        "Precio fuera de rango frente a MaPreX",
+        "INFO",
+    )
     assert r11["descripcion"].startswith("3 insumos no contrastables")
     assert re["hallazgos"][1]["hallazgos"] == [] and re["hallazgos"][2]["hallazgos"] == []
     assert cuerpo["entrega_anterior"] is None and cuerpo["sin_entrega_anterior"] == SIN_ANTERIOR
@@ -706,7 +710,7 @@ def test_un_excel_externo_de_mas_del_tope_es_413(monkeypatch) -> None:
     )
     assert (r.status_code, r.json()) == (
         413,
-        {"detalle": "El presupuesto en Excel supera el máximo de 20 MiB."},
+        {"detalle": "El presupuesto en Excel supera el máximo de 20 MB."},
     )
 
 

@@ -307,7 +307,7 @@ describe("ESPACIOS (contrato 2.2) y SECCIONES_DE_CUENTA (contrato 3)", () => {
 
   test("la Cuenta tiene sus siete secciones, con los títulos del contrato", () => {
     expect(SECCIONES_DE_CUENTA.map((c) => [c.id, c.titulo])).toEqual([
-      ["preferencias", "Pantalla y tamaño de letra"],
+      ["preferencias", "Configuración"],
       ["contrasena", "Contraseña"],
       ["cuentas", "Cuentas y permisos"],
       ["empresa", "Empresa y tema"],
@@ -315,6 +315,12 @@ describe("ESPACIOS (contrato 2.2) y SECCIONES_DE_CUENTA (contrato 3)", () => {
       ["sistema", "Especialidades, IA e instalación"],
       ["ayuda", "Ayuda y acerca de Sílice"],
     ]);
+  });
+
+  test("la sección de la persona se llama Configuración (Eugenio, 2026-11-22)", () => {
+    const preferencias = SECCIONES_DE_CUENTA.find((c) => c.id === "preferencias");
+    expect(preferencias?.titulo).toBe("Configuración");
+    expect(preferencias?.ayuda).toContain("tamaño de letra");
   });
 
   test("ningún título ni ayuda nuevo dice «módulo», «área», «página» ni «carpeta de trabajo»", () => {

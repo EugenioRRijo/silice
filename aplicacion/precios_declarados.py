@@ -251,7 +251,10 @@ def declarar_desde_el_catalogo(
         moneda=moneda,
     )
     obra = _obra(sesion, proyecto)
-    frase = f"Declarado precio del corte de la obra «{obra.nombre}» desde el {fecha:%d/%m/%Y}."
+    frase = (
+        f"Declarado como precio real en Control de obra de «{obra.nombre}» "
+        f"desde el {fecha:%d/%m/%Y}."
+    )
     return frase, equivalencia
 
 

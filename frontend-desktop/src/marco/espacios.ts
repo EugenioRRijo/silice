@@ -93,6 +93,14 @@ export function espacioDeLaPagina(paginaId: string): { espacio: EspacioId; herra
   return undefined;
 }
 
+// El número de cada ventana dedicada en el selector de la barra superior, la barra lateral y la cortina. Es solo un
+// adorno visual (va con aria-hidden o como contenido generado sin texto alternativo): el nombre es el `titulo` de abajo.
+export const NUMERO_DEL_ESPACIO: Record<EspacioId, string> = {
+  auditoria: "01",
+  precios: "02",
+  produccion: "03",
+};
+
 export const ESPACIOS: Record<EspacioId, { titulo: string; herramientas: readonly HerramientaDef[] }> = {
   produccion: {
     titulo: "Costos de producción",
@@ -198,7 +206,7 @@ export interface CuentaDef {
 
 // «Carpetas» y no «Carpetas de trabajo»: la guardia de jerga prohíbe esa frase en `src/marco/`.
 export const SECCIONES_DE_CUENTA: readonly CuentaDef[] = [
-  { id: "preferencias", titulo: "Pantalla y tamaño de letra", pagina: null, ayuda: "El tamaño de la letra de la pantalla y los datos de su cuenta." },
+  { id: "preferencias", titulo: "Configuración", pagina: null, ayuda: "El tamaño de letra de la pantalla y los datos de su cuenta." },
   { id: "contrasena", titulo: "Contraseña", pagina: null, ayuda: "Cambiar la contraseña de su cuenta." },
   { id: "cuentas", titulo: "Cuentas y permisos", pagina: "administracion", ayuda: "Las cuentas de las personas, sus permisos y los accesos." },
   { id: "empresa", titulo: "Empresa y tema", pagina: "administracion", ayuda: "Los datos de la empresa, su clave de firma y los colores del programa." },

@@ -9,7 +9,8 @@ Salió de `aplicacion/control.py` sin cambios (tarea 4.3 del plan de desenredo);
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import re
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -160,3 +161,78 @@ def _valuacion_del_hallazgo(origen_ids: Sequence[str], claves: Sequence[str]) ->
         if casan:
             return max(casan, key=len)
     return None
+
+
+#: Más largo que esto no es una frase del núcleo (la más larga mide ~200 caracteres): el catálogo
+#: de regex lo devuelve intacto sin tocarlas, para que un texto hostil no cueste tiempo. El
+#: desglose «no aplica (...)» no usa esas regex y no lleva tope.
+LARGO_MAXIMO_A_CORREGIR = 2_000
+
+#: Un hueco acotado: su expresión y, si lo que calza se presenta de otra forma (una fecha del
+#: sistema en dd/mm/aaaa), la función que lo presenta.
+Hueco = str | tuple[str, Callable[[str], str]]
+
+#: Huecos con forma conocida: las cifras que el núcleo imprime. Acotarlos por clase hace lineal la
+#: coincidencia (un `.+` voraz encadenado sería cúbico). Todo hueco no listado es texto del usuario
+#: y cada plantilla tiene a lo sumo uno, de modo que tampoco encadena.
+_HUECOS_NUMERICOS: dict[str, Hueco] = {
+    "termino": r"\d+",
+    "retraso": r"\d+",
+    "plan": r"\d+",
+    "spi": r"[-+0-9.,E]+",
+    "cpi": r"[-+0-9.,E]+",
+    "precio": r"[-+0-9.,E]+",
+    "ev": r"[-+0-9.,E]+",
+    "puntos": r"[-+0-9.,E]+",
+}
+
+
+def _expresion(hueco: Hueco) -> str:
+    return hueco if isinstance(hueco, str) else hueco[0]
+
+
+def _compilar(crudo: str, huecos: Mapping[str, Hueco] = _HUECOS_NUMERICOS) -> re.Pattern[str]:
+    """La frase del núcleo como expresión: el texto fijo literal, cada hueco `{x}` un dato."""
+    partes = re.split(r"\{(\w+)\}", crudo)
+    libres = [h for h in partes[1::2] if h not in huecos]
+    if len(libres) > 1:
+        raise ValueError(f"la plantilla {crudo!r} encadena huecos de texto libre")
+    patron = "".join(
+        f"(?P<{p}>{_expresion(huecos[p]) if p in huecos else '.+'})" if i % 2 else re.escape(p)
+        for i, p in enumerate(partes)
+    )
+    return re.compile(patron, re.DOTALL)
+
+
+def catalogo_de_frases(
+    plantillas: Sequence[tuple[str, str]],
+    huecos: Mapping[str, Hueco] = _HUECOS_NUMERICOS,
+    *,
+    largo_maximo: int = LARGO_MAXIMO_A_CORREGIR,
+) -> Callable[[str], str]:
+    """El corrector de un catálogo de frases fijas del núcleo (T8b; lo usa también Reajuste).
+
+    Devuelve una función pura que, si el texto COMPLETO calza con una plantilla, lo reescribe con su
+    versión con tildes; si no, lo devuelve igual. Lo que calza en un hueco libre (texto del usuario)
+    vuelve tal cual; un hueco acotado con función (una fecha) se presenta con ella. Más largo que
+    `largo_maximo` vuelve intacto sin probar ninguna expresión. Cada plantilla lleva a lo sumo un
+    hueco libre (`_compilar` lo exige), así que el costo es lineal en el largo.
+    """
+    compilado = tuple((_compilar(crudo, huecos), con_tilde) for crudo, con_tilde in plantillas)
+    presentar = {nombre: h[1] for nombre, h in huecos.items() if not isinstance(h, str)}
+
+    def corregir(texto: str) -> str:
+        if len(texto) > largo_maximo:
+            return texto
+        for patron, con_tilde in compilado:
+            calce = patron.fullmatch(texto)
+            if calce is not None:
+                return con_tilde.format(
+                    **{
+                        nombre: presentar[nombre](valor) if nombre in presentar else valor
+                        for nombre, valor in calce.groupdict().items()
+                    }
+                )
+        return texto
+
+    return corregir

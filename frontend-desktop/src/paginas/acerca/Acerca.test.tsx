@@ -78,9 +78,12 @@ describe("Acerca de Sílice", () => {
     // Revisión final del árbitro (MENOR 3): la persona ve «carpeta», no «caso».
     expect(screen.getByText("Base de la carpeta abierta")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/caso abierto/);
+    expect(screen.getByRole("heading", { level: 3, name: "Especialidades" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Especialidades")).toBeInTheDocument();
     expect(screen.getByText("Planos DXF")).toBeInTheDocument();
-    expect(screen.getByText("instalado")).toBeInTheDocument();
-    expect(screen.getByText("no instalado")).toBeInTheDocument();
+    expect(screen.getByText("Instalada")).toBeInTheDocument();
+    expect(screen.getByText("No instalada")).toBeInTheDocument();
+    expect(document.querySelector(".cds--tag")).toBeNull();
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/acerca");
   });
 
@@ -139,7 +142,7 @@ describe("Acerca de Sílice", () => {
         "Auditar un libro",
       ]);
       const glosario = screen.getByRole("region", { name: "Glosario" });
-      expect(within(glosario).getByText("FCAS (factor de costos asociados al salario)")).toBeInTheDocument();
+      expect(within(glosario).getByText("Factor de costos asociados al salario (FCAS)")).toBeInTheDocument();
     });
 
     test("«Empieza aquí» explica la primera vez: el código de instalación, la cuenta del administrador y cómo recuperarla", async () => {
@@ -169,7 +172,7 @@ describe("Acerca de Sílice", () => {
       const u = userEvent.setup();
       fetchFalso.mockResolvedValue(json(DATOS));
       montar({ en: "/cuenta/ayuda?tema=glosario-fcas" });
-      const termino = await screen.findByText("FCAS (factor de costos asociados al salario)");
+      const termino = await screen.findByText("Factor de costos asociados al salario (FCAS)");
       await waitFor(() => expect(termino).toHaveFocus());
       const indice = screen.getByRole("navigation", { name: "En esta ayuda" });
       await u.click(within(indice).getByRole("link", { name: "Guías por tarea" }));

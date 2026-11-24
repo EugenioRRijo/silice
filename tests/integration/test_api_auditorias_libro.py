@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from api.main import app
+from aplicacion.nombres_reglas import NOMBRES_DE_REGLAS
 from fusion.historial import HallazgoCompacto, registrar_auditoria
 from operacion import config
 from operacion.base_datos import Destino, preparar_base
@@ -51,7 +52,8 @@ CLAVES_DEL_DETALLE = CLAVES_DE_LA_LISTA | {
     "recortado",
     "hallazgos",
 }
-CLAVES_DEL_HALLAZGO = {"regla", "hoja", "celda", "severidad", "mensaje"}
+# Cada hallazgo trae, junto al código, el nombre llano de su regla (pasada de claridad).
+CLAVES_DEL_HALLAZGO = {"regla", "nombre_regla", "hoja", "celda", "severidad", "mensaje"}
 SHA = "cd" * 32
 
 
@@ -224,6 +226,7 @@ def test_el_detalle_trae_el_resumen_y_los_hallazgos_compactos(http) -> None:
     assert cuerpo["hallazgos"] == [
         {
             "regla": "L4",
+            "nombre_regla": NOMBRES_DE_REGLAS["L4"],
             "hoja": "APU-02",
             "celda": "G0",
             "severidad": "ERROR",
@@ -231,6 +234,7 @@ def test_el_detalle_trae_el_resumen_y_los_hallazgos_compactos(http) -> None:
         },
         {
             "regla": "L4",
+            "nombre_regla": NOMBRES_DE_REGLAS["L4"],
             "hoja": "APU-02",
             "celda": "G1",
             "severidad": "ERROR",
@@ -238,6 +242,7 @@ def test_el_detalle_trae_el_resumen_y_los_hallazgos_compactos(http) -> None:
         },
         {
             "regla": "L2",
+            "nombre_regla": NOMBRES_DE_REGLAS["L2"],
             "hoja": "PRESUPUESTO",
             "celda": "P6",
             "severidad": "ADVERTENCIA",

@@ -150,8 +150,15 @@ describe("Componer una partida", () => {
     expect(screen.getByLabelText("Condiciones del rendimiento")).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Consumo por unidad" })).toBeInTheDocument();
     expect(await screen.findByText(/Comience por la cabecera/, {}, ESPERA)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText("Dominio")).toHaveValue("civil"));
-    expect(within(screen.getByLabelText("Dominio")).getAllByRole("option").map((o) => o.textContent)).toEqual(["civil", "telecom"]);
+    await waitFor(() => expect(screen.getByLabelText("Tipo de obra (dominio)")).toHaveValue("civil"));
+    expect(
+      within(screen.getByLabelText("Tipo de obra (dominio)"))
+        .getAllByRole("option")
+        .map((o) => [o.textContent, (o as HTMLOptionElement).value]),
+    ).toEqual([
+      ["Civil", "civil"],
+      ["Telecomunicaciones", "telecom"],
+    ]);
   });
 
   test("con lista para armar no hay aviso de lista", async () => {
@@ -380,7 +387,7 @@ describe("Componer una partida", () => {
     const usuario = userEvent.setup();
     montar();
     await usuario.type(screen.getByLabelText("Descripción"), "muro");
-    expect(await screen.findByText("0,91 · FIC-009 · Muro ficticio", {}, ESPERA)).toBeInTheDocument();
+    expect(await screen.findByText("FIC-009 · Muro ficticio (similitud 0,91)", {}, ESPERA)).toBeInTheDocument();
     expect(de("/v1/composicion/similares")[0].ruta).toBe("/v1/composicion/similares?dominio=civil&descripcion=muro");
   });
 

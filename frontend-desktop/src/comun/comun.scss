@@ -109,8 +109,11 @@
 }
 
 // Marco de una pagina de lectura: el mismo margen de 16 px y el mismo ritmo vertical en todas.
+// La columna encoge con el contenedor: con la implícita `auto`, un hijo ancho (una lista de Carbon, un campo) estiraba
+// la página entera y salía desplazamiento horizontal con letra grande en tablet (medición responsive, 2026-11-22).
 .silice-pagina {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   padding: 1.5rem 1rem 2rem;
   min-inline-size: 0;

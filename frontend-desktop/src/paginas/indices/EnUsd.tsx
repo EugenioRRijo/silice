@@ -23,6 +23,8 @@ interface Revisada {
   lado: string;
   vista: VistaEnUsd;
 }
+const ETIQUETA_LADO: Record<string, string> = { venta: "Venta", compra: "Compra" };
+const textoLado = (lado: string) => ETIQUETA_LADO[lado] ?? (lado === "" ? "" : lado[0]!.toUpperCase() + lado.slice(1));
 
 // «Un índice en USD» (RF-214): elegir un índice mensual en bolívares y la tasa del BCV, revisar lo que daría (la API
 // trae la cuenta del primer y el último mes ya escrita en es-VE) y guardarlo con la huella revisada. Se carga al pedirlo:
@@ -108,7 +110,7 @@ export function EnUsd() {
           </Button>
         </div>
       )}
-      {origenes.tipo === "enCurso" && <InlineLoading description="Cargando los índices..." status="active" />}
+      {origenes.tipo === "enCurso" && <InlineLoading description="Cargando los índices…" status="active" />}
       {origenes.tipo === "error" && <AvisoError error={origenes.error} titulo="No se pudieron leer los índices" />}
 
       {lista !== null && lista.series.length === 0 && (
@@ -130,7 +132,7 @@ export function EnUsd() {
             </Select>
             <Select id="indices-usd-lado" labelText="Tasa del BCV" size="sm" value={lado} onChange={(e) => setLado(e.target.value)}>
               {lista.lados.map((l) => (
-                <SelectItem key={l} value={l} text={l} />
+                <SelectItem key={l} value={l} text={textoLado(l)} />
               ))}
             </Select>
           </div>
@@ -144,7 +146,7 @@ export function EnUsd() {
             >
               Revisar
             </Button>
-            {vista.tipo === "enCurso" && <InlineLoading description="Revisando..." status="active" />}
+            {vista.tipo === "enCurso" && <InlineLoading description="Revisando…" status="active" />}
           </div>
         </>
       )}
@@ -180,10 +182,10 @@ export function EnUsd() {
           )}
           {revisada.vista.meses > 0 && (
             <div className="silice-indices__acciones">
-              <Button kind="primary" size="md" disabled={guardado.tipo === "enCurso"} onClick={() => guardar(revisada)}>
+              <Button kind="secondary" size="md" disabled={guardado.tipo === "enCurso"} onClick={() => guardar(revisada)}>
                 Guardar la serie en USD
               </Button>
-              {guardado.tipo === "enCurso" && <InlineLoading description="Guardando..." status="active" />}
+              {guardado.tipo === "enCurso" && <InlineLoading description="Guardando…" status="active" />}
             </div>
           )}
         </section>

@@ -49,12 +49,15 @@ class TarjetaRespuesta(BaseModel):
 
 class AnilloRespuesta(BaseModel):
     """Un anillo de progreso: `texto` es lo que se lee en el centro; `fraccion`, lo que se dibuja
-    (nula si no hay dato). `favorable` es verdadero si el indice llega a 1; nulo si no aplica."""
+    (nula si no hay dato). `favorable` es verdadero si el indice llega a 1; nulo si no aplica.
+    `referencia` es una línea opcional de contexto ya formateada en español (p. ej. el plan a la
+    fecha)."""
 
     rotulo: str
     fraccion: str | None
     texto: str
     favorable: bool | None = None
+    referencia: str | None = None
 
 
 class ControlRespuesta(BaseModel):
@@ -146,7 +149,10 @@ def _control(datos: tablero.DatosTablero) -> ControlRespuesta:
         disponible=True,
         anillos=[
             AnilloRespuesta(
-                rotulo="Avance fisico", fraccion=exacto_o_nada(avance), texto=porcentaje(avance)
+                rotulo="Avance físico",
+                fraccion=exacto_o_nada(avance),
+                texto=porcentaje(avance),
+                referencia=tablero.referencia_avance_planificado(indicadores),
             ),
             AnilloRespuesta(
                 rotulo="SPI (plazo)",

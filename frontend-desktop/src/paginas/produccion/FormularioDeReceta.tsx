@@ -140,7 +140,7 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
         </p>
         <CampoDeConsulta
           id={`${base}-producto`}
-          etiqueta="Producto (código)"
+          etiqueta="Mezcla (escriba código o nombre)"
           tabla="materiales_produccion"
           texto={producto}
           alCambiarTexto={setProducto}
@@ -187,10 +187,10 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
         </div>
         <p
           role="status"
-          aria-label="Suma de masa"
+          aria-label="Peso total de los componentes"
           className={`receta-masa cds--type-body-compact-01${suma.completa && !suma.dentro ? " receta-masa--fuera" : ""}`}
         >
-          Suma de masa: {suma.texto} t por t de mezcla, {estadoDeMasa} (debe estar entre {desde} y {hasta}). Los litros no cuentan.
+          Peso total de los componentes: {suma.texto} toneladas por tonelada de mezcla, {estadoDeMasa} (debe estar entre {desde} y {hasta}). Los litros no cuentan.
         </p>
         {(errorDeFila !== null || error !== null) && (
           <div ref={avisos} tabIndex={-1} className="silice-aviso-foco">

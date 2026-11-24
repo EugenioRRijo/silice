@@ -172,6 +172,20 @@ describe("verificarDist", () => {
     });
   });
 
+  // La portada web es solo de pruebas (npm run build:portada): el dist del instalador no la lleva.
+  test("la portada de pruebas en el dist (portada.html o sus recursos portada-*) hace fallar", async () => {
+    const { mkdirSync } = await import("node:fs");
+    writeFileSync(join(dir, "index.html"), "<!doctype html>");
+    expect(verificarDist(dir).problemas).toEqual([]);
+    writeFileSync(join(dir, "portada.html"), "<!doctype html>");
+    mkdirSync(join(dir, "assets"));
+    writeFileSync(join(dir, "assets", "portada-AbC123.js"), "ok");
+    writeFileSync(join(dir, "assets", "portada-AbC123.css"), "a{}");
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(3);
+    expect(problemas.every((p) => p.includes("npm run build:portada"))).toBe(true);
+  });
+
   test("una carpeta que no existe es un problema", () => {
     expect(verificarDist(join(dir, "no-existe")).problemas).toHaveLength(1);
   });

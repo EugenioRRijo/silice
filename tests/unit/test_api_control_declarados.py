@@ -247,7 +247,7 @@ def test_desde_el_estudio_de_mercado_la_casilla_declara_el_precio_del_corte(caso
     )
     assert respuesta.status_code == 200, respuesta.text
     assert respuesta.json()["corte"] == (
-        "Declarado precio del corte de la obra «OB-S2» desde el 10/11/2026."
+        "Declarado como precio real en Control de obra de «OB-S2» desde el 10/11/2026."
     )
     [declarado] = _declarados(caso)
     assert declarado[:6] == (

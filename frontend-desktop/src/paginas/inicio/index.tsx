@@ -1,13 +1,17 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
 import type { ResumenTodasRespuesta } from "../../api/tipos";
-import { rutaOPendientes } from "../../marco/espacios";
+import { ESPACIOS, rutaOPendientes } from "../../marco/espacios";
+import type { EspacioId } from "../../marco/espacios";
 import { obrasConMismoNombre } from "../../marco/homonimas";
+import { ofertaDe } from "../../marco/oferta";
 import { useAplicacion } from "../../shell/contexto";
+import { paginaPorId, usable } from "../../shell/rutas";
 import { EmpiezaAqui } from "../../comun/ayuda/BloqueEmpiezaAqui";
 import { pasosDeEmpiezaAqui } from "../../comun/ayuda/empiezaAqui";
 import { claveDeObra } from "../pendientes/logica";
 import { CarteraYAvance } from "./CarteraYAvance";
+import { LanzadorDeEspacio } from "./LanzadorDeEspacio";
 import { LoQueBloquea } from "./LoQueBloquea";
 import { PanelArenera } from "./PanelArenera";
 import type { ExistenciaRespuesta } from "./PanelArenera";
@@ -25,9 +29,26 @@ const RUTA_CUENTAS = "/v1/cuentas";
 // (F7, A4); después, lo que bloquea (los pendientes del marco), la cartera por moneda y el avance de cada obra contra el plan (una lectura de
 // `GET /v1/obras/resumen/todas`), las últimas auditorías y, solo con `operar_arenera` y su especialidad encendida, la arenera.
 // Cada bloque lee y falla por su cuenta: uno que falla dice su error y no tumba a los demás. La pantalla no calcula nada: las
-// cifras son las del servidor, solo formateadas.
+// cifras son las del servidor, solo formateadas (el anillo por estado cuenta las obras de la lista).
+//
+// Los lanzadores de los espacios (rediseño 2026-11-21): cada uno se llama como su espacio en `marco/espacios.ts` (el mismo
+// nombre de la barra lateral) y lo describe con las herramientas que la cuenta puede abrir allí, con sus nombres.
+function herramientasUsables(id: EspacioId, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[]): string {
+  return ESPACIOS[id].herramientas
+    .filter((h) => {
+      const pagina = paginaPorId(h.pagina);
+      return pagina !== undefined && usable(pagina, acciones, modoEntrega, apagados);
+    })
+    .map((h) => h.titulo)
+    .join(" · ");
+}
+
 export default function Panorama() {
   const { alExpirar, sesion, modulosApagados, abrirNuevaObra } = useAplicacion();
+  const espaciosOfrecidos = useMemo(
+    () => ofertaDe(sesion.acciones, sesion.modo_entrega, modulosApagados ?? []).espacios,
+    [sesion.acciones, sesion.modo_entrega, modulosApagados],
+  );
   // Cada recurso se pide solo si la cuenta puede leerlo (la API contestaría 403): sin la acción, el bloque se omite.
   const puedeLeer = sesion.acciones.includes("leer_proyecto");
   const puedeVerArenera = sesion.acciones.includes("operar_arenera") && !(modulosApagados ?? []).includes("produccion");
@@ -55,7 +76,29 @@ export default function Panorama() {
       <h1 className="cds--type-heading-04" tabIndex={-1}>
         {TEXTOS.titulo}
       </h1>
+      <p className="silice-inicio__nota cds--type-body-compact-01">{TEXTOS.subtitulo}</p>
       <EmpiezaAqui pasos={pasos} acciones={sesion.acciones} />
+      {espaciosOfrecidos.length > 0 && (
+        <section className="silice-panel silice-lanzador" aria-label="Herramientas de la empresa">
+          <div className="silice-panel__cabecera">
+            <div>
+              <h2 className="cds--type-heading-compact-02">Herramientas de la empresa</h2>
+              <p className="silice-panel__subtitulo">Espacios de trabajo de la empresa</p>
+            </div>
+          </div>
+          <div className="silice-lanzador__rejilla">
+            {espaciosOfrecidos.map((esp) => (
+              <LanzadorDeEspacio
+                key={esp.id}
+                id={esp.id}
+                titulo={esp.titulo}
+                ruta={esp.ruta}
+                herramientas={herramientasUsables(esp.id, sesion.acciones, sesion.modo_entrega, modulosApagados ?? [])}
+              />
+            ))}
+          </div>
+        </section>
+      )}
       <LoQueBloquea carpetaDe={(p) => carpetas.get(claveDeObra(p.carpeta, p.obra_id))} />
       <CarteraYAvance carga={cartera} carpetas={carpetas} puedeCrear={sesion.acciones.includes("editar_hoja")} alCrear={abrirNuevaObra} />
       {puedeLeer && (

@@ -2,13 +2,14 @@
 // bolívares (cada mes ÷ el promedio de la tasa del BCV de cada día del mes) y trae ya escritas en es-VE las cifras de la
 // muestra; aquí solo se arman los textos y las filas de las tablas. La interfaz no calcula nada.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export const AYUDA_USD =
   "Para el reajuste de un contrato en dólares, un índice en bolívares cuenta dos veces la devaluación. Aquí se expresa " +
   "en USD: el valor de cada mes se divide entre el promedio de la tasa del BCV de los días de ese mes, y la serie nueva " +
   "se guarda para citarla en la cláusula del reajuste. «Revisar» no escribe nada.";
 export const SIN_ORIGENES =
-  "No hay índices mensuales en bolívares importados: importe el INPC (o una serie en CSV con la unidad indice_bs) arriba.";
+  "No hay índices mensuales en bolívares importados: importe el INPC (o una serie en CSV con la unidad expresada en bolívares) arriba.";
 export const YA_GUARDADA = "Ya está guardada con estos mismos valores.";
 export const SIN_MESES = "Ningún mes se puede expresar en USD con las tasas importadas.";
 
@@ -67,10 +68,10 @@ export function filasOmitidos(omitidos: MesSinUsd[]): FilaDensa[] {
 // «2 meses en USD, de 01/2026 a 02/2027 (1 provisional).»; sin meses, el aviso de que no hay ninguno.
 export function textoDelResumen(vista: VistaEnUsd): string {
   if (vista.meses === 0) return SIN_MESES;
-  const meses = vista.meses === 1 ? "1 mes" : `${vista.meses} meses`;
+  const meses = vista.meses === 1 ? "1 mes" : `${formatoEsVe(String(vista.meses))} meses`;
   const provisionales =
     vista.provisionales === 0
       ? ""
-      : ` (${vista.provisionales} ${vista.provisionales === 1 ? "provisional" : "provisionales"})`;
+      : ` (${formatoEsVe(String(vista.provisionales))} ${vista.provisionales === 1 ? "provisional" : "provisionales"})`;
   return `${meses} en USD, de ${vista.desde} a ${vista.hasta}${provisionales}.`;
 }

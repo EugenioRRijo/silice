@@ -152,9 +152,9 @@ class PlanoDemasiadoGrande(Exception):  # noqa: N818
     """El plano pesa mas que el maximo de su formato; `mensaje` es el texto fijo (sin nombres)."""
 
     def __init__(self, formato: str, tope: int) -> None:
-        mib = tope // (1024 * 1024)
+        mb = tope // (1024 * 1024)
         self.mensaje = (
-            f"El plano {formato.upper()} pesa más de {mib} MiB, el máximo que Sílice lee en un "
+            f"El plano {formato.upper()} pesa más de {mb} MB, el máximo que Sílice lee en un "
             "tiempo razonable. Purgue las capas y bloques que no use, o divida el dibujo por "
             "plantas, y vuelva a subirlo."
         )
