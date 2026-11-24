@@ -3,65 +3,23 @@
 from __future__ import annotations
 
 import hashlib
-import io
 import json
 from pathlib import Path
 
-import openpyxl
 import pytest
 
 from aplicacion.oraculo_hoja import LibreOfficeNoDisponibleError
 from scripts import medir_inyeccion as mi
 from scripts.inyector_fallas import Inyeccion
 from tests.fixtures.libros_empresa import libro_limpio
-
-
-class _LibreOfficeFalso:
-    """Doble de prueba sin LibreOffice real."""
-
-    def version(self) -> str:
-        return "LibreOffice 24.8.3.2 (falso)"
-
-    def recalcular(self, datos: bytes, nombre: str) -> bytes:
-        origen = openpyxl.load_workbook(
-            io.BytesIO(datos), read_only=True, data_only=True, keep_links=False
-        )
-        nuevo = openpyxl.Workbook()
-        nuevo.remove(nuevo.active)
-        try:
-            for ws_orig in origen.worksheets:
-                ws_nueva = nuevo.create_sheet(ws_orig.title)
-                for fila_idx, fila in enumerate(ws_orig.iter_rows(values_only=True), start=1):
-                    for col_idx, valor in enumerate(fila, start=1):
-                        if valor is not None:
-                            ws_nueva.cell(row=fila_idx, column=col_idx, value=valor)
-        finally:
-            origen.close()
-        buf = io.BytesIO()
-        nuevo.save(buf)
-        nuevo.close()
-        return buf.getvalue()
-
-
-def _escribir_taxonomia(ruta: Path) -> Path:
-    ruta.write_text(
-        '[[categorias]]\n'
-        'id = "TAX-01"\n'
-        'nombre = "Valor fijo"\n'
-        'fuente = "Fuente de prueba"\n'
-        'operacion = "valor_fijo"\n'
-        'peso = 1.0\n'
-        'hojas = ["PRESUPUESTO"]\n',
-        encoding="utf-8",
-    )
-    return ruta
+from tests.fixtures.recalculo_falso import LibreOfficeFalso, escribir_taxonomia
 
 
 def test_ejecutar_escribe_json_con_claves_pedidas_y_resumen_cp1252(tmp_path: Path) -> None:
     datos_base = libro_limpio().datos
     libro = tmp_path / "obra.xlsx"
     libro.write_bytes(datos_base)
-    tax = _escribir_taxonomia(tmp_path / "tax.toml")
+    tax = escribir_taxonomia(tmp_path / "tax.toml")
     salida = tmp_path / "medicion"
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -73,7 +31,7 @@ def test_ejecutar_escribe_json_con_claves_pedidas_y_resumen_cp1252(tmp_path: Pat
         n=3,
         semilla=7,
         raiz_repo=repo,
-        recalculador=_LibreOfficeFalso(),
+        recalculador=LibreOfficeFalso(),
     )
 
     assert destino.is_file()
@@ -122,10 +80,10 @@ def test_se_niega_a_escribir_dentro_del_repositorio(tmp_path: Path) -> None:
     (repo / "sub").mkdir(parents=True)
     libro = tmp_path / "obra.xlsx"
     libro.write_bytes(libro_limpio().datos)
-    tax = _escribir_taxonomia(tmp_path / "tax.toml")
+    tax = escribir_taxonomia(tmp_path / "tax.toml")
 
     with pytest.raises(ValueError, match="repositorio"):
-        mi.ejecutar(libro, tax, repo / "sub", raiz_repo=repo, recalculador=_LibreOfficeFalso())
+        mi.ejecutar(libro, tax, repo / "sub", raiz_repo=repo, recalculador=LibreOfficeFalso())
     with pytest.raises(ValueError, match="repositorio"):
         mi.main([str(libro), "--taxonomia", str(tax), "--salida", str(mi.RAIZ / "docs")])
 
@@ -133,16 +91,16 @@ def test_se_niega_a_escribir_dentro_del_repositorio(tmp_path: Path) -> None:
 def test_no_sobrescribe_informe_existente(tmp_path: Path) -> None:
     libro = tmp_path / "obra.xlsx"
     libro.write_bytes(libro_limpio().datos)
-    tax = _escribir_taxonomia(tmp_path / "tax.toml")
+    tax = escribir_taxonomia(tmp_path / "tax.toml")
     salida = tmp_path / "fuera"
     repo = tmp_path / "repo"
 
     mi.ejecutar(
-        libro, tax, salida, n=2, semilla=7, raiz_repo=repo, recalculador=_LibreOfficeFalso()
+        libro, tax, salida, n=2, semilla=7, raiz_repo=repo, recalculador=LibreOfficeFalso()
     )
     with pytest.raises(FileExistsError):
         mi.ejecutar(
-            libro, tax, salida, n=2, semilla=7, raiz_repo=repo, recalculador=_LibreOfficeFalso()
+            libro, tax, salida, n=2, semilla=7, raiz_repo=repo, recalculador=LibreOfficeFalso()
         )
 
 
@@ -159,7 +117,7 @@ def test_sin_libreoffice_devuelve_codigo_2(
     monkeypatch.setattr(mi, "RecalculadorLibreOffice", lambda *_a, **_k: _SinLO())
     libro = tmp_path / "obra.xlsx"
     libro.write_bytes(libro_limpio().datos)
-    tax = _escribir_taxonomia(tmp_path / "tax.toml")
+    tax = escribir_taxonomia(tmp_path / "tax.toml")
     salida = tmp_path / "fuera"
     repo = tmp_path / "repo"
 

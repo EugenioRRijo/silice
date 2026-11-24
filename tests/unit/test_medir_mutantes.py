@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from core.contracts.verificacion import Severidad
 from scripts import medir_inyeccion as mi
 from tests.fixtures.libros_empresa import libro_limpio
-from tests.unit.test_medir_inyeccion import _escribir_taxonomia, _LibreOfficeFalso
+from tests.fixtures.recalculo_falso import LibreOfficeFalso, escribir_taxonomia
 
 
 def _h(regla: str, descripcion: str, *celdas: str, sev: Severidad = Severidad.ERROR):
@@ -37,13 +37,13 @@ def test_los_avisos_no_aplicables_no_cuentan_como_reaccion() -> None:
 def test_ejecutar_mutantes_escribe_una_fila_por_falla_y_resumen_cp1252(tmp_path: Path) -> None:
     libro = tmp_path / "obra.xlsx"
     libro.write_bytes(libro_limpio().datos)
-    tax = _escribir_taxonomia(tmp_path / "tax.toml")
+    tax = escribir_taxonomia(tmp_path / "tax.toml")
     repo = tmp_path / "repo"
     repo.mkdir()
 
     destino, texto = mi.ejecutar_mutantes(
         libro, tax, tmp_path / "medicion", n=3, semilla=7, raiz_repo=repo,
-        recalculador=_LibreOfficeFalso(),
+        recalculador=LibreOfficeFalso(),
     )  # fmt: skip
 
     datos = json.loads(destino.read_text(encoding="utf-8"))
