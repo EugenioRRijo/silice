@@ -38,8 +38,12 @@ solo puede bajar.
 - Una tabla de resultados lleva su frase de respuesta, y las cifras de esa frase vienen del servidor.
 - El imperativo de tú de un verbo regular («Empieza aquí»): se escribe igual que la tercera persona y la máquina no lo
   distingue.
-- Lo que solo se ve en el navegador: los controles visibles por paso y lo que entra en la primera pantalla. Queda para
-  una capa medida con `scripts/recorrido_ux_playwright.py`.
+- Lo que solo se ve en el navegador: los controles visibles por paso y lo que entra en la primera pantalla. Lo mide la
+  capa medida de `scripts/recorrido_ux_playwright.py`, que no bloquea la CI: `uv run --no-sync --with playwright python
+  scripts/recorrido_ux_playwright.py --salida <carpeta fuera del repo> --anchos 1366 --letras normal --roles admin ana
+  rita --sin-axe --sin-flujo --sin-recorrido --medir-carga` deja `carga_<rol>.md`, con una fila por pantalla y su
+  veredicto («revisar» con más de 8 controles fuera de tablas; «falla» si el h1 o el botón principal quedan fuera de la
+  primera vista a 1366 × 768).
 
 ## Lo que ninguna guardia prueba
 

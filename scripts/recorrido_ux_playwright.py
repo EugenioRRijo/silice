@@ -615,6 +615,118 @@ def sin_nombre(controles: list[dict[str, Any]]) -> list[str]:
     ]
 
 
+# --------------------------- la capa medida de la guardia de interfaz ---------------------------
+#
+# Norma de interfaz (docs/especificaciones/2026-11-23-norma-de-interfaz.md, «Lo que revisa una
+# persona»): lo que la guardia estática no ve porque solo existe en el navegador. R-8: cuántos
+# controles ve la persona al entrar a la pantalla, sin abrir pliegues ni diálogos (8 decisiones a
+# la vista por paso, una pregunta de revisión y no un cupo); y la primera pantalla: el h1 y el botón
+# principal dentro de la primera vista a 1366 × 768. Se cuentan los controles de `main#contenido`
+# (el marco es el mismo en todas las pantallas), aparte los de tablas y hojas. Un botón propio de un
+# campo de Carbon (abrir una lista, subir o bajar un número) no es otra decisión, y la entrada de
+# archivo va siempre con su botón visible. Es un informe para una persona: no bloquea la CI.
+UMBRAL_DE_DECISIONES = 8
+ANCHO_DE_CARGA = 1366
+LETRA_DE_CARGA = "normal"
+CARGA_JS = """() => {
+  const raiz = document.querySelector('main#contenido') || document.body;
+  const alto = window.innerHeight, ancho = document.documentElement.clientWidth;
+  const cerrado = 'details:not([open]), dialog:not([open]), [aria-hidden="true"],'
+    + ' .cds--modal:not(.is-visible)';
+  const visible = el => { const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'
+      && !el.closest(cerrado); };
+  const enLaVista = el => { if (!el || !visible(el)) return false;
+    const r = el.getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= alto + 1 && r.left >= 0 && r.right <= ancho + 1; };
+  const controles = [...raiz.querySelectorAll('input, select, textarea, button, [role=combobox]')]
+    .filter(el => !(el.tagName === 'INPUT' && ['hidden', 'file'].includes(el.type)))
+    .filter(el => !(el.parentElement && el.parentElement.closest('[role=combobox]')))
+    .filter(el => !(el.tagName === 'BUTTON' && el.getAttribute('role') !== 'combobox'
+      && el.closest('.cds--list-box, .cds--number__controls')))
+    .filter(visible);
+  const enTablas = controles.filter(el => el.closest('table, [role=grid]')).length;
+  const h1 = raiz.querySelector('h1') || document.querySelector('h1');
+  const principales = [...raiz.querySelectorAll('.cds--btn--primary')].filter(visible);
+  return {
+    fuera_de_tablas: controles.length - enTablas, en_tablas: enTablas,
+    h1_a_la_vista: enLaVista(h1),
+    principal_a_la_vista: principales.length ? enLaVista(principales[0]) : null,
+    principales: principales.length,
+    principal_texto: principales.length ? principales[0].textContent.trim().slice(0, 40) : null,
+  };
+}"""
+
+
+def toca_medir_carga(medir: bool, ancho: int, letra: str) -> bool:
+    """La carga se mide una vez por pantalla: a 1366 × 768 y con letra normal, si se pidió."""
+    return medir and ancho == ANCHO_DE_CARGA and letra == LETRA_DE_CARGA
+
+
+def veredicto_de_carga(medida: dict[str, Any]) -> str:
+    """«falla» si el h1 no se ve o el principal que existe queda fuera de la primera vista;
+    «revisar» si los controles fuera de tablas y hojas pasan de 8 (una pregunta para la persona
+    que revisa, no un cupo); «bien» en otro caso. La primera pantalla pesa más que la revisión."""
+    if not medida.get("h1_a_la_vista") or medida.get("principal_a_la_vista") is False:
+        return "falla"
+    if int(medida.get("fuera_de_tablas", 0)) > UMBRAL_DE_DECISIONES:
+        return "revisar"
+    return "bien"
+
+
+def _si_no(valor: Any) -> str:
+    return "no hay" if valor is None else ("sí" if valor else "no")
+
+
+def informe_de_carga(filas: list[dict[str, Any]]) -> str:
+    """Tabla Markdown por pantalla con su veredicto. Entran las filas con la clave «carga»; una
+    `None` es una medida pedida que no se pudo tomar y queda como «sin medida». Una pantalla que
+    el marco no ofrece al rol lo lleva a otra («Pendientes», «Sin permiso»): lo contado ahí no es
+    esa pantalla y no lleva veredicto."""
+    cuenta = {"bien": 0, "revisar": 0, "falla": 0, "sin medida": 0, "no ofrecida al rol": 0}
+    lineas = [
+        "| Pantalla | Controles fuera de tablas | Controles en tablas | h1 a la vista "
+        "| Principal a la vista | Veredicto |",
+        "|---|---:|---:|---|---|---|",
+    ]
+    for fila in filas:
+        if "carga" not in fila:
+            continue
+        nombre = f"{fila.get('titulo', fila['id'])} (`{fila['id']}`)"
+        medida = fila["carga"]
+        sin_veredicto = "no ofrecida al rol" if fila.get("ofrecida") is False else "sin medida"
+        if medida is None or sin_veredicto == "no ofrecida al rol":
+            cuenta[sin_veredicto] += 1
+            lineas.append(f"| {nombre} | — | — | — | — | {sin_veredicto} |")
+            continue
+        veredicto = veredicto_de_carga(medida)
+        cuenta[veredicto] += 1
+        lineas.append(
+            f"| {nombre} | {medida['fuera_de_tablas']} | {medida['en_tablas']} "
+            f"| {_si_no(medida['h1_a_la_vista'])} | {_si_no(medida['principal_a_la_vista'])} "
+            f"| {veredicto} |"
+        )
+    resumen = " · ".join(f"{k}: {v}" for k, v in cuenta.items())
+    return "\n".join(
+        [
+            "# Carga de cada pantalla (capa medida de la guardia de interfaz)",
+            "",
+            f"Ventana de {ANCHO_DE_CARGA} × {ALTO} con letra {LETRA_DE_CARGA}, al entrar y sin "
+            "abrir pliegues ni diálogos. Se cuentan input, select, textarea, button y "
+            "`[role=combobox]` visibles en `main#contenido`; los de `table` y `[role=grid]` van "
+            f"aparte. «revisar» (más de {UMBRAL_DE_DECISIONES} controles fuera de tablas) es una "
+            "pregunta de revisión, no un cupo; «falla» es que el h1 o el botón principal "
+            "(`.cds--btn--primary`) quedan fuera de la primera vista. Este informe no bloquea "
+            "la CI.",
+            "",
+            resumen,
+            "",
+            *lineas,
+            "",
+        ]
+    )
+
+
 def _ir_y_esperar(pagina: Any, base: str, ruta: str) -> None:
     """`ruta` es el id de la pantalla; se abre su ruta canónica."""
     pagina.goto(f"{base}/app/{hash_de(ruta)}", wait_until="domcontentloaded")
@@ -792,6 +904,7 @@ def medir_pantalla(
     oferta: set[str],
     letra: str,
     obra: tuple[str | None, int] | None,
+    medir_carga: bool = False,
 ) -> dict[str, Any]:
     pagina = contexto.new_page()
     pagina.set_viewport_size({"width": ancho, "height": ALTO})
@@ -810,6 +923,8 @@ def medir_pantalla(
         "ofrecida": ruta["id"] in oferta,
         "obra": list(obra) if obra and es_de_la_obra(ruta["id"]) else None,
     }
+    if medir_carga:
+        fila["carga"] = None  # pedida; queda en None si la pantalla no llega a medirse
     try:
         inicio = time.monotonic()
         destino = hash_de(ruta["id"], obra if es_de_la_obra(ruta["id"]) else None)
@@ -824,6 +939,9 @@ def medir_pantalla(
         with contextlib.suppress(Exception):
             pagina.wait_for_load_state("networkidle", timeout=3000)
         fila["ms_hasta_reposo"] = round((time.monotonic() - inicio) * 1000)
+        if medir_carga and fila["ms_hasta_h1"] is not None:
+            # Antes de la captura y de axe: lo que ve la persona al entrar.
+            fila["carga"] = pagina.evaluate(CARGA_JS)
         captura = capturas / f"{rol}_{ancho}_{letra}_{ruta['id']}.png"
         _medir_cargada(pagina, fila, axe, captura)
     except Exception as error:
@@ -2123,7 +2241,17 @@ def recorrer_rol(
         for ancho in anchos:
             for ruta in rutas:
                 fila = medir_pantalla(
-                    contexto, base, ruta, ancho, rol, capturas, axe, oferta, letra, obra
+                    contexto,
+                    base,
+                    ruta,
+                    ancho,
+                    rol,
+                    capturas,
+                    axe,
+                    oferta,
+                    letra,
+                    obra,
+                    toca_medir_carga(args.medir_carga, ancho, letra),
                 )
                 resultado["pantallas"].append(fila)
                 fallos = fallos_de_la_fila(fila)
@@ -2131,6 +2259,8 @@ def recorrer_rol(
                     f"{rol:5} {letra:10} {ancho} {ruta['id']:15} h1={fila.get('h1')} "
                     f"{fila.get('ms_hasta_h1')}ms {'; '.join(fallos) or 'ok'}"
                 )
+                if fila.get("carga"):
+                    print(f"      carga: {veredicto_de_carga(fila['carga'])} {fila['carga']}")
             # El recorrido empieza al auditar desde el inicio de Auditoría: solo quien audita.
             if not args.sin_recorrido and "libros" in oferta:
                 for fila in medir_con_recorrido(
@@ -2194,6 +2324,12 @@ def analizador() -> argparse.ArgumentParser:
     a.add_argument(
         "--visor", action="store_true", help="el visor del libro: axe, lienzo, salir y volver"
     )
+    a.add_argument(
+        "--medir-carga",
+        action="store_true",
+        help="cuenta los controles a la vista y mira la primera pantalla (a 1366 con letra "
+        "normal, que se añaden si faltan); deja carga_<rol>.md para revisión humana",
+    )
     a.add_argument("--url", help="servidor ya en marcha (usa las cuentas ficticias por omisión)")
     a.add_argument(
         "--funcional", action="store_true", help="ejecuta la acción principal de cada pantalla"
@@ -2213,8 +2349,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.funcional:
         return main_funcional(args.salida, args.acciones, args.solo)
 
-    letras = letras_pedidas(args.letras)
-    anchos = anchos_pedidos(args.anchos)
+    letras = letras_pedidas(args.letras + ([LETRA_DE_CARGA] if args.medir_carga else []))
+    anchos = anchos_pedidos(args.anchos + ([str(ANCHO_DE_CARGA)] if args.medir_carga else []))
     salida: Path = args.salida
     capturas = salida / "capturas"
     capturas.mkdir(parents=True, exist_ok=True)
@@ -2314,6 +2450,12 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(resultado, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(json.dumps(resultado["resumen"], indent=2, ensure_ascii=False))
+    if args.medir_carga:
+        for rol in args.roles:
+            informe = informe_de_carga([f for f in resultado["pantallas"] if f["rol"] == rol])
+            ruta_informe = salida / f"carga_{rol}.md"
+            ruta_informe.write_text(informe, encoding="utf-8")
+            print(f"informe de carga: {ruta_informe}")
     return 0
 
 

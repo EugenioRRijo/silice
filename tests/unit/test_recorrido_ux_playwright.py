@@ -907,3 +907,17 @@ def test_el_informe_de_carga_tiene_una_fila_por_pantalla_con_su_veredicto() -> N
     # El resumen cuenta cada veredicto, y el informe dice que «revisar» es una pregunta.
     assert "bien: 2 · revisar: 1 · falla: 1 · sin medida: 1" in informe
     assert "no un cupo" in informe
+
+
+def test_una_pantalla_que_el_marco_no_ofrece_al_rol_no_lleva_veredicto_de_carga() -> None:
+    # Corrida del 2026-11-23 con admin: 20 de las 32 pantallas lo llevan a «Pendientes» o a «Sin
+    # permiso», y lo contado ahí no es la pantalla pedida.
+    from scripts.recorrido_ux_playwright import informe_de_carga
+
+    filas = [
+        {"id": "componer", "titulo": "Componer", "ofrecida": False, "carga": _carga()},
+        {"id": "inicio", "titulo": "Vista general", "ofrecida": True, "carga": _carga()},
+    ]
+    informe = informe_de_carga(filas)
+    assert "| Componer (`componer`) | — | — | — | — | no ofrecida al rol |" in informe.splitlines()
+    assert "bien: 1 · revisar: 0 · falla: 0 · sin medida: 0 · no ofrecida al rol: 1" in informe
