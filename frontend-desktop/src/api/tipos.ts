@@ -179,6 +179,10 @@ export interface CausaRaizRespuesta {
   descripcion: string;
   ocurrencias: number;
   indices: number[];
+  // La traza: todas las celdas de sus casos y el valor encontrado frente al esperado (texto exacto de la API).
+  celdas?: string[];
+  observado?: string | null;
+  esperado?: string | null;
 }
 
 export interface EstiloVisualRespuesta {

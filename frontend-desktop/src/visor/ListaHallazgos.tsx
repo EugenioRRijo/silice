@@ -390,6 +390,11 @@ export function ListaHallazgos({
                       <span className="lista-hallazgos__causa-desc cds--type-body-compact-01">
                         {primeraClausula(causa.descripcion)}
                       </span>
+                      {causa.observado && causa.esperado && (
+                        <span className="lista-hallazgos__causa-traza cds--type-label-01 silice-cifra">
+                          {`Encontrado ${formatoEsVe(causa.observado)} · esperado ${formatoEsVe(causa.esperado)}`}
+                        </span>
+                      )}
                     </button>
                   </li>
                 );
