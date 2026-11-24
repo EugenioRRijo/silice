@@ -38,7 +38,9 @@ def _taxonomia_unica(
     return {"categorias": [categoria]}
 
 
-def _celdas_libro(datos: bytes, *, data_only: bool) -> tuple[list[str], dict[tuple[str, str], tuple]]:
+def _celdas_libro(
+    datos: bytes, *, data_only: bool
+) -> tuple[list[str], dict[tuple[str, str], tuple]]:
     wb = openpyxl.load_workbook(io.BytesIO(datos), read_only=True, data_only=data_only)
     try:
         hojas = list(wb.sheetnames)
@@ -96,7 +98,9 @@ def test_cada_operacion_cambia_solo_la_celda_anotada(operacion: str):
 
 def test_valor_fijo_deja_un_numero_donde_habia_formula():
     datos = libro_limpio().datos
-    datos_out, inyecciones = inyector.inyectar(datos, _taxonomia_unica("valor_fijo"), n=1, semilla=3)
+    datos_out, inyecciones = inyector.inyectar(
+        datos, _taxonomia_unica("valor_fijo"), n=1, semilla=3
+    )
     inj = inyecciones[0]
     objetivo = (inj.hoja, inj.celda)
 
