@@ -1764,7 +1764,7 @@ def _lineas_de_produccion(raiz: Path = RAIZ) -> dict[str, int]:
 #: ola 4 los parte dejando una fachada que reexporta.
 MODULOS_GRANDES: dict[str, int] = {
     "aplicacion/hoja.py": 3195,
-    "scripts/recorrido_ux_playwright.py": 2321,
+    "scripts/recorrido_ux_playwright.py": 2305,
     "scripts/fusion_verificar.py": 2124,
     "adapters/hoja_empresa/reglas.py": 1707,
     "aplicacion/composicion.py": 1471,
