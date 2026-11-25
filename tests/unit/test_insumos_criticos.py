@@ -45,7 +45,7 @@ def test_pesos_libro_limpio_orden_y_valores_a_mano() -> None:
 def test_pesos_rendimiento_cero_no_aporta_y_cuenta_sin_rendimiento() -> None:
     base = libro_limpio()
     fila_rend = base.filas_apu["APU-01"].rend
-    construido = construir_libro(Siembra(parches={f"APU-01!F{fila_rend}": (Decimal(0), None)}))
+    construido = construir_libro(siembra=Siembra(parches={f"APU-01!F{fila_rend}": (Decimal(0), None)}))
     libro = leer_libro(construido.datos, "sin_rend.xlsx")
     por_codigo = {p.codigo: p for p in ic.pesos(libro)}
 
@@ -113,7 +113,7 @@ def test_indicadores_frescura_y_regla_sin_fuente(tmp_path: Path) -> None:
         "MT-01": "Cotización julio 2026",
     }
     insumos = tuple(replace(ins, fuente=fuentes.get(ins.codigo, ins.fuente)) for ins in INSUMOS)
-    construido = construir_libro(Siembra(fecha_texto="31/07/2026", insumos=insumos))
+    construido = construir_libro(siembra=Siembra(fecha_texto="31/07/2026", insumos=insumos))
     libro_xlsx = tmp_path / "frescura.xlsx"
     libro_xlsx.write_bytes(construido.datos)
 
@@ -143,7 +143,7 @@ def test_indicadores_frescura_y_regla_sin_fuente(tmp_path: Path) -> None:
     assert por_cod["MT-01"]["edad_dias"] == 30
     assert por_cod["MT-01"]["vigente"] == "sí"
 
-    sin_fecha = construir_libro(Siembra(fecha_texto="", insumos=insumos))
+    sin_fecha = construir_libro(siembra=Siembra(fecha_texto="", insumos=insumos))
     libro_sf = tmp_path / "sin_fecha.xlsx"
     libro_sf.write_bytes(sin_fecha.datos)
     dest_sf, _ = ic.ejecutar(
