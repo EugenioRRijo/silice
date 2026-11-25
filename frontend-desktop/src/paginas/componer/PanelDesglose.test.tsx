@@ -47,7 +47,7 @@ describe("PanelDesglose", () => {
     const pu = screen.getByText("Precio unitario").closest("tr")!;
     expect(pu.querySelector(".silice-cifra")?.textContent).toBe("29,70");
     // La interfaz no calcula: el exacto de la API queda a mano en el `title`.
-    expect(screen.getByText("2.240,39")).toHaveAttribute("title", "2240.39");
+    expect(screen.getByText("2.240,39")).toHaveAttribute("title", "2.240,39");
   });
 
   test("las advertencias se pintan como avisos y no bloquean el desglose", () => {

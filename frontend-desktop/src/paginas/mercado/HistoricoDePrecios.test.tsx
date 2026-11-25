@@ -67,8 +67,8 @@ describe("Histórico de cambios de precio", () => {
     // VB-19: la fecha se lee dd/mm/aaaa; los precios y la variacion, en es-VE con el texto de la API en el title
     // VD-5: la fecha no lleva su forma ISO en el title; el title es de las cifras
     expect(within(tabla).getByText("01/02/2026")).not.toHaveAttribute("title");
-    expect(within(tabla).getByText("10,6250")).toHaveAttribute("title", "10.6250");
-    expect(within(tabla).getByText("10,0000")).toHaveAttribute("title", "10.0000");
+    expect(within(tabla).getByText("10,6250")).toHaveAttribute("title", "10,6250");
+    expect(within(tabla).getByText("10,0000")).toHaveAttribute("title", "10,0000");
     expect(within(tabla).getByText("6,25 %")).toBeInTheDocument();
     expect(tabla).not.toHaveTextContent("2026-02-01");
     expect(fetchFalso.mock.calls[0]![0]).toBe("/cambios-precio");

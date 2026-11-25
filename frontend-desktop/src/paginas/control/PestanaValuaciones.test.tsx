@@ -275,6 +275,6 @@ describe("Pestaña de valuaciones", () => {
     costos = [{ Fecha: "12/11/2026", Monto: "100.005", Moneda: "USD", Partida: "OB-A", Fuente: "factura 12", Responsable: "Ana" }];
     montar();
     const tabla = await screen.findByRole("table", { name: "Costos incurridos anotados" });
-    expect(within(tabla).getByText("100,01")).toHaveAttribute("title", "100.005");
+    expect(within(tabla).getByText("100,01")).toHaveAttribute("title", "100,005");
   });
 });

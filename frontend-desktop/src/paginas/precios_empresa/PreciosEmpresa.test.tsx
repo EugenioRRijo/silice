@@ -190,7 +190,7 @@ describe("Precios de la empresa", () => {
     expect(screen.getByText(/No cambia la valoración de ninguna obra que no la use\./)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Referencia de precios MaPreX (en bolívares)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "La lista de la empresa" })).toBeInTheDocument();
-    expect(screen.getByText("Toma una lista base y aplica encima los precios de su archivo.")).toBeInTheDocument();
+    expect(screen.getByText("Tome una lista base y aplique encima los precios de su archivo.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Revisar precios vencidos o fuera de rango" })).toBeInTheDocument();
     expect(
       screen.getByText("Muestra qué insumos de la lista tienen fecha vencida o un precio muy distinto al esperado."),
@@ -449,11 +449,11 @@ describe("Precios de la empresa", () => {
     expect(within(tabla).getByText("ATIP-001")).toBeInTheDocument();
     const variacion = within(tabla).getByText("0,39 %");
     // el exacto, a un toque (DESIGN.md): 1/256 = 0,390625 %, memoria atipicos_s3.md §1
-    expect(variacion).toHaveAttribute("title", "0.390625");
+    expect(variacion).toHaveAttribute("title", "0,390625");
     expect(within(tabla).getByText("01/09/2026")).toBeInTheDocument();
     expect(within(tabla).getByText("01/10/2026")).toBeInTheDocument();
     // VD-5: solo la cifra lleva el exacto en el title; las fechas no muestran su forma ISO al pasar el raton
-    expect([...tabla.querySelectorAll("[title]")].map((e) => e.getAttribute("title"))).toEqual(["0.390625"]);
+    expect([...tabla.querySelectorAll("[title]")].map((e) => e.getAttribute("title"))).toEqual(["0,390625"]);
     expect(within(tabla).getByText("Advertencia")).toBeInTheDocument();
     // DESIGN.md: el atipico (RF-100) va en morado, con su icono y su texto, nunca el color solo
     const severidad = within(tabla).getByText("Advertencia").closest(".silice-sev");

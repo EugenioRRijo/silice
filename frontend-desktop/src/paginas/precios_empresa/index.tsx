@@ -281,7 +281,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
       <h2 id="precios-empresa-lista" className="cds--type-heading-compact-02">
         {TITULO_LISTA}
       </h2>
-      <p className="cds--type-body-compact-01">Toma una lista base y aplica encima los precios de su archivo.</p>
+      <p className="cds--type-body-compact-01">Tome una lista base y aplique encima los precios de su archivo.</p>
       {bases.length === 0 ? (
         <EstadoVacio titulo={SIN_BASES} descripcion={SIN_BASES_QUE_HACER} />
       ) : (

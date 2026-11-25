@@ -360,7 +360,7 @@ describe("Escenarios de sensibilidad", () => {
       "Precio unitario nuevo",
       "Cantidad",
     ]);
-    expect(within(tabla).getByText("1.050,00")).toHaveAttribute("title", "1050.00");
+    expect(within(tabla).getByText("1.050,00")).toHaveAttribute("title", "1.050,00");
     expect(
       screen.getByText("Hallazgos de revisión en este escenario: 2. Insumos con precio modificado: 1."),
     ).toBeInTheDocument();

@@ -116,8 +116,8 @@ describe("Control de obra: antes y después de las partidas cambiadas (Tarea 26)
     expect(fila).toHaveTextContent("2 días pasa a 3 días");
     expect(fila).toHaveTextContent("58 días pasa a 59 días");
     expect(fila).toHaveTextContent("30.779,97 Bs pasa a 35.123,40 Bs");
-    // el exacto queda en el title, sin redondear
-    expect(within(fila).getByTitle("210.3333333333333333333333333")).toHaveTextContent("210,33");
+    // el exacto queda en el title, sin redondear y con coma decimal (acta del 2026-11-25, punto 3)
+    expect(within(fila).getByTitle("210,3333333333333333333333333")).toHaveTextContent("210,33");
   });
 
   test("una duración con medio día se escribe con coma, y lo que no se pudo calcular se dice", async () => {
