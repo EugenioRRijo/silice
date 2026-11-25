@@ -8,8 +8,8 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
 
 > **Congelamiento del consejo (2026-11-23):** tras #138 a #141 no entran funciones nuevas; se valida con personas y se
 > mide la auditoría sin circularidad ([plan](planes/2026-11-23-plan-auditoria-no-circular.md)). #142 y #143 fueron lo
-> último (fusionados el 2026-11-24). La etiqueta del congelamiento (Fase 2) espera la decisión de §4 sobre los huecos
-> de reglas.
+> último (fusionados el 2026-11-24). Los huecos de reglas que halló la medición se cierran antes de la etiqueta del
+> congelamiento (Fase 2; §4).
 
 ## 1. Qué hay en `main`
 
@@ -136,13 +136,10 @@ subir nada.
 
 ## 4. Lo que espera a Eugenio
 
-0. **Huecos de reglas que halló la medición (2026-11-24).** Una falla por vez, Sílice detecta 5 de 12 (41,7 %), bajo
-   el umbral de fracaso del 50 %. Tres huecos reales: L4 no revisa los rangos de `SUM`; un BUSCARV desplazado no se
-   compara con la lista de precios; L9 no ve un `SUMPRODUCT` recortado en RESUMEN
-   ([plan, segunda medición](planes/2026-11-23-plan-auditoria-no-circular.md)). Corregirlos es un cambio de producto
-   dentro del congelamiento: lo decide Eugenio. Recomendación de Claude: corregirlos antes de etiquetar, porque las
-   fallas salieron del libro de desarrollo y no contaminan la prueba final. Después: etiqueta de la Fase 2. Firmar
-   también el [registro de decisiones](bitacora/registro-de-decisiones.md).
+0. **Huecos de reglas (2026-11-24): corregidos por orden de Eugenio** («sí, corrige los huecos de reglas antes de
+   congelar»; [acta](bitacora/2026-11-24-huecos-de-reglas-antes-del-congelamiento.md)). En el libro de desarrollo la
+   medición sube de 5 a 10 de 12, y los libros reales no cambian. Siguiente: la etiqueta del congelamiento (Fase 2) y
+   firmar el [registro de decisiones](bitacora/registro-de-decisiones.md).
 1. **Hecho el 2026-11-13:** #105, #106 y #108 (con #107) fusionados por Claude, con la CI en verde y la autorización
    de Eugenio; `feature/ola2` entró como #109. Diez ramas remotas viejas ya contenidas en `main` siguen en GitHub: el
    control de permisos no dejó borrarlas (lista en el informe del 2026-11-14).
@@ -253,6 +250,10 @@ subir nada.
      la fusión pasa a ,»). Reescribir la historia espera decisión de Eugenio.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
+
+> **Lista cerrada hasta la defensa (consejo del 2026-11-24, aprobado por Eugenio):** no se programa nada nuevo
+> en auditoría, alertas ni estudio de mercado. Lo que se hace ahora y lo que espera a después de la defensa está en
+> [bitacora/2026-11-24-consejo-auditoria-alertas-mercado.md](bitacora/2026-11-24-consejo-auditoria-alertas-mercado.md).
 
 Plan detallado, con el protocolo de trabajo con Gemini Flash por `agy` (Flash construye el parche, Claude lo aplica con
 TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md).

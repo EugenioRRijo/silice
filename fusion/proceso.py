@@ -63,6 +63,7 @@ from adapters.hoja_empresa.pdf import (
 )
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, normalizar
 from adapters.hoja_empresa.reglas import REGLAS_LIBRO, reglas_del_libro
+from adapters.hoja_empresa.reglas_calculo import ERRORES_DE_CALCULO
 from core.contracts.apu import ResultadoAPU
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, Severidad
@@ -264,7 +265,7 @@ def _num(valor: Decimal) -> str:
 
 
 def _cifra(valor: Decimal, decimales: int | None = None) -> str:
-    """Cifra para leer en el texto de F1, como las de las reglas L (`reglas._fmt`, «4 331,43»):
+    """Cifra para leer en el texto de F1, como las de las reglas L (`_fmt`, «4 331,43»):
     espacio de miles y coma decimal (VB-8). Sin `decimales` conserva todos los dígitos (un P.U. del
     motor no se redondea); con ellos, `formatear_decimal` redondea ROUND_HALF_UP. TRAZABILIDAD
     sigue con `_num`."""
@@ -360,6 +361,29 @@ def _sin_recalculo(
 
 
 # --- Tabla de hallazgos y trazabilidad ----------------------------------------------------------
+
+
+def _errores_en_el_resumen(
+    hallazgos: Sequence[Hallazgo], libro: LibroLeido, perfil: Perfil
+) -> frozenset[Hallazgo]:
+    """L5 de celdas con error de cálculo en el RESUMEN. La devolución copia esa hoja con sus
+    fórmulas (solo arregla los #REF!), así que un SUMPRODUCT con rangos de distinto tamaño sigue
+    dando error: se informa, no se da por corregido. Los APU y el PRESUPUESTO sí se reescriben."""
+    resumen = normalizar(perfil.hoja("RESUMEN"))
+
+    def en_resumen(origen: str) -> bool:
+        valor = libro.valores.get(origen)
+        return (
+            normalizar(origen.split("!", 1)[0]) == resumen
+            and isinstance(valor, str)
+            and valor.strip().upper() in ERRORES_DE_CALCULO
+        )
+
+    return frozenset(
+        h
+        for h in hallazgos
+        if h.regla == "L5" and h.origen_ids and all(map(en_resumen, h.origen_ids))
+    )
 
 
 def _accion(hallazgo: Hallazgo, informados: frozenset[Hallazgo]) -> str:
@@ -591,7 +615,6 @@ def procesar_libro(
         ) from exc
 
 
-
 def _procesar(
     libro: LibroLeido,
     datos: bytes,
@@ -680,7 +703,7 @@ def _procesar(
             no_evaluadas.append((*REGLA_L10, _PDF_ES_IMPRESO))
     else:
         no_evaluadas += [(*REGLA_L10, _SIN_PDF_L10), (*REGLA_L11, _SIN_PDF_L11)]
-    informados = frozenset(del_pdf)
+    informados = frozenset(del_pdf) | _errores_en_el_resumen(del_libro, libro, perfil)
 
     informe = InformeAuditoria(
         codigo_presupuesto=presupuesto.codigo,

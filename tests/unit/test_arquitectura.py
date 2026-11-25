@@ -1766,7 +1766,7 @@ MODULOS_GRANDES: dict[str, int] = {
     "aplicacion/hoja.py": 3195,
     "scripts/recorrido_ux_playwright.py": 2305,
     "scripts/fusion_verificar.py": 2124,
-    "adapters/hoja_empresa/reglas.py": 1707,
+    "adapters/hoja_empresa/reglas.py": 1145,
     "aplicacion/composicion.py": 1471,
     "adapters/hoja_empresa/pdf.py": 1389,
     "adapters/hoja_empresa/escritor/calculos.py": 1317,

@@ -13,6 +13,8 @@ from operacion.version import version
 REGLAS_ESPERADAS = {
     "core/verification/reglas.py",
     "adapters/hoja_empresa/reglas.py",
+    "adapters/hoja_empresa/reglas_calculo.py",
+    "adapters/hoja_empresa/reglas_contexto.py",
     "adapters/vial/reglas.py",
     "adapters/vial/constantes.py",
     "aplicacion/causas_raiz.py",

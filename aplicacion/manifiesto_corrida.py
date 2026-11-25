@@ -23,6 +23,8 @@ RAIZ = Path(__file__).resolve().parents[1]
 ARCHIVOS_REGLAS: tuple[Path, ...] = (
     RAIZ / "core" / "verification" / "reglas.py",
     RAIZ / "adapters" / "hoja_empresa" / "reglas.py",
+    RAIZ / "adapters" / "hoja_empresa" / "reglas_calculo.py",
+    RAIZ / "adapters" / "hoja_empresa" / "reglas_contexto.py",
     RAIZ / "adapters" / "vial" / "reglas.py",
     RAIZ / "adapters" / "vial" / "constantes.py",
     RAIZ / "aplicacion" / "causas_raiz.py",

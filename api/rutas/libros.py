@@ -220,8 +220,9 @@ class LibroAuditadoRespuesta(BaseModel):
     pantalla muestra (la auditoría es válida igual, RF-144).
 
     `partidas_con_omision` (V-16, etiqueta del libro menor): los números de las partidas cuyo
-    APU tiene un hallazgo L4 (el costo directo del libro deja fuera componentes o no es la suma de
-    ellos), ordenados y sin repetir. Es el único rastro de «costos omitidos» que el auditor deja de
+    APU tiene un hallazgo L4 de gravedad ERROR (el costo directo del libro deja fuera componentes
+    o no es la suma de ellos; la advertencia por un componente en 0 no omite costos), ordenados y
+    sin repetir. Es el único rastro de «costos omitidos» que el auditor deja de
     forma estructurada; una lista vacía NO prueba que el libro esté completo (una partida
     entera que falta en el libro no tiene contraparte que comparar). Campo aditivo."""
 
@@ -642,11 +643,13 @@ def partidas_con_omision(resultado: ResultadoFusion) -> list[int]:
     por_hoja: dict[str, int] = {}
     for p in resultado.libro.partidas:
         if p.hoja_apu:
-            por_hoja.setdefault(p.hoja_apu, p.numero)  # la primera, como `reglas.partida_de_apu`
+            por_hoja.setdefault(p.hoja_apu, p.numero)  # la primera, como `_Contexto.partida_de_apu`
     numeros = {
         por_hoja[hoja]
         for h in resultado.hallazgos_tabla
-        if h.codigo == "L4" and (hoja := h.celda.rsplit("!", 1)[0]) in por_hoja
+        if h.codigo == "L4"
+        and h.severidad == "ERROR"
+        and (hoja := h.celda.rsplit("!", 1)[0]) in por_hoja
     }
     return sorted(numeros)
 
