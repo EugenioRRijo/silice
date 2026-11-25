@@ -176,6 +176,14 @@ con [protocolo_rnf04.md](../protocolo_rnf04.md) sobre el anexo A del dossier.
   partidas (D5), IFC de modeladores reales, conectores de listas de precios (cada conector
   produce una lista que entra por UC‑02), evolución hacia sombra digital con rendimientos
   medidos (UC‑06 ya registra la realimentación de obra).
+- **Capa en línea separada para el estudio de mercado (2026-11-25):** un recolector aparte, fuera de
+  Sílice, que busca precios publicados y deja un archivo fechado (insumo, precio, moneda, fuente,
+  enlace, fecha); Sílice lo importa sin conexión como cualquier lista (UC‑02), de modo que el programa
+  sigue funcionando sin red (RNF‑08) y cada cifra conserva su fuente y su antigüedad. El sondeo del
+  2026-11-25 ([bitácora](../bitacora/2026-11-25-sondeo-precios-en-linea.md)) mostró por qué no se hizo
+  antes de defender: las tiendas venezolanas consultadas bloquean la lectura automática y el buscador
+  general no devuelve precios venezolanos observados. La fuente más prometedora es la lista del
+  proveedor, que ya está en la lista cerrada de después de la defensa.
 
 ### Introducción
 
