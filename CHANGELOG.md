@@ -7,6 +7,10 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Cambiado
+- **Pruebas en paralelo y repartidas** (2026-11-24; regla de Eugenio). La suite corre con `pytest-xdist` (`-n auto --dist
+  loadfile`); en la CI, Ubuntu la corre entera con la cobertura y Windows sin cobertura en 4 máquinas a la vez
+  (`SILICE_TROZO=k/N`, `tests/fixtures/trozos.py`: cada prueba cae en un solo trozo y las de los demás salen
+  deseleccionadas, no omitidas). En el equipo de desarrollo, la suite completa bajó de 2 h 4 min a 25 min.
 - **Fuera el «tablero de avión»: la interfaz se entiende sin saber de software** (2026-11-22/23; pedido de Eugenio:
   «es como una persona entrar y ver un tablero de avion ... terminos que estan abreviados»). Auditada por tres
   lectores de Gemini (10 pantallas eran «tablero de avión») y construida por Neon y Hydrogen con la skill

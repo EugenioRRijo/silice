@@ -88,11 +88,16 @@ jobs:
       # no repetir sus fixtures pesadas (bases, Argon2, el modelo de similitud).
       matrix:
         include:
-          - { os: ubuntu-latest, etiqueta: ubuntu-latest, trozo: "", cobertura: true }
-          - { os: windows-latest, etiqueta: "windows-latest 1/4", trozo: "1/4", cobertura: false }
-          - { os: windows-latest, etiqueta: "windows-latest 2/4", trozo: "2/4", cobertura: false }
-          - { os: windows-latest, etiqueta: "windows-latest 3/4", trozo: "3/4", cobertura: false }
-          - { os: windows-latest, etiqueta: "windows-latest 4/4", trozo: "4/4", cobertura: false }
+          - os: ubuntu-latest
+            etiqueta: ubuntu-latest
+            trozo: ""
+            cobertura: >-
+              --cov=core --cov=ml --cov=api --cov=adapters --cov=seguridad --cov=paquete
+              --cov=asistente --cov=operacion --cov-report=term
+          - { os: windows-latest, etiqueta: "windows-latest 1/4", trozo: "1/4", cobertura: "" }
+          - { os: windows-latest, etiqueta: "windows-latest 2/4", trozo: "2/4", cobertura: "" }
+          - { os: windows-latest, etiqueta: "windows-latest 3/4", trozo: "3/4", cobertura: "" }
+          - { os: windows-latest, etiqueta: "windows-latest 4/4", trozo: "4/4", cobertura: "" }
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -119,17 +124,14 @@ jobs:
           HF_HUB_OFFLINE: "0"
         run: uv run --no-sync python scripts/descargar_modelo.py
 
+      # `matrix.cobertura` se sustituye antes de llamar al intérprete: sirve igual en PowerShell
+      # (Windows) y en bash (Ubuntu).
       - name: Suite (pytest -W error, en paralelo)
-        shell: bash # en Windows el intérprete por omisión es PowerShell
         env:
           SILICE_TROZO: ${{ matrix.trozo }}
-        run: |
-          args=(-W error -p no:cacheprovider -n auto --dist loadfile --junitxml=reporte-pruebas.xml)
-          if [ "${{ matrix.cobertura }}" = "true" ]; then
-            args+=(--cov=core --cov=ml --cov=api --cov=adapters)
-            args+=(--cov=seguridad --cov=paquete --cov=asistente --cov=operacion --cov-report=term)
-          fi
-          uv run --no-sync pytest "${args[@]}"
+        run: >-
+          uv run --no-sync pytest -W error -p no:cacheprovider -n auto --dist loadfile
+          --junitxml=reporte-pruebas.xml ${{ matrix.cobertura }}
 
       - name: Sin pruebas omitidas
         run: uv run --no-sync python scripts/verificar_omitidas.py reporte-pruebas.xml
