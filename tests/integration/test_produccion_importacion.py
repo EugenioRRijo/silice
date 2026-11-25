@@ -431,18 +431,19 @@ def test_un_fallo_deja_todo_como_estaba(sesion: Session, monkeypatch: pytest.Mon
             sesion_.flush()
         return registrar_despacho(sesion_, *args, **kwargs)
 
-    monkeypatch.setattr(importacion, "registrar_despacho", despacho_que_choca)
     lectura = _basico()
 
-    with pytest.raises(ErrorDeInventario, match="ya está registrado"):
-        importar(sesion, lectura, usuario=USUARIO)
+    with monkeypatch.context() as parche:
+        parche.setattr(importacion, "registrar_despacho", despacho_que_choca)
+        with pytest.raises(ErrorDeInventario, match="ya está registrado"):
+            importar(sesion, lectura, usuario=USUARIO)
 
     assert llamadas == ["TCK-001", "TCK-002"]  # el primero llego a registrarse antes del choque
     assert _cuantos(sesion, Movimiento) == 0
     assert _cuantos(sesion, PesajeSospechoso) == 0
     assert pendientes(sesion) == []
 
-    monkeypatch.undo()  # la sesion sigue sirviendo: la misma lectura entra completa
+    # la sesion sigue sirviendo: la misma lectura entra completa
     resultado = importar(sesion, lectura, usuario=USUARIO)
     assert (resultado.registrados, resultado.ya_registrados, resultado.a_la_bandeja) == (2, 0, 4)
 

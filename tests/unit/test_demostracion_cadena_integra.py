@@ -100,14 +100,12 @@ def test_si_el_sellado_falla_no_queda_el_caso_ni_temporales(
     def falla(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("disco lleno")
 
-    monkeypatch.setattr(cadena, "sellar_historial", falla)
-    with pytest.raises(RuntimeError, match="disco lleno"):
-        start.preparar_demo()
+    with monkeypatch.context() as parche:
+        parche.setattr(cadena, "sellar_historial", falla)
+        with pytest.raises(RuntimeError, match="disco lleno"):
+            start.preparar_demo()
     casos = start.carpeta_casos()
     assert sorted(p.name for p in casos.iterdir()) == []
-    monkeypatch.undo()
-    monkeypatch.setenv("SILICE_DATOS", str(datos / "datos"))
-    monkeypatch.setenv("SILICE_RESPALDOS", str(datos / "respaldos"))
     assert sorted(start.preparar_demo()) == sorted(CASOS)
 
 

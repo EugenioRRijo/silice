@@ -402,12 +402,14 @@ def test_un_item_sin_partida_queda_pendiente_por_http(cliente, sesion, items_pay
         return partidas(self, *args, **kwargs)
 
     base = cliente.post("/presupuestos", json=_cuerpo("API-BASE", items_payload))
-    monkeypatch.setattr(Catalogo, "partidas", _partidas_contadas)
-    r = cliente.post(
-        "/presupuestos",
-        json=_cuerpo("API-3A", [*items_payload, _item_sin_partida("Excavacion de un foso nuevo")]),
-    )
-    monkeypatch.undo()
+    with monkeypatch.context() as parche:
+        parche.setattr(Catalogo, "partidas", _partidas_contadas)
+        r = cliente.post(
+            "/presupuestos",
+            json=_cuerpo(
+                "API-3A", [*items_payload, _item_sin_partida("Excavacion de un foso nuevo")]
+            ),
+        )
 
     assert r.status_code == 201
     cuerpo = r.json()

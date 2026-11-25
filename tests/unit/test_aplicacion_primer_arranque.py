@@ -321,10 +321,10 @@ def test_si_falla_escribir_el_archivo_la_base_queda_sin_el_codigo_nuevo(
         def falla(*_a, **_k):
             raise OSError("disco lleno")
 
-        monkeypatch.setattr(cuentas.os, "replace", falla)
-        with pytest.raises(OSError):
-            primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA + timedelta(hours=1))
-        monkeypatch.undo()
+        with monkeypatch.context() as parche:
+            parche.setattr(cuentas.os, "replace", falla)
+            with pytest.raises(OSError):
+                primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA + timedelta(hours=1))
         assert (
             _filas(sesion) == 1 and _vigentes(sesion) == 1
         )  # ni fila nueva ni anterior invalidada
