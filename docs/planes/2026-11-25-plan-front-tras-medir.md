@@ -25,6 +25,18 @@ es parte de lo que se mide, y el congelamiento del consejo del 2026-11-24 lo inc
 
   Son correcciones de texto. Eugenio decide si se hacen antes de la prueba (con acta) o después.
 
+**Resultado de la revisión en el navegador (2026-11-25, demo ficticia, rama `main` en `a28df67f`):**
+- **Control: confirmado.** En Valor ganado se calculó al corte del 13/11/2026, con la escalatoria, Km = 1,15 y
+  R = 0,1. Al pasar a «Alertas y reproyección» y volver, el formulario quedó en blanco y la tabla volvió al corte por
+  omisión (20/11/2026). Se pierde lo escrito y también lo calculado.
+- **Actualización: confirmado al leer el código.** El botón «Revalorar» solo exige un archivo
+  (`actualizacion/index.tsx:291`). Mientras la vista previa carga, la lista de insumos desconocidos está vacía
+  (`:124`), así que un envío temprano revalora sin que la persona haya podido marcar las altas de catálogo. En este
+  equipo la vista previa responde casi al instante, así que la ventana es corta.
+- **Ninguno afecta la prueba con personas:** sus tareas (leer el total, crear una partida y decir si el presupuesto
+  tiene problemas) no pasan por Control ni por Actualización. Los dos se arreglan con el resto del plan, después de
+  medir.
+
 ## 1. Arreglos de base (cada uno mejora todas las pantallas)
 
 1. **Sesión vencida en un solo lugar.** `e instanceof ErrorDeApi && e.estado === 401` aparece en unos 110 sitios

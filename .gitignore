@@ -12,6 +12,10 @@ reporte-pruebas.xml
 
 # Bases de datos locales (SQLite se regenera con scripts/seed.py)
 *.db
+# Auxiliares que SQLite deja al lado de cada base mientras el servidor anda (traen datos recientes).
+*.db-wal
+*.db-shm
+*.db-journal
 *.sqlite
 *.sqlite3
 
