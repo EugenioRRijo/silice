@@ -57,7 +57,7 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   Del 2026-11-25: #150 (insumos críticos y frescura de precios, herramienta local), #151 (limpieza de worktrees,
   Rajalingham verificada y mantenibilidad medida con crapper y dryer en la Tabla 4.1) y #152 (guía para el tercero de
   la taxonomía, con prueba del contrato con el inyector).
-  También del 2026-11-25, en la rama `feature/mutator-reglas`:
+  También del 2026-11-25, fusionado como **#155** (`d9814a7d`, CI en verde):
   - **Pruebas de mutación:** `mutator` se corrió en Docker Desktop, que Eugenio instaló porque el Modo de programador
     no estaba disponible. Pruebas nuevas, sin cambiar el código congelado: `reglas_calculo.py` 100 %,
     `reglas_contexto.py` 98,5 % y `reglas.py` 98,0 % (Tabla 4.1).
@@ -68,6 +68,20 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
     todas las fallas a la vez, y cuenta como detectada solo la falla que el evaluador confirma.
   - **Sondeo de precios en línea** ([bitácora](bitacora/2026-11-25-sondeo-precios-en-linea.md)): la capa en línea
     queda para después de la defensa.
+  - **Kappa, SUS y textos** ([acta](bitacora/2026-11-25-acta-kappa-sus-y-textos.md)):
+    - el kappa experto–Sílice del criterio de fracaso se calcula por partida, con `scripts/medir_partidas.py` y la
+      revisión ciega del experto (`medir_auditoria_libro.py revision`);
+    - los hallazgos que el libro ya tenía se descuentan con una sola regla (`scripts/hallazgos_previos.py`), por
+      celda solo en las reglas que agrupan por hoja;
+    - el SUS lo responden 5 personas: los 3 economistas y 2 personas nuevas;
+    - los textos con tuteo y los decimales con punto a la vista se corrigieron antes de la prueba.
+
+    Neon auditó ese trabajo en tres rondas: rechazó la primera y aprobó con observaciones las dos siguientes. Los
+    comandos del día están en el [guion de la medición](tesis/2026-11-25-guion-dia-de-medicion.md).
+  - **Front:** cinco auditorías de solo lectura (ub-mode y la guía *modern-web-guidance* de Google) dejaron unos 170
+    hallazgos y un [plan para después de medir](planes/2026-11-25-plan-front-tras-medir.md). Antes de la prueba con
+    personas conviene revisar a mano en el navegador dos posibles defectos: los filtros de Control al cambiar de
+    pestaña y el envío en Actualización mientras carga la vista previa.
 - **Ola 1121 y entrega del consejo** (PR #138 a #141): la depuración de Neon (#138) y el rediseño con su claridad
   (#139), fusionados por Eugenio; la carga cognitiva con el rótulo congelado de la Hoja (#140, opción A de Eugenio) y
   la herramienta de medición de la auditoría, el respaldo local, el guion de la demo del plan B, el ensayo de la
