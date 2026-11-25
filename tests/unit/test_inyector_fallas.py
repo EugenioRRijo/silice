@@ -131,7 +131,9 @@ def test_referencia_desplazada_cambia_solo_la_fila():
         refs_d = patron.findall(inj.despues)
         assert len(refs_a) == len(refs_d)
         cambios = [(a, d) for a, d in zip(refs_a, refs_d, strict=True) if a != d]
-        assert len(cambios) == 1
+        assert cambios
+        # Todas las apariciones de la misma referencia cambian igual (una sola referencia).
+        assert len(set(cambios)) == 1
         (col_a, fila_a), (col_d, fila_d) = cambios[0]
         assert col_a == col_d
         assert abs(int(fila_d) - int(fila_a)) == 1
@@ -355,18 +357,23 @@ def test_no_siembra_sobre_celdas_con_error_ni_con_ref():
     assert [i.celda for i in inyecciones] == ["C4"]
 
 
-def test_signo_y_escala_no_caen_en_la_numeracion_de_partidas():
+def test_signo_y_escala_no_caen_en_la_columna_de_numeracion():
     datos = _libro_xlsxwriter({
-        "A1": (None, 1),
-        "A2": (None, 2),
-        "B1": (None, 3),
-        "B2": (None, 4),
-        "C1": (None, 2.5),
-        "D1": (None, 100),
+        "A1": (None, "Nº"),
+        "A2": (None, 1),
+        "A3": (None, 2),
+        "B1": (None, "Cantidad"),
+        "B2": (None, 5),
+        "B3": (None, -3),
+        "C1": (None, "Ítem"),
+        "C2": (None, 7),
+        "D2": (None, 2.5),
     })
     for operacion in ("signo", "escala"):
         _, inyecciones = _sembrar(datos, operacion, n=10)
-        assert {i.celda for i in inyecciones} == {"C1", "D1"}, operacion
+        # Una cantidad entera en la columna B (encabezado «Cantidad») sí es elegible, también
+        # negativa; la numeración (encabezados «Nº» e «Ítem») no.
+        assert {i.celda for i in inyecciones} == {"B2", "B3", "D2"}, operacion
 
 
 def _libro_con_formula_compartida() -> bytes:
@@ -451,3 +458,74 @@ def test_cli_falla_si_se_siembran_menos_fallas_que_n(tmp_path: Path, capsys):
 def test_cli_permite_menos_con_la_bandera(tmp_path: Path):
     assert inyector.main(_args_cli(tmp_path, 5, "--permitir-menos")) == 0
     assert inyector.main(_args_cli(tmp_path, 2, salida="otra")) == 0
+
+
+# --- Ronda 2: referencias con hoja, numeración por encabezado, hija compartida ----------------
+
+
+def _libro_hojas(hojas: dict[str, dict[str, tuple[str | None, object]]]) -> bytes:
+    import xlsxwriter
+
+    buf = io.BytesIO()
+    wb = xlsxwriter.Workbook(buf, {"in_memory": True})
+    for nombre, celdas in hojas.items():
+        ws = wb.add_worksheet(nombre)
+        for coord, (formula, valor) in celdas.items():
+            if formula is not None:
+                ws.write_formula(coord, formula, None, valor)
+            elif isinstance(valor, str):
+                ws.write_string(coord, valor)
+            else:
+                ws.write_number(coord, float(valor))
+    wb.close()
+    return buf.getvalue()
+
+
+def _desplazar(datos: bytes, hoja: str):
+    tax = _taxonomia_unica("referencia_desplazada", hojas=[hoja])
+    return inyector.inyectar(datos, tax, n=1, semilla=3)[1]
+
+
+def test_referencia_de_otra_hoja_no_se_desplaza_junto_con_la_local():
+    datos = _libro_hojas({
+        "Hoja": {"B4": (None, 1), "D1": ("=B4-OTRA!B4", 0)},
+        "OTRA": {"B4": (None, 1)},
+    })
+    for semilla in range(8):
+        tax = _taxonomia_unica("referencia_desplazada", hojas=["Hoja"])
+        (inj,) = inyector.inyectar(datos, tax, n=1, semilla=semilla)[1]
+        assert inj.despues in {"=B5-OTRA!B4", "=B4-OTRA!B5"}, inj.despues
+
+
+def test_referencia_a_otra_hoja_no_es_circular_aunque_coincida_la_celda():
+    # RESUMEN!B5 apunta a PRESUPUESTO!B4: desplazarla a PRESUPUESTO!B5 no es circular.
+    datos = _libro_hojas({
+        "PRESUPUESTO": {"B4": (None, 1)},
+        "RESUMEN": {"B5": ("=PRESUPUESTO!B4+1", 2)},
+    })
+    (inj,) = _desplazar(datos, "RESUMEN")
+    assert (inj.celda, inj.despues) == ("B5", "=PRESUPUESTO!B5+1")
+
+
+def test_referencia_a_la_propia_hoja_con_prefijo_si_es_circular():
+    datos = _libro_hojas({"RESUMEN": {"B4": (None, 1), "B5": ("=RESUMEN!B4+1", 2)}})
+    assert _desplazar(datos, "RESUMEN") == []
+
+
+def test_referencia_desplazada_agrupa_apariciones_con_y_sin_dolar():
+    datos = _libro_hojas({"Hoja": {"B10": (None, 1), "D1": ('=IF($B10="","",B10)', 1)}})
+    (inj,) = _desplazar(datos, "Hoja")
+    assert inj.despues == '=IF($B11="","",B11)'
+
+
+def test_formula_compartida_con_n_uno_cambia_una_hija_y_la_otra_sobrevive():
+    datos = _libro_con_formula_compartida()
+    datos_out, inyecciones = _sembrar(datos, "valor_fijo", n=1)
+    (i,) = inyecciones
+    assert i.celda in {"B2", "B3"}
+    assert i.antes == f"=A{i.celda[1:]}*2"
+    otra = "B3" if i.celda == "B2" else "B2"
+    with zipfile.ZipFile(io.BytesIO(datos_out)) as zf:
+        xml = zf.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    assert f'<c r="{otra}"><f t="shared" si="0"/>' in xml
+    assert 'ref="B1:B3"' in xml

@@ -154,6 +154,10 @@ def _terminar_arbol(proceso: subprocess.Popen[str]) -> None:
                 check=False,
                 timeout=30,
             )
+    else:
+        # El proceso nace con start_new_session=True: su pid es también el id del grupo.
+        with contextlib.suppress(OSError, AttributeError):
+            os.killpg(os.getpgid(proceso.pid), 9)
     with contextlib.suppress(OSError):
         proceso.kill()
     with contextlib.suppress(OSError, subprocess.SubprocessError):
@@ -234,16 +238,20 @@ class RecalculadorLibreOffice:
                 str(entrada),
             ]
             salida = carpeta_salida / "libro.xlsx"
+            proceso: subprocess.Popen[str] | None = None
+            arbol_terminado = False
             try:
                 proceso = subprocess.Popen(
                     orden,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
+                    start_new_session=not _ES_WINDOWS,
                 )
                 try:
                     texto_salida, texto_error = proceso.communicate(timeout=self._tiempo_maximo)
                 except subprocess.TimeoutExpired as exc:
+                    arbol_terminado = True
                     _terminar_arbol(proceso)
                     raise OraculoError(
                         f"LibreOffice superó el tiempo máximo de {self._tiempo_maximo} s al "
@@ -257,10 +265,20 @@ class RecalculadorLibreOffice:
                     )
                 return salida.read_bytes()
             finally:
-                # En Windows soffice.bin puede seguir vivo y retener la copia del libro.
+                # Ante cualquier salida anormal (p. ej. Ctrl+C) el hijo puede seguir vivo y, en
+                # Windows, retener la copia del libro: se termina el árbol antes de borrar.
+                if proceso is not None and not arbol_terminado and proceso.poll() is None:
+                    _terminar_arbol(proceso)
                 for archivo in (entrada, salida):
                     with contextlib.suppress(OSError):
                         archivo.unlink()
+                for archivo in (entrada, salida):
+                    if archivo.exists():
+                        print(
+                            f"Aviso: No se pudo borrar la copia temporal «{archivo}»; "
+                            "bórrela a mano (contiene el libro).",
+                            file=sys.stderr,
+                        )
 
 
 def _abrir_solo_lectura(datos: bytes, nombre: str, *, data_only: bool) -> Any:

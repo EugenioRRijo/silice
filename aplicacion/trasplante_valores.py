@@ -226,6 +226,7 @@ def _trasplantar_hoja(xml: str, valores: Mapping[str, tuple[object, str]]) -> st
         p = m.group("p")
         attrs_limpios = _ATTR_T.sub("", attrs)
         encontrado = valores.get(coord.upper())
+        cuerpo = _TAG_IS.sub("", cuerpo)
         if encontrado is None:
             nuevo_cuerpo = _TAG_V.sub("", cuerpo)
             return f"<{p}c{attrs_limpios}>{nuevo_cuerpo}</{p}c>"

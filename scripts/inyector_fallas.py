@@ -18,9 +18,10 @@ import random
 import re
 import sys
 import tomllib
+import unicodedata
 import zipfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -115,6 +116,7 @@ class _Celda:
     valor: object
     nombres: frozenset[str] = frozenset()
     hija_compartida: bool = False
+    en_columna_numeracion: bool = False
 
 
 def cargar_taxonomia(ruta: Path) -> dict[str, Any]:
@@ -198,15 +200,39 @@ def _tramos_no_citados(cuerpo: str) -> list[tuple[int, int]]:
     return tramos
 
 
-def _refs_celda(formula: str) -> list[tuple[int, int, str, int]]:
+def _prefijo_hoja(cuerpo: str, pos: int) -> str | None:
+    """Nombre (en minúsculas) de la hoja que precede a la referencia que empieza en `pos`."""
+    if pos == 0 or cuerpo[pos - 1] != "!":
+        return None
+    fin = pos - 1
+    if fin > 0 and cuerpo[fin - 1] == "'":
+        k = fin - 2
+        while k >= 0:
+            if cuerpo[k] == "'":
+                if k > 0 and cuerpo[k - 1] == "'":
+                    k -= 2
+                    continue
+                break
+            k -= 1
+        return cuerpo[k + 1 : fin - 1].replace("''", "'").casefold()
+    k = fin
+    while k > 0 and (cuerpo[k - 1].isalnum() or cuerpo[k - 1] in "_."):
+        k -= 1
+    return cuerpo[k:fin].casefold()
+
+
+def _refs_celda(formula: str) -> list[tuple[int, int, str, int, str | None]]:
+    """Referencias de celda `(ini, fin, columna con $, fila, hoja del prefijo o None)`."""
     cuerpo = formula[1:]
-    halladas: list[tuple[int, int, str, int]] = []
+    halladas: list[tuple[int, int, str, int, str | None]] = []
     for ini, fin in _tramos_no_citados(cuerpo):
         for m in _REF_CELDA.finditer(cuerpo, ini, fin):
             col_pref = m.group(1)
             fila = int(m.group(2))
             if _col_valida(col_pref) is not None and 1 <= fila <= _MAX_FILA_EXCEL:
-                halladas.append((m.start() + 1, m.end() + 1, col_pref, fila))
+                halladas.append(
+                    (m.start() + 1, m.end() + 1, col_pref, fila, _prefijo_hoja(cuerpo, m.start()))
+                )
     return halladas
 
 
@@ -242,7 +268,15 @@ _ERRORES_EXCEL: frozenset[str] = frozenset({
     "#BLOCKED!",
     "#CONNECT!",
 })
-_COLUMNAS_NUMERACION: frozenset[str] = frozenset({"A", "B"})
+_ENCABEZADOS_NUMERACION: frozenset[str] = frozenset({
+    "n",
+    "no",
+    "nro",
+    "num",
+    "numero",
+    "item",
+    "partida",
+})
 _MAX_NUMERACION = 9999
 
 
@@ -253,28 +287,44 @@ def _es_error(celda: _Celda) -> bool:
     return celda.formula is not None and "#REF!" in celda.formula.upper()
 
 
+def _es_encabezado_numeracion(texto: object) -> bool:
+    """«Nº», «N°», «Ítem», «Partida»…: encabezado de una columna de numeración."""
+    if not isinstance(texto, str):
+        return False
+    sin_marcas = "".join(
+        c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c)
+    )
+    limpio = "".join(c for c in sin_marcas.casefold() if c.isalnum())
+    return limpio in _ENCABEZADOS_NUMERACION
+
+
 def _es_numeracion(celda: _Celda) -> bool:
-    """Entero pequeño en las columnas A o B: numeración de partidas o ítems, no un dato."""
-    columna = celda.coord.rstrip("0123456789").upper()
+    """Entero 1..9999 bajo un encabezado de numeración: número de partida o de ítem."""
     valor = celda.valor
-    if columna not in _COLUMNAS_NUMERACION or not _es_numero_finito(valor):
+    if not celda.en_columna_numeracion or not _es_numero_finito(valor):
         return False
     numero = Decimal(str(valor))
-    return numero == numero.to_integral_value() and 0 < abs(numero) <= _MAX_NUMERACION
+    return numero == numero.to_integral_value() and 0 < numero <= _MAX_NUMERACION
 
 
-def _refs_desplazables(celda: _Celda) -> list[tuple[int, int, str, int]]:
+def _clave_ref(celda: _Celda, ref: tuple[int, int, str, int, str | None]) -> tuple[str, str, int]:
+    """Identidad de una referencia: (hoja efectiva, columna sin `$`, fila)."""
+    _ini, _fin, col_pref, fila, hoja = ref
+    return (hoja or celda.hoja.casefold(), col_pref.replace("$", "").upper(), fila)
+
+
+def _refs_desplazables(celda: _Celda) -> list[tuple[int, int, str, int, str | None]]:
     """Referencias de la fórmula que se pueden desplazar sin otro daño en el libro."""
     assert celda.formula is not None
     propia = celda.coord.upper()
-    validas: list[tuple[int, int, str, int]] = []
+    validas: list[tuple[int, int, str, int, str | None]] = []
     for ref in _refs_celda(celda.formula):
-        _ini, _fin, col_pref, fila = ref
-        columna = col_pref.replace("$", "").upper()
-        if f"{columna}{fila}" in celda.nombres:
+        hoja_ref, fila = ref[4], ref[3]
+        hoja, columna, _fila = _clave_ref(celda, ref)
+        if hoja_ref is None and f"{columna}{fila}" in celda.nombres:
             continue
         nueva_fila = fila + 1 if fila < _MAX_FILA_EXCEL else fila - 1
-        if f"{columna}{nueva_fila}" == propia:
+        if hoja == celda.hoja.casefold() and f"{columna}{nueva_fila}" == propia:
             continue
         validas.append(ref)
     return validas
@@ -318,12 +368,15 @@ def _aplicar_operacion(
         return celda.formula, nuevo, "numero", nuevo
     if op == "referencia_desplazada":
         assert celda.formula is not None
-        _ini, _fin, col_pref, fila = rng.choice(_refs_desplazables(celda))
-        nueva_fila = fila + 1 if fila < _MAX_FILA_EXCEL else fila - 1
+        elegida = rng.choice(_refs_desplazables(celda))
+        clave = _clave_ref(celda, elegida)
+        nueva_fila = clave[2] + 1 if clave[2] < _MAX_FILA_EXCEL else clave[2] - 1
         nueva = celda.formula
-        # Todas las apariciones de la referencia, de atrás hacia adelante para no mover índices.
-        for ini, fin, c, f in reversed(_refs_celda(celda.formula)):
-            if (c, f) == (col_pref, fila):
+        # Todas las apariciones de la misma celda (misma hoja efectiva, con o sin `$`), de atrás
+        # hacia adelante para no mover índices; cada una conserva su propio `$`.
+        for ref in reversed(_refs_celda(celda.formula)):
+            if _clave_ref(celda, ref) == clave:
+                ini, fin, col_pref = ref[0], ref[1], ref[2]
                 nueva = f"{nueva[:ini]}{col_pref}{nueva_fila}{nueva[fin:]}"
         return celda.formula, nueva, "formula", nueva
     if op == "rango_recortado":
@@ -478,6 +531,22 @@ def _editar_celda_xml(xml: str, coord: str, modo: str, payload: str) -> str:
     raise RuntimeError(f"No se encontró la celda {coord} en el XML de la hoja.")
 
 
+def _marcar_numeracion(celdas: list[_Celda], inicio: int) -> None:
+    """Marca las celdas que están bajo un encabezado de numeración (Nº, Ítem, Partida…)."""
+    primera_fila: dict[str, int] = {}
+    for c in celdas[inicio:]:
+        if c.es_formula or not _es_encabezado_numeracion(c.valor):
+            continue
+        columna = c.coord.rstrip("0123456789")
+        fila = int(c.coord[len(columna) :])
+        primera_fila[columna] = min(fila, primera_fila.get(columna, fila))
+    for idx in range(inicio, len(celdas)):
+        c = celdas[idx]
+        columna = c.coord.rstrip("0123456789")
+        if columna in primera_fila and int(c.coord[len(columna) :]) > primera_fila[columna]:
+            celdas[idx] = replace(c, en_columna_numeracion=True)
+
+
 def _leer_celdas(
     datos: bytes, paquete: Mapping[str, bytes], mapa: Mapping[str, str]
 ) -> list[_Celda]:
@@ -502,6 +571,7 @@ def _leer_celdas(
                     if cell.value is not None:
                         valores[(cell.row, cell.column)] = cell.value
             omitir, hijas = especiales.get(hoja, (set(), set()))
+            inicio_hoja = len(celdas)
             for fila in ws_f.iter_rows(values_only=False):
                 for cell in fila:
                     val = cell.value
@@ -524,6 +594,7 @@ def _leer_celdas(
                             hija_compartida=coord in hijas,
                         )
                     )
+            _marcar_numeracion(celdas, inicio_hoja)
     finally:
         wb_f.close()
         wb_v.close()

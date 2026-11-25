@@ -290,3 +290,16 @@ def test_trasplante_limpia_el_texto_en_linea_de_una_celda_con_formula():
     celda = _tag_celda(_leer_xml_hoja(trasplantar(en_linea.getvalue(), recalculado)), "A1")
     assert "<is>" not in celda and "viejo" not in celda
     assert "<v>2</v>" in celda and 't="inlineStr"' not in celda
+
+
+def test_trasplante_limpia_el_texto_en_linea_aunque_el_recalculado_no_traiga_la_celda():
+    base = _libro_xlsxwriter("Hoja", {"A1": ("=1+1", 2), "B1": ("=2+2", 4)})
+    en_linea = _con_texto_en_hoja(
+        base,
+        '<c r="A1"><f>1+1</f><v>2</v></c>',
+        '<c r="A1" t="inlineStr"><f>1+1</f><is><t>v</t></is></c>',
+    )
+    recalculado = _libro_xlsxwriter("Hoja", {"B1": ("=2+2", 4)})
+
+    celda = _tag_celda(_leer_xml_hoja(trasplantar(en_linea, recalculado)), "A1")
+    assert "<is>" not in celda

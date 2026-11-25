@@ -96,31 +96,33 @@ def test_umbrales_estan_en_los_archivos_de_reglas() -> None:
     assert mc.RAIZ / "adapters" / "hoja_empresa" / "umbrales.py" in mc.ARCHIVOS_REGLAS
 
 
-def test_huellas_coinciden_con_la_etiqueta_de_reglas_congeladas() -> None:
-    import re
-    import subprocess
+# SHA-256 (contenido con finales LF) sellados en la etiqueta git `reglas-congeladas-2026-11-24`.
+# Se fijan aquí para no depender de que la etiqueta exista en el clon (sin pruebas omitidas).
+SELLOS_ETIQUETA = {
+    "core/verification/reglas.py": (
+        "e4fb1579d25e38dcdb3348a4f4b01fd253ca404dc5b24f0a5f0586341ba8f8c2"
+    ),
+    "adapters/hoja_empresa/reglas.py": (
+        "ff620d51f00aef7998ebd0bdcff21cd5f0b1e9a28a00a07e4d6032eff06cf8c1"
+    ),
+    "adapters/hoja_empresa/reglas_calculo.py": (
+        "0231d006f015a9c76e77a0f6df3da4a9aacd2bc36abe0760b08b5b786aa57a54"
+    ),
+    "adapters/hoja_empresa/reglas_contexto.py": (
+        "c938aa19cf754bed3003cc7788a8eed18b93e40859e0cb22379e22e0ef09b57b"
+    ),
+    "adapters/hoja_empresa/umbrales.py": (
+        "a8da53e3cf0138b9b97a6e411d888d9ca8db7576cd6f28d16f44f15addc4df9d"
+    ),
+    "adapters/vial/reglas.py": ("531eb72cbcef5718e1d72b4d1b5656e651263869c9ddb30c7dc47ff1264c6961"),
+    "adapters/vial/constantes.py": (
+        "ebb5c6e586cf63a617e417e158c04165f2d1d52154f4aaeb4005aa4c0fff512b"
+    ),
+    "aplicacion/causas_raiz.py": (
+        "bb2a53a4d13c8cc6aff3a84cd9669974ac49e7f8e547411ef55b3722a5f0c9d6"
+    ),
+}
 
-    etiqueta = "reglas-congeladas-2026-11-24"
-    salida = subprocess.run(
-        ["git", "show", etiqueta, "--no-patch"],
-        cwd=mc.RAIZ,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if salida.returncode != 0:
-        pytest.skip("La etiqueta de reglas congeladas no existe en este clon.")
-    sellos = dict(
-        (ruta, huella)
-        for huella, ruta in re.findall(r"^([0-9a-f]{64})  (\S+\.py)$", salida.stdout, re.M)
-    )
-    assert sellos, "No se leyeron huellas de la etiqueta."
-    huellas = mc.manifiesto()["reglas"]
-    assert set(sellos) == set(huellas)
-    # Solo se exige igualdad en los archivos que no cambiaron después de la etiqueta.
-    for ruta, huella in sellos.items():
-        cambiado = subprocess.run(
-            ["git", "diff", "--quiet", etiqueta, "--", ruta], cwd=mc.RAIZ, check=False
-        )
-        if cambiado.returncode == 0:
-            assert huellas[ruta] == huella, ruta
+
+def test_huellas_coinciden_con_las_selladas_en_la_etiqueta_de_reglas_congeladas() -> None:
+    assert mc.manifiesto()["reglas"] == SELLOS_ETIQUETA
