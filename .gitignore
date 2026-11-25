@@ -109,3 +109,7 @@ MANUAL de la USM*.pdf
 
 # Salida de perfiles de rendimiento (cProfile); se versiono por error (auditoria final 2026-10-13)
 prof.out
+
+# Métricas locales de crapper, dryer y mutator (unclebob; regla ub-mode del 2026-11-24): no se versionan.
+.metrics/
+target/mutation-workers/
