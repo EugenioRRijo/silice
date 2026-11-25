@@ -59,8 +59,9 @@ def _fuente_falsa(grupo: str):
     return fuente
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def _fuentes_falsas(monkeypatch: pytest.MonkeyPatch):
+    # Solo para pruebas con `carpetas`: las de fuentes reales no la piden y evitan `undo()`.
     ESCENARIO.clear()
     monkeypatch.setattr(mesa, "FUENTES", {g: (_fuente_falsa(g),) for g, _ in mesa.GRUPOS})
     yield
@@ -80,7 +81,7 @@ def _crear(ruta: Path, obras: list[str]) -> None:
 
 
 @pytest.fixture
-def carpetas(tmp_path: Path) -> list[tuple[str | None, Path]]:
+def carpetas(tmp_path: Path, _fuentes_falsas: None) -> list[tuple[str | None, Path]]:
     salida: list[tuple[str | None, Path]] = []
     for nombre, obras in OBRAS.items():
         _crear(tmp_path / nombre, obras)
@@ -184,10 +185,7 @@ def test_no_escribe(carpetas) -> None:
     assert sorted(p.name for p in rutas[0].parent.iterdir()) == antes  # ni -wal ni -shm nuevos
 
 
-def test_con_las_fuentes_reales_una_devuelta_sale_como_bloquea(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    monkeypatch.undo()  # vuelven las fuentes reales de la mesa
+def test_con_las_fuentes_reales_una_devuelta_sale_como_bloquea(tmp_path: Path) -> None:
     ruta = tmp_path / "Carpeta Norte.db"
     preparar_base(ruta)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
@@ -228,9 +226,8 @@ def sembrar_fecha_no_iso(ruta: Path) -> None:
 
 
 def test_carpeta_con_datos_raros_se_omite_y_la_sana_sigue(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    monkeypatch.undo()  # fuentes reales de la mesa
     rara, sana = tmp_path / "Carpeta Rara.db", tmp_path / "Carpeta Sana.db"
     _crear(rara, ["Galpón"])
     sembrar_fecha_no_iso(rara)
@@ -257,9 +254,8 @@ def test_carpeta_con_datos_raros_se_omite_y_la_sana_sigue(
 
 
 def test_la_traza_de_una_carpeta_omitida_va_solo_al_registro_local_en_debug(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    monkeypatch.undo()
     rara = tmp_path / "Carpeta Rara.db"
     _crear(rara, ["Galpón"])
     sembrar_fecha_no_iso(rara)
