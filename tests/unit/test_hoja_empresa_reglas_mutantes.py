@@ -318,6 +318,23 @@ def test_l8_numero_repetido_informa_match_y_sumif_de_otras_hojas():
     assert hs[0].descripcion.endswith(esperado)
 
 
+def test_l8_lookup_simple_tambien_busca_por_numero():
+    """Mata en `_l8`: 895 (el segundo or -> and). «VLOOKUP(» ya contiene «LOOKUP(», así que solo
+    una fórmula con LOOKUP simple distingue el mutante."""
+    apus = (A1, A2, con(A2, hoja="APU-07", cantidad=D("0")))
+    hs = _hallazgos(
+        apus,
+        parches={
+            "CRONOGRAMA!B4": (
+                A1.descripcion,
+                "=LOOKUP(A4,PRESUPUESTO!$B$5:$B$7,PRESUPUESTO!$D$5:$D$7)",
+            ),
+        },
+    )
+    assert _firmas(hs) == [("L8", "ADVERTENCIA", ("PRESUPUESTO!B6", "PRESUPUESTO!B7"), None)]
+    assert "CRONOGRAMA buscan la partida por número" in hs[0].descripcion
+
+
 # --- L9 -----------------------------------------------------------------------------------------
 
 
