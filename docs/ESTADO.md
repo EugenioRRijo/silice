@@ -51,6 +51,9 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   fila, L4 componente en cero, L5 celda con error de cálculo) y #146 corre la suite en paralelo (`pytest-xdist`) con
   Windows repartido en 4 máquinas de la CI: Windows bajó de 68–91 min a 15–19 min por trozo y Ubuntu de 35–51 a 16; en
   el equipo de desarrollo, de 2 h 4 min a 25 min. Etiqueta `reglas-congeladas-2026-11-24` sobre `723fb7ed`.
+  El mismo día: #147 (línea base humana, prueba de comprensión de las alertas, consentimiento informado y
+  taxonomías publicadas verificadas), #148 (sin `monkeypatch.undo()`, con guardia) y #149 (comando en paralelo en
+  AGENTS.md y ESTADO al día).
 - **Ola 1121 y entrega del consejo** (PR #138 a #141): la depuración de Neon (#138) y el rediseño con su claridad
   (#139), fusionados por Eugenio; la carga cognitiva con el rótulo congelado de la Hoja (#140, opción A de Eugenio) y
   la herramienta de medición de la auditoría, el respaldo local, el guion de la demo del plan B, el ensayo de la
@@ -70,8 +73,6 @@ instalador con huella SHA-256 firmada.
 | PR o rama | Qué trae | Estado |
 |---|---|---|
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
-| #147 `feature/protocolos-medicion` | Línea base humana, prueba de comprensión de las alertas, consentimiento informado y taxonomías publicadas verificadas (solo documentos) | Claude lo fusiona con la CI en verde |
-| #148 `feature/sin-monkeypatch-undo` | Guardia contra `monkeypatch.undo()` y los 8 usos pasados a `monkeypatch.context()` (solo pruebas) | Claude lo fusiona con la CI en verde |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
 autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada tarea de la tanda tuvo su árbol
