@@ -107,3 +107,129 @@ Pregunta final abierta: «¿Qué fue lo que más le costó?» (se anota textual)
 - Por tarea: el porcentaje que terminó sin ayuda, el tiempo mediano y los puntos donde se trabaron.
 - El SUS: el promedio y el rango.
 - Los límites: 3 participantes, datos de demostración y un evaluador que también es autor del sistema.
+
+## Prueba de comprensión de las alertas (2026-11-24)
+
+Este bloque se aplica **después de las tareas T1 a T3 y antes del cuestionario SUS**, para saber si usted
+comprende lo que dicen las alertas reales de Sílice y qué acción tomaría ante cada una (acta del consejo del
+2026-11-24).
+
+- **Quién la conduce:** una persona que **no construyó Sílice** ni escribió sus reglas o textos de pantalla
+  (tampoco uno de los 3 expertos que validan los instrumentos). Así se evita que el autor aclare de más o guíe
+  las respuestas.
+- **Cómo se aplica:** se muestran las 6 alertas una por vez, tal como aparecen en pantalla (en el equipo de
+  prueba o en tarjetas impresas). Quien conduce **no explica** el significado de ninguna alerta ni corrige lo
+  que usted responda.
+- **Duración de este bloque:** por confirmar con Eugenio antes de las sesiones.
+
+### Las 6 alertas reales que se muestran
+
+Los textos reproducen los formatos reales de pantalla de Sílice (`fusion/alertas.py`,
+`aplicacion/nombres_reglas.py`, `adapters/hoja_empresa/reglas.py`, `adapters/hoja_empresa/reglas_calculo.py` y
+la vista de causas raíz) sobre un **caso ficticio de demostración** (nunca datos reales de empresa). El umbral
+de 5,00 % en las alertas de precio es el valor por omisión del programa.
+
+1. **A1 · Sin fuente** (`fusion/alertas.py`):
+   > **Sin fuente** · `MT-04`
+   > la FUENTE de MT-04 dice «POR COTIZAR»: el precio (INSUMOS!E12) no se puede rastrear
+2. **A2 · Base de la empresa** (`fusion/alertas.py`):
+   > **Base de la empresa** · `MT-08`
+   > el libro usa 18,00 USD; precio propio de la instalación 15,00 USD del 2026-10-15: +20,00 %, pasa del umbral
+   > de 5,00 %
+3. **A3 · USD-Bs** (`fusion/alertas.py`):
+   > **USD-Bs** · `MT-08`
+   > 900,00 Bs al 2026-10-01 (tasa 50,00) y 990,00 Bs al 2026-11-24 (tasa 55,00): +10,00 %, pasa del umbral de
+   > 5,00 %
+4. **A4 · Componente fuera del total (L4)** (`aplicacion/nombres_reglas.py`):
+   > **APU-02!G36 · Error · Componente fuera del total (L4) · 1.265,00**
+   > Costo directo de APU-02 (partida 2): la fórmula APU-02!G36 =SUM(G32:G34) deja fuera transporte y disposición
+   > (APU-02!G35, 10 USD/u). El CD guardado es 90 USD/u y la suma de materiales, mano de obra, equipos y
+   > transporte es 100 USD/u. Efecto: con administración (0,15) y utilidad (0,1) del APU y la cantidad 100, la
+   > partida queda corta en 1.265,00 USD sin IVA.
+5. **A5 · Referencia rota o externa (L5)** (`aplicacion/nombres_reglas.py`):
+   > **RESUMEN!B4 · Error · Referencia rota o externa (L5)**
+   > 2 fórmula(s) de RESUMEN con #REF! (la celda u hoja que citaban se borró): B4, B6. Efecto: esas celdas
+   > muestran #REF! o un valor que ya no se puede rastrear.
+6. **A6 · Causa raíz agrupada** (`Por causa raíz`, regla L1 `Referencia desalineada`):
+   > **Error · 6 casos · Referencia desalineada (L1)**
+   > PRESUPUESTO!F10 (partida 1) lee APU-01!E14 (valor 0) como rendimiento
+   > Encontrado 0 · esperado 120
+
+> **Antes de imprimir las tarjetas:** los 6 textos de arriba son el formato de cada alerta, con cifras de ejemplo.
+> Se copian tal cual de la pantalla real del caso de demostración, con la versión congelada de Sílice
+> (`reglas-congeladas-2026-11-24`), para que la persona lea exactamente lo que el programa muestra.
+
+### Preguntas
+
+Para cada una de las 6 alertas se hacen dos preguntas, sin pistas:
+
+1. «¿Qué le está diciendo?»
+2. «¿Qué haría ahora?»
+
+Al terminar las 6 alertas se hace una tercera pregunta abierta:
+
+3. «¿Qué alerta le faltó?»
+
+### Hoja de registro (antes del SUS)
+
+Participante: E__ (nunca el nombre) · Fecha: ____ · Conduce: ____
+
+| Alerta | Lo entendió (sí / a medias / no) | Qué haría | Cita textual |
+|---|---|---|---|
+| A1 · Sin fuente | | | |
+| A2 · Base de la empresa | | | |
+| A3 · USD-Bs | | | |
+| A4 · Componente fuera del total (L4) | | | |
+| A5 · Referencia rota o externa (L5) | | | |
+| A6 · Causa raíz (L1, 6 casos) | | | |
+
+**Respuesta a «¿Qué alerta le faltó?» (cita textual):**
+
+Anotación: __________________________________________________________________________________________
+
+Una vez cerrado este registro, usted pasa a llenar el **cuestionario SUS** (sección anterior), sin ayuda.
+
+## Consentimiento informado (2026-11-24)
+
+> Hoja de una página para entregar y firmar antes de empezar la sesión. Se archiva en papel o en una carpeta
+> local fuera del repositorio, separada de las hojas de observación.
+
+**Consentimiento informado para participar en una prueba de uso de Sílice**
+**Trabajo de grado — Universidad Santa María (USM)**
+
+Le invitamos a participar en una sesión individual de evaluación del programa **Sílice**, desarrollado como
+parte del trabajo de grado en la Universidad Santa María (USM). Antes de decidir, lea esta información con
+calma y haga todas las preguntas que considere necesarias.
+
+- **¿Qué se hace en la sesión?** Vamos a evaluar el programa, **no a usted ni su trabajo**. Usted realizará
+  tres tareas breves en Sílice usando una obra de demostración con datos ficticios, leerá seis alertas tal como
+  las muestra el sistema para indicar qué entiende y qué haría, y llenará un cuestionario corto sobre facilidad
+  de uso (SUS). Quien conduce la sesión le pedirá pensar en voz alta y anotará tiempos y comentarios.
+- **¿Cuánto dura?** Aproximadamente 45 minutos (ajuste final por el bloque de alertas: por confirmar con
+  Eugenio).
+- **Participación voluntaria:** su participación es totalmente voluntaria. Puede decidir no participar sin que
+  esto le traiga ningún inconveniente.
+- **Derecho a retirarse:** usted puede hacer una pausa, dejar cualquier pregunta sin responder o retirarse en
+  cualquier momento, sin dar explicaciones y sin ninguna consecuencia. Si decide retirarse, sus anotaciones se
+  eliminan de inmediato.
+- **Privacidad y confidencialidad:** durante esta sesión **no se usan ni se graban datos reales de ninguna
+  empresa ni nombres propios**. Todas las tareas se hacen con datos ficticios. Sus respuestas se registran bajo
+  un código anónimo (por ejemplo, E1, E2), separado de esta hoja de consentimiento.
+- **Uso de la información:** las respuestas, los tiempos y las citas anónimas se emplearán únicamente para el
+  trabajo de grado en la Universidad Santa María (USM), donde se reportarán solo como cifras agregadas y citas
+  sin nombre. Ningún dato personal ni hoja llena se sube a repositorios ni se comparte fuera del estudio.
+- **Contacto para dudas:** si tiene preguntas antes, durante o después de la sesión, puede dirigirse a los
+  autores del trabajo de grado, **Eugenio** y **Nicolaz** (correo o teléfono: por confirmar con Eugenio).
+
+**Declaración de consentimiento**
+
+He leído la información anterior, he podido hacer preguntas y acepto participar de manera voluntaria en esta
+sesión bajo las condiciones descritas.
+
+Nombre y apellido: __________________________________________________
+
+Firma: ______________________________________________________________
+
+Fecha: ________________________
+
+Quien conduce la sesión (nombre y firma): ___________________________
