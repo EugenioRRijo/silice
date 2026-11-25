@@ -125,7 +125,7 @@ def leer_revision(ruta: Path) -> dict[int, bool | None]:
     for fila in filas:
         if all(v in (None, "") for v in fila.values()):
             continue
-        numero = _numero_de_fila(fila[COLUMNA_FILA])
+        numero = _numero_de_fila(fila.get(COLUMNA_FILA))
         if numero in revision:
             raise ValueError(f"La fila {numero} aparece dos veces en la revisión.")
         revision[numero] = _respuesta(fila.get(COLUMNA_ERROR), numero)

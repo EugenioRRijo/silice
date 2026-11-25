@@ -140,12 +140,24 @@ fiabilidad entre personas y no decide nada. Con `--libro`, `calcular` audita ese
 
 **Detección sin acreditar lo previo.** Con `--clave`, `calcular` exige el libro sembrado (`--libro`) y el libro sin
 sembrar (`--libro-base`): los audita a los dos con las mismas opciones que `exportar` (`--fecha`, `--perfil`,
-`--recalcular`, `--sin-agrupar`), comprueba que la auditoría reproduce la planilla y descuenta **por celda** lo que
-el libro base ya tenía: un hallazgo de una regla acredita solo sus celdas que ningún hallazgo previo de esa misma
-regla citaba (la misma función que la cifra oficial de `medir_inyeccion.py`). Por eso **no se siembra sobre una celda
-que ya tiene un hallazgo previo de la misma regla**: esa falla no se podría acreditar. La columna manual «Detectado
-por hallazgo N°» de la clave no puede señalar una fila de la planilla que solo trae hallazgos previos: `calcular` se
-detiene y pide corregir la clave (o dejar la columna vacía si ningún hallazgo nuevo señala la falla).
+`--recalcular`, `--sin-agrupar`), comprueba que la auditoría reproduce la planilla y descuenta lo que el libro base
+ya tenía con la misma función que la cifra oficial de `medir_inyeccion.py` (`scripts/hallazgos_previos.py`):
+
+- En las reglas que juntan las celdas de una hoja o una sección en un solo hallazgo (L5, L7 y el L1 de la hoja AUX)
+  se descuenta **por celda**: el hallazgo acredita solo las celdas que ningún hallazgo previo de esa regla citaba.
+  Por eso, en esas reglas, **no se siembra sobre una celda que ya tiene un hallazgo previo de la misma regla**: esa
+  falla no se podría acreditar.
+- En las demás reglas, un hallazgo se descuenta solo si coincide entero con uno previo (misma regla y mismas
+  celdas). Así una celda que un hallazgo previo citaba solo como referencia (el destino de un L3, la celda correcta
+  de un L1) no esconde una falla sembrada después en ella.
+- Los hallazgos sin celdas (R2, R7) se emparejan con los previos por su descripción, primero exacta y después por
+  el patrón de la causa, nunca por el orden en que llegan.
+
+La columna manual «Detectado por hallazgo N°» de la clave no puede señalar una fila de la planilla que solo trae
+hallazgos previos: `calcular` se detiene y pide corregir la clave (o dejar la columna vacía si ningún hallazgo nuevo
+señala la falla). **Límite que se declara:** si la fila es mixta (agrupa hallazgos previos y nuevos), la herramienta
+no puede saber a cuál de ellos se refiere quien sembró y acepta la columna manual; esa columna es el juicio de quien
+sembró, y la regla de no sembrar sobre una celda con hallazgo previo de la misma regla evita el caso.
 
 ### Cómo se compara con Sílice
 

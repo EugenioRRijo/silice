@@ -194,11 +194,11 @@ def test_hallazgos_nuevos_con_misma_regla_y_otra_celda() -> None:
     assert mi.hallazgos_nuevos([a], [b, a]) == [b]
 
 
-def test_hallazgos_nuevos_con_duplicados_no_traen_celdas_nuevas() -> None:
-    # Descuento por celda (ronda 2 del 2026-11-25): un duplicado exacto de un hallazgo previo no
-    # cita ninguna celda que la regla no citara ya, así que no es nuevo.
+def test_hallazgos_nuevos_con_duplicados_descuenta_solo_los_previos() -> None:
+    # Fuera de las reglas que agrupan por hoja, un hallazgo se descuenta solo si coincide entero
+    # con uno previo (multiconjunto): el segundo duplicado es nuevo.
     a = _h("L1", "desc", "PLAN!A1")
-    assert mi.hallazgos_nuevos([a], [a, a]) == []
+    assert len(mi.hallazgos_nuevos([a], [a, a])) == 1
     assert mi.hallazgos_nuevos([a, a], [a, a]) == []
     sin_celdas = _h("L9", "desc")  # sin origen: se descuenta uno por uno
     assert mi.hallazgos_nuevos([sin_celdas], [sin_celdas, sin_celdas]) == [sin_celdas]

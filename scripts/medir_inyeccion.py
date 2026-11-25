@@ -7,8 +7,10 @@ con coma decimal (sin descripciones de la empresa y compatible con cp1252).
 
 La cifra OFICIAL de detección es la de TODAS LAS FALLAS A LA VEZ, la de este modo (decisión de
 Eugenio, `docs/bitacora/2026-11-25-cifra-oficial-de-deteccion.md`). `--una-por-vez` da la cifra
-secundaria y no decide el criterio de fracaso. En los dos modos un hallazgo que el libro base ya
-tenía (misma regla y mismas celdas de origen) no se acredita a ninguna falla.
+secundaria y no decide el criterio de fracaso. En los dos modos lo que el libro base ya tenía no
+se acredita a ninguna falla (`scripts/hallazgos_previos.py`): un hallazgo que coincide entero con
+uno previo no cuenta, y en las reglas que agrupan por hoja o sección (L5, L7 y el L1 de AUX) solo
+cuentan las celdas que la regla no citaba.
 
     uv run python scripts/medir_inyeccion.py LIBRO.xlsx --taxonomia T.toml \\
         --n 12 --semilla 7 --salida D:/medicion
@@ -206,9 +208,10 @@ def ejecutar(
 
 
 def reaccion(base: Sequence, mutado: Sequence) -> list[str]:
-    """Reglas de los hallazgos del libro mutado que el libro limpio no daba (misma regla y mismas
-    celdas de origen; un hallazgo previo que solo cambia una cifra de su descripción no cuenta).
-    Los avisos «no aplicable» no cuentan."""
+    """Reglas de los hallazgos del libro mutado que el libro limpio no daba (`hallazgos_nuevos`:
+    con celdas, el hallazgo entero o, si agrupa por hoja o sección, sus celdas nuevas; sin celdas,
+    por la descripción). Un previo que solo cambia una cifra de su descripción no cuenta, ni los
+    avisos «no aplicable»."""
     return sorted({h.regla for h in hallazgos_nuevos(base, mutado)})
 
 

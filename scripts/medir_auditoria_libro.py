@@ -228,7 +228,7 @@ def _celda(texto: str) -> str:
     hoja, signo, coordenada = texto.strip().rpartition("!")
     hoja = hoja.strip()
     if len(hoja) >= 2 and hoja[0] == hoja[-1] == "'":
-        hoja = hoja[1:-1].replace("''", "'")
+        hoja = hoja[1:-1].replace("''", "'").strip()
     coordenada = coordenada.strip().replace("$", "")
     return f"{hoja}{signo}{coordenada}".casefold()
 

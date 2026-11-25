@@ -271,6 +271,13 @@ def test_revision_con_respuesta_desconocida_o_fila_repetida_se_rechaza(tmp_path:
         mp.leer_revision(doble)
 
 
+def test_una_fila_de_la_revision_sin_su_columna_fila_da_un_error_claro(tmp_path: Path):
+    corta = tmp_path / "c.csv"
+    corta.write_text("¿Tiene error?;Fila\nSí\n", encoding="utf-8")  # a la fila le falta «Fila»
+    with pytest.raises(ValueError, match="no es una fila del PRESUPUESTO"):
+        mp.leer_revision(corta)
+
+
 def test_revision_sin_las_columnas_se_rechaza_aunque_no_tenga_filas(tmp_path: Path):
     vacio = tmp_path / "a.csv"
     vacio.write_text("Partida;Opinión\n", encoding="utf-8")
@@ -318,6 +325,76 @@ def test_sin_previos_conserva_la_numeracion_y_dice_que_filas_traen_algo_nuevo():
     assert [h.origen_ids for h in vaciados] == [(), ("RESUMEN!B14",), ("P!P5",)]
     assert previos == 1
     assert hp.filas_con_nuevos(sembrado, con_nuevos, sin_agrupar=False) == {2, 3}
+
+
+def test_la_numeracion_salta_el_aviso_no_aplicable_agrupada_y_sin_agrupar():
+    no_aplica = Hallazgo(
+        regla="R2",
+        severidad=Severidad.INFO,
+        descripcion="R2 no aplicable: el presupuesto no declara curva de inversion",
+    )
+    verif = "La verificación vale 3 (debería ser 0)."
+    base = [_h("L9", "P!R6", texto=verif)]
+    sembrado = [
+        _h("L9", "P!R6", texto=verif),  # previo
+        no_aplica,  # no se marca: no tiene N°
+        _h("L3", "P!P5", texto="guarda 999"),  # nuevo
+        _h("L9", "P!R7", texto=verif),  # nuevo, misma causa que el previo
+    ]
+    _, previos, nuevos = hp.sin_previos(base, sembrado)
+    assert previos == 1 and nuevos == {2, 3}
+    # Agrupada: N° 1 = L9 (R6 y R7), N° 2 = L3. Sin agrupar: 1 = L9 R6, 2 = L3, 3 = L9 R7.
+    assert [f.regla for f in m.causas_de_hallazgos(sembrado)] == ["L9", "L3"]
+    assert hp.filas_con_nuevos(sembrado, nuevos, sin_agrupar=False) == {1, 2}
+    assert [f.celdas for f in m.filas_de_hallazgos(sembrado)] == [("P!R6",), ("P!P5",), ("P!R7",)]
+    assert hp.filas_con_nuevos(sembrado, nuevos, sin_agrupar=True) == {2, 3}
+
+
+def test_sin_celdas_se_empareja_por_descripcion_y_no_por_orden():
+    # R2 y R7 del núcleo no traen celdas. El previo «X» está segundo en el sembrado: el nuevo «Y»,
+    # que llega primero, no se descuenta en su lugar.
+    previo, nuevo = _h("R2", texto="desfase X de la curva"), _h("R2", texto="otra causa Y")
+    assert hp.hallazgos_nuevos([previo], [nuevo, previo]) == [nuevo]
+    # Si la descripción solo cambió una cifra, empareja por el patrón de la causa.
+    cifra_vieja = _h("R7", texto="el plan suma 40,00 de más")
+    cifra_nueva = _h("R7", texto="el plan suma 45,00 de más")
+    assert hp.hallazgos_nuevos([cifra_vieja], [nuevo, cifra_nueva]) == [nuevo]
+
+
+def test_falla_en_la_celda_de_referencia_de_un_l3_previo_si_se_acredita():
+    # El L3 previo cita P5 y su referencia APU-01!G45. Un L3 nuevo de otra partida que lee la
+    # misma referencia es otro hallazgo entero: no pierde la celda G45.
+    previo = _h("L3", "PRESUPUESTO!P5", "APU-01!G45")
+    nuevo = _h("L3", "PRESUPUESTO!P6", "APU-01!G45")
+    assert hp.hallazgos_nuevos([previo], [previo, nuevo]) == [nuevo]
+    filas = m.causas_de_hallazgos(hp.hallazgos_nuevos([previo], [previo, nuevo]))
+    assert m.deteccion([m.Sembrado(1, "APU-01!G45", "t")], filas).por_sembrado == {1: 1}
+
+
+def test_falla_en_la_celda_correcta_de_un_l1_previo_si_se_acredita():
+    previo = _h("L1", "CRONOGRAMA!D4", "APU-01!F23", "APU-01!F25")  # F25: la celda correcta
+    nuevo = _h("L1", "CRONOGRAMA!D5", "APU-01!F25")
+    assert hp.hallazgos_nuevos([previo], [previo, nuevo]) == [nuevo]
+
+
+def test_el_l1_de_aux_se_descuenta_por_celda():
+    aux = "Efecto: PROCURA (lista de compras y escombro) no corresponde al presupuesto."
+    previo = _h("L1", "AUX!B5", "APU-01!B12", texto=f"AUX lee filas fijas. {aux}")
+    crecido = _h("L1", "AUX!B5", "APU-01!B12", "APU-01!B13", texto=f"AUX lee filas fijas. {aux}")
+    assert hp.hallazgos_nuevos([previo], [crecido]) == [
+        _h("L1", "APU-01!B13", texto=f"AUX lee filas fijas. {aux}")
+    ]
+    assert hp.agrupa_por_hoja(crecido) and not hp.agrupa_por_hoja(_h("L1", "CRONOGRAMA!D4"))
+
+
+def test_las_reglas_que_agrupan_por_hoja_o_seccion_estan_declaradas():
+    assert hp.REGLAS_AGRUPADAS == frozenset({"L5", "L7"})
+    assert hp.agrupa_por_hoja(_h("L5", "RESUMEN!B13")) and hp.agrupa_por_hoja(_h("L7", "M!D5"))
+    assert not hp.agrupa_por_hoja(_h("L9", "P!R6"))
+
+
+def test_celda_quita_espacios_tambien_dentro_de_las_comillas():
+    assert m._celda(" ' APU-01 '!$F$12") == m._celda("APU-01!F12") == "apu-01!f12"
 
 
 def test_detectado_por_sobre_una_fila_solo_previa_se_rechaza():
@@ -387,8 +464,16 @@ def test_calcular_con_la_revision_del_experto(corrida, capsys):
     assert "Kappa experto–Sílice < 0,4: NO se cumple" in salida
 
 
-def test_con_recalcular_el_kappa_usa_el_libro_auditado(corrida, capsys):
+def test_con_recalcular_el_kappa_usa_el_libro_auditado(corrida, capsys, monkeypatch):
     fuera, repo, _, sembrado, _ = corrida
+    vistos: list[str] = []
+    original = mp.clasificar
+
+    def espia(filas, libro):
+        vistos.append(libro.sha256)
+        return original(filas, libro)
+
+    monkeypatch.setattr(mp, "clasificar", espia)
     planilla = fuera / "p_recalculada.xlsx"
     motor = _Espia()
     comunes = [*_FECHA, "--recalcular"]
@@ -405,6 +490,8 @@ def test_con_recalcular_el_kappa_usa_el_libro_auditado(corrida, capsys):
     assert m.main(["calcular", "--planilla", str(planilla), *argumentos], recalculador=motor) == 0
     assert motor.llamadas == ["sembrado.xlsx"]
     assert "Kappa experto–Sílice < 0,4: NO se cumple" in capsys.readouterr().out
+    # clasificó el libro trasplantado (el que auditó), no el archivo original sin recalcular
+    assert vistos and vistos[0] != hashlib.sha256(sembrado.read_bytes()).hexdigest()
 
 
 class _Espia(LibreOfficeFalso):
