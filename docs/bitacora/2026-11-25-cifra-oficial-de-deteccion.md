@@ -23,5 +23,11 @@ que pide la guía del tercero («si cambiara, se registra con fecha y motivo»).
 de desarrollo, que comparó con el umbral el modo de una por vez (plan, «Segunda medición»), queda como historia del
 desarrollo, igual que antes.
 
+**Segunda decisión de Eugenio (2026-11-25, antes de medir): qué cuenta como «detectada».** Cuando el evaluador marca
+las planillas, para el criterio del 50 % cuenta solo la falla que Sílice señaló **y** el evaluador confirmó como
+verdadera. Así lo pide la frase sellada: «fallas que un experto independiente confirma». Las señaladas sin
+confirmar se informan al lado. En la medición automática, sin evaluador, cuenta lo señalado, y la salida dice cuál de
+las dos se evaluó. Surgió de la auditoría de Neon (Gemini) al código de medición.
+
 **Cómo se revierte.** Con otra acta fechada, siempre antes de abrir los libros nuevos. Después de abrirlos no se
 revierte.
