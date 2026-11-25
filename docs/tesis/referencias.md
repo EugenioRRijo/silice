@@ -744,6 +744,56 @@ Landis, J. R., & Koch, G. G. (1977). The measurement of observer agreement for c
   «moderado», 0,61–0,80 «sustancial»), que hoy solo está confirmada por fuentes que la atribuyen a
   este artículo. Hasta entonces la escala se cita con «[verificación pendiente]».
 
+## Taxonomía de fallas para la medición no circular
+
+Base propuesta para que el tercero escriba la taxonomía con la que se siembran fallas en la Fase 3
+([acta del consejo del 2026-11-24](../bitacora/2026-11-24-consejo-auditoria-alertas-mercado.md)). Los metadatos están
+verificados; las categorías, solo en la medida que dice cada entrada.
+
+### Panko y Halverson (1996)
+
+Panko, R. R., & Halverson, R. P. (1996). Spreadsheets on trial: A survey of research on spreadsheet risks. En
+*Proceedings of the 29th Hawaii International Conference on System Sciences (HICSS-29)*, vol. 2, 326–335.
+https://doi.org/10.1109/HICSS.1996.495416
+
+- **Estado:** verificada (metadatos).
+- **Verificación:** Crossref, 2026‑11‑24: autores, título, congreso, volumen, páginas y DOI.
+- **Lo que respalda:** la taxonomía de errores cuantitativos en errores mecánicos, lógicos y de omisión.
+- **Límite:** las categorías se confirmaron por el resumen de Panko y Aurigemma (2010), no por el texto de 1996, que
+  no se pudo abrir.
+
+### Panko y Aurigemma (2010)
+
+Panko, R. R., & Aurigemma, S. (2010). Revising the Panko–Halverson taxonomy of spreadsheet errors. *Decision Support
+Systems, 49*(2), 235–244. https://doi.org/10.1016/j.dss.2010.02.009
+
+- **Estado:** verificada (metadatos).
+- **Verificación:** Crossref, 2026‑11‑24: autores, título, revista, volumen, número, páginas y DOI.
+- **Lo que respalda:** la revisión de la taxonomía anterior, que es la base recomendada para el tercero.
+  Separa los errores cuantitativos de los cualitativos y distingue los de planificación de los de ejecución.
+- **Límite:** las categorías se tomaron del resumen; el texto completo no se pudo abrir (la editorial respondió 403).
+  Contrastar antes de citarlas en detalle.
+
+### Rajalingham, Chadwick y Knight (2000)
+
+Rajalingham, K., Chadwick, D. R., & Knight, B. (2000). Classification of spreadsheet errors. En *Proceedings of the
+European Spreadsheet Risks Interest Group (EuSpRIG) 2000*, 23–34. ISBN 1‑86166‑158‑4. arXiv:0805.4224.
+
+- **Estado:** pendiente (categorías).
+- **Verificación:** arXiv, 2026‑11‑24: autores, título y referencia al congreso con sus páginas e ISBN. No tiene DOI.
+- **Falta:** confirmar en el texto sus categorías (errores del sistema frente a errores cuantitativos, y estos en
+  reducibles e irreducibles), que hoy solo vienen de memoria. Uso previsto: contraste, no base.
+
+### Powell, Baker y Lawson (2008)
+
+Powell, S. G., Baker, K. R., & Lawson, B. (2008). A critical review of the literature on spreadsheet errors.
+*Decision Support Systems, 46*(1), 128–138. https://doi.org/10.1016/j.dss.2008.06.001
+
+- **Estado:** verificada (metadatos).
+- **Verificación:** Crossref, 2026‑11‑24: autores, título, revista, volumen, número, páginas y DOI.
+- **Lo que respalda:** el estado del arte sobre la frecuencia de errores en hojas de cálculo. Es una revisión, no una
+  taxonomía propia.
+
 ## Consultadas y no citadas
 
 Fuera de la lista APA 7, que solo admite obras citadas (criterio T9 de la
