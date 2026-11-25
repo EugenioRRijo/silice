@@ -780,7 +780,8 @@ Rajalingham, K., Chadwick, D. R., & Knight, B. (2000). Classification of spreads
 European Spreadsheet Risks Interest Group (EuSpRIG) 2000*, 23–34. ISBN 1‑86166‑158‑4. arXiv:0805.4224.
 
 - **Estado:** pendiente (categorías).
-- **Verificación:** arXiv, 2026‑11‑24: autores, título y referencia al congreso con sus páginas e ISBN. No tiene DOI.
+- **Verificación:** arXiv, 2026‑11‑24: autores, título y referencia al congreso con sus páginas e ISBN.
+  No tiene DOI.
 - **Falta:** confirmar en el texto sus categorías (errores del sistema frente a errores cuantitativos, y estos en
   reducibles e irreducibles), que hoy solo vienen de memoria. Uso previsto: contraste, no base.
 
