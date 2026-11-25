@@ -54,6 +54,9 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   El mismo día: #147 (línea base humana, prueba de comprensión de las alertas, consentimiento informado y
   taxonomías publicadas verificadas), #148 (sin `monkeypatch.undo()`, con guardia) y #149 (comando en paralelo en
   AGENTS.md y ESTADO al día).
+  Del 2026-11-25: #150 (insumos críticos y frescura de precios, herramienta local), #151 (limpieza de worktrees,
+  Rajalingham verificada y mantenibilidad medida con crapper y dryer en la Tabla 4.1) y #152 (guía para el tercero de
+  la taxonomía, con prueba del contrato con el inyector).
 - **Ola 1121 y entrega del consejo** (PR #138 a #141): la depuración de Neon (#138) y el rediseño con su claridad
   (#139), fusionados por Eugenio; la carga cognitiva con el rótulo congelado de la Hoja (#140, opción A de Eugenio) y
   la herramienta de medición de la auditoría, el respaldo local, el guion de la demo del plan B, el ensayo de la
@@ -148,6 +151,8 @@ subir nada.
    taxonomía de plantilla. La taxonomía del tercero se sella al recibirla, antes de medir. Le toca a Eugenio:
    conseguir al tercero, los libros nuevos, al presupuestista de la línea base humana, a quien conduzca la prueba de
    comprensión y 5 personas para el SUS; firmar el [registro de decisiones](bitacora/registro-de-decisiones.md).
+   Para el tercero: entregarle la [guía de la taxonomía](tesis/2026-11-25-guia-taxonomia-tercero.md). Para medir con
+   `mutator`: activar el Modo de programador de Windows (sin él no crea sus enlaces, WinError 1314).
 1. **Hecho el 2026-11-13:** #105, #106 y #108 (con #107) fusionados por Claude, con la CI en verde y la autorización
    de Eugenio; `feature/ola2` entró como #109. Diez ramas remotas viejas ya contenidas en `main` siguen en GitHub: el
    control de permisos no dejó borrarlas (lista en el informe del 2026-11-14).
