@@ -242,3 +242,22 @@ def test_plantilla_toml_cubre_las_seis_operaciones_con_fuente_por_verificar():
     assert len(cats) == 6
     assert {c["operacion"] for c in cats} == set(inyector.OPERACIONES)
     assert all("por verificar" in c["fuente"].casefold() for c in cats)
+
+
+def test_la_lista_sin_operacion_de_la_guia_del_tercero_no_se_siembra():
+    """La guía del tercero (docs/tesis/2026-11-25-guia-taxonomia-tercero.md) manda las familias
+    que el inyector no sabe producir a una lista aparte, `[[sin_operacion]]`: el inyector la
+    ignora y siembra solo `[[categorias]]`. Una operación desconocida en `categorias` se rechaza."""
+    texto = (
+        '[[categorias]]\nid = "TAX-01"\nnombre = "Valor fijo"\n'
+        'fuente = "Panko y Aurigemma (2010)"\n'
+        'operacion = "valor_fijo"\npeso = 1.0\n\n'
+        '[[sin_operacion]]\nid = "TAX-X1"\nnombre = "Renglón contado dos veces"\n'
+        'fuente = "Rajalingham et al. (2000)"\njustificacion = "Sin operación de duplicado."\n'
+    )
+    taxonomia = tomllib.loads(texto)
+    _, inyecciones = inyector.inyectar(libro_limpio().datos, taxonomia, n=3, semilla=7)
+    assert {i.categoria for i in inyecciones} == {"TAX-01"}
+    taxonomia["categorias"][0]["operacion"] = "no_disponible"
+    with pytest.raises(ValueError, match="Operación desconocida"):
+        inyector.inyectar(libro_limpio().datos, taxonomia, n=1, semilla=7)
