@@ -28,6 +28,7 @@
 | Invariabilidad y aislamiento de `core/` (RNF-05) | [tests/unit/test_arquitectura.py](../../tests/unit/test_arquitectura.py) · [scripts/guardia_nucleo.py](../../scripts/guardia_nucleo.py) | `diff --stat` vacío en ramas de adaptadores/ML | `[pendiente: casos en verde y salida de guardia_nucleo.py]` | `[pendiente: cumple / no cumple]` |
 | Naturaleza y resguardo de datos (D1–D4) | [scripts/meta_datos.py](../../scripts/meta_datos.py) | 4/4 OK | `[pendiente: salida de meta_datos.py en corrida de cierre]` | `[pendiente: cumple / no cumple]` |
 | Desempeño de cálculo (RNF-03, RNF-11, RNF-15) | `medir_rnf03.py`, `medir_rnf11.py`, `medir_rnf15.py` | < 5,00 s (RNF-03); ≤ 2,00 s (RNF-11 y RNF-15) | `[pendiente: mediana de 5 corridas en equipo de referencia]` | `[pendiente: cumple / no cumple]` |
+| Riesgo por función (CRAP = CC² × (1 − cobertura)³ + CC; mantenibilidad, ISO/IEC 25010) | `crapper --use-existing-coverage` (unclebob/crapper, `c757ec7`) sobre el lcov de la suite completa, paquetes `core`, `adapters`, `aplicacion`, `fusion`, `api`, `seguridad` y `operacion` | Sin umbral: se informa | 2026‑11‑25, `main` `f371c45c` (Windows): 3.796 funciones; 3.025 (79,7 %) con CRAP ≤ 5, 729 (19,2 %) entre 5 y 30 y 42 (1,1 %) sobre 30, de las que 33 están en el escritor de la devolución (`adapters/hoja_empresa/escritor/`); cobertura mediana por función 100 % | Informado |
 
 ### 4.1.2 Trazabilidad requisito → prueba
 
