@@ -66,7 +66,7 @@ montos privados en rutas (la presentación es `core/verification/texto.py` `form
 Los de [AGENTS.md](../../../AGENTS.md):
 
 ```powershell
-uv run pytest -W error -q                 # suite de Python
+uv run pytest -W error -q -n auto --dist loadfile   # suite de Python, en paralelo (regla del 2026-11-24)
 uv run ruff check .                       # estilo
 uv run python scripts/meta_datos.py       # naturaleza de los datos (D1-D4)
 cd frontend-desktop; npm run lint; npx vitest run --maxWorkers=3

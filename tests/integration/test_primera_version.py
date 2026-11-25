@@ -334,14 +334,14 @@ def test_si_el_gancho_del_espacio_falla_no_queda_nada(base, monkeypatch):
     def roto(*_):
         raise RuntimeError("disco lleno")
 
-    monkeypatch.setattr(hoja, "guardar_espacio", roto)
-    with pytest.raises(RuntimeError, match="disco lleno"):
-        _crear(base)
+    with monkeypatch.context() as parche:
+        parche.setattr(hoja, "guardar_espacio", roto)
+        with pytest.raises(RuntimeError, match="disco lleno"):
+            _crear(base)
 
     assert _cuenta(sesion) == antes
     assert hoja.historial_de_versiones(sesion, NUEVO) == []
     # y el proyecto sigue sin versiones: se puede volver a intentar
-    monkeypatch.undo()
     assert _crear(base).codigo == "001"
 
 
