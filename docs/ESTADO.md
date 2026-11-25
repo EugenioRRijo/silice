@@ -151,8 +151,11 @@ subir nada.
    taxonomía de plantilla. La taxonomía del tercero se sella al recibirla, antes de medir. Le toca a Eugenio:
    conseguir al tercero, los libros nuevos, al presupuestista de la línea base humana, a quien conduzca la prueba de
    comprensión y 5 personas para el SUS; firmar el [registro de decisiones](bitacora/registro-de-decisiones.md).
-   Para el tercero: entregarle la [guía de la taxonomía](tesis/2026-11-25-guia-taxonomia-tercero.md). Para medir con
-   `mutator`: activar el Modo de programador de Windows (sin él no crea sus enlaces, WinError 1314).
+   Para el tercero: entregarle la [guía de la taxonomía](tesis/2026-11-25-guia-taxonomia-tercero.md); desde el
+   2026-11-25 hay una versión en Word, con la plantilla como anexo, en la carpeta «Decisiones Silice» de su escritorio
+   (fuera del repositorio). Para medir con `mutator`: activar el Modo de programador de Windows (sin él no crea sus
+   enlaces, WinError 1314). La sesión de Claude no es administradora y el equipo no tiene WSL ni Docker, así que ese
+   paso es de Eugenio. Los datos que faltan en el consentimiento también son suyos (2026-11-25).
 1. **Hecho el 2026-11-13:** #105, #106 y #108 (con #107) fusionados por Claude, con la CI en verde y la autorización
    de Eugenio; `feature/ola2` entró como #109. Diez ramas remotas viejas ya contenidas en `main` siguen en GitHub: el
    control de permisos no dejó borrarlas (lista en el informe del 2026-11-14).
@@ -169,9 +172,11 @@ subir nada.
 6. **Worktrees (2026-11-24):** de 30 quedan 15. Se borraron 15 copias limpias, con autorización de Eugenio («sí,
    borra las seguras y respalda las bases primero»): sus bases, libros y archivos ignorados quedaron respaldados y
    verificados por SHA-256 en `C:\RespaldoSilice\worktrees-2026-11-24` (`MANIFIESTO.txt`), y las 5 ramas que solo vivían
-   en el equipo, en `ramas-viejas-migracion.bundle`. Ninguna rama se borró. Esperan decisión de Eugenio:
-   - 7 copias con archivos nuevos **ya respaldados** (`metasf`, `s2mb-componer`, `s2mi2`, `hist`, `s2madm`, `s2md2`,
-     `demo`), que el sistema de permisos no dejó borrar sin su visto bueno explícito;
+   en el equipo, en `ramas-viejas-migracion.bundle`. Ninguna rama se borró. El 2026-11-25, con el visto bueno de
+   Eugenio («para lo demas te acepto las instruccion para que lo hagsa»), se borraron también las 7 copias con archivos
+   nuevos (`metasf`, `s2mb-componer`, `s2mi2`, `hist`, `s2madm`, `s2md2`, `demo`), después de comprobar sus 194 archivos
+   contra el respaldo por SHA-256. En `s2mi2` seguía corriendo un servidor del 22/11 en el puerto 8670, sin conexiones,
+   y se detuvo. Quedan 8 árboles. Esperan decisión de Eugenio:
    - 5 con cambios a medias (`tanda`, `s43`, `s2m3`, `s2mc`, `s2mb-maprex`);
    - `sf` (#100, núcleo), que espera al tutor.
 7. Negar en el IDE de Antigravity la lectura de `docs/auditoria` y `data/confidencial` (en su línea de comandos ya está).
