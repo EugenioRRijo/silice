@@ -147,16 +147,11 @@ def test_sin_libreoffice_devuelve_codigo_2(
 
 
 def _hallazgo(regla: str, *celdas: str, descripcion: str = "desc"):
-    from types import SimpleNamespace
+    # Un `Hallazgo` real, como los que da `procesar_libro`: el descuento recorta sus celdas.
+    from core.contracts.verificacion import Hallazgo, Severidad
 
-    from core.contracts.verificacion import Severidad
-
-    return SimpleNamespace(
-        regla=regla,
-        severidad=Severidad.ERROR,
-        descripcion=descripcion,
-        impacto=None,
-        origen_ids=celdas,
+    return Hallazgo(
+        regla=regla, severidad=Severidad.ERROR, descripcion=descripcion, origen_ids=celdas
     )
 
 

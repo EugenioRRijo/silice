@@ -32,8 +32,8 @@ import argparse
 import hashlib
 import sys
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from collections.abc import Collection, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from fractions import Fraction
@@ -237,12 +237,15 @@ def deteccion(
     sembrados: Sequence[Sembrado],
     filas: Sequence[FilaPlanilla],
     marcas: Mapping[int, object] | None = None,
+    con_nuevos: Collection[int] | None = None,
 ) -> Deteccion:
     """Qué error sembrado señaló Sílice. Manda la columna «Detectado por hallazgo N°» de la clave
     (la llena quien sembró, porque un error en un APU puede aparecer en otra celda); si está
     vacía, cuenta como detectado el primer hallazgo que apunta a la misma celda. Con `marcas`
     (veredicto del evaluador por N° de hallazgo) cuenta aparte los señalados que el evaluador
-    confirmó «Verdadero» y los que marcó «Falso»."""
+    confirmó «Verdadero» y los que marcó «Falso». Con `con_nuevos` (los N° de las filas que traen
+    algún hallazgo que el libro base no tenía), la columna manual no puede señalar una fila que
+    solo trae hallazgos previos: se rechaza para que quien sembró corrija la clave."""
     numeros = {f.numero for f in filas}
     por: dict[int, int | None] = {}
     manuales = 0
@@ -252,6 +255,12 @@ def deteccion(
                 raise ValueError(
                     f"El sembrado {s.numero} dice que lo detectó el hallazgo {s.detectado_por}, "
                     "y ese número no está en la planilla."
+                )
+            if con_nuevos is not None and s.detectado_por not in con_nuevos:
+                raise ValueError(
+                    f"El sembrado {s.numero} dice que lo detectó el hallazgo {s.detectado_por}, "
+                    "y esa fila solo trae hallazgos que el libro base ya tenía: corrija la clave "
+                    "(deje la columna vacía si ningún hallazgo nuevo lo señala)."
                 )
             por[s.numero] = s.detectado_por
             manuales += 1
@@ -269,47 +278,6 @@ def deteccion(
         confirmados=veredictos.count(VERDADERO),
         marcados_falsos=veredictos.count(FALSO),
     )
-
-
-# --- hallazgos que el libro base ya tenía ---------------------------------------------------------
-
-
-def _clave_hallazgo(h) -> tuple[str, tuple[str, ...]]:
-    """Regla y celdas de origen normalizadas (comillas, `$`, mayúsculas) y ordenadas."""
-    return h.regla, tuple(sorted(_celda(str(c)) for c in h.origen_ids))
-
-
-def _indices_nuevos(base: Sequence, auditados: Sequence) -> list[int]:
-    previos = Counter(_clave_hallazgo(h) for h in base if not _no_aplica(h))
-    nuevos = []
-    for i, h in enumerate(auditados):
-        if _no_aplica(h):
-            continue
-        if previos[_clave_hallazgo(h)] > 0:
-            previos[_clave_hallazgo(h)] -= 1
-        else:
-            nuevos.append(i)
-    return nuevos
-
-
-def hallazgos_nuevos(base: Sequence, auditados: Sequence) -> list:
-    """Los hallazgos de `auditados` que el libro base no daba: se descuenta, por regla y celdas de
-    origen (no por la descripción, que puede solo cambiar una cifra), cada hallazgo que ya estaba.
-    Los avisos «no aplicable» no cuentan. Es la regla de la cifra oficial (`medir_inyeccion`)."""
-    return [auditados[i] for i in _indices_nuevos(base, auditados)]
-
-
-def sin_previos(base: Sequence, auditados: Sequence) -> tuple[list, int]:
-    """`auditados` con las celdas de los hallazgos previos vaciadas (la regla, la severidad y la
-    descripción quedan: las filas de la planilla se agrupan y se numeran igual), y cuántos se
-    descontaron. Así una falla sembrada no se acredita a un hallazgo que el libro ya tenía."""
-    nuevos = set(_indices_nuevos(base, auditados))
-    marcables = [i for i, h in enumerate(auditados) if not _no_aplica(h)]
-    vaciados = [
-        h if i in nuevos or _no_aplica(h) else replace(h, origen_ids=())
-        for i, h in enumerate(auditados)
-    ]
-    return vaciados, len(marcables) - len(nuevos)
 
 
 def kappa_exacto(a: Sequence[str], b: Sequence[str]) -> Fraction | None:
@@ -793,15 +761,7 @@ def _comprobar_libro(planilla: Path, libro: Path) -> None:
         )
 
 
-def _filas_sin_previos(
-    args: argparse.Namespace, recalculador, planilla: Sequence[FilaPlanilla]
-) -> tuple[list[FilaPlanilla], int]:
-    """Las filas de la planilla con solo las celdas de los hallazgos que el libro base no daba
-    (la regla de `medir_inyeccion`), y cuántos hallazgos previos se descontaron. Vuelve a auditar
-    el libro sembrado y exige que dé las mismas filas que vio el evaluador."""
-    _, base = _auditar(Path(args.libro_base), args, recalculador)
-    _, sembrado = _auditar(Path(args.libro), args, recalculador)
-    hallazgos = sembrado.informe.hallazgos
+def _comprobar_reproduce(hallazgos: Sequence, args: argparse.Namespace, planilla) -> None:
     if [(f.numero, f.regla, f.celdas) for f in _filas(hallazgos, args.sin_agrupar)] != [
         (f.numero, f.regla, f.celdas) for f in planilla
     ]:
@@ -809,27 +769,54 @@ def _filas_sin_previos(
             f"La auditoría de «{Path(args.libro).name}» no reproduce la planilla: use las mismas "
             "opciones que en exportar (--fecha, --perfil, --recalcular, --sin-agrupar)."
         )
-    vaciados, previos = sin_previos(base.informe.hallazgos, hallazgos)
-    return _filas(vaciados, args.sin_agrupar), previos
+
+
+def _filas_sin_previos(
+    base: Sequence, hallazgos: Sequence, sin_agrupar: bool
+) -> tuple[list[FilaPlanilla], int, set[int]]:
+    """Las filas de la planilla con solo las celdas nuevas (`sin_previos`), cuántos hallazgos
+    previos se descontaron y qué filas traen algo nuevo."""
+    from scripts.hallazgos_previos import filas_con_nuevos, sin_previos
+
+    recortados, previos, nuevos = sin_previos(base, hallazgos)
+    return (
+        _filas(recortados, sin_agrupar),
+        previos,
+        filas_con_nuevos(hallazgos, nuevos, sin_agrupar=sin_agrupar),
+    )
 
 
 def _calcular(args: argparse.Namespace, recalculador=None) -> int:
-    from scripts.medir_partidas import clasificar, kappa_por_partida, leer_revision
+    from scripts.medir_partidas import (
+        clasificar,
+        comprobar_revision,
+        kappa_por_partida,
+        leer_revision,
+    )
 
     marcas, escapados = leer_marcas(Path(args.planilla))
     filas = leer_filas(Path(args.planilla))
+    auditado = None
     if args.libro:
         _comprobar_libro(Path(args.planilla), Path(args.libro))
+        # El mismo libro auditado que en exportar (con --recalcular, el trasplantado).
+        _, auditado = _auditar(Path(args.libro), args, recalculador)
+        _comprobar_reproduce(auditado.informe.hallazgos, args, filas)
     p = precision(marcas)
     det = previos = None
     if args.clave:
-        filas_det, previos = _filas_sin_previos(args, recalculador, filas)
-        det = deteccion(leer_clave(Path(args.clave)), filas_det, marcas=marcas)
+        _, base = _auditar(Path(args.libro_base), args, recalculador)
+        filas_det, previos, con_nuevos = _filas_sin_previos(
+            base.informe.hallazgos, auditado.informe.hallazgos, args.sin_agrupar
+        )
+        det = deteccion(
+            leer_clave(Path(args.clave)), filas_det, marcas=marcas, con_nuevos=con_nuevos
+        )
     experto = None
     if args.revision_experto:
+        comprobar_revision(Path(args.revision_experto), Path(args.libro).read_bytes())
         experto = kappa_por_partida(
-            leer_revision(Path(args.revision_experto)),
-            clasificar(filas, _leer_libro(Path(args.libro), args.perfil)),
+            leer_revision(Path(args.revision_experto)), clasificar(filas, auditado.libro)
         )
     kappa = None
     los_dos = None

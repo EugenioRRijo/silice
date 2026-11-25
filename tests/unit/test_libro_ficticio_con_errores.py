@@ -53,7 +53,10 @@ def test_la_medicion_completa_corre_sobre_el_libro_ficticio(fuera: Path, capsys)
     planilla = fuera / "planilla.xlsx"
     assert m.main(["exportar", str(libro), "--salida", str(planilla), "--fecha", "2026-11-23",
                    "--raiz-repo", str(fuera.parent / "repo")]) == 0
-    assert m.main(["calcular", "--planilla", str(planilla), "--clave", str(clave)]) == 0
+    base = fuera / "libro_ficticio_base.xlsx"  # el mismo libro sin sembrar, para los previos
+    assert base.is_file()
+    assert m.main(["calcular", "--planilla", str(planilla), "--clave", str(clave),
+                   "--libro", str(libro), "--libro-base", str(base), "--fecha", "2026-11-23"]) == 0
     salida = capsys.readouterr().out
     assert "Detección de errores sembrados" in salida
     # por omisión se exporta por causa raíz: menos filas que hallazgos

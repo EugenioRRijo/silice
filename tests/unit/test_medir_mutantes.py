@@ -10,14 +10,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.contracts.verificacion import Severidad
+from core.contracts.verificacion import Hallazgo, Severidad
 from scripts import medir_inyeccion as mi
 from tests.fixtures.libros_empresa import libro_limpio
 from tests.fixtures.recalculo_falso import LibreOfficeFalso, escribir_taxonomia
 
 
-def _h(regla: str, descripcion: str, *celdas: str, sev: Severidad = Severidad.ERROR):
-    return SimpleNamespace(regla=regla, severidad=sev, descripcion=descripcion, origen_ids=celdas)
+def _h(regla: str, descripcion: str, *celdas: str, sev: Severidad = Severidad.ERROR) -> Hallazgo:
+    return Hallazgo(regla=regla, severidad=sev, descripcion=descripcion, origen_ids=celdas)
 
 
 def test_sin_hallazgos_nuevos_no_hay_reaccion() -> None:
@@ -194,10 +194,14 @@ def test_hallazgos_nuevos_con_misma_regla_y_otra_celda() -> None:
     assert mi.hallazgos_nuevos([a], [b, a]) == [b]
 
 
-def test_hallazgos_nuevos_con_duplicados_descuenta_solo_los_previos() -> None:
+def test_hallazgos_nuevos_con_duplicados_no_traen_celdas_nuevas() -> None:
+    # Descuento por celda (ronda 2 del 2026-11-25): un duplicado exacto de un hallazgo previo no
+    # cita ninguna celda que la regla no citara ya, así que no es nuevo.
     a = _h("L1", "desc", "PLAN!A1")
-    assert len(mi.hallazgos_nuevos([a], [a, a])) == 1
+    assert mi.hallazgos_nuevos([a], [a, a]) == []
     assert mi.hallazgos_nuevos([a, a], [a, a]) == []
+    sin_celdas = _h("L9", "desc")  # sin origen: se descuenta uno por uno
+    assert mi.hallazgos_nuevos([sin_celdas], [sin_celdas, sin_celdas]) == [sin_celdas]
 
 
 def test_la_clave_ignora_comillas_dolares_mayusculas_y_orden_de_las_celdas() -> None:

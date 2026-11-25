@@ -117,23 +117,35 @@ presupuestista corregiría. La planilla vacía sale del libro, sin nada de Síli
 
 `uv run python scripts/medir_auditoria_libro.py revision LIBRO.xlsx --salida D:/medicion/rev.xlsx`
 
-Trae la hoja «Revisión por partida» con una fila por partida (`Partida`, `Código`, `Descripción`,
-`¿Tiene error?`, `Nota`) y el SHA-256 del libro. El experto escribe **Sí** o **No** en «¿Tiene error?»; en blanco
-cuenta como pendiente y no entra en el kappa. Sirve también un CSV con solo las columnas `Partida` y
-`¿Tiene error?` (separadas por coma o punto y coma). La revisión debe traer exactamente las partidas del libro.
+Trae la hoja «Revisión por partida» con una fila por partida (`Fila`, `Partida`, `Código`, `Descripción`,
+`¿Tiene error?`, `Nota`) y el SHA-256 del libro. Cada partida se identifica por su **fila del PRESUPUESTO**
+(`Fila`), no por su número, porque hay libros con números de partida repetidos. El experto escribe **Sí** o **No**
+en «¿Tiene error?»; en blanco cuenta como pendiente y no entra en el kappa. Sirve también un CSV con las columnas
+`Fila` y `¿Tiene error?` (separadas por coma o punto y coma). La revisión debe traer exactamente las filas de
+partida del libro, y sin esas dos columnas se rechaza aunque no traiga filas. `calcular` coteja el SHA-256 de una
+revisión .xlsx con el del libro dado en `--libro` y la rechaza si no coinciden; un CSV no trae huella y no se coteja.
 
 Sílice dice «Sí» en una partida cuando alguna fila de la planilla exportada cita una celda del renglón de esa partida
-en el PRESUPUESTO o de la hoja APU unida a ella. Las filas que no caen en ninguna partida (RESUMEN, INSUMOS, filas de
-totales) se informan aparte y no entran en el kappa. El kappa se calcula sobre todas las partidas, sanas incluidas, y
-es el único que decide el tercer criterio de fracaso; el kappa entre dos evaluadores (`--otra`) mide la fiabilidad
-entre personas y no decide nada:
+en el PRESUPUESTO (también dentro de un rango) o de la hoja APU unida a ella; si varias partidas comparten un APU,
+cuenta para todas. **Regla conservadora (acta literal):** un hallazgo cuenta para todas las partidas de sus celdas
+de origen, aunque una regla (L1, L2, L3) cite la celda de otra partida solo como referencia; si así marca de más, el
+kappa de Sílice baja, nunca sube. Las filas que no caen en ninguna partida (RESUMEN, INSUMOS, filas de totales) se
+informan aparte y no entran en el kappa. El kappa se calcula sobre todas las partidas, sanas incluidas, y es el único
+que decide el tercer criterio de fracaso; si no hay variación (todas sanas o todas con error para los dos) o no hay
+partidas revisadas, el criterio dice que no se puede calcular. El kappa entre dos evaluadores (`--otra`) mide la
+fiabilidad entre personas y no decide nada. Con `--libro`, `calcular` audita ese libro con las mismas opciones que
+`exportar` (con `--recalcular`, el libro trasplantado) y exige que reproduzca la planilla:
 
-`uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --libro LIBRO.xlsx --revision-experto rev.xlsx`
+`uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --libro LIBRO.xlsx --revision-experto rev.xlsx --fecha AAAA-MM-DD`
 
 **Detección sin acreditar lo previo.** Con `--clave`, `calcular` exige el libro sembrado (`--libro`) y el libro sin
 sembrar (`--libro-base`): los audita a los dos con las mismas opciones que `exportar` (`--fecha`, `--perfil`,
-`--recalcular`, `--sin-agrupar`), comprueba que la auditoría reproduce la planilla y no acredita a una falla sembrada
-un hallazgo que el libro base ya tenía (misma regla y mismas celdas, la regla de `medir_inyeccion.py`).
+`--recalcular`, `--sin-agrupar`), comprueba que la auditoría reproduce la planilla y descuenta **por celda** lo que
+el libro base ya tenía: un hallazgo de una regla acredita solo sus celdas que ningún hallazgo previo de esa misma
+regla citaba (la misma función que la cifra oficial de `medir_inyeccion.py`). Por eso **no se siembra sobre una celda
+que ya tiene un hallazgo previo de la misma regla**: esa falla no se podría acreditar. La columna manual «Detectado
+por hallazgo N°» de la clave no puede señalar una fila de la planilla que solo trae hallazgos previos: `calcular` se
+detiene y pide corregir la clave (o dejar la columna vacía si ningún hallazgo nuevo señala la falla).
 
 ### Cómo se compara con Sílice
 

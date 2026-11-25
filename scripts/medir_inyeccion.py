@@ -41,6 +41,7 @@ from aplicacion.oraculo_hoja import (  # noqa: E402
 from aplicacion.trasplante_valores import trasplantar  # noqa: E402
 from asistente.experimento.metricas import wilson  # noqa: E402
 from fusion.proceso import procesar_libro  # noqa: E402
+from scripts.hallazgos_previos import hallazgos_nuevos  # noqa: E402
 from scripts.inyector_fallas import (  # noqa: E402
     _CELDA_XML,
     Inyeccion,
@@ -56,7 +57,6 @@ from scripts.medir_auditoria_libro import (  # noqa: E402
     causas_de_hallazgos,
     criterio_de_fracaso,
     deteccion,
-    hallazgos_nuevos,
     intervalo_wilson,
     porcentaje_de,
 )
