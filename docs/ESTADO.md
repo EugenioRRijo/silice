@@ -47,6 +47,10 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
 - **«Descargar PDF» y sprint 1120b** (PR #136 y #137, fusionados por Eugenio): el mapa de series de Riesgo guardado
   por versión, quién guardó el desperdicio y la depuración de la auditoría de Neon del 2026-11-20. `main` queda en
   `df91d176`.
+- **Congelamiento y pruebas en paralelo (2026-11-24):** #145 cierra tres huecos de reglas (L1 BUSCARV de otra
+  fila, L4 componente en cero, L5 celda con error de cálculo) y #146 corre la suite en paralelo (`pytest-xdist`) con
+  Windows repartido en 4 máquinas de la CI: Windows bajó de 68–91 min a 15–19 min por trozo y Ubuntu de 35–51 a 16; en
+  el equipo de desarrollo, de 2 h 4 min a 25 min. Etiqueta `reglas-congeladas-2026-11-24` sobre `723fb7ed`.
 - **Ola 1121 y entrega del consejo** (PR #138 a #141): la depuración de Neon (#138) y el rediseño con su claridad
   (#139), fusionados por Eugenio; la carga cognitiva con el rótulo congelado de la Hoja (#140, opción A de Eugenio) y
   la herramienta de medición de la auditoría, el respaldo local, el guion de la demo del plan B, el ensayo de la
@@ -66,6 +70,8 @@ instalador con huella SHA-256 firmada.
 | PR o rama | Qué trae | Estado |
 |---|---|---|
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
+| #147 `feature/protocolos-medicion` | Línea base humana, prueba de comprensión de las alertas, consentimiento informado y taxonomías publicadas verificadas (solo documentos) | Claude lo fusiona con la CI en verde |
+| #148 `feature/sin-monkeypatch-undo` | Guardia contra `monkeypatch.undo()` y los 8 usos pasados a `monkeypatch.context()` (solo pruebas) | Claude lo fusiona con la CI en verde |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
 autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada tarea de la tanda tuvo su árbol
@@ -136,10 +142,11 @@ subir nada.
 
 ## 4. Lo que espera a Eugenio
 
-0. **Huecos de reglas (2026-11-24): corregidos por orden de Eugenio** («sí, corrige los huecos de reglas antes de
-   congelar»; [acta](bitacora/2026-11-24-huecos-de-reglas-antes-del-congelamiento.md)). En el libro de desarrollo la
-   medición sube de 5 a 10 de 12, y los libros reales no cambian. Siguiente: la etiqueta del congelamiento (Fase 2) y
-   firmar el [registro de decisiones](bitacora/registro-de-decisiones.md).
+0. **Hecho el 2026-11-24:** los huecos de reglas se cerraron (#145) y las reglas quedaron congeladas con la
+   etiqueta `reglas-congeladas-2026-11-24`, que guarda la huella SHA-256 de reglas, umbrales, criterio de fracaso y
+   taxonomía de plantilla. La taxonomía del tercero se sella al recibirla, antes de medir. Le toca a Eugenio:
+   conseguir al tercero, los libros nuevos, al presupuestista de la línea base humana, a quien conduzca la prueba de
+   comprensión y 5 personas para el SUS; firmar el [registro de decisiones](bitacora/registro-de-decisiones.md).
 1. **Hecho el 2026-11-13:** #105, #106 y #108 (con #107) fusionados por Claude, con la CI en verde y la autorización
    de Eugenio; `feature/ola2` entró como #109. Diez ramas remotas viejas ya contenidas en `main` siguen en GitHub: el
    control de permisos no dejó borrarlas (lista en el informe del 2026-11-14).

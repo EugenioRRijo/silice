@@ -22,7 +22,7 @@ Esta guía define el protocolo estricto de pruebas automatizadas que debe cumpli
    con `scripts/verificar_omitidas.py` sobre el JUnit de la corrida.
 3. **Comandos de comprobación (AGENTS.md):**
    ```powershell
-   uv run pytest -W error -q                 # suite de Python
+   uv run pytest -W error -q -n auto --dist loadfile   # suite de Python, en paralelo (regla del 2026-11-24)
    uv run ruff check .                       # estilo
    uv run python scripts/meta_datos.py       # naturaleza de los datos (D1-D4)
    cd frontend-desktop; npm run lint; npx vitest run --maxWorkers=3
