@@ -22,7 +22,6 @@ import io
 import json
 import sys
 import zipfile
-from collections import Counter
 from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
@@ -52,12 +51,12 @@ from scripts.inyector_fallas import (  # noqa: E402
 )
 from scripts.medir_auditoria_libro import (  # noqa: E402
     Sembrado,
-    _celda,
     _destino_seguro,
     _no_aplica,
     causas_de_hallazgos,
     criterio_de_fracaso,
     deteccion,
+    hallazgos_nuevos,
     intervalo_wilson,
     porcentaje_de,
 )
@@ -73,30 +72,6 @@ def _comprobar_cantidad(pedidas: int, sembradas: int, permitir_menos: bool) -> N
             f"Se pidieron {pedidas} fallas y solo se pudieron sembrar {sembradas}: la medición "
             "no sería la planeada. Amplíe la taxonomía o use --permitir-menos."
         )
-
-
-# --- hallazgos que el libro base ya tenía ---------------------------------------------------------
-
-
-def _clave(h) -> tuple[str, tuple[str, ...]]:
-    """Regla y celdas de origen normalizadas (comillas, `$`, mayúsculas) y ordenadas."""
-    return h.regla, tuple(sorted(_celda(str(c)) for c in h.origen_ids))
-
-
-def hallazgos_nuevos(base: Sequence, auditados: Sequence) -> list:
-    """Los hallazgos de `auditados` que el libro base no daba: se descuenta, por regla y celdas de
-    origen (no por la descripción, que puede solo cambiar una cifra), cada hallazgo que ya estaba.
-    Los avisos «no aplicable» no cuentan."""
-    previos = Counter(_clave(h) for h in base if not _no_aplica(h))
-    nuevos = []
-    for h in auditados:
-        if _no_aplica(h):
-            continue
-        if previos[_clave(h)] > 0:
-            previos[_clave(h)] -= 1
-        else:
-            nuevos.append(h)
-    return nuevos
 
 
 def _auditar(

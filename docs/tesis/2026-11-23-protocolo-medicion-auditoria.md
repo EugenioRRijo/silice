@@ -48,7 +48,8 @@ anotan en las instrucciones de la planilla.
    celda (por ejemplo, un rendimiento sembrado en un APU que se señala en el precio de la partida). Si la deja vacía, la
    herramienta cuenta como detectado el primer hallazgo de la misma celda.
 6. **Calcular:**
-   `uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --otra p2.xlsx --clave clave.xlsx`.
+   `uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --otra p2.xlsx --clave clave.xlsx --libro COPIA.xlsx --libro-base LIBRO.xlsx`
+   (con las mismas opciones de `exportar`; ver «Detección sin acreditar lo previo» más abajo).
    Sale una tabla en Markdown con cifras agregadas, sin celdas ni descripciones: es lo único que va a la tesis.
 
 ## Piloto del kappa
@@ -108,6 +109,31 @@ conteo de marcas que no eran fallas por libro. Al pie se anotan los minutos tota
 
 **Resumen por libro:** Libro ____ · Minutos totales a mano: ____ · Fallas encontradas: ___ de ___ · Marcas que
 no eran falla: ___
+
+### Revisión por partida (kappa experto–Sílice, acta del 2026-11-25)
+
+En la misma revisión ciega, el experto dice **por cada partida** del PRESUPUESTO si tiene un error que un
+presupuestista corregiría. La planilla vacía sale del libro, sin nada de Sílice:
+
+`uv run python scripts/medir_auditoria_libro.py revision LIBRO.xlsx --salida D:/medicion/rev.xlsx`
+
+Trae la hoja «Revisión por partida» con una fila por partida (`Partida`, `Código`, `Descripción`,
+`¿Tiene error?`, `Nota`) y el SHA-256 del libro. El experto escribe **Sí** o **No** en «¿Tiene error?»; en blanco
+cuenta como pendiente y no entra en el kappa. Sirve también un CSV con solo las columnas `Partida` y
+`¿Tiene error?` (separadas por coma o punto y coma). La revisión debe traer exactamente las partidas del libro.
+
+Sílice dice «Sí» en una partida cuando alguna fila de la planilla exportada cita una celda del renglón de esa partida
+en el PRESUPUESTO o de la hoja APU unida a ella. Las filas que no caen en ninguna partida (RESUMEN, INSUMOS, filas de
+totales) se informan aparte y no entran en el kappa. El kappa se calcula sobre todas las partidas, sanas incluidas, y
+es el único que decide el tercer criterio de fracaso; el kappa entre dos evaluadores (`--otra`) mide la fiabilidad
+entre personas y no decide nada:
+
+`uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --libro LIBRO.xlsx --revision-experto rev.xlsx`
+
+**Detección sin acreditar lo previo.** Con `--clave`, `calcular` exige el libro sembrado (`--libro`) y el libro sin
+sembrar (`--libro-base`): los audita a los dos con las mismas opciones que `exportar` (`--fecha`, `--perfil`,
+`--recalcular`, `--sin-agrupar`), comprueba que la auditoría reproduce la planilla y no acredita a una falla sembrada
+un hallazgo que el libro base ya tenía (misma regla y mismas celdas, la regla de `medir_inyeccion.py`).
 
 ### Cómo se compara con Sílice
 

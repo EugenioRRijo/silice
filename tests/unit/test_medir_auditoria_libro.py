@@ -408,7 +408,8 @@ def test_el_resumen_trae_wilson_y_evalua_el_criterio_de_fracaso():
         "Detección < 50 % (señalado por Sílice): NO se cumple" in texto
     )  # 50,0 % no es menor que 50 %
     assert "Falsos positivos > 40 %: SE CUMPLE" in texto
-    assert "Kappa < 0,4: SE CUMPLE" in texto
+    # el 0,3 es entre dos evaluadores: no decide el criterio del kappa experto–Sílice
+    assert "Kappa experto–Sílice < 0,4: no se puede calcular" in texto
     assert "todas las fallas a la vez" in texto
 
 
@@ -420,7 +421,7 @@ def test_el_criterio_dice_cuando_no_se_puede_calcular_una_condicion():
         kappa=None,
     )
     assert "Detección < 50 % (señalado por Sílice): no se puede calcular" in texto
-    assert "Kappa < 0,4: no se puede calcular" in texto
+    assert "Kappa experto–Sílice < 0,4: no se puede calcular" in texto
     assert "Falsos positivos > 40 %: NO se cumple" in texto  # 0 de 1
 
 
@@ -548,16 +549,10 @@ def test_calcular_imprime_wilson_y_criterio(fuera: Path, capsys):
     hoja.cell(row=2, column=col, value="Verdadero")
     hoja.cell(row=3, column=col, value="Falso")
     libro.save(ruta)
-    clave = fuera / "clave.xlsx"
-    m.escribir_clave_vacia(clave, raiz_repo=fuera.parent / "repo")
-    libro = openpyxl.load_workbook(clave)
-    libro["Sembrados"].append([1, "A!B1", "t", "x", None])
-    libro["Sembrados"].append([2, "A!B2", "t", "x", None])
-    libro.save(clave)
-    assert m.main(["calcular", "--planilla", str(ruta), "--clave", str(clave)]) == 0
+    # la detección con --clave exige los libros (tests/unit/test_medir_partidas.py)
+    assert m.main(["calcular", "--planilla", str(ruta)]) == 0
     salida = capsys.readouterr().out
-    assert "[9,5 %; 90,5 %]" in salida  # 1 de 2 con Wilson
-    assert "señalado y confirmado verdadero" in salida
+    assert "[9,5 %; 90,5 %]" in salida  # falsos positivos 1 de 2 con Wilson
     assert "Falsos positivos > 40 %: SE CUMPLE" in salida
 
 
@@ -575,10 +570,11 @@ def test_kappa_en_la_frontera_exacta_no_declara_fracaso():
     a, b = _marcas_con_kappa_dos_quintos()
     exacto = m.kappa_exacto(a, b)
     assert exacto == Fraction(2, 5)
-    assert "Kappa < 0,4: NO se cumple" in m.criterio_de_fracaso(kappa=exacto)
+    linea = "Kappa experto–Sílice < 0,4"
+    assert f"{linea}: NO se cumple" in m.criterio_de_fracaso(kappa_experto=exacto)
     # aunque quien llame pase el float con su error de redondeo
-    assert "Kappa < 0,4: NO se cumple" in m.criterio_de_fracaso(kappa=m.kappa_cohen(a, b))
-    assert "Kappa < 0,4: SE CUMPLE" in m.criterio_de_fracaso(kappa=0.39)
+    assert f"{linea}: NO se cumple" in m.criterio_de_fracaso(kappa_experto=m.kappa_cohen(a, b))
+    assert f"{linea}: SE CUMPLE" in m.criterio_de_fracaso(kappa_experto=0.39)
 
 
 def test_porcentaje_convierte_a_decimal_antes_de_multiplicar():

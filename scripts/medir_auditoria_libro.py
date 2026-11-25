@@ -11,14 +11,19 @@ Protocolo (ver `docs/tesis/2026-11-23-protocolo-medicion-auditoria.md`):
 2. `exportar`: Sílice audita el libro (el mismo proceso de la pantalla, `procesar_libro`) y los
    hallazgos salen a una planilla con la columna «Veredicto» (Verdadero o Falso) y la hoja «Se le
    escaparon» para los errores reales que Sílice no vio.
-3. Cada evaluador marca su copia por separado, sin ver la clave.
-4. `calcular`: precisión (Verdadero / marcados), detección de lo sembrado, exhaustividad
-   aproximada (Verdadero / (Verdadero + escapados)) y, con dos planillas, el kappa de Cohen.
+3. Cada evaluador marca su copia por separado, sin ver la clave. `revision`: la planilla de la
+   revisión ciega por partida del experto (`scripts/medir_partidas.py`).
+4. `calcular`: precisión (Verdadero / marcados), detección de lo sembrado sin acreditar los
+   hallazgos que el libro base ya tenía (`--libro` y `--libro-base`), exhaustividad aproximada
+   (Verdadero / (Verdadero + escapados)), el kappa experto–Sílice por partida
+   (`--revision-experto`, decide el criterio de fracaso) y, con dos planillas, el kappa entre
+   evaluadores (fiabilidad entre personas, no decide nada).
 
     uv run python scripts/medir_auditoria_libro.py clave --salida D:/medicion/clave.xlsx
-    uv run python scripts/medir_auditoria_libro.py exportar LIBRO.xlsx --salida D:/medicion/p1.xlsx
+    uv run python scripts/medir_auditoria_libro.py exportar COPIA.xlsx --salida D:/medicion/p1.xlsx
+    uv run python scripts/medir_auditoria_libro.py revision COPIA.xlsx --salida D:/medicion/rev.xlsx
     uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --otra p2.xlsx \\
-        --clave clave.xlsx
+        --clave clave.xlsx --libro COPIA.xlsx --libro-base LIBRO.xlsx --revision-experto rev.xlsx
 """
 
 from __future__ import annotations
@@ -28,11 +33,12 @@ import hashlib
 import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from decimal import Decimal
 from fractions import Fraction
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
@@ -42,10 +48,14 @@ from aplicacion.causas_raiz import agrupar, es_no_aplicable, patron  # noqa: E40
 from asistente.experimento.metricas import wilson  # noqa: E402
 from core.verification.texto import formatear_decimal  # noqa: E402
 
+if TYPE_CHECKING:
+    from scripts.medir_partidas import KappaPartidas
+
 VERDADERO = "Verdadero"
 FALSO = "Falso"
 MARCAS = {"verdadero": VERDADERO, "falso": FALSO}
 SEPARADOR_CELDAS = "; "
+ETIQUETA_SHA = "SHA-256 del libro auditado"
 
 ENCABEZADO_HALLAZGOS = (
     "N°",
@@ -261,6 +271,47 @@ def deteccion(
     )
 
 
+# --- hallazgos que el libro base ya tenía ---------------------------------------------------------
+
+
+def _clave_hallazgo(h) -> tuple[str, tuple[str, ...]]:
+    """Regla y celdas de origen normalizadas (comillas, `$`, mayúsculas) y ordenadas."""
+    return h.regla, tuple(sorted(_celda(str(c)) for c in h.origen_ids))
+
+
+def _indices_nuevos(base: Sequence, auditados: Sequence) -> list[int]:
+    previos = Counter(_clave_hallazgo(h) for h in base if not _no_aplica(h))
+    nuevos = []
+    for i, h in enumerate(auditados):
+        if _no_aplica(h):
+            continue
+        if previos[_clave_hallazgo(h)] > 0:
+            previos[_clave_hallazgo(h)] -= 1
+        else:
+            nuevos.append(i)
+    return nuevos
+
+
+def hallazgos_nuevos(base: Sequence, auditados: Sequence) -> list:
+    """Los hallazgos de `auditados` que el libro base no daba: se descuenta, por regla y celdas de
+    origen (no por la descripción, que puede solo cambiar una cifra), cada hallazgo que ya estaba.
+    Los avisos «no aplicable» no cuentan. Es la regla de la cifra oficial (`medir_inyeccion`)."""
+    return [auditados[i] for i in _indices_nuevos(base, auditados)]
+
+
+def sin_previos(base: Sequence, auditados: Sequence) -> tuple[list, int]:
+    """`auditados` con las celdas de los hallazgos previos vaciadas (la regla, la severidad y la
+    descripción quedan: las filas de la planilla se agrupan y se numeran igual), y cuántos se
+    descontaron. Así una falla sembrada no se acredita a un hallazgo que el libro ya tenía."""
+    nuevos = set(_indices_nuevos(base, auditados))
+    marcables = [i for i, h in enumerate(auditados) if not _no_aplica(h)]
+    vaciados = [
+        h if i in nuevos or _no_aplica(h) else replace(h, origen_ids=())
+        for i, h in enumerate(auditados)
+    ]
+    return vaciados, len(marcables) - len(nuevos)
+
+
 def kappa_exacto(a: Sequence[str], b: Sequence[str]) -> Fraction | None:
     """Kappa de Cohen (1960) exacto, con fracciones: así `κ = 0,4` no cae por debajo del umbral por
     un error de redondeo del `float`. `None` si el acuerdo esperado por azar es 1."""
@@ -343,20 +394,23 @@ def criterio_de_fracaso(
     *,
     deteccion: tuple[int, int] | None = None,
     falsos: tuple[int, int] | None = None,
-    kappa: float | Fraction | None = None,
+    kappa_experto: float | Fraction | None = None,
     base_deteccion: str = BASE_SENALADO,
 ) -> list[str]:
     """Evalúa el criterio de fracaso sellado (plan no circular): detección < 50 %, falsos positivos
-    > 40 % por causa, kappa < 0,4. `deteccion` y `falsos` son (casos, total); lo que no se puede
-    calcular con los datos de la corrida se dice. Compara con enteros y fracciones, sin redondear.
-    `base_deteccion` dice qué se contó: con marcas del evaluador, solo lo confirmado verdadero
-    (decisión de Eugenio, 2026-11-25); sin marcas, lo señalado por Sílice."""
+    > 40 % por causa, kappa experto–Sílice < 0,4. `deteccion` y `falsos` son (casos, total); lo
+    que no se puede calcular con los datos de la corrida se dice. Compara con enteros y fracciones,
+    sin redondear. `base_deteccion` dice qué se contó: con marcas del evaluador, solo lo confirmado
+    verdadero (decisión de Eugenio, 2026-11-25); sin marcas, lo señalado por Sílice.
+    `kappa_experto` es el kappa por partida entre el experto y Sílice (acta del 2026-11-25,
+    punto 1), nunca el de dos evaluadores, que mide la fiabilidad entre personas."""
     detecta = None if not deteccion or not deteccion[1] else deteccion[0] * 2 < deteccion[1]
     falsea = None if not falsos or not falsos[1] else falsos[0] * 5 > falsos[1] * 2
     return [
         f"Detección < 50 % ({base_deteccion}): {_estado(detecta)}",
         f"Falsos positivos > 40 %: {_estado(falsea)}",
-        f"Kappa < 0,4: {_estado(None if kappa is None else _kappa_menor_que_dos_quintos(kappa))}",
+        "Kappa experto–Sílice < 0,4: "
+        + _estado(None if kappa_experto is None else _kappa_menor_que_dos_quintos(kappa_experto)),
         NOTA_CIFRA_OFICIAL,
     ]
 
@@ -377,8 +431,13 @@ def resumen(
     kappa: float | Fraction | None,
     marcados_por_los_dos: int | None = None,
     agrupacion: tuple[int, int] | None = None,
+    experto: KappaPartidas | None = None,
+    previos: int | None = None,
 ) -> str:
-    """Las cifras agregadas para la tesis: sin celdas, sin descripciones, sin nombres."""
+    """Las cifras agregadas para la tesis: sin celdas, sin descripciones, sin nombres. `kappa` es
+    el de dos evaluadores (fiabilidad entre personas); `experto`, el kappa por partida entre el
+    experto y Sílice, el único que decide el criterio; `previos`, los hallazgos del libro base
+    descontados de la detección."""
     falsos = precision.total - precision.aciertos
     lineas = [
         "| Medida | Cuentas | Valor | Intervalo de Wilson 95 % |",
@@ -413,7 +472,31 @@ def resumen(
         if kappa is None
         else decimal_coma(float(kappa))
     )
-    lineas.append(f"| Kappa de Cohen entre los dos evaluadores | — | {texto_kappa} | — |")
+    lineas.append(
+        "| Kappa de Cohen entre los dos evaluadores (fiabilidad entre personas; no decide el "
+        f"fracaso) | — | {texto_kappa} | — |"
+    )
+    if experto is not None:
+        lineas.append(
+            f"| Kappa de Cohen experto–Sílice por partida (decide el criterio) | "
+            f"{experto.revisadas} partidas revisadas: ambos Sí {experto.ambos_si}, solo el experto "
+            f"{experto.solo_experto}, solo Sílice {experto.solo_silice}, ambos No "
+            f"{experto.ambos_no} ({experto.pendientes} pendientes) | "
+            + (
+                "sin dato (sin variación)"
+                if experto.kappa is None
+                else decimal_coma(float(experto.kappa))
+            )
+            + " | — |"
+        )
+    if previos is not None:
+        lineas += ["", f"Hallazgos previos del libro descontados: {previos}"]
+    if experto is not None:
+        lineas += [
+            "",
+            "Filas de la planilla sin partida (no entran en el kappa): "
+            f"{experto.filas_sin_partida}",
+        ]
     if agrupacion is not None and agrupacion[1]:
         hallazgos, causas = agrupacion
         lineas += [
@@ -429,7 +512,7 @@ def resumen(
         for t in criterio_de_fracaso(
             deteccion=_cuenta_de_deteccion(deteccion),
             falsos=(falsos, precision.total),
-            kappa=kappa,
+            kappa_experto=None if experto is None else experto.kappa,
             base_deteccion=BASE_SENALADO
             if deteccion is None or deteccion.confirmados is None
             else BASE_CONFIRMADO,
@@ -619,12 +702,12 @@ def fecha_iso(texto: str) -> date:
     return date.fromisoformat(texto)
 
 
-def _exportar(args: argparse.Namespace, recalculador=None) -> int:
+def _auditar(ruta: Path, args: argparse.Namespace, recalculador=None) -> tuple[bytes, object]:
+    """Los bytes del libro y su `ResultadoFusion`: el mismo proceso de la pantalla
+    (`procesar_libro`); con `--recalcular`, sobre los valores de LibreOffice trasplantados."""
     from fusion.proceso import procesar_libro
 
-    origen = Path(args.libro)
-    _destino_seguro(Path(args.salida), Path(args.raiz_repo))  # antes de gastar un recálculo
-    datos = origen.read_bytes()
+    datos = ruta.read_bytes()
     auditado = datos
     if args.recalcular:
         from aplicacion.oraculo_hoja import RecalculadorLibreOffice
@@ -633,18 +716,27 @@ def _exportar(args: argparse.Namespace, recalculador=None) -> int:
         motor = recalculador or RecalculadorLibreOffice(
             configuracion_regional=args.configuracion_regional
         )
-        auditado = trasplantar(datos, motor.recalcular(datos, origen.name))
+        auditado = trasplantar(datos, motor.recalcular(datos, ruta.name))
     resultado = procesar_libro(
-        auditado, origen.name, fecha_devolucion=args.fecha or date.today(), perfil=args.perfil
+        auditado, ruta.name, fecha_devolucion=args.fecha or date.today(), perfil=args.perfil
     )
-    hallazgos = resultado.informe.hallazgos
-    filas = filas_de_hallazgos(hallazgos) if args.sin_agrupar else causas_de_hallazgos(hallazgos)
+    return datos, resultado
+
+
+def _filas(hallazgos: Sequence, sin_agrupar: bool) -> list[FilaPlanilla]:
+    return filas_de_hallazgos(hallazgos) if sin_agrupar else causas_de_hallazgos(hallazgos)
+
+
+def _exportar(args: argparse.Namespace, recalculador=None) -> int:
+    _destino_seguro(Path(args.salida), Path(args.raiz_repo))  # antes de gastar un recálculo
+    datos, resultado = _auditar(Path(args.libro), args, recalculador)
+    filas = _filas(resultado.informe.hallazgos, args.sin_agrupar)
     destino = escribir_planilla(
         filas,
         Path(args.salida),
         raiz_repo=Path(args.raiz_repo),
         origen={
-            "SHA-256 del libro auditado": hashlib.sha256(datos).hexdigest(),
+            ETIQUETA_SHA: hashlib.sha256(datos).hexdigest(),
             "Recalculado con LibreOffice y valores trasplantados": "sí"
             if args.recalcular
             else "no",
@@ -665,19 +757,85 @@ def _clave(args: argparse.Namespace) -> int:
     return 0
 
 
-def _calcular(args: argparse.Namespace) -> int:
+def _leer_libro(ruta: Path, perfil: str | None):
+    from adapters.hoja_empresa.lector import leer_libro
+    from adapters.hoja_empresa.perfil import cargar_perfil
+
+    return leer_libro(ruta.read_bytes(), ruta.name, cargar_perfil(perfil) if perfil else None)
+
+
+def _revision(args: argparse.Namespace) -> int:
+    from scripts.medir_partidas import escribir_revision_vacia
+
+    destino = escribir_revision_vacia(
+        _leer_libro(Path(args.libro), args.perfil),
+        Path(args.salida),
+        raiz_repo=Path(args.raiz_repo),
+    )
+    print(f"Revisión por partida, vacía: {destino}")
+    return 0
+
+
+def _comprobar_libro(planilla: Path, libro: Path) -> None:
+    """La planilla se exportó de este libro: lo dice el SHA-256 que `exportar` dejó en ella."""
+    import openpyxl
+
+    esperado = f"{ETIQUETA_SHA}: {hashlib.sha256(libro.read_bytes()).hexdigest()}"
+    hoja = openpyxl.load_workbook(planilla, read_only=True)
+    try:
+        lineas = [str(f[0] or "") for f in hoja["Instrucciones"].iter_rows(values_only=True) if f]
+    finally:
+        hoja.close()
+    if esperado not in lineas:
+        raise ValueError(
+            f"La planilla «{planilla.name}» no es de este libro: su SHA-256 no es el de "
+            f"«{libro.name}»."
+        )
+
+
+def _filas_sin_previos(
+    args: argparse.Namespace, recalculador, planilla: Sequence[FilaPlanilla]
+) -> tuple[list[FilaPlanilla], int]:
+    """Las filas de la planilla con solo las celdas de los hallazgos que el libro base no daba
+    (la regla de `medir_inyeccion`), y cuántos hallazgos previos se descontaron. Vuelve a auditar
+    el libro sembrado y exige que dé las mismas filas que vio el evaluador."""
+    _, base = _auditar(Path(args.libro_base), args, recalculador)
+    _, sembrado = _auditar(Path(args.libro), args, recalculador)
+    hallazgos = sembrado.informe.hallazgos
+    if [(f.numero, f.regla, f.celdas) for f in _filas(hallazgos, args.sin_agrupar)] != [
+        (f.numero, f.regla, f.celdas) for f in planilla
+    ]:
+        raise ValueError(
+            f"La auditoría de «{Path(args.libro).name}» no reproduce la planilla: use las mismas "
+            "opciones que en exportar (--fecha, --perfil, --recalcular, --sin-agrupar)."
+        )
+    vaciados, previos = sin_previos(base.informe.hallazgos, hallazgos)
+    return _filas(vaciados, args.sin_agrupar), previos
+
+
+def _calcular(args: argparse.Namespace, recalculador=None) -> int:
+    from scripts.medir_partidas import clasificar, kappa_por_partida, leer_revision
+
     marcas, escapados = leer_marcas(Path(args.planilla))
+    filas = leer_filas(Path(args.planilla))
+    if args.libro:
+        _comprobar_libro(Path(args.planilla), Path(args.libro))
     p = precision(marcas)
-    det = None
+    det = previos = None
     if args.clave:
-        det = deteccion(
-            leer_clave(Path(args.clave)), leer_filas(Path(args.planilla)), marcas=marcas
+        filas_det, previos = _filas_sin_previos(args, recalculador, filas)
+        det = deteccion(leer_clave(Path(args.clave)), filas_det, marcas=marcas)
+    experto = None
+    if args.revision_experto:
+        experto = kappa_por_partida(
+            leer_revision(Path(args.revision_experto)),
+            clasificar(filas, _leer_libro(Path(args.libro), args.perfil)),
         )
     kappa = None
     los_dos = None
     if args.otra:
-        mias, otras = leer_filas(Path(args.planilla)), leer_filas(Path(args.otra))
-        if [(f.numero, f.regla, f.celdas) for f in mias] != [
+        otras = leer_filas(Path(args.otra))
+        if [(f.numero, f.regla, f.celdas) for f in filas] != [
             (f.numero, f.regla, f.celdas) for f in otras
         ]:
             raise ValueError("Las dos planillas no traen los mismos hallazgos: no son comparables.")
@@ -686,8 +844,6 @@ def _calcular(args: argparse.Namespace) -> int:
         los_dos = len(comunes)
         if comunes:
             kappa = kappa_exacto([marcas[n] for n in comunes], [otras_marcas[n] for n in comunes])
-    filas = leer_filas(Path(args.planilla))
-    agrupacion = (sum(f.ocurrencias for f in filas), len(filas))
     print(
         resumen(
             precision=p,
@@ -695,10 +851,32 @@ def _calcular(args: argparse.Namespace) -> int:
             exhaustividad=exhaustividad(p.aciertos, escapados),
             kappa=kappa,
             marcados_por_los_dos=los_dos,
-            agrupacion=agrupacion,
+            agrupacion=(sum(f.ocurrencias for f in filas), len(filas)),
+            experto=experto,
+            previos=previos,
         )
     )
     return 0
+
+
+def _opciones_de_auditoria(analizador: argparse.ArgumentParser) -> None:
+    """Las opciones con que se audita un libro: `calcular` debe repetir las de `exportar`."""
+    analizador.add_argument(
+        "--fecha", type=fecha_iso, default=None, help="AAAA-MM-DD (por omisión, hoy)"
+    )
+    analizador.add_argument("--perfil", default=None)
+    analizador.add_argument(
+        "--sin-agrupar",
+        action="store_true",
+        help="un hallazgo por fila en vez de una causa raíz por fila",
+    )
+    analizador.add_argument(
+        "--recalcular",
+        action="store_true",
+        help="recalcula el libro con LibreOffice y trasplanta los valores antes de "
+        "auditarlo (un libro sembrado no trae valores guardados al día)",
+    )
+    analizador.add_argument("--configuracion-regional", default="es-VE")
 
 
 def main(argv: list[str] | None = None, *, recalculador=None) -> int:
@@ -708,20 +886,7 @@ def main(argv: list[str] | None = None, *, recalculador=None) -> int:
     e = sub.add_parser("exportar", help="audita un libro y escribe la planilla para marcar")
     e.add_argument("libro")
     e.add_argument("--salida", required=True)
-    e.add_argument("--fecha", type=fecha_iso, default=None, help="AAAA-MM-DD (por omisión, hoy)")
-    e.add_argument("--perfil", default=None)
-    e.add_argument(
-        "--sin-agrupar",
-        action="store_true",
-        help="un hallazgo por fila en vez de una causa raíz por fila",
-    )
-    e.add_argument(
-        "--recalcular",
-        action="store_true",
-        help="recalcula el libro con LibreOffice y trasplanta los valores antes de "
-        "auditarlo (un libro sembrado no trae valores guardados al día)",
-    )
-    e.add_argument("--configuracion-regional", default="es-VE")
+    _opciones_de_auditoria(e)
     e.add_argument("--raiz-repo", default=str(RAIZ))
     e.set_defaults(funcion=_exportar)
 
@@ -730,22 +895,54 @@ def main(argv: list[str] | None = None, *, recalculador=None) -> int:
     c.add_argument("--raiz-repo", default=str(RAIZ))
     c.set_defaults(funcion=_clave)
 
+    r = sub.add_parser("revision", help="escribe la revisión ciega por partida, vacía")
+    r.add_argument("libro")
+    r.add_argument("--salida", required=True)
+    r.add_argument("--perfil", default=None)
+    r.add_argument("--raiz-repo", default=str(RAIZ))
+    r.set_defaults(funcion=_revision)
+
     k = sub.add_parser("calcular", help="calcula las medidas desde las planillas marcadas")
     k.add_argument("--planilla", required=True)
-    k.add_argument("--otra", default=None, help="la planilla del segundo evaluador (kappa)")
-    k.add_argument("--clave", default=None, help="la clave de la siembra (detección)")
+    k.add_argument(
+        "--otra", default=None, help="la planilla del segundo evaluador (fiabilidad entre personas)"
+    )
+    k.add_argument(
+        "--clave",
+        default=None,
+        help="la clave de la siembra (detección); exige --libro y --libro-base",
+    )
+    k.add_argument("--libro", default=None, help="el libro del que se exportó la planilla")
+    k.add_argument(
+        "--libro-base",
+        default=None,
+        help="el libro sin sembrar: sus hallazgos no se acreditan a las fallas sembradas",
+    )
+    k.add_argument(
+        "--revision-experto",
+        default=None,
+        help="la revisión ciega del experto por partida (.xlsx o .csv); exige --libro",
+    )
+    _opciones_de_auditoria(k)
     k.set_defaults(funcion=_calcular)
 
     args = analizador.parse_args(argv)
-    if args.funcion is _exportar:
-        from aplicacion.oraculo_hoja import LibreOfficeNoDisponibleError
+    if args.funcion is _calcular:
+        if args.clave and not (args.libro and args.libro_base):
+            k.error("--clave exige --libro y --libro-base (para descontar los hallazgos previos)")
+        if args.libro_base and not args.clave:
+            k.error("--libro-base solo sirve con --clave")
+        if args.revision_experto and not args.libro:
+            k.error("--revision-experto exige --libro (para ubicar las partidas)")
+    if args.funcion not in (_exportar, _calcular):
+        return args.funcion(args)
+    from aplicacion.oraculo_hoja import LibreOfficeNoDisponibleError
 
-        try:
-            return _exportar(args, recalculador)
-        except LibreOfficeNoDisponibleError as error:
-            print(error)
-            return 2
-    return args.funcion(args)
+    try:
+        return args.funcion(args, recalculador)
+    except LibreOfficeNoDisponibleError as error:
+        print(error)
+        return 2
 
 
 if __name__ == "__main__":
