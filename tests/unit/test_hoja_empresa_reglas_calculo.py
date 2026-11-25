@@ -173,8 +173,7 @@ def test_l4_no_juzga_un_costo_directo_que_da_error():
     """Si el CD da #VALUE!, no hay cifra que comparar con la suma de componentes: lo informa L5
     y L4 calla. Mata el mutante `celda_cd is None and cd is None` de mutator (2026-11-25)."""
     hs = _hallazgos(**{"APU-02!G36": ("#VALUE!", '=SUM(G32:G35)/"x"')})
-    assert [h for h in hs if h.regla == "L4"] == []
-    assert ("L5", "ERROR", ("APU-02!G36",), None) in _firmas(hs)
+    assert _firmas(hs) == [("L5", "ERROR", ("APU-02!G36",), None)]
 
 
 def test_l4_costo_directo_sin_formula_no_se_juzga_por_componente():

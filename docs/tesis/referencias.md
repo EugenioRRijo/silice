@@ -803,6 +803,57 @@ Powell, S. G., Baker, K. R., & Lawson, B. (2008). A critical review of the liter
 - **Lo que respalda:** el estado del arte sobre la frecuencia de errores en hojas de cálculo. Es una revisión, no una
   taxonomía propia.
 
+## Calidad de las pruebas: análisis de mutación
+
+Respaldo de la fila de pruebas de mutación de la Tabla 4.1 del
+[esqueleto del capítulo de resultados](2026-11-23-esqueleto-capitulo-resultados.md), medida el 2026‑11‑25.
+
+### DeMillo, Lipton y Sayward (1978)
+
+DeMillo, R. A., Lipton, R. J., & Sayward, F. G. (1978). Hints on test data selection: Help for the practicing
+programmer. *Computer, 11*(4), 34–41. https://doi.org/10.1109/C-M.1978.218136
+
+- **Estado:** verificada (metadatos).
+- **Verificación:** Crossref, 2026‑11‑25: autores, título, revista, volumen, número, páginas, fecha (abril de 1978) y
+  DOI; el DOI resuelve en doi.org hacia IEEE Xplore (documento 1646911).
+- **Lo que respalda:** el origen de la prueba de mutación. Jia y Harman (2011, §II) le atribuyen la hipótesis del
+  programador competente (los defectos reales son pocos y simples, corregibles con cambios sintácticos pequeños) y el
+  efecto de acoplamiento.
+- **Límite:** el texto de 1978 no se abrió; lo que se le atribuye está contrastado en Jia y Harman (2011), que lo cita
+  como su referencia [66].
+
+### Jia y Harman (2011)
+
+Jia, Y., & Harman, M. (2011). An analysis and survey of the development of mutation testing. *IEEE Transactions on
+Software Engineering, 37*(5), 649–678. https://doi.org/10.1109/TSE.2010.62
+
+- **Estado:** verificada.
+- **Verificación:** Crossref, 2026‑11‑25: autores, título, revista, volumen, número, páginas, fecha (septiembre de
+  2011) y DOI; el DOI resuelve en doi.org hacia IEEE Xplore (documento 5487526). Texto: copia del manuscrito con la
+  cabecera de la revista (31 páginas), 2026‑11‑25.
+- **Afirmación contrastada:** la prueba de mutación siembra a propósito defectos mediante cambios sintácticos
+  simples y da un criterio de adecuación, el puntaje de mutación, que es la razón entre los mutantes muertos y el
+  total de mutantes no equivalentes (§II.B). Un mutante equivalente es sintácticamente distinto del programa pero
+  tiene su mismo comportamiento; decidir la equivalencia es indecidible, por lo que su detección puede requerir
+  revisión humana (§IV).
+- **Lo que respalda:** la definición del puntaje y el límite de los mutantes equivalentes.
+
+### Papadakis et al. (2019)
+
+Papadakis, M., Kintis, M., Zhang, J., Jia, Y., Le Traon, Y., & Harman, M. (2019). Mutation testing advances: An
+analysis and survey. *Advances in Computers, 112*, 275–378. https://doi.org/10.1016/bs.adcom.2018.03.015
+
+- **Estado:** verificada.
+- **Verificación:** Crossref, 2026‑11‑25: título, serie, páginas, año, ISBN 978‑0‑12‑815121‑1 y DOI; Crossref no
+  registra autores ni volumen. Autores: manuscrito de los autores (mutationtesting.uni.lu) y OpenAlex, 2026‑11‑25.
+  Volumen 112 (editor Atif Memon, enero de 2019, capítulo seis): ficha de Elsevier del mismo ISBN, 2026‑11‑25. El
+  DOI resuelve en doi.org hacia Elsevier.
+- **Afirmación contrastada:** la prueba de mutación usa defectos artificiales para evaluar la adecuación de un
+  conjunto de pruebas (resumen), y el puntaje de mutación es la proporción de mutantes que las pruebas matan
+  (manuscrito de los autores).
+- **Lo que respalda:** que el método sigue vigente y es de uso actual, no solo histórico.
+- **Límite:** las afirmaciones se contrastaron en el manuscrito de los autores, no en la versión de la editorial.
+
 ## Consultadas y no citadas
 
 Fuera de la lista APA 7, que solo admite obras citadas (criterio T9 de la
