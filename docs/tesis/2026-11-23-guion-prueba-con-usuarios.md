@@ -29,10 +29,14 @@ Las tres primeras son las dimensiones de usabilidad de la norma ISO 9241-11: efi
 
 ## Quiénes y cuántos
 
-- Los 3 economistas que elaboran y revisan los presupuestos viales de la empresa del caso: es la población censal del
-  v8. Con 5 personas se ve la mayoría de los problemas grandes (Nielsen y Landauer, 1993); con 3, se declara como límite.
-  [docs/ESTADO.md](../ESTADO.md) §4 encarga conseguir 5 personas para el SUS: si se suman participantes que no son los
-  3 economistas, se informan aparte (**por confirmar con Eugenio**).
+- Cinco personas (decisión de Eugenio del 2026-11-25,
+  [acta](../bitacora/2026-11-25-acta-kappa-sus-y-textos.md), punto 2):
+  - los 3 economistas que elaboran y revisan los presupuestos viales de la empresa del caso, que son la población
+    censal del v8;
+  - 2 personas que presupuestan pero no conocen Sílice.
+
+  Con 5 personas se ve la mayoría de los problemas grandes (Nielsen y Landauer, 1993). Los resultados se informan por
+  grupo (economistas y personas nuevas) y en conjunto.
 - La medición de la auditoría es otro protocolo (errores sembrados y kappa de Cohen, v8 §8) y otra sesión.
 - Sesión individual de unos 45 minutos, en el equipo de Eugenio, con Sílice abierto en una carpeta de demostración (datos
   ficticios).
