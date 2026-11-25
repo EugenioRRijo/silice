@@ -62,3 +62,66 @@ se revisan las instrucciones de la planilla antes de medir. Para Landis y Koch (
 - La exhaustividad es aproximada: nadie conoce todos los errores reales de un libro.
 - La detección depende del catálogo de siembra; los tipos de error que no estén en el catálogo no se miden.
 - Con 3 economistas no hay inferencia estadística: se reportan cuentas, porcentajes y el kappa del piloto.
+
+## Línea base humana (2026-11-24)
+
+El cuestionario SUS mide facilidad de uso, no si el sistema detecta más o más rápido que una revisión manual.
+Para tener una referencia concreta, un presupuestista revisa a mano los **mismos libros con fallas sembradas**
+que audita Sílice, sin ver antes los resultados del programa ni la clave sellada (acta del consejo del
+2026-11-24).
+
+### Quién puede hacerlo y quién no
+
+- **Puede hacerlo:** un presupuestista o economista con experiencia revisando presupuestos en Excel que **no
+  construyó Sílice**, no escribió sus reglas y no participó en la siembra de fallas.
+- **No puede hacerlo:** Eugenio, Nicolaz, la persona que sembró las fallas, ninguno de los 3 expertos que
+  validan los instrumentos del anteproyecto ni nadie que haya visto antes el informe de Sílice o la clave
+  sellada de esos libros.
+
+### Condiciones y resguardo de los libros
+
+- **Los libros con datos reales nunca salen del equipo de Eugenio** (NORMAS §1). Toda la revisión manual se
+  hace en ese equipo; los libros sembrados, la clave sellada y las planillas llenas se guardan en una carpeta
+  local fuera del repositorio.
+- **Orden obligatorio de las tareas:** primero usted revisa cada libro a mano en Excel, con su forma habitual
+  de trabajo y sin abrir Sílice. Solo después, si también participa en la evaluación con el sistema, ve los
+  resultados de Sílice. **Nunca al revés:** ver antes el informe de Sílice invalida la línea base humana.
+- **Tiempo máximo por libro:** por confirmar con Eugenio antes de iniciar la medición. El mismo tope se fija
+  por escrito para todo el lote; al cumplirse, se detiene el cronómetro y se anota lo encontrado hasta ese
+  minuto.
+- **Qué se registra:** cuántas fallas sembradas encuentra, cuáles, el minuto en que señala cada una, cuántas
+  cosas marca que no eran fallas y los minutos totales dedicados al libro. La clave sellada se abre solo al
+  terminar la revisión manual para cotejar lo encontrado.
+- Si usted encuentra un error real del libro original que no estaba en la clave sembrada, se anota en
+  «Observación» y no se cuenta como marca errónea.
+
+### Planilla de línea base humana
+
+Se llena en una planilla local (fuera del repositorio), con una fila por cada falla de la clave sellada y el
+conteo de marcas que no eran fallas por libro. Al pie se anotan los minutos totales de cada libro.
+
+| Libro | Falla sembrada (clave sellada) | ¿La encontró? | Minuto | Marcas que no eran falla | Observación |
+|---|---|---|---|---|---|
+| | | Sí / No | | | |
+| | | Sí / No | | | |
+| | | Sí / No | | | |
+
+**Resumen por libro:** Libro ____ · Minutos totales a mano: ____ · Fallas encontradas: ___ de ___ · Marcas que
+no eran falla: ___
+
+### Cómo se compara con Sílice
+
+Con los mismos libros sembrados (recalculados con LibreOffice y auditados con las reglas congeladas, según el
+plan no circular), se comparan lado a lado la revisión manual y Sílice:
+
+- **Detección de fallas sembradas:** proporción de fallas sembradas encontradas por el presupuestista frente a
+  las detectadas por Sílice, reportada con cuentas, porcentaje (coma decimal) e **intervalo de confianza de
+  Wilson al 95 %** para cada uno. Se detalla también qué fallas halló solo la persona (por ejemplo, criterio
+  de obra) y cuáles solo Sílice.
+- **Falsos positivos:** en la revisión manual, marcas que no eran fallas sobre el total de problemas señalados
+  por el presupuestista; en Sílice, causas informadas marcadas «Falso» por el experto sobre el total de causas
+  informadas. Ambas proporciones se reportan con su **intervalo de Wilson al 95 %**.
+- **Tiempo de revisión:** minutos totales por libro a mano frente al tiempo que toma correr Sílice y revisar
+  sus causas.
+- **Límite que se declara:** con pocos revisores y pocos libros, la comparación con el procedimiento manual es
+  descriptiva e ilustrativa (sin pruebas de inferencia estadística) y se presenta así en la tesis.
