@@ -372,6 +372,15 @@ describe("Simulador de listas", () => {
     expect(tabla.closest("[aria-live]")).toBeNull();
   });
 
+  test("el resumen escribe el conteo de filas con punto de miles", async () => {
+    const usuario = userEvent.setup();
+    const muchas = Array.from({ length: 1234 }, (_, i) => ({ ...FILAS[0]!, insumo: `Insumo ${i}` }));
+    fetchFalso.mockResolvedValue(json({ filas: muchas }));
+    montar();
+    await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+    expect(await screen.findByText("Lista simulada: 1.234 filas")).toBeInTheDocument();
+  });
+
   test("el resumen usa singular con una fila", async () => {
     const usuario = userEvent.setup();
     fetchFalso.mockResolvedValue(json({ filas: [FILAS[0]] }));

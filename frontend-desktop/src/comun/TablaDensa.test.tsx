@@ -52,6 +52,15 @@ describe("TablaDensa", () => {
     expect(codigosEnOrden()).toEqual(["Partida 04", "Partida 03", "Partida 02", "Partida 01"]);
   });
 
+  test("el title de una celda presentada lleva el valor exacto con coma decimal y punto de miles, sin perder cifras", () => {
+    const cols: ColumnaDensa[] = [
+      { clave: "codigo", titulo: "Código" },
+      { clave: "monto", titulo: "Monto", numerica: true, presentar: (v) => v.slice(0, 4) },
+    ];
+    render(<TablaDensa etiqueta="Partidas" columnas={cols} filas={[{ id: "a", codigo: "P-01", monto: "1234567.891000" }]} />);
+    expect(screen.getByText("1234")).toHaveAttribute("title", "1.234.567,891000");
+  });
+
   test("ordena una columna de texto al hacer clic en su encabezado", async () => {
     const usuario = userEvent.setup();
     render(<TablaDensa etiqueta="Partidas" columnas={columnas} filas={filas} />);

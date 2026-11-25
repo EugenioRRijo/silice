@@ -38,7 +38,7 @@ function Tarjetas({ tarjetas, moneda, destacarPrimera = false }: { tarjetas: Tar
           <dt className="cds--type-label-01">{t.rotulo}</dt>
           <dd
             className={destacarPrimera && i === 0 ? "cds--type-heading-04" : "cds--type-heading-03"}
-            title={t.exacto ? `Valor exacto: ${formatoEsVe(t.exacto)} ${moneda}`.trim() : t.valor}
+            title={t.exacto ? `Valor exacto: ${formatoEsVe(t.exacto)} ${moneda}`.trim() : formatoMontoEsVe(t.valor)}
           >
             {formatoMontoEsVe(t.valor)}
             {t.exacto && (

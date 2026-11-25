@@ -5,7 +5,7 @@ import type { InformeAuditoriaRespuesta } from "../../api/tipos";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export const AYUDA =
-  "Carga una lista de precios nueva (CSV o XLSX con las columnas tipo, insumo, unidad y precio) y el sistema revalora el presupuesto guardado, registra qué cambió y audita la versión nueva.";
+  "Cargue una lista de precios nueva (CSV o XLSX con las columnas tipo, insumo, unidad y precio) y el sistema revalora el presupuesto guardado, registra qué cambió y audita la versión nueva.";
 export const CODIGO_NUEVO_POR_DEFECTO = "002";
 export const MONEDA_POR_DEFECTO = "USD";
 export const EXTENSIONES = [".csv", ".xlsx"];

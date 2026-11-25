@@ -202,7 +202,7 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     const fila = within(desglose).getByText("Precio unitario").closest("tr") as HTMLElement;
     expect(within(fila).getByText("2.074,44 Bs")).toBeInTheDocument();
     // El exacto, tal como lo dio la API, sigue a un toque.
-    expect(within(fila).getByText("2.074,44 Bs")).toHaveAttribute("title", "2074.44");
+    expect(within(fila).getByText("2.074,44 Bs")).toHaveAttribute("title", "2.074,44");
     expect(screen.queryByRole("combobox", { name: /moneda/i })).not.toBeInTheDocument();
     expect(de("/v1/carpeta", "GET")).toHaveLength(1);
     // La carpeta se lee de `/v1/carpeta`, no del resumen viejo de la carpeta.

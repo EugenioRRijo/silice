@@ -271,7 +271,7 @@ describe("Reajuste de precios", () => {
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     const tabla = await screen.findByRole("table", { name: "Resultado: escalatoria frente a comprobación directa" });
     expect(within(tabla).getAllByText("15.300,00").length).toBeGreaterThan(0);
-    expect(within(tabla).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
+    expect(within(tabla).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15.300,00");
     expect(within(tabla).queryByText("15300.00")).toBeNull();
     expect(within(tabla).getByText("Total")).toBeInTheDocument();
     const cuerpo = post("/v1/reajuste/calcular") as {
@@ -316,8 +316,8 @@ describe("Reajuste de precios", () => {
     expect(within(principal).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
       "Período", "Escalatoria", "Comprobación", "Diferencia", "Reconocido", "Mecanismo", "Moneda",
     ]);
-    expect(within(principal).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
-    expect(within(principal).getAllByText("16.000,00")[0]).toHaveAttribute("title", "16000.00");
+    expect(within(principal).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15.300,00");
+    expect(within(principal).getAllByText("16.000,00")[0]).toHaveAttribute("title", "16.000,00");
     // VD-5: el mecanismo se lee con su rotulo y sin el valor interno en el title; solo las cifras llevan el exacto
     expect(within(principal).getAllByText("Fórmula por índices (escalatoria)", { selector: "td" })[0]).toBeInTheDocument();
     expect(within(principal).queryByTitle("escalatoria")).toBeNull();
@@ -325,7 +325,7 @@ describe("Reajuste de precios", () => {
     expect(within(otra).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
       "Período", "Escalatoria", "Comprobación", "Diferencia", "Tasa",
     ]);
-    expect(within(otra).getAllByText("-0,82")[0]).toHaveAttribute("title", "-0.82");
+    expect(within(otra).getAllByText("-0,82")[0]).toHaveAttribute("title", "-0,82");
     expect(screen.queryByRole("columnheader", { name: "Marcas" })).toBeNull();
     const marcas = screen.getByRole("list", { name: "Marcas por período" });
     expect(within(marcas).getAllByRole("listitem").map((l) => l.textContent)).toEqual([

@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableRow } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
 import { AvisoError } from "../../comun/AvisoError";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import type { Advertencia, Contraste, Desglose, Evaluacion } from "./cliente";
 
 interface Props {
@@ -48,7 +48,7 @@ function TablaDeMontos({ desglose, moneda }: { desglose: Desglose; moneda: strin
             <TableRow key={clave}>
               <TableCell>{rotulo}</TableCell>
               {/* La interfaz no calcula: el texto exacto de la API, en es-VE; el exacto queda en el title. */}
-              <TableCell className="silice-cifra" title={desglose[clave]}>
+              <TableCell className="silice-cifra" title={formatoMontoEsVe(desglose[clave])}>
                 {conMoneda(desglose[clave], moneda)}
               </TableCell>
             </TableRow>

@@ -161,7 +161,7 @@ describe("Tablero de la obra", () => {
     const versiones = screen.getByRole("table", { name: "Versiones del presupuesto" });
     // VD-5: la fecha no lleva su forma ISO en el title; las cifras si llevan su exacto
     expect(within(versiones).getByText("02/11/2026")).not.toHaveAttribute("title");
-    expect([...versiones.querySelectorAll("[title]")].every((e) => /^-?[0-9]+(\.[0-9]+)?$/.test(e.getAttribute("title") ?? ""))).toBe(true);
+    expect([...versiones.querySelectorAll("[title]")].every((e) => /^-?[0-9]{1,3}(\.[0-9]{3})*(,[0-9]+)?$/.test(e.getAttribute("title") ?? ""))).toBe(true);
     // V-21: un indice (SPI 0,98) no es una parte de un todo: no hay donas de avance, SPI ni CPI, solo los indicadores
     expect(screen.queryByLabelText(/SPI \(plazo\)/)).toBeNull();
     expect(
@@ -177,7 +177,7 @@ describe("Tablero de la obra", () => {
     expect(within(pareto).getByRole("columnheader", { name: /% del total/ })).toBeInTheDocument();
     expect(within(pareto).getByRole("columnheader", { name: /% acumulado/ })).toBeInTheDocument();
     expect(within(pareto).getByText("3.000,00")).toBeInTheDocument();
-    expect(within(pareto).getByTitle("3000.00")).toBeInTheDocument(); // el exacto, a un toque (V-19)
+    expect(within(pareto).getByTitle("3.000,00")).toBeInTheDocument(); // el exacto, a un toque (V-19)
     expect(screen.getByRole("table", { name: "Versiones del presupuesto" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Montos de Valor ganado (PV, EV, AC)" })).toBeInTheDocument();
   });
@@ -211,7 +211,7 @@ describe("Tablero de la obra", () => {
     );
     montar("OB-S2");
     const tarjeta = await screen.findByText("95.066,60 USD");
-    expect(tarjeta).toHaveAttribute("title", "95066.60 USD");
+    expect(tarjeta).toHaveAttribute("title", "95.066,60 USD");
     const barras = await screen.findAllByTestId("grafico-barras");
     for (const b of barras) expect(b).toHaveAttribute("data-eje", "4.131");
   });
@@ -220,10 +220,10 @@ describe("Tablero de la obra", () => {
     fetchFalso.mockImplementation(async () => json(TABLERO));
     montar("OB-S2");
     const desglose = await screen.findByRole("table", { name: "Desglose del contrato" });
-    expect(within(desglose).getByText("79,0 %")).toHaveAttribute("title", "79.0 %");
+    expect(within(desglose).getByText("79,0 %")).toHaveAttribute("title", "79,0 %");
     const pareto = screen.getByRole("table", { name: "Partidas que más pesan" });
-    expect(within(pareto).getByText("59,3 %")).toHaveAttribute("title", "59.3 %");
-    expect(within(pareto).getByText("61,4 %")).toHaveAttribute("title", "61.4 %");
+    expect(within(pareto).getByText("59,3 %")).toHaveAttribute("title", "59,3 %");
+    expect(within(pareto).getByText("61,4 %")).toHaveAttribute("title", "61,4 %");
     // la etiqueta de la porcion es el peso de la API, no un porcentaje recalculado por el grafico
     const [anillo] = await screen.findAllByTestId("grafico-anillo");
     expect(anillo).toHaveAttribute("data-etiqueta", "79,0 %");

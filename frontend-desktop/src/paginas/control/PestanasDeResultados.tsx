@@ -225,7 +225,7 @@ function CeldaDeUmbral({ texto }: { texto: string }) {
   if (!partes.cifra) return <>{naturaleza}</>;
   return (
     <>
-      <span title={partes.cifra}>{formatoEsVe(partes.cifra)}</span> {naturaleza}
+      <span title={formatoEsVe(partes.cifra)}>{formatoEsVe(partes.cifra)}</span> {naturaleza}
     </>
   );
 }

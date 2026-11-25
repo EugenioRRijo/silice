@@ -42,6 +42,10 @@ _TAG_V = re.compile(
     rf"<(?P<vp>(?:\w+:)?)v\b(?P<vattrs>{_ATRS_XML})(?:/>|>(?P<vtext>.*?)</(?P=vp)v>)",
     re.S,
 )
+_TAG_IS = re.compile(
+    rf"<(?P<ip>(?:\w+:)?)is\b(?P<iattrs>{_ATRS_XML})(?:/>|>(?P<itext>.*?)</(?P=ip)is>)",
+    re.S,
+)
 _ATTR_T = re.compile(r"\s+(?:\w+:)?t\s*=\s*(?:\"[^\"]*\"|'[^']*')")
 
 _ERRORES_EXCEL: frozenset[str] = frozenset({
@@ -135,6 +139,33 @@ def _leer_valores_recalculados(recalculado: bytes) -> dict[str, dict[str, tuple[
     return por_hoja
 
 
+def _vacios_recalculados(
+    recalculado: bytes,
+) -> dict[str, set[str]]:
+    """Celdas de fórmula del recalculado cuyo resultado es la cadena vacía (`t="str"`, `<v/>`).
+
+    openpyxl devuelve `None` para ellas y no se distinguen de una celda ausente.
+    """
+    with zipfile.ZipFile(io.BytesIO(recalculado)) as zf:
+        paquete = {info.filename: zf.read(info.filename) for info in zf.infolist()}
+    por_hoja: dict[str, set[str]] = {}
+    for nombre, parte in _mapa_hojas(paquete).items():
+        if parte not in paquete:
+            continue
+        xml = paquete[parte].decode("utf-8", "replace")
+        vacios: set[str] = set()
+        for m in _CELDA_XML.finditer(xml):
+            cuerpo = m.group("cuerpo") or ""
+            if _attr(m.group("attrs"), "t") != "str" or _TAG_F.search(cuerpo) is None:
+                continue
+            mv = _TAG_V.search(cuerpo)
+            coord = _attr(m.group("attrs"), "r")
+            if coord and (mv is None or not (mv.group("vtext") or "")):
+                vacios.add(coord.upper())
+        por_hoja[nombre] = vacios
+    return por_hoja
+
+
 def _fmt_float(valor: float) -> str:
     limpio = 0.0 if valor == 0.0 else valor
     texto = repr(limpio)
@@ -195,12 +226,16 @@ def _trasplantar_hoja(xml: str, valores: Mapping[str, tuple[object, str]]) -> st
         p = m.group("p")
         attrs_limpios = _ATTR_T.sub("", attrs)
         encontrado = valores.get(coord.upper())
+        cuerpo = _TAG_IS.sub("", cuerpo)
         if encontrado is None:
             nuevo_cuerpo = _TAG_V.sub("", cuerpo)
             return f"<{p}c{attrs_limpios}>{nuevo_cuerpo}</{p}c>"
         valor, tipo_oxl = encontrado
         nuevo_t, texto_v = _formatear_valor_xml(valor, tipo_oxl)
         attrs_final = f'{attrs_limpios.rstrip()} t="{nuevo_t}"' if nuevo_t else attrs_limpios
+        cuerpo = _TAG_IS.sub("", cuerpo)
+        mf = _TAG_F.search(cuerpo)
+        assert mf is not None
         nuevo_cuerpo, n = _TAG_V.subn(
             lambda vm, tv=texto_v: f"<{vm.group('vp')}v>{tv}</{vm.group('vp')}v>",
             cuerpo,
@@ -224,6 +259,10 @@ def trasplantar(original: bytes, recalculado: bytes) -> bytes:
 
     mapa = _mapa_hojas(paquete)
     valores_rec = _leer_valores_recalculados(recalculado)
+    for nombre_hoja, vacios in _vacios_recalculados(recalculado).items():
+        celdas = valores_rec.setdefault(nombre_hoja, {})
+        for coord in vacios:
+            celdas.setdefault(coord, ("", "s"))
 
     for nombre_hoja, parte in mapa.items():
         if parte not in paquete:

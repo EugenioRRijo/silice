@@ -279,6 +279,23 @@ describe("Historial de auditorías", () => {
     expect(await screen.findByText(/Solo se guardaron los primeros 3 hallazgos/)).toBeInTheDocument();
   });
 
+  test("los conteos del detalle llevan punto de miles", async () => {
+    detalle = () => json({ ...DETALLE_LIBRO, errores: 1234, advertencias: 5678, informativos: 9012, atipicos: 3456 });
+    const u = userEvent.setup();
+    dibujar();
+    await screen.findByText("presupuesto-a.xlsx");
+    await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
+    const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+    for (const [rotulo, valor] of [
+      ["Errores", "1.234"],
+      ["Advertencias", "5.678"],
+      ["Informativos", "9.012"],
+      ["Precios atípicos", "3.456"],
+    ] as const) {
+      expect((await within(panel).findByText(rotulo)).nextElementSibling).toHaveTextContent(valor);
+    }
+  });
+
   test("un detalle que ya no existe muestra el aviso de la API y se puede cerrar el panel", async () => {
     detalle = () => json({ detalle: "No hay una auditoría guardada con el número 1." }, 404);
     const u = userEvent.setup();

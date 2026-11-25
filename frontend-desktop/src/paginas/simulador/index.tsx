@@ -92,7 +92,7 @@ export default function PaginaSimulador() {
   let resumen = "";
   if (cargando) resumen = "Simulando…";
   if (estado.fase === "listo") {
-    resumen = `Lista simulada: ${estado.filas.length} ${estado.filas.length === 1 ? "fila" : "filas"}`;
+    resumen = `Lista simulada: ${formatoEsVe(String(estado.filas.length))} ${estado.filas.length === 1 ? "fila" : "filas"}`;
   }
 
   return (

@@ -143,7 +143,7 @@ describe("Actualizar precios", () => {
     montar();
     expect(await screen.findByRole("option", { name: "Obra ficticia A / 001" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Obra ficticia B / 007" })).toBeInTheDocument();
-    expect(screen.getByText(/Carga una lista de precios nueva \(CSV o XLSX/)).toBeInTheDocument();
+    expect(screen.getByText(/Cargue una lista de precios nueva \(CSV o XLSX/)).toBeInTheDocument();
     expect(screen.getByLabelText("Código de la versión nueva")).toHaveValue("002");
     expect(screen.getByLabelText("Moneda")).toHaveValue("USD");
     expect(screen.getByLabelText("Fecha de vigencia")).toHaveValue(hoyIso());

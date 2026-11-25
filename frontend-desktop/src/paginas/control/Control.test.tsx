@@ -329,7 +329,7 @@ describe("Control de obra", () => {
     expect(within(tabla).getByText("Dato del contrato")).toBeInTheDocument();
     expect(within(tabla).getByText("SPI mínimo antes de marcar «Error»")).toBeInTheDocument();
     expect(within(tabla).getByText("SPI por debajo del cual el retraso es ERROR")).toBeInTheDocument();
-    expect(titulosDe(tabla)).toEqual(["0.80", "0"]);
+    expect(titulosDe(tabla)).toEqual(["0,80", "0"]);
     expect(within(tabla).queryByText("spi_error")).toBeNull();
     expect(within(tabla).queryByText(/AL-1/)).toBeNull();
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("proyecto=OB-S2");
@@ -695,7 +695,7 @@ describe("Control de obra", () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
     const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
-    expect(within(tabla).getByText("4.000,00")).toHaveAttribute("title", "4000.00");
+    expect(within(tabla).getByText("4.000,00")).toHaveAttribute("title", "4.000,00");
     expect(within(tabla).queryByText("4000.00")).toBeNull();
     expect(within(tabla).getByText("4.000,00").closest("td")).toHaveClass("silice-cifra");
     expect(screen.getByText(/no tiene tasa aplicable/)).toBeInTheDocument();
@@ -703,7 +703,7 @@ describe("Control de obra", () => {
     // el AC que falta se ve como guion en la tabla de la curva, no como cero
     const montos = screen.getByRole("table", { name: "Montos de Planificado (PV), ejecutado (EV) y gastado (AC)" });
     expect(within(montos).getByRole("columnheader", { name: "Período" })).toBeInTheDocument();
-    expect(within(montos).getByText("1.000,00")).toHaveAttribute("title", "1000.00");
+    expect(within(montos).getByText("1.000,00")).toHaveAttribute("title", "1.000,00");
     // EV y AC no comparten trazo: la leyenda nombra cada uno (pasada goldfish N1.6)
     expect(screen.getByText("Línea fina: planificado · Línea gruesa: ejecutado (EV) · Línea gruesa punteada: gastado (AC).")).toBeInTheDocument();
   });
@@ -804,8 +804,8 @@ describe("Control de obra", () => {
     expect(within(alertas).queryByText("AL-1")).toBeNull();
     // VD-5: el umbral lleva el exacto de su cifra; la alerta, la descripcion y la naturaleza, ningun title
     expect(alertas.textContent).toContain("0,8500 (valor de referencia)");
-    expect(within(alertas).getByText("0,8500")).toHaveAttribute("title", "0.8500");
-    expect(titulosDe(alertas)).toEqual(["0.8000", "0.8500"]);
+    expect(within(alertas).getByText("0,8500")).toHaveAttribute("title", "0,8500");
+    expect(titulosDe(alertas)).toEqual(["0,8000", "0,8500"]);
     expect(screen.getByText("Fin estimado por ritmo global (SPI): día 12 (18/11/2026)")).toBeInTheDocument();
     expect(screen.getByText("Fin estimado según avance de cada partida: día 13 (19/11/2026)")).toBeInTheDocument();
     expect(
@@ -849,7 +849,7 @@ describe("Control de obra", () => {
     expect(within(alertas).getByText("retraso: SPI 0,9780")).toBeInTheDocument();
     expect(within(alertas).queryByText("retraso: SPI 0.9780")).toBeNull();
     // VD-5: la descripcion es texto (su cifra ya se lee entera); el title queda en Observado y en la cifra del umbral
-    expect(titulosDe(alertas)).toEqual(["0.9780", "0.9500"]);
+    expect(titulosDe(alertas)).toEqual(["0,9780", "0,9500"]);
   });
 
   test("sin valuaciones el calculo dice que hacer", async () => {

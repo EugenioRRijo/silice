@@ -3,15 +3,18 @@
 > Para Eugenio. Ningún dato de esta prueba entra al repositorio: las hojas llenas, los nombres y las grabaciones se
 > quedan en el equipo (NORMAS §1). En la tesis se reportan cifras agregadas y citas sin nombre.
 
-## Cómo encaja en el anteproyecto (v7, 2026-11-23)
+## Cómo encaja en el anteproyecto (v8)
 
 - **Es una prueba formativa**: sirve para ajustar el prototipo durante el diagnóstico (fases 1 a 3). No reemplaza la
   evaluación del objetivo 4, que sigue siendo el cuasiexperimento cruzado de la fase 4.
-- **El SUS no figura entre los 4 instrumentos del v7.** Para que sus resultados entren en la tesis, el v7 debe
+- **El SUS no figura entre los 4 instrumentos del v8.** Para que sus resultados entren en la tesis, el v8 debe
   declararlo en la metodología como quinto instrumento. Es un cuestionario estandarizado: no se valida su contenido,
-  pero se usa una versión en español publicada y validada (Sevilla-González y otros, 2020; **por verificar** antes de
-  citarla). Lo que sí deben validar los 3 expertos del v7 son las 3 tareas y la hoja de observación.
-- **Separación de papeles (v7, §8):** los expertos que validan los instrumentos no participan en la medición. Por eso
+  pero se usa una versión en español publicada y validada (Sevilla-Gonzalez et al., 2020; verificada el 2026-11-24
+  en [referencias.md](referencias.md)). Lo que sí deben validar los 3 expertos del v8 son las 3 tareas y la hoja de
+  observación. La prueba de comprensión de las alertas (6 tarjetas y su hoja de registro, agregada el 2026-11-24) es
+  otro instrumento propio: si su resultado entra en la tesis, la validan del mismo modo (**por confirmar con
+  Eugenio**).
+- **Separación de papeles (v8, §8):** los expertos que validan los instrumentos no participan en la medición. Por eso
   ningún participante de esta prueba puede ser uno de esos 3 expertos.
 
 ## Qué se quiere saber
@@ -19,21 +22,41 @@
 1. Si un economista termina, **sin ayuda**, las tareas de todos los días en Sílice (eficacia).
 2. Cuánto tarda y dónde se traba (eficiencia).
 3. Qué tan usable le parece, medido con el cuestionario SUS (satisfacción).
+4. Si entiende lo que dicen 6 alertas reales de Sílice y qué haría ante cada una (prueba de comprensión de las
+   alertas).
 
-Son las tres dimensiones de usabilidad de la norma ISO 9241-11: eficacia, eficiencia y satisfacción.
+Las tres primeras son las dimensiones de usabilidad de la norma ISO 9241-11: eficacia, eficiencia y satisfacción.
 
 ## Quiénes y cuántos
 
-- Los 3 economistas que elaboran y revisan los presupuestos viales de la empresa del caso: es la población censal del
-  v7. Con 5 personas se ve la mayoría de los problemas grandes (Nielsen y Landauer, 1993); con 3, se declara como límite.
-- La medición de la auditoría es otro protocolo (errores sembrados y kappa de Cohen, v7 §8) y otra sesión.
+- Cinco personas (decisión de Eugenio del 2026-11-25,
+  [acta](../bitacora/2026-11-25-acta-kappa-sus-y-textos.md), punto 2):
+  - los 3 economistas que elaboran y revisan los presupuestos viales de la empresa del caso, que son la población
+    censal del v8;
+  - 2 personas que presupuestan pero no conocen Sílice.
+
+  Con 5 personas se ve la mayoría de los problemas grandes (Nielsen y Landauer, 1993). Los resultados se informan por
+  grupo (economistas y personas nuevas) y en conjunto.
+- La medición de la auditoría es otro protocolo (errores sembrados y kappa de Cohen, v8 §8) y otra sesión.
 - Sesión individual de unos 45 minutos, en el equipo de Eugenio, con Sílice abierto en una carpeta de demostración (datos
   ficticios).
+
+## Quién conduce cada parte y en qué orden
+
+| Orden | Parte | Quién la conduce |
+|---|---|---|
+| 1 | Consentimiento informado (hoja firmada) | Eugenio |
+| 2 | Tareas T1 a T3 con la hoja de observación | Eugenio, autor del sistema (se declara como límite) |
+| 3 | Prueba de comprensión de las 6 alertas (A1 a A6) | Una persona que no construyó Sílice ni es uno de los 3 expertos |
+| 4 | Cuestionario SUS y pregunta final abierta | Lo responde el participante solo, sin ayuda |
 
 ## Antes de la sesión (Eugenio)
 
 - [ ] Fusionar #138, #139 y #140, y abrir Sílice con la carpeta de demostración.
 - [ ] Una hoja de observación impresa por participante (abajo), un cronómetro y el SUS impreso.
+- [ ] Las 6 tarjetas de las alertas, copiadas de la pantalla real con la versión congelada, y una hoja de registro de
+  la prueba de comprensión por participante.
+- [ ] Confirmar a la persona que conduce la prueba de comprensión de las alertas.
 - [ ] No explicar cómo se usa Sílice: la prueba mide si se entiende solo.
 
 ## Consentimiento (leer en voz alta)
@@ -104,9 +127,13 @@ Pregunta final abierta: «¿Qué fue lo que más le costó?» (se anota textual)
 
 ## Lo que va a la tesis
 
-- Por tarea: el porcentaje que terminó sin ayuda, el tiempo mediano y los puntos donde se trabaron.
-- El SUS: el promedio y el rango.
-- Los límites: 3 participantes, datos de demostración y un evaluador que también es autor del sistema.
+- Por tarea: el porcentaje que terminó sin ayuda, el tiempo mediano y los puntos donde se trabaron (Tabla 4.3 del
+  [esqueleto del capítulo IV](2026-11-23-esqueleto-capitulo-resultados.md)).
+- Las alertas: por cada una, cuántos la entendieron (sí, a medias o no), las acciones que dijeron que tomarían y las
+  respuestas a «¿Qué alerta le faltó?», sin nombres (Tabla 4.3b).
+- El SUS: el promedio y el rango, con la referencia publicada de 68.
+- Los límites: 3 participantes, datos de demostración y que las tareas T1 a T3 las conduce el autor del sistema; la
+  prueba de comprensión de las alertas, en cambio, la conduce una persona que no construyó Sílice.
 
 ## Prueba de comprensión de las alertas (2026-11-24)
 

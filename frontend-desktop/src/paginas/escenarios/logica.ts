@@ -1,7 +1,7 @@
 // Logica pura de «Escenarios de sensibilidad» (UC-08). Sin React; los montos son texto tal como llegan.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
-import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
+import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import type {
   CampoParametro,
   EscenarioPeticion,
@@ -202,7 +202,7 @@ export function filasPartidas(partidas: FilaComparativo[]): FilaDensa[] {
 }
 
 export function notaHallazgos(e: EscenarioRespuesta): string {
-  return `Hallazgos de revisión en este escenario: ${e.hallazgos}. Insumos con precio modificado: ${e.insumos_variados}.`;
+  return `Hallazgos de revisión en este escenario: ${formatoEsVe(String(e.hallazgos))}. Insumos con precio modificado: ${formatoEsVe(String(e.insumos_variados))}.`;
 }
 
 // «A», «B» y «C»

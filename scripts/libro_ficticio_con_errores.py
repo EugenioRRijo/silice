@@ -10,9 +10,15 @@ con este libro se ensaya el protocolo completo sin tocar un libro real:
 
     uv run python scripts/libro_ficticio_con_errores.py --salida D:/ensayo
     uv run python scripts/medir_auditoria_libro.py exportar \\
-        D:/ensayo/libro_ficticio_con_errores.xlsx --salida D:/ensayo/planilla.xlsx
+        D:/ensayo/libro_ficticio_con_errores.xlsx --salida D:/ensayo/planilla.xlsx \\
+        --fecha AAAA-MM-DD
     uv run python scripts/medir_auditoria_libro.py calcular \\
-        --planilla D:/ensayo/planilla.xlsx --clave D:/ensayo/clave_ficticia.xlsx
+        --planilla D:/ensayo/planilla.xlsx --clave D:/ensayo/clave_ficticia.xlsx \\
+        --libro D:/ensayo/libro_ficticio_con_errores.xlsx \\
+        --libro-base D:/ensayo/libro_ficticio_base.xlsx --fecha AAAA-MM-DD
+
+`libro_ficticio_base.xlsx` es el mismo libro sin sembrar: `calcular --clave` lo audita para no
+acreditar a una falla sembrada lo que el libro ya señalaba.
 """
 
 from __future__ import annotations
@@ -59,6 +65,17 @@ SIEMBRAS: tuple[Sembrada, ...] = (
 )
 
 
+OBRA = "Tramo vial de ensayo — obra ficticia"
+NOMBRE_BASE = "libro_ficticio_base.xlsx"
+
+
+def construir_base() -> bytes:
+    """Los bytes del mismo libro sin ninguna siembra (el libro base de la medición)."""
+    from tests.fixtures.libros_empresa import APUS_LIMPIOS, Siembra, construir_libro
+
+    return construir_libro(APUS_LIMPIOS, Siembra(obra=OBRA)).datos
+
+
 def construir() -> bytes:
     """Los bytes del libro con todas las siembras de `SIEMBRAS`."""
     from tests.fixtures.libros_empresa import APUS_LIMPIOS, Siembra, con, construir_libro
@@ -76,19 +93,24 @@ def construir() -> bytes:
         mediciones_literales=("=9.73*2.75",),
         plan_dif=Decimal("40"),
         procura_dif=Decimal("5"),
-        obra="Tramo vial de ensayo — obra ficticia",
+        obra=OBRA,
     )
     return construir_libro(apus, siembra).datos
 
 
 def generar(carpeta: Path, *, raiz_repo: Path = RAIZ) -> tuple[Path, Path]:
-    """Escribe el libro y su clave en `carpeta` (fuera del repositorio) y devuelve las dos rutas."""
+    """Escribe el libro, su clave y el libro base sin sembrar (`NOMBRE_BASE`) en `carpeta`
+    (fuera del repositorio) y devuelve las rutas del libro y de la clave."""
     import openpyxl
 
     carpeta = Path(carpeta)
     libro = _destino_seguro(carpeta / "libro_ficticio_con_errores.xlsx", Path(raiz_repo))
+    _destino_seguro(carpeta / "clave_ficticia.xlsx", Path(raiz_repo))
+    base = _destino_seguro(carpeta / NOMBRE_BASE, Path(raiz_repo))
+    carpeta.mkdir(parents=True, exist_ok=True)  # solo después de comprobar que es seguro
     clave = escribir_clave_vacia(carpeta / "clave_ficticia.xlsx", raiz_repo=Path(raiz_repo))
     libro.write_bytes(construir())
+    base.write_bytes(construir_base())
     hoja_libro = openpyxl.load_workbook(clave)
     hoja = hoja_libro["Sembrados"]
     for numero, s in enumerate(SIEMBRAS, start=1):
@@ -100,12 +122,12 @@ def generar(carpeta: Path, *, raiz_repo: Path = RAIZ) -> tuple[Path, Path]:
 def main(argv: list[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument("--salida", required=True, help="carpeta fuera del repositorio")
+    analizador.add_argument("--raiz-repo", default=str(RAIZ))
     args = analizador.parse_args(argv)
-    carpeta = Path(args.salida)
-    carpeta.mkdir(parents=True, exist_ok=True)
-    libro, clave = generar(carpeta)
+    libro, clave = generar(Path(args.salida), raiz_repo=Path(args.raiz_repo))
     print(f"Libro ficticio con {len(SIEMBRAS)} errores sembrados: {libro}")
     print(f"Su clave: {clave}")
+    print(f"El mismo libro sin sembrar: {clave.parent / NOMBRE_BASE}")
     return 0
 
 

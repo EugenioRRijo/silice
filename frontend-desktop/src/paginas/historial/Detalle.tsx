@@ -75,10 +75,10 @@ function Resumen({ a }: { a: AuditoriaDetalleRespuesta }) {
           <Monto exacto={a.total_silice} />
         </Dato>
       )}
-      <Dato rotulo="Errores">{a.errores}</Dato>
-      <Dato rotulo="Advertencias">{a.advertencias}</Dato>
-      <Dato rotulo="Informativos">{a.informativos}</Dato>
-      <Dato rotulo="Precios atípicos">{a.atipicos}</Dato>
+      <Dato rotulo="Errores">{formatoEsVe(String(a.errores))}</Dato>
+      <Dato rotulo="Advertencias">{formatoEsVe(String(a.advertencias))}</Dato>
+      <Dato rotulo="Informativos">{formatoEsVe(String(a.informativos))}</Dato>
+      <Dato rotulo="Precios atípicos">{formatoEsVe(String(a.atipicos))}</Dato>
       <Dato rotulo="Código de verificación del archivo (SHA-256)">
         <span className="silice-historial__huella">{a.sha256}</span>
         <p className="cds--type-label-01">Sirve para comprobar que corresponde al mismo archivo original</p>

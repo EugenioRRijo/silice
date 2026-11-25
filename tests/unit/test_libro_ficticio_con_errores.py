@@ -53,10 +53,29 @@ def test_la_medicion_completa_corre_sobre_el_libro_ficticio(fuera: Path, capsys)
     planilla = fuera / "planilla.xlsx"
     assert m.main(["exportar", str(libro), "--salida", str(planilla), "--fecha", "2026-11-23",
                    "--raiz-repo", str(fuera.parent / "repo")]) == 0
-    assert m.main(["calcular", "--planilla", str(planilla), "--clave", str(clave)]) == 0
+    base = fuera / "libro_ficticio_base.xlsx"  # el mismo libro sin sembrar, para los previos
+    assert base.is_file()
+    assert m.main(["calcular", "--planilla", str(planilla), "--clave", str(clave),
+                   "--libro", str(libro), "--libro-base", str(base), "--fecha", "2026-11-23"]) == 0
     salida = capsys.readouterr().out
     assert "Detección de errores sembrados" in salida
     # por omisión se exporta por causa raíz: menos filas que hallazgos
     filas = m.leer_filas(planilla)
     assert sum(f.ocurrencias for f in filas) > len(filas)
     assert "hallazgos agrupados en" in salida
+
+
+def test_no_crea_la_carpeta_si_el_destino_esta_dentro_del_repositorio(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    destino = repo / "datos_fuera_de_lugar"
+
+    with pytest.raises(ValueError, match="repositorio"):
+        f.main(["--salida", str(destino), "--raiz-repo", str(repo)])
+    assert not destino.exists()
+
+
+def test_crea_la_carpeta_de_salida_cuando_el_destino_es_seguro(tmp_path: Path):
+    destino = tmp_path / "nueva" / "ensayo"
+    libro, clave = f.generar(destino, raiz_repo=tmp_path / "repo")
+    assert libro.is_file() and clave.is_file()

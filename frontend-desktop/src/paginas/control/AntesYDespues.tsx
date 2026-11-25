@@ -49,7 +49,7 @@ function dias(texto: string): string {
 function CifraMonto({ monto, moneda }: { monto: Monto | null; moneda: string }) {
   if (monto === null) return <span>{SIN_CALCULAR}</span>;
   return (
-    <span title={monto.exacto}>
+    <span title={formatoEsVe(monto.exacto)}>
       {formatoEsVe(monto.texto)} {moneda}
     </span>
   );

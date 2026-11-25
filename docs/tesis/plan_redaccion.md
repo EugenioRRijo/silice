@@ -176,6 +176,16 @@ con [protocolo_rnf04.md](../protocolo_rnf04.md) sobre el anexo A del dossier.
   partidas (D5), IFC de modeladores reales, conectores de listas de precios (cada conector
   produce una lista que entra por UC‑02), evolución hacia sombra digital con rendimientos
   medidos (UC‑06 ya registra la realimentación de obra).
+- **Capa en línea separada para el estudio de mercado (2026-11-25):** un recolector aparte, fuera de
+  Sílice, que busca precios publicados y deja un archivo fechado (insumo, precio, moneda, fuente,
+  enlace, fecha), compatible con la importación de listas (UC‑02 por lista; UC‑17 con fecha y fuente
+  por fila) o con la futura entrada de cotizaciones al estudio de mercado; Sílice lo importa sin conexión,
+  de modo que el programa sigue funcionando sin red (RNF‑08). Además del congelamiento que decidió el
+  consejo del 2026-11-24, el sondeo del 2026-11-25
+  ([bitácora](../bitacora/2026-11-25-sondeo-precios-en-linea.md)) confirmó que el raspado web no sirve
+  hoy: Mercado Libre Venezuela y la tienda venezolana consultada bloquean la lectura automática, y el
+  buscador general no devuelve precios venezolanos observados. La lista del proveedor queda como hipótesis
+  de trabajo del consejo, en la lista cerrada de después de la defensa.
 
 ### Introducción
 

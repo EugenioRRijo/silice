@@ -196,7 +196,6 @@ def test_recalculador_libreoffice_usa_perfil_temporal_y_recalculo_forzado(
         perfil = Path(url2pathname(urlparse(uri).path))
         xcu = (perfil / "user" / "registrymodifications.xcu").read_text(encoding="utf-8")
         capturas["xcu"] = xcu
-        capturas["timeout"] = kwargs.get("timeout")
         capturas["headless"] = "--headless" in orden and "--convert-to" in orden
         idx = orden.index("--outdir")
         carpeta_salida = Path(orden[idx + 1])
@@ -206,7 +205,21 @@ def test_recalculador_libreoffice_usa_perfil_temporal_y_recalculo_forzado(
         )
         return subprocess.CompletedProcess(orden, 0, "convertido\n", "")
 
+    class _FalsoPopen:
+        def __init__(self, orden: list[str], **kwargs: object) -> None:
+            self.returncode = 0
+            self.pid = 1
+            _falso_run(orden)
+
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            capturas["timeout"] = timeout
+            return "convertido\n", ""
+
+        def poll(self) -> int:
+            return 0
+
     monkeypatch.setattr(subprocess, "run", _falso_run)
+    monkeypatch.setattr(subprocess, "Popen", _FalsoPopen)
     recalculador = oh.RecalculadorLibreOffice(ejecutable=falso_soffice)
     assert recalculador.version() == "LibreOffice 24.8.3.2"
     discrepancias = oh.oraculo(original, "libro.xlsx", recalculador)
@@ -216,3 +229,183 @@ def test_recalculador_libreoffice_usa_perfil_temporal_y_recalculo_forzado(
     assert "OOXMLRecalcMode" in xcu_texto and "<value>0</value>" in xcu_texto
     assert capturas["timeout"] == 120
     assert capturas["headless"] is True
+
+
+class _ProcesoLento:
+    """Doble de `subprocess.Popen` que nunca termina: `communicate` lanza `excepcion`."""
+
+    instancias: list[_ProcesoLento] = []  # noqa: RUF012 - registro del doble de prueba
+    excepcion: type[BaseException] = subprocess.TimeoutExpired
+
+    def __init__(self, orden: list[str], **kwargs: object) -> None:
+        self.pid = 4242
+        self.returncode = None
+        self.kwargs = kwargs
+        idx = orden.index("--outdir")
+        # La conversión alcanzó a escribir una salida parcial antes de colgarse.
+        (Path(orden[idx + 1]) / Path(orden[-1]).name).write_bytes(b"parcial")
+        type(self).instancias.append(self)
+
+    def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+        if self.excepcion is subprocess.TimeoutExpired:
+            raise subprocess.TimeoutExpired("soffice", timeout or 0)
+        raise self.excepcion
+
+    def poll(self) -> None:
+        return None
+
+
+class _ColgadoEnWindows:
+    """Escenario de Windows: el hijo retiene el archivo de entrada y de salida."""
+
+    def __init__(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, excepcion: type) -> None:
+        self.base = tmp_path / "base_temporal"
+        self.terminados: list[object] = []
+        self.arbol_terminado = False
+        self.borrados_antes_de_matar: list[str] = []
+        self.retenido_siempre = False
+        base = self.base
+        escenario = self
+
+        class _CarpetaQueNoSeLimpia:
+            def __init__(self, **kwargs: object) -> None:
+                base.mkdir()
+
+            def __enter__(self) -> str:
+                return str(base)
+
+            def __exit__(self, *_exc: object) -> None:
+                return None
+
+        def _terminar(proceso: object) -> None:
+            escenario.terminados.append(proceso)
+            escenario.arbol_terminado = True
+
+        unlink_original = Path.unlink
+
+        def _unlink(ruta: Path, *args: object, **kwargs: object) -> None:
+            if ruta.name == "libro.xlsx" and not escenario.arbol_terminado:
+                escenario.borrados_antes_de_matar.append(str(ruta))
+                raise PermissionError("retenido por el hijo")
+            if ruta.name == "libro.xlsx" and escenario.retenido_siempre:
+                raise PermissionError("retenido para siempre")
+            unlink_original(ruta, *args, **kwargs)
+
+        _ProcesoLento.instancias = []
+        _ProcesoLento.excepcion = excepcion
+        falso_soffice = tmp_path / "soffice.exe"
+        falso_soffice.write_bytes(b"falso")
+        monkeypatch.setattr(oh.tempfile, "TemporaryDirectory", _CarpetaQueNoSeLimpia)
+        monkeypatch.setattr(oh.subprocess, "Popen", _ProcesoLento)
+        monkeypatch.setattr(oh, "_terminar_arbol", _terminar, raising=False)
+        monkeypatch.setattr(Path, "unlink", _unlink)
+        self.recalculador = oh.RecalculadorLibreOffice(ejecutable=falso_soffice, tiempo_maximo=1)
+
+    def recalcular(self) -> None:
+        self.recalculador.recalcular(_libro_simple({"A1": (None, "=1+1")}), "libro.xlsx")
+
+    def quedan_copias(self) -> bool:
+        return (self.base / "entrada" / "libro.xlsx").exists() or (
+            self.base / "salida" / "libro.xlsx"
+        ).exists()
+
+
+def test_tiempo_agotado_termina_el_arbol_antes_de_borrar_entrada_y_salida(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    escenario = _ColgadoEnWindows(tmp_path, monkeypatch, subprocess.TimeoutExpired)
+
+    with pytest.raises(oh.OraculoError, match="tiempo máximo"):
+        escenario.recalcular()
+
+    assert escenario.terminados == _ProcesoLento.instancias and len(escenario.terminados) == 1
+    assert escenario.borrados_antes_de_matar == []
+    assert not escenario.quedan_copias()
+
+
+def test_interrupcion_termina_el_arbol_antes_de_borrar_la_copia(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    escenario = _ColgadoEnWindows(tmp_path, monkeypatch, KeyboardInterrupt)
+
+    with pytest.raises(KeyboardInterrupt):
+        escenario.recalcular()
+
+    assert len(escenario.terminados) == 1
+    assert escenario.borrados_antes_de_matar == []
+    assert not escenario.quedan_copias()
+
+
+def test_avisa_por_stderr_si_la_copia_no_se_pudo_borrar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    escenario = _ColgadoEnWindows(tmp_path, monkeypatch, subprocess.TimeoutExpired)
+    escenario.retenido_siempre = True  # ni siquiera tras matar el árbol se puede borrar
+
+    with pytest.raises(oh.OraculoError):
+        escenario.recalcular()
+
+    assert escenario.quedan_copias()
+    err = capsys.readouterr().err
+    assert "No se pudo borrar" in err and "libro.xlsx" in err
+
+
+def test_en_posix_el_proceso_nace_en_su_propio_grupo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    escenario = _ColgadoEnWindows(tmp_path, monkeypatch, subprocess.TimeoutExpired)
+    monkeypatch.setattr(oh, "_ES_WINDOWS", False, raising=False)
+
+    with pytest.raises(oh.OraculoError):
+        escenario.recalcular()
+
+    assert _ProcesoLento.instancias[0].kwargs.get("start_new_session") is True
+
+
+class _ProcesoRegistro:
+    pid = 4242
+
+    def __init__(self) -> None:
+        self.killed = False
+        self.esperado = False
+
+    def kill(self) -> None:
+        self.killed = True
+
+    def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+        self.esperado = True
+        return "", ""
+
+
+def test_terminar_arbol_en_windows_usa_taskkill_sobre_el_arbol(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ordenes: list[list[str]] = []
+
+    def _run(orden: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        ordenes.append(orden)
+        return subprocess.CompletedProcess(orden, 0, "", "")
+
+    monkeypatch.setattr(oh, "_ES_WINDOWS", True, raising=False)
+    monkeypatch.setattr(oh.subprocess, "run", _run)
+    proceso = _ProcesoRegistro()
+    oh._terminar_arbol(proceso)  # type: ignore[arg-type]
+    assert ordenes == [["taskkill", "/F", "/T", "/PID", "4242"]]
+    assert proceso.killed and proceso.esperado
+
+
+def test_terminar_arbol_fuera_de_windows_solo_mata_el_proceso(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _run(orden: list[str], **kwargs: object) -> None:
+        raise AssertionError("no debe invocar taskkill fuera de Windows")
+
+    grupos: list[tuple[int, int]] = []
+    monkeypatch.setattr(oh, "_ES_WINDOWS", False, raising=False)
+    monkeypatch.setattr(oh.subprocess, "run", _run)
+    monkeypatch.setattr(oh.os, "getpgid", lambda pid: pid + 1, raising=False)
+    monkeypatch.setattr(oh.os, "killpg", lambda g, sig: grupos.append((g, sig)), raising=False)
+    proceso = _ProcesoRegistro()
+    oh._terminar_arbol(proceso)  # type: ignore[arg-type]
+    assert grupos == [(4243, 9)]  # se mata el grupo entero, no solo el lanzador
+    assert proceso.killed and proceso.esperado

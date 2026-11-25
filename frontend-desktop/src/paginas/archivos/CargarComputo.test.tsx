@@ -353,7 +353,7 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     expect((datos.get("archivo") as File).name).toBe("computo.csv");
     expect(JSON.parse(String(datos.get("codigos")))).toEqual({ concreto: "FIC-C1", encofrado: "FIC-C2", excavacion: "FIC-C3", tuberia: "FIC-C4" });
     // La cantidad en es-VE, con sus decimales y el texto de la API a un toque.
-    expect(within(tabla).getByText("1,125")).toHaveAttribute("title", "1.125");
+    expect(within(tabla).getByText("1,125")).toHaveAttribute("title", "1,125");
     expect(within(tabla).getAllByRole("row")).toHaveLength(19);
   });
 

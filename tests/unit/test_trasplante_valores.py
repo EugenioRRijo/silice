@@ -241,3 +241,65 @@ def test_resultado_de_trasplante_lo_lee_procesar_libro_sin_error() -> None:
     informe = procesar_libro(trasplantado, "limpio.xlsx").informe
     celdas_f1 = {c for h in informe.hallazgos if h.regla == "F1" for c in h.origen_ids}
     assert f"PRESUPUESTO!P{fila_p1}" in celdas_f1
+
+
+def _con_texto_en_hoja(datos: bytes, buscado: str, nuevo: str) -> bytes:
+    salida = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(datos)) as zin, zipfile.ZipFile(salida, "w") as zout:
+        for info in zin.infolist():
+            contenido = zin.read(info.filename)
+            if info.filename == "xl/worksheets/sheet1.xml":
+                contenido = contenido.decode("utf-8").replace(buscado, nuevo).encode("utf-8")
+            zout.writestr(info, contenido)
+    return salida.getvalue()
+
+
+def test_formula_con_cadena_vacia_conserva_tipo_y_valor():
+    original = _libro_xlsxwriter("Hoja", {"A1": ('=""', "viejo"), "A2": ("=1+1", 2)})
+    recalculado = _con_texto_en_hoja(
+        _libro_xlsxwriter("Hoja", {"A1": ('=""', ""), "A2": ("=1+1", 2)}),
+        '<c r="A1">',
+        '<c r="A1" t="str">',  # así escribe LibreOffice una fórmula que da cadena vacía
+    )
+
+    xml = _leer_xml_hoja(trasplantar(original, recalculado))
+    celda = _tag_celda(xml, "A1")
+    assert 't="str"' in celda
+    assert "<v></v>" in celda
+    assert "<f>" in celda
+
+
+def test_trasplante_limpia_el_texto_en_linea_de_una_celda_con_formula():
+    base = _libro_xlsxwriter("Hoja", {"A1": ("=1+1", 2)})
+    en_linea = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(base)) as zin, zipfile.ZipFile(en_linea, "w") as zout:
+        for info in zin.infolist():
+            contenido = zin.read(info.filename)
+            if info.filename == "xl/worksheets/sheet1.xml":
+                texto = contenido.decode("utf-8")
+                texto = re.sub(
+                    r'<c r="A1"[^>]*>.*?</c>',
+                    '<c r="A1" t="inlineStr"><f>1+1</f><is><t>viejo</t></is></c>',
+                    texto,
+                    flags=re.S,
+                )
+                contenido = texto.encode("utf-8")
+            zout.writestr(info, contenido)
+    recalculado = _libro_xlsxwriter("Hoja", {"A1": ("=1+1", 2)})
+
+    celda = _tag_celda(_leer_xml_hoja(trasplantar(en_linea.getvalue(), recalculado)), "A1")
+    assert "<is>" not in celda and "viejo" not in celda
+    assert "<v>2</v>" in celda and 't="inlineStr"' not in celda
+
+
+def test_trasplante_limpia_el_texto_en_linea_aunque_el_recalculado_no_traiga_la_celda():
+    base = _libro_xlsxwriter("Hoja", {"A1": ("=1+1", 2), "B1": ("=2+2", 4)})
+    en_linea = _con_texto_en_hoja(
+        base,
+        '<c r="A1"><f>1+1</f><v>2</v></c>',
+        '<c r="A1" t="inlineStr"><f>1+1</f><is><t>v</t></is></c>',
+    )
+    recalculado = _libro_xlsxwriter("Hoja", {"B1": ("=2+2", 4)})
+
+    celda = _tag_celda(_leer_xml_hoja(trasplantar(en_linea, recalculado)), "A1")
+    assert "<is>" not in celda

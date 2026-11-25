@@ -48,7 +48,8 @@ anotan en las instrucciones de la planilla.
    celda (por ejemplo, un rendimiento sembrado en un APU que se señala en el precio de la partida). Si la deja vacía, la
    herramienta cuenta como detectado el primer hallazgo de la misma celda.
 6. **Calcular:**
-   `uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --otra p2.xlsx --clave clave.xlsx`.
+   `uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --otra p2.xlsx --clave clave.xlsx --libro COPIA.xlsx --libro-base LIBRO.xlsx`
+   (con las mismas opciones de `exportar`; ver «Detección sin acreditar lo previo» más abajo).
    Sale una tabla en Markdown con cifras agregadas, sin celdas ni descripciones: es lo único que va a la tesis.
 
 ## Piloto del kappa
@@ -108,6 +109,55 @@ conteo de marcas que no eran fallas por libro. Al pie se anotan los minutos tota
 
 **Resumen por libro:** Libro ____ · Minutos totales a mano: ____ · Fallas encontradas: ___ de ___ · Marcas que
 no eran falla: ___
+
+### Revisión por partida (kappa experto–Sílice, acta del 2026-11-25)
+
+En la misma revisión ciega, el experto dice **por cada partida** del PRESUPUESTO si tiene un error que un
+presupuestista corregiría. La planilla vacía sale del libro, sin nada de Sílice:
+
+`uv run python scripts/medir_auditoria_libro.py revision LIBRO.xlsx --salida D:/medicion/rev.xlsx`
+
+Trae la hoja «Revisión por partida» con una fila por partida (`Fila`, `Partida`, `Código`, `Descripción`,
+`¿Tiene error?`, `Nota`) y el SHA-256 del libro. Cada partida se identifica por su **fila del PRESUPUESTO**
+(`Fila`), no por su número, porque hay libros con números de partida repetidos. El experto escribe **Sí** o **No**
+en «¿Tiene error?»; en blanco cuenta como pendiente y no entra en el kappa. Sirve también un CSV con las columnas
+`Fila` y `¿Tiene error?` (separadas por coma o punto y coma). La revisión debe traer exactamente las filas de
+partida del libro, y sin esas dos columnas se rechaza aunque no traiga filas. `calcular` coteja el SHA-256 de una
+revisión .xlsx con el del libro dado en `--libro` y la rechaza si no coinciden; un CSV no trae huella y no se coteja.
+
+Sílice dice «Sí» en una partida cuando alguna fila de la planilla exportada cita una celda del renglón de esa partida
+en el PRESUPUESTO (también dentro de un rango) o de la hoja APU unida a ella; si varias partidas comparten un APU,
+cuenta para todas. **Regla conservadora (acta literal):** un hallazgo cuenta para todas las partidas de sus celdas
+de origen, aunque una regla (L1, L2, L3) cite la celda de otra partida solo como referencia; si así marca de más, el
+kappa de Sílice baja, nunca sube. Las filas que no caen en ninguna partida (RESUMEN, INSUMOS, filas de totales) se
+informan aparte y no entran en el kappa. El kappa se calcula sobre todas las partidas, sanas incluidas, y es el único
+que decide el tercer criterio de fracaso; si no hay variación (todas sanas o todas con error para los dos) o no hay
+partidas revisadas, el criterio dice que no se puede calcular. El kappa entre dos evaluadores (`--otra`) mide la
+fiabilidad entre personas y no decide nada. Con `--libro`, `calcular` audita ese libro con las mismas opciones que
+`exportar` (con `--recalcular`, el libro trasplantado) y exige que reproduzca la planilla:
+
+`uv run python scripts/medir_auditoria_libro.py calcular --planilla p1.xlsx --libro LIBRO.xlsx --revision-experto rev.xlsx --fecha AAAA-MM-DD`
+
+**Detección sin acreditar lo previo.** Con `--clave`, `calcular` exige el libro sembrado (`--libro`) y el libro sin
+sembrar (`--libro-base`): los audita a los dos con las mismas opciones que `exportar` (`--fecha`, `--perfil`,
+`--recalcular`, `--sin-agrupar`), comprueba que la auditoría reproduce la planilla y descuenta lo que el libro base
+ya tenía con la misma función que la cifra oficial de `medir_inyeccion.py` (`scripts/hallazgos_previos.py`):
+
+- En las reglas que juntan las celdas de una hoja o una sección en un solo hallazgo (L5, L7 y el L1 de la hoja AUX)
+  se descuenta **por celda**: el hallazgo acredita solo las celdas que ningún hallazgo previo de esa regla citaba.
+  Por eso, en esas reglas, **no se siembra sobre una celda que ya tiene un hallazgo previo de la misma regla**: esa
+  falla no se podría acreditar.
+- En las demás reglas, un hallazgo se descuenta solo si coincide entero con uno previo (misma regla y mismas
+  celdas). Así una celda que un hallazgo previo citaba solo como referencia (el destino de un L3, la celda correcta
+  de un L1) no esconde una falla sembrada después en ella.
+- Los hallazgos sin celdas (R2, R7) se emparejan con los previos por su descripción, primero exacta y después por
+  el patrón de la causa, nunca por el orden en que llegan.
+
+La columna manual «Detectado por hallazgo N°» de la clave no puede señalar una fila de la planilla que solo trae
+hallazgos previos: `calcular` se detiene y pide corregir la clave (o dejar la columna vacía si ningún hallazgo nuevo
+señala la falla). **Límite que se declara:** si la fila es mixta (agrupa hallazgos previos y nuevos), la herramienta
+no puede saber a cuál de ellos se refiere quien sembró y acepta la columna manual; esa columna es el juicio de quien
+sembró, y la regla de no sembrar sobre una celda con hallazgo previo de la misma regla evita el caso.
 
 ### Cómo se compara con Sílice
 

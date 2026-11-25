@@ -465,7 +465,7 @@ describe("Pendientes: una herramienta de un espacio para un pendiente de otra ca
     montar();
     await lista();
     await waitFor(() => expect(boton()).toBeEnabled());
-    expect(boton()).toHaveAccessibleDescription("Abre antes la carpeta «Carpeta Sur».");
+    expect(boton()).toHaveAccessibleDescription("Abra antes la carpeta «Carpeta Sur».");
   });
 
   test("el aviso «Ahora trabaja con la carpeta…» sobrevive a la navegación a la herramienta", async () => {

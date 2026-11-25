@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import re
 import tomllib
+import zipfile
 from pathlib import Path
 
 import openpyxl
@@ -130,7 +131,9 @@ def test_referencia_desplazada_cambia_solo_la_fila():
         refs_d = patron.findall(inj.despues)
         assert len(refs_a) == len(refs_d)
         cambios = [(a, d) for a, d in zip(refs_a, refs_d, strict=True) if a != d]
-        assert len(cambios) == 1
+        assert cambios
+        # Todas las apariciones de la misma referencia cambian igual (una sola referencia).
+        assert len(set(cambios)) == 1
         (col_a, fila_a), (col_d, fila_d) = cambios[0]
         assert col_a == col_d
         assert abs(int(fila_d) - int(fila_a)) == 1
@@ -261,3 +264,268 @@ def test_la_lista_sin_operacion_de_la_guia_del_tercero_no_se_siembra():
     taxonomia["categorias"][0]["operacion"] = "no_disponible"
     with pytest.raises(ValueError, match="Operación desconocida"):
         inyector.inyectar(libro_limpio().datos, taxonomia, n=1, semilla=7)
+
+
+# --- Endurecimiento del inyector (auditoría 2026-11-25) ---------------------------------------
+
+
+def _libro_xlsxwriter(
+    celdas: dict[str, tuple[str | None, object]], nombres: dict[str, str] | None = None
+) -> bytes:
+    """Libro con fórmulas y valores cacheados. `celdas`: coord -> (fórmula | None, valor)."""
+    import xlsxwriter
+
+    buf = io.BytesIO()
+    wb = xlsxwriter.Workbook(buf, {"in_memory": True})
+    ws = wb.add_worksheet("Hoja")
+    for nombre, destino in (nombres or {}).items():
+        wb.define_name(nombre, destino)
+    for coord, (formula, valor) in celdas.items():
+        if formula is not None:
+            ws.write_formula(coord, formula, None, valor)
+        elif isinstance(valor, str):
+            ws.write_string(coord, valor)
+        else:
+            ws.write_number(coord, float(valor))
+    wb.close()
+    return buf.getvalue()
+
+
+def _con_nombre_definido(datos: bytes, nombre: str, destino: str) -> bytes:
+    """Agrega un nombre definido que parece celda (xlsxwriter y openpyxl lo rechazan)."""
+    salida = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(datos)) as zin, zipfile.ZipFile(salida, "w") as zout:
+        for info in zin.infolist():
+            contenido = zin.read(info.filename)
+            if info.filename == "xl/workbook.xml":
+                xml = contenido.decode("utf-8")
+                nodo = f'<definedName name="{nombre}">{destino}</definedName>'
+                if "</definedNames>" in xml:
+                    xml = xml.replace("</definedNames>", nodo + "</definedNames>")
+                else:
+                    xml = xml.replace(
+                        "<calcPr", f"<definedNames>{nodo}</definedNames><calcPr", 1
+                    )
+                contenido = xml.encode("utf-8")
+            zout.writestr(info, contenido)
+    return salida.getvalue()
+
+
+def _sembrar(datos: bytes, operacion: str, n: int = 5, semilla: int = 3):
+    return inyector.inyectar(datos, _taxonomia_unica(operacion), n=n, semilla=semilla)
+
+
+def test_referencia_desplazada_no_crea_referencia_circular(capsys):
+    # Desplazar A4 -> A5 dentro de A5 sería una referencia circular: no es elegible.
+    datos = _libro_xlsxwriter({"A4": (None, 3), "A5": ("=A4+1", 4)})
+    _, inyecciones = _sembrar(datos, "referencia_desplazada")
+    assert inyecciones == []
+
+
+def test_referencia_desplazada_no_toca_nombres_definidos_que_parecen_celdas():
+    datos = _con_nombre_definido(
+        _libro_xlsxwriter({"A1": (None, 3), "B1": ("=PU1*2", 6), "C1": ("=PU1*A1", 6)}),
+        "PU1",
+        "Hoja!$A$1",
+    )
+    _, inyecciones = _sembrar(datos, "referencia_desplazada", n=5)
+    assert [(i.celda, i.despues) for i in inyecciones] == [("C1", "=PU1*A2")]
+
+
+def test_referencia_desplazada_cambia_todas_las_apariciones_de_la_referencia():
+    formula = '=IF(B10="","",VLOOKUP(B10,PRECIOS,4,0))'
+    datos = _libro_xlsxwriter(
+        {"B10": (None, 1), "D1": (formula, 7), "E1": (None, 1)},
+        nombres={"PRECIOS": "=Hoja!$E$1:$F$2"},
+    )
+    _, inyecciones = _sembrar(datos, "referencia_desplazada", n=1)
+    assert len(inyecciones) == 1
+    assert inyecciones[0].despues == '=IF(B11="","",VLOOKUP(B11,PRECIOS,4,0))'
+
+
+def test_no_siembra_sobre_celdas_con_error_ni_con_ref():
+    datos = _libro_xlsxwriter({
+        "C1": ("=A1+B1", "#REF!"),
+        "C2": ("=A1/B1", "#DIV/0!"),
+        "C3": ("=#REF!+A1", 5),
+        "C4": ("=A1+B1", 5),
+    })
+    for operacion in ("referencia_desplazada", "formula_borrada", "valor_fijo"):
+        _, inyecciones = _sembrar(datos, operacion)
+        assert {i.celda for i in inyecciones} <= {"C4"}, operacion
+    _, inyecciones = _sembrar(datos, "formula_borrada")
+    assert [i.celda for i in inyecciones] == ["C4"]
+
+
+def test_signo_y_escala_no_caen_en_la_columna_de_numeracion():
+    datos = _libro_xlsxwriter({
+        "A1": (None, "Nº"),
+        "A2": (None, 1),
+        "A3": (None, 2),
+        "B1": (None, "Cantidad"),
+        "B2": (None, 5),
+        "B3": (None, -3),
+        "C1": (None, "Ítem"),
+        "C2": (None, 7),
+        "D2": (None, 2.5),
+    })
+    for operacion in ("signo", "escala"):
+        _, inyecciones = _sembrar(datos, operacion, n=10)
+        # Una cantidad entera en la columna B (encabezado «Cantidad») sí es elegible, también
+        # negativa; la numeración (encabezados «Nº» e «Ítem») no.
+        assert {i.celda for i in inyecciones} == {"B2", "B3", "D2"}, operacion
+
+
+def _libro_con_formula_compartida() -> bytes:
+    base = _libro_xlsxwriter({"A1": (None, 1)})
+    hoja = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+        '<row r="1"><c r="A1"><v>1</v></c>'
+        '<c r="B1"><f t="shared" ref="B1:B3" si="0">A1*2</f><v>2</v></c></row>'
+        '<row r="2"><c r="A2"><v>2</v></c><c r="B2"><f t="shared" si="0"/><v>4</v></c></row>'
+        '<row r="3"><c r="A3"><v>3</v></c><c r="B3"><f t="shared" si="0"/><v>6</v></c></row>'
+        "</sheetData></worksheet>"
+    )
+    salida = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(base)) as zin, zipfile.ZipFile(salida, "w") as zout:
+        for info in zin.infolist():
+            contenido = zin.read(info.filename)
+            if info.filename == "xl/worksheets/sheet1.xml":
+                contenido = hoja.encode("utf-8")
+            zout.writestr(info, contenido)
+    return salida.getvalue()
+
+
+def test_formula_compartida_admite_valor_fijo_en_hijas_y_no_en_la_maestra():
+    datos = _libro_con_formula_compartida()
+    datos_out, inyecciones = _sembrar(datos, "valor_fijo", n=5)
+    assert {i.celda for i in inyecciones} == {"B2", "B3"}
+    with zipfile.ZipFile(io.BytesIO(datos_out)) as zf:
+        xml = zf.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    assert 'ref="B1:B3"' in xml and "A1*2" in xml
+    assert 'si="0"/>' not in xml
+    _, celdas = _celdas_libro(datos_out, data_only=False)
+    assert celdas[("Hoja", "B1")][1] == "f"
+    assert celdas[("Hoja", "B2")][1] == "n" and celdas[("Hoja", "B3")][1] == "n"
+
+
+def test_formula_compartida_no_admite_otras_operaciones():
+    datos = _libro_con_formula_compartida()
+    for operacion in ("formula_borrada", "referencia_desplazada"):
+        _, inyecciones = _sembrar(datos, operacion)
+        assert inyecciones == [], operacion
+
+
+def _taxonomia_toml(tmp_path: Path, operacion: str) -> Path:
+    ruta = tmp_path / "tax.toml"
+    ruta.write_text(
+        f'[[categorias]]\nid = "T-01"\nnombre = "Prueba"\nfuente = "x"\n'
+        f'operacion = "{operacion}"\npeso = 1.0\n',
+        encoding="utf-8",
+    )
+    return ruta
+
+
+def _args_cli(tmp_path: Path, n: int, *extra: str, salida: str = "salida") -> list[str]:
+    origen = tmp_path / "pocas.xlsx"
+    origen.write_bytes(_libro_xlsxwriter({"A1": (None, 2), "B1": ("=A1*2", 4), "B2": ("=A1*3", 6)}))
+    repo = tmp_path / "repo"
+    repo.mkdir(exist_ok=True)
+    return [
+        str(origen),
+        "--taxonomia",
+        str(_taxonomia_toml(tmp_path, "valor_fijo")),
+        "--n",
+        str(n),
+        "--semilla",
+        "1",
+        "--salida",
+        str(tmp_path / salida),
+        "--raiz-repo",
+        str(repo),
+        *extra,
+    ]
+
+
+def test_cli_falla_si_se_siembran_menos_fallas_que_n(tmp_path: Path, capsys):
+    codigo = inyector.main(_args_cli(tmp_path, 5))
+    assert codigo != 0
+    err = capsys.readouterr().err
+    assert "2" in err and "5" in err and "--permitir-menos" in err
+
+
+def test_cli_permite_menos_con_la_bandera(tmp_path: Path):
+    assert inyector.main(_args_cli(tmp_path, 5, "--permitir-menos")) == 0
+    assert inyector.main(_args_cli(tmp_path, 2, salida="otra")) == 0
+
+
+# --- Ronda 2: referencias con hoja, numeración por encabezado, hija compartida ----------------
+
+
+def _libro_hojas(hojas: dict[str, dict[str, tuple[str | None, object]]]) -> bytes:
+    import xlsxwriter
+
+    buf = io.BytesIO()
+    wb = xlsxwriter.Workbook(buf, {"in_memory": True})
+    for nombre, celdas in hojas.items():
+        ws = wb.add_worksheet(nombre)
+        for coord, (formula, valor) in celdas.items():
+            if formula is not None:
+                ws.write_formula(coord, formula, None, valor)
+            elif isinstance(valor, str):
+                ws.write_string(coord, valor)
+            else:
+                ws.write_number(coord, float(valor))
+    wb.close()
+    return buf.getvalue()
+
+
+def _desplazar(datos: bytes, hoja: str):
+    tax = _taxonomia_unica("referencia_desplazada", hojas=[hoja])
+    return inyector.inyectar(datos, tax, n=1, semilla=3)[1]
+
+
+def test_referencia_de_otra_hoja_no_se_desplaza_junto_con_la_local():
+    datos = _libro_hojas({
+        "Hoja": {"B4": (None, 1), "D1": ("=B4-OTRA!B4", 0)},
+        "OTRA": {"B4": (None, 1)},
+    })
+    for semilla in range(8):
+        tax = _taxonomia_unica("referencia_desplazada", hojas=["Hoja"])
+        (inj,) = inyector.inyectar(datos, tax, n=1, semilla=semilla)[1]
+        assert inj.despues in {"=B5-OTRA!B4", "=B4-OTRA!B5"}, inj.despues
+
+
+def test_referencia_a_otra_hoja_no_es_circular_aunque_coincida_la_celda():
+    # RESUMEN!B5 apunta a PRESUPUESTO!B4: desplazarla a PRESUPUESTO!B5 no es circular.
+    datos = _libro_hojas({
+        "PRESUPUESTO": {"B4": (None, 1)},
+        "RESUMEN": {"B5": ("=PRESUPUESTO!B4+1", 2)},
+    })
+    (inj,) = _desplazar(datos, "RESUMEN")
+    assert (inj.celda, inj.despues) == ("B5", "=PRESUPUESTO!B5+1")
+
+
+def test_referencia_a_la_propia_hoja_con_prefijo_si_es_circular():
+    datos = _libro_hojas({"RESUMEN": {"B4": (None, 1), "B5": ("=RESUMEN!B4+1", 2)}})
+    assert _desplazar(datos, "RESUMEN") == []
+
+
+def test_referencia_desplazada_agrupa_apariciones_con_y_sin_dolar():
+    datos = _libro_hojas({"Hoja": {"B10": (None, 1), "D1": ('=IF($B10="","",B10)', 1)}})
+    (inj,) = _desplazar(datos, "Hoja")
+    assert inj.despues == '=IF($B11="","",B11)'
+
+
+def test_formula_compartida_con_n_uno_cambia_una_hija_y_la_otra_sobrevive():
+    datos = _libro_con_formula_compartida()
+    datos_out, inyecciones = _sembrar(datos, "valor_fijo", n=1)
+    (i,) = inyecciones
+    assert i.celda in {"B2", "B3"}
+    assert i.antes == f"=A{i.celda[1:]}*2"
+    otra = "B3" if i.celda == "B2" else "B2"
+    with zipfile.ZipFile(io.BytesIO(datos_out)) as zf:
+        xml = zf.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    assert f'<c r="{otra}"><f t="shared" si="0"/>' in xml
+    assert 'ref="B1:B3"' in xml

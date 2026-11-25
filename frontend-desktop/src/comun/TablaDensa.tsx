@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { EstadoVacio } from "./EstadoVacio";
 import { Severidad } from "./Severidad";
 import { Variacion } from "./Variacion";
+import { formatoMontoEsVe } from "../indicadores/formatoEsVe";
 
 export interface ColumnaDensa {
   clave: string;
@@ -83,7 +84,7 @@ function dibujar(
   const texto = String(valor ?? "");
   if (presentar && texto) {
     const visto = presentar(texto);
-    return <span title={texto}>{visto}</span>;
+    return <span title={formatoMontoEsVe(texto)}>{visto}</span>;
   }
   if (tipo === "severidad" && texto) return <Severidad valor={texto} />;
   if (tipo === "variacion" && texto) return <Variacion valor={texto} />;

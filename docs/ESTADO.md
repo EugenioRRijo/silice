@@ -57,6 +57,17 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   Del 2026-11-25: #150 (insumos críticos y frescura de precios, herramienta local), #151 (limpieza de worktrees,
   Rajalingham verificada y mantenibilidad medida con crapper y dryer en la Tabla 4.1) y #152 (guía para el tercero de
   la taxonomía, con prueba del contrato con el inyector).
+  También del 2026-11-25, en la rama `feature/mutator-reglas`:
+  - **Pruebas de mutación:** `mutator` se corrió en Docker Desktop, que Eugenio instaló porque el Modo de programador
+    no estaba disponible. Pruebas nuevas, sin cambiar el código congelado: `reglas_calculo.py` 100 %,
+    `reglas_contexto.py` 98,5 % y `reglas.py` 98,0 % (Tabla 4.1).
+  - **Herramientas de medición:** Argon (Gemini) auditó el código de la Fase 3 y lo dio por no listo. Dos constructores
+    corrigieron, entre otras cosas: el conteo, que no descontaba los hallazgos previos del libro; el intervalo de
+    Wilson; el criterio de fracaso; y las huellas del manifiesto, que salían con CRLF.
+  - **Actas de Eugenio** ([acta](bitacora/2026-11-25-cifra-oficial-de-deteccion.md)): la cifra oficial es la de
+    todas las fallas a la vez, y cuenta como detectada solo la falla que el evaluador confirma.
+  - **Sondeo de precios en línea** ([bitácora](bitacora/2026-11-25-sondeo-precios-en-linea.md)): la capa en línea
+    queda para después de la defensa.
 - **Ola 1121 y entrega del consejo** (PR #138 a #141): la depuración de Neon (#138) y el rediseño con su claridad
   (#139), fusionados por Eugenio; la carga cognitiva con el rótulo congelado de la Hoja (#140, opción A de Eugenio) y
   la herramienta de medición de la auditoría, el respaldo local, el guion de la demo del plan B, el ensayo de la
@@ -153,9 +164,8 @@ subir nada.
    comprensión y 5 personas para el SUS; firmar el [registro de decisiones](bitacora/registro-de-decisiones.md).
    Para el tercero: entregarle la [guía de la taxonomía](tesis/2026-11-25-guia-taxonomia-tercero.md); desde el
    2026-11-25 hay una versión en Word, con la plantilla como anexo, en la carpeta «Decisiones Silice» de su escritorio
-   (fuera del repositorio). Para medir con `mutator`: activar el Modo de programador de Windows (sin él no crea sus
-   enlaces, WinError 1314). La sesión de Claude no es administradora y el equipo no tiene WSL ni Docker, así que ese
-   paso es de Eugenio. Los datos que faltan en el consentimiento también son suyos (2026-11-25).
+   (fuera del repositorio). `mutator` corre en Docker Desktop, que Eugenio instaló el 2026-11-25 en lugar del Modo de
+   programador. Los enlaces simbólicos que necesita funcionan en el contenedor Linux, así que ya no depende de Eugenio. Los datos que faltan en el consentimiento también son suyos (2026-11-25).
 1. **Hecho el 2026-11-13:** #105, #106 y #108 (con #107) fusionados por Claude, con la CI en verde y la autorización
    de Eugenio; `feature/ola2` entró como #109. Diez ramas remotas viejas ya contenidas en `main` siguen en GitHub: el
    control de permisos no dejó borrarlas (lista en el informe del 2026-11-14).
