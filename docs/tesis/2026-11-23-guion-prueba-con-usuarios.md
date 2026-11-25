@@ -132,7 +132,7 @@ Pregunta final abierta: «¿Qué fue lo que más le costó?» (se anota textual)
 - Las alertas: por cada una, cuántos la entendieron (sí, a medias o no), las acciones que dijeron que tomarían y las
   respuestas a «¿Qué alerta le faltó?», sin nombres (Tabla 4.3b).
 - El SUS: el promedio y el rango, con la referencia publicada de 68.
-- Los límites: 3 participantes, datos de demostración y que las tareas T1 a T3 las conduce el autor del sistema; la
+- Los límites: 5 participantes (3 economistas y 2 personas nuevas), datos de demostración y que las tareas T1 a T3 las conduce el autor del sistema; la
   prueba de comprensión de las alertas, en cambio, la conduce una persona que no construyó Sílice.
 
 ## Prueba de comprensión de las alertas (2026-11-24)
