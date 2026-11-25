@@ -779,11 +779,19 @@ Systems, 49*(2), 235–244. https://doi.org/10.1016/j.dss.2010.02.009
 Rajalingham, K., Chadwick, D. R., & Knight, B. (2000). Classification of spreadsheet errors. En *Proceedings of the
 European Spreadsheet Risks Interest Group (EuSpRIG) 2000*, 23–34. ISBN 1‑86166‑158‑4. arXiv:0805.4224.
 
-- **Estado:** pendiente (categorías).
-- **Verificación:** arXiv, 2026‑11‑24: autores, título y referencia al congreso con sus páginas e ISBN.
-  No tiene DOI.
-- **Falta:** confirmar en el texto sus categorías (errores del sistema frente a errores cuantitativos, y estos en
-  reducibles e irreducibles), que hoy solo vienen de memoria. Uso previsto: contraste, no base.
+- **Estado:** verificada.
+- **Verificación:** arXiv, 2026‑11‑24: autores, título y referencia al congreso con sus páginas e ISBN; no tiene
+  DOI. Texto completo (PDF de arXiv, 9 páginas), 2026‑11‑24: la taxonomía de su Figura 1.
+- **Lo que respalda:** una clasificación de errores de hoja de cálculo. Los errores generados por el sistema se
+  separan de los generados por el usuario, y estos son:
+  - **cuantitativos:** **accidentales** (del desarrollador, del que carga los datos o del que interpreta la salida;
+    cada uno por omisión, alteración o duplicación) y **de razonamiento** (de conocimiento del dominio, ya sea del
+    mundo real o de la representación matemática, o de implementación, por sintaxis o lógica);
+  - **cualitativos:** semánticos (estructurales o temporales) y de mantenibilidad.
+- **Uso previsto:** contraste de la taxonomía de Panko y Aurigemma (2010). Su rama de errores accidentales (omisión,
+  alteración y duplicación) se puede sembrar directamente en un libro de presupuesto.
+- **Corrección:** una lectura previa, hecha de memoria, le atribuía errores «reducibles e irreducibles». El texto no
+  dice eso.
 
 ### Powell, Baker y Lawson (2008)
 

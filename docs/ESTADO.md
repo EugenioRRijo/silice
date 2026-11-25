@@ -161,9 +161,14 @@ subir nada.
    2026-11-13 («hazlas tú, todo el pendiente, te doy permiso»), igual que D-01 a D-36 del Word y las de la ola 2; todas
    siguen siendo reversibles (cada bitácora dice cómo).
 5. El asistente de IA (T20): «luego» (2026-11-05), sin gasto por ahora.
-6. Worktrees que quedan (28): con bases o respaldos ignorados (en `.claude/worktrees/prototipo` hay una `data/apu.db` que
-   conviene mirar), con cambios sin guardar o con ramas que no están en `main`. Lista en «Limpieza de worktrees TESIS
-   (2026-11-03).md» de su Escritorio, sección «No tocados».
+6. **Worktrees (2026-11-24):** de 30 quedan 15. Se borraron 15 copias limpias, con autorización de Eugenio («sí,
+   borra las seguras y respalda las bases primero»): sus bases, libros y archivos ignorados quedaron respaldados y
+   verificados por SHA-256 en `C:\RespaldoSilice\worktrees-2026-11-24` (`MANIFIESTO.txt`), y las 5 ramas que solo vivían
+   en el equipo, en `ramas-viejas-migracion.bundle`. Ninguna rama se borró. Esperan decisión de Eugenio:
+   - 7 copias con archivos nuevos **ya respaldados** (`metasf`, `s2mb-componer`, `s2mi2`, `hist`, `s2madm`, `s2md2`,
+     `demo`), que el sistema de permisos no dejó borrar sin su visto bueno explícito;
+   - 5 con cambios a medias (`tanda`, `s43`, `s2m3`, `s2mc`, `s2mb-maprex`);
+   - `sf` (#100, núcleo), que espera al tutor.
 7. Negar en el IDE de Antigravity la lectura de `docs/auditoria` y `data/confidencial` (en su línea de comandos ya está).
 8. Revisar unas carpetas vacías que un agente dejó en `C:\c\Users\...`.
 10. Topes del lector (2026-11-12): las tres decisiones del árbitro anterior están **resueltas**: (a) y (b) con código

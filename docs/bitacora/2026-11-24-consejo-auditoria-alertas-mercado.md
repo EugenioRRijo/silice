@@ -57,3 +57,8 @@ nueva se agrega al final, con su fecha y su primer paso.
    `_partes_concat` son la misma función y solo cambia el separador. No se toca antes de la defensa porque cambiaría la
    huella de `reglas-congeladas-2026-11-24`. Primer paso: un refactor con las pruebas fijadas antes. Además, `mutator`
    no corre en este equipo: en Windows crea enlaces simbólicos y necesita el Modo de programador, que decide Eugenio.
+7. **(Agregado el 2026-11-25, medición de crapper con la cobertura real.)** Probar mejor el escritor de la devolución
+   (`adapters/hoja_empresa/escritor/`): reúne 33 de las 42 funciones con riesgo CRAP sobre 30, como `extender_semanas`
+   (complejidad 43, cobertura 7,8 %) o `insertar_filas` (26 y 2,6 %). Primer paso: pruebas de caracterización que fijen
+   lo que hoy escribe, antes de partir esas funciones. Las 2 de las reglas congeladas (`_pieza` y `celda_rotulo`) y
+   la del núcleo (`core.budget.reajuste`, con el aval del tutor) van en la misma tanda.
