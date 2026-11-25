@@ -31,6 +31,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -246,9 +247,9 @@ def deteccion(
             manuales += 1
             continue
         objetivo = _celda(s.celda)
-        por[s.numero] = next(
-            (f.numero for f in filas if any(_celda(c) == objetivo for c in f.celdas)), None
-        )
+        citan = [f.numero for f in filas if any(_celda(c) == objetivo for c in f.celdas)]
+        verdaderas = [n for n in citan if marcas is not None and _marca(marcas.get(n)) == VERDADERO]
+        por[s.numero] = (verdaderas or citan or [None])[0]
     if marcas is None:
         return Deteccion(por_sembrado=por, manuales=manuales)
     veredictos = [_marca(marcas.get(n)) for n in por.values() if n is not None]
@@ -260,20 +261,26 @@ def deteccion(
     )
 
 
-def kappa_cohen(a: Sequence[str], b: Sequence[str]) -> float | None:
-    """Kappa de Cohen (1960) para dos evaluadores sobre los mismos casos y categorías nominales.
-    `None` si el acuerdo esperado por azar es 1 (los dos usaron una sola categoría)."""
+def kappa_exacto(a: Sequence[str], b: Sequence[str]) -> Fraction | None:
+    """Kappa de Cohen (1960) exacto, con fracciones: así `κ = 0,4` no cae por debajo del umbral por
+    un error de redondeo del `float`. `None` si el acuerdo esperado por azar es 1."""
     if len(a) != len(b):
         raise ValueError("Las dos listas de marcas deben tener el mismo largo.")
     if not a:
         raise ValueError("No hay casos marcados por los dos evaluadores.")
     n = len(a)
-    observado = sum(1 for x, y in zip(a, b, strict=True) if x == y) / n
+    observado = Fraction(sum(1 for x, y in zip(a, b, strict=True) if x == y), n)
     ca, cb = Counter(a), Counter(b)
-    esperado = sum(ca[k] * cb[k] for k in ca.keys() | cb.keys()) / (n * n)
+    esperado = Fraction(sum(ca[k] * cb[k] for k in ca.keys() | cb.keys()), n * n)
     if esperado == 1:
         return None
     return (observado - esperado) / (1 - esperado)
+
+
+def kappa_cohen(a: Sequence[str], b: Sequence[str]) -> float | None:
+    """`kappa_exacto` como `float` (para mostrarlo). `None` si no se puede calcular."""
+    exacto = kappa_exacto(a, b)
+    return None if exacto is None else float(exacto)
 
 
 # --- formato -------------------------------------------------------------------------------------
@@ -285,7 +292,20 @@ def decimal_coma(valor: float, decimales: int = 2) -> str:
 
 
 def porcentaje(valor: float | None) -> str:
-    return "sin dato" if valor is None else decimal_coma(valor * 100, 1) + " %"
+    """Porcentaje con una cifra: pasa a `Decimal` ANTES de multiplicar por 100 (en `float`,
+    0,0725 * 100 da 7,2499... y se redondearía mal)."""
+    if valor is None:
+        return "sin dato"
+    centesimos = Decimal(repr(float(valor))) * 100
+    return formatear_decimal(centesimos, 1).replace(".", ",") + " %"
+
+
+def porcentaje_de(aciertos: int, total: int) -> str:
+    """`aciertos` sobre `total` como porcentaje HALF_UP, calculado en enteros y `Decimal`."""
+    if total == 0:
+        return "sin dato"
+    valor = Decimal(aciertos) * 100 / Decimal(total)
+    return formatear_decimal(valor, 1).replace(".", ",") + " %"
 
 
 def intervalo_wilson(aciertos: int, total: int) -> str:
@@ -308,23 +328,45 @@ def _estado(se_cumple: bool | None) -> str:
     return "SE CUMPLE" if se_cumple else "NO se cumple"
 
 
+BASE_SENALADO = "señalado por Sílice"
+BASE_CONFIRMADO = "confirmado verdadero por el evaluador"
+
+
+def _kappa_menor_que_dos_quintos(kappa: float | Fraction) -> bool:
+    exacto = (
+        kappa if isinstance(kappa, Fraction) else Fraction(repr(kappa)).limit_denominator(10**9)
+    )
+    return exacto < Fraction(2, 5)
+
+
 def criterio_de_fracaso(
     *,
     deteccion: tuple[int, int] | None = None,
     falsos: tuple[int, int] | None = None,
-    kappa: float | None = None,
+    kappa: float | Fraction | None = None,
+    base_deteccion: str = BASE_SENALADO,
 ) -> list[str]:
     """Evalúa el criterio de fracaso sellado (plan no circular): detección < 50 %, falsos positivos
     > 40 % por causa, kappa < 0,4. `deteccion` y `falsos` son (casos, total); lo que no se puede
-    calcular con los datos de la corrida se dice. Compara con enteros, sin redondear."""
+    calcular con los datos de la corrida se dice. Compara con enteros y fracciones, sin redondear.
+    `base_deteccion` dice qué se contó: con marcas del evaluador, solo lo confirmado verdadero
+    (decisión de Eugenio, 2026-11-25); sin marcas, lo señalado por Sílice."""
     detecta = None if not deteccion or not deteccion[1] else deteccion[0] * 2 < deteccion[1]
     falsea = None if not falsos or not falsos[1] else falsos[0] * 5 > falsos[1] * 2
     return [
-        f"Detección < 50 %: {_estado(detecta)}",
+        f"Detección < 50 % ({base_deteccion}): {_estado(detecta)}",
         f"Falsos positivos > 40 %: {_estado(falsea)}",
-        f"Kappa < 0,4: {_estado(None if kappa is None else kappa < 0.4)}",
+        f"Kappa < 0,4: {_estado(None if kappa is None else _kappa_menor_que_dos_quintos(kappa))}",
         NOTA_CIFRA_OFICIAL,
     ]
+
+
+def _cuenta_de_deteccion(d: Deteccion | None) -> tuple[int, int] | None:
+    """(casos, total) que decide el criterio: lo confirmado verdadero si hay marcas del evaluador;
+    si no, lo señalado por Sílice."""
+    if d is None:
+        return None
+    return (d.detectados if d.confirmados is None else d.confirmados, d.total)
 
 
 def resumen(
@@ -332,7 +374,7 @@ def resumen(
     precision: Medida,
     deteccion: Deteccion | None,
     exhaustividad: Medida,
-    kappa: float | None,
+    kappa: float | Fraction | None,
     marcados_por_los_dos: int | None = None,
     agrupacion: tuple[int, int] | None = None,
 ) -> str:
@@ -345,22 +387,22 @@ def resumen(
         f"({precision.pendientes} pendientes) | {porcentaje(precision.valor)} | "
         f"{intervalo_wilson(precision.aciertos, precision.total)} |",
         f"| Falsos positivos (falsos / marcados) | {falsos} de {precision.total} | "
-        f"{porcentaje(falsos / precision.total if precision.total else None)} | "
+        f"{porcentaje_de(falsos, precision.total)} | "
         f"{intervalo_wilson(falsos, precision.total)} |",
     ]
     if deteccion is not None:
         lineas.append(
             f"| Detección de errores sembrados (señalado por Sílice) | {deteccion.detectados} de "
             f"{deteccion.total} ({deteccion.manuales} por la columna manual) | "
-            f"{porcentaje(deteccion.valor)} | "
+            f"{porcentaje_de(deteccion.detectados, deteccion.total)} | "
             f"{intervalo_wilson(deteccion.detectados, deteccion.total)} |"
         )
         if deteccion.confirmados is not None:
-            conf = deteccion.confirmados / deteccion.total if deteccion.total else None
             lineas.append(
                 f"| Detección, señalado y confirmado verdadero | {deteccion.confirmados} de "
                 f"{deteccion.total} ({deteccion.marcados_falsos} señalados marcados Falso) | "
-                f"{porcentaje(conf)} | {intervalo_wilson(deteccion.confirmados, deteccion.total)} |"
+                f"{porcentaje_de(deteccion.confirmados, deteccion.total)} | "
+                f"{intervalo_wilson(deteccion.confirmados, deteccion.total)} |"
             )
     lineas.append(
         f"| Exhaustividad aproximada (con «se le escapó») | {exhaustividad.aciertos} de "
@@ -369,7 +411,7 @@ def resumen(
     texto_kappa = (
         "sin dato (hace falta una segunda planilla con variación)"
         if kappa is None
-        else decimal_coma(kappa)
+        else decimal_coma(float(kappa))
     )
     lineas.append(f"| Kappa de Cohen entre los dos evaluadores | — | {texto_kappa} | — |")
     if agrupacion is not None and agrupacion[1]:
@@ -385,9 +427,12 @@ def resumen(
     lineas += [
         f"- {t}"
         for t in criterio_de_fracaso(
-            deteccion=(deteccion.detectados, deteccion.total) if deteccion is not None else None,
+            deteccion=_cuenta_de_deteccion(deteccion),
             falsos=(falsos, precision.total),
             kappa=kappa,
+            base_deteccion=BASE_SENALADO
+            if deteccion is None or deteccion.confirmados is None
+            else BASE_CONFIRMADO,
         )
     ]
     return "\n".join(lineas)
@@ -421,7 +466,8 @@ def _destino_seguro(destino: Path, raiz_repo: Path) -> Path:
     prohibidas = [raiz_repo]
     if (principal := _checkout_principal(raiz_repo)) is not None:
         prohibidas.append(principal)
-    if any(destino.is_relative_to(r) for r in prohibidas):
+    ajeno = any((carpeta / ".git").exists() for carpeta in (destino, *destino.parents))
+    if ajeno or any(destino.is_relative_to(r) for r in prohibidas):
         raise ValueError(
             f"«{destino}» está dentro del repositorio: los datos de la medición se guardan fuera "
             "(NORMAS §1). Elija una carpeta fuera del proyecto."
@@ -577,6 +623,7 @@ def _exportar(args: argparse.Namespace, recalculador=None) -> int:
     from fusion.proceso import procesar_libro
 
     origen = Path(args.libro)
+    _destino_seguro(Path(args.salida), Path(args.raiz_repo))  # antes de gastar un recálculo
     datos = origen.read_bytes()
     auditado = datos
     if args.recalcular:
@@ -638,7 +685,7 @@ def _calcular(args: argparse.Namespace) -> int:
         comunes = sorted(n for n in marcas if marcas[n] and otras_marcas.get(n))
         los_dos = len(comunes)
         if comunes:
-            kappa = kappa_cohen([marcas[n] for n in comunes], [otras_marcas[n] for n in comunes])
+            kappa = kappa_exacto([marcas[n] for n in comunes], [otras_marcas[n] for n in comunes])
     filas = leer_filas(Path(args.planilla))
     agrupacion = (sum(f.ocurrencias for f in filas), len(filas))
     print(
@@ -691,7 +738,13 @@ def main(argv: list[str] | None = None, *, recalculador=None) -> int:
 
     args = analizador.parse_args(argv)
     if args.funcion is _exportar:
-        return _exportar(args, recalculador)
+        from aplicacion.oraculo_hoja import LibreOfficeNoDisponibleError
+
+        try:
+            return _exportar(args, recalculador)
+        except LibreOfficeNoDisponibleError as error:
+            print(error)
+            return 2
     return args.funcion(args)
 
 

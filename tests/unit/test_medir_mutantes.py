@@ -184,3 +184,35 @@ def test_una_por_vez_trae_wilson_criterio_y_nota_de_cifra_secundaria(tmp_path: P
 def test_una_por_vez_con_menos_fallas_que_las_pedidas_da_error_claro(tmp_path: Path) -> None:
     with pytest.raises(mi.MenosFallasQueLasPedidas, match="pidieron 5000"):
         _una_por_vez(tmp_path, n=5000)
+
+
+# --- ronda 2 -------------------------------------------------------------------------------------
+
+
+def test_hallazgos_nuevos_con_misma_regla_y_otra_celda() -> None:
+    a, b = _h("L1", "desc", "PLAN!A1"), _h("L1", "desc", "PLAN!B1")
+    assert mi.hallazgos_nuevos([a], [b, a]) == [b]
+
+
+def test_hallazgos_nuevos_con_duplicados_descuenta_solo_los_previos() -> None:
+    a = _h("L1", "desc", "PLAN!A1")
+    assert len(mi.hallazgos_nuevos([a], [a, a])) == 1
+    assert mi.hallazgos_nuevos([a, a], [a, a]) == []
+
+
+def test_la_clave_ignora_comillas_dolares_mayusculas_y_orden_de_las_celdas() -> None:
+    previo = _h("L1", "desc", "'APU-01'!$G$12", "PRES!P5")
+    igual = _h("L1", "desc", "pres!p5", "apu-01!g12")
+    assert mi.hallazgos_nuevos([previo], [igual]) == []
+
+
+def test_un_mutante_rechazado_se_rotula_rechazada_y_no_escapada(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from adapters.hoja_empresa.modelo import LibroNoInterpretable
+
+    _procesar_en_secuencia(monkeypatch, [], LibroNoInterpretable("x"), [])
+    _, texto = _una_por_vez(tmp_path, n=2)
+    assert "Rechazada #1" in texto
+    assert "Escapada #1" not in texto
+    assert "Escapada #2" in texto

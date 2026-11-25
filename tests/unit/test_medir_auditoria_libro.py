@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
 
 import openpyxl
@@ -403,7 +404,9 @@ def test_el_resumen_trae_wilson_y_evalua_el_criterio_de_fracaso():
     )
     assert "[31,4 %; 68,6 %]" in texto  # detección 12 de 24
     assert "[23,7 %; 76,3 %]" in texto  # falsos positivos 5 de 10
-    assert "Detección < 50 %: NO se cumple" in texto  # 50,0 % no es menor que 50 %
+    assert (
+        "Detección < 50 % (señalado por Sílice): NO se cumple" in texto
+    )  # 50,0 % no es menor que 50 %
     assert "Falsos positivos > 40 %: SE CUMPLE" in texto
     assert "Kappa < 0,4: SE CUMPLE" in texto
     assert "todas las fallas a la vez" in texto
@@ -416,7 +419,7 @@ def test_el_criterio_dice_cuando_no_se_puede_calcular_una_condicion():
         exhaustividad=m.exhaustividad(1, 0),
         kappa=None,
     )
-    assert "Detección < 50 %: no se puede calcular" in texto
+    assert "Detección < 50 % (señalado por Sílice): no se puede calcular" in texto
     assert "Kappa < 0,4: no se puede calcular" in texto
     assert "Falsos positivos > 40 %: NO se cumple" in texto  # 0 de 1
 
@@ -556,3 +559,168 @@ def test_calcular_imprime_wilson_y_criterio(fuera: Path, capsys):
     assert "[9,5 %; 90,5 %]" in salida  # 1 de 2 con Wilson
     assert "señalado y confirmado verdadero" in salida
     assert "Falsos positivos > 40 %: SE CUMPLE" in salida
+
+
+# --- ronda 2: frontera exacta, porcentajes, marcas y destino (2026-11-25) -----------------
+
+
+def _marcas_con_kappa_dos_quintos() -> tuple[list[str], list[str]]:
+    # 6 casos: acuerdo observado 4/6 y esperado 1/2 -> kappa exacto 2/5; en float da 0,39999...
+    a = ["V", "V", "F", "F", "F", "F"]
+    b = ["V", "V", "V", "V", "F", "F"]
+    return a, b
+
+
+def test_kappa_en_la_frontera_exacta_no_declara_fracaso():
+    a, b = _marcas_con_kappa_dos_quintos()
+    exacto = m.kappa_exacto(a, b)
+    assert exacto == Fraction(2, 5)
+    assert "Kappa < 0,4: NO se cumple" in m.criterio_de_fracaso(kappa=exacto)
+    # aunque quien llame pase el float con su error de redondeo
+    assert "Kappa < 0,4: NO se cumple" in m.criterio_de_fracaso(kappa=m.kappa_cohen(a, b))
+    assert "Kappa < 0,4: SE CUMPLE" in m.criterio_de_fracaso(kappa=0.39)
+
+
+def test_porcentaje_convierte_a_decimal_antes_de_multiplicar():
+    assert m.porcentaje(29 / 400) == "7,3 %"  # 0,0725 * 100 en float da 7,2499...
+    assert m.porcentaje(0.0025) == "0,3 %"
+    assert m.porcentaje_de(29, 400) == "7,3 %"
+    assert m.porcentaje_de(1, 0) == "sin dato"
+
+
+def test_fronteras_exactas_del_criterio_de_fracaso():
+    def estado(**kw):
+        return m.criterio_de_fracaso(**kw)
+
+    assert "Detección < 50 % (señalado por Sílice): SE CUMPLE" in estado(deteccion=(11, 24))
+    assert "Detección < 50 % (señalado por Sílice): NO se cumple" in estado(deteccion=(12, 24))
+    assert "Falsos positivos > 40 %: NO se cumple" in estado(falsos=(4, 10))  # 40 no es más de 40
+    assert "Falsos positivos > 40 %: SE CUMPLE" in estado(falsos=(5, 10))
+    assert "Falsos positivos > 40 %: SE CUMPLE" in estado(falsos=(41, 100))
+
+
+def test_con_marcas_el_criterio_cuenta_solo_lo_confirmado_verdadero():
+    d = m.Deteccion(
+        por_sembrado={i: (1 if i <= 12 else None) for i in range(1, 25)},
+        confirmados=11,
+        marcados_falsos=1,
+    )
+    texto = m.resumen(
+        precision=m.precision({1: "Verdadero"}),
+        deteccion=d,
+        exhaustividad=m.exhaustividad(1, 0),
+        kappa=None,
+    )
+    assert "Detección < 50 % (confirmado verdadero por el evaluador): SE CUMPLE" in texto
+    assert "señalado por Sílice" in texto  # lo señalado se informa al lado
+
+
+def test_si_varias_filas_citan_la_celda_se_prioriza_la_marcada_verdadero():
+    filas = m.filas_de_hallazgos([_h("L1", "A!B1"), _h("L2", "A!B1")])
+    d = m.deteccion([m.Sembrado(1, "A!B1", "t")], filas, marcas={1: "Falso", 2: "Verdadero"})
+    assert d.por_sembrado == {1: 2}
+    assert d.confirmados == 1
+    sin = m.deteccion([m.Sembrado(1, "A!B1", "t")], filas, marcas={1: "", 2: ""})
+    assert sin.por_sembrado == {1: 1}
+
+
+def test_destino_seguro_rechaza_otro_clon_o_worktree_ajeno(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    clon = tmp_path / "otro_clon"
+    (clon / ".git").mkdir(parents=True)
+    with pytest.raises(ValueError, match="repositorio"):
+        m._destino_seguro(clon / "sub" / "p.xlsx", repo)
+    ajeno = tmp_path / "ajeno"
+    ajeno.mkdir()
+    (ajeno / ".git").write_text("gitdir: /otro/lugar\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="repositorio"):
+        m._destino_seguro(ajeno / "p.xlsx", repo)
+
+
+def _formula_con_valor(datos: bytes) -> tuple[str, str]:
+    import io
+
+    formulas = openpyxl.load_workbook(io.BytesIO(datos))
+    valores = openpyxl.load_workbook(io.BytesIO(datos), data_only=True)
+    for ws in formulas:
+        for fila in ws.iter_rows():
+            for c in fila:
+                v = valores[ws.title][c.coordinate].value
+                if (
+                    isinstance(c.value, str)
+                    and c.value.startswith("=")
+                    and isinstance(v, int | float)
+                ):
+                    return ws.title, c.coordinate
+    raise AssertionError("el libro de prueba no trae fórmulas con valor")
+
+
+def test_exportar_con_recalcular_audita_el_libro_trasplantado(
+    fuera: Path, monkeypatch: pytest.MonkeyPatch
+):
+    import io
+
+    from tests.fixtures.libros_empresa import libro_limpio
+    from tests.fixtures.recalculo_falso import LibreOfficeFalso
+
+    datos = libro_limpio().datos
+    hoja, coord = _formula_con_valor(datos)
+
+    class _Cambia(LibreOfficeFalso):
+        def recalcular(self, datos: bytes, nombre: str) -> bytes:
+            libro = openpyxl.load_workbook(io.BytesIO(super().recalcular(datos, nombre)))
+            libro[hoja][coord].value = 987654
+            salida = io.BytesIO()
+            libro.save(salida)
+            return salida.getvalue()
+
+    recibidos: list[bytes] = []
+    import fusion.proceso as proceso
+
+    real = proceso.procesar_libro
+
+    def espiar(datos_auditados, *a, **k):
+        recibidos.append(datos_auditados)
+        return real(datos_auditados, *a, **k)
+
+    monkeypatch.setattr(proceso, "procesar_libro", espiar)
+    fuera.mkdir()
+    origen = fuera / "obra.xlsx"
+    origen.write_bytes(datos)
+    args = ["--fecha", "2026-10-13", "--raiz-repo", str(fuera.parent / "repo")]
+    assert m.main(["exportar", str(origen), "--salida", str(fuera / "c.xlsx"), "--recalcular",
+                   *args], recalculador=_Cambia()) == 0  # fmt: skip
+    (auditado,) = recibidos
+    nuevo = openpyxl.load_workbook(io.BytesIO(auditado), data_only=True)[hoja][coord].value
+    assert nuevo == 987654  # el valor recalculado se trasplantó
+    assert openpyxl.load_workbook(io.BytesIO(auditado))[hoja][coord].value == (
+        openpyxl.load_workbook(io.BytesIO(datos))[hoja][coord].value
+    )  # y la fórmula original quedó
+
+
+def test_exportar_revisa_el_destino_antes_de_recalcular_y_sin_libreoffice_da_2(
+    fuera: Path, capsys: pytest.CaptureFixture[str]
+):
+    from aplicacion.oraculo_hoja import LibreOfficeNoDisponibleError
+    from tests.fixtures.libros_empresa import libro_limpio
+
+    fuera.mkdir()
+    origen = fuera / "obra.xlsx"
+    origen.write_bytes(libro_limpio().datos)
+    existente = fuera / "ya.xlsx"
+    existente.write_bytes(b"x")
+    espia = _Espia()
+    comun = ["--recalcular", "--fecha", "2026-10-13", "--raiz-repo", str(fuera.parent / "repo")]
+    with pytest.raises(FileExistsError):
+        m.main(["exportar", str(origen), "--salida", str(existente), *comun], recalculador=espia)
+    assert espia.llamadas == []  # no recalculó para después negarse a escribir
+
+    class _Sin:
+        def recalcular(self, datos: bytes, nombre: str) -> bytes:
+            raise LibreOfficeNoDisponibleError("No se encontró LibreOffice (soffice).")
+
+    codigo = m.main(["exportar", str(origen), "--salida", str(fuera / "n.xlsx"), *comun],
+                    recalculador=_Sin())  # fmt: skip
+    assert codigo == 2
+    assert "LibreOffice" in capsys.readouterr().out

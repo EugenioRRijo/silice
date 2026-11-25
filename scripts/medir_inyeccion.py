@@ -52,13 +52,14 @@ from scripts.inyector_fallas import (  # noqa: E402
 )
 from scripts.medir_auditoria_libro import (  # noqa: E402
     Sembrado,
+    _celda,
     _destino_seguro,
     _no_aplica,
     causas_de_hallazgos,
     criterio_de_fracaso,
-    decimal_coma,
     deteccion,
     intervalo_wilson,
+    porcentaje_de,
 )
 
 
@@ -78,7 +79,8 @@ def _comprobar_cantidad(pedidas: int, sembradas: int, permitir_menos: bool) -> N
 
 
 def _clave(h) -> tuple[str, tuple[str, ...]]:
-    return h.regla, tuple(str(c) for c in h.origen_ids)
+    """Regla y celdas de origen normalizadas (comillas, `$`, mayúsculas) y ordenadas."""
+    return h.regla, tuple(sorted(_celda(str(c)) for c in h.origen_ids))
 
 
 def hallazgos_nuevos(base: Sequence, auditados: Sequence) -> list:
@@ -129,8 +131,7 @@ def resumen_pantalla(
     """Resumen legible en español con coma decimal, solo en caracteres cp1252."""
     total = len(inyecciones)
     detectadas = sum(1 for inj in inyecciones if detectado_por.get(inj.numero) is not None)
-    tasa = (detectadas / total * 100.0) if total else 0.0
-    pct = f"{decimal_coma(tasa, 1)} %"
+    pct = porcentaje_de(detectadas, total)
     lineas = [f"Detectó {detectadas} de {total} fallas inyectadas ({pct})"]
     lineas += _bloque_cifras(detectadas, total, oficial=True, previos=previos)
     for inj in inyecciones:
@@ -326,16 +327,16 @@ def ejecutar_mutantes(
     }  # fmt: skip
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(json.dumps(carga, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    tasa = detectadas / len(mutantes) * 100.0 if mutantes else 0.0
     lineas = [f"Detectó {detectadas} de {len(mutantes)} fallas inyectadas una por vez "
-              f"({decimal_coma(tasa, 1)} %)"]  # fmt: skip
+              f"({porcentaje_de(detectadas, len(mutantes))})"]  # fmt: skip
     if rechazados:
         lineas.append(f"Sílice rechazó {rechazados} libros mutantes: se cuentan aparte, no como "
                       "detectados.")  # fmt: skip
     lineas += _bloque_cifras(detectadas, len(mutantes), oficial=False)
     for m in mutantes:
         if not m["detectada"]:
-            lineas.append(f"- Escapada #{m['numero']} ({m['categoria']}, {m['operacion']}): "
+            rotulo = "Rechazada" if m["rechazado"] else "Escapada"
+            lineas.append(f"- {rotulo} #{m['numero']} ({m['categoria']}, {m['operacion']}): "
                           f"{m['hoja']}!{m['celda']}")  # fmt: skip
     lineas.append(f"Informe JSON: {destino}")
     return destino, "\n".join(lineas)

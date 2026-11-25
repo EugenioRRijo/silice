@@ -281,3 +281,21 @@ def test_main_devuelve_3_con_menos_fallas_salvo_permitir_menos(
     assert mi.main([*comun, "--salida", str(salida)]) == 3
     assert "pidieron 5000" in capsys.readouterr().out
     assert mi.main([*comun, "--salida", str(salida), "--permitir-menos"]) == 0
+
+
+def test_el_porcentaje_de_la_pantalla_redondea_half_up_sobre_decimal(tmp_path: Path) -> None:
+    inyecciones = [
+        Inyeccion(i, "PRESUPUESTO", f"P{i}", "TAX-01", "valor_fijo", "1", "2")
+        for i in range(1, 401)
+    ]
+    detectado = {i: (1 if i <= 29 else None) for i in range(1, 401)}
+    texto = mi.resumen_pantalla(inyecciones, detectado, destino=tmp_path / "s.json")
+    assert "Detectó 29 de 400 fallas inyectadas (7,3 %)" in texto  # 7,25 %: mitad hacia arriba
+    vacio = mi.resumen_pantalla([], {}, destino=tmp_path / "s.json")
+    assert "(sin dato)" in vacio
+
+
+def test_la_medicion_automatica_dice_que_cuenta_lo_senalado(tmp_path: Path) -> None:
+    inyecciones = [Inyeccion(1, "PRESUPUESTO", "P1", "TAX-01", "valor_fijo", "1", "2")]
+    texto = mi.resumen_pantalla(inyecciones, {1: 1}, destino=tmp_path / "s.json")
+    assert "Detección < 50 % (señalado por Sílice" in texto
