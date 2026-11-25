@@ -52,3 +52,8 @@ nueva se agrega al final, con su fecha y su primer paso.
 5. **Guardar los precios de los libros auditados** para el estudio de mercado, solo con consentimiento de su dueño.
 
 **Descartado:** llevar Sílice al gremio y armar un índice de precios que compita con MaPreX (riesgo de dispersión).
+6. **(Agregado el 2026-11-24, medición con las herramientas de `ub-mode`.)** Quitar el código duplicado que señala
+   `dryer`: 44 candidatos, 36 idénticos. Uno está en las reglas congeladas: en `reglas_contexto.py`, `_argumentos` y
+   `_partes_concat` son la misma función y solo cambia el separador. No se toca antes de la defensa porque cambiaría la
+   huella de `reglas-congeladas-2026-11-24`. Primer paso: un refactor con las pruebas fijadas antes. Además, `mutator`
+   no corre en este equipo: en Windows crea enlaces simbólicos y necesita el Modo de programador, que decide Eugenio.
