@@ -102,7 +102,8 @@ def test_l5_sumaproducto_con_rangos_de_distinto_tamano():
         }
     )
     assert _firmas(hs) == [("L5", "ERROR", ("RESUMEN!B4", "RESUMEN!B10"), None)]
-    assert "#VALUE!" in hs[0].descripcion
+    # Nombra cada celda con su error, no la hoja (sobreviviente de mutator, 2026-11-25).
+    assert "B4 (#VALUE!), B10 (#VALUE!)" in hs[0].descripcion
 
 
 def test_l5_no_repite_el_ref_que_ya_informa():
@@ -155,6 +156,25 @@ def test_l4_componente_no_nulo_y_otro_en_cero_fuera_del_costo_directo():
         ("L4", "ERROR", ("APU-02!G36", "APU-02!G34"), D("154.28")),
         ("L4", "ADVERTENCIA", ("APU-02!G36", "APU-02!G35"), None),
     ]
+
+
+def test_l4_no_juzga_un_apu_de_plantilla_sin_partida():
+    """Una plantilla sin partida no entra al presupuesto: aunque su CD (G41 = SUM(G37:G39)) deje
+    fuera el transporte (G40, 0,24), L4 no tiene partida que corregir y solo avisa L2.
+    Mata el mutante `p is None and celda_cd is None` de mutator (2026-11-25)."""
+    a1, a2, a3 = APUS_LIMPIOS
+    apus = (a1, a2, a3, con(a1, numero=9, hoja="APU-x", en_presupuesto=False))
+    c = construir_libro(apus, Siembra(parches={"APU-x!G41": (D("11.7325"), "=SUM(G37:G39)")}))
+    hs = reglas_del_libro(leer_libro(c.datos, "sintetico.xlsx"))
+    assert [h.regla for h in hs] == ["L2"]
+
+
+def test_l4_no_juzga_un_costo_directo_que_da_error():
+    """Si el CD da #VALUE!, no hay cifra que comparar con la suma de componentes: lo informa L5
+    y L4 calla. Mata el mutante `celda_cd is None and cd is None` de mutator (2026-11-25)."""
+    hs = _hallazgos(**{"APU-02!G36": ("#VALUE!", '=SUM(G32:G35)/"x"')})
+    assert [h for h in hs if h.regla == "L4"] == []
+    assert ("L5", "ERROR", ("APU-02!G36",), None) in _firmas(hs)
 
 
 def test_l4_costo_directo_sin_formula_no_se_juzga_por_componente():
