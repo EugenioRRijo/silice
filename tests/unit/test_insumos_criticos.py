@@ -45,7 +45,9 @@ def test_pesos_libro_limpio_orden_y_valores_a_mano() -> None:
 def test_pesos_rendimiento_cero_no_aporta_y_cuenta_sin_rendimiento() -> None:
     base = libro_limpio()
     fila_rend = base.filas_apu["APU-01"].rend
-    construido = construir_libro(siembra=Siembra(parches={f"APU-01!F{fila_rend}": (Decimal(0), None)}))
+    construido = construir_libro(
+        siembra=Siembra(parches={f"APU-01!F{fila_rend}": (Decimal(0), None)})
+    )
     libro = leer_libro(construido.datos, "sin_rend.xlsx")
     por_codigo = {p.codigo: p for p in ic.pesos(libro)}
 
@@ -129,9 +131,7 @@ def test_indicadores_frescura_y_regla_sin_fuente(tmp_path: Path) -> None:
     assert ind["insumos_a"] == 4
     assert ind["a_vigentes"] == 2
     assert ind["a_sin_fuente"] == 1
-    assert Decimal(ind["porcentaje_costo_a"]) == (
-        Decimal("2115") / Decimal("2565") * Decimal(100)
-    )
+    assert Decimal(ind["porcentaje_costo_a"]) == (Decimal("2115") / Decimal("2565") * Decimal(100))
 
     por_cod = {item["codigo"]: item for item in datos["insumos"]}
     assert por_cod["MT-03"]["vigente"] == "sin_dato"
