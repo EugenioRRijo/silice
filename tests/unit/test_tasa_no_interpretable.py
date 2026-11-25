@@ -97,3 +97,14 @@ def test_tasa_cli_imprime_tabla_con_porcentajes(
     salida = capsys.readouterr().out
     assert "| Estado | Libros | Porcentaje |" in salida
     assert "50,0 %" in salida
+
+
+@pytest.mark.parametrize("extension", [".xls", ".xlsm", ".xlsb", ".xltm", ".XLSM"])
+def test_formatos_distintos_de_xlsx_cuentan_como_rechazados(tmp_path: Path, extension: str) -> None:
+    carpeta = tmp_path / "lote"
+    carpeta.mkdir()
+    (carpeta / f"obra{extension}").write_bytes(b"\x00\xffno es un libro valido")
+    (carpeta / "notas.txt").write_text("no es un libro", encoding="utf-8")
+
+    resumen = t.medir_carpeta(carpeta, fecha=FECHA)
+    assert (resumen.total, resumen.auditados, resumen.rechazados) == (1, 0, 1)

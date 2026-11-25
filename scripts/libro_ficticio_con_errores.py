@@ -87,6 +87,8 @@ def generar(carpeta: Path, *, raiz_repo: Path = RAIZ) -> tuple[Path, Path]:
 
     carpeta = Path(carpeta)
     libro = _destino_seguro(carpeta / "libro_ficticio_con_errores.xlsx", Path(raiz_repo))
+    _destino_seguro(carpeta / "clave_ficticia.xlsx", Path(raiz_repo))
+    carpeta.mkdir(parents=True, exist_ok=True)  # solo después de comprobar que es seguro
     clave = escribir_clave_vacia(carpeta / "clave_ficticia.xlsx", raiz_repo=Path(raiz_repo))
     libro.write_bytes(construir())
     hoja_libro = openpyxl.load_workbook(clave)
@@ -100,10 +102,9 @@ def generar(carpeta: Path, *, raiz_repo: Path = RAIZ) -> tuple[Path, Path]:
 def main(argv: list[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument("--salida", required=True, help="carpeta fuera del repositorio")
+    analizador.add_argument("--raiz-repo", default=str(RAIZ))
     args = analizador.parse_args(argv)
-    carpeta = Path(args.salida)
-    carpeta.mkdir(parents=True, exist_ok=True)
-    libro, clave = generar(carpeta)
+    libro, clave = generar(Path(args.salida), raiz_repo=Path(args.raiz_repo))
     print(f"Libro ficticio con {len(SIEMBRAS)} errores sembrados: {libro}")
     print(f"Su clave: {clave}")
     return 0

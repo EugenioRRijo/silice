@@ -25,6 +25,7 @@ ARCHIVOS_REGLAS: tuple[Path, ...] = (
     RAIZ / "adapters" / "hoja_empresa" / "reglas.py",
     RAIZ / "adapters" / "hoja_empresa" / "reglas_calculo.py",
     RAIZ / "adapters" / "hoja_empresa" / "reglas_contexto.py",
+    RAIZ / "adapters" / "hoja_empresa" / "umbrales.py",
     RAIZ / "adapters" / "vial" / "reglas.py",
     RAIZ / "adapters" / "vial" / "constantes.py",
     RAIZ / "aplicacion" / "causas_raiz.py",
@@ -53,13 +54,19 @@ def _clave_y_ruta(entrada: Path | str, raiz: Path) -> tuple[str, Path]:
     return ruta.as_posix(), ruta
 
 
+def _huella_lf(ruta: Path) -> str:
+    """SHA-256 del contenido con finales LF: igual en Windows, Linux y en la etiqueta de git."""
+    contenido = ruta.read_bytes().replace(bytes((13, 10)), bytes((10,)))
+    return hashlib.sha256(contenido).hexdigest()
+
+
 def _huellas_reglas() -> dict[str, str]:
     pares: dict[str, str] = {}
     for entrada in ARCHIVOS_REGLAS:
         clave, ruta = _clave_y_ruta(entrada, RAIZ)
         if not ruta.is_file():
             raise FileNotFoundError(f"No existe el archivo de reglas: {ruta}")
-        pares[clave] = hashlib.sha256(ruta.read_bytes()).hexdigest()
+        pares[clave] = _huella_lf(ruta)
     return dict(sorted(pares.items()))
 
 

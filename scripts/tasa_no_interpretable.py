@@ -26,6 +26,8 @@ from adapters.hoja_empresa.modelo import LibroNoInterpretable  # noqa: E402
 from core.verification.texto import formatear_decimal  # noqa: E402
 from fusion.proceso import procesar_libro  # noqa: E402
 
+EXTENSIONES_LIBRO: frozenset[str] = frozenset({".xlsx", ".xls", ".xlsm", ".xlsb", ".xltm"})
+
 _REGLAS_RECHAZO: tuple[tuple[tuple[str, ...], str], ...] = (
     (("no tiene la hoja", "plantilla"), "falta la hoja PRESUPUESTO de la plantilla"),
     (("está dañado o no es de excel",), "archivo dañado o no es un .xlsx válido"),
@@ -103,7 +105,9 @@ def medir_carpeta(
     archivos = sorted(
         ruta
         for ruta in raiz.rglob("*")
-        if ruta.is_file() and ruta.suffix.lower() == ".xlsx" and not ruta.name.startswith("~$")
+        if ruta.is_file()
+        and ruta.suffix.lower() in EXTENSIONES_LIBRO
+        and not ruta.name.startswith("~$")
     )
     auditados = 0
     motivos_rechazo: Counter[str] = Counter()

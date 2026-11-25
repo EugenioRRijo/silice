@@ -113,6 +113,8 @@ class _Celda:
     es_formula: bool
     formula: str | None
     valor: object
+    nombres: frozenset[str] = frozenset()
+    hija_compartida: bool = False
 
 
 def cargar_taxonomia(ruta: Path) -> dict[str, Any]:
@@ -224,15 +226,80 @@ def _rangos(formula: str) -> list[tuple[int, int, str, int, str, int, int, int]]
     return hallados
 
 
+_ERRORES_EXCEL: frozenset[str] = frozenset({
+    "#NULL!",
+    "#DIV/0!",
+    "#VALUE!",
+    "#REF!",
+    "#NAME?",
+    "#NUM!",
+    "#N/A",
+    "#GETTING_DATA",
+    "#SPILL!",
+    "#CALC!",
+    "#FIELD!",
+    "#UNKNOWN!",
+    "#BLOCKED!",
+    "#CONNECT!",
+})
+_COLUMNAS_NUMERACION: frozenset[str] = frozenset({"A", "B"})
+_MAX_NUMERACION = 9999
+
+
+def _es_error(celda: _Celda) -> bool:
+    """Celda cuyo valor ya es un error de Excel o cuya fórmula contiene `#REF!`."""
+    if isinstance(celda.valor, str) and celda.valor.strip().upper() in _ERRORES_EXCEL:
+        return True
+    return celda.formula is not None and "#REF!" in celda.formula.upper()
+
+
+def _es_numeracion(celda: _Celda) -> bool:
+    """Entero pequeño en las columnas A o B: numeración de partidas o ítems, no un dato."""
+    columna = celda.coord.rstrip("0123456789").upper()
+    valor = celda.valor
+    if columna not in _COLUMNAS_NUMERACION or not _es_numero_finito(valor):
+        return False
+    numero = Decimal(str(valor))
+    return numero == numero.to_integral_value() and 0 < abs(numero) <= _MAX_NUMERACION
+
+
+def _refs_desplazables(celda: _Celda) -> list[tuple[int, int, str, int]]:
+    """Referencias de la fórmula que se pueden desplazar sin otro daño en el libro."""
+    assert celda.formula is not None
+    propia = celda.coord.upper()
+    validas: list[tuple[int, int, str, int]] = []
+    for ref in _refs_celda(celda.formula):
+        _ini, _fin, col_pref, fila = ref
+        columna = col_pref.replace("$", "").upper()
+        if f"{columna}{fila}" in celda.nombres:
+            continue
+        nueva_fila = fila + 1 if fila < _MAX_FILA_EXCEL else fila - 1
+        if f"{columna}{nueva_fila}" == propia:
+            continue
+        validas.append(ref)
+    return validas
+
+
 def _es_elegible(celda: _Celda, operacion: str) -> bool:
+    if _es_error(celda):
+        return False
+    if celda.hija_compartida and operacion != "valor_fijo":
+        return False
     if operacion == "valor_fijo":
         return celda.es_formula and celda.formula is not None and _es_numero_finito(celda.valor)
     if operacion == "referencia_desplazada":
-        return celda.es_formula and celda.formula is not None and bool(_refs_celda(celda.formula))
+        return (
+            celda.es_formula and celda.formula is not None and bool(_refs_desplazables(celda))
+        )
     if operacion == "rango_recortado":
         return celda.es_formula and celda.formula is not None and bool(_rangos(celda.formula))
     if operacion in ("signo", "escala"):
-        return not celda.es_formula and _es_numero_finito(celda.valor) and celda.valor != 0
+        return (
+            not celda.es_formula
+            and _es_numero_finito(celda.valor)
+            and celda.valor != 0
+            and not _es_numeracion(celda)
+        )
     if operacion == "formula_borrada":
         return celda.es_formula and celda.formula is not None
     return False
@@ -251,9 +318,13 @@ def _aplicar_operacion(
         return celda.formula, nuevo, "numero", nuevo
     if op == "referencia_desplazada":
         assert celda.formula is not None
-        ini, fin, col_pref, fila = rng.choice(_refs_celda(celda.formula))
+        _ini, _fin, col_pref, fila = rng.choice(_refs_desplazables(celda))
         nueva_fila = fila + 1 if fila < _MAX_FILA_EXCEL else fila - 1
-        nueva = f"{celda.formula[:ini]}{col_pref}{nueva_fila}{celda.formula[fin:]}"
+        nueva = celda.formula
+        # Todas las apariciones de la referencia, de atrás hacia adelante para no mover índices.
+        for ini, fin, c, f in reversed(_refs_celda(celda.formula)):
+            if (c, f) == (col_pref, fila):
+                nueva = f"{nueva[:ini]}{col_pref}{nueva_fila}{nueva[fin:]}"
         return celda.formula, nueva, "formula", nueva
     if op == "rango_recortado":
         assert celda.formula is not None
@@ -321,8 +392,28 @@ def _mapa_hojas(paquete: Mapping[str, bytes]) -> dict[str, str]:
     return mapa
 
 
-def _celdas_formula_especial(xml: str) -> set[str]:
+def _nombres_definidos(paquete: Mapping[str, bytes]) -> frozenset[str]:
+    """Nombres definidos del libro (en mayúsculas), de ámbito de libro o de hoja."""
+    crudo = paquete.get("xl/workbook.xml", b"")
+    if not crudo:
+        return frozenset()
+    raiz = xml_seguro(crudo, forbid_dtd=True)
+    return frozenset(
+        nombre.upper()
+        for el in raiz.iter()
+        if el.tag.rsplit("}", 1)[-1] == "definedName" and (nombre := el.attrib.get("name"))
+    )
+
+
+def _celdas_formula_especial(xml: str) -> tuple[set[str], set[str]]:
+    """Devuelve `(omitir, hijas_compartidas)`.
+
+    Se omiten las fórmulas matriciales, las compartidas maestras (llevan `ref=`) y las vacías
+    que no son hijas compartidas. Las hijas compartidas se devuelven aparte: solo admiten
+    `valor_fijo`, que las reemplaza por un número sin tocar a la maestra.
+    """
     especiales: set[str] = set()
+    hijas: set[str] = set()
     for m in _CELDA_XML.finditer(xml):
         cuerpo = m.group("cuerpo") or ""
         if not cuerpo:
@@ -331,11 +422,14 @@ def _celdas_formula_especial(xml: str) -> set[str]:
         if mf is None:
             continue
         tipo = _attr(mf.group("fattrs"), "t")
-        if tipo in ("shared", "array") or not (mf.group("ftext") or "").strip():
-            coord = _attr(m.group("attrs"), "r")
-            if coord:
-                especiales.add(coord)
-    return especiales
+        coord = _attr(m.group("attrs"), "r")
+        if not coord:
+            continue
+        if tipo == "shared" and _attr(mf.group("fattrs"), "ref") is None:
+            hijas.add(coord)
+        elif tipo in ("shared", "array") or not (mf.group("ftext") or "").strip():
+            especiales.add(coord)
+    return especiales, hijas
 
 
 def _editar_celda_xml(xml: str, coord: str, modo: str, payload: str) -> str:
@@ -392,6 +486,7 @@ def _leer_celdas(
         for hoja, parte in mapa.items()
         if parte in paquete
     }
+    nombres = _nombres_definidos(paquete)
     wb_f = openpyxl.load_workbook(io.BytesIO(datos), read_only=True, data_only=False)
     wb_v = openpyxl.load_workbook(io.BytesIO(datos), read_only=True, data_only=True)
     celdas: list[_Celda] = []
@@ -406,7 +501,7 @@ def _leer_celdas(
                 for cell in fila:
                     if cell.value is not None:
                         valores[(cell.row, cell.column)] = cell.value
-            omitir = especiales.get(hoja, set())
+            omitir, hijas = especiales.get(hoja, (set(), set()))
             for fila in ws_f.iter_rows(values_only=False):
                 for cell in fila:
                     val = cell.value
@@ -425,6 +520,8 @@ def _leer_celdas(
                             es_formula=es_formula,
                             formula=val if es_formula and isinstance(val, str) else None,
                             valor=valores.get((cell.row, cell.column)),
+                            nombres=nombres,
+                            hija_compartida=coord in hijas,
                         )
                     )
     finally:
@@ -522,6 +619,22 @@ def generar(
     raiz_repo: Path = RAIZ,
 ) -> tuple[Path, Path]:
     """Escribe fuera del repositorio el libro inyectado y su clave."""
+    libro, clave, _sembradas = _generar(
+        origen, taxonomia_ruta, n=n, semilla=semilla, salida=salida, raiz_repo=raiz_repo
+    )
+    return libro, clave
+
+
+def _generar(
+    origen: Path,
+    taxonomia_ruta: Path,
+    *,
+    n: int,
+    semilla: int,
+    salida: Path,
+    raiz_repo: Path = RAIZ,
+) -> tuple[Path, Path, int]:
+    """Como `generar`, pero devuelve además cuántas fallas se sembraron."""
     origen = Path(origen)
     salida = Path(salida)
     raiz_repo = Path(raiz_repo)
@@ -545,7 +658,7 @@ def generar(
         _texto(hoja.cell(row=fila, column=3), f"{inj.categoria}: {nombre}")
         _texto(hoja.cell(row=fila, column=4), f"{inj.antes} → {inj.despues}")
     wb_clave.save(ruta_clave)
-    return ruta_libro, ruta_clave
+    return ruta_libro, ruta_clave, len(inyecciones)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -556,8 +669,13 @@ def main(argv: list[str] | None = None) -> int:
     analizador.add_argument("--semilla", type=int, default=7, help="semilla determinista")
     analizador.add_argument("--salida", required=True, help="carpeta fuera del repositorio")
     analizador.add_argument("--raiz-repo", default=str(RAIZ))
+    analizador.add_argument(
+        "--permitir-menos",
+        action="store_true",
+        help="no fallar si se siembran menos fallas que --n",
+    )
     args = analizador.parse_args(argv)
-    libro, clave = generar(
+    libro, clave, sembradas = _generar(
         Path(args.libro),
         Path(args.taxonomia),
         n=args.n,
@@ -567,6 +685,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"Libro inyectado: {libro}")
     print(f"Clave de la siembra: {clave}")
+    if sembradas < args.n and not args.permitir_menos:
+        print(
+            f"Error: se sembraron {sembradas} fallas y se pidieron {args.n}. El libro y la "
+            "clave quedan escritos con las sembradas; use --permitir-menos si es aceptable.",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 

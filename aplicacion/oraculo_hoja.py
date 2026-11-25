@@ -7,11 +7,13 @@ original frente al valor recalculado. No toca `core/`.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import math
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import warnings
 from collections.abc import Mapping
@@ -139,6 +141,25 @@ def buscar_libreoffice(entorno: Mapping[str, str] | None = None) -> Path:
     )
 
 
+_ES_WINDOWS = sys.platform == "win32"
+
+
+def _terminar_arbol(proceso: subprocess.Popen[str]) -> None:
+    """Termina el proceso y sus hijos (soffice.bin sobrevive al lanzador en Windows)."""
+    if _ES_WINDOWS:
+        with contextlib.suppress(OSError, subprocess.SubprocessError):
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proceso.pid)],
+                capture_output=True,
+                check=False,
+                timeout=30,
+            )
+    with contextlib.suppress(OSError):
+        proceso.kill()
+    with contextlib.suppress(OSError, subprocess.SubprocessError):
+        proceso.communicate(timeout=10)
+
+
 class RecalculadorLibreOffice:
     """Recalcula libros `.xlsx` mediante LibreOffice Calc sin interfaz gráfica."""
 
@@ -212,27 +233,34 @@ class RecalculadorLibreOffice:
                 str(carpeta_salida),
                 str(entrada),
             ]
-            try:
-                proceso = subprocess.run(
-                    orden,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=self._tiempo_maximo,
-                )
-            except subprocess.TimeoutExpired as exc:
-                raise OraculoError(
-                    f"LibreOffice superó el tiempo máximo de {self._tiempo_maximo} s al "
-                    f"recalcular «{nombre}»."
-                ) from exc
             salida = carpeta_salida / "libro.xlsx"
-            if proceso.returncode != 0 or not salida.is_file():
-                detalle = (proceso.stderr or proceso.stdout).strip()
-                raise OraculoError(
-                    f"LibreOffice no pudo recalcular «{nombre}» (código {proceso.returncode}): "
-                    f"{detalle}"
+            try:
+                proceso = subprocess.Popen(
+                    orden,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
                 )
-            return salida.read_bytes()
+                try:
+                    texto_salida, texto_error = proceso.communicate(timeout=self._tiempo_maximo)
+                except subprocess.TimeoutExpired as exc:
+                    _terminar_arbol(proceso)
+                    raise OraculoError(
+                        f"LibreOffice superó el tiempo máximo de {self._tiempo_maximo} s al "
+                        f"recalcular «{nombre}»."
+                    ) from exc
+                if proceso.returncode != 0 or not salida.is_file():
+                    detalle = (texto_error or texto_salida).strip()
+                    raise OraculoError(
+                        f"LibreOffice no pudo recalcular «{nombre}» "
+                        f"(código {proceso.returncode}): {detalle}"
+                    )
+                return salida.read_bytes()
+            finally:
+                # En Windows soffice.bin puede seguir vivo y retener la copia del libro.
+                for archivo in (entrada, salida):
+                    with contextlib.suppress(OSError):
+                        archivo.unlink()
 
 
 def _abrir_solo_lectura(datos: bytes, nombre: str, *, data_only: bool) -> Any:
