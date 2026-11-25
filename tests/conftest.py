@@ -15,6 +15,7 @@ import pytest
 
 from aplicacion.entorno import ALIAS_ANTERIORES, VARIABLE_CASO, VARIABLE_MODO_ENTREGA
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.trozos import VARIABLE_TROZO, leer_trozo
 
 #: La suite corre sin red: Hugging Face lee esta variable al importarse y la guardia de red
 #: bloquearia cualquier descarga. El modelo se baja antes, una vez, con
@@ -206,3 +207,15 @@ def _guardia_de_red() -> Iterator[None]:
     mensaje = veredicto_de_la_guardia(INTENTOS_BLOQUEADOS)
     if mensaje is not None:
         pytest.fail(mensaje, pytrace=False)
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Con `SILICE_TROZO=k/N` (la CI reparte Windows en 4 máquinas) quedan solo las pruebas de ese
+    trozo; las demás salen deseleccionadas, no omitidas (`tests/fixtures/trozos.py`)."""
+    trozo = leer_trozo(os.environ.get(VARIABLE_TROZO))
+    if trozo is None:
+        return
+    fuera = [item for item in items if not trozo.incluye(item.nodeid)]
+    if fuera:
+        config.hook.pytest_deselected(items=fuera)
+        items[:] = [item for item in items if trozo.incluye(item.nodeid)]
