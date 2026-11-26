@@ -58,6 +58,12 @@ describe("App", () => {
       if (ruta.startsWith("/v1/auditorias-libro")) return json([]);
       if (ruta === "/v1/acerca") return json({ detalle: "No encontrado." }, 404);
       if (ruta === "/v1/sesion/preferencias" && metodo === "PUT") return new Response(null, { status: 204 });
+      // El servidor real contesta estas dos con sesión: con el 401 de abajo, el cliente daría la sesión por perdida
+      // y borraría el token anti-CSRF (alPerderSesion, B0), y el DELETE de «Salir» saldría sin él.
+      if (ruta === "/v1/modulos" && metodo === "GET") return json({ modulos: [] });
+      if (ruta === "/v1/primer-arranque" && metodo === "GET") {
+        return json({ sin_cuentas: false, archivo_presente: true, modo: "producto", politica: { minimo: 10, maximo: 128 } });
+      }
       return json({ detalle: "Sin sesión." }, 401);
     });
   });

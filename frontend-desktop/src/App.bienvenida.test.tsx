@@ -66,6 +66,9 @@ describe("App: primer arranque y recuperar acceso", () => {
       if (ruta === "/v1/casos") return json({ actual: { nombre: "a", ruta_relativa: "data/a.db" }, casos: [] });
       if (ruta === "/v1/proyectos") return json([]);
       if (ruta === "/v1/produccion/existencias") return json([]);
+      // El servidor real contesta los módulos con sesión: con el 401 de abajo, el cliente daría la sesión por perdida y
+      // borraría el token anti-CSRF (alPerderSesion, B0).
+      if (ruta === "/v1/modulos" && metodo === "GET") return json({ modulos: [] });
       // Lo que pide el marco (las obras de la barra lateral, el tema) y la mesa de Pendientes: sin esto caerian en el 401
       // de abajo y la sesion se daria por vencida.
       if (ruta === "/v1/obras/todas") return json({ carpeta_actual: null, obras: [] });
