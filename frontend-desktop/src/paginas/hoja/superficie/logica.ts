@@ -314,7 +314,9 @@ export function fraseDeRespuesta(
   }
 
   const moneda = vista.moneda.trim();
-  const monto = moneda !== "" ? `${vista.total.texto} ${moneda}` : vista.total.texto;
+  // El servidor manda el total con punto decimal («2703.86»); la frase lo dice en es-VE, como el resto de la Hoja.
+  const total = formatoEsVe(vista.total.texto);
+  const monto = moneda !== "" ? `${total} ${moneda}` : total;
   const nPartidas = vista.filas.length;
   const partidas = nPartidas === 1 ? "1 partida" : `${cifra(nPartidas)} partidas`;
   const encabezado = `El presupuesto suma ${monto} sin IVA en ${partidas}.`;

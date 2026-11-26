@@ -34,7 +34,7 @@ function crearVista(parcial: Partial<VistaPresupuesto> = {}): VistaPresupuesto {
       crearFila({ clave: "CIM-01|manual", partida: "CIM-01", descripcion: "Excavación a mano" }),
       crearFila({ clave: "MUR-02|manual", partida: "MUR-02", descripcion: "Muro de bloques" }),
     ],
-    total: parcial.total ?? { texto: "1.234.567,89", exacto: "1234567.89" },
+    total: parcial.total ?? { texto: "1234567.89", exacto: "1234567.89" },
     moneda: parcial.moneda ?? "Bs",
     vacio_mensaje: parcial.vacio_mensaje ?? null,
     impuestos: parcial.impuestos ?? {
@@ -316,7 +316,7 @@ describe("fraseDeRespuesta", () => {
   it("escribe la frase con 0 problemas copiando total y sin_hallazgos del servidor", () => {
     const vista = crearVista({
       filas: doceFilas,
-      total: { texto: "1.234.567,89", exacto: "1234567.89" },
+      total: { texto: "1234567.89", exacto: "1234567.89" },
       moneda: "Bs",
     });
     const informe = crearInforme({
@@ -332,7 +332,7 @@ describe("fraseDeRespuesta", () => {
   it("no cuenta los hallazgos INFO como problemas en la frase de respuesta", () => {
     const vista = crearVista({
       filas: doceFilas,
-      total: { texto: "1.234.567,89", exacto: "1234567.89" },
+      total: { texto: "1234567.89", exacto: "1234567.89" },
       moneda: "Bs",
     });
     const informe = crearInforme({
@@ -355,7 +355,7 @@ describe("fraseDeRespuesta", () => {
   it("escribe la frase en singular cuando hay 1 problema en 1 partida o 1 problema sin fila", () => {
     const vistaUna = crearVista({
       filas: [crearFila({ clave: "CIM-01|manual", partida: "CIM-01" })],
-      total: { texto: "500,25", exacto: "500.25" },
+      total: { texto: "500.25", exacto: "500.25" },
       moneda: "Bs",
     });
     const unErrorEnFila = crearInforme({
@@ -376,7 +376,7 @@ describe("fraseDeRespuesta", () => {
   it("escribe la frase con N problemas desglosando por severidad y formateando conteos en es-VE", () => {
     const vista = crearVista({
       filas: doceFilas,
-      total: { texto: "1.234.567,89", exacto: "1234567.89" },
+      total: { texto: "1234567.89", exacto: "1234567.89" },
       moneda: "Bs",
     });
     const informe = crearInforme({
@@ -420,7 +420,7 @@ describe("fraseDeRespuesta", () => {
 
     const vista = crearVista({
       filas: doceFilas,
-      total: { texto: "1.234.567,89", exacto: "1234567.89" },
+      total: { texto: "1234567.89", exacto: "1234567.89" },
       moneda: "Bs",
     });
     expect(fraseDeRespuesta(vista, { estado: "cargando" })).toBe(
