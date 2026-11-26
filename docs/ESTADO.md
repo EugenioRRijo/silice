@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-24 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-25 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -10,6 +10,12 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
 > mide la auditoría sin circularidad ([plan](planes/2026-11-23-plan-auditoria-no-circular.md)). #142 y #143 fueron lo
 > último (fusionados el 2026-11-24). Los huecos de reglas que halló la medición se cierran antes de la etiqueta del
 > congelamiento (Fase 2; §4).
+
+> **Reestructuración del front antes de medir (2026-11-25, decisión de Eugenio):** se aplica la Propuesta B en sus
+> fases B0, B1, B4 y B2 ([propuesta](planes/2026-11-25-propuesta-ux-ui.md),
+> [acta](bitacora/2026-11-25-acta-reestructuracion-front.md)). Fecha tope: 2026-12-16, con la etiqueta `medicion-v1`;
+> la prueba con personas se hace sobre esa versión y nada cambia entre sesiones. `core/`, los archivos sellados por
+> `reglas-congeladas-2026-11-24` y `aplicacion/hoja.py` no cambian. Para todo lo demás sigue el congelamiento.
 
 ## 1. Qué hay en `main`
 

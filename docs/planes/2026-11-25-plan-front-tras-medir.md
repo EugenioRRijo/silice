@@ -6,6 +6,10 @@ Auditoría; el resto de las páginas; y la base común. Se auditó con los princ
 *modern-web-guidance*, leída desde el disco y sin telemetría. Salieron unos 170 hallazgos con archivo:línea; los
 informes completos (A a E) están en [auditoria-front-2026-11-25/](auditoria-front-2026-11-25/).
 
+> **Enmienda del 2026-11-25:** Eugenio decidió reestructurar el front **antes** de medir (Propuesta B, fases B0, B1,
+> B4 y B2; fecha tope 2026-12-16). Lo que sigue dice lo que se planeaba antes de esa decisión. Manda el
+> [acta](../bitacora/2026-11-25-acta-reestructuracion-front.md).
+
 **Cuándo se aplica.** Después de la prueba con personas: SUS, comprensión de las 6 alertas y libros nuevos. El front
 es parte de lo que se mide, y el congelamiento del consejo del 2026-11-24 lo incluye. Excepción: el punto 0.
 
