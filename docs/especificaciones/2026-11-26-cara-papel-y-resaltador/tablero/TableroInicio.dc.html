@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tablero de inicio</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;display=swap" rel="stylesheet">
+<style>
+  body{margin:0}
+  .hm{--f-ui:'Instrument Sans',system-ui,sans-serif;--f-tit:'Newsreader',Georgia,serif;--ease:cubic-bezier(.22,1,.36,1);
+    min-height:1100px;display:flex;flex-direction:column;background:var(--fondo);color:var(--t1);
+    font-family:var(--f-ui);font-size:14px;line-height:20px;font-weight:400}
+  .hm *{box-sizing:border-box}
+  .hm a{color:var(--t1);text-underline-offset:3px}
+  .hm button{font:inherit;cursor:pointer}
+  .hm :focus-visible{outline:2px solid #C9A227;outline-offset:2px}
+  .hm ::selection{background:var(--sel);color:var(--t1)}
+  .oc{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .ic{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  /* barra de la empresa */
+  .emp{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;min-height:48px;padding:0 32px;background:var(--barra);color:var(--barra-t1)}
+  .emp .marca{font-weight:600;font-size:16px;color:var(--barra-t1);text-decoration:none}
+  .emp nav{display:flex;flex-wrap:wrap;gap:20px}
+  .emp nav a{color:var(--barra-t2);text-decoration:none}
+  .emp nav a[aria-current]{color:var(--barra-t1)}
+  .emp .btn-res{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:6px;border:1px solid #C9A227;background:#F6D55C;color:#1F1B16;font-weight:500;text-decoration:none}
+  .hm .emp a.btn-res{color:#1F1B16}
+  .emp .buscar{display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--barra-linea);background:transparent;color:var(--barra-t2)}
+  .emp kbd{font-family:var(--f-ui);font-size:12px;padding:0 4px;border:1px solid var(--barra-linea);border-radius:4px}
+  .emp .yo{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--barra-linea);color:var(--barra-t1);font-size:12px;font-weight:500;text-decoration:none}
+  .hm .emp a.yo{color:var(--barra-t1)}
+  .hm .emp a.marca{color:var(--barra-t1)}
+  .hm .emp nav a{color:var(--barra-t2)}
+  .hm .emp nav a[aria-current]{color:var(--barra-t1)}
+  /* cuerpo */
+  .cuerpo2{width:100%;max-width:1440px;margin:0 auto;padding:24px 32px 40px}
+  .sobre{font-size:13px;color:var(--t2)}
+  .cuerpo2 h1{margin:4px 0 0;font-family:var(--f-tit);font-size:36px;line-height:40px;font-weight:400;letter-spacing:-0.01em;color:var(--t1)}
+  .resumen{margin:8px 0 0;max-width:110ch;color:var(--t2)}
+  .meta{font-size:12px;line-height:16px;color:var(--t2)}
+  /* filtros: una sola fila arriba de todo lo que acotan */
+  .filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px 32px;margin:24px 0 0;padding-bottom:16px;border-bottom:1px solid var(--linea)}
+  .filtros .grupo{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .filtros .grupo>.meta{margin-right:4px}
+  .filtros button{height:32px;padding:0 12px;border-radius:6px;border:1px solid var(--linea);background:var(--hoja);color:var(--t1);transition:background-color .3s var(--ease),color .3s var(--ease),border-color .3s var(--ease)}
+  .filtros button:hover{background:var(--alzado)}
+  .filtros button[aria-pressed=true]{background:var(--t1);border-color:var(--t1);color:var(--hoja)}
+  /* tarjetas */
+  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:20px}
+  .tarjeta{padding:16px;border:1px solid var(--linea);border-radius:12px;background:var(--hoja)}
+  .tarjeta .et{display:block;font-size:13px;color:var(--t2)}
+  .tarjeta .cifra{display:block;margin-top:8px;font-size:28px;line-height:32px;font-weight:500;color:var(--t1)}
+  .tarjeta .cmp{display:block;margin-top:4px;font-size:12px;line-height:16px;color:var(--t2)}
+  .fase0 .cifra,.fase0 .cmp{opacity:.3;transition:none}
+  .fase1 .cifra,.fase1 .cmp{opacity:1;transition:opacity .3s var(--ease)}
+  /* gráficos */
+  .fila-g{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;align-items:flex-start}
+  .col-ppal{flex:999 1 560px;min-width:0}
+  .col-lat{flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:16px}
+  .gcard{padding:16px 20px 12px;border:1px solid var(--linea);border-radius:12px;background:var(--hoja)}
+  .gcard h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+  .gcard .sub2{margin:2px 0 0;font-size:13px;color:var(--t2)}
+  .graf{margin-top:8px;border-radius:8px}
+  .grafica{display:block;width:100%;height:auto}
+  .grafica text{font-family:var(--f-ui);font-variant-numeric:tabular-nums}
+  .g-cuad{stroke:var(--linea);stroke-width:1}
+  .g-eje{stroke:var(--t3);stroke-width:1}
+  .g-cruz{stroke:var(--t3);stroke-width:1}
+  .g-txt{fill:var(--t2);font-size:12px}
+  .g-nom{fill:var(--t1);font-size:13px}
+  .g-fuerte{fill:var(--t1);font-size:13px;font-weight:600}
+  .g-tit{fill:var(--t2);font-size:12px}
+  .g-ref{stroke:var(--t3);stroke-width:1.5;stroke-dasharray:4 4;fill:none}
+  .g-s1{stroke:var(--s1);fill:none;stroke-width:2}
+  .g-s1f{fill:var(--s1)}
+  .g-neutf{fill:var(--t3)}
+  .g-neut{fill:var(--neutro)}
+  .g-err{fill:var(--error)}
+  .g-adv{fill:var(--adv)}
+  .g-punto{stroke:var(--hoja);stroke-width:2}
+  .g-globo{fill:var(--hoja);stroke:var(--linea);stroke-width:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.14))}
+  .hueco{fill:var(--s1);opacity:0}
+  .fase1 .hueco{opacity:.12;transition:opacity .4s var(--ease) .7s}
+  .dibu{stroke-dasharray:1 2}
+  .fase1 .dibu{transition:stroke-dashoffset .9s var(--ease) .1s}
+  .fase0 .dibu{transition:none}
+  .fin{transition:opacity .3s var(--ease)}
+  .fila{transition:opacity .3s var(--ease)}
+  .fondo{fill:var(--alzado);opacity:0;transition:opacity .3s var(--ease)}
+  .fondo.hov{opacity:1}
+  .fondo.sel{fill:var(--sel);opacity:1}
+  .barra-h{transform-box:fill-box;transform-origin:0 50%;transition:transform .8s var(--ease)}
+  .col-v{transform-box:fill-box;transform-origin:50% 100%;transition:transform .8s var(--ease)}
+  .rotulo{transition:opacity .4s var(--ease) .5s}
+  .leyenda{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:12px;line-height:16px;color:var(--t2)}
+  .leyenda i{display:inline-block;width:12px;height:2px;margin-right:6px;vertical-align:middle;background:currentColor}
+  .leyenda .l1 i{background:var(--s1)}
+  .leyenda .lr i{background:none;border-top:1.5px dashed var(--t3);height:0}
+  .leyenda .lh i{height:8px;background:var(--s1);opacity:.3;border-radius:2px;vertical-align:-1px}
+  .leyenda .sw{width:10px;height:10px;border-radius:2px;vertical-align:-1px}
+  .leyenda .sw.n{background:var(--neutro)}
+  .leyenda .sw.a{background:var(--s1)}
+  .leyenda .sw.e{background:var(--error)}
+  .leyenda .sw.d{background:var(--adv)}
+  .vertabla{margin-top:8px}
+  .vertabla summary{cursor:pointer;font-size:13px;color:var(--t2)}
+  .tabla{margin-top:8px;border:1px solid var(--linea);border-radius:8px;overflow-x:auto;font-size:13px}
+  .tr{display:grid;gap:8px;min-width:420px;padding:8px 12px;border-top:1px solid var(--linea)}
+  .tr.th{border-top:0;font-weight:500;color:var(--t2)}
+  .tr .n{text-align:right;font-variant-numeric:tabular-nums}
+  .tr.tot{font-weight:500}
+  .ficticio{margin-top:16px;font-size:12px;line-height:16px;color:var(--t2)}
+  @media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</helmet>
+
+<div class="hm" style="{{ vars }}">
+
+  <header class="emp">
+    <a href="#" class="marca">Sílice</a>
+    <nav aria-label="Espacios de la empresa">
+      <a href="#" aria-current="page">Obras</a>
+      <a href="#">Auditar un libro</a>
+      <a href="#">Precios y catálogo</a>
+      <a href="#">Producción</a>
+    </nav>
+    <span style="flex-grow:1"></span>
+    <a href="#" class="btn-res"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Nueva obra</a>
+    <button type="button" class="buscar"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>Buscar <kbd>Ctrl K</kbd></button>
+    <a href="#" class="yo" aria-label="Cuenta de Eugenio">EP</a>
+  </header>
+
+  <main class="cuerpo2">
+    <span class="sobre">Inicio · Empresa</span>
+    <h1>Tablero de inicio</h1>
+    <p class="resumen" aria-live="polite">{{ resumen }}</p>
+
+    <div class="filtros" role="region" aria-label="Filtros del tablero">
+      <div class="grupo" role="group" aria-label="Período">
+        <span class="meta">Período</span>
+        <sc-for list="{{ periodos }}" as="p" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{ p.pressed }}" onClick="{{ p.pick }}">{{ p.txt }}</button>
+        </sc-for>
+      </div>
+      <div class="grupo" role="group" aria-label="Obra">
+        <span class="meta">Obra</span>
+        <sc-for list="{{ obrasF }}" as="o" hint-placeholder-count="5">
+          <button type="button" aria-pressed="{{ o.pressed }}" onClick="{{ o.pick }}">{{ o.txt }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div class="tarjetas fase{{ fase }}">
+      <sc-for list="{{ tarjetas }}" as="c" hint-placeholder-count="4">
+        <div class="tarjeta">
+          <span class="et">{{ c.et }}</span>
+          <span class="cifra">{{ c.cifra }}</span>
+          <span class="cmp">{{ c.cmp }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div class="fila-g">
+
+      <!-- Gráfico 1: avance planificado frente a real -->
+      <section class="gcard col-ppal">
+        <h2>Avance planificado y real</h2>
+        <p class="sub2">{{ g1.subtitulo }}</p>
+        <div class="graf fase{{ fase }}" tabIndex="0" role="group" aria-label="Gráfico de avance. Use las flechas para recorrer las quincenas." onKeyDown="{{ g1.tecla }}" onBlur="{{ salir1 }}">
+          <svg class="grafica" viewBox="0 0 880 372" role="img" aria-label="{{ g1.etiqueta }}" onMouseLeave="{{ salir1 }}">
+            <sc-for list="{{ g1.rejilla }}" as="t" hint-placeholder-count="5">
+              <line class="g-cuad" x1="48" x2="816" y1="{{ t.y }}" y2="{{ t.y }}"/>
+              <text class="g-txt" x="40" y="{{ t.ty }}" text-anchor="end">{{ t.txt }}</text>
+            </sc-for>
+            <sc-for list="{{ g1.ejeX }}" as="t" hint-placeholder-count="5">
+              <text class="g-txt" x="{{ t.x }}" y="344" text-anchor="middle">{{ t.txt }}</text>
+            </sc-for>
+            <path class="hueco" d="{{ g1.dHueco }}"/>
+            <path class="g-ref" d="{{ g1.dPlan }}" stroke-linejoin="round"/>
+            <path class="g-s1 dibu" pathLength="1" style="stroke-dashoffset:{{ g1.off }}" d="{{ g1.dReal }}" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle class="g-s1f g-punto fin" cx="{{ g1.fx }}" cy="{{ g1.fyReal }}" r="5" style="opacity:{{ g1.finOp }}"/>
+            <text class="g-txt fin" x="{{ g1.flx }}" y="{{ g1.flyPlan }}" style="opacity:{{ g1.finOp }}">{{ g1.flPlan }}</text>
+            <text class="g-fuerte fin" x="{{ g1.flx }}" y="{{ g1.flyReal }}" style="opacity:{{ g1.finOp }}">{{ g1.flReal }}</text>
+            <sc-if value="{{ g1.t.hay }}" hint-placeholder-val="{{ false }}">
+              <line class="g-cruz" x1="{{ g1.t.xh }}" x2="{{ g1.t.xh }}" y1="14" y2="320"/>
+              <circle class="g-neutf g-punto" cx="{{ g1.t.xh }}" cy="{{ g1.t.yp }}" r="4"/>
+              <circle class="g-s1f g-punto" cx="{{ g1.t.xh }}" cy="{{ g1.t.yr }}" r="5"/>
+              <rect class="g-globo" x="{{ g1.t.gx }}" y="{{ g1.t.gy }}" width="214" height="100" rx="8"/>
+              <text class="g-tit" x="{{ g1.t.tx }}" y="{{ g1.t.ty0 }}">{{ g1.t.titulo }}</text>
+              <line class="g-ref" x1="{{ g1.t.tx }}" x2="{{ g1.t.kx2 }}" y1="{{ g1.t.k1 }}" y2="{{ g1.t.k1 }}" style="stroke-dasharray:3 3"/>
+              <text class="g-txt" x="{{ g1.t.lx }}" y="{{ g1.t.r1 }}">Planificado</text>
+              <text class="g-fuerte" x="{{ g1.t.vx }}" y="{{ g1.t.r1 }}" text-anchor="end">{{ g1.t.plan }}</text>
+              <line class="g-s1" x1="{{ g1.t.tx }}" x2="{{ g1.t.kx2 }}" y1="{{ g1.t.k2 }}" y2="{{ g1.t.k2 }}"/>
+              <text class="g-txt" x="{{ g1.t.lx }}" y="{{ g1.t.r2 }}">Real</text>
+              <text class="g-fuerte" x="{{ g1.t.vx }}" y="{{ g1.t.r2 }}" text-anchor="end">{{ g1.t.real }}</text>
+              <text class="g-txt" x="{{ g1.t.tx }}" y="{{ g1.t.r3 }}">Diferencia</text>
+              <text class="g-fuerte" x="{{ g1.t.vx }}" y="{{ g1.t.r3 }}" text-anchor="end">{{ g1.t.dif }}</text>
+            </sc-if>
+            <sc-for list="{{ g1.zonas }}" as="z" hint-placeholder-count="5">
+              <rect x="{{ z.x }}" y="14" width="{{ z.w }}" height="344" fill="transparent" onMouseEnter="{{ z.entrar }}" onClick="{{ z.entrar }}"/>
+            </sc-for>
+          </svg>
+        </div>
+        <div class="leyenda">
+          <span class="l1"><i></i>Real</span>
+          <span class="lr"><i></i>Planificado</span>
+          <span class="lh"><i></i>Diferencia entre ambos</span>
+        </div>
+        <details class="vertabla">
+          <summary>Ver como tabla</summary>
+          <div class="tabla" role="table" aria-label="Avance planificado y real por quincena">
+            <div class="tr th" role="row" style="grid-template-columns:1.4fr 1fr 1fr 1fr">
+              <div role="columnheader">Quincena al</div><div role="columnheader" class="n">Planificado</div><div role="columnheader" class="n">Real</div><div role="columnheader" class="n">Diferencia</div>
+            </div>
+            <sc-for list="{{ g1.filas }}" as="f" hint-placeholder-count="5">
+              <div class="tr" role="row" style="grid-template-columns:1.4fr 1fr 1fr 1fr">
+                <div role="rowheader">{{ f.fecha }}</div><div role="cell" class="n">{{ f.plan }}</div><div role="cell" class="n">{{ f.real }}</div><div role="cell" class="n">{{ f.dif }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </details>
+      </section>
+
+      <div class="col-lat">
+
+        <!-- Gráfico 2: cartera por obra -->
+        <section class="gcard">
+          <h2>Cartera por obra</h2>
+          <p class="sub2">Presupuesto vigente en bolívares, con lo ejecutado dentro. Haga clic en una obra para elegirla.</p>
+          <div class="graf" tabIndex="0" role="group" aria-label="Gráfico de la cartera. Use las flechas para recorrer las obras y Intro para elegir una." onKeyDown="{{ g2.tecla }}" onBlur="{{ salir2 }}">
+            <svg class="grafica" viewBox="0 0 440 248" role="img" aria-label="{{ g2.etiqueta }}" onMouseLeave="{{ salir2 }}">
+              <sc-for list="{{ g2.filas }}" as="r" hint-placeholder-count="4">
+                <g class="fila" style="opacity:{{ r.op }}">
+                  <rect class="fondo {{ r.fondoCls }}" x="0" y="{{ r.top }}" width="440" height="58" rx="8"/>
+                  <text class="g-nom" x="16" y="{{ r.ny }}" style="font-weight:{{ r.peso }}">{{ r.nombre }}</text>
+                  <text class="g-txt" x="428" y="{{ r.ny }}" text-anchor="end">{{ r.avance }}</text>
+                  <path class="g-neut barra-h" d="{{ r.dPres }}" style="transform:{{ r.esc }};transition-delay:{{ r.ret }}ms"/>
+                  <sc-if value="{{ r.hayEj }}" hint-placeholder-val="{{ true }}">
+                    <path class="g-s1f barra-h" d="{{ r.dEj }}" style="transform:{{ r.esc }};transition-delay:{{ r.ret2 }}ms"/>
+                  </sc-if>
+                  <text class="g-fuerte rotulo" x="{{ r.fx }}" y="{{ r.fy }}" style="opacity:{{ r.rotOp }}">{{ r.fig }}</text>
+                </g>
+              </sc-for>
+              <line class="g-eje" x1="16" x2="16" y1="4" y2="244"/>
+              <sc-if value="{{ g2.t.hay }}" hint-placeholder-val="{{ false }}">
+                <rect class="g-globo" x="{{ g2.t.gx }}" y="{{ g2.t.gy }}" width="232" height="100" rx="8"/>
+                <text class="g-tit" x="{{ g2.t.tx }}" y="{{ g2.t.ty0 }}">{{ g2.t.titulo }}</text>
+                <rect class="g-neut" x="{{ g2.t.tx }}" y="{{ g2.t.s1 }}" width="10" height="10" rx="2"/>
+                <text class="g-txt" x="{{ g2.t.lx }}" y="{{ g2.t.r1 }}">Presupuesto vigente</text>
+                <text class="g-fuerte" x="{{ g2.t.vx }}" y="{{ g2.t.r1 }}" text-anchor="end">{{ g2.t.pres }}</text>
+                <rect class="g-s1f" x="{{ g2.t.tx }}" y="{{ g2.t.s2 }}" width="10" height="10" rx="2"/>
+                <text class="g-txt" x="{{ g2.t.lx }}" y="{{ g2.t.r2 }}">Ejecutado</text>
+                <text class="g-fuerte" x="{{ g2.t.vx }}" y="{{ g2.t.r2 }}" text-anchor="end">{{ g2.t.ejec }}</text>
+                <text class="g-txt" x="{{ g2.t.tx }}" y="{{ g2.t.r3 }}">Avance</text>
+                <text class="g-fuerte" x="{{ g2.t.vx }}" y="{{ g2.t.r3 }}" text-anchor="end">{{ g2.t.avance }}</text>
+              </sc-if>
+              <sc-for list="{{ g2.filas }}" as="r" hint-placeholder-count="4">
+                <rect x="0" y="{{ r.top }}" width="440" height="58" fill="transparent" style="cursor:pointer" onMouseEnter="{{ r.entrar }}" onClick="{{ r.elegir }}"/>
+              </sc-for>
+            </svg>
+          </div>
+          <div class="leyenda">
+            <span><i class="sw n"></i>Presupuesto vigente</span>
+            <span><i class="sw a"></i>Ejecutado</span>
+          </div>
+          <details class="vertabla">
+            <summary>Ver como tabla</summary>
+            <div class="tabla" role="table" aria-label="Presupuesto vigente, ejecutado y avance por obra">
+              <div class="tr th" role="row" style="grid-template-columns:1.7fr 1.1fr 1.1fr .6fr">
+                <div role="columnheader">Obra</div><div role="columnheader" class="n">Presupuesto (Bs)</div><div role="columnheader" class="n">Ejecutado (Bs)</div><div role="columnheader" class="n">Avance</div>
+              </div>
+              <sc-for list="{{ g2.tabla }}" as="f" hint-placeholder-count="5">
+                <div class="tr {{ f.cls }}" role="row" style="grid-template-columns:1.7fr 1.1fr 1.1fr .6fr">
+                  <div role="rowheader">{{ f.nombre }}</div><div role="cell" class="n">{{ f.pres }}</div><div role="cell" class="n">{{ f.ejec }}</div><div role="cell" class="n">{{ f.avance }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </details>
+        </section>
+
+        <!-- Gráfico 3: problemas abiertos por obra -->
+        <section class="gcard">
+          <h2>Problemas abiertos por obra</h2>
+          <p class="sub2">Cantidad de errores y advertencias sin resolver.</p>
+          <div class="graf" tabIndex="0" role="group" aria-label="Gráfico de problemas. Use las flechas para recorrer las obras." onKeyDown="{{ g3.tecla }}" onBlur="{{ salir3 }}">
+            <svg class="grafica" viewBox="0 0 400 204" role="img" aria-label="{{ g3.etiqueta }}" onMouseLeave="{{ salir3 }}">
+              <sc-for list="{{ g3.rejilla }}" as="t" hint-placeholder-count="4">
+                <line class="g-cuad" x1="34" x2="392" y1="{{ t.y }}" y2="{{ t.y }}"/>
+                <text class="g-txt" x="26" y="{{ t.ty }}" text-anchor="end">{{ t.txt }}</text>
+              </sc-for>
+              <sc-for list="{{ g3.cols }}" as="c" hint-placeholder-count="4">
+                <g class="fila" style="opacity:{{ c.op }}">
+                  <sc-if value="{{ c.hayErr }}" hint-placeholder-val="{{ true }}">
+                    <path class="g-err col-v" d="{{ c.dErr }}" style="transform:{{ c.esc }};transition-delay:{{ c.ret }}ms"/>
+                  </sc-if>
+                  <sc-if value="{{ c.hayAdv }}" hint-placeholder-val="{{ true }}">
+                    <path class="g-adv col-v" d="{{ c.dAdv }}" style="transform:{{ c.esc }};transition-delay:{{ c.ret2 }}ms"/>
+                  </sc-if>
+                  <text class="g-fuerte rotulo" x="{{ c.cx }}" y="{{ c.ty }}" text-anchor="middle" style="opacity:{{ c.rotOp }}">{{ c.total }}</text>
+                  <text class="g-txt" x="{{ c.cx }}" y="192" text-anchor="middle" style="font-weight:{{ c.peso }}">{{ c.corto }}</text>
+                </g>
+              </sc-for>
+              <line class="g-eje" x1="34" x2="392" y1="172" y2="172"/>
+              <sc-if value="{{ g3.t.hay }}" hint-placeholder-val="{{ false }}">
+                <rect class="g-globo" x="{{ g3.t.gx }}" y="{{ g3.t.gy }}" width="196" height="84" rx="8"/>
+                <text class="g-tit" x="{{ g3.t.tx }}" y="{{ g3.t.ty0 }}">{{ g3.t.titulo }}</text>
+                <rect class="g-err" x="{{ g3.t.tx }}" y="{{ g3.t.s1 }}" width="10" height="10" rx="2"/>
+                <text class="g-txt" x="{{ g3.t.lx }}" y="{{ g3.t.r1 }}">Error</text>
+                <text class="g-fuerte" x="{{ g3.t.vx }}" y="{{ g3.t.r1 }}" text-anchor="end">{{ g3.t.err }}</text>
+                <rect class="g-adv" x="{{ g3.t.tx }}" y="{{ g3.t.s2 }}" width="10" height="10" rx="2"/>
+                <text class="g-txt" x="{{ g3.t.lx }}" y="{{ g3.t.r2 }}">Advertencia</text>
+                <text class="g-fuerte" x="{{ g3.t.vx }}" y="{{ g3.t.r2 }}" text-anchor="end">{{ g3.t.adv }}</text>
+              </sc-if>
+              <sc-for list="{{ g3.cols }}" as="c" hint-placeholder-count="4">
+                <rect x="{{ c.sx }}" y="0" width="89" height="204" fill="transparent" onMouseEnter="{{ c.entrar }}"/>
+              </sc-for>
+            </svg>
+          </div>
+          <div class="leyenda">
+            <span><i class="sw e"></i>Error</span>
+            <span><i class="sw d"></i>Advertencia</span>
+          </div>
+          <details class="vertabla">
+            <summary>Ver como tabla</summary>
+            <div class="tabla" role="table" aria-label="Errores y advertencias abiertos por obra">
+              <div class="tr th" role="row" style="grid-template-columns:1.8fr .8fr 1fr .6fr">
+                <div role="columnheader">Obra</div><div role="columnheader" class="n">Errores</div><div role="columnheader" class="n">Advertencias</div><div role="columnheader" class="n">Total</div>
+              </div>
+              <sc-for list="{{ g3.tabla }}" as="f" hint-placeholder-count="5">
+                <div class="tr {{ f.cls }}" role="row" style="grid-template-columns:1.8fr .8fr 1fr .6fr">
+                  <div role="rowheader">{{ f.nombre }}</div><div role="cell" class="n">{{ f.err }}</div><div role="cell" class="n">{{ f.adv }}</div><div role="cell" class="n">{{ f.total }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </details>
+        </section>
+
+      </div>
+    </div>
+    <p class="ficticio">Obras de demostración, con datos ficticios. Los montos no incluyen IVA.</p>
+  </main>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"modo":{"editor":"enum","options":["claro","oscuro"],"default":"claro"},"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+
+  componentDidMount() {
+    this._t = setTimeout(() => this.setState({ montado: true, fase: 1 }), 220);
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._t);
+    clearTimeout(this._t2);
+  }
+
+  // Formato con coma decimal y punto de miles; el menos es el signo tipográfico.
+  fmt(n, d) {
+    const neg = n < 0 && Math.abs(n) >= Math.pow(10, -d) / 2;
+    const s = Math.abs(n).toFixed(d);
+    const p = s.split('.');
+    const ent = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return (neg ? '−' : '') + ent + (d > 0 ? ',' + p[1] : '');
+  }
+
+  // Entero si lo es; si no, un decimal.
+  sm(n) {
+    return this.fmt(n, Math.abs(n - Math.round(n)) < 0.005 ? 0 : 1);
+  }
+
+  // Con signo explícito para los aumentos.
+  sg(n) {
+    const t = this.sm(n);
+    return n > 0.004 ? '+' + t : (t === '−0' ? '0' : t);
+  }
+
+  sg2(n) {
+    const t = this.fmt(n, 2);
+    return n > 0.004 ? '+' + t : t;
+  }
+
+  cambiar(obj) {
+    clearTimeout(this._t2);
+    this.setState(Object.assign({}, obj, { fase: 0, h1: null, h2: null, h3: null }));
+    this._t2 = setTimeout(() => this.setState({ fase: 1 }), 70);
+  }
+
+  renderVals() {
+    const st = this.state || {};
+    const periodo = st.periodo ?? '6m';
+    const obraSel = st.obra ?? 'todas';
+    const montado = !!st.montado;
+    const fase = st.fase ?? 0;
+    const modo = this.props.modo === 'oscuro' ? 'oscuro' : 'claro';
+    const f1 = (v) => Math.round(v * 10) / 10;
+    const r1 = f1;
+
+    /* ---------- tokens por modo ---------- */
+    const TOK = {
+      claro: {
+        esquema: 'light', fondo: '#F7F4EE', hoja: '#FDFBF7', alzado: '#EFE9DF', linea: 'rgba(31,27,22,.10)',
+        t1: '#1F1B16', t2: '#5E554A', t3: '#9A9184', barra: '#1F1B16', barraT1: '#EFE9DE', barraT2: '#AAA398',
+        barraLinea: 'rgba(239,233,222,.18)', acento: '#1F1B16', acentoT: '#FFFFFF', sel: '#FFF4C2', selBorde: '#C9A227',
+        error: '#B42318', adv: '#8A5A00', s1: '#2A78D6', s2: '#1BAF7A', s3: '#EB6834', neutro: '#D8D0C2'
+      },
+      oscuro: {
+        esquema: 'dark', fondo: '#161513', hoja: '#1C1A18', alzado: '#262421', linea: 'rgba(239,233,222,.09)',
+        t1: '#EFE9DE', t2: '#AAA398', t3: '#8A847A', barra: '#12110F', barraT1: '#EFE9DE', barraT2: '#AAA398',
+        barraLinea: 'rgba(239,233,222,.18)', acento: '#EFE9DE', acentoT: '#1C1A18', sel: '#2E2919', selBorde: '#C9A227',
+        error: '#F0857C', adv: '#DDB25E', s1: '#3987E5', s2: '#199E70', s3: '#D95926', neutro: '#3A3732'
+      }
+    };
+    const k = TOK[modo];
+    const vars = '--fondo:' + k.fondo + ';--hoja:' + k.hoja + ';--alzado:' + k.alzado + ';--linea:' + k.linea +
+      ';--t1:' + k.t1 + ';--t2:' + k.t2 + ';--t3:' + k.t3 + ';--barra:' + k.barra + ';--barra-t1:' + k.barraT1 +
+      ';--barra-t2:' + k.barraT2 + ';--barra-linea:' + k.barraLinea + ';--acento:' + k.acento + ';--acento-t:' + k.acentoT +
+      ';--sel:' + k.sel + ';--sel-borde:' + k.selBorde + ';--error:' + k.error + ';--adv:' + k.adv +
+      ';--s1:' + k.s1 + ';--s2:' + k.s2 + ';--s3:' + k.s3 + ';--neutro:' + k.neutro + ';color-scheme:' + k.esquema + ';';
+
+    /* ---------- datos ficticios ---------- */
+    const FECHAS = ['31/03/2026', '15/04/2026', '30/04/2026', '15/05/2026', '31/05/2026', '15/06/2026', '30/06/2026',
+      '15/07/2026', '31/07/2026', '15/08/2026', '31/08/2026', '15/09/2026', '30/09/2026', '15/10/2026', '31/10/2026', '15/11/2026'];
+    const N = FECHAS.length;
+    const FIN = N - 1;
+    const pad = (ini, v) => { const a = new Array(N).fill(null); v.forEach((x, i) => { a[ini + i] = x; }); return a; };
+    const OBRAS = [
+      { id: 'v3', nombre: 'Vialidad Tramo 3', corto: 'Vialidad', pres: 1284560, ejecCorte: 490321.68,
+        plan: pad(11, [5, 12, 21, 32, 42]), real: pad(11, [4, 10, 18, 28, 38]), err: 2, adv: 1, errO: 1, advO: 1 },
+      { id: 'ap', nombre: 'Rehabilitación Avenida Principal', corto: 'Avenida', pres: 842350,
+        plan: pad(2, [3, 7, 12, 17, 23, 29, 35, 40, 45, 49, 53, 56, 58, 60]),
+        real: pad(2, [3, 8, 13, 19, 25, 31, 38, 43, 48, 53, 57, 60, 62, 64]), err: 0, adv: 0, errO: 0, advO: 1 },
+      { id: 'pq', nombre: 'Puente Quebrada Seca', corto: 'Puente', pres: 2915780,
+        plan: pad(7, [1, 2, 3, 5, 7, 9, 11, 13, 14]), real: pad(7, [1, 2, 3, 4, 6, 7, 9, 11, 12]), err: 0, adv: 1, errO: 0, advO: 0 },
+      { id: 'ds', nombre: 'Drenaje Sector Norte', corto: 'Drenaje', pres: 436200,
+        plan: pad(13, [1, 2, 4]), real: pad(13, [0, 0, 0]), err: 1, adv: 0, errO: 0, advO: 0 }
+    ];
+    const PRES_TOT = OBRAS.reduce((s, o) => s + o.pres, 0);
+    const cartera = (clave) => Array.from({ length: N }, (_, i) =>
+      i < 2 ? null : r1(OBRAS.reduce((s, o) => s + o.pres * (o[clave][i] == null ? 0 : o[clave][i]), 0) / PRES_TOT));
+    // Al corte, Vialidad Tramo 3 usa lo ejecutado partida por partida (Control: 490.321,68), no el presupuesto por el avance redondeado.
+    const ejecDe = (o, i) => (i === FIN && o.ejecCorte != null) ? o.ejecCorte : Math.round(o.pres * (o.real[i] == null ? 0 : o.real[i])) / 100;
+
+    const obra = OBRAS.find((o) => o.id === obraSel) || null;
+    const lista = obra ? [obra] : OBRAS;
+    const sc = obra
+      ? { nombre: obra.nombre, plan: obra.plan, real: obra.real, pres: obra.pres }
+      : { nombre: 'Cartera de 4 obras', plan: cartera('plan'), real: cartera('real'), pres: PRES_TOT };
+    const errT = lista.reduce((s, o) => s + o.err, 0);
+    const advT = lista.reduce((s, o) => s + o.adv, 0);
+    const errOT = lista.reduce((s, o) => s + o.errO, 0);
+    const advOT = lista.reduce((s, o) => s + o.advO, 0);
+    const ejecEn = (i) => Math.round(lista.reduce((s, o) => s + ejecDe(o, i), 0) * 100) / 100;
+    const v0 = (a, i) => (a[i] == null ? 0 : a[i]);
+
+    /* ---------- filtros ---------- */
+    const PERIODOS = [
+      { id: '3m', txt: '3 meses', ini: 9, frase: 'los últimos 3 meses' },
+      { id: '6m', txt: '6 meses', ini: 3, frase: 'los últimos 6 meses' },
+      { id: 'todo', txt: 'Todo', ini: 0, frase: 'todo el período' }
+    ];
+    const per = PERIODOS.find((p) => p.id === periodo) || PERIODOS[1];
+    const b = per.ini;
+    const periodos = PERIODOS.map((p) => ({
+      txt: p.txt, pressed: p.id === periodo ? 'true' : 'false',
+      pick: () => { if (p.id !== periodo) this.cambiar({ periodo: p.id }); }
+    }));
+    const obrasF = [{ id: 'todas', nombre: 'Todas' }].concat(OBRAS).map((o) => ({
+      txt: o.nombre, pressed: o.id === obraSel ? 'true' : 'false',
+      pick: () => { if (o.id !== obraSel) this.cambiar({ obra: o.id }); }
+    }));
+
+    /* ---------- resumen y tarjetas ---------- */
+    const real15 = sc.real[FIN], plan15 = sc.plan[FIN];
+    const nProb = errT + advT;
+    const probTxt = nProb === 0 ? 'sin problemas abiertos' : (nProb === 1 ? '1 problema abierto' : nProb + ' problemas abiertos');
+    const presTxt = obra ? 'presupuesto vigente ' + this.fmt(sc.pres, 2) + ' Bs' : 'presupuesto vigente ' + this.fmt(sc.pres, 2) + ' Bs entre las 4 obras';
+    const resumen = sc.nombre + ' · ' + presTxt + ' · avance real ' + this.sm(real15) + ' % frente a ' + this.sm(plan15) +
+      ' % planificado al ' + FECHAS[FIN] + ' · ' + probTxt + ' · ' + per.frase + '.';
+
+    const baseTxt = (periodo === 'todo' ? 'desde el ' : 'frente al ') + FECHAS[b];
+    const dif15 = r1(real15 - plan15);
+    const difB = r1(v0(sc.real, b) - v0(sc.plan, b));
+    const ejec15 = ejecEn(FIN), ejecB = ejecEn(b);
+    const pl = (n, uno, varios) => n + ' ' + (n === 1 ? uno : varios);
+    const tarjetas = [
+      { et: 'Avance real', cifra: this.sm(real15) + ' %', cmp: this.sg(r1(real15 - v0(sc.real, b))) + ' puntos ' + baseTxt },
+      { et: 'Diferencia con lo planificado', cifra: this.sg(dif15) + ' puntos', cmp: 'Era ' + this.sg(difB) + ' puntos el ' + FECHAS[b] },
+      { et: 'Ejecutado a la fecha', cifra: this.fmt(ejec15, 2) + ' Bs', cmp: this.sg2(Math.round((ejec15 - ejecB) * 100) / 100) + ' Bs ' + baseTxt },
+      { et: 'Problemas abiertos', cifra: String(nProb),
+        cmp: pl(errT, 'error', 'errores') + ' y ' + pl(advT, 'advertencia', 'advertencias') + '; frente a ' + (errOT + advOT) + ' el 31/10/2026' }
+    ];
+
+    /* ---------- gráfico 1 ---------- */
+    const primero = sc.real.findIndex((v) => v != null);
+    const desde = Math.max(b, primero);
+    const pts = [];
+    for (let i = desde; i < N; i++) {
+      if (sc.real[i] != null && sc.plan[i] != null) pts.push({ i, plan: sc.plan[i], real: sc.real[i], fecha: FECHAS[i] });
+    }
+    const n = pts.length;
+    const W1 = 880, H1 = 372, L1 = 48, R1 = 64, T1 = 14, B1 = 52;
+    const pw = W1 - L1 - R1, yb = H1 - B1, ph = yb - T1;
+    let maxV = 0;
+    pts.forEach((p) => { maxV = Math.max(maxV, p.plan, p.real); });
+    const mx = maxV * 1.1;
+    const paso = mx <= 50 ? 10 : 20;
+    const tope = Math.max(10, Math.ceil(mx / paso) * paso);
+    const X = (j) => L1 + (n > 1 ? j * pw / (n - 1) : 0);
+    const Y = (v) => yb - v / tope * ph;
+    const dPlan = pts.map((p, j) => (j ? 'L' : 'M') + f1(X(j)) + ' ' + f1(Y(p.plan))).join(' ');
+    const dReal = pts.map((p, j) => (j ? 'L' : 'M') + f1(X(j)) + ' ' + f1(Y(p.real))).join(' ');
+    const dHueco = pts.map((p, j) => (j ? 'L' : 'M') + f1(X(j)) + ' ' + f1(Y(p.plan))).join(' ') + ' ' +
+      pts.map((p, j) => j).reverse().map((j) => 'L' + f1(X(j)) + ' ' + f1(Y(pts[j].real))).join(' ') + ' Z';
+    const rejilla = [];
+    for (let v = 0; v <= tope; v += paso) rejilla.push({ y: f1(Y(v)), ty: f1(Y(v) + 4), txt: v + ' %' });
+    const ejeX = [];
+    const saltoX = Math.ceil(n / 6);
+    for (let j = n - 1; j >= 0; j -= saltoX) ejeX.push({ x: f1(X(j)), txt: pts[j].fecha });
+    ejeX.reverse();
+    const zonas = pts.map((p, j) => {
+      const xa = j === 0 ? 0 : (X(j - 1) + X(j)) / 2;
+      const xb = j === n - 1 ? W1 : (X(j) + X(j + 1)) / 2;
+      const ent = () => this.setState({ h1: j });
+      return { x: f1(xa), w: f1(xb - xa), entrar: ent };
+    });
+    let hk = st.h1;
+    if (hk == null || hk >= n) hk = null;
+    let t1 = { hay: false };
+    if (hk != null) {
+      const p = pts[hk], xh = X(hk), gw = 214, gh = 100;
+      let gx = xh + 14;
+      if (gx + gw > W1 - 6) gx = xh - 14 - gw;
+      const gy = T1 + 6;
+      t1 = {
+        hay: true, xh: f1(xh), yp: f1(Y(p.plan)), yr: f1(Y(p.real)), gx: f1(gx), gy,
+        tx: f1(gx + 12), kx2: f1(gx + 26), lx: f1(gx + 34), vx: f1(gx + gw - 12),
+        ty0: gy + 22, k1: gy + 42, r1: gy + 46, k2: gy + 62, r2: gy + 66, r3: gy + 86,
+        titulo: 'Quincena al ' + p.fecha, plan: this.sm(p.plan) + ' %', real: this.sm(p.real) + ' %',
+        dif: this.sg(r1(p.real - p.plan)) + ' puntos'
+      };
+    }
+    const last = pts[n - 1];
+    const yRe = Y(last.real), yPl = Y(last.plan);
+    const sep = Math.abs(yRe - yPl);
+    const aj = sep < 16 ? (16 - sep) / 2 : 0;
+    const flyReal = (yRe >= yPl ? yRe + 4 + aj : yRe + 4 - aj);
+    const flyPlan = (yRe >= yPl ? yPl + 4 - aj : yPl + 4 + aj);
+    const g1 = {
+      subtitulo: 'Avance físico acumulado de ' + (obra ? obra.nombre : 'la cartera') + ', por quincena. Corte al ' + FECHAS[FIN] + '.',
+      etiqueta: 'Avance físico de ' + sc.nombre + ' por quincena, ' + n + ' quincenas hasta el ' + FECHAS[FIN] +
+        '. Real ' + this.sm(last.real) + ' %, planificado ' + this.sm(last.plan) + ' %.',
+      rejilla, ejeX, dPlan, dReal, dHueco, zonas, t: t1,
+      off: fase === 1 ? 0 : 1.05, finOp: fase === 1 ? 1 : 0,
+      fx: f1(X(n - 1)), fyReal: f1(yRe), flx: f1(X(n - 1) + 12), flyReal: f1(flyReal), flyPlan: f1(flyPlan),
+      flReal: this.sm(last.real) + ' %', flPlan: this.sm(last.plan) + ' %',
+      filas: pts.map((p) => ({ fecha: p.fecha, plan: this.sm(p.plan) + ' %', real: this.sm(p.real) + ' %', dif: this.sg(r1(p.real - p.plan)) + ' puntos' })),
+      tecla: (e) => {
+        let h = st.h1;
+        if (e.key === 'ArrowRight') h = h == null ? 0 : Math.min(n - 1, h + 1);
+        else if (e.key === 'ArrowLeft') h = h == null ? n - 1 : Math.max(0, h - 1);
+        else if (e.key === 'Home') h = 0;
+        else if (e.key === 'End') h = n - 1;
+        else if (e.key === 'Escape') h = null;
+        else return;
+        e.preventDefault();
+        this.setState({ h1: h });
+      }
+    };
+
+    /* ---------- gráfico 2 ---------- */
+    const ORDEN2 = OBRAS.slice().sort((a, c) => c.pres - a.pres);
+    const MAXP = ORDEN2[0].pres;
+    const BAR_MAX = 300, X0 = 16, ALTO = 18, FILA = 58;
+    const pathBarra = (x, y, w, h) => {
+      const r = 4;
+      if (w <= r * 2) return 'M' + x + ' ' + y + 'H' + f1(x + w) + 'V' + f1(y + h) + 'H' + x + 'Z';
+      return 'M' + x + ' ' + y + 'H' + f1(x + w - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + f1(x + w) + ' ' + f1(y + r) +
+        'V' + f1(y + h - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + f1(x + w - r) + ' ' + f1(y + h) + 'H' + x + 'Z';
+    };
+    const h2 = st.h2 || null;
+    const filas2 = ORDEN2.map((o, r) => {
+      const top = 4 + r * FILA;
+      const lenP = BAR_MAX * o.pres / MAXP;
+      const rl = o.real[FIN];
+      const lenE = lenP * rl / 100;
+      const by = top + 28;
+      const hov = h2 === o.id;
+      const sel = obraSel === o.id;
+      return {
+        id: o.id, top, ny: top + 20, nombre: o.nombre, peso: sel ? 600 : 500, avance: rl + ' %',
+        dPres: pathBarra(X0, by, f1(lenP), ALTO), hayEj: lenE > 0, dEj: pathBarra(X0, by, f1(lenE), ALTO),
+        esc: montado ? 'scaleX(1)' : 'scaleX(0)', ret: r * 80, ret2: r * 80 + 200,
+        fx: f1(X0 + lenP + 8), fy: by + 13, fig: this.fmt(o.pres, 2), rotOp: montado ? 1 : 0,
+        op: (obraSel === 'todas' || sel) ? 1 : 0.35,
+        fondoCls: sel ? 'sel' : (hov ? 'hov' : ''),
+        entrar: () => this.setState({ h2: o.id }),
+        elegir: () => this.cambiar({ obra: obraSel === o.id ? 'todas' : o.id })
+      };
+    });
+    let t2 = { hay: false };
+    if (h2) {
+      const fi = filas2.find((x) => x.id === h2);
+      const o = OBRAS.find((x) => x.id === h2);
+      if (fi && o) {
+        const gw = 232, gh = 100;
+        let gy = fi.top + 46;
+        if (gy + gh > 246) gy = fi.top - gh + 12;
+        gy = Math.max(2, gy);
+        const gx = 440 - gw - 6;
+        t2 = {
+          hay: true, gx, gy, tx: gx + 12, lx: gx + 28, vx: gx + gw - 12,
+          ty0: gy + 22, r1: gy + 46, s1: gy + 37, r2: gy + 66, s2: gy + 57, r3: gy + 86,
+          titulo: o.nombre, pres: this.fmt(o.pres, 2) + ' Bs', ejec: this.fmt(ejecDe(o, FIN), 2) + ' Bs', avance: o.real[FIN] + ' %'
+        };
+      }
+    }
+    const g2 = {
+      filas: filas2, t: t2,
+      etiqueta: 'Presupuesto vigente y ejecutado de las 4 obras. ' + ORDEN2.map((o) =>
+        o.nombre + ': ' + this.fmt(o.pres, 2) + ' bolívares, avance ' + o.real[FIN] + ' %').join('. ') + '.',
+      tabla: ORDEN2.map((o) => ({ cls: '', nombre: o.nombre, pres: this.fmt(o.pres, 2), ejec: this.fmt(ejecDe(o, FIN), 2), avance: o.real[FIN] + ' %' }))
+        .concat([{ cls: 'tot', nombre: 'Total de la cartera', pres: this.fmt(PRES_TOT, 2),
+          ejec: this.fmt(Math.round(OBRAS.reduce((s, o) => s + ejecDe(o, FIN), 0) * 100) / 100, 2),
+          avance: this.sm(cartera('real')[FIN]) + ' %' }]),
+      tecla: (e) => {
+        const ids = filas2.map((x) => x.id);
+        let i = h2 ? ids.indexOf(h2) : -1;
+        if (e.key === 'ArrowDown') i = Math.min(ids.length - 1, i + 1);
+        else if (e.key === 'ArrowUp') i = i < 0 ? 0 : Math.max(0, i - 1);
+        else if (e.key === 'Enter' || e.key === ' ') {
+          if (i >= 0) { e.preventDefault(); filas2[i].elegir(); }
+          return;
+        } else if (e.key === 'Escape') i = -1;
+        else return;
+        e.preventDefault();
+        this.setState({ h2: i < 0 ? null : ids[i] });
+      }
+    };
+
+    /* ---------- gráfico 3 ---------- */
+    const W3 = 400, L3 = 34, Y3 = 172, TOPE3 = 3, U3 = 150 / TOPE3, SLOT = 89, CW = 24;
+    const h3 = st.h3 || null;
+    const segV = (x, y, w, h, redond) => {
+      const r = redond ? 4 : 0;
+      if (!r) return 'M' + f1(x) + ' ' + f1(y) + 'H' + f1(x + w) + 'V' + f1(y + h) + 'H' + f1(x) + 'Z';
+      return 'M' + f1(x) + ' ' + f1(y + h) + 'V' + f1(y + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + f1(x + r) + ' ' + f1(y) +
+        'H' + f1(x + w - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + f1(x + w) + ' ' + f1(y + r) + 'V' + f1(y + h) + 'Z';
+    };
+    const cols3 = OBRAS.map((o, j) => {
+      const cx = L3 + SLOT * (j + 0.5) - 0;
+      const x = cx - CW / 2;
+      const hE = o.err * U3, hA = o.adv * U3;
+      const yE = Y3 - hE;
+      const hayErr = o.err > 0, hayAdv = o.adv > 0;
+      const aTop = hayErr ? yE - 2 - (hA - 2) : Y3 - hA;
+      const aH = hayErr ? hA - 2 : hA;
+      const total = o.err + o.adv;
+      const altoTot = hE + hA;
+      const sel = obraSel === o.id;
+      return {
+        id: o.id, cx: f1(cx), sx: f1(L3 + SLOT * j), corto: o.corto, peso: sel ? 600 : 400, total: String(total),
+        ty: f1(Y3 - altoTot - 6), hayErr, hayAdv,
+        dErr: hayErr ? segV(x, yE, CW, hE, !hayAdv) : '', dAdv: hayAdv ? segV(x, aTop, CW, aH, true) : '',
+        esc: montado ? 'scaleY(1)' : 'scaleY(0)', ret: j * 80, ret2: j * 80 + 150, rotOp: montado ? 1 : 0,
+        op: (obraSel === 'todas' || sel) ? 1 : 0.35,
+        entrar: () => this.setState({ h3: o.id })
+      };
+    });
+    let t3 = { hay: false };
+    if (h3) {
+      const j = OBRAS.findIndex((o) => o.id === h3);
+      if (j >= 0) {
+        const o = OBRAS[j], c = cols3[j], gw = 196, gh = 84;
+        let gx = c.cx + 22;
+        if (gx + gw > W3 - 4) gx = c.cx - 22 - gw;
+        const gy = 26;
+        t3 = {
+          hay: true, gx: f1(gx), gy, tx: f1(gx + 12), lx: f1(gx + 28), vx: f1(gx + gw - 12),
+          ty0: gy + 22, s1: gy + 33, r1: gy + 42, s2: gy + 53, r2: gy + 62,
+          titulo: o.nombre, err: String(o.err), adv: String(o.adv)
+        };
+      }
+    }
+    const rejilla3 = [];
+    for (let v = 0; v <= TOPE3; v++) rejilla3.push({ y: f1(Y3 - v * U3), ty: f1(Y3 - v * U3 + 4), txt: String(v) });
+    const g3 = {
+      cols: cols3, rejilla: rejilla3, t: t3,
+      etiqueta: 'Problemas abiertos por obra. ' + OBRAS.map((o) => o.nombre + ': ' + pl(o.err, 'error', 'errores') + ' y ' +
+        pl(o.adv, 'advertencia', 'advertencias')).join('. ') + '.',
+      tabla: OBRAS.map((o) => ({ cls: '', nombre: o.nombre, err: String(o.err), adv: String(o.adv), total: String(o.err + o.adv) }))
+        .concat([{ cls: 'tot', nombre: 'Total de la cartera', err: String(OBRAS.reduce((s, o) => s + o.err, 0)),
+          adv: String(OBRAS.reduce((s, o) => s + o.adv, 0)), total: String(OBRAS.reduce((s, o) => s + o.err + o.adv, 0)) }]),
+      tecla: (e) => {
+        const ids = OBRAS.map((o) => o.id);
+        let i = h3 ? ids.indexOf(h3) : -1;
+        if (e.key === 'ArrowRight') i = Math.min(ids.length - 1, i + 1);
+        else if (e.key === 'ArrowLeft') i = i < 0 ? ids.length - 1 : Math.max(0, i - 1);
+        else if (e.key === 'Escape') i = -1;
+        else return;
+        e.preventDefault();
+        this.setState({ h3: i < 0 ? null : ids[i] });
+      }
+    };
+
+    return {
+      vars, fase, resumen, periodos, obrasF, tarjetas, g1, g2, g3,
+      salir1: () => this.setState({ h1: null }),
+      salir2: () => this.setState({ h2: null }),
+      salir3: () => this.setState({ h3: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

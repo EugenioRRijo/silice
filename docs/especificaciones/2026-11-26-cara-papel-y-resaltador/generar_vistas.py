@@ -30,6 +30,9 @@ TOKENS = {
         barra_t2="#AAA398",
         barra_linea="rgba(239,233,222,.18)",
         lateral="#EFE9DF",
+        s1="#2A78D6",
+        s2="#1BAF7A",
+        s3="#EB6834",
         hover_tinta="#3A342C",
         acento="#1F1B16",
         acento_t="#FFFFFF",
@@ -57,6 +60,9 @@ TOKENS = {
         barra_t2="#AAA398",
         barra_linea="rgba(239,233,222,.14)",
         lateral="#12110F",
+        s1="#3987E5",
+        s2="#199E70",
+        s3="#D95926",
         hover_tinta="#FFFFFF",
         acento="#EFE9DE",
         acento_t="#1C1A18",
@@ -116,7 +122,7 @@ OPCIONES = {
     "obra:auditar": ["Problemas de la obra", "Dictamen", "Revisar un paquete"],
     "obra:anticipar": ["Control de obra", "Reajuste de precios", "Riesgo", "Escenarios"],
     "obra:versiones": ["Versiones", "Pedir aprobación", "Entregar al cliente"],
-    "inicio": ["Vista general", "Pendientes"],
+    "inicio": ["Resumen", "Obras", "Pendientes"],
     "auditar": ["Subir y auditar Excel", "Libro de la empresa", "Historial de auditorías"],
     "precios": [
         "Precios de la empresa",
@@ -144,7 +150,7 @@ OPCIONES = {
     ],
 }
 NOMBRE_DEL_LUGAR = {
-    "inicio": ("Obras de la empresa", "Inicio"),
+    "inicio": ("Inicio", "Lo que hay cargado en Sílice"),
     "auditar": ("Auditar un libro", "Espacio de la empresa"),
     "precios": ("Precios y catálogo", "Espacio de la empresa"),
     "produccion": ("Producción", "Espacio de la empresa"),
@@ -248,7 +254,7 @@ def widgets(meta: dict) -> str:
             [
                 ("Errores abiertos", '<span class="t-err">3 errores</span>'),
                 ("Aprobaciones", "1 espera respuesta"),
-                ("Precios", '<span class="t-adv">Advertencia</span> · 1 lista vencida'),
+                ("Precios", '<span class="t-adv">Advertencia</span> · 1 precio vencido'),
             ],
         ),
         "auditar": (
@@ -315,6 +321,7 @@ ICONO_DE_OPCION = {
     "Pedir aprobación": "enviar",
     "Entregar al cliente": "caja",
     "Vista general": "rejilla",
+    "Obras": "tabla",
     "Pendientes": "bandeja",
     "Subir y auditar Excel": "subir",
     "Libro de la empresa": "libro",

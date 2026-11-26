@@ -1,6 +1,6 @@
 body{margin:0}
 .hm{--fondo:$fondo;--hoja:$hoja;--alzado:$alzado;--linea:$linea;--t1:$t1;--t2:$t2;--t3:$t3;
---barra:$barra;--lateral:$lateral;--hover-tinta:$hover_tinta;--barra-t1:$barra_t1;--barra-t2:$barra_t2;--barra-linea:$barra_linea;
+--barra:$barra;--s1:$s1;--s2:$s2;--s3:$s3;--lateral:$lateral;--hover-tinta:$hover_tinta;--barra-t1:$barra_t1;--barra-t2:$barra_t2;--barra-linea:$barra_linea;
 --acento:$acento;--acento-t:$acento_t;--sel:$sel;--sel-borde:$sel_borde;--nota-act:$nota_act;
 --error:$error;--adv:$adv;--ok:$ok;--error-borde:$error_borde;--adv-borde:$adv_borde;--ok-borde:$ok_borde;
 --f-ui:'Instrument Sans',system-ui,sans-serif;--f-tit:'Newsreader',Georgia,serif;
@@ -166,3 +166,17 @@ kbd.k{font-family:var(--f-ui);font-size:12px;padding:0 4px;border:1px solid var(
 .nota .acc{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:8px}
 .nota .acc a{color:var(--t1);font-weight:500}
 .ficticio{margin-top:4px;font-size:12px;line-height:16px;color:var(--t2)}
+/* Series de los graficos (paleta validada con dataviz/validate_palette.js sobre hoja #FDFBF7 y #1C1A18):
+   s1 azul, s2 aguamarina (en claro bajo 3:1: siempre con rotulo), s3 naranja solo como tercera serie.
+   El texto nunca usa el color de la serie; la gravedad sigue con error/adv/ok y su palabra. */
+.g-s1{stroke:var(--s1);fill:none;stroke-width:2}.g-s2{stroke:var(--s2);fill:none;stroke-width:2}.g-s3{stroke:var(--s3);fill:none;stroke-width:2}
+.g-s1f{fill:var(--s1)}.g-s2f{fill:var(--s2)}.g-s3f{fill:var(--s3)}.g-neutf{fill:var(--t3)}
+.g-hueco{fill:var(--s1);opacity:.12}
+.g-punto{stroke:var(--hoja);stroke-width:2}
+.g-ref{stroke:var(--t3);stroke-width:1.5;stroke-dasharray:4 4;fill:none}
+.g-cuad{stroke:var(--linea);stroke-width:1}
+.leyenda{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:12px;line-height:16px;color:var(--t2)}
+.leyenda i{display:inline-block;width:12px;height:2px;margin-right:6px;vertical-align:middle;background:currentColor}
+.leyenda .l0 i{background:var(--t3)}.leyenda .l1 i{background:var(--s1)}.leyenda .l2 i{background:var(--s2)}.leyenda .l3 i{background:var(--s3)}
+.leyenda .lr i{background:none;border-top:1.5px dashed var(--t3);height:0}
+.vertabla{margin-top:8px}.vertabla summary{cursor:pointer;font-size:13px;color:var(--t2)}
