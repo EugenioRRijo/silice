@@ -180,3 +180,11 @@ kbd.k{font-family:var(--f-ui);font-size:12px;padding:0 4px;border:1px solid var(
 .leyenda .l0 i{background:var(--t3)}.leyenda .l1 i{background:var(--s1)}.leyenda .l2 i{background:var(--s2)}.leyenda .l3 i{background:var(--s3)}
 .leyenda .lr i{background:none;border-top:1.5px dashed var(--t3);height:0}
 .vertabla{margin-top:8px}.vertabla summary{cursor:pointer;font-size:13px;color:var(--t2)}
+/* Organización aprobada el 2026-11-26: segunda fila del lugar y grupos de la barra lateral. */
+.sub2{display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:40px;padding:0 32px;background:var(--hoja);border-bottom:1px solid var(--linea)}
+.sub2 a{display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:6px;color:var(--t2);text-decoration:none;font-size:13px}
+.sub2 a:not([aria-current]):hover{background:var(--alzado);color:var(--t1)}
+.sub2 a[aria-current]{background:var(--sel);color:var(--t1);font-weight:500}
+.opc .grp{margin:16px 10px 4px;font-size:12px;line-height:16px;color:var(--t2)}
+.opc .grp:first-child{margin-top:0}
+.opc a .n.adv{color:var(--adv)}

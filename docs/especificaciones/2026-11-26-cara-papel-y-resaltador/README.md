@@ -18,11 +18,14 @@ Las 21 vistas, en claro y oscuro, están en el lienzo del artifact <https://clau
 
 ## Marco
 
+Decisión de Eugenio (2026-11-26): «el side bar se ven todas las obras disponibles» y la barra de arriba con herramientas va solo en la vista de cada obra (o de cada espacio). Él aprobó la recomendación: espacios y obras en la barra lateral; arriba, el lugar abierto en dos filas.
+
 | Zona | Qué lleva |
 |---|---|
-| Barra de la empresa (48 px, tinta) | Sílice · Obras · Auditar un libro · Precios y catálogo · Producción · **Nueva obra** (amarillo) · Buscar (Ctrl K) · cuenta |
+| Franja global (48 px, tinta) | Sílice · **Nueva obra** (amarillo) · Buscar (Ctrl K) · cuenta. Los espacios de la empresa ya no van aquí (decisión de Eugenio del 2026-11-26) |
 | Barra del lugar (52 px, hoja) | En una obra: nombre → Portada; pestañas **Presupuestar · Auditar · Anticipar** (Auditar con su cuenta de problemas); a la derecha, el menú de versión («V2 · en elaboración ▾»: versiones, pedir aprobación, entregar) y la acción principal. Fuera de una obra: nombre del espacio y su acción |
-| Barra lateral (236 px, riel de 56 px) | Opciones con icono; un índice propio de la vista; el bloque de cifras; la carpeta abierta al pie |
+| Barra lateral (236 px, riel de 56 px) | Los LUGARES: grupo «Espacios de la empresa» (Inicio, Auditar un libro, Precios y catálogo, Producción) y grupo «Obras» con todas las obras (sus problemas abiertos; la abierta resaltada, con sus capítulos debajo); el bloque de cifras del lugar abierto; la carpeta al pie |
+| Segunda fila del lugar (40 px, hoja) | Las opciones de la herramienta o del espacio abierto como pestañas (Partidas · Componer un APU · Tramos · …), la actual en resaltador |
 | Contenido | `sobre` (contexto) → **h1 con la cifra o el hecho principal** → `datos` → la tabla o gráfica principal |
 | Margen derecho (288 px) | Notas numeradas; la activa en resaltador, unida a su fila con una línea; al pie «datos ficticios» en las demos |
 

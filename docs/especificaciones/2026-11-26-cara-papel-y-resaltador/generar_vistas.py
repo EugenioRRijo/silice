@@ -160,17 +160,10 @@ NOMBRE_DEL_LUGAR = {
 
 
 def barra_empresa(meta: dict) -> str:
-    area = meta["area"]
-    activo = {"obra": "obras", "inicio": "obras", "nueva": "obras"}.get(area, area)
-    nueva_actual = ' aria-current="page"' if area == "nueva" else ""
-    enlaces = "".join(
-        f'<a href="#"{' aria-current="page"' if clave == activo else ""}>{texto}</a>'
-        for clave, texto in ESPACIOS
-    )
-    yo_actual = ' aria-current="page"' if area == "cuenta" else ""
+    nueva_actual = ' aria-current="page"' if meta["area"] == "nueva" else ""
+    yo_actual = ' aria-current="page"' if meta["area"] == "cuenta" else ""
     return (
-        f'<header class="emp"><a href="#" class="marca">Sílice</a>'
-        f'<nav aria-label="Espacios de la empresa">{enlaces}</nav><span style="flex-grow:1"></span>'
+        '<header class="emp"><a href="#" class="marca">Sílice</a><span style="flex-grow:1"></span>'
         f'<a href="#" class="btn-res"{nueva_actual}>{ICONO_MAS}Nueva obra</a>'
         f'<button type="button" class="buscar">{ICONO_LUPA}Buscar <kbd>Ctrl K</kbd></button>'
         f'<a href="#" class="yo" aria-label="Cuenta de Eugenio"{yo_actual}>EP</a></header>'
@@ -193,6 +186,27 @@ def acciones(meta: dict) -> str:
     return f'<div class="acc">{"".join(partes)}</div>'
 
 
+def clave_y_rotulo(meta: dict) -> tuple[str, str]:
+    clave = f"obra:{meta['herramienta']}" if meta["area"] == "obra" else meta["area"]
+    nombre = {"obra:portada": "Portada", "obra:versiones": "Versiones"}.get(clave)
+    if nombre is None:
+        nombre = (
+            dict(HERRAMIENTAS).get(meta.get("herramienta", ""), "")
+            if meta["area"] == "obra"
+            else NOMBRE_DEL_LUGAR[meta["area"]][0]
+        )
+    return clave, nombre
+
+
+def segunda_fila(meta: dict) -> str:
+    clave, rotulo = clave_y_rotulo(meta)
+    pestanas = "".join(
+        f'<a href="#"{' aria-current="page"' if op == meta["opcion"] else ""}>{op}</a>'
+        for op in OPCIONES[clave]
+    )
+    return f'<nav class="sub2" aria-label="Opciones de {rotulo}">{pestanas}</nav>'
+
+
 def barra_del_lugar(meta: dict) -> str:
     if meta["area"] == "obra":
         herr = meta["herramienta"]
@@ -206,17 +220,19 @@ def barra_del_lugar(meta: dict) -> str:
                 else ""
             )
             pestanas.append(f'<a href="#"{actual}>{texto}{extra}</a>')
-        return (
+        fila1 = (
             f'<div class="sub"><a href="#" class="nombre"{portada}>'
             "<b>Vialidad Tramo 3</b><span>Portada de la obra</span></a>"
             f'<nav aria-label="Herramientas de la obra">{"".join(pestanas)}</nav>'
             f"{acciones(meta)}</div>"
         )
+        return fila1 + segunda_fila(meta)
     titulo, subtitulo = NOMBRE_DEL_LUGAR[meta["area"]]
-    return (
+    fila1 = (
         f'<div class="sub"><div class="nombre"><b>{titulo}</b><span>{subtitulo}</span></div>'
         f"{acciones(meta)}</div>"
     )
+    return fila1 + segunda_fila(meta)
 
 
 def _fila(etiqueta: str, valor: str, extra: str = "") -> str:
@@ -368,28 +384,47 @@ CARPETA = (
 )
 
 
+ESPACIOS_LATERAL = [
+    ("inicio", "Inicio", "casa"),
+    ("auditar", "Auditar un libro", "libro"),
+    ("precios", "Precios y catálogo", "etiqueta"),
+    ("produccion", "Producción", "monte"),
+]
+# Obras de la demostración: problemas abiertos (cuenta, gravedad que manda, nombre accesible).
+OBRAS_LATERAL = [
+    ("Vialidad Tramo 3", "3", "err", "2 errores y 1 advertencia"),
+    ("Rehabilitación Avenida Principal", "", "", ""),
+    ("Puente Quebrada Seca", "1", "adv", "1 advertencia"),
+    ("Drenaje Sector Norte", "1", "err", "1 error"),
+]
+
+
 def opciones(meta: dict) -> str:
-    clave = f"obra:{meta['herramienta']}" if meta["area"] == "obra" else meta["area"]
-    nombre_nav = {"obra:portada": "Portada", "obra:versiones": "Versiones"}.get(clave)
-    rotulo = nombre_nav or (
-        dict(HERRAMIENTAS).get(meta.get("herramienta", ""))
-        if meta["area"] == "obra"
-        else NOMBRE_DEL_LUGAR[meta["area"]][0]
-    )
-    items = "".join(opcion(op, op == meta["opcion"]) for op in OPCIONES[clave])
-    indice = ""
-    if meta.get("indice"):
-        plantilla = (
-            '<span class="ind-t">{}</span>'
-            if meta["indice"].get("texto")
-            else '<a href="#" class="ind">{}</a>'
+    area = meta["area"]
+    filas = ['<span class="grp">Espacios de la empresa</span>']
+    for clave, texto, ic in ESPACIOS_LATERAL:
+        actual = ' aria-current="page"' if clave == area else ""
+        filas.append(f'<a href="#"{actual}>{icono(ic)}<span>{texto}</span></a>')
+    filas.append('<span class="grp">Obras</span>')
+    for nombre, cuenta, grav, dice in OBRAS_LATERAL:
+        abierta = area == "obra" and nombre == "Vialidad Tramo 3"
+        actual = ' aria-current="page"' if abierta else ""
+        marca = (
+            f'<span class="n {grav}" aria-label="{dice}" title="{dice}">{cuenta}</span>'
+            if cuenta
+            else ""
         )
-        indice = f'<span class="rot">{meta["indice"]["rotulo"]}</span>' + "".join(
-            plantilla.format(i) for i in meta["indice"]["items"]
-        )
-    nav = f'<nav class="opc" aria-label="Opciones de {rotulo}">{items}{indice}</nav>'
+        filas.append(f'<a href="#"{actual}>{icono("ruta")}<span>{nombre}</span>{marca}</a>')
+        if abierta and meta.get("indice"):
+            plantilla = (
+                '<span class="ind-t">{}</span>'
+                if meta["indice"].get("texto")
+                else '<a href="#" class="ind">{}</a>'
+            )
+            filas.extend(plantilla.format(x) for x in meta["indice"]["items"])
+    nav = f'<nav class="opc" aria-label="Lugares">{"".join(filas)}</nav>'
     cab = (
-        f'<div class="cabl"><span>{rotulo}</span>'
+        '<div class="cabl"><span>Lugares</span>'
         f'<button type="button" aria-label="Reducir a iconos">{icono("plegar")}</button></div>'
     )
     return (
