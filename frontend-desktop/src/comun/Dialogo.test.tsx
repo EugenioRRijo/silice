@@ -380,4 +380,10 @@ describe("Dialogo: estilos", () => {
     expect(css).toMatch(/\.silice-dialogo__pie\s*\{[^}]*flex-direction:\s*row/);
     expect(css).toMatch(/\.silice-dialogo__pie\s*\{[^}]*justify-content:\s*flex-end/);
   });
+
+  it("no lleva franja lateral gruesa: el borde es de 1px en los cuatro lados, también con colores forzados", () => {
+    expect(css).not.toMatch(/border-inline-start(-width|-color)?\s*:/);
+    expect(css).toMatch(/\.silice-dialogo\s*\{[^}]*border:\s*1px solid var\(--cds-border-subtle\)/);
+    expect(css).not.toMatch(/\.silice-dialogo--destructivo/);
+  });
 });

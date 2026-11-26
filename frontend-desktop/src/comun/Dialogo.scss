@@ -7,7 +7,6 @@
   margin: auto;
   padding: 0;
   border: 1px solid var(--cds-border-subtle);
-  border-inline-start: 0.25rem solid var(--silice-complementario);
   border-radius: 0;
   background: var(--cds-layer-01);
   color: var(--silice-texto);
@@ -35,10 +34,6 @@ dialog.silice-dialogo::backdrop {
   overflow: hidden; // el ::backdrop no es contenedor de scroll por defecto e ignoraría overscroll-behavior
   background: var(--cds-overlay, rgb(22 22 22 / 50%));
   overscroll-behavior: contain;
-}
-
-.silice-dialogo--destructivo {
-  border-inline-start-color: var(--silice-sev-critico);
 }
 
 .silice-dialogo__cabecera {
@@ -85,7 +80,6 @@ dialog.silice-dialogo::backdrop {
 
 @media (forced-colors: active) {
   .silice-dialogo {
-    border: 2px solid CanvasText;
-    border-inline-start-width: 0.25rem;
+    border: 1px solid CanvasText;
   }
 }

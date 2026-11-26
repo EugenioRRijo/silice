@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../api/cliente";
@@ -789,6 +789,136 @@ describe("Marco: foco y título al navegar (A5)", () => {
     const h1 = await titulo("Estudio de mercado");
     await new Promise((r) => setTimeout(r, 80));
     expect(ruta()).toBe("/obra/empresa/7/mercado");
+    expect(h1).not.toHaveFocus();
+  });
+
+  // Auditoría de B0, hallazgo 8: la secuencia que distingue «se actualizó el espacio previo» de «no». De la obra a la
+  // Vista general cambia el espacio (el foco va al h1); de ahí a Pendientes no (el foco se queda en el enlace).
+  test("de la obra a la Vista general el foco va al h1; a Pendientes, dentro de Inicio, se queda en el enlace", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" }));
+    const general = await titulo("Vista general");
+    await waitFor(() => expect(general).toHaveFocus());
+    const enlace = within(screen.getByRole("navigation", { name: "Inicio" })).getByRole("link", { name: "Pendientes" });
+    await u.click(enlace);
+    await titulo("Pendientes");
+    await new Promise((r) => setTimeout(r, 80));
+    expect(ruta()).toBe("/inicio/pendientes");
+    expect(enlace).toHaveFocus();
+    // El enlace de Pendientes está en el contenido, donde el foco ya se respeta (hallazgo 9): el que prueba que el espacio previo
+    // se actualizó es uno de fuera, el de la barra lateral. De Pendientes a la Vista general es el mismo espacio: se queda en él.
+    const lateral = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" });
+    await u.click(lateral);
+    await waitFor(() => expect(ruta()).toBe("/inicio/general"));
+    await new Promise((r) => setTimeout(r, 80));
+    expect(lateral).toHaveFocus();
+  });
+
+  // Una redirección de la carga inicial (`/hoja` sin obra acaba en `/inicio/pendientes`) también deja el espacio previo al día:
+  // la primera navegación entre vistas de Inicio con un enlace de fuera del contenido no fuerza el foco.
+  test("tras la redirección de la carga inicial, pasar a otra vista de Inicio desde la barra lateral deja el foco en su enlace", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/hoja" });
+    await titulo("Pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
+    const lateral = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" });
+    await u.click(lateral);
+    await waitFor(() => expect(ruta()).toBe("/inicio/general"));
+    await new Promise((r) => setTimeout(r, 80));
+    expect(lateral).toHaveFocus();
+  });
+
+  // Hallazgo 6: la marca de la barra de arriba va a «/», que redirige (`replace`) a la Vista general. Es un cambio de espacio:
+  // el foco va al h1 aunque la ruta termine tras una redirección.
+  test("la marca «Sílice» de la barra de arriba, desde una obra, deja el foco en el h1 de la Vista general", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    const marca = within(screen.getByRole("banner")).getByRole("link", { name: "Sílice" });
+    await u.click(marca);
+    const general = await titulo("Vista general");
+    await waitFor(() => expect(general).toHaveFocus());
+    expect(ruta()).toBe("/inicio/general");
+    expect(marca).not.toHaveFocus();
+  });
+
+  // Hallazgo 7: el título de la ventana tiene una sola fuente (la ubicación del marco). El h1 de la pantalla («Riesgo de la
+  // obra») no empieza como la sección («Riesgo») y antes pisaba el título y perdía el nombre de la obra.
+  test("al abrir una sección cuyo h1 no empieza como ella, el título de la ventana conserva la obra", async () => {
+    const u = userEvent.setup();
+    function Mesa() {
+      const ir = useNavigate();
+      return (
+        <>
+          <h1>Inicio de presupuestos y obras</h1>
+          <button type="button" onClick={() => void ir("/obra/empresa/7/riesgo")}>
+            Ir al riesgo
+          </button>
+        </>
+      );
+    }
+    montar({ en: RUTA_DE_LA_MESA, paginas: conLaMesa(Mesa) });
+    await u.click(await screen.findByRole("button", { name: "Ir al riesgo" }));
+    const h1 = await titulo("Riesgo de la obra");
+    await waitFor(() => expect(h1).toHaveFocus());
+    expect(document.title).toBe("Riesgo · Casa Demo · Sílice");
+  });
+
+  // Si el marco no sabe nombrar la ruta (`ubicar` da null), el h1 es la única fuente y nombra la ventana.
+  test("una pantalla que el marco no nombra da su h1 a la ventana", async () => {
+    const u = userEvent.setup();
+    function Mesa() {
+      const ir = useNavigate();
+      return (
+        <>
+          <h1>Inicio de presupuestos y obras</h1>
+          <button type="button" onClick={() => void ir("/rara")}>
+            Ir a la rara
+          </button>
+        </>
+      );
+    }
+    const paginas = [...conLaMesa(Mesa), { ...conLaMesa(Mesa)[0]!, id: "rara", titulo: "" } satisfies PaginaDef];
+    const rara = paginas.find((p) => p.id === "rara")!;
+    rara.cargar = async () => ({ default: () => <h1>Pantalla rara</h1> });
+    montar({ en: RUTA_DE_LA_MESA, paginas });
+    await u.click(await screen.findByRole("button", { name: "Ir a la rara" }));
+    const h1 = await titulo("Pantalla rara");
+    await waitFor(() => expect(h1).toHaveFocus());
+    expect(document.title).toBe("Pantalla rara · Sílice");
+  });
+
+  // Hallazgo 9: quien llegue primero gana. Una pantalla que enfoca su propio campo al montarse conserva el foco.
+  test("una pantalla que enfoca su propio campo al montarse conserva el foco en él", async () => {
+    const u = userEvent.setup();
+    function Mesa() {
+      const ir = useNavigate();
+      return (
+        <>
+          <h1>Inicio de presupuestos y obras</h1>
+          <button type="button" onClick={() => void ir("/precios/simulador")}>
+            Ir al simulador
+          </button>
+        </>
+      );
+    }
+    function ConCampo() {
+      const campo = useRef<HTMLInputElement>(null);
+      useEffect(() => campo.current?.focus(), []);
+      return (
+        <>
+          <h1>Simulador de listas</h1>
+          <input ref={campo} aria-label="Lista" />
+        </>
+      );
+    }
+    montar({ en: RUTA_DE_LA_MESA, paginas: conLaMesa(Mesa, { simulador: ConCampo }) });
+    await u.click(await screen.findByRole("button", { name: "Ir al simulador" }));
+    const h1 = await titulo("Simulador de listas");
+    await new Promise((r) => setTimeout(r, 120));
+    expect(screen.getByRole("textbox", { name: "Lista" })).toHaveFocus();
     expect(h1).not.toHaveFocus();
   });
 });

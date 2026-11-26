@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { enfocarElTitulo } from "./focoAlTitulo";
+import { enfocarElTitulo, nombrarLaVentana } from "./focoAlTitulo";
 
-// Un contenido con un control que ya tiene el foco y el h1 de la pantalla (o el de un esqueleto).
+// Un control fuera del contenido (el enlace de la barra) que ya tiene el foco y el contenido con el h1 de la pantalla (o el
+// de un esqueleto).
 function montarContenido(h1: string, esqueleto = false) {
-  document.body.innerHTML = `<main id="contenido">${esqueleto ? '<h1 data-esqueleto="">Cargando</h1>' : `<h1>${h1}</h1>`}<button type="button">Control</button></main>`;
+  document.body.innerHTML = `<button type="button">Control</button><main id="contenido">${esqueleto ? '<h1 data-esqueleto="">Cargando</h1>' : `<h1>${h1}</h1>`}</main>`;
   const boton = document.querySelector("button") as HTMLButtonElement;
   boton.focus();
   return boton;
@@ -37,20 +38,43 @@ describe("enfocarElTitulo", () => {
     expect(document.querySelector("h1")).toHaveAttribute("tabindex", "-1");
   });
 
-  test("con forzar el título de la ventana dice la pantalla y Sílice", async () => {
-    montarContenido("Presupuesto");
-    const parar = enfocarElTitulo({ forzar: true });
-    await vi.waitFor(() => expect(document.title).toBe("Presupuesto · Sílice"));
-    parar();
-  });
-
-  test("con forzar no pisa un título que ya empieza con la pantalla", async () => {
-    document.title = "Presupuesto · Galpón Sur · Sílice";
-    montarContenido("Presupuesto");
+  test("con forzar NO toca el título de la ventana: tiene una sola fuente (el marco)", async () => {
+    document.title = "Resumen · Casa Demo · Sílice";
+    montarContenido("Resumen de la obra");
     const parar = enfocarElTitulo({ forzar: true });
     await vi.waitFor(() => expect(document.querySelector("h1")).toHaveFocus());
     parar();
-    expect(document.title).toBe("Presupuesto · Galpón Sur · Sílice");
+    expect(document.title).toBe("Resumen · Casa Demo · Sílice");
+  });
+
+  test("con forzar respeta el foco que la pantalla nueva ya puso en su propio contenido", async () => {
+    montarContenido("Presupuesto");
+    const campo = document.createElement("input");
+    document.querySelector("#contenido")?.append(campo);
+    campo.focus();
+    const parar = enfocarElTitulo({ forzar: true });
+    await new Promise((r) => setTimeout(r, 60));
+    parar();
+    expect(campo).toHaveFocus();
+  });
+
+  test("al enfocar avisa con el h1 (alEnfocar)", async () => {
+    montarContenido("Presupuesto");
+    const alEnfocar = vi.fn();
+    const parar = enfocarElTitulo({ forzar: true, alEnfocar });
+    await vi.waitFor(() => expect(alEnfocar).toHaveBeenCalledWith(document.querySelector("h1")));
+    parar();
+  });
+
+  test("nombrarLaVentana pone «pantalla · Sílice» y deja el título que ya empieza con la pantalla", () => {
+    document.title = "Antes";
+    nombrarLaVentana("Mercado");
+    expect(document.title).toBe("Mercado · Sílice");
+    document.title = "Mercado · Galpón Sur · Sílice";
+    nombrarLaVentana("Mercado");
+    expect(document.title).toBe("Mercado · Galpón Sur · Sílice");
+    nombrarLaVentana("");
+    expect(document.title).toBe("Mercado · Galpón Sur · Sílice");
   });
 
   test("con forzar espera el h1 real: el de un esqueleto no cuenta y el título queda como estaba", async () => {
@@ -63,6 +87,6 @@ describe("enfocarElTitulo", () => {
     (document.querySelector("h1") as HTMLElement).textContent = "Mercado";
     await vi.waitFor(() => expect(document.querySelector("h1")).toHaveFocus());
     parar();
-    expect(document.title).toBe("Mercado · Sílice");
+    expect(document.title).toBe("Antes");
   });
 });

@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { fijarCsrf, pedir } from "../api/cliente";
 import { invalidarRecursos, useRecurso, vaciarRecursosParaPruebas } from "./recurso";
 
 interface Diferido<T> {
@@ -248,5 +249,164 @@ describe("useRecurso", () => {
     expect(primero.result.current.carga).toEqual({ estado: "listo", datos: "nuevo" });
     expect(segundo.result.current.carga).toEqual({ estado: "listo", datos: "nuevo" });
     expect(cargar).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Un `cargar` como el de `fetch`: rechaza con AbortError cuando se aborta su señal.
+function cargarComoFetch<T>(): { cargar: (senal: AbortSignal) => Promise<T>; pedidos: Diferido<T>[]; senales: AbortSignal[] } {
+  const pedidos: Diferido<T>[] = [];
+  const senales: AbortSignal[] = [];
+  const cargar = (senal: AbortSignal): Promise<T> => {
+    const d = diferido<T>();
+    pedidos.push(d);
+    senales.push(senal);
+    senal.addEventListener("abort", () => d.rechazar(new DOMException("Aborted", "AbortError")));
+    return d.promesa;
+  };
+  return { cargar, pedidos, senales };
+}
+
+describe("useRecurso con un cargar que rechaza al abortarse", () => {
+  test("R1: una respuesta tardía tras invalidar no pisa el dato nuevo", async () => {
+    const pedidos: Diferido<string>[] = [];
+    const cargar = vi.fn(() => {
+      const d = diferido<string>();
+      pedidos.push(d);
+      return d.promesa; // ignora la señal, como un cargar que no la pasa a fetch
+    });
+    const { result } = renderHook(() => useRecurso("a", cargar));
+    act(() => invalidarRecursos("a"));
+    expect(pedidos).toHaveLength(2);
+    pedidos[1].resolver("nuevo");
+    await asentar();
+    pedidos[0].resolver("viejo");
+    await asentar();
+    expect(result.current.carga).toEqual({ estado: "listo", datos: "nuevo" });
+  });
+
+  test("R5: abortar una petición no se muestra como error", async () => {
+    const { cargar, pedidos } = cargarComoFetch<string>();
+    const { result } = renderHook(() => useRecurso("a", cargar));
+    act(() => invalidarRecursos("a"));
+    await asentar();
+    expect(result.current.carga).toEqual({ estado: "cargando" });
+    pedidos[1].resolver("bien");
+    await asentar();
+    expect(result.current.carga).toEqual({ estado: "listo", datos: "bien" });
+  });
+
+  test("R15: desmontar a mitad de la petición y volver a montar pide otra vez y llega a listo", async () => {
+    const { cargar, pedidos, senales } = cargarComoFetch<string>();
+    const primero = renderHook(() => useRecurso("a", cargar));
+    primero.unmount();
+    expect(senales[0].aborted).toBe(true);
+    const segundo = renderHook(() => useRecurso("a", cargar));
+    expect(pedidos).toHaveLength(2);
+    pedidos[1].resolver("ok");
+    await asentar();
+    expect(segundo.result.current.carga).toEqual({ estado: "listo", datos: "ok" });
+  });
+
+  test("R7: invalidar aborta la señal de la petición en vuelo", () => {
+    const { cargar, senales } = cargarComoFetch<string>();
+    renderHook(() => useRecurso("a", cargar));
+    expect(senales[0].aborted).toBe(false);
+    // Se mira dentro del `act`, antes de que React vuelva a renderizar: el efecto del componente también aborta al soltar,
+    // y aquí se prueba que `invalidarRecursos` aborta por sí mismo.
+    let abortada = false;
+    act(() => {
+      invalidarRecursos("a");
+      abortada = senales[0].aborted;
+    });
+    expect(abortada).toBe(true);
+  });
+
+  test("R6: recargar desde error pasa por cargando", async () => {
+    const { cargar, pedidos } = cargarComoFetch<string>();
+    const { result } = renderHook(() => useRecurso("a", cargar));
+    pedidos[0].rechazar(new Error("falló"));
+    await asentar();
+    expect(result.current.carga.estado).toBe("error");
+    act(() => result.current.recargar());
+    expect(result.current.carga).toEqual({ estado: "cargando" });
+    pedidos[1].resolver("bien");
+    await asentar();
+    expect(result.current.carga).toEqual({ estado: "listo", datos: "bien" });
+  });
+});
+
+describe("useRecurso: el error mostrado es el de la petición vigente", () => {
+  test("el fallo tardío de la clave que se dejó no pisa el error de la clave actual", async () => {
+    const da = diferido<string>();
+    const db = diferido<string>();
+    const cargar = (clave: string) => (clave === "a" ? da.promesa : db.promesa);
+    const a = renderHook(({ clave }) => useRecurso(clave, () => cargar(clave)), { initialProps: { clave: "a" } });
+    renderHook(() => useRecurso("a", () => cargar("a"))); // B sigue esperando "a": la petición compartida no se aborta
+    a.rerender({ clave: "b" });
+    const falloB = new Error("falló b");
+    db.rechazar(falloB);
+    await asentar();
+    expect(a.result.current.carga).toEqual({ estado: "error", error: falloB });
+    da.rechazar(new Error("falló a"));
+    await asentar();
+    expect(a.result.current.carga).toEqual({ estado: "error", error: falloB });
+  });
+
+  test("al volver a una clave que falló muestra cargando mientras pide de nuevo", async () => {
+    const pedidos: Diferido<string>[] = [];
+    const cargar = vi.fn((clave: string) => {
+      if (clave === "b") return Promise.resolve("b");
+      const d = diferido<string>();
+      pedidos.push(d);
+      return d.promesa;
+    });
+    const { result, rerender } = renderHook(({ clave }) => useRecurso(clave, () => cargar(clave)), { initialProps: { clave: "a" } });
+    pedidos[0].rechazar(new Error("falló"));
+    await asentar();
+    expect(result.current.carga.estado).toBe("error");
+    rerender({ clave: "b" });
+    await asentar();
+    expect(result.current.carga).toEqual({ estado: "listo", datos: "b" });
+    rerender({ clave: "a" });
+    expect(pedidos).toHaveLength(2);
+    expect(result.current.carga).toEqual({ estado: "cargando" });
+    pedidos[1].resolver("a2");
+    await asentar();
+    expect(result.current.carga).toEqual({ estado: "listo", datos: "a2" });
+  });
+
+  test("después de invalidarRecursos, una clave que había fallado muestra cargando mientras pide de nuevo", async () => {
+    const { cargar, pedidos } = cargarComoFetch<string>();
+    const { result } = renderHook(() => useRecurso("a", cargar));
+    pedidos[0].rechazar(new Error("falló"));
+    await asentar();
+    expect(result.current.carga.estado).toBe("error");
+    act(() => invalidarRecursos("a"));
+    expect(pedidos).toHaveLength(2);
+    expect(result.current.carga).toEqual({ estado: "cargando" });
+  });
+});
+
+describe("useRecurso y la sesión", () => {
+  afterEach(() => {
+    fijarCsrf(null);
+    vi.unstubAllGlobals();
+  });
+
+  test("al perder la sesión (401 con sesión abierta) la caché se vacía: una clave lista vuelve a pedirse", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detalle: "Sesión vencida." }), { status: 401, headers: { "Content-Type": "application/json" } })));
+    const cargar = vi.fn().mockResolvedValueOnce("de la cuenta anterior").mockResolvedValueOnce("de la cuenta nueva");
+    fijarCsrf("tok");
+    const primero = renderHook(() => useRecurso("obra:1", cargar));
+    await asentar();
+    expect(primero.result.current.carga).toEqual({ estado: "listo", datos: "de la cuenta anterior" });
+
+    await act(async () => {
+      await pedir("/v1/algo").catch(() => undefined);
+    });
+    await asentar();
+    expect(cargar).toHaveBeenCalledTimes(2);
+    expect(primero.result.current.carga).toEqual({ estado: "listo", datos: "de la cuenta nueva" });
+    primero.unmount();
   });
 });
