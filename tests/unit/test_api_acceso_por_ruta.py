@@ -15,7 +15,8 @@ también (`seguridad.permisos.PERMISOS` es lo que se prueba, no la fuente):
 
 Tres pruebas: (1) la tabla cubre exactamente las rutas de la aplicación; (2) por rol, cada ruta deja
 pasar o rechaza con 403 según la tabla; (3) ninguna ruta queda abierta salvo `/salud`, la entrada
-(`POST /v1/sesion`) y el tema de la empresa, y fuera de las rutas de la API solo están la
+(`POST /v1/sesion`), el tema de la empresa y el registro con código (`POST /v1/solicitudes` y
+`POST /v1/solicitudes/canjear`, C9a), y fuera de las rutas de la API solo están la
 documentación y `/app`. La
 regresión «con clave, igual que antes» se mide contra una aplicación de referencia que monta los
 mismos puntos finales con solo `exigir_clave_api` (el `CON_CLAVE` de antes de la ola 0a).
@@ -228,6 +229,10 @@ TABLA = {
     ("POST", "/v1/cuentas/{usuario_id}/reactivar"): CUENTAS_ADM,
     ("POST", "/v1/cuentas/{usuario_id}/desbloquear"): CUENTAS_ADM,
     ("POST", "/v1/cuentas/{usuario_id}/restablecer"): CUENTAS_ADM,
+    # C9a: las solicitudes de cuenta; las resuelve el administrador (spec registro con código)
+    ("GET", "/v1/solicitudes"): CUENTAS_ADM,
+    ("POST", "/v1/solicitudes/{solicitud_id}/aprobar"): CUENTAS_ADM,
+    ("POST", "/v1/solicitudes/{solicitud_id}/rechazar"): CUENTAS_ADM,
     ("GET", "/v1/accesos"): CUENTAS_ADM,
     # Ola 3 (S2-B): «Componer una partida» es de quien arma (`ui/paginas/componer.py`)
     ("GET", "/v1/composicion/opciones"): EDITAR,
@@ -403,6 +408,10 @@ DE_LA_SESION = {
     # de que haya sesión (lo prueba `test_api_tema.py`: colores, logo y archivos rotos)
     ("GET", "/v1/tema"),
     ("GET", "/v1/tema/logo"),
+    # C9a: pedir una cuenta y canjear el código; públicas, las protegen el `Origin`, los
+    # límites, el freno y el código (las prueba `tests/integration/test_api_solicitudes.py`)
+    ("POST", "/v1/solicitudes"),
+    ("POST", "/v1/solicitudes/canjear"),
 }
 SIN_NADA = {  # las únicas abiertas
     ("GET", "/salud"),
@@ -411,6 +420,8 @@ SIN_NADA = {  # las únicas abiertas
     ("POST", "/v1/primer-arranque/reclamo"),
     ("GET", "/v1/tema"),
     ("GET", "/v1/tema/logo"),
+    ("POST", "/v1/solicitudes"),
+    ("POST", "/v1/solicitudes/canjear"),
 }
 
 

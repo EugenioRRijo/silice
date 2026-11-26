@@ -269,7 +269,8 @@ def test_un_envio_retirado_o_pendiente_no_cuenta_como_dictamen(instalacion: Sess
 
 
 def test_una_retirada_con_quien_y_cuando_tampoco_es_dictamen(instalacion: Session) -> None:
-    # Mata el mutante que cuenta «retirada» como dictamen cuando la fila sí trae quién la cerró y cuándo.
+    # Mata el mutante que cuenta «retirada» como dictamen cuando la fila sí trae quién la
+    # cerró y cuándo.
     _envio(instalacion, 1, ANA, LUNES, estado="retirada", dictamen_por=ANA, dictamen_el=MARTES)
     assert actividad.actividad_de(instalacion, "ana", DESDE, HASTA).cifras == Cifras(0, 1, 0, 0)
 

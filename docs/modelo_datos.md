@@ -933,3 +933,18 @@ Solo inserción: al leer manda el último guardado de la versión (`id` descende
 inserción del caso; no depende del reloj del equipo); sin uno propio, el último de otra versión de la misma obra. Un guardado sin filas en `riesgo_mapa_serie` es un mapa vacío. Guardar
 el mismo mapa que ya era el último de la versión no escribe nada. Al guardar se validan las series contra las que admite
 la moneda y el largo de cada insumo (de 1 a 500 caracteres); los insumos que la versión ya no tiene se filtran al leer.
+
+## 12. Solicitudes de cuenta (base de la instalación, revisión `ins_0013_solicitud_cuenta`)
+
+C9a, registro con código de 20 caracteres (especificación
+[2026-11-26-registro-con-codigo](especificaciones/2026-11-26-registro-con-codigo.md)). Una persona pide una cuenta y
+Sílice guarda una solicitud, no una cuenta: no hay sesión hasta canjear el código que genera el administrador al
+aprobarla. El modelo está en `seguridad/modelo.py` (`SolicitudCuenta`) y solo lo lee y escribe
+`seguridad/solicitudes.py`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `solicitud_cuenta` | `id` PK, `login` (60, normalizado), `nombre` (120), `correo` (254), `huella_clave` (200, Argon2), `creada`, `estado` (`pendiente` \| `aprobada` \| `rechazada` \| `usada` \| `vencida`), `papel` (`arma` \| `revisa`; nulo hasta aprobar), `huella_codigo` (64, SHA-256 del código normalizado; nulo sin código vigente), `vence` (nulo; aprobada + 7 días), `resuelta_por` (120) | `login` UK: una solicitud rechazada o vencida se reutiliza si se pide de nuevo |
+
+La misma revisión agrega `usuario.correo` (254, nulo, `''` por omisión para las cuentas anteriores). Ni la contraseña ni
+el código se guardan en claro; el código solo viaja una vez, en la respuesta de la aprobación.

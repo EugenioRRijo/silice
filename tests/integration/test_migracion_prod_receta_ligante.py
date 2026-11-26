@@ -19,7 +19,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0011_receta_ligante"
 ANTERIOR = "ins_0010_modulo"
-CABEZA = "ins_0012_conteo_anulado"  # la anulacion del conteo fisico cuelga de esta
+CABEZA = "ins_0013_solicitud_cuenta"  # la cabeza: la anulacion del conteo y despues C9a
 TABLA = "prod_receta_componente"
 ANTES = ["id", "receta_id", "orden", "codigo", "cantidad_por_t", "unidad", "tipo"]
 

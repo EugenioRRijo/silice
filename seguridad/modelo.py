@@ -19,6 +19,7 @@ from sqlalchemy import (
     LargeBinary,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -40,6 +41,30 @@ class Usuario(Base):
     restablecida_por_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     creado: Mapped[datetime] = mapped_column(DateTime)
     creado_por: Mapped[str] = mapped_column(String(120), default="")
+    #: C9a (`ins_0013`): el correo de quien pidió la cuenta; vacío en las cuentas anteriores.
+    correo: Mapped[str | None] = mapped_column(
+        String(254), default="", server_default=text("''")
+    )
+
+
+class SolicitudCuenta(Base):
+    """Una persona pide una cuenta (C9a, `ins_0013`): no es una cuenta ni da sesión hasta canjear
+    el código que genera el administrador al aprobarla. Ni la contraseña ni el código se guardan:
+    solo sus huellas (Argon2 y SHA-256)."""
+
+    __tablename__ = "solicitud_cuenta"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    login: Mapped[str] = mapped_column(String(60), unique=True)  # normalizado
+    nombre: Mapped[str] = mapped_column(String(120))
+    correo: Mapped[str] = mapped_column(String(254))
+    huella_clave: Mapped[str] = mapped_column(String(200))  # Argon2, nunca la contraseña
+    creada: Mapped[datetime] = mapped_column(DateTime)
+    estado: Mapped[str] = mapped_column(String(12))  # pendiente|aprobada|rechazada|usada|vencida
+    papel: Mapped[str | None] = mapped_column(String(20), default=None)  # arma | revisa
+    huella_codigo: Mapped[str | None] = mapped_column(String(64), default=None)  # SHA-256
+    vence: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    resuelta_por: Mapped[str] = mapped_column(String(120), default="")
 
 
 class IntentoAcceso(Base):

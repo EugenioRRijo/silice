@@ -190,8 +190,12 @@ def test_toda_ruta_menos_salud_exige_la_clave(api) -> None:
         }
         for m in ops
         if m in {"get", "post", "put", "patch", "delete"}
+        # C9a: pedir una cuenta y canjear el código, públicas (test_api_solicitudes.py); el GET
+        # de las solicitudes, del administrador, sigue en el recorrido
+        and (p, m) not in {("/v1/solicitudes", "post"), ("/v1/solicitudes/canjear", "post")}
     ]
     assert ("/v1/auditorias", "post") in rutas
+    assert ("/v1/solicitudes", "get") in rutas
     for ruta, metodo in rutas:
         r = cliente.request(metodo.upper(), ruta.replace("{", "x").replace("}", ""))
         assert r.status_code == 401, (metodo, ruta, r.status_code)

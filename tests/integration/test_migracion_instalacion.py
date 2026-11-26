@@ -44,6 +44,7 @@ NUEVAS = {
     "prod_calculo",
     "prod_publicacion",
     "modulo_cambio",
+    "solicitud_cuenta",  # C9a
 }
 
 
@@ -54,7 +55,7 @@ def _tablas(ruta: Path) -> set[str]:
 
 
 def test_la_cabeza_del_destino_instalacion_es_la_revision_del_historial() -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0012_conteo_anulado"
+    assert revision_head(Destino.INSTALACION) == "ins_0013_solicitud_cuenta"
     assert METADATAS_INSTALACION == (
         Base.metadata,
         METADATA_PRODUCCION,

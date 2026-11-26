@@ -70,6 +70,7 @@ from api.rutas import (
     sesion,
     similares,
     simulador,
+    solicitudes,
     tablero,
     tema,
     vial,
@@ -168,6 +169,8 @@ app.include_router(casos.router)
 app.include_router(proyectos.router)
 # Migracion: Administracion, pestañas Cuentas y Accesos (ADMINISTRAR_CUENTAS, solo sesion)
 app.include_router(cuentas.router)
+# C9a: el registro con código (pedir una cuenta, aprobarla y canjear el código)
+app.include_router(solicitudes.router)
 # C10: la actividad por persona (solo lectura; la propia cuenta o quien administra las cuentas)
 app.include_router(actividad.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
