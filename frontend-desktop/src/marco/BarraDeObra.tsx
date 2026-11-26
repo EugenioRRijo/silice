@@ -9,7 +9,14 @@ import type { MouseEvent, ReactNode } from "react";
 import { Link } from "react-router";
 import { esClicSimple, useNavegarSeguro } from "../shell/navegarSeguro";
 import { formulariosSucios } from "../shell/sucio";
-import { HERRAMIENTAS_DE_OBRA, OPCIONES_DE_HERRAMIENTA, herramientaDe, opcionActual, primeraRutaDe, rutaDeOpcion } from "./herramientas";
+import {
+  HERRAMIENTAS_DE_OBRA,
+  OPCIONES_DE_HERRAMIENTA,
+  herramientaDe,
+  opcionActual,
+  primeraRutaDe,
+  rutaDeOpcion,
+} from "./herramientas";
 import { rutaDeObra } from "./secciones";
 import type { SeccionId } from "./secciones";
 import "./BarraDeObra.scss";
@@ -34,7 +41,15 @@ interface OpcionDeVersion {
   seccion: SeccionId;
 }
 
-export function BarraDeObra({ carpeta, obraId, nombre, seccion, subvista, usables, accion }: Props) {
+export function BarraDeObra({
+  carpeta,
+  obraId,
+  nombre,
+  seccion,
+  subvista,
+  usables,
+  accion,
+}: Props) {
   const navegarSeguro = useNavegarSeguro();
   const actual = herramientaDe(seccion, subvista);
   const alPulsar = (e: MouseEvent<HTMLAnchorElement>, ruta: string) => {
@@ -48,17 +63,38 @@ export function BarraDeObra({ carpeta, obraId, nombre, seccion, subvista, usable
     const ruta = primeraRutaDe(h.id, carpeta, obraId, usables);
     return ruta === null ? [] : [{ id: h.id, titulo: h.titulo, ruta }];
   });
-  const opcionesDeVersion: OpcionDeVersion[] = [
-    { titulo: "Versiones", ruta: rutaDeObra(carpeta, obraId, "versiones"), seccion: "versiones" },
-    { titulo: "Pedir aprobación", ruta: rutaDeObra(carpeta, obraId, "aprobaciones"), seccion: "aprobaciones" },
-    { titulo: "Entregar al cliente", ruta: rutaDeObra(carpeta, obraId, "aprobaciones", "entregar"), seccion: "aprobaciones" },
-  ].filter((o) => usables === undefined || usables.includes(o.seccion));
+  const opcionesDeVersion: OpcionDeVersion[] = (
+    [
+      {
+        titulo: "Versiones",
+        ruta: rutaDeObra(carpeta, obraId, "versiones"),
+        seccion: "versiones",
+      },
+      {
+        titulo: "Pedir aprobación",
+        ruta: rutaDeObra(carpeta, obraId, "aprobaciones"),
+        seccion: "aprobaciones",
+      },
+      {
+        titulo: "Entregar al cliente",
+        ruta: rutaDeObra(carpeta, obraId, "aprobaciones", "entregar"),
+        seccion: "aprobaciones",
+      },
+    ] satisfies OpcionDeVersion[]
+  ).filter((o) => usables === undefined || usables.includes(o.seccion));
 
   // La segunda fila: en Versiones (que no es una herramienta) no hay.
   const opciones =
-    actual === "versiones" ? [] : OPCIONES_DE_HERRAMIENTA[actual].filter((o) => usables === undefined || usables.includes(o.seccion));
+    actual === "versiones"
+      ? []
+      : OPCIONES_DE_HERRAMIENTA[actual].filter(
+          (o) => usables === undefined || usables.includes(o.seccion),
+        );
   const abierta = opcionActual(actual, seccion, subvista);
-  const tituloDeLaFila = actual === "portada" ? "la portada" : (HERRAMIENTAS_DE_OBRA.find((h) => h.id === actual)?.titulo ?? "");
+  const tituloDeLaFila =
+    actual === "portada"
+      ? "la portada"
+      : (HERRAMIENTAS_DE_OBRA.find((h) => h.id === actual)?.titulo ?? "");
 
   return (
     <div className="silice-barra-obra">
@@ -73,7 +109,10 @@ export function BarraDeObra({ carpeta, obraId, nombre, seccion, subvista, usable
           <span className="silice-barra-obra__linea">Portada de la obra</span>
         </Link>
 
-        <nav aria-label="Herramientas de la obra" className="silice-barra-obra__herramientas">
+        <nav
+          aria-label="Herramientas de la obra"
+          className="silice-barra-obra__herramientas"
+        >
           {herramientas.map((h) => (
             <Link
               key={h.id}
@@ -89,9 +128,19 @@ export function BarraDeObra({ carpeta, obraId, nombre, seccion, subvista, usable
 
         <div className="silice-barra-obra__acciones">
           {opcionesDeVersion.length > 0 && (
-            <MenuButton label="Versión" kind="ghost" size="sm" menuAlignment="bottom-end" className="silice-barra-obra__version">
+            <MenuButton
+              label="Versión"
+              kind="ghost"
+              size="sm"
+              menuAlignment="bottom-end"
+              className="silice-barra-obra__version"
+            >
               {opcionesDeVersion.map((o) => (
-                <MenuItem key={o.titulo} label={o.titulo} onClick={() => void navegarSeguro(o.ruta)} />
+                <MenuItem
+                  key={o.titulo}
+                  label={o.titulo}
+                  onClick={() => void navegarSeguro(o.ruta)}
+                />
               ))}
             </MenuButton>
           )}
@@ -100,7 +149,10 @@ export function BarraDeObra({ carpeta, obraId, nombre, seccion, subvista, usable
       </div>
 
       {opciones.length > 0 && (
-        <nav aria-label={`Opciones de ${tituloDeLaFila}`} className="silice-barra-obra__opciones">
+        <nav
+          aria-label={`Opciones de ${tituloDeLaFila}`}
+          className="silice-barra-obra__opciones"
+        >
           {opciones.map((o) => {
             const ruta = rutaDeOpcion(o, carpeta, obraId);
             return (

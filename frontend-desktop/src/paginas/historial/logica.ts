@@ -26,11 +26,6 @@ export interface FiltrosHistorial {
 
 export const FILTROS_VACIOS: FiltrosHistorial = { desde: "", hasta: "", tipo: "todos", resultado: "todos", persona: "" };
 
-export interface PersonaExtraida {
-  clave: string;
-  nombre: string;
-  usuario: string | null;
-}
 
 export interface OpcionDePersona {
   clave: string;
@@ -39,6 +34,7 @@ export interface OpcionDePersona {
 }
 
 export { extraerPersona, type PersonaExtraida } from "../../comun/responsable";
+import type { PersonaExtraida } from "../../comun/responsable";
 
 export function personaDeAuditoria(a: Pick<AuditoriaEnHistorial, "usuario" | "responsable">): PersonaExtraida | null {
   if (a.responsable !== undefined && a.responsable !== null) {

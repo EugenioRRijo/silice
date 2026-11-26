@@ -6,6 +6,12 @@ export function nombreDeResponsable(responsable: string): string {
 }
 
 // Nombre y usuario de un responsable («Ana Pérez <ana>»), para filtrar por persona y enlazar a su actividad (C10b).
+export interface PersonaExtraida {
+  clave: string;
+  nombre: string;
+  usuario: string | null;
+}
+
 const LOGIN = /<([^<>]+)>/;
 
 // Extrae el nombre visible y el usuario (login) de un texto «Nombre <login>» o de campos separados.

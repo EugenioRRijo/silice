@@ -24,11 +24,6 @@ export interface FilaDeVersion extends VersionConPersona {
   seAbre: boolean;
 }
 
-export interface PersonaExtraida {
-  clave: string;
-  nombre: string;
-  usuario: string | null;
-}
 
 export interface OpcionDePersona {
   clave: string;
@@ -37,6 +32,7 @@ export interface OpcionDePersona {
 }
 
 export { extraerPersona, type PersonaExtraida } from "../../comun/responsable";
+import type { PersonaExtraida } from "../../comun/responsable";
 
 export function personasDeVersion(fila: Pick<FilaDeVersion, "por" | "responsable" | "usuario">): PersonaExtraida[] {
   const lista: PersonaExtraida[] = [];
