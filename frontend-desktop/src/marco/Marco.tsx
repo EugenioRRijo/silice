@@ -396,7 +396,9 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const columnaOculta = useColumnaOculta();
   const conRecorrido = recorrido !== null && !columnaOculta;
 
-  // Ventana dedicada a pantalla completa para las 3 herramientas mayores (Auditoria, Precios, Produccion).
+  // Los 3 espacios de la empresa (Auditoria, Precios, Produccion). Desde el lote C4 (2026-11-26) no tienen ventana aparte: la barra
+  // lateral se ve también dentro de ellos (es la que lleva de un espacio a otro y a cada obra); `enVentanaDedicada` solo sirve
+  // para que la barra de arriba no repita el contexto, que ya dice el espacio.
   const primerSegmento = ubicacion.pathname.split("/")[1] ?? "";
   const espacioActivo: EspacioId | null = esEspacio(primerSegmento) ? primerSegmento : null;
   const enVentanaDedicada = espacioActivo !== null;
@@ -414,7 +416,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 
   useEffect(() => {
     function alTeclearCtrlB(e: KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "b" || enVentanaDedicada) return;
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "b") return;
       const destino = e.target as HTMLElement | null;
       if (
         destino instanceof HTMLInputElement ||
@@ -429,7 +431,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     }
     window.addEventListener("keydown", alTeclearCtrlB);
     return () => window.removeEventListener("keydown", alTeclearCtrlB);
-  }, [enVentanaDedicada, toggleSidebar]);
+  }, [toggleSidebar]);
 
   // Transicion rapida al cambiar entre estaciones mayores (Obras <-> Auditoria / Precios / Produccion).
   const estacionActual: EstacionMayor = espacioActivo ?? "obras";
@@ -458,10 +460,10 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   }, [enVentanaDedicada, ubicacion.pathname, obraActualRuta, obras.obras]);
 
   const layoutDelMarco = useMemo(
-    () => ({ sidebarCollapsed: enVentanaDedicada || sidebarCollapsed, toggleSidebar }),
-    [enVentanaDedicada, sidebarCollapsed, toggleSidebar],
+    () => ({ sidebarCollapsed, toggleSidebar }),
+    [sidebarCollapsed, toggleSidebar],
   );
-  const contenidoExpandido = enVentanaDedicada || sidebarCollapsed;
+  const contenidoExpandido = sidebarCollapsed;
 
   return (
     <ContextoAplicacion.Provider value={aplicacion}>
@@ -489,7 +491,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                 }
               />
               <div className="silice-marco__cuerpo">
-                {!enVentanaDedicada && <BarraLateral obraAbierta={obraActualRuta} />}
+                <BarraLateral obraAbierta={obraActualRuta} />
                 <main
                   id="contenido"
                   ref={contenido}

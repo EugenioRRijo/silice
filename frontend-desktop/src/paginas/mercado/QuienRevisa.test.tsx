@@ -75,8 +75,9 @@ describe("Mercado para quien revisa (ronda 2 de la Tarea 13)", () => {
 
   test("quien revisa abre Mercado desde la barra de la obra y solo ve las pestañas que leen", async () => {
     montar("rita");
-    const barra = await screen.findByRole("navigation", { name: "Secciones de la obra" });
-    expect(await within(barra).findByRole("link", { name: "Mercado" })).toBeInTheDocument();
+    // Cara nueva (C4): Mercado es «Precios de mercado», opción de la herramienta Presupuestar en la segunda fila de la obra.
+    const barra = await screen.findByRole("navigation", { name: "Opciones de Presupuestar" });
+    expect(await within(barra).findByRole("link", { name: "Precios de mercado" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 1, name: "Estudio de mercado" })).toBeInTheDocument();
     expect(pestanas()).toEqual(["Histórico de precios", "Cotizaciones de la obra"]);
     // «Lo que compramos» y «Lo que cobramos» anotan y usan precios (y su estudio exige `editar_hoja`): no se pintan.

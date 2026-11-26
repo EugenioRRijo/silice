@@ -1,9 +1,13 @@
 import { useContext } from "react";
+import { matchPath, useLocation } from "react-router";
 import { ContextoDeLaHoja } from "../paginas/hoja/ProveedorDeLaHoja";
 import type { HojaDeLaObra } from "../paginas/hoja/ProveedorDeLaHoja";
 import { ContextoAplicacion } from "../shell/contexto";
 import { ListaDeLaCarpeta } from "../shell/ListaDeLaCarpeta";
+import { BarraDeObra } from "./BarraDeObra";
 import { EtapaDeObra } from "./EtapaDeObra";
+import { useOferta } from "./oferta";
+import { PATRON_DE_OBRA, seccionPorId } from "./secciones";
 import type { FichaDeLaObra } from "./useFichaDeLaObra";
 
 interface Props {
@@ -32,11 +36,25 @@ function lineaDeVersion(version: string | null | undefined, hoja: HojaDeLaObra |
 export function CabeceraDeObra({ carpeta, obraId, nombre, version, ficha }: Props) {
   const base = useContext(ContextoAplicacion);
   const hoja = useContext(ContextoDeLaHoja);
+  const { pathname } = useLocation();
+  const { oferta } = useOferta();
+  // Dónde está la persona (sección y subvista), de la propia ruta: la cabecera no cambia sus props. Sin sesión (una
+  // cabecera suelta) se ofrecen todas las secciones; con ella, solo las que la cuenta puede usar.
+  const enLaRuta = matchPath(PATRON_DE_OBRA, pathname)?.params;
+  const seccion = seccionPorId(enLaRuta?.seccion ?? "")?.id ?? "resumen";
+  const usables = base?.sesion ? oferta.secciones.map((s) => s.id) : undefined;
   // La moneda de la obra la da el servidor en su ficha: undefined mientras carga, null si no hay dato.
   const monedaDeLaObra = ficha.estado === "lista" ? ficha.obra.moneda : ficha.estado === "sin_dato" ? null : undefined;
   return (
     <section aria-label="Obra abierta" className="silice-obra-abierta">
-      <p className="silice-obra-abierta__nombre">{nombre ?? `Obra ${obraId}`}</p>
+      <BarraDeObra
+        carpeta={carpeta}
+        obraId={obraId}
+        nombre={nombre ?? `Obra ${obraId}`}
+        seccion={seccion}
+        subvista={enLaRuta?.subvista}
+        usables={usables}
+      />
       <ul className="silice-obra-abierta__datos">
         {ficha.estado === "lista" && (
           <li>

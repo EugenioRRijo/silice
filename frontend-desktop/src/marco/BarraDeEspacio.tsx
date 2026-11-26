@@ -25,9 +25,12 @@ interface Propiedades {
   pestanas: readonly PestanaDeEspacio[];
   activa: string;
   nivel: "espacio" | "subvista";
+  // Opcional (reestructuración, lote C4): el nombre del espacio. Con él, un espacio de la empresa toma la forma de dos filas de
+  // la barra de la obra: el nombre arriba y sus herramientas, como pestañas, debajo. Sin él, la barra es la de siempre.
+  titulo?: string;
 }
 
-export function BarraDeEspacio({ etiqueta, pestanas, activa, nivel }: Propiedades) {
+export function BarraDeEspacio({ etiqueta, pestanas, activa, nivel, titulo }: Propiedades) {
   const navegarSeguro = useNavegarSeguro();
   function alPulsar(e: MouseEvent<HTMLAnchorElement>, ruta: string) {
     if (!esClicSimple(e)) return;
@@ -38,7 +41,7 @@ export function BarraDeEspacio({ etiqueta, pestanas, activa, nivel }: Propiedade
   // Una sola vista (o ninguna) no se ofrece como elección: el conmutador de subvistas no se pinta (adenda A.1).
   if (nivel === "subvista" && pestanas.length <= 1) return null;
   const clase = nivel === "subvista" ? "silice-barra-espacio silice-barra-espacio--subvista" : "silice-barra-espacio";
-  return (
+  const barra = (
     <nav aria-label={etiqueta} className={clase}>
       {pestanas.map((p) => (
         <Link
@@ -52,6 +55,13 @@ export function BarraDeEspacio({ etiqueta, pestanas, activa, nivel }: Propiedade
         </Link>
       ))}
     </nav>
+  );
+  if (titulo === undefined || nivel !== "espacio") return barra;
+  return (
+    <div className="silice-barra-espacio-doble">
+      <p className="silice-barra-espacio-doble__titulo">{titulo}</p>
+      {barra}
+    </div>
   );
 }
 

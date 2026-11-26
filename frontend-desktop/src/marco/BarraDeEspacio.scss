@@ -3,6 +3,20 @@
 
 // Barra de espacio editorial (Obra, Inicio, Cuenta y ventanas dedicadas).
 // Sin anchos fijos (estilosMarco.test.ts): flex-wrap natural y subrayado limpio de 2px.
+// Forma de dos filas (con `titulo`): el nombre del espacio y, debajo, sus pestañas.
+.silice-barra-espacio-doble {
+  background-color: var(--silice-surface);
+}
+
+.silice-barra-espacio-doble__titulo {
+  margin: 0;
+  padding-block: 0.75rem 0.25rem;
+  padding-inline: 1.5rem;
+  color: var(--silice-ink);
+  font-weight: 600;
+  @include type.type-style("body-compact-02");
+}
+
 .silice-barra-espacio {
   display: flex;
   flex-wrap: wrap;

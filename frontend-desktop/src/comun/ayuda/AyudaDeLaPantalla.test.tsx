@@ -75,7 +75,8 @@ describe("el marco pone la ayuda encima de cada pantalla", () => {
     montarMarco(sesionDe("ana"), "/obra/empresa/7/control/reajuste");
     const h1 = await titulo("Reajuste de precios");
     const boton = screen.getByRole("button", { name: "¿Qué es esto?" });
-    const vistas = screen.getByRole("navigation", { name: "Vistas de Control de obra" });
+    // Integración C3-C5: la ayuda va tras la segunda fila de la obra (sus opciones) y antes del h1.
+    const vistas = screen.getByRole("navigation", { name: "Opciones de Anticipar" });
     expect(vistas.compareDocumentPosition(boton) & SIGUE).toBeTruthy();
     expect(boton.compareDocumentPosition(h1) & SIGUE).toBeTruthy();
     await u.click(boton);

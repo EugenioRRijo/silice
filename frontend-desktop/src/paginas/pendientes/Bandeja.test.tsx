@@ -766,7 +766,8 @@ describe("Pendientes: foco 5, muchos pendientes", () => {
     const columna = container.querySelector(".silice-bandeja__lista");
     expect(columna).toContainElement(await lista());
     expect(columna).not.toContainElement(detalle());
-    expect(screen.getByText("200 avisos")).toBeInTheDocument();
+    // La barra lateral (C5) también resume los pendientes; la cifra que se prueba es la de la bandeja.
+    expect(within(container.querySelector(".silice-bandeja") as HTMLElement).getByText("200 avisos")).toBeInTheDocument();
   });
 });
 

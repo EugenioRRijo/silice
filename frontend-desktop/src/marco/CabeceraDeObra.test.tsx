@@ -190,9 +190,12 @@ describe("CabeceraDeObra: la moneda de la obra llega a la lista de la carpeta", 
       throw new Error(`Ruta inesperada: ${ruta}`);
     });
     render(
-      <ContextoAplicacion.Provider value={aplicacion}>
-        <CabeceraDeObra carpeta={null} obraId={3} nombre="Galpón Norte" version="002" ficha={ficha} />
-      </ContextoAplicacion.Provider>,
+      // La cabecera lleva ahora la barra de la obra, con enlaces: necesita un enrutador (antes no hacía falta ninguno).
+      <MemoryRouter initialEntries={[rutaDeObra(null, 3, "resumen")]}>
+        <ContextoAplicacion.Provider value={aplicacion}>
+          <CabeceraDeObra carpeta={null} obraId={3} nombre="Galpón Norte" version="002" ficha={ficha} />
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
     );
   }
 
@@ -209,6 +212,31 @@ describe("CabeceraDeObra: la moneda de la obra llega a la lista de la carpeta", 
   it("mientras la ficha carga dice que lee la moneda", async () => {
     montarCabecera({ estado: "cargando" });
     expect(await within(cabecera()).findByText("Leyendo la moneda de la carpeta…")).toBeInTheDocument();
+  });
+});
+
+// Lote C4 de la reestructuración: la cabecera lleva la barra de la obra (nombre → Portada, herramientas y menú de versión)
+// y la herramienta actual sale de la ruta. El nombre de la obra ya no es un párrafo suelto: es el enlace de esa barra.
+describe("CabeceraDeObra: la barra de la obra", () => {
+  afterEach(() => pedirFalso.mockReset());
+
+  it("dice la herramienta actual según la ruta y el nombre es el enlace a la Portada", async () => {
+    servidor();
+    montar(rutaDeObra(null, 3, "mercado", "actualizar"));
+    await screen.findByRole("heading", { level: 1 });
+    const barra = within(cabecera()).getByRole("navigation", { name: "Herramientas de la obra" });
+    expect(within(barra).getByRole("link", { name: "Presupuestar" })).toHaveAttribute("aria-current", "page");
+    expect(within(barra).getByRole("link", { name: "Anticipar" })).not.toHaveAttribute("aria-current");
+    expect(within(cabecera()).getByRole("link", { name: /Galpón Norte/ })).toHaveAttribute("href", rutaDeObra(null, 3, "resumen"));
+    expect(within(cabecera()).getByRole("button", { name: /Versión/ })).toBeInTheDocument();
+  });
+
+  it("en la Portada ninguna herramienta es la actual", async () => {
+    servidor();
+    montar(rutaDeObra(null, 3, "resumen"));
+    await screen.findByRole("heading", { level: 1 });
+    const barra = within(cabecera()).getByRole("navigation", { name: "Herramientas de la obra" });
+    expect(within(barra).queryAllByRole("link").filter((l) => l.getAttribute("aria-current") === "page")).toHaveLength(0);
   });
 });
 

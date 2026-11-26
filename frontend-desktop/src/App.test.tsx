@@ -120,7 +120,7 @@ describe("App", () => {
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    expect(within(lateral).getByRole("link", { name: "Vista general" })).toHaveAttribute("href", "#/inicio/general");
+    expect(within(lateral).getByRole("link", { name: "Inicio" })).toHaveAttribute("href", "#/inicio/general");
     expect(within(lateral).getByRole("navigation", { name: "Costos y producción" })).toBeInTheDocument();
     // Con la suite entera en marcha el marco tarda mas que el plazo por omision.
     // F6, T8: la app abre en la Vista general (ruta índice → #/inicio/general).

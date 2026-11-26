@@ -31,6 +31,29 @@ function pintar(propiedades: Partial<Parameters<typeof BarraDeEspacio>[0]> = {})
 const rutaDe = (h: { pagina: string }) => rutaCanonica(h.pagina) ?? "";
 const ids = (pestanas: readonly { id: string }[]) => pestanas.map((p) => p.id);
 
+// Reestructuración, lote C4: con `titulo`, un espacio de la empresa usa la forma de dos filas de la barra de la obra (fila 1 el
+// nombre del espacio, fila 2 sus herramientas como pestañas). Sin `titulo` la barra es la de siempre.
+describe("BarraDeEspacio: forma de dos filas con título", () => {
+  it("con titulo pone el nombre del espacio en la fila 1 y las pestañas, que siguen siendo enlaces, en la fila 2", () => {
+    const { container } = pintar({ titulo: "Precios y catálogo", etiqueta: "Precios y catálogo" });
+    expect(container.querySelector(".silice-barra-espacio-doble__titulo")).toHaveTextContent("Precios y catálogo");
+    const nav = screen.getByRole("navigation", { name: "Precios y catálogo" });
+    expect(within(nav).getAllByRole("link")).toHaveLength(3);
+    expect(within(nav).getByRole("link", { name: "Presupuesto" })).toHaveAttribute("aria-current", "page");
+    expect(container.querySelector(".silice-barra-espacio-doble")?.firstElementChild).toHaveClass("silice-barra-espacio-doble__titulo");
+  });
+
+  it("sin titulo no hay fila de nombre", () => {
+    const { container } = pintar();
+    expect(container.querySelector(".silice-barra-espacio-doble")).toBeNull();
+  });
+
+  it("el conmutador de subvistas no lleva fila de nombre aunque se le pase titulo", () => {
+    const { container } = pintar({ nivel: "subvista", titulo: "Algo" });
+    expect(container.querySelector(".silice-barra-espacio-doble")).toBeNull();
+  });
+});
+
 // Plan F6, T3. La barra navega por URL: cada pestaña es un enlace a su ruta, no un panel local (por eso no es un tablist).
 describe("BarraDeEspacio: semántica", () => {
   it("es una navegación con el nombre que recibe", () => {

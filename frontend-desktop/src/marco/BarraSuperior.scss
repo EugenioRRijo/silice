@@ -30,11 +30,13 @@
   flex: 1 1 auto;
 }
 
+// A la derecha: Nueva obra, el buscador y la cuenta. Cede el buscador (que se encoge hasta su icono), no la cuenta.
 .silice-marco-barra__der {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex: none;
+  flex: 0 1 auto;
+  min-inline-size: 0;
 }
 
 .silice-marco-barra__logo {
@@ -155,16 +157,15 @@
   white-space: nowrap;
 }
 
-// Selector centrado de las 3 ventanas dedicadas (01 / 02 / 03).
+// Los espacios de la empresa (Obras, Auditar un libro, Precios y catálogo, Producción), siempre a la vista, junto a la marca.
+// El actual va con el acento sobre el color del marco (par que mide el servidor: marco/acento). Con letra grande y poco
+// ancho parten en renglones antes de salirse de la barra.
 .silice-marco-barra__modos {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: var(--silice-radio-md);
-  background-color: transparent;
-  border: 1px solid var(--cds-border-strong-01);
-  flex: none;
+  margin-inline-start: 0.5rem;
+  flex: 0 0 auto;
 }
 
 .silice-marco-barra__modo {
@@ -194,6 +195,12 @@
     outline: 2px solid var(--cds-focus-inverse);
     outline-offset: 1px;
   }
+}
+
+// «Nueva obra»: el amarillo de la capa de botones (estilos/botones.scss); aquí solo que no ceda ni parta su rótulo.
+.silice-marco-barra .silice-boton-nueva-obra {
+  flex: none;
+  white-space: nowrap;
 }
 
 // Buscador global (Ctrl+K): cede antes que el contexto y en modo dedicado pasa a boton compacto.
@@ -232,16 +239,7 @@
   }
 }
 
-.silice-marco-barra__buscar--compacto {
-  flex: none;
-  inline-size: 2rem;
-  min-inline-size: 2rem;
-  padding-inline: 0;
-  justify-content: center;
-  border-color: transparent;
-  background-color: transparent;
-
-  .silice-marco-barra__buscar-texto {
+.silice-marco-barra__buscar-texto {
     position: absolute;
     inline-size: 1px;
     block-size: 1px;
@@ -310,6 +308,10 @@
 
     .silice-marco-barra__contexto {
       display: none;
+    }
+
+    .silice-marco-barra__modo {
+      padding-inline: 0.5rem;
     }
   }
 }
