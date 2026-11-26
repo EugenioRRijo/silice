@@ -91,3 +91,21 @@ Viene del veredicto del consejo:
   - devolvió 5 hallazgos mayores y todos se corrigieron, con la prueba en rojo primero y una mutación por punto;
   - los menores también se corrigieron;
   - ninguna pantalla usa todavía las piezas: B1 será la primera.
+
+## Decisiones de Eugenio para B1, el Presupuesto (2026-11-26)
+
+Eugenio aceptó las 8 recomendaciones de la ficha de B1:
+- **D1.** La obra se abre en Presupuesto, no en Resumen.
+- **D2.** La cifra de T1 es «Total sin IVA», con «Con IVA (16 %)» debajo. La hoja de observación acepta cualquiera de las
+  dos si la persona dice cuál lee.
+- **D3.** La vista por pestañas queda como «Espacio, plan y ajustes», sin «Partidas» ni «Revisión». Si el tiempo no
+  alcanza, queda intacta y se declara como límite.
+- **D4.** El botón dice «Crear la partida «…»».
+- **D5.** Antes de cada persona se restaura la obra de demostración limpia, con el respaldo local, y el paso se anota en
+  el guion.
+- **D6.** Se mantiene «Problemas» y se declara como límite en el capítulo IV.
+- **D7.** Quitar una partida pide confirmación con el diálogo destructivo, con el foco en «Cancelar».
+- **D8.** El «Qué hacer» de cada hallazgo, escrito por el servidor, pasa a B2.
+
+Gemini vuelve a tener créditos (Eugenio, 2026-11-26). En la rama de la reestructuración construye Carbon, ayuda Neon y
+Hydrogen hace lo corto; Claude prueba, revisa y hace los commits.
