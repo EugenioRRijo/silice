@@ -1,6 +1,7 @@
 // Estilos propios de la aplicacion. Carbon pone la gramatica visual; editorial.scss aplica el sistema Swiss-industrial.
 @use "./fuentes";
 @use "./tokens";
+@use "./botones";
 @use "./editorial";
 @use "../indicadores/indicadores";
 @use "../visor/visor";
@@ -15,14 +16,20 @@ html {
   font-size: calc(116.6667% * var(--silice-escala-letra));
   // Barras de desplazamiento y seleccion con la paleta, no con los valores del navegador.
   scrollbar-color: var(--cds-border-strong) var(--cds-layer);
-  color-scheme: light;
 }
 
 body {
   margin: 0;
+  font-family: "Instrument Sans", system-ui, sans-serif;
   background: var(--silice-fondo);
   color: var(--silice-texto);
   caret-color: var(--silice-interactivo);
+}
+
+// Los componentes de Carbon declaran su propia familia en sus clases; heredan la del cuerpo sin tocar los iconos SVG.
+body *:not(svg, svg *),
+body [class*="cds--"]:not(svg, svg *) {
+  font-family: inherit;
 }
 
 ::selection {
@@ -30,14 +37,15 @@ body {
   color: var(--silice-texto);
 }
 
-// Cifras: tabulares y alineadas a la derecha donde se usen. Referencias de celda y reglas en Plex Mono.
+// Cifras y codigos: tabulares y alineadas a la derecha donde se usen.
 .silice-cifra {
   font-variant-numeric: tabular-nums;
   text-align: end;
 }
 
 .silice-codigo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .silice-entrada {
@@ -89,7 +97,8 @@ body {
 
 .silice-entrada__etiqueta {
   margin: 0;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
   letter-spacing: 0;
   color: var(--silice-gold);

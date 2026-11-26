@@ -22,8 +22,8 @@
   --atipico: #8a3ffc; // purple-60 de Carbon, solo para precios atípicos (RF-100)
   --sev-critico: #da1e28; // ícono ErrorFilled (red-60)
   --sev-advertencia-icono: #b28600; // ícono WarningAltFilled (yellow-50, 3,33:1 sobre blanco)
-  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-sans);
 }
 
 *,

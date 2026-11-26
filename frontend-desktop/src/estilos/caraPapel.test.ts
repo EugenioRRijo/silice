@@ -1,0 +1,107 @@
+import { describe, expect, test } from "vitest";
+
+// Lote C0 de la cara «Papel y resaltador» (docs/especificaciones/2026-11-26-cara-papel-y-resaltador/README.md):
+// tokens claro y oscuro con color-scheme y light-dark(), Carbon apuntando a ellos, y las letras nuevas empaquetadas.
+
+interface Fs {
+  readdirSync(carpeta: string, o: { withFileTypes: true }): { name: string; isDirectory(): boolean }[];
+  readFileSync(ruta: string, codificacion: string): string;
+}
+const nodo = (
+  globalThis as unknown as { process: { cwd(): string; getBuiltinModule(nombre: "node:fs"): Fs } }
+).process;
+const fs = nodo.getBuiltinModule("node:fs");
+const raiz = `${nodo.cwd()}/src`;
+const leer = (ruta: string) => fs.readFileSync(ruta, "utf-8");
+const tokens = () => leer(`${raiz}/estilos/tokens.scss`);
+const fuentes = () => leer(`${raiz}/estilos/fuentes.scss`);
+
+function archivos(carpeta: string, ext: RegExp): string[] {
+  return fs.readdirSync(carpeta, { withFileTypes: true }).flatMap((e) => {
+    const ruta = `${carpeta}/${e.name}`;
+    return e.isDirectory() ? archivos(ruta, ext) : ext.test(e.name) && !/\.test\./.test(e.name) ? [ruta] : [];
+  });
+}
+
+// El par claro/oscuro de cada token, tal como lo fija la especificación.
+const PARES: Record<string, [string, string]> = {
+  "--silice-fondo": ["#F7F4EE", "#161513"],
+  "--silice-hoja": ["#FDFBF7", "#1C1A18"],
+  "--silice-alzado": ["#EFE9DF", "#262421"],
+  "--silice-lateral": ["#EFE9DF", "#12110F"],
+  "--silice-marco": ["#1F1B16", "#12110F"],
+  "--silice-complementario": ["#1F1B16", "#EFE9DE"],
+  "--silice-t1": ["#1F1B16", "#EFE9DE"],
+  "--silice-t2": ["#5E554A", "#AAA398"],
+  "--silice-t3": ["#9A9184", "#8A847A"],
+  "--silice-resaltador": ["#FFF4C2", "#2E2919"],
+  "--silice-gravedad-error": ["#B42318", "#F0857C"],
+  "--silice-gravedad-advertencia": ["#8A5A00", "#DDB25E"],
+  "--silice-serie-1": ["#2A78D6", "#3987E5"],
+  "--silice-serie-2": ["#1BAF7A", "#199E70"],
+  "--silice-serie-3": ["#EB6834", "#D95926"],
+};
+
+const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+describe("tokens de la cara en claro y oscuro", () => {
+  test("la raíz admite los dos esquemas", () => {
+    expect(tokens()).toMatch(/:root\s*\{[^}]*color-scheme:\s*light dark/);
+  });
+
+  test.each(Object.entries(PARES))("%s lleva su par claro y oscuro con light-dark()", (nombre, [claro, oscuro]) => {
+    const patron = new RegExp(`${escapar(nombre)}:\\s*light-dark\\(\\s*${claro}\\s*,\\s*${oscuro}\\s*\\)`, "i");
+    expect(tokens()).toMatch(patron);
+  });
+
+  test("el amarillo de la marca y el borde del resaltador son los mismos en los dos modos", () => {
+    expect(tokens()).toMatch(/--silice-acento:\s*#F6D55C/i);
+    expect(tokens()).toMatch(/--silice-resaltador-borde:\s*#C9A227/i);
+  });
+
+  test("la elección de la persona fija el esquema sobre el del sistema", () => {
+    expect(tokens()).toMatch(/:root\[data-modo="claro"\]\s*\{[^}]*color-scheme:\s*light\b/);
+    expect(tokens()).toMatch(/:root\[data-modo="oscuro"\]\s*\{[^}]*color-scheme:\s*dark\b/);
+  });
+
+  test.each([
+    ["--cds-background", "--silice-fondo"],
+    ["--cds-layer-01", "--silice-hoja"],
+    ["--cds-text-primary", "--silice-t1"],
+    ["--cds-text-secondary", "--silice-t2"],
+    ["--cds-focus", "--silice-resaltador-borde"],
+    ["--cds-button-primary", "--silice-complementario"],
+  ])("Carbon lee %s de %s", (carbon, silice) => {
+    expect(tokens()).toMatch(new RegExp(`${escapar(carbon)}:\\s*var\\(${escapar(silice)}\\)`));
+  });
+});
+
+describe("letras de la cara", () => {
+  test("Instrument Sans (400, 500, 600) y Newsreader (400) se sirven desde el propio paquete", () => {
+    const f = fuentes();
+    for (const peso of [400, 500, 600]) {
+      expect(f).toMatch(new RegExp(`"Instrument Sans"[^;]*${peso}|cara\\("Instrument Sans"[^)]*${peso}`));
+    }
+    expect(f).toMatch(/"Newsreader"[^;]*400|cara\("Newsreader"[^)]*400/);
+    expect(f).toMatch(/@fontsource\/instrument-sans/);
+    expect(f).toMatch(/@fontsource\/newsreader/);
+    expect(f).not.toMatch(/https?:\/\//);
+  });
+
+  test("ninguna hoja de estilos ni componente propio usa ya IBM Plex", () => {
+    const malos = archivos(raiz, /\.(scss|tsx?)$/)
+      .filter((f) => /IBM Plex/.test(leer(f)))
+      .map((f) => f.slice(raiz.length));
+    expect(malos).toEqual([]);
+  });
+
+  test("la interfaz hereda Instrument Sans desde el cuerpo", () => {
+    expect(leer(`${raiz}/estilos/app.scss`)).toMatch(/body[^{]*\{[^}]*font-family:[^;]*"Instrument Sans"/);
+  });
+
+  test("las versiones de las letras están fijadas", () => {
+    const pkg = JSON.parse(leer(`${nodo.cwd()}/package.json`)) as { dependencies: Record<string, string> };
+    expect(pkg.dependencies["@fontsource/instrument-sans"]).toBe("5.3.0");
+    expect(pkg.dependencies["@fontsource/newsreader"]).toBe("5.3.0");
+  });
+});

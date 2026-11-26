@@ -1,23 +1,23 @@
-// IBM Plex alojada en el propio servidor (RNF-08, RNF-22). Los archivos salen de los paquetes
-// @ibm/plex-sans y @ibm/plex-mono y Vite los copia al dist con hash; ninguna URL apunta a un CDN.
-// La carga de fuentes de @carbon/styles queda apagada en tokens.scss ($css--font-face y $use-akamai-cdn).
-$sans: "../../node_modules/@ibm/plex-sans/fonts/complete/woff2/IBMPlexSans";
-$mono: "../../node_modules/@ibm/plex-mono/fonts/complete/woff2/IBMPlexMono";
+// Letras de la cara «Papel y resaltador» alojadas en el propio paquete (RNF-08, RNF-22).
+// Los archivos salen de @fontsource/instrument-sans y @fontsource/newsreader y Vite los copia al dist con hash;
+// ninguna URL apunta a un servidor externo. La carga de fuentes de @carbon/styles queda apagada en tokens.scss.
+$instrument-sans: "../../node_modules/@fontsource/instrument-sans/files/instrument-sans-latin";
+$newsreader: "../../node_modules/@fontsource/newsreader/files/newsreader-latin";
 
-@mixin cara($familia, $ruta, $archivo, $peso, $estilo: normal) {
+@mixin cara($familia, $ruta, $peso, $estilo: normal) {
   @font-face {
     font-family: $familia;
     font-style: $estilo;
     font-weight: $peso;
     font-display: swap;
-    src: url("#{$ruta}-#{$archivo}.woff2") format("woff2");
+    src: url("#{$ruta}-#{$peso}-#{$estilo}.woff2") format("woff2");
   }
 }
 
-// Los pesos que usa Carbon: Light (titulares), Regular, SemiBold y cursiva Regular.
-@include cara("IBM Plex Sans", $sans, "Light", 300);
-@include cara("IBM Plex Sans", $sans, "Regular", 400);
-@include cara("IBM Plex Sans", $sans, "Italic", 400, italic);
-@include cara("IBM Plex Sans", $sans, "SemiBold", 600);
-@include cara("IBM Plex Mono", $mono, "Regular", 400);
-@include cara("IBM Plex Mono", $mono, "SemiBold", 600);
+// Interfaz: regular (400), medio (500) y seminegrita para la marca (600).
+@include cara("Instrument Sans", $instrument-sans, 400);
+@include cara("Instrument Sans", $instrument-sans, 500);
+@include cara("Instrument Sans", $instrument-sans, 600);
+
+// Titular principal (h1) de cada vista.
+@include cara("Newsreader", $newsreader, 400);
