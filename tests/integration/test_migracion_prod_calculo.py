@@ -40,7 +40,7 @@ def _calculo(conexion: sqlite3.Connection, moneda: str = "USD", huella: str = HU
 
 def test_le_sigue_la_de_las_publicaciones() -> None:
     """Plan vial, Tarea 4b: encima de esta van `ins_0010_modulo` y `ins_0010_modulo`, la cabeza."""
-    assert revision_head(Destino.INSTALACION) == "ins_0013_solicitud_cuenta"
+    assert revision_head(Destino.INSTALACION) == "ins_0014_notificacion"
 
 
 def test_crea_la_tabla_con_sus_columnas_y_sus_reglas(tmp_path: Path) -> None:

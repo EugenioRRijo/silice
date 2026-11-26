@@ -49,7 +49,7 @@ def _publicacion(conexion: sqlite3.Connection, calculo_id: int, lista_id: int = 
 
 def test_le_sigue_la_de_los_modulos() -> None:
     """Plan vial, Tarea 19: la cabeza pasa a `ins_0010_modulo`, que baja a esta."""
-    assert revision_head(Destino.INSTALACION) == "ins_0013_solicitud_cuenta"
+    assert revision_head(Destino.INSTALACION) == "ins_0014_notificacion"
 
 
 def test_crea_la_tabla_vacia_con_sus_columnas_y_calculo_id_unico(tmp_path: Path) -> None:
@@ -109,7 +109,7 @@ def test_una_base_que_ya_trae_la_tabla_se_adopta(tmp_path: Path) -> None:
 
     with closing(sqlite3.connect(base)) as conexion:
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            ("ins_0013_solicitud_cuenta",)
+            ("ins_0014_notificacion",)
         ]
         assert conexion.execute("SELECT calculo_id, lista_id FROM prod_publicacion").fetchall() == [
             (1, 1)

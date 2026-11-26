@@ -53,6 +53,7 @@ from api.rutas import (
     listas,
     mercado,
     modulos,
+    notificaciones,
     obras,
     precios_empresa,
     presupuestos,
@@ -173,6 +174,8 @@ app.include_router(cuentas.router)
 app.include_router(solicitudes.router)
 # C10: la actividad por persona (solo lectura; la propia cuenta o quien administra las cuentas)
 app.include_router(actividad.router)
+# C11: notificaciones por persona (30 días; cada cuenta ve y toca solo las suyas)
+app.include_router(notificaciones.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
 app.include_router(composicion.router)
 # Ola 4 (S2-C): el tablero de la obra (UC-13)

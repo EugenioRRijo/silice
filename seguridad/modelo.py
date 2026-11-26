@@ -15,6 +15,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     LargeBinary,
     String,
@@ -175,3 +176,26 @@ class ClaveApi(Base):
     creada_por: Mapped[str] = mapped_column(String(120), default="")
     ultimo_uso: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     revocada: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class Notificacion(Base):
+    """Notificaciones persistentes por persona durante 30 días (C11, `ins_0014`)."""
+
+    __tablename__ = "notificacion"
+    __table_args__ = (
+        CheckConstraint(
+            "gravedad IN ('listo', 'info', 'advertencia', 'error')",
+            name="ck_notificacion_gravedad",
+        ),
+        Index("ix_notificacion_usuario_creada", "usuario_id", "creada"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id"))
+    gravedad: Mapped[str] = mapped_column(String(12))  # listo | info | advertencia | error
+    titulo: Mapped[str] = mapped_column(String(200))
+    detalle: Mapped[str] = mapped_column(String(1000), default="")
+    enlace_texto: Mapped[str] = mapped_column(String(120), default="")
+    enlace_ruta: Mapped[str] = mapped_column(String(300), default="")
+    creada: Mapped[datetime] = mapped_column(DateTime)
+    leida: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -23,6 +23,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0013_solicitud_cuenta"
 ANTERIOR = "ins_0012_conteo_anulado"
+CABEZA = "ins_0014_notificacion"  # C11 cuelga de esta
 TABLA = "solicitud_cuenta"
 COLUMNAS = [
     "id", "login", "nombre", "correo", "huella_clave", "creada", "estado", "papel",
@@ -52,7 +53,7 @@ def _tablas(conexion: sqlite3.Connection) -> set[str]:
 
 
 def test_es_la_cabeza_de_la_instalacion() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+    assert revision_head(Destino.INSTALACION) == CABEZA
 
 
 def test_crea_la_tabla_y_el_correo_de_las_cuentas_de_hoy_queda_vacio(tmp_path: Path) -> None:
@@ -119,5 +120,5 @@ def test_una_base_que_ya_las_trae_se_adopta(tmp_path: Path) -> None:
         assert _columnas(conexion, "usuario").count("correo") == 1
         assert conexion.execute(f"SELECT login FROM {TABLA}").fetchall() == [("lucia",)]
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            (REVISION,)
+            (CABEZA,)
         ]

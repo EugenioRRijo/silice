@@ -24,7 +24,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0012_conteo_anulado"
 ANTERIOR = "ins_0011_receta_ligante"
-CABEZA = "ins_0013_solicitud_cuenta"  # C9a cuelga de esta
+CABEZA = "ins_0014_notificacion"  # C9a y C11 cuelgan de esta
 TABLA = "prod_movimiento"
 ANTES = [
     "id",

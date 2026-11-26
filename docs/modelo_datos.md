@@ -948,3 +948,17 @@ aprobarla. El modelo está en `seguridad/modelo.py` (`SolicitudCuenta`) y solo l
 
 La misma revisión agrega `usuario.correo` (254, nulo, `''` por omisión para las cuentas anteriores). Ni la contraseña ni
 el código se guardan en claro; el código solo viaja una vez, en la respuesta de la aprobación.
+
+## 13. Notificaciones por persona (base de la instalación, revisión `ins_0014_notificacion`)
+
+C11 (2026-11-26): notificaciones persistentes por persona durante 30 días, mostradas en la campanita de la barra de
+estado y en su panel lateral derecho. Cada cuenta ve y marca solo las suyas. El modelo vive en `seguridad/modelo.py`
+(`Notificacion`, registrado en `METADATAS_INSTALACION`) y solo lo lee y escribe `aplicacion/notificaciones.py`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `notificacion` | `id` PK, `usuario_id` FK → `usuario.id`, `gravedad` (12: `listo` \| `info` \| `advertencia` \| `error`), `titulo` (200), `detalle` (1000), `enlace_texto` (120), `enlace_ruta` (300, ruta interna que empieza por `/`, sin `//` ni esquema), `creada`, `leida` (bool) | `CHECK gravedad IN ('listo', 'info', 'advertencia', 'error')` (`ck_notificacion_gravedad`); índice compuesto `ix_notificacion_usuario_creada (usuario_id, creada)` |
+
+Las filas estrictamente anteriores a `ahora − 30 días` se descartan y borran por persona al consultar o agregar; cada
+cuenta conserva como máximo 200 notificaciones, ordenadas de más reciente a más antigua (`creada` descendente, `id`
+descendente).

@@ -214,6 +214,11 @@ TABLA = {
     ("GET", "/v1/aprobaciones/mias"): EDITAR,
     # C10: cada cuenta ve la suya; la de otra, solo con administrar_cuentas (403 en la ruta).
     ("GET", "/v1/actividad"): CUALQUIERA,
+    # C11: notificaciones por persona (30 días); cada cuenta ve y toca solo las suyas
+    # (clave -> 403).
+    ("GET", "/v1/notificaciones"): CUALQUIERA,
+    ("POST", "/v1/notificaciones"): CUALQUIERA,
+    ("POST", "/v1/notificaciones/leidas"): CUALQUIERA,
     ("GET", "/v1/aprobaciones/resumen"): APROBAR,
     ("POST", "/v1/aprobaciones/abrir"): APROBAR,
     ("GET", "/v1/aprobaciones/{envio_id}"): APROBAR,
