@@ -14699,6 +14699,10 @@
           "advertencias": {
             "type": "integer",
             "title": "Advertencias"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
           }
         },
         "type": "object",
@@ -14708,7 +14712,8 @@
           "fecha",
           "tipo",
           "errores",
-          "advertencias"
+          "advertencias",
+          "usuario"
         ],
         "title": "AuditoriaResumenRespuesta"
       },

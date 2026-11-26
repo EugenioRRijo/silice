@@ -2,8 +2,9 @@
 
 Contrato EXACTO que consume el Inicio de la interfaz nueva (claves literales, escritas a mano):
 `GET /v1/auditorias-libro?limite=5` es una lista de `{id, archivo, fecha, tipo, errores,
-advertencias}`, las mas recientes primero; `fecha` es ISO con hora (`2026-10-18T14:03:05`). El
-detalle suma el resumen completo y los hallazgos compactos. Los montos viajan como texto.
+advertencias, usuario}`, las mas recientes primero; `fecha` es ISO con hora
+(`2026-10-18T14:03:05`). El detalle suma el resumen completo y los hallazgos compactos. Los
+montos viajan como texto.
 
 Acceso: clave de API, o cuenta que arma o revisa (`LEER_PROYECTO`); sin credenciales 401; el
 administrador solo, 403. Es de solo lectura: ninguna escritura entra por aqui.
@@ -40,9 +41,8 @@ COOKIE = "silice_sesion"
 MENSAJE_SIN_SESION = "Sesión ausente o vencida: entre de nuevo con su cuenta."
 MENSAJE_SIN_CLAVE = "Clave de API ausente, desconocida o revocada."
 MENSAJE_PERMISO = "Su cuenta no tiene permiso para esta acción."
-CLAVES_DE_LA_LISTA = {"id", "archivo", "fecha", "tipo", "errores", "advertencias"}
+CLAVES_DE_LA_LISTA = {"id", "archivo", "fecha", "tipo", "errores", "advertencias", "usuario"}
 CLAVES_DEL_DETALLE = CLAVES_DE_LA_LISTA | {
-    "usuario",
     "sha256",
     "fecha_libro",
     "total_libro",
@@ -145,6 +145,7 @@ def test_la_lista_tiene_exactamente_las_claves_que_consume_el_inicio(http) -> No
             "tipo": "libro",
             "errores": 3,
             "advertencias": 1,
+            "usuario": "Ana <ana>",
         },
         {
             "id": 2,
@@ -153,6 +154,7 @@ def test_la_lista_tiene_exactamente_las_claves_que_consume_el_inicio(http) -> No
             "tipo": "libro",
             "errores": 2,
             "advertencias": 1,
+            "usuario": "Ana <ana>",
         },
         {
             "id": 1,
@@ -161,6 +163,7 @@ def test_la_lista_tiene_exactamente_las_claves_que_consume_el_inicio(http) -> No
             "tipo": "libro",
             "errores": 1,
             "advertencias": 1,
+            "usuario": "Ana <ana>",
         },
     ]
     for fila in r.json():
@@ -172,6 +175,45 @@ def test_la_lista_incluye_las_revisiones_de_pdf(http) -> None:
     _sembrar(1, tipo="pdf")
     [fila] = http.get(RUTA).json()
     assert fila["tipo"] == "pdf" and fila["archivo"] == "libro-1.xlsx"
+
+
+def test_la_lista_trae_el_usuario_de_quien_audito(http) -> None:
+    with sesion_de_instalacion() as sesion:
+        registrar_auditoria(
+            sesion,
+            usuario="Ana <ana>",
+            tipo="libro",
+            nombre_archivo="obra-a.xlsx",
+            sha256=SHA,
+            fecha_libro=date(2026, 10, 1),
+            total_libro=Decimal("1586.61"),
+            total_silice=Decimal("1500.00"),
+            hallazgos=[],
+            ahora=datetime(2026, 10, 18, 10, 1, 0),
+        )
+        registrar_auditoria(
+            sesion,
+            usuario="Rita <rita>",
+            tipo="pdf",
+            nombre_archivo="obra-b.pdf",
+            sha256=SHA,
+            fecha_libro=None,
+            total_libro=None,
+            total_silice=None,
+            hallazgos=[],
+            ahora=datetime(2026, 10, 18, 10, 2, 0),
+        )
+        sesion.commit()
+
+    r = http.get(RUTA, params={"limite": 10})
+    assert r.status_code == 200, r.text
+    filas = r.json()
+    assert [(f["archivo"], f["usuario"]) for f in filas] == [
+        ("obra-b.pdf", "Rita <rita>"),
+        ("obra-a.xlsx", "Ana <ana>"),
+    ]
+    for fila in filas:
+        assert fila["usuario"] == http.get(f"{RUTA}/{fila['id']}").json()["usuario"]
 
 
 def test_sin_auditorias_la_lista_es_vacia(http) -> None:
