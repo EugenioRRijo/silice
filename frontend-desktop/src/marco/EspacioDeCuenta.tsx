@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import type { SesionRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
+import { SelectorDeModo } from "../comun/SelectorDeModo";
 import { TamanoLetra } from "../comun/TamanoLetra";
 import { rolesConEtiqueta } from "../paginas/administracion/logica";
 import { ContrasenaDeLaCuenta } from "../sesion/ContrasenaDeLaCuenta";
@@ -70,6 +71,9 @@ function Preferencias({ sesion }: { sesion: SesionRespuesta }) {
           {"Partida C-001 · Vaciado de concreto f'c 210 kgf/cm² — "}
           <span className="silice-codigo silice-cuenta-preferencias__cifra">242,64 USD/m³</span>
         </p>
+      </section>
+      <section className="silice-cuenta-preferencias__bloque">
+        <SelectorDeModo />
       </section>
       <section aria-labelledby="pref-sesion-titulo" className="silice-cuenta-preferencias__bloque">
         <h2 id="pref-sesion-titulo" className="cds--type-heading-compact-02">
