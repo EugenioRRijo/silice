@@ -6,6 +6,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
+import { EstadoDelBorrador } from "./EstadoDelBorrador";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
@@ -142,6 +143,27 @@ describe("Presupuesto: cabecera compacta", () => {
       expect(estado).toHaveTextContent("Total 2.703,86 USD");
       // Deja de ser un bloque alto con su título: la región conserva el nombre, el h2 se va.
       expect(screen.queryByRole("heading", { name: "Estado del borrador" })).toBeNull();
+    });
+
+    // B1-3 (guía `accessibility`: «Don't use title», «Centralize live regions»): el total se lee con `MontoExacto`.
+    test("el total no lleva title ni región viva propia y su valor exacto está en el Toggletip", async () => {
+      montar();
+      const estado = await listo();
+      const total = estado.querySelector(".silice-hoja__total")!;
+      expect(total).toHaveTextContent("Total 2.703,86 USD");
+      expect(total.hasAttribute("title")).toBe(false);
+      expect(total.hasAttribute("aria-live")).toBe(false);
+      expect(total.closest("[aria-live]")).toBeNull();
+      expect(total.querySelector("[title]")).toBeNull();
+      expect(within(total as HTMLElement).getByRole("button", { name: "Ver el valor exacto de 2.703,86 USD" })).toBeInTheDocument();
+      expect(total).toHaveTextContent("Valor exacto: 2.703,8602323440440333 USD");
+    });
+
+    test("alDescartar es opcional: sin él la línea de estado no ofrece descartar", () => {
+      const sinDescartar = borrador(2);
+      render(<EstadoDelBorrador borrador={sinDescartar} puedeEditar />);
+      expect(screen.queryByRole("button", { name: "Descartar cambios" })).toBeNull();
+      expect(screen.getByRole("region", { name: "Estado del borrador" })).toHaveTextContent("2 cambios sin guardar");
     });
 
     test("va antes que la franja de acciones y las pestañas (estado → acciones → pestañas)", async () => {
