@@ -2,11 +2,13 @@ import { WarningAltFilled } from "@carbon/icons-react";
 import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import type { FormEvent, KeyboardEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { mensajeDeError } from "../../comun/errores";
+import { rutaDeActividad } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AVISO_TEMPORAL,
@@ -334,17 +336,22 @@ export default function Cuentas() {
                 ordenable: false,
                 // Cada fila dice de qué cuenta es (WCAG 2.4.6) y elige por su id; el foco pasa al selector de abajo.
                 celda: (f) => (
-                  <Button
-                    kind="ghost"
-                    size="sm"
-                    aria-label={`Elegir la cuenta ${String(f.usuario)}`}
-                    onClick={() => {
-                      setElegidaId(Number(f.id));
-                      selectorDeCuenta.current?.focus();
-                    }}
-                  >
-                    Elegir
-                  </Button>
+                  <div className="silice-adm__acciones">
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      aria-label={`Elegir la cuenta ${String(f.usuario)}`}
+                      onClick={() => {
+                        setElegidaId(Number(f.id));
+                        selectorDeCuenta.current?.focus();
+                      }}
+                    >
+                      Elegir
+                    </Button>
+                    <Link to={rutaDeActividad(String(f.usuario))} aria-label={`Ver su actividad: ${String(f.usuario)}`} className="cds--link">
+                      Ver su actividad
+                    </Link>
+                  </div>
                 ),
               },
             ]}

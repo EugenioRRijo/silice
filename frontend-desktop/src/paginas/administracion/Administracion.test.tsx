@@ -139,6 +139,22 @@ describe("Administracion: Cuentas y Accesos", () => {
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 
+  test("cada cuenta de la tabla ofrece «Ver su actividad», con el usuario en la dirección", async () => {
+    montar();
+    const tabla = await cargada();
+    const enlaces = within(tabla).getAllByRole("link", { name: /^Ver su actividad: / });
+    expect(enlaces.map((e) => [e.textContent, e.getAttribute("href")])).toEqual([
+      ["Ver su actividad", "/cuenta/actividad?usuario=admin"],
+      ["Ver su actividad", "/cuenta/actividad?usuario=ana"],
+      ["Ver su actividad", "/cuenta/actividad?usuario=luis"],
+    ]);
+    expect(enlaces.map((e) => e.getAttribute("aria-label"))).toEqual([
+      "Ver su actividad: admin",
+      "Ver su actividad: ana",
+      "Ver su actividad: luis",
+    ]);
+  });
+
   test("«cuentas» no monta lo de las otras secciones: ni la empresa, ni el asistente", async () => {
     montar();
     await cargada();

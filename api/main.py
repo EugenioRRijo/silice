@@ -19,6 +19,7 @@ from api import interfaz
 from api.proteccion import opciones_documentacion, proteger
 from api.rutas import (
     acerca,
+    actividad,
     admin_asistente,
     admin_claves_api,
     admin_empresa,
@@ -167,6 +168,8 @@ app.include_router(casos.router)
 app.include_router(proyectos.router)
 # Migracion: Administracion, pestañas Cuentas y Accesos (ADMINISTRAR_CUENTAS, solo sesion)
 app.include_router(cuentas.router)
+# C10: la actividad por persona (solo lectura; la propia cuenta o quien administra las cuentas)
+app.include_router(actividad.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
 app.include_router(composicion.router)
 # Ola 4 (S2-C): el tablero de la obra (UC-13)

@@ -211,6 +211,8 @@ TABLA = {
     ("GET", "/v1/aprobaciones"): LEER,
     ("GET", "/v1/aprobaciones/pendientes"): APROBAR,
     ("GET", "/v1/aprobaciones/mias"): EDITAR,
+    # C10: cada cuenta ve la suya; la de otra, solo con administrar_cuentas (403 en la ruta).
+    ("GET", "/v1/actividad"): CUALQUIERA,
     ("GET", "/v1/aprobaciones/resumen"): APROBAR,
     ("POST", "/v1/aprobaciones/abrir"): APROBAR,
     ("GET", "/v1/aprobaciones/{envio_id}"): APROBAR,

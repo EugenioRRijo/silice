@@ -223,6 +223,14 @@ export function rutaDeCuenta(id: CuentaId): string {
   return `/cuenta/${id}`;
 }
 
+// La actividad de una cuenta (C10) no es una pestaña de la Cuenta: es la pantalla a la que llevan «Ver su actividad» (en
+// Cuentas y permisos) y «Ver mi actividad» (en Configuración). El usuario va en la consulta: `/cuenta/actividad?usuario=ana`.
+export const SECCION_DE_ACTIVIDAD = "actividad";
+
+export function rutaDeActividad(login: string): string {
+  return `/cuenta/${SECCION_DE_ACTIVIDAD}?usuario=${encodeURIComponent(login)}`;
+}
+
 // Si la cuenta puede usar la sección: la regla de su pantalla (`usable`: permiso, modo entrega y módulos apagados) y, si
 // la sección la pide, la acción de más. Una sección sin pantalla (el tamaño de letra) es de toda cuenta.
 export function cuentaUsable(def: CuentaDef, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[]): boolean {
