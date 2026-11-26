@@ -70,6 +70,14 @@ export function formatoNumeroEsVe(valor: unknown): string {
   return formatoEsVe(String(valor));
 }
 
+// La única conversión de una cifra del servidor a número del front: el alto de una barra o la posición de un punto. La
+// cifra que se lee (etiquetas, globo, tabla) sigue siendo el texto del servidor; esto no se muestra ni se suma. Solo el
+// decimal con punto de la API («1234.50»); cualquier otro texto da NaN y no se dibuja.
+const DECIMAL_DE_LA_API = /^-?\d+(\.\d+)?$/;
+export function valorParaDibujar(cifra: string): number {
+  return DECIMAL_DE_LA_API.test(cifra) ? Number(cifra) : Number.NaN;
+}
+
 // Carbon tipa `scaleType` con su enum (`ScaleTypes`), que solo existe como valor dentro de la libreria: importarlo aqui
 // traeria toda la libreria al paquete principal y rompe la carga perezosa de los graficos. Se pasa el mismo texto.
 export const ESCALA_DE_ETIQUETAS = "labels" as unknown as ScaleTypes;

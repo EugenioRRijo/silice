@@ -13,6 +13,11 @@ import { preciosRespuesta } from "../hoja/datosDePrueba";
 import type { PreciosRespuesta, VersionesRespuesta } from "../hoja/logica";
 import PaginaMercado from "./index";
 
+// Carbon Charts en jsdom no tiene el SVG que mide (`baseVal`): esta prueba no mira el gráfico (ver Mercado.test).
+vi.mock("../../comun/GraficoCarbon", () => ({
+  default: ({ opciones }: { opciones: { title?: string } }) => <div role="img" aria-label={opciones.title ?? "Gráfico"} />,
+}));
+
 // Ronda 2 de la Tarea 13 del plan F4. Antes del traslado, la pantalla suelta del histórico pedía `leer_proyecto` y quien
 // revisa la veía; ahora vive en Mercado. Estas pruebas pasan por el PERMISO REAL (las acciones de cada rol escritas a mano
 // desde seguridad/permisos.py, `ACCIONES` de datosDePrueba; el registro de `shell/rutas.ts`; la oferta del árbol y del

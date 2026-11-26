@@ -9,6 +9,36 @@ import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 import { AVISO_ESCRITO_A_MANO } from "./logica";
 import type { EscenarioRespuesta, EscenariosBaseRespuesta, EscenariosRespuesta } from "./tipos";
 
+interface OpcionesGraficoEscenarios {
+  title?: string;
+  bars?: { maxWidth?: number };
+  axes?: {
+    left?: { title?: string; ticks?: { formatter?: (v: number) => string }; thresholds?: { value: number; label?: string }[] };
+    right?: unknown;
+  };
+  color?: { scale: Record<string, string> };
+  tooltip?: { valueFormatter?: (v: number, label: string) => string; customHTML?: (data: unknown, html: string, datum: unknown) => string };
+}
+
+vi.mock("../../comun/GraficoCarbon", () => ({
+  default: ({ tipo, datos, opciones }: { tipo: string; datos: { group?: string; key?: string; value?: number }[]; opciones: OpcionesGraficoEscenarios }) => {
+    const primero = datos[0];
+    return (
+      <div
+        role="img"
+        aria-label={opciones.title ?? "Gráfico de escenarios"}
+        data-tipo={tipo}
+        data-max-barra={String(opciones.bars?.maxWidth ?? "")}
+        data-doble-eje={String(Boolean(opciones.axes?.right))}
+        data-eje-formato={opciones.axes?.left?.ticks?.formatter?.(-17110.5) ?? ""}
+        data-umbrales={JSON.stringify(opciones.axes?.left?.thresholds ?? null)}
+        data-colores={JSON.stringify(opciones.color?.scale ?? null)}
+        data-globo={primero ? opciones.tooltip?.customHTML?.([primero], "", primero) ?? "" : ""}
+      />
+    );
+  },
+}));
+
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
 }
@@ -576,5 +606,70 @@ describe("Escenarios de sensibilidad", () => {
     await screen.findAllByText("utilidad no puede ser negativa");
     expect(screen.getByLabelText("Utilidad (fracción; ej. 0,10 = 10 %)")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Administración (fracción; ej. 0,15 = 15 %)")).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  describe("gráfico de diferencia frente al presupuesto base", () => {
+    test("muestra barras con una sola escala vertical, colores por escenario, extremos rotulados, lectura y tabla", async () => {
+      alPostear = () =>
+        json({
+          codigo_base: "FIC-1",
+          total_base: "1000.00",
+          pendientes_base: [],
+          escenarios: [
+            { ...escenario("Acero baja 5 %", "975.00"), variacion: "-25.00", variacion_pct: "-2.50" },
+            { ...escenario("Cemento sube 10 %", "1120.00"), variacion: "120.00", variacion_pct: "12.00" },
+          ],
+        } satisfies EscenariosRespuesta);
+
+      montar();
+      await listo();
+      const usuario = userEvent.setup();
+      await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+
+      const grafico = await screen.findByRole("img", { name: "Diferencia frente al presupuesto base (USD)" });
+      expect(grafico).toHaveAttribute("data-tipo", "barras");
+      expect(grafico).toHaveAttribute("data-doble-eje", "false");
+      expect(grafico).toHaveAttribute("data-max-barra", "24");
+      expect(grafico).toHaveAttribute("data-eje-formato", "-17.110,5");
+      expect(JSON.parse(grafico.getAttribute("data-umbrales")!)).toEqual([
+        expect.objectContaining({ value: 0, label: "Base (FIC-1): 1.000,00 USD" }),
+      ]);
+      // El color sigue a la entidad en orden de escenario, no a cuál subió más.
+      expect(JSON.parse(grafico.getAttribute("data-colores")!)).toEqual({
+        "Acero baja 5 %": "#2A78D6",
+        "Cemento sube 10 %": "#1BAF7A",
+      });
+
+      const extremos = screen.getByRole("list", { name: "Diferencia en el extremo de cada escenario" });
+      const items = within(extremos).getAllByRole("listitem").map((li) => li.textContent);
+      expect(items).toEqual([
+        "Acero baja 5 %: -25,00 USD (-2,50 %)",
+        "Cemento sube 10 %: +120,00 USD (+12,00 %)",
+      ]);
+
+      expect(screen.getByText(/Qué muestra:.*FIC-1.*1\.000,00 USD.*Qué leer:.*Cemento sube 10 %/)).toBeInTheDocument();
+      expect(screen.getByText("Ver como tabla")).toBeInTheDocument();
+      const tablaGrafico = screen.getByRole("table", { name: "Datos de Diferencia frente al presupuesto base (USD)" });
+      expect(within(tablaGrafico).getAllByRole("row")).toHaveLength(4);
+      expect(grafico.getAttribute("data-globo")).toContain("-25,00 USD");
+      expect(grafico.getAttribute("data-globo")).toContain("975,00 USD");
+    });
+
+    test("escapa HTML del nombre de escenario en el globo", async () => {
+      alPostear = () =>
+        json({
+          codigo_base: "FIC-1",
+          total_base: "1000.00",
+          pendientes_base: [],
+          escenarios: [escenario("<script>alert(1)</script>", "1050.00")],
+        } satisfies EscenariosRespuesta);
+
+      montar();
+      await listo();
+      await userEvent.setup().click(screen.getByRole("button", { name: "Generar escenario" }));
+      const grafico = await screen.findByRole("img", { name: "Diferencia frente al presupuesto base (USD)" });
+      expect(grafico.getAttribute("data-globo")).not.toContain("<script>");
+      expect(grafico.getAttribute("data-globo")).toContain("&lt;script&gt;");
+    });
   });
 });

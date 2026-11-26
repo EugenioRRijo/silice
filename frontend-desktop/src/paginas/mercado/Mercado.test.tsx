@@ -12,6 +12,12 @@ import { cancelarSalida, responderSalida } from "../../shell/salida";
 import { formulariosSucios, olvidarFormularios } from "../../shell/sucio";
 import PaginaMercado from "./index";
 
+// La página no prueba la geometría del gráfico (eso es HistoricoDePrecios.test): Carbon Charts en jsdom no tiene el SVG que
+// mide (`baseVal`) y deja errores no atrapados. El sustituto conserva su nombre accesible.
+vi.mock("../../comun/GraficoCarbon", () => ({
+  default: ({ opciones }: { opciones: { title?: string } }) => <div role="img" aria-label={opciones.title ?? "Gráfico"} />,
+}));
+
 // Pagina «Estudio de mercado» (plan de montar un presupuesto, Tarea 15). Las respuestas son las del contrato de la
 // Tarea 14 (`api/rutas/mercado.py`: montos como texto con punto), simuladas; insumos, partidas, fuentes y precios
 // ficticios. Oraculos escritos a mano: las cifras de [100, 120, 130, 150, 200] de la Tarea 13 (minimo 100, primer

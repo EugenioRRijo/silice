@@ -1,8 +1,32 @@
 import { render, screen, within } from "@testing-library/react";
 import { createRef } from "react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import type { CalculoDeCosto } from "../../api/produccionPlanta";
 import { ResultadoDelCalculo } from "./ResultadoDelCalculo";
+
+interface OpcionesResultado {
+  title?: string;
+  axes?: { left?: { title?: string; ticks?: { formatter?: (v: number) => string } }; right?: unknown };
+  color?: { scale: Record<string, string> };
+  tooltip?: { customHTML?: (data: unknown, html: string, datum: unknown) => string };
+}
+
+vi.mock("../../comun/GraficoCarbon", () => ({
+  default: ({ tipo, datos, opciones }: { tipo: string; datos: { group?: string; key?: string }[]; opciones: OpcionesResultado }) => {
+    const primero = datos[0];
+    return (
+      <div
+        role="img"
+        aria-label={opciones.title ?? "Gráfico"}
+        data-tipo={tipo}
+        data-doble-eje={String(Boolean(opciones.axes?.right))}
+        data-eje-formato={opciones.axes?.left?.ticks?.formatter?.(258.4) ?? ""}
+        data-colores={JSON.stringify(opciones.color?.scale ?? null)}
+        data-globo={primero ? opciones.tooltip?.customHTML?.([primero], "", primero) ?? "" : ""}
+      />
+    );
+  },
+}));
 
 // Datos ficticios. Las constancias de la 4b salen de la instantánea que guardó el servidor; la pantalla no calcula nada.
 function calculo(entradas: Record<string, unknown>, resultado: Record<string, unknown>): CalculoDeCosto {
@@ -22,6 +46,27 @@ function ver(c: CalculoDeCosto) {
   render(<ResultadoDelCalculo calculo={c} region={createRef<HTMLElement>()} />);
   return screen.getByRole("region", { name: "Resultado del cálculo" });
 }
+
+describe("gráfico del costo por tonelada en el resultado", () => {
+  test("dibuja barras con título y unidad, color fijo por tipo de producto, extremos, lectura y Ver como tabla", async () => {
+    const c = calculo({ agregados: [] }, {});
+    const region = ver(c);
+    const grafico = await within(region).findByRole("img", { name: "Costo por tonelada por producto (Bs/t)" });
+    expect(grafico).toHaveAttribute("data-tipo", "barras");
+    expect(grafico).toHaveAttribute("data-doble-eje", "false");
+    expect(grafico).toHaveAttribute("data-eje-formato", "258,4");
+    // Mezcla conserva su color de entidad (serie 2, aguamarina) aunque no haya ningún agregado en este cálculo.
+    expect(JSON.parse(grafico.getAttribute("data-colores")!)).toEqual({ Mezcla: "#1BAF7A" });
+    expect(grafico.getAttribute("data-globo")).toContain("50,70 Bs/t");
+    expect(grafico.getAttribute("data-globo")).toContain("50,7 Bs/t");
+
+    const extremos = within(region).getByRole("list", { name: "Costo en el extremo de cada barra" });
+    expect(within(extremos).getByRole("listitem")).toHaveTextContent("MZP-01 (Mezcla): 50,70 Bs/t");
+    expect(within(region).getByText(/Qué muestra:.*noviembre de 2026.*Qué leer:.*MZP-01/)).toBeInTheDocument();
+    expect(within(region).getByText("Ver como tabla")).toBeInTheDocument();
+    expect(within(region).getByRole("table", { name: "Costo por tonelada de noviembre de 2026" })).toBeInTheDocument();
+  });
+});
 
 describe("Constancias de la Tarea 4b en el resultado", () => {
   test("el cálculo muestra lo que viene del mes anterior y lo que pasa al siguiente", () => {
