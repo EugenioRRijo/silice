@@ -705,7 +705,8 @@ describe("Control de obra", () => {
     expect(within(montos).getByRole("columnheader", { name: "Período" })).toBeInTheDocument();
     expect(within(montos).getByText("1.000,00")).toHaveAttribute("title", "1.000,00");
     // EV y AC no comparten trazo: la leyenda nombra cada uno (pasada goldfish N1.6)
-    expect(screen.getByText("Línea fina: planificado · Línea gruesa: ejecutado (EV) · Línea gruesa punteada: gastado (AC).")).toBeInTheDocument();
+    // C7 (dataviz): cada serie se nombra por su trazo, no solo por su color.
+    expect(screen.getByText("Línea punteada gris: planificado · Línea continua: ejecutado (EV) · Línea de puntos: gastado (AC).")).toBeInTheDocument();
   });
 
   test("valor ganado oculta «En la otra moneda» y «Nota» si están vacías en todas las filas y explica la falta de tasa", async () => {

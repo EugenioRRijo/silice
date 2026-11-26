@@ -1,3 +1,4 @@
+import type { BarChartOptions, DonutChartOptions } from "@carbon/charts-react";
 import { lazy, Suspense, useContext } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
@@ -6,7 +7,14 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { RadialGauge } from "../../comun/VisualMeters";
-import { PALETA_GRAFICOS, colorPorGrupo, formatoNumeroEsVe } from "../../comun/paletaGraficos";
+import {
+  ESCALA_DE_ETIQUETAS,
+  formatoNumeroEsVe,
+  fusionarOpciones,
+  opcionesBase,
+  slotsPorGrupo,
+  useModoEfectivo,
+} from "../../comun/paletaGraficos";
 import { fechaEsVe, formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { rutaOPendientes } from "../../marco/espacios";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
@@ -68,40 +76,44 @@ function Grafico({
   etiqueta?: (d: { data: { group: string } }) => string;
   centro?: string | null;
 }) {
-  const opciones =
-    tipo === "anillo"
-      ? {
-          title: titulo,
-          height: "300px",
-          resizable: true,
-          // Sin barra de herramientas: su button va dentro de un div role="button" (axe: nested-interactive), sus rotulos estan
-          // en ingles y cada grafico ya tiene su tabla con los montos exactos. Como en CurvaPlanAvance.
-          toolbar: { enabled: false },
-          ...(etiqueta ? { pie: { labels: { formatter: etiqueta } } } : {}),
-          donut: {
-            center: { label: "Total", numberFormatter: centro ? () => centro : formatoNumeroEsVe },
-          },
-          tooltip: { valueFormatter: formatoNumeroEsVe },
-          color: colorPorGrupo(datos.map((d) => d.group)),
-        }
-      : {
-          title: titulo,
-          height: "300px",
-          resizable: true,
-          // Sin barra de herramientas: su button va dentro de un div role="button" (axe: nested-interactive), sus rotulos estan
-          // en ingles y cada grafico ya tiene su tabla con los montos exactos. Como en CurvaPlanAvance.
-          toolbar: { enabled: false },
-          axes: {
-            left: { mapsTo: "group", scaleType: "labels", title: eje?.izquierda },
-            bottom: { mapsTo: "value", title: eje?.abajo, ticks: { formatter: formatoNumeroEsVe } },
-          },
-          legend: { enabled: false },
-          tooltip: { valueFormatter: formatoNumeroEsVe },
-          color: { scale: Object.fromEntries(datos.map((d) => [d.group, PALETA_GRAFICOS[0]])) },
-        };
+  const modo = useModoEfectivo();
+  const grupos = datos.map((d) => d.group);
+  // Sin barra de herramientas (su button va dentro de un div role="button", axe: nested-interactive, y sus rotulos estan en
+  // ingles: cada grafico ya tiene su tabla con los montos exactos), tema segun el modo y cifras en es-VE: todo eso viene de
+  // `opcionesBase`; aqui solo va lo propio de cada grafico.
+  if (tipo === "anillo") {
+    const opciones = fusionarOpciones<DonutChartOptions>(
+      opcionesBase(modo, { colores: slotsPorGrupo(grupos), series: grupos.length, ejes: false }),
+      {
+        title: titulo,
+        height: "300px",
+        resizable: true,
+        ...(etiqueta ? { pie: { labels: { formatter: etiqueta } } } : {}),
+        donut: { center: { label: "Total", numberFormatter: centro ? () => centro : formatoNumeroEsVe } },
+      },
+    );
+    return (
+      <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el gráfico" />}>
+        <GraficoCarbon tipo="anillo" datos={datos} opciones={opciones} />
+      </Suspense>
+    );
+  }
+  // Una sola serie en barras: todas del mismo color (la longitud ya dice el valor) y sin leyenda.
+  const opciones = fusionarOpciones<BarChartOptions>(
+    opcionesBase(modo, { colores: Object.fromEntries(grupos.map((g) => [g, "serie1" as const])), series: 1 }),
+    {
+      title: titulo,
+      height: "300px",
+      resizable: true,
+      axes: {
+        left: { mapsTo: "group", scaleType: ESCALA_DE_ETIQUETAS, title: eje?.izquierda },
+        bottom: { mapsTo: "value", title: eje?.abajo, ticks: { formatter: formatoNumeroEsVe } },
+      },
+    },
+  );
   return (
     <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el gráfico" />}>
-      <GraficoCarbon tipo={tipo} datos={datos} opciones={opciones} />
+      <GraficoCarbon tipo="barras" datos={datos} opciones={opciones} />
     </Suspense>
   );
 }

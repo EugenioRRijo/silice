@@ -32,6 +32,22 @@ function textoQuieto(moneda: string, conSeries: boolean): string {
   return conSeries ? QUIETO_CON_SERIES : `${QUIETO} ${QUIETO_EN_USD}`;
 }
 
+function columnasDelRango(m: (exacto: string) => string): ColumnaDensa[] {
+  return [
+    { clave: "cifra", titulo: "Cifra", ordenable: false },
+    { clave: "monto", titulo: "Monto", numerica: true, ordenable: false, presentar: m },
+  ];
+}
+
+function filasDelRango(datos: ProyeccionDeLaObra) {
+  return [
+    { id: "base", cifra: "Presupuesto base vigente", monto: datos.total_base },
+    { id: "p50", cifra: "Costo probable (P50)", monto: datos.p50 },
+    { id: "p80", cifra: "Costo conservador (P80)", monto: datos.p80 },
+    { id: "reserva", cifra: "Reserva recomendada para cubrir el P80", monto: datos.reserva },
+  ];
+}
+
 // La proyección como la manda el servidor: P50, P80, la reserva que cubre el P80 y los insumos que más la empujan. Nada
 // se calcula aquí; los montos exactos se leen en centésimas con coma decimal y punto de miles.
 export function ResultadoDeLaProyeccion({ datos, region, conSeries, children }: PropsDeLaProyeccion): JSX.Element {
@@ -68,6 +84,12 @@ export function ResultadoDeLaProyeccion({ datos, region, conSeries, children }: 
           { rotulo: "Costo conservador (P80)", valor: Number(datos.p80), texto: m(datos.p80), tipo: "pronostico" },
         ]}
       />
+      {/* El mismo medidor como tabla (el gráfico no es la única manera de leer las cifras). La API manda P50 y P80, no P10 ni
+          P90: la pantalla no los inventa. */}
+      <details className="cds--type-body-compact-01">
+        <summary>Ver como tabla</summary>
+        <TablaDensa etiqueta="Rango de la proyección en cifras" columnas={columnasDelRango(m)} filas={filasDelRango(datos)} />
+      </details>
       {filas.length > 0 ? (
         <TablaDensa etiqueta="Los tres insumos que más empujan" columnas={columnas} filas={filas} />
       ) : (
