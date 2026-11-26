@@ -20,15 +20,18 @@ function Resultados({
   proyecto,
   pestana,
   clave,
+  filtros,
+  alAplicar,
   alCambiar,
 }: {
   proyecto: string;
   pestana: Pestana;
   clave: number;
+  filtros: Filtros;
+  alAplicar: (f: Filtros) => void;
   alCambiar: () => void;
 }) {
   const { alExpirar, sesion } = useAplicacion();
-  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const ruta = `${consultaDeCalculo(proyecto, filtros)}&n=${clave}`;
   const carga = useCargaSuave<Calculo>(ruta, alExpirar);
   const [versiones, setVersiones] = useState<string[]>([]);
@@ -38,7 +41,7 @@ function Resultados({
     setVersiones(carga.datos.versiones_revaloradas);
   }
 
-  const barra = <BarraDeCorte filtros={filtros} versiones={versiones} alAplicar={setFiltros} />;
+  const barra = <BarraDeCorte filtros={filtros} versiones={versiones} alAplicar={alAplicar} />;
   if (carga.estado === "cargando") return <EsqueletoPagina etiqueta="Calculando el control" />;
   if (carga.estado === "error") return <>{barra}<AvisoError error={carga.error} titulo="No se pudo calcular el control" /></>;
   if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudo calcular el control" />;
@@ -73,6 +76,12 @@ export default function PaginaControl() {
   const { proyecto } = useAplicacion();
   const [pestana, setPestana] = useState(0);
   const [clave, setClave] = useState(0);
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
+  const [proyectoVisto, setProyectoVisto] = useState(proyecto);
+  if (proyectoVisto !== proyecto) {
+    setProyectoVisto(proyecto);
+    setFiltros(FILTROS_INICIALES);
+  }
   // Toda escritura de Control pasa por `cambiar`: además de repetir las lecturas de la pestaña, vuelve a leer la ficha de la
   // obra para que su «Estado:» en la cabecera no quede viejo (la obra ya no se monta de nuevo por sección, Tarea 3 del plan
   // F4). Sin obra abierta (la pantalla sola) no hay ficha.
@@ -107,7 +116,14 @@ export default function PaginaControl() {
                 ) : p === "Procura" ? (
                   <PestanaProcura proyecto={proyecto} clave={clave} alCambiar={cambiar} />
                 ) : (
-                  <Resultados proyecto={proyecto} pestana={p} clave={clave} alCambiar={cambiar} />
+                  <Resultados
+                    proyecto={proyecto}
+                    pestana={p}
+                    clave={clave}
+                    filtros={filtros}
+                    alAplicar={setFiltros}
+                    alCambiar={cambiar}
+                  />
                 )}
               </TabPanel>
             ))}

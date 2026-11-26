@@ -870,6 +870,54 @@ describe("Control de obra", () => {
     );
   });
 
+  test("el corte aplicado se comparte entre las pestañas de resultados y se conserva al ir y volver", async () => {
+    const leer = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = String(entrada);
+      if (url.startsWith("/v1/control/calculo") && url.includes("corte=2026-11-06")) {
+        return json({
+          ...CALCULO,
+          corte: "2026-11-06",
+          dia: 5,
+          indicadores: [{ Indicador: "BAC (USD)", Valor: "4600.00", "En la otra moneda": "no disponible", Nota: "" }],
+        });
+      }
+      return leer(entrada, init);
+    });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+
+    await u.type(screen.getByLabelText(/Fecha de corte/), "2026-11-06");
+    await u.selectOptions(
+      screen.getByLabelText("Precios actualizados al corte (para separar inflación de consumo)"),
+      "escalatoria",
+    );
+    await u.type(screen.getByLabelText("Factor de escalatoria (Km)"), "1,15");
+    const campoR = screen.getByLabelText("Parte del contrato que no se reajusta (R)");
+    await u.clear(campoR);
+    await u.type(campoR, "0,1");
+    await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
+    expect(await screen.findByText("4.600,00")).toBeInTheDocument();
+
+    await u.click(screen.getByRole("tab", { name: "Alertas y reproyección" }));
+    await screen.findByRole("table", { name: "Alertas" });
+    expect(screen.getByLabelText(/Fecha de corte/)).toHaveValue("2026-11-06");
+
+    await u.click(screen.getByRole("tab", { name: "Valor ganado" }));
+    const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(screen.getByLabelText(/Fecha de corte/)).toHaveValue("2026-11-06");
+    expect(screen.getByLabelText("Precios actualizados al corte (para separar inflación de consumo)")).toHaveValue("escalatoria");
+    expect(screen.getByLabelText("Factor de escalatoria (Km)")).toHaveValue("1,15");
+    expect(screen.getByLabelText("Parte del contrato que no se reajusta (R)")).toHaveValue("0,1");
+    expect(within(tabla).getByText("4.600,00")).toBeInTheDocument();
+
+    const consultas = fetchFalso.mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.startsWith("/v1/control/calculo"));
+    expect(consultas.at(-1)).toContain("corte=2026-11-06&metodo=escalatoria&km=1.15&r=0.1");
+  });
+
   test("recuperacion: muestra «Antes y después» de las partidas cambiadas y lo pide para la obra (Tarea 26)", async () => {
     antesYDespues = () =>
       json({
