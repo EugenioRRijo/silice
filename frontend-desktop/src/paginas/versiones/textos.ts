@@ -29,4 +29,10 @@ export const TEXTOS_DE_VERSIONES = {
   cadena: "Cadena de sellos",
   integra: "Integridad verificada",
   rota: (codigo: string | null) => (codigo === null ? "Se rompió la cadena de sellos" : `Se rompió en la versión ${codigo}`),
+  filtroPersona: "Por persona",
+  todasLasPersonas: "Todas las personas",
+  sinCoincidencias: "Ninguna versión coincide con ese filtro",
+  sinCoincidenciasDescripcion: (persona: string) =>
+    `No hay versiones para «${persona}». Quite el filtro «Por persona» para ver todas.`,
+  quitarFiltro: "Quitar el filtro",
 } as const;

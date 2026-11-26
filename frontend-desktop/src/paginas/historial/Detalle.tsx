@@ -4,6 +4,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useCarga } from "../../comun/useCarga";
+import { EnlaceDePersona } from "../../comun/EnlaceDePersona";
 import { fechaEsVe } from "./logica";
 
 // Una auditoria guardada completa (GET /v1/auditorias-libro/{id}). Los montos llegan como texto decimal exacto y
@@ -63,7 +64,9 @@ function Resumen({ a }: { a: AuditoriaDetalleRespuesta }) {
       <Dato rotulo="Archivo">{a.archivo}</Dato>
       <Dato rotulo="Tipo">{a.tipo === "pdf" ? "PDF" : "Libro"}</Dato>
       <Dato rotulo="Fecha y hora">{fechaEsVe(a.fecha)}</Dato>
-      <Dato rotulo="Realizada por">{a.usuario}</Dato>
+      <Dato rotulo="Realizada por">
+        <EnlaceDePersona dato={a.usuario} />
+      </Dato>
       {a.fecha_libro !== null && <Dato rotulo="Fecha del libro">{fechaEsVe(a.fecha_libro)}</Dato>}
       {a.total_libro !== null && (
         <Dato rotulo="Total del libro">

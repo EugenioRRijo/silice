@@ -5,6 +5,7 @@ import { rutaDeTrazabilidad } from "../hoja/logica";
 import type { TrazabilidadRespuesta } from "../hoja/logica";
 import { presentarClave, presentarValor } from "../../comun/presentarCambio";
 import { rotuloDeCampo, rotuloDeObjeto } from "../../comun/rotulos";
+import { EnlaceDePersona } from "../../comun/EnlaceDePersona";
 import { TEXTOS_DE_VERSIONES as T } from "./textos";
 
 // El registro de cambios de una versión guardada (`GET /v1/hoja/trazabilidad`): qué cambió, de qué a qué, con su fuente, su
@@ -29,7 +30,7 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
       // navegador del cierre de F4, H5).
       columnas={[
         { clave: "fecha_hora", titulo: "Fecha y hora", ordenable: false, celda: (f) => fechaEsVe(f["fecha_hora"] ?? "") },
-        { clave: "responsable", titulo: "Responsable", ordenable: false },
+        { clave: "responsable", titulo: "Responsable", ordenable: false, celda: (f) => <EnlaceDePersona dato={f["responsable"]} /> },
         { clave: "objeto", titulo: "Objeto", ordenable: false },
         {
           clave: "clave",
