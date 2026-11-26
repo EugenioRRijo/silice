@@ -187,7 +187,7 @@ function Contenido({ datos }: { datos: ActividadRespuesta }) {
           <TablaDensa
             etiqueta="Actividad por día"
             columnas={[
-              { clave: "fecha", titulo: "Fecha", presentar: fechaVe },
+              { clave: "fecha", titulo: "Fecha", celda: (f) => fechaVe(f["fecha"] ?? "") },
               { clave: "cuantos", titulo: "Acciones", numerica: true },
             ]}
             filas={datos.dias.map((d) => ({ id: d.fecha, fecha: d.fecha, cuantos: String(d.cuantos) }))}

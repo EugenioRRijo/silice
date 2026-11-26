@@ -44,7 +44,7 @@ describe("botones «contorno de papel» sobre Carbon (botones.scss)", () => {
   test("el foco usa anillo dorado de 2 px con :focus-visible y quita el box-shadow de foco de Carbon", () => {
     expect(scss).toMatch(/:focus\s*\{[\s\S]*?box-shadow:\s*none/);
     expect(scss).toMatch(
-      /:focus-visible\s*\{[\s\S]*?outline:\s*2px solid var\(--silice-resaltador-borde\);[\s\S]*?outline-offset:\s*2px/,
+      /:focus-visible\s*\{[\s\S]*?outline:\s*2px solid var\(--silice-foco\);[\s\S]*?outline-offset:\s*2px/,
     );
   });
 

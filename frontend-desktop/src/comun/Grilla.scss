@@ -85,7 +85,7 @@
 
 // El anillo de foco queda por dentro: la celda recorta lo que sobresale (overflow: hidden).
 .silice-grilla__celda:focus-visible {
-  outline: 2px solid var(--silice-resaltador-borde);
+  outline: 2px solid var(--silice-foco);
   outline-offset: -2px;
 }
 

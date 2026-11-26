@@ -1,6 +1,5 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { blue60 } from "@carbon/colors";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { AnimatedBarChart, AnimatedDonutChart, RadialGauge, RiskRangeMeter } from "./VisualMeters";
 import type { DonutSegment } from "./VisualMeters";
@@ -376,10 +375,17 @@ describe("la hoja de estilos de los medidores", () => {
   };
   // Los alias de editorial.scss apuntan a la paleta de tokens.scss (--silice-ink -> --silice-tinta -> #hex): se siguen hasta el color.
   const paleta = `${editorial}\n${leer("src/estilos/tokens.scss")}`;
-  const hexDe = (token: string): string => {
-    const m = new RegExp(`${token}:\\s*(#[0-9a-fA-F]{6}|var\\((--[a-z0-9-]+)\\))`).exec(paleta);
+  // Un token se sigue hasta su color en un modo: `#hex`, `var(--otro)` o `light-dark(#claro, #oscuro)` (la cara nueva).
+  type Modo = "claro" | "oscuro";
+  const MODOS: readonly Modo[] = ["claro", "oscuro"];
+  const hexDe = (token: string, modo: Modo): string => {
+    const m = new RegExp(
+      `${token}:\\s*(#[0-9a-fA-F]{6}|var\\((--[a-z0-9-]+)\\)|light-dark\\((#[0-9a-fA-F]{6}),\\s*(#[0-9a-fA-F]{6})\\))`,
+    ).exec(paleta);
     expect(m, `falta ${token} en editorial.scss ni en tokens.scss`).not.toBeNull();
-    return m![2] ? hexDe(m![2]) : m![1]!;
+    if (m![2]) return hexDe(m![2], modo);
+    if (m![3]) return modo === "claro" ? m![3] : m![4]!;
+    return m![1]!;
   };
   function luminancia(hex: string): number {
     const canal = (i: number) => {
@@ -406,9 +412,11 @@ describe("la hoja de estilos de los medidores", () => {
   test("el contorno del plan y el relleno del real llegan a 3:1 sobre la superficie y el fondo (WCAG 1.4.11)", () => {
     const tokenPlan = /border:\s*[0-9.]+rem solid var\((--silice-[a-z-]+)\)/.exec(bloque(".silice-barras-v__barra--plan"))![1]!;
     const tokenReal = /background-color:\s*var\((--silice-[a-z-]+)\)/.exec(bloque(".silice-barras-v__barra--real"))![1]!;
-    for (const fondo of ["--silice-surface", "--silice-stone"]) {
-      expect(contraste(hexDe(tokenPlan), hexDe(fondo))).toBeGreaterThanOrEqual(3);
-      expect(contraste(hexDe(tokenReal), hexDe(fondo))).toBeGreaterThanOrEqual(3);
+    for (const modo of MODOS) {
+      for (const fondo of ["--silice-surface", "--silice-stone"]) {
+        expect(contraste(hexDe(tokenPlan, modo), hexDe(fondo, modo)), `${tokenPlan} sobre ${fondo} en ${modo}`).toBeGreaterThanOrEqual(3);
+        expect(contraste(hexDe(tokenReal, modo), hexDe(fondo, modo)), `${tokenReal} sobre ${fondo} en ${modo}`).toBeGreaterThanOrEqual(3);
+      }
     }
   });
 
@@ -420,9 +428,11 @@ describe("la hoja de estilos de los medidores", () => {
     expect(bloque(".silice-donut__item:focus-visible")).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
   });
 
-  test("el contorno del foco (--cds-focus, el blue-60 del tema blanco de Carbon) llega a 3:1 sobre la fila resaltada y la superficie", () => {
-    for (const fondo of ["--silice-surface-warm", "--silice-surface"]) {
-      expect(contraste(blue60, hexDe(fondo))).toBeGreaterThanOrEqual(3);
+  test("el contorno del foco (--cds-focus, que lee --silice-foco) llega a 3:1 sobre la fila resaltada y la superficie en los dos modos", () => {
+    for (const modo of MODOS) {
+      for (const fondo of ["--silice-surface-warm", "--silice-surface"]) {
+        expect(contraste(hexDe("--cds-focus", modo), hexDe(fondo, modo)), `foco sobre ${fondo} en ${modo}`).toBeGreaterThanOrEqual(3);
+      }
     }
   });
 

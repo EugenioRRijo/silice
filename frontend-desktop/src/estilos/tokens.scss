@@ -35,11 +35,24 @@
   --silice-t3: light-dark(#9A9184, #8A847A);
   --silice-resaltador: light-dark(#FFF4C2, #2E2919);
   --silice-resaltador-borde: #C9A227;
+  // El anillo de foco (WCAG 1.4.11, 3:1): el dorado del resaltador da 2,0-2,3:1 sobre el papel claro; en claro va más
+  // oscuro (4,2-4,9:1) y en oscuro es el mismo dorado (6,0-7,8:1). Lo mide caraPapel.test.ts.
+  --silice-foco: light-dark(#8A6A00, #C9A227);
   --silice-acento: #F6D55C;
   --silice-linea: light-dark(rgba(31,27,22,.10), rgba(239,233,222,.09));
   --silice-hover-tinta: light-dark(#3A342C, #FFFFFF);
   --silice-gravedad-error: light-dark(#B42318, #F0857C);
   --silice-gravedad-advertencia: light-dark(#8A5A00, #DDB25E);
+  --silice-gravedad-ok: light-dark(#2F6B3F, #7FBF8E);
+  --silice-gravedad-ok-fondo: light-dark(#EAF4EC, #17261C);
+  --silice-gravedad-ok-borde: light-dark(#568A65, #4D8B5E);
+  --silice-gravedad-advertencia-fondo: light-dark(#FDF3DC, #2B2212);
+  --silice-gravedad-advertencia-borde: light-dark(#A67308, #B08428);
+  --silice-gravedad-error-fondo: light-dark(#FDF0EE, #2D1917);
+  --silice-gravedad-error-borde: light-dark(#C65347, #C86057);
+  --silice-borde-fuerte: light-dark(#766D61, #8A847A);
+  --silice-carbon-profundo: light-dark(#171410, #0E0D0B);
+  --silice-tinta-sobre-acento: light-dark(#1F1B16, #1F1B16);
   --silice-serie-1: light-dark(#2A78D6, #3987E5);
   --silice-serie-2: light-dark(#1BAF7A, #199E70);
   --silice-serie-3: light-dark(#EB6834, #D95926);
@@ -116,7 +129,7 @@ $oscurecido-pulsado: 70%;
   --cds-icon-secondary: var(--silice-t2);
   --cds-border-subtle-00: var(--silice-linea);
   --cds-border-subtle-01: var(--silice-linea);
-  --cds-focus: var(--silice-resaltador-borde);
+  --cds-focus: var(--silice-foco);
   --cds-button-primary: var(--silice-complementario);
   --cds-button-primary-hover: color-mix(in srgb, var(--silice-complementario) #{$oscurecido-hover}, black);
   --cds-button-primary-active: color-mix(in srgb, var(--silice-complementario) #{$oscurecido-pulsado}, black);

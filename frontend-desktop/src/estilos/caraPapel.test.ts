@@ -37,6 +37,16 @@ const PARES: Record<string, [string, string]> = {
   "--silice-resaltador": ["#FFF4C2", "#2E2919"],
   "--silice-gravedad-error": ["#B42318", "#F0857C"],
   "--silice-gravedad-advertencia": ["#8A5A00", "#DDB25E"],
+  "--silice-gravedad-ok": ["#2F6B3F", "#7FBF8E"],
+  "--silice-gravedad-ok-fondo": ["#EAF4EC", "#17261C"],
+  "--silice-gravedad-ok-borde": ["#568A65", "#4D8B5E"],
+  "--silice-gravedad-advertencia-fondo": ["#FDF3DC", "#2B2212"],
+  "--silice-gravedad-advertencia-borde": ["#A67308", "#B08428"],
+  "--silice-gravedad-error-fondo": ["#FDF0EE", "#2D1917"],
+  "--silice-gravedad-error-borde": ["#C65347", "#C86057"],
+  "--silice-borde-fuerte": ["#766D61", "#8A847A"],
+  "--silice-carbon-profundo": ["#171410", "#0E0D0B"],
+  "--silice-tinta-sobre-acento": ["#1F1B16", "#1F1B16"],
   "--silice-serie-1": ["#2A78D6", "#3987E5"],
   "--silice-serie-2": ["#1BAF7A", "#199E70"],
   "--silice-serie-3": ["#EB6834", "#D95926"],
@@ -69,7 +79,7 @@ describe("tokens de la cara en claro y oscuro", () => {
     ["--cds-layer-01", "--silice-hoja"],
     ["--cds-text-primary", "--silice-t1"],
     ["--cds-text-secondary", "--silice-t2"],
-    ["--cds-focus", "--silice-resaltador-borde"],
+    ["--cds-focus", "--silice-foco"],
     ["--cds-button-primary", "--silice-complementario"],
   ])("Carbon lee %s de %s", (carbon, silice) => {
     expect(tokens()).toMatch(new RegExp(`${escapar(carbon)}:\\s*var\\(${escapar(silice)}\\)`));
@@ -103,5 +113,30 @@ describe("letras de la cara", () => {
     const pkg = JSON.parse(leer(`${nodo.cwd()}/package.json`)) as { dependencies: Record<string, string> };
     expect(pkg.dependencies["@fontsource/instrument-sans"]).toBe("5.3.0");
     expect(pkg.dependencies["@fontsource/newsreader"]).toBe("5.3.0");
+  });
+});
+
+// WCAG 1.4.11: el anillo de foco llega a 3:1 sobre las superficies de la cara en los dos modos. El dorado del
+// resaltador (#C9A227) da 2,0-2,3:1 sobre el papel claro: el foco tiene su propio token, más oscuro solo en claro.
+describe("el foco del teclado se ve en claro y en oscuro", () => {
+  const SUPERFICIES = ["--silice-fondo", "--silice-hoja", "--silice-alzado", "--silice-lateral", "--silice-resaltador"];
+  const par = (token: string): [string, string] => {
+    const m = new RegExp(`${escapar(token)}:\\s*light-dark\\((#[0-9a-fA-F]{6}),\\s*(#[0-9a-fA-F]{6})\\)`).exec(tokens());
+    expect(m, `${token} no es un light-dark(#claro, #oscuro)`).not.toBeNull();
+    return [m![1]!, m![2]!];
+  };
+  const lum = (hex: string) => {
+    const c = [0, 1, 2].map((i) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+  };
+  const contraste = (a: string, b: string) => {
+    const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+    return (x! + 0.05) / (y! + 0.05);
+  };
+  test.each(SUPERFICIES)("--silice-foco llega a 3:1 sobre %s en los dos modos", (superficie) => {
+    const [focoClaro, focoOscuro] = par("--silice-foco");
+    const [fondoClaro, fondoOscuro] = par(superficie);
+    expect(contraste(focoClaro, fondoClaro)).toBeGreaterThanOrEqual(3);
+    expect(contraste(focoOscuro, fondoOscuro)).toBeGreaterThanOrEqual(3);
   });
 });
