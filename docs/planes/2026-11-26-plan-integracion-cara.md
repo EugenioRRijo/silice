@@ -28,6 +28,8 @@ calcula el servidor, la gravedad siempre con su palabra.
 | **C7** Gráficos | Series validadas (azul, aguamarina, naranja) en los gráficos de Carbon Charts y en los propios; capa de detalle al pasar; «Ver como tabla» | gráficos de Control, Riesgo, Mercado, Escenarios y Producción | Hydrogen |
 | **C8** Inicio | Inicio › Resumen con gráficos y la vista «Nueva obra» en lugar del diálogo (mismos datos que `DialogoNuevaObra`) | `paginas/inicio/*`, `shell/obras/*` | Carbon |
 
+| **C9** Registro con código por correo | Decisión de Eugenio (2026-11-26): «creo que sera mejor que se registrara con su nombre y contraseña y al correo le llegue un codigo de 20 letras para que se convierta en constructor o revisor». La persona se registra (nombre, correo, usuario, contraseña) y su cuenta queda pendiente sin papel; el administrador elige el papel (arma o revisa) y Sílice genera un código de 20 caracteres (5 grupos de 4, un solo uso, vence en 7 días, guardado solo su hash) que envía por correo con el SMTP de la empresa (Cuenta › Empresa); sin correo configurado o sin conexión, el administrador lo ve en pantalla para entregarlo en mano; la persona escribe el código y toma el papel; el administrador asciende después como hoy. Toca API, migración de `instalacion.db`, pantalla de entrada y Cuentas; revisión de seguridad obligatoria | `api/rutas/cuentas.py`, `aplicacion/`, migración, `sesion/`, `marco/EspacioDeCuenta.tsx` | Claude con revisor de seguridad |
+
 Después siguen los lotes de comportamiento de la [ficha de B1](../bitacora/2026-11-25-acta-reestructuracion-front.md)
 (B1-2b en adelante), que ya se escriben con la cara nueva.
 
