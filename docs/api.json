@@ -3922,6 +3922,110 @@
         }
       }
     },
+    "/v1/notificaciones": {
+      "get": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Listar Notificaciones",
+        "description": "Las notificaciones vigentes (últimos 30 días) de la cuenta actual, más nuevas primero.",
+        "operationId": "listar_notificaciones_v1_notificaciones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacionesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Crear Notificacion",
+        "description": "Guarda una notificación para la cuenta actual.",
+        "operationId": "crear_notificacion_v1_notificaciones_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificacionNueva"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notificaciones/leidas": {
+      "post": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Marcar Notificaciones Leidas",
+        "description": "Marca como leídas las notificaciones indicadas por `ids` o todas las de la cuenta actual.",
+        "operationId": "marcar_notificaciones_leidas_v1_notificaciones_leidas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarcarLeidasEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarcarLeidasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/composicion/opciones": {
       "get": {
         "tags": [
@@ -20432,6 +20536,24 @@
         ],
         "title": "EnUsdRespuesta"
       },
+      "EnlaceNotificacion": {
+        "properties": {
+          "texto": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Texto",
+            "default": ""
+          },
+          "ruta": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Ruta",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "EnlaceNotificacion"
+      },
       "EntregaPeticion": {
         "properties": {
           "proyecto": {
@@ -24467,6 +24589,50 @@
         ],
         "title": "MapaRecordadoRespuesta"
       },
+      "MarcarLeidasEntrada": {
+        "properties": {
+          "ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "maxItems": 400
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ids"
+          },
+          "todas": {
+            "type": "boolean",
+            "title": "Todas",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "MarcarLeidasEntrada"
+      },
+      "MarcarLeidasRespuesta": {
+        "properties": {
+          "marcadas": {
+            "type": "integer",
+            "title": "Marcadas"
+          },
+          "sin_leer": {
+            "type": "integer",
+            "title": "Sin Leer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "marcadas",
+          "sin_leer"
+        ],
+        "title": "MarcarLeidasRespuesta"
+      },
       "MaterialEntrada": {
         "properties": {
           "codigo": {
@@ -25032,6 +25198,122 @@
           "recibida"
         ],
         "title": "NecesidadRespuesta"
+      },
+      "NotificacionNueva": {
+        "properties": {
+          "gravedad": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Gravedad"
+          },
+          "titulo": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Titulo"
+          },
+          "detalle": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Detalle",
+            "default": ""
+          },
+          "enlace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnlaceNotificacion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "gravedad",
+          "titulo"
+        ],
+        "title": "NotificacionNueva"
+      },
+      "NotificacionRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "gravedad": {
+            "type": "string",
+            "title": "Gravedad"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "detalle": {
+            "type": "string",
+            "title": "Detalle"
+          },
+          "enlace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnlaceNotificacion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "creada": {
+            "type": "string",
+            "title": "Creada"
+          },
+          "leida": {
+            "type": "boolean",
+            "title": "Leida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "gravedad",
+          "titulo",
+          "detalle",
+          "enlace",
+          "creada",
+          "leida"
+        ],
+        "title": "NotificacionRespuesta"
+      },
+      "NotificacionesRespuesta": {
+        "properties": {
+          "notificaciones": {
+            "items": {
+              "$ref": "#/components/schemas/NotificacionRespuesta"
+            },
+            "type": "array",
+            "title": "Notificaciones"
+          },
+          "sin_leer": {
+            "type": "integer",
+            "title": "Sin Leer"
+          },
+          "retencion_dias": {
+            "type": "integer",
+            "title": "Retencion Dias"
+          },
+          "maximo": {
+            "type": "integer",
+            "title": "Maximo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "notificaciones",
+          "sin_leer",
+          "retencion_dias",
+          "maximo"
+        ],
+        "title": "NotificacionesRespuesta"
       },
       "NuevaCarpeta": {
         "properties": {
