@@ -29,6 +29,8 @@ TOKENS = {
         barra_t1="#EFE9DE",
         barra_t2="#AAA398",
         barra_linea="rgba(239,233,222,.18)",
+        lateral="#EFE9DF",
+        hover_tinta="#3A342C",
         acento="#1F1B16",
         acento_t="#FFFFFF",
         sel="#FFF4C2",
@@ -54,6 +56,8 @@ TOKENS = {
         barra_t1="#EFE9DE",
         barra_t2="#AAA398",
         barra_linea="rgba(239,233,222,.14)",
+        lateral="#12110F",
+        hover_tinta="#FFFFFF",
         acento="#EFE9DE",
         acento_t="#1C1A18",
         sel="#2E2919",
@@ -290,9 +294,70 @@ def widgets(meta: dict) -> str:
     )
 
 
+# Trazos de los iconos (estilo lucide, trazo 1,5), en iconos.json.
+TRAZOS = json.loads((RAIZ / "iconos.json").read_text(encoding="utf-8"))
+ICONO_DE_OPCION = {
+    "Resumen": "casa",
+    "Tablero": "rejilla",
+    "Partidas": "tabla",
+    "Componer un APU": "calc",
+    "Tramos de la vía": "ruta",
+    "Plano o cómputo": "subir",
+    "Precios de mercado": "linea",
+    "Problemas de la obra": "alerta",
+    "Dictamen": "firma",
+    "Revisar un paquete": "caja",
+    "Control de obra": "medidor",
+    "Reajuste de precios": "ciclo",
+    "Riesgo": "escudo",
+    "Escenarios": "ramas",
+    "Versiones": "reloj",
+    "Pedir aprobación": "enviar",
+    "Entregar al cliente": "caja",
+    "Vista general": "rejilla",
+    "Pendientes": "bandeja",
+    "Subir y auditar Excel": "subir",
+    "Libro de la empresa": "libro",
+    "Historial de auditorías": "reloj",
+    "Precios de la empresa": "etiqueta",
+    "Catálogo de partidas e insumos": "lista",
+    "Índices del BCV": "linea",
+    "Simulador de listas": "mandos",
+    "Resumen de arenera": "monte",
+    "Existencias": "caja",
+    "Costos del período": "recibo",
+    "Costo por tonelada": "balanza",
+    "Receta de la planta": "matraz",
+    "Producir mezcla": "engrane",
+    "Configuración": "engrane",
+    "Contraseña": "llave",
+    "Cuentas y permisos": "personas",
+    "Empresa y tema": "paleta",
+    "Carpetas": "carpeta",
+    "Especialidades, IA e instalación": "chip",
+    "Ayuda y acerca de Sílice": "ayuda",
+    "Datos de la obra": "doc",
+    "Cómo empezar": "inicio",
+    "Dónde se guarda": "carpeta",
+}
+# Lo que la barra cuenta junto a una opcion (en el riel reducido va sobre el icono).
+CUENTA_DE_OPCION = {"Problemas de la obra": "3", "Pendientes": "3"}
+
+
+def icono(nombre: str) -> str:
+    return f'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">{TRAZOS[nombre]}</svg>'
+
+
+def opcion(texto: str, actual: bool) -> str:
+    marca = ' aria-current="page"' if actual else ""
+    cuenta = CUENTA_DE_OPCION.get(texto)
+    extra = f'<span class="n">{cuenta}</span>' if cuenta else ""
+    return f'<a href="#"{marca}>{icono(ICONO_DE_OPCION[texto])}<span>{texto}</span>{extra}</a>'
+
+
 CARPETA = (
-    '<div class="carp"><span class="we">Carpeta abierta</span>'
-    'Obras 2026<a href="#">Cambiar</a></div>'
+    f'<div class="carp">{icono("carpeta")}<span><span class="we">Carpeta abierta</span>'
+    'Obras 2026</span><a href="#">Cambiar</a></div>'
 )
 
 
@@ -304,22 +369,25 @@ def opciones(meta: dict) -> str:
         if meta["area"] == "obra"
         else NOMBRE_DEL_LUGAR[meta["area"]][0]
     )
-    items = "".join(
-        f'<a href="#"{' aria-current="page"' if op == meta["opcion"] else ""}>{op}</a>'
-        for op in OPCIONES[clave]
-    )
+    items = "".join(opcion(op, op == meta["opcion"]) for op in OPCIONES[clave])
     indice = ""
     if meta.get("indice"):
         plantilla = (
-            '<span style="padding:4px 12px;color:var(--t1)">{}</span>'
+            '<span class="ind-t">{}</span>'
             if meta["indice"].get("texto")
-            else '<a href="#">{}</a>'
+            else '<a href="#" class="ind">{}</a>'
         )
         indice = f'<span class="rot">{meta["indice"]["rotulo"]}</span>' + "".join(
             plantilla.format(i) for i in meta["indice"]["items"]
         )
     nav = f'<nav class="opc" aria-label="Opciones de {rotulo}">{items}{indice}</nav>'
-    return f'<div class="lat">{nav}{widgets(meta)}{CARPETA}</div>'
+    cab = (
+        f'<div class="cabl"><span>{rotulo}</span>'
+        f'<button type="button" aria-label="Reducir a iconos">{icono("plegar")}</button></div>'
+    )
+    return (
+        f'<aside class="lat" aria-label="Barra lateral">{cab}{nav}{widgets(meta)}{CARPETA}</aside>'
+    )
 
 
 def pagina(meta: dict, principal: str, margen: str, modo: str) -> str:

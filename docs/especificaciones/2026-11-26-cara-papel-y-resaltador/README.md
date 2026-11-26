@@ -22,7 +22,7 @@ Las 21 vistas, en claro y oscuro, están en el lienzo del artifact <https://clau
 |---|---|
 | Barra de la empresa (48 px, tinta) | Sílice · Obras · Auditar un libro · Precios y catálogo · Producción · **Nueva obra** (amarillo) · Buscar (Ctrl K) · cuenta |
 | Barra del lugar (52 px, hoja) | En una obra: nombre → Portada; pestañas **Presupuestar · Auditar · Anticipar** (Auditar con su cuenta de problemas); a la derecha, el menú de versión («V2 · en elaboración ▾»: versiones, pedir aprobación, entregar) y la acción principal. Fuera de una obra: nombre del espacio y su acción |
-| Barra lateral (200 px) | Opciones de la herramienta abierta; un índice propio de la vista; el bloque de cifras; la carpeta abierta al pie |
+| Barra lateral (236 px, riel de 56 px) | Opciones con icono; un índice propio de la vista; el bloque de cifras; la carpeta abierta al pie |
 | Contenido | `sobre` (contexto) → **h1 con la cifra o el hecho principal** → `datos` → la tabla o gráfica principal |
 | Margen derecho (288 px) | Notas numeradas; la activa en resaltador, unida a su fila con una línea; al pie «datos ficticios» en las demos |
 
@@ -42,6 +42,34 @@ que hoy pide `DialogoNuevaObra`: nombre, cliente y ubicación opcionales, tipo d
 carpeta se convierte con la tasa del BCV) y la carpeta donde se crea. **Por confirmar con Eugenio:** «Copiar de otra
 obra» en «Cómo empezar» no existe hoy.
 
+## Botones (elegidos por Eugenio el 2026-11-26: «contorno de papel»)
+
+Referencias: Carbon (escala y un principal por zona), Primer (inactivo en vez de deshabilitado), Atlassian (verbos,
+sin tooltip sobre un deshabilitado), Fluent 2 (botón dividido), Notion y el terciario de Carbon (contorno que se
+rellena). Tablero «Botones» del lienzo.
+
+| Tipo | Aspecto | Encima | Presionado |
+|---|---|---|---|
+| Principal (uno por zona) | Relleno `acento` (tinta en claro, blanco roto en oscuro), radio 6 | `hover-tinta` (#3A342C / #FFFFFF) | baja 1 px |
+| Secundario | Trazo interior de 1,5 px en `t1`, fondo transparente | se rellena de `t1` y el texto pasa a `hoja` | baja 1 px |
+| Terciario | Texto subrayado (desfase 4 px), peso 500 | subrayado de 2 px | — |
+| Destructivo | Trazo de 1,5 px en `error`, con su palabra; relleno rojo solo en el paso de confirmar | — | — |
+| «Nueva obra» | Amarillo #F6D55C con borde #C9A227, solo en la barra de la empresa | #F9E07F | — |
+
+Escala: compacto 28 px (filas y barras de herramientas), normal 32 px, grande 40 px; relleno 12/14/18 px; peso 500;
+icono de 16 px a 6 px del texto; ancho mínimo 72 px. Foco: anillo de 2 px en `sel-borde` con desfase de 2 px.
+Cargando: el botón conserva su ancho, muestra un giro de 16 px y `aria-busy`. Una acción que no se puede hacer
+queda **inactiva** (`aria-disabled`, sigue en el orden de tabulación) y al pulsarla dice por qué.
+
+## Barra lateral (elegida el 2026-11-26: «riel de iconos»)
+
+Panel propio de altura completa, pegado al borde: fondo `lateral` (#EFE9DF / #12110F) con filete a la derecha.
+Abierta mide 236 px; se reduce a un riel de 56 px solo con iconos (el nombre aparece al pasar y es el nombre
+accesible). Cada opción lleva icono de 16 px, fila de 36 px, radio 6; la actual va con `aria-current="page"`, en
+resaltador y en peso 500 (no solo color, guía navbar). Debajo, el índice de la vista; después el bloque de cifras
+como tarjeta; al pie, la carpeta abierta. En el riel reducido las cifras pasan a números sobre el icono y la carpeta a
+un icono con su nombre al pasar. Como mucho dos niveles (Carbon, Fluent). Iconos en `iconos.json`.
+
 ## Tokens
 
 | Token | Claro | Oscuro | Uso |
@@ -52,6 +80,7 @@ obra» en «Cómo empezar» no existe hoy.
 | `linea` | rgba(31,27,22,.10) | rgba(239,233,222,.09) | Filetes |
 | `t1` / `t2` / `t3` | #1F1B16 / #5E554A / #9A9184 | #EFE9DE / #AAA398 / #8A847A | Texto principal, secundario, apagado (t3 solo para filetes punteados) |
 | `barra` | #1F1B16 | #12110F | Barra de la empresa |
+| `lateral` | #EFE9DF | #12110F | Panel de la barra lateral |
 | `acento` / `acento-t` | #1F1B16 / #FFFFFF | #EFE9DE / #1C1A18 | Botón principal (tinta en claro, blanco roto en oscuro) |
 | `sel` / `sel-borde` | #FFF4C2 / #C9A227 | #2E2919 / #C9A227 | Resaltador: fila elegida, nota activa, lo que importa en una gráfica |
 | `error` / `adv` / `ok` | #B42318 / #8A5A00 / #2F6B3F | #F0857C / #DDB25E / #7FBF8E | Severidad, **siempre con su palabra** |
