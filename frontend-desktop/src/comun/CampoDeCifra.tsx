@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FocusEventHandler, ReactNode, Ref } from "react";
 import { MENSAJE_CIFRA, MENSAJE_CIFRA_VACIA, leerCifra } from "../indicadores/cifraEscrita";
+import { useAnunciar } from "./Anunciador";
 import { CampoTexto } from "./CampoTexto";
 
 export interface CampoDeCifraProps {
@@ -41,6 +42,9 @@ function evaluarCifra(
   return { decimal: lectura.valor, error: null };
 }
 
+// Espera antes de anunciar el error al salir, para no pisar la lectura del campo que recibe el foco.
+const ESPERA_DEL_ANUNCIO_MS = 500;
+
 // Campo numérico en formato es-VE (coma decimal y punto de miles) que valida al salir después de haber escrito o cuando
 // el formulario activa `mostrarError`, nunca mientras la persona escribe por primera vez. Mantiene `aria-invalid="false"`
 // hasta que se muestre un error y se apoya en `CampoTexto` para conservar la corrección de la región viva vacía (VB-18).
@@ -63,6 +67,17 @@ export function CampoDeCifra({
   ref,
 }: CampoDeCifraProps) {
   const [edicion, setEdicion] = useState<{ valor: string; salio: boolean } | null>(null);
+  const anunciar = useAnunciar();
+  const ultimoAnunciado = useRef<string | null>(null);
+  const relojDelAnuncio = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelarAnuncio = () => {
+    if (relojDelAnuncio.current !== null) {
+      clearTimeout(relojDelAnuncio.current);
+      relojDelAnuncio.current = null;
+    }
+  };
+  useEffect(() => cancelarAnuncio, []);
 
   const { error } = evaluarCifra(value, obligatorio, validar);
   const validadoAlSalir = edicion !== null && edicion.valor === value && edicion.salio;
@@ -91,6 +106,7 @@ export function CampoDeCifra({
       placeholder={placeholder}
       onChange={(evento) => {
         const nuevo = evento.target.value;
+        cancelarAnuncio();
         setEdicion((antes) => ({
           valor: nuevo,
           salio: antes !== null && antes.valor === value && antes.salio,
@@ -101,6 +117,19 @@ export function CampoDeCifra({
       }}
       onBlur={(evento) => {
         setEdicion((antes) => (antes !== null ? { valor: antes.valor, salio: true } : null));
+        // Un error que aparece al salir se anuncia una vez, por la región cortés de la página y un momento después.
+        const editado = edicion !== null && edicion.valor === value;
+        if (error === null || disabled || readOnly) {
+          ultimoAnunciado.current = null;
+        } else if (editado && error !== ultimoAnunciado.current) {
+          ultimoAnunciado.current = error;
+          cancelarAnuncio();
+          const mensaje = typeof labelText === "string" ? `${labelText}: ${error}` : error;
+          relojDelAnuncio.current = setTimeout(() => {
+            relojDelAnuncio.current = null;
+            anunciar(mensaje);
+          }, ESPERA_DEL_ANUNCIO_MS);
+        }
         onBlur?.(evento);
       }}
     />

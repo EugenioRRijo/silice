@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, useState } from "react";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { MENSAJE_CIFRA, MENSAJE_CIFRA_VACIA, AYUDA_CIFRAS } from "../indicadores/cifraEscrita";
+import { ProveedorDeAnuncios } from "./Anunciador";
 import { CampoDeCifra } from "./CampoDeCifra";
 import type { CampoDeCifraProps } from "./CampoDeCifra";
 
@@ -282,5 +283,101 @@ describe("CampoDeCifra", () => {
     expect(campo).toHaveAttribute("aria-invalid", "false");
     expect(screen.queryByText(MENSAJE_CIFRA)).not.toBeInTheDocument();
     expect(screen.queryByText(MENSAJE_CIFRA_VACIA)).not.toBeInTheDocument();
+  });
+});
+
+describe("CampoDeCifra: anuncio del error al salir", () => {
+  // Con relojes falsos userEvent se cuelga (Testing Library espera un setTimeout real), así que se usa fireEvent.
+  function montarConProveedor() {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    render(
+      <ProveedorDeAnuncios>
+        <CampoControlado id="cifra-anuncio" labelText="Precio unitario" />
+      </ProveedorDeAnuncios>,
+    );
+    return { campo: screen.getByLabelText("Precio unitario"), region: screen.getByRole("status") };
+  }
+  const escribir = (campo: HTMLElement, texto: string) => fireEvent.change(campo, { target: { value: texto } });
+  const avanzar = (ms: number) =>
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("al salir con un error nuevo anuncia «etiqueta: mensaje» unos 500 ms después, en la región cortés", () => {
+    const { campo, region } = montarConProveedor();
+
+    escribir(campo, "12,5x");
+    fireEvent.blur(campo);
+    expect(region).toHaveTextContent("");
+
+    avanzar(499);
+    expect(region).toHaveTextContent("");
+    avanzar(1);
+    expect(region).toHaveTextContent(`Precio unitario: ${MENSAJE_CIFRA}`);
+  });
+
+  test("no anuncia mientras se escribe", () => {
+    const { campo, region } = montarConProveedor();
+
+    escribir(campo, "1");
+    escribir(campo, "12,5x");
+    avanzar(2000);
+
+    expect(region).toHaveTextContent("");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  test("no repite el mismo error si la persona vuelve a salir sin corregirlo", () => {
+    const { campo, region } = montarConProveedor();
+
+    escribir(campo, "12,5x");
+    fireEvent.blur(campo);
+    avanzar(600);
+    expect(region).toHaveTextContent(MENSAJE_CIFRA);
+
+    fireEvent.focus(campo);
+    fireEvent.blur(campo);
+    expect(vi.getTimerCount()).toBe(0);
+    avanzar(1200);
+    expect(region).toHaveTextContent(MENSAJE_CIFRA);
+  });
+
+  test("si vuelve a escribir antes de que pasen los 500 ms, el anuncio pendiente se cancela", () => {
+    const { campo, region } = montarConProveedor();
+
+    escribir(campo, "12,5x");
+    fireEvent.blur(campo);
+    avanzar(300);
+    escribir(campo, "12,5");
+    avanzar(1000);
+
+    expect(region).toHaveTextContent("");
+  });
+
+  test("un campo sin error al salir no anuncia nada", () => {
+    const { campo, region } = montarConProveedor();
+
+    escribir(campo, "12,5");
+    fireEvent.blur(campo);
+    avanzar(1000);
+
+    expect(region).toHaveTextContent("");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  test("sin proveedor de anuncios no hace nada ni falla", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    render(<CampoControlado id="cifra-sin-proveedor" labelText="Cantidad" />);
+    const campo = screen.getByLabelText("Cantidad");
+
+    escribir(campo, "1x");
+    fireEvent.blur(campo);
+    avanzar(1000);
+
+    expect(campo).toHaveAttribute("aria-invalid", "true");
   });
 });

@@ -1,7 +1,9 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { ProveedorDeAnuncios, useAnunciar } from "./Anunciador";
+import { Dialogo } from "./Dialogo";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -144,5 +146,103 @@ describe("Anunciador", () => {
     unmount();
 
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+function DialogoConEmisor({ abierto, nombre = "Guardar versión" }: { abierto: boolean; nombre?: string }) {
+  return (
+    <Dialogo abierto={abierto} titulo={nombre} alCerrar={() => {}}>
+      <p>Contenido del diálogo</p>
+    </Dialogo>
+  );
+}
+
+function PruebaDeDialogo() {
+  const [abierto, setAbierto] = useState(false);
+  const anunciar = useAnunciar();
+  return (
+    <div>
+      <button type="button" onClick={() => setAbierto((previo) => !previo)}>
+        Alternar diálogo
+      </button>
+      <button type="button" onClick={() => anunciar("Guardado")}>
+        Anunciar guardado
+      </button>
+      <button type="button" onClick={() => anunciar("Falló el envío", { urgente: true })}>
+        Anunciar fallo
+      </button>
+      <DialogoConEmisor abierto={abierto} />
+    </div>
+  );
+}
+
+describe("Anunciador dentro de un diálogo modal", () => {
+  test("con un diálogo abierto, el anuncio aparece dentro del <dialog> y no en la raíz; al cerrar vuelve a la raíz", () => {
+    const { container } = render(
+      <ProveedorDeAnuncios>
+        <PruebaDeDialogo />
+      </ProveedorDeAnuncios>,
+    );
+    const raiz = Array.from(container.querySelectorAll<HTMLElement>('[role="status"]'));
+    expect(raiz).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Alternar diálogo" }));
+    const dialogo = screen.getByRole("dialog");
+    const regionDelDialogo = within(dialogo).getByRole("status");
+    expect(regionDelDialogo).toHaveClass("cds--visually-hidden");
+    expect(regionDelDialogo).toHaveAttribute("aria-live", "polite");
+    expect(dialogo.querySelector('[aria-live="assertive"]')).toHaveAttribute("aria-atomic", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Anunciar guardado" }));
+    expect(regionDelDialogo).toHaveTextContent("Guardado");
+    expect(raiz[0]).toHaveTextContent("");
+
+    fireEvent.click(screen.getByRole("button", { name: "Anunciar fallo" }));
+    expect(dialogo.querySelector('[aria-live="assertive"]')).toHaveTextContent("Falló el envío");
+
+    fireEvent.click(screen.getByRole("button", { name: "Alternar diálogo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Anunciar guardado" }));
+    expect(raiz[0]).toHaveTextContent("Guardado");
+  });
+
+  test("sin ProveedorDeAnuncios, el diálogo funciona igual y no monta regiones vivas", () => {
+    render(<DialogoConEmisor abierto />);
+    const dialogo = screen.getByRole("dialog");
+    expect(dialogo.querySelector("[aria-live]")).toBeNull();
+  });
+
+  test("con dos diálogos abiertos escribe en el más reciente y, al cerrarlo, en el anterior", () => {
+    function Dos({ segundo }: { segundo: boolean }) {
+      const anunciar = useAnunciar();
+      return (
+        <div>
+          <button type="button" onClick={() => anunciar("Aviso")}>
+            Avisar
+          </button>
+          <Dialogo abierto titulo="Primero" alCerrar={() => {}}>
+            <p>uno</p>
+          </Dialogo>
+          <Dialogo abierto={segundo} titulo="Segundo" alCerrar={() => {}}>
+            <p>dos</p>
+          </Dialogo>
+        </div>
+      );
+    }
+    const { rerender } = render(
+      <ProveedorDeAnuncios>
+        <Dos segundo />
+      </ProveedorDeAnuncios>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Avisar" }));
+    expect(within(screen.getByRole("dialog", { name: "Segundo" })).getByRole("status")).toHaveTextContent("Aviso");
+    expect(within(screen.getByRole("dialog", { name: "Primero" })).getByRole("status")).toHaveTextContent("");
+
+    rerender(
+      <ProveedorDeAnuncios>
+        <Dos segundo={false} />
+      </ProveedorDeAnuncios>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Avisar" }));
+    expect(within(screen.getByRole("dialog", { name: "Primero" })).getByRole("status")).toHaveTextContent("Aviso");
   });
 });

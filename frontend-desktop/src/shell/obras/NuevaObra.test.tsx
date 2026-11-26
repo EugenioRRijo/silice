@@ -155,7 +155,10 @@ describe("«Nueva obra» (F10 adaptado)", () => {
     await waitFor(() =>
       expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "10" }]),
     );
-    expect(botonNuevaObra()).toHaveFocus();
+    // Crear abre la obra nueva, que es otro espacio: el foco va al título de esa pantalla (A5 de la propuesta del
+    // 2026-11-25), no al botón que abrió el diálogo. Cerrar sin crear sí devuelve el foco al botón (prueba de Esc).
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveFocus());
+    expect(botonNuevaObra()).not.toHaveFocus();
   });
 
   test("Esc cierra sin crear y devuelve el foco a «Nueva obra»", async () => {

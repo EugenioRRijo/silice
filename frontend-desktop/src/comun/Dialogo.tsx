@@ -1,5 +1,6 @@
-import { Children, Fragment, isValidElement, useEffect, useId, useRef } from "react";
+import { Children, Fragment, isValidElement, useId, useLayoutEffect, useRef, useState } from "react";
 import type { JSX, ReactNode } from "react";
+import { useRegistroDeDestinos } from "./Anunciador";
 import "./Dialogo.scss";
 
 export interface PropsDeDialogo {
@@ -152,7 +153,13 @@ export function Dialogo({
   const cerradoNotificado = useRef(false);
   const autofocusPuesto = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
+  const registrarDestino = useRegistroDeDestinos();
+  const [textoCortes, setTextoCortes] = useState("");
+  const [textoUrgente, setTextoUrgente] = useState("");
+
+  // Todo corre en useLayoutEffect, no en useEffect: con `{abierto && <Dialogo/>}` React quita el <dialog> del DOM antes
+  // de los efectos pasivos, y quitar un modal abierto deja el foco en `body` (un close() posterior ya no lo devuelve).
+  useLayoutEffect(() => {
     const dialogo = refDialogo.current;
     if (dialogo === null) return;
 
@@ -167,6 +174,13 @@ export function Dialogo({
     };
 
     const alCerrarEvento = () => {
+      // `close` llega en una tarea aparte: si ya se reabrió, este cierre es viejo.
+      if (dialogo.open) return;
+      // Un segundo Esc sin activación nueva no es cancelable (Chrome, WebView2) y cierra aunque se envíe: se reabre.
+      if (enviando && !cerradoNotificado.current) {
+        dialogo.showModal();
+        return;
+      }
       limpiarAutofocus(autofocusPuesto);
       if (cerradoNotificado.current) return;
       cerradoNotificado.current = true;
@@ -181,7 +195,18 @@ export function Dialogo({
     };
   }, [alCerrar, enviando]);
 
-  useEffect(() => {
+  // Mientras se envía, el navegador no debe cerrarlo con Esc (Chrome y Edge 134+, también WebView2).
+  useLayoutEffect(() => {
+    const dialogo = refDialogo.current;
+    if (dialogo === null) return;
+    if (enviando) {
+      dialogo.setAttribute("closedby", "none");
+    } else {
+      dialogo.removeAttribute("closedby");
+    }
+  }, [enviando]);
+
+  useLayoutEffect(() => {
     const dialogo = refDialogo.current;
     if (dialogo === null) return;
 
@@ -198,14 +223,26 @@ export function Dialogo({
     }
   }, [abierto, destructivo]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialogo = refDialogo.current;
     return () => {
       if (dialogo !== null && dialogo.open) {
+        cerradoNotificado.current = true;
         dialogo.close();
       }
     };
   }, []);
+
+  // Las regiones vivas del proveedor quedan inertes bajo un modal: mientras está abierto, los anuncios van a las suyas.
+  useLayoutEffect(() => {
+    if (!abierto || registrarDestino === null) return;
+    const darDeBaja = registrarDestino({ fijarCortes: setTextoCortes, fijarUrgente: setTextoUrgente });
+    return () => {
+      darDeBaja();
+      setTextoCortes("");
+      setTextoUrgente("");
+    };
+  }, [abierto, registrarDestino]);
 
   const nodosPie = pie !== undefined && pie !== null ? ordenarPieDeModal(pie) : [];
   const clases = destructivo ? "silice-dialogo silice-dialogo--destructivo" : "silice-dialogo";
@@ -226,6 +263,16 @@ export function Dialogo({
             <div ref={refPie} className="silice-dialogo__pie">
               {nodosPie}
             </div>
+          )}
+          {registrarDestino !== null && (
+            <>
+              <div className="cds--visually-hidden" role="status" aria-live="polite">
+                {textoCortes}
+              </div>
+              <div className="cds--visually-hidden" aria-live="assertive" aria-atomic="true">
+                {textoUrgente}
+              </div>
+            </>
           )}
         </>
       )}

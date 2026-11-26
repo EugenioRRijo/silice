@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { act, cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
 // Sin `globals`, Testing Library no limpia solo el DOM entre pruebas.
@@ -65,38 +65,77 @@ if (typeof HTMLDialogElement !== "undefined" && !HTMLDialogElement.prototype.sho
     });
   }
 
-  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
-    if (!this.open) {
-      focoPrevio.set(this, document.activeElement);
-      this.open = true;
+  // Modelo del navegador real (Chrome y WebView2) para lo que las pruebas del diálogo necesitan comprobar:
+  // - el Esc se atiende en burbuja y solo si ningún control interno lo previno (p. ej. el menú del ComboBox);
+  // - va al diálogo modal superior aunque el foco esté en `body`;
+  // - con `closedby="none"` el Esc no despacha `cancel`;
+  // - un segundo Esc sin activación de usuario nueva despacha un `cancel` que ya no es cancelable;
+  // - `close` se despacha en una tarea aparte, no dentro de `close()`;
+  // - al quitar del DOM un modal abierto el foco se pierde y un `close()` posterior no lo devuelve.
+  const pila: HTMLDialogElement[] = [];
+  let activacionDeUsuario = false;
+
+  const superior = (): HTMLDialogElement | undefined => {
+    for (let i = pila.length - 1; i >= 0; i--) {
+      if (pila[i].isConnected && pila[i].open) return pila[i];
     }
+    return undefined;
+  };
+
+  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+    if (!this.isConnected) {
+      throw new DOMException("El diálogo no está conectado al documento.", "InvalidStateError");
+    }
+    if (this.open) return;
+    focoPrevio.set(this, document.activeElement);
+    this.open = true;
+    pila.push(this);
+    activacionDeUsuario = true;
     const objetivo = primerVisible(this, "[autofocus]:not([disabled])") ?? primerVisible(this, ENFOCABLES);
     objetivo?.focus();
   };
 
   HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement, valor?: string) {
     if (!this.open) return;
+    const conectado = this.isConnected;
     this.open = false;
+    const posicion = pila.indexOf(this);
+    if (posicion >= 0) pila.splice(posicion, 1);
     if (valor !== undefined) this.returnValue = valor;
-    this.dispatchEvent(new Event("close", { bubbles: false }));
     const anterior = focoPrevio.get(this);
     focoPrevio.delete(this);
-    if (anterior instanceof HTMLElement && anterior.isConnected) {
+    if (conectado && anterior instanceof HTMLElement && anterior.isConnected) {
       anterior.focus();
     }
+    setTimeout(() => {
+      act(() => {
+        this.dispatchEvent(new Event("close", { bubbles: false }));
+      });
+    }, 0);
   };
 
-  document.addEventListener(
-    "keydown",
-    (evento) => {
-      if (evento.key !== "Escape") return;
-      const dialogo = evento.target instanceof Element ? evento.target.closest("dialog[open]") : null;
-      if (!(dialogo instanceof HTMLDialogElement)) return;
-      const cancelar = new Event("cancel", { bubbles: false, cancelable: true });
-      if (dialogo.dispatchEvent(cancelar)) {
-        dialogo.close();
-      }
-    },
-    true,
-  );
+  // Las teclas y los clics de la persona renuevan la activación; el Esc no cuenta como activación.
+  for (const tipo of ["pointerdown", "mousedown", "click", "keydown"]) {
+    window.addEventListener(
+      tipo,
+      (evento) => {
+        if (evento instanceof KeyboardEvent && evento.key === "Escape") return;
+        activacionDeUsuario = true;
+      },
+      true,
+    );
+  }
+
+  window.addEventListener("keydown", (evento) => {
+    if (evento.key !== "Escape" || evento.defaultPrevented) return;
+    const dialogo = superior();
+    if (dialogo === undefined) return;
+    if (dialogo.getAttribute("closedby") === "none") return;
+    const cancelable = activacionDeUsuario;
+    activacionDeUsuario = false;
+    const cancelar = new Event("cancel", { bubbles: false, cancelable });
+    if (dialogo.dispatchEvent(cancelar)) {
+      dialogo.close();
+    }
+  });
 }

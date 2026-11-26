@@ -16,6 +16,7 @@ function codigoPorEstado(estado: number): string {
   return "error_http";
 }
 
+// El back hoy nunca manda `codigo` ni `campo` (api/main.py, api/interfaz.py): todo `codigo` sale de codigoPorEstado.
 function codigoDe(cuerpo: unknown, estado: number): string {
   if (cuerpo && typeof cuerpo === "object") {
     const { codigo } = cuerpo as { codigo?: unknown };
@@ -61,14 +62,13 @@ export class ErrorDeApi extends Error {
   }
 }
 
+// `csrf` es la señal de «hay sesión»: useSesion lo fija con el token que entrega el servidor al abrirla (GET/POST /v1/sesion,
+// reclamo del primer arranque, cambio de clave) y lo pone en null al salir o vencer. Solo vale entre una cosa y la otra.
 let csrf: string | null = null;
 const oyentesDeSesion = new Set<() => void>();
-// Bandera por episodio de 401: evita disparar N avisos seguidos y se limpia con la próxima respuesta exitosa (o al cambiar el CSRF).
-let sesionPerdidaAvisada = false;
 
 export function fijarCsrf(valor: string | null): void {
   csrf = valor;
-  sesionPerdidaAvisada = false;
 }
 
 export function alPerderSesion(fn: () => void): () => void {
@@ -149,14 +149,31 @@ async function enviar(ruta: string, opciones: Pick<OpcionesDePeticion, "metodo" 
       Number.isFinite(espera) && espera > 0 ? espera : null,
       contenido,
     );
-    if (respuesta.status === 401 && !sesionPerdidaAvisada && oyentesDeSesion.size > 0) {
-      sesionPerdidaAvisada = true;
-      for (const oyente of [...oyentesDeSesion]) oyente();
+    // Un 401 es «sesión perdida» solo si había sesión (csrf != null); sin ella (clave errada, código de instalación errado,
+    // GET /v1/sesion al arrancar) es una respuesta normal. Al avisar se suelta el csrf: el episodio dura hasta el próximo
+    // fijarCsrf del login, así que varios 401 de la misma caída avisan una sola vez.
+    if (respuesta.status === 401 && csrf !== null && oyentesDeSesion.size > 0) {
+      csrf = null;
+      for (const oyente of [...oyentesDeSesion]) {
+        try {
+          oyente();
+        } catch (fallo) {
+          // Un oyente roto no tapa el error del 401 ni deja sin aviso a los demás; el fallo sale por el manejador global.
+          queueMicrotask(() => {
+            throw fallo;
+          });
+        }
+      }
     }
     throw error;
   }
-  sesionPerdidaAvisada = false;
   return respuesta;
+}
+
+function respuestaInvalida(estado: number, datos: unknown, causa: unknown): ErrorDeApi {
+  const error = new ErrorDeApi(estado, MENSAJE_RESPUESTA_INVALIDA, null, datos, "respuesta_invalida");
+  error.cause = causa;
+  return error;
 }
 
 export async function pedir<T>(ruta: string, opciones: OpcionesDePeticion<T> & { leer: (datos: unknown) => T }): Promise<T>;
@@ -167,12 +184,18 @@ export async function pedir<T = unknown>(ruta: string, opciones: OpcionesDePetic
     if (respuesta.status === 204) return undefined as T;
     return (await respuesta.json()) as T;
   }
-  let datos: unknown = null;
+  let datos: unknown;
   try {
     datos = respuesta.status === 204 ? undefined : await respuesta.json();
+  } catch (causa) {
+    // Un aborto durante la lectura del cuerpo se relanza tal cual, como en `enviar`.
+    if (typeof causa === "object" && causa !== null && (causa as { name?: unknown }).name === "AbortError") throw causa;
+    throw respuestaInvalida(respuesta.status, null, causa);
+  }
+  try {
     return opciones.leer(datos);
-  } catch {
-    throw new ErrorDeApi(respuesta.status, MENSAJE_RESPUESTA_INVALIDA, null, datos, "respuesta_invalida");
+  } catch (causa) {
+    throw respuestaInvalida(respuesta.status, datos, causa);
   }
 }
 

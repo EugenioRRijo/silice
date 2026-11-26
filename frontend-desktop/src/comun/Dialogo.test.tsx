@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { Button } from "@carbon/react";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import * as sass from "sass";
@@ -20,9 +20,11 @@ interface OpcionesDeMontaje {
 function EjemploDeDialogo({
   enviando,
   opciones,
+  ocultar = false,
 }: {
   enviando: boolean;
   opciones: OpcionesDeMontaje;
+  ocultar?: boolean;
 }) {
   const [abierto, setAbierto] = useState(false);
 
@@ -53,17 +55,19 @@ function EjemploDeDialogo({
       <Button kind="primary" onClick={() => setAbierto(true)}>
         Abrir
       </Button>
-      <Dialogo
-        id={opciones.id}
-        abierto={abierto}
-        titulo="Guardar versión de obra"
-        alCerrar={cerrar}
-        enviando={enviando}
-        destructivo={opciones.destructivo}
-        pie={opciones.invertirPie ? [botonPrincipal, botonCancelar] : [botonCancelar, botonPrincipal]}
-      >
-        <CampoTexto id="campo-motivo" labelText="Motivo del cambio" />
-      </Dialogo>
+      {!ocultar && (
+        <Dialogo
+          id={opciones.id}
+          abierto={abierto}
+          titulo="Guardar versión de obra"
+          alCerrar={cerrar}
+          enviando={enviando}
+          destructivo={opciones.destructivo}
+          pie={opciones.invertirPie ? [botonPrincipal, botonCancelar] : [botonCancelar, botonPrincipal]}
+        >
+          <CampoTexto id="campo-motivo" labelText="Motivo del cambio" />
+        </Dialogo>
+      )}
     </div>
   );
 }
@@ -102,6 +106,9 @@ function montarDialogoDeEjemplo(opciones: OpcionesDeMontaje = {}): DialogoMontad
     enfocadoAlAbrir: () => screen.getByLabelText("Motivo del cambio"),
     ponerEnviando: (enviando: boolean) => {
       vista.rerender(<EjemploDeDialogo enviando={enviando} opciones={opciones} />);
+    },
+    desmontarAbierto: () => {
+      vista.rerender(<EjemploDeDialogo enviando={false} opciones={opciones} ocultar />);
     },
   };
 }
@@ -206,10 +213,76 @@ describe("Dialogo: comportamiento y accesibilidad propios", () => {
     act(() => {
       dialogo.close();
     });
-
-    expect(alCerrar).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(alCerrar).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(montado.botonQueAbre()).toHaveFocus();
+  });
+
+  it("abrir, Esc, abrir, Esc: alCerrar se llama una vez por cada cierre", async () => {
+    const usuario = userEvent.setup();
+    const alCerrar = vi.fn();
+    const montado = montarDialogoDeEjemplo({ alCerrar });
+
+    await montado.abrir();
+    await usuario.keyboard("{Escape}");
+    expect(alCerrar).toHaveBeenCalledTimes(1);
+
+    await montado.abrir();
+    expect(screen.queryByRole("dialog")).not.toBeNull();
+    await usuario.keyboard("{Escape}");
+    expect(alCerrar).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("mientras se envía pone closedby=none y lo quita al terminar", async () => {
+    const montado = montarDialogoDeEjemplo();
+    await montado.abrir();
+    const dialogo = screen.getByRole("dialog");
+    expect(dialogo).not.toHaveAttribute("closedby");
+
+    act(() => montado.ponerEnviando(true));
+    expect(dialogo).toHaveAttribute("closedby", "none");
+
+    act(() => montado.ponerEnviando(false));
+    expect(dialogo).not.toHaveAttribute("closedby");
+  });
+
+  it("sin soporte de closedby, el segundo Esc no cancelable cierra el elemento y Dialogo lo reabre sin avisar", async () => {
+    const usuario = userEvent.setup();
+    const alCerrar = vi.fn();
+    const montado = montarDialogoDeEjemplo({ alCerrar });
+    await montado.abrir();
+    const dialogo = screen.getByRole("dialog") as HTMLDialogElement;
+
+    act(() => montado.ponerEnviando(true));
+    dialogo.removeAttribute("closedby"); // navegador que ignora closedby
+    await usuario.keyboard("{Escape}");
+    await usuario.keyboard("{Escape}");
+    await act(async () => {
+      await new Promise((resolver) => setTimeout(resolver, 10));
+    });
+
+    expect(dialogo.open).toBe(true);
+    expect(screen.queryByRole("dialog")).not.toBeNull();
+    expect(alCerrar).not.toHaveBeenCalled();
+  });
+
+  it("un close que llega cuando el diálogo ya se reabrió se ignora", async () => {
+    const alCerrar = vi.fn();
+    const montado = montarDialogoDeEjemplo({ alCerrar });
+    await montado.abrir();
+    const dialogo = screen.getByRole("dialog") as HTMLDialogElement;
+
+    act(() => {
+      dialogo.close();
+      dialogo.showModal();
+    });
+    await act(async () => {
+      await new Promise((resolver) => setTimeout(resolver, 10));
+    });
+
+    expect(alCerrar).not.toHaveBeenCalled();
+    expect(dialogo.open).toBe(true);
   });
 
   it("al cerrar pulsando «Cancelar», alCerrar se llama una sola vez y el foco vuelve al botón que abrió", async () => {
@@ -228,12 +301,77 @@ describe("Dialogo: comportamiento y accesibilidad propios", () => {
 
 const compilarScss = (ruta: string) => sass.compile(fileURLToPath(new URL(ruta, import.meta.url))).css;
 
+describe("Respaldo de <dialog> en pruebas: modela al navegador real", () => {
+  function montarDialogoSuelto(): HTMLDialogElement {
+    const dialogo = document.createElement("dialog");
+    document.body.appendChild(dialogo);
+    return dialogo;
+  }
+
+  it("un Esc que un control interno ya previno no cierra el diálogo", async () => {
+    const usuario = userEvent.setup();
+    const dialogo = montarDialogoSuelto();
+    const campo = document.createElement("input");
+    dialogo.appendChild(campo);
+    campo.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape") evento.preventDefault();
+    });
+    dialogo.showModal();
+    campo.focus();
+
+    await usuario.keyboard("{Escape}");
+
+    expect(dialogo.open).toBe(true);
+    dialogo.remove();
+  });
+
+  it("el Esc llega al diálogo superior aunque el foco esté en body", async () => {
+    const usuario = userEvent.setup();
+    const dialogo = montarDialogoSuelto();
+    dialogo.showModal();
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.activeElement).toBe(document.body);
+
+    await usuario.keyboard("{Escape}");
+
+    expect(dialogo.open).toBe(false);
+    dialogo.remove();
+  });
+
+  it("close se despacha en una tarea aparte, no dentro de close()", async () => {
+    const dialogo = montarDialogoSuelto();
+    const alClose = vi.fn();
+    dialogo.addEventListener("close", alClose);
+    dialogo.showModal();
+
+    dialogo.close();
+    expect(alClose).not.toHaveBeenCalled();
+    await waitFor(() => expect(alClose).toHaveBeenCalledTimes(1));
+    dialogo.remove();
+  });
+
+  it("showModal lanza InvalidStateError si no está conectado y no hace nada si ya está abierto", () => {
+    const suelto = document.createElement("dialog");
+    expect(() => suelto.showModal()).toThrowError(expect.objectContaining({ name: "InvalidStateError" }));
+
+    const dialogo = montarDialogoSuelto();
+    dialogo.showModal();
+    expect(() => dialogo.showModal()).not.toThrow();
+    expect(dialogo.open).toBe(true);
+    dialogo.remove();
+  });
+});
+
 describe("Dialogo: estilos", () => {
   const css = compilarScss("./Dialogo.scss");
 
   it("contiene el overscroll en dialog:modal y en ::backdrop", () => {
     expect(css).toMatch(/dialog\.silice-dialogo:modal\s*\{[^}]*overscroll-behavior:\s*contain/);
     expect(css).toMatch(/dialog\.silice-dialogo::backdrop\s*\{[^}]*overscroll-behavior:\s*contain/);
+  });
+
+  it("el ::backdrop es contenedor de scroll cerrado: overflow hidden junto a overscroll-behavior", () => {
+    expect(css).toMatch(/dialog\.silice-dialogo::backdrop\s*\{[^}]*overflow:\s*hidden/);
   });
 
   it("desplaza el cuerpo largo dentro del diálogo y alinea el pie en el orden de Carbon", () => {

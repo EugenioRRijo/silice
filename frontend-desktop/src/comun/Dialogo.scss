@@ -32,6 +32,7 @@ dialog.silice-dialogo:modal {
 }
 
 dialog.silice-dialogo::backdrop {
+  overflow: hidden; // el ::backdrop no es contenedor de scroll por defecto e ignoraría overscroll-behavior
   background: var(--cds-overlay, rgb(22 22 22 / 50%));
   overscroll-behavior: contain;
 }
