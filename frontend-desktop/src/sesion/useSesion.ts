@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ErrorDeApi, fijarCsrf, pedir } from "../api/cliente";
+import { invalidarRecursos } from "../comun/recurso";
 import type { SesionRespuesta } from "../api/tipos";
 import type { CuerpoDeReclamo } from "../bienvenida/FormularioDeReclamo";
 
@@ -106,6 +107,8 @@ export function useSesion() {
       if (!(error instanceof ErrorDeApi) || (error.estado !== 401 && error.estado !== 403)) throw error;
     }
     fijarCsrf(null);
+    // Los datos en caché son de la cuenta que sale: la siguiente no debe verlos.
+    invalidarRecursos("");
     // Antes de cambiar el estado: el desmontaje de las pantallas que sigue ya lo lee.
     terminada = true;
     setEstado({ tipo: "sin_sesion", expirada: false });

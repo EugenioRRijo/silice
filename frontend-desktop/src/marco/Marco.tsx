@@ -36,7 +36,7 @@ import { EspacioDeInicio, RaizDeInicio } from "./EspacioDeInicio";
 import { EspacioDeObra } from "./EspacioDeObra";
 import { ESPACIOS, SECCIONES_DE_CUENTA, esEspacio, espacioDeLaPagina, rutaDeCuenta, subvistaDeLaPagina } from "./espacios";
 import type { EspacioId } from "./espacios";
-import { enfocarElTitulo } from "./focoAlTitulo";
+import { enfocarElTitulo, nombrarLaVentana } from "./focoAlTitulo";
 import "./marco.scss";
 import { ModeTransitionOverlay } from "./ModeTransitionOverlay";
 import type { EstacionMayor } from "./ModeTransitionOverlay";
@@ -349,8 +349,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     void irSeguro(destino);
   };
 
-  useFocoAlTitulo(ubicacion.pathname, ubicacion.key);
   const { titulo } = ubicar(ubicacion.pathname, obras.obras, paginas);
+  useFocoAlTitulo(ubicacion.pathname, ubicacion.key, !titulo);
   useTituloDelDocumento(titulo);
 
   // La carpeta abierta, con el título que da el servidor («Carpeta de la empresa» la de la empresa); mientras no llega, el
@@ -681,19 +681,41 @@ function obraDeLaRuta(pathname: string): { carpeta: string | null; obraId: numbe
   return { carpeta, obraId: Number(pathname.split("/")[3]) };
 }
 
-// Al cambiar de pantalla, si el foco se perdió (lo tenía un control de la anterior), pasa al h1 de la nueva: el lector
-// de pantalla la anuncia y el siguiente Tab parte de ahí. Si lo tiene otro control, no se toca; la primera carga y las
-// redirecciones (`replace` a otra ruta) tampoco (focoAlTitulo.ts espera el h1 de la pantalla, que se carga a demanda).
-function useFocoAlTitulo(pathname: string, clave: string) {
+// Al cambiar de espacio (la clave del contenido: de la Vista general a una obra, de una obra a otra, a la Cuenta o a un
+// espacio de herramientas), el foco pasa al h1 de la nueva aunque lo tenga el enlace pulsado: el lector de pantalla la
+// anuncia. Dentro del mismo espacio (otra sección de la obra, otra subvista u otra herramienta) el foco se queda en el
+// enlace de la barra, y solo va al h1 si se perdió (decisión de F6, T5). La primera carga y sus redirecciones (`replace`)
+// no lo fuerzan (focoAlTitulo.ts espera el h1, que se carga a demanda); pero si la redirección sigue a un cambio de espacio
+// (la marca «Sílice» va a «/», que redirige a la Vista general) el cambio se completa: `forzarPendiente` lo recuerda hasta
+// que el foco llega al h1. El título de la ventana lo da `ubicar`; el h1 solo la nombra si el marco no sabe nombrar la ruta.
+function useFocoAlTitulo(pathname: string, clave: string, sinTitulo: boolean) {
   const rutaPrevia = useRef(pathname);
   const clavePrevia = useRef(clave);
+  const espacio = claveDelContenido(pathname);
+  const espacioPrevio = useRef(espacio);
+  const forzarPendiente = useRef(false);
+  const sinTituloAhora = useRef(sinTitulo);
   const tipo = useNavigationType();
+  // Antes del efecto de abajo (se ejecutan en orden): el foco lee lo último que dijo `ubicar`.
+  useEffect(() => {
+    sinTituloAhora.current = sinTitulo;
+  }, [sinTitulo]);
   useEffect(() => {
     const mismaRuta = rutaPrevia.current === pathname;
     if (mismaRuta && clavePrevia.current === clave) return;
     rutaPrevia.current = pathname;
     clavePrevia.current = clave;
-    if (!mismaRuta && tipo === "REPLACE") return;
-    return enfocarElTitulo();
-  }, [pathname, clave, tipo]);
+    const cambiaDeEspacio = espacioPrevio.current !== espacio;
+    espacioPrevio.current = espacio;
+    const redirige = !mismaRuta && tipo === "REPLACE";
+    if (!redirige) forzarPendiente.current = cambiaDeEspacio;
+    else if (!forzarPendiente.current) return;
+    return enfocarElTitulo({
+      forzar: forzarPendiente.current,
+      alEnfocar: (h1) => {
+        forzarPendiente.current = false;
+        if (sinTituloAhora.current) nombrarLaVentana(h1.textContent?.trim() ?? "");
+      },
+    });
+  }, [pathname, clave, tipo, espacio]);
 }

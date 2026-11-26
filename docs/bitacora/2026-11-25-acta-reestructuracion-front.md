@@ -69,3 +69,43 @@ Viene del veredicto del consejo:
   restante) va a trabajo futuro.
 - El congelamiento del 2026-11-23 sigue vigente para todo lo que no sea el front: auditoría, alertas, reglas y mercado
   (lista cerrada del consejo del 2026-11-24).
+
+## Enmienda: lo que se decidió al construir B0 (2026-11-25)
+
+- **Foco al navegar.** Cuando la persona cambia de espacio (de la Vista general a una obra, o a Producción, Precios o
+  Cuenta), el foco va al título de la pantalla. Dentro del mismo espacio, el foco se queda en el enlace, como en unas
+  pestañas. Es un punto medio entre la guía de Google («Update single-page application (SPA) titles during page
+  transitions») y la decisión de F6, ya arbitrada (`docs/planes/PLAN_REDISENO_F6.md:167`).
+  - Si la pantalla nueva ya enfocó un campo propio, se respeta.
+  - Al crear una obra, el foco va al título de la obra nueva.
+- **Título de la ventana.** Lo pone solo el marco y conserva el nombre de la obra.
+- **Diálogos.** El título sigue siendo un `h2`, como pide DESIGN.md. La guía de Google pide `h1`, y esa decisión
+  queda para Eugenio. La franja lateral de 4 px se quitó, porque era adorno.
+- **Error de un campo de cifras.** Se anuncia medio segundo después de salir del campo. Eugenio no lo objetó.
+- **Quién construye.** Gemini se quedó sin créditos y Eugenio decidió no contar con él hasta nuevo aviso. Construye
+  Sonnet y audita Opus.
+- **Skills, al pie de la letra.** Por pedido de Eugenio, ui-ux-pro-max, la guía de Google y ub-mode se aplican tal
+  cual. Del sistema de diseño de ui-ux-pro-max se toma el estilo «Data-Dense Dashboard» y su lista previa a entregar.
+  Sus colores y su tipografía no se toman, porque chocan con DESIGN.md y con el uso sin conexión.
+- **Auditorías.** Opus hizo tres:
+  - devolvió 5 hallazgos mayores y todos se corrigieron, con la prueba en rojo primero y una mutación por punto;
+  - los menores también se corrigieron;
+  - ninguna pantalla usa todavía las piezas: B1 será la primera.
+
+## Decisiones de Eugenio para B1, el Presupuesto (2026-11-26)
+
+Eugenio aceptó las 8 recomendaciones de la ficha de B1:
+- **D1.** La obra se abre en Presupuesto, no en Resumen.
+- **D2.** La cifra de T1 es «Total sin IVA», con «Con IVA (16 %)» debajo. La hoja de observación acepta cualquiera de las
+  dos si la persona dice cuál lee.
+- **D3.** La vista por pestañas queda como «Espacio, plan y ajustes», sin «Partidas» ni «Revisión». Si el tiempo no
+  alcanza, queda intacta y se declara como límite.
+- **D4.** El botón dice «Crear la partida «…»».
+- **D5.** Antes de cada persona se restaura la obra de demostración limpia, con el respaldo local, y el paso se anota en
+  el guion.
+- **D6.** Se mantiene «Problemas» y se declara como límite en el capítulo IV.
+- **D7.** Quitar una partida pide confirmación con el diálogo destructivo, con el foco en «Cancelar».
+- **D8.** El «Qué hacer» de cada hallazgo, escrito por el servidor, pasa a B2.
+
+Gemini vuelve a tener créditos (Eugenio, 2026-11-26). En la rama de la reestructuración construye Carbon, ayuda Neon y
+Hydrogen hace lo corto; Claude prueba, revisa y hace los commits.

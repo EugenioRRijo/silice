@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ErrorDeApi, fijarCsrf, pedir } from "../api/cliente";
+import { useRecurso } from "../comun/recurso";
 import { useSesion } from "./useSesion";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -115,5 +116,26 @@ describe("useSesion: elección y preferencias por cuenta (MOD-0)", () => {
     if (result.current.estado.tipo !== "activa") throw new Error("sin sesión");
     expect(result.current.estado.sesion.eleccion).toBeNull();
     expect(result.current.estado.sesion.preferencias).toEqual({ modulo: null, sidebar_fijado: false });
+  });
+});
+
+describe("useSesion.salir y la caché de recursos", () => {
+  test("al cerrar sesión la caché se vacía: la cuenta siguiente no ve los datos de la anterior", async () => {
+    fetchFalso.mockImplementation(async () => json({ login: "ana", nombre: "Ana", roles: ["arma"], csrf: "tok" }));
+    const cargar = vi.fn().mockResolvedValueOnce("de ana").mockResolvedValueOnce("de otra cuenta");
+    const lector = renderHook(() => useRecurso("obra:1", cargar));
+    await waitFor(() => expect(lector.result.current.carga).toEqual({ estado: "listo", datos: "de ana" }));
+    lector.unmount();
+
+    const { result } = renderHook(() => useSesion());
+    await waitFor(() => expect(result.current.estado.tipo).toBe("activa"));
+    await act(async () => {
+      await result.current.salir();
+    });
+
+    const siguiente = renderHook(() => useRecurso("obra:1", cargar));
+    await waitFor(() => expect(siguiente.result.current.carga).toEqual({ estado: "listo", datos: "de otra cuenta" }));
+    expect(cargar).toHaveBeenCalledTimes(2);
+    siguiente.unmount();
   });
 });
