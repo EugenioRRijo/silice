@@ -243,14 +243,19 @@ header.cds--header.silice-marco-barra {
   max-inline-size: 65ch;
 }
 
-// Sin animacion decorativa (DESIGN.md, Movimiento). Con prefers-reduced-motion se quitan tambien las
-// transiciones de estado propias de los componentes Carbon.
+// DESIGN.md › Movimiento (enmienda del 2026-11-26) y guía motion: bajo prefers-reduced-motion se conservan
+// las transiciones de color (quitando las espaciales y de tamaño) y se anulan las animaciones salvo el spinner.
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    transition: none !important;
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+
+  // Se usa una regla más específica (.cds--loading:not(.cds--loading--stop)) para restituir el giro del spinner a 8 s.
+  .cds--loading:not(.cds--loading--stop) {
+    animation: cds--rotate 8s linear infinite forwards !important;
   }
 }
