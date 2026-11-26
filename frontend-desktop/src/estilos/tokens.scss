@@ -68,6 +68,13 @@
   // Escala del texto (control «Tamaño de letra»): 1 normal, 1.25 grande, 1.5 muy grande. La fija preferenciaDeLetra.ts.
   --silice-escala-letra: 1;
 
+  // Escala de z-index (guía «Define z-index scale system»): de lo más bajo a lo más alto. Nada fuera de ella.
+  --silice-z-celda-fija: 1;
+  --silice-z-cabecera-grilla: 2;
+  --silice-z-esquina-grilla: 3;
+  --silice-z-cabecera-obra: 10;
+  --silice-z-panel: 6000;
+
   // Alias propios de un solo salto hacia tokens primarios de la cara (cero ciclos con --cds-*).
   --silice-lateral-activo: var(--silice-alzado);
   --silice-contador-numero: var(--silice-marco);
