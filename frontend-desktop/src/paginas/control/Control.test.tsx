@@ -918,6 +918,40 @@ describe("Control de obra", () => {
     expect(consultas.at(-1)).toContain("corte=2026-11-06&metodo=escalatoria&km=1.15&r=0.1");
   });
 
+  test("al cambiar de obra el corte vuelve al de omisión: no se arrastra el de la obra anterior", async () => {
+    const valor = (proyecto: string): Aplicacion => ({
+      sesion: SESION,
+      proyecto,
+      caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
+      recargarProyectos: vi.fn(),
+      alExpirar: vi.fn(),
+    });
+    const vista = (proyecto: string) => (
+      <ContextoAplicacion.Provider value={valor(proyecto)}>
+        <PaginaControl />
+      </ContextoAplicacion.Provider>
+    );
+    const { rerender } = render(vista("OB-S2"));
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    await u.type(screen.getByLabelText(/Fecha de corte/), "2026-11-06");
+    await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
+    await waitFor(() =>
+      expect(fetchFalso.mock.calls.map(([url]) => String(url)).some((url) => url.includes("corte=2026-11-06"))).toBe(true),
+    );
+
+    rerender(vista("OB-S3"));
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(screen.getByLabelText(/Fecha de corte/)).toHaveValue("");
+    const deLaOtraObra = fetchFalso.mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.startsWith("/v1/control/calculo") && url.includes("proyecto=OB-S3"));
+    expect(deLaOtraObra.length).toBeGreaterThan(0);
+    expect(deLaOtraObra.every((url) => !url.includes("corte="))).toBe(true);
+  });
+
   test("recuperacion: muestra «Antes y después» de las partidas cambiadas y lo pide para la obra (Tarea 26)", async () => {
     antesYDespues = () =>
       json({
