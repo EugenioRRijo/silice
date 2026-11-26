@@ -241,6 +241,56 @@ describe("Actualizar precios", () => {
     expect(screen.queryByText("Motivo de la primera.")).toBeNull();
   });
 
+  test("mientras carga la vista previa no revalora y al terminar permite marcar y enviar", async () => {
+    let resolverVista: (r: Response) => void = () => {};
+    fetchFalso.mockImplementation(async (ruta, opciones) => {
+      const url = String(ruta);
+      if (url === "/presupuestos" && (opciones?.method ?? "GET") === "GET") return presupuestos();
+      if (url === "/listas-precios/vista-previa") return new Promise<Response>((resolver) => (resolverVista = resolver));
+      if (url === "/presupuestos/revalorar") return revalorar();
+      return json({ detalle: "ruta inesperada " + url }, 404);
+    });
+    montar();
+    const { usuario } = await subir();
+    const boton = screen.getByRole("button", { name: "Actualizar precios del presupuesto" });
+
+    await usuario.click(boton);
+    fireEvent.submit(boton.closest("form")!);
+    expect(llamada("/revalorar")).toBeUndefined();
+    expect(boton).toBeDisabled();
+    const estadoLectura = screen.getByText("Leyendo la lista de precios…");
+    expect(estadoLectura).toBeInTheDocument();
+    expect(estadoLectura.closest("[aria-live]")).toHaveAttribute("aria-live", "off");
+
+    resolverVista(
+      json({
+        desconocidos: [
+          {
+            descripcion: "Tornillo ficticio",
+            tipo: "material",
+            unidad: "u",
+            precio: "1.50",
+            etiqueta: "Tornillo ficticio (material, u)",
+          },
+        ],
+        motivo: null,
+      }),
+    );
+    const casilla = await screen.findByRole("checkbox", {
+      name: "1. Tornillo ficticio (material, u), precio 1,50",
+    });
+    expect(screen.queryByText("Leyendo la lista de precios…")).toBeNull();
+    expect(boton).toBeEnabled();
+    await usuario.click(casilla);
+    await usuario.click(boton);
+
+    const tituloResultado = await screen.findByRole("heading", { name: "Comparativo por partida" });
+    expect(tituloResultado.closest("[aria-live]")).toBeNull();
+    const [ruta, opciones] = llamada("/revalorar")!;
+    expect(ruta).toBe("/presupuestos/revalorar");
+    expect((opciones?.body as FormData).getAll("dar_de_alta")).toEqual(["Tornillo ficticio"]);
+  });
+
   test("envia el multipart con dar_de_alta solo de lo marcado", async () => {
     montar();
     const { usuario, archivo } = await subir();
