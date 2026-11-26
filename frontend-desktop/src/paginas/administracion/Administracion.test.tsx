@@ -90,6 +90,7 @@ describe("Administracion: Cuentas y Accesos", () => {
           ? json({ detalle: "La base no responde." }, 503)
           : json({ cuentas, aviso_arma_y_revisa: AVISO } satisfies CuentasRespuesta);
       }
+      if (url === "/v1/solicitudes") return json({ solicitudes: [] });
       if (url === "/v1/accesos") return json(accesos);
       if (url === "/v1/admin/empresas-registradas") return json({ registradas: [], metodos: [] });
       if (url === "/v1/admin/asistente") return json(ASISTENTE_DE_FABRICA);

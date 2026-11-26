@@ -1,0 +1,37 @@
+// Estilos complementarios del flujo de entrada, solicitud de cuenta y canje de código (C9).
+// Todos los colores salen de --silice-* (tokens.scss con light-dark); letra en rem sobre la rejilla de 4 px.
+
+.silice-entrada__enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.silice-entrada__secundaria {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  padding: 2rem;
+  background-color: var(--silice-hoja);
+  border: 1px solid var(--silice-linea);
+  color: var(--silice-t1);
+  line-height: 1.45;
+}
+
+.silice-entrada__confirmacion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: 1rem;
+  line-height: 1.45;
+}
+
+.silice-entrada__aviso-foco {
+  min-inline-size: 0;
+
+  &:focus {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: 2px;
+  }
+}

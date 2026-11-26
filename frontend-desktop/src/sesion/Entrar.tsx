@@ -6,6 +6,17 @@ import type { FormEvent } from "react";
 import { mensajeDeError } from "../comun/errores";
 import { useTituloDelDocumento } from "../comun/tituloDelDocumento";
 import { CampoTexto } from "../comun/CampoTexto";
+import { CrearCuenta } from "./CrearCuenta";
+import { TengoUnCodigo } from "./TengoUnCodigo";
+import "./sesion.scss";
+
+type VistaDeEntrada = "entrar" | "crear" | "canjear";
+
+const TITULOS_DE_VISTA: Record<VistaDeEntrada, string> = {
+  entrar: "Entrar",
+  crear: "Crear una cuenta",
+  canjear: "Tengo un código",
+};
 
 interface Props {
   onEntrar: (login: string, contrasena: string) => Promise<void>;
@@ -14,15 +25,25 @@ interface Props {
   // Con cuentas creadas: lleva a la pantalla de «recuperar acceso» con un código de restablecimiento (BCP-4). Sin él,
   // el enlace no se pinta.
   alRecuperar?: () => void;
+  onCanjear?: (login: string, contrasena: string, codigo: string) => Promise<void>;
 }
 
-export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
-  useTituloDelDocumento("Entrar");
+export function Entrar({ onEntrar, aviso, alRecuperar, onCanjear }: Props) {
+  const [vista, setVista] = useState<VistaDeEntrada>("entrar");
+  useTituloDelDocumento(TITULOS_DE_VISTA[vista]);
   const [login, setLogin] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [intentado, setIntentado] = useState(false);
+
+  if (vista === "crear") {
+    return <CrearCuenta alVolver={() => setVista("entrar")} alIrACanjear={() => setVista("canjear")} />;
+  }
+
+  if (vista === "canjear") {
+    return <TengoUnCodigo onCanjear={onCanjear} alVolver={() => setVista("entrar")} />;
+  }
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -122,6 +143,14 @@ export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
               )}
             </div>
           </Form>
+          <div className="silice-entrada__enlaces">
+            <Button kind="ghost" size="sm" type="button" onClick={() => setVista("crear")}>
+              Crear una cuenta
+            </Button>
+            <Button kind="ghost" size="sm" type="button" onClick={() => setVista("canjear")}>
+              Tengo un código
+            </Button>
+          </div>
           <div className="silice-entrada__pie-seguridad">
             <span>La sesión vive en el servidor de Sílice de esta instalación · El asistente con un proveedor en la nube viene apagado</span>
           </div>

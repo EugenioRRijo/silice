@@ -162,4 +162,69 @@ describe("Entrar", () => {
     expect(pie).not.toBeNull();
     expect(pie?.querySelector("svg")).toBeNull();
   });
+
+  describe("registro con código (C9)", () => {
+    test("debajo del formulario ofrece «Crear una cuenta» y «Tengo un código» sin enviar el formulario", () => {
+      const { container } = render(<Entrar onEntrar={vi.fn()} />);
+      const formulario = container.querySelector("form")!;
+      const crear = screen.getByRole("button", { name: "Crear una cuenta" });
+      const tengoCodigo = screen.getByRole("button", { name: "Tengo un código" });
+
+      expect(crear).toHaveAttribute("type", "button");
+      expect(tengoCodigo).toHaveAttribute("type", "button");
+      expect(formulario.contains(crear)).toBe(false);
+      expect(formulario.contains(tengoCodigo)).toBe(false);
+      expect(formulario.compareDocumentPosition(crear) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(formulario.compareDocumentPosition(tengoCodigo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    test("«Crear una cuenta» abre el formulario de solicitud, «Ya tengo el código» lleva al canje y «Volver» regresa a Entrar", async () => {
+      const usuario = userEvent.setup();
+      const onEntrar = vi.fn();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn<typeof fetch>().mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              mensaje:
+                "Su solicitud quedó registrada. Cuando el administrador la apruebe, le llegará un código de 20 caracteres a su correo.",
+            }),
+            { status: 201, headers: { "Content-Type": "application/json" } },
+          ),
+        ),
+      );
+
+      render(<Entrar onEntrar={onEntrar} />);
+      await usuario.click(screen.getByRole("button", { name: "Crear una cuenta" }));
+      expect(screen.getByRole("heading", { level: 1, name: "Crear una cuenta" })).toBeInTheDocument();
+      expect(onEntrar).not.toHaveBeenCalled();
+
+      await usuario.type(screen.getByRole("textbox", { name: "Nombre" }), "María Rivas");
+      await usuario.type(screen.getByRole("textbox", { name: "Correo" }), "maria@empresa.com");
+      await usuario.type(screen.getByRole("textbox", { name: "Usuario" }), "mrivas");
+      await usuario.type(screen.getByLabelText("Contraseña"), "frase-larga-123");
+      await usuario.type(screen.getByLabelText("Confirme la contraseña"), "frase-larga-123");
+      await usuario.click(screen.getByRole("button", { name: "Enviar la solicitud" }));
+
+      await usuario.click(await screen.findByRole("button", { name: "Ya tengo el código" }));
+      expect(screen.getByRole("heading", { level: 1, name: "Tengo un código" })).toBeInTheDocument();
+
+      await usuario.click(screen.getByRole("button", { name: "Volver" }));
+      expect(screen.getByRole("heading", { level: 1, name: "Entrar" })).toBeInTheDocument();
+      vi.unstubAllGlobals();
+    });
+
+    test("«Tengo un código» abre la pantalla de canje y «Volver» regresa a Entrar", async () => {
+      const usuario = userEvent.setup();
+      const onEntrar = vi.fn();
+      render(<Entrar onEntrar={onEntrar} />);
+
+      await usuario.click(screen.getByRole("button", { name: "Tengo un código" }));
+      expect(screen.getByRole("heading", { level: 1, name: "Tengo un código" })).toBeInTheDocument();
+      expect(onEntrar).not.toHaveBeenCalled();
+
+      await usuario.click(screen.getByRole("button", { name: "Volver" }));
+      expect(screen.getByRole("heading", { level: 1, name: "Entrar" })).toBeInTheDocument();
+    });
+  });
 });

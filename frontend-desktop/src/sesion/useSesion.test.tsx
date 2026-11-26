@@ -139,3 +139,42 @@ describe("useSesion.salir y la caché de recursos", () => {
     siguiente.unmount();
   });
 });
+
+describe("useSesion.canjear (C9)", () => {
+  test("hace POST /v1/solicitudes/canjear y abre la sesión normalizada fijando el token anti-CSRF", async () => {
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const ruta = String(entrada);
+      if (ruta === "/v1/sesion") return json({ detalle: "Sin sesión." }, 401);
+      if (ruta === "/v1/solicitudes/canjear") {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          login: "mrivas",
+          contrasena: "frase-segura-123",
+          codigo: "ABCD-EFGH-JKLM-NPQR-STUV",
+        });
+        return json({ login: "mrivas", nombre: "María Rivas", roles: ["arma"], csrf: "tok-c9" }, 200);
+      }
+      return json({}, 200);
+    });
+
+    const { result } = renderHook(() => useSesion());
+    await waitFor(() => expect(result.current.estado.tipo).toBe("sin_sesion"));
+    await act(async () => {
+      await result.current.canjear("mrivas", "frase-segura-123", "ABCD-EFGH-JKLM-NPQR-STUV");
+    });
+
+    expect(result.current.estado.tipo).toBe("activa");
+    if (result.current.estado.tipo === "activa") {
+      expect(result.current.estado.sesion).toMatchObject({
+        login: "mrivas",
+        nombre: "María Rivas",
+        roles: ["arma"],
+        debe_cambiar_clave: false,
+        acciones: [],
+      });
+    }
+    await pedir("/v1/otra", { metodo: "POST", cuerpo: {} });
+    const ultima = fetchFalso.mock.calls.at(-1)!;
+    expect(new Headers(ultima[1]?.headers).get("X-Silice-CSRF")).toBe("tok-c9");
+  });
+});
