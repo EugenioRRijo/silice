@@ -3,6 +3,12 @@
 > Para Eugenio. Ningún dato de esta prueba entra al repositorio: las hojas llenas, los nombres y las grabaciones se
 > quedan en el equipo (NORMAS §1). En la tesis se reportan cifras agregadas y citas sin nombre.
 
+> **Enmienda del 2026-11-25.** La prueba se hace sobre la versión `medicion-v1` del front reestructurado, que se
+> congela el 2026-12-16 ([acta](../bitacora/2026-11-25-acta-reestructuracion-front.md)). Al final de este guion están
+> los [criterios fijados antes de medir](#criterios-fijados-antes-de-medir-2026-11-25), el plan B de participantes, el
+> piloto y la prueba de instalación que pidió el consejo de asesores. Los pendientes de «Antes de la sesión» sobre
+> #138 a #140 quedan cumplidos: esos PR se fusionaron el 2026-11-24.
+
 ## Cómo encaja en el anteproyecto (v8)
 
 - **Es una prueba formativa**: sirve para ajustar el prototipo durante el diagnóstico (fases 1 a 3). No reemplaza la
@@ -260,3 +266,66 @@ Firma: ______________________________________________________________
 Fecha: ________________________
 
 Quien conduce la sesión (nombre y firma): ___________________________
+
+## Criterios fijados antes de medir (2026-11-25)
+
+> Lo pidió el consejo de asesores del 2026-11-25: si un criterio se fija después de ver los resultados, el jurado lo
+> lee como ajustado a conveniencia. **Todo lo de esta sección es una propuesta.** Las cifras son **supuestos por
+> confirmar con el tutor** antes de la primera sesión, y no reglas. Ratificadas, no se cambian hasta defender.
+
+### Qué cuenta como éxito
+
+| Qué se mide | Se cumple si… | Por qué esta cifra |
+|---|---|---|
+| Eficacia de cada tarea (T1, T2, T3) | al menos 4 de las 5 personas la terminan **sin ayuda** dentro del tiempo máximo ya fijado (5, 15 y 5 min) | El promedio publicado de tareas completadas ronda el 78 % (Sauro, 2011 [verificación pendiente]); 4 de 5 (80 %) es el primer valor por encima |
+| Eficiencia | se informa el tiempo mediano por tarea, sin umbral propio: el tiempo máximo ya es el límite | Con 5 personas una media engaña; la mediana no |
+| Satisfacción (SUS) | el promedio es **68 o más** | 68 es el promedio publicado (Sauro y Lewis, 2016 [verificación pendiente]); por debajo de 51,7 (nota F de su escala) se informa como problema grave |
+| Comprensión de cada alerta (A1 a A6) | al menos 4 de 5 responden «sí» a «¿Qué le está diciendo?» | El mismo criterio que la eficacia, para que sean comparables |
+| Comprensión del conjunto | al menos 5 de las 6 alertas cumplen la fila anterior | Una alerta mal entendida se puede corregir; dos señalan un problema del diseño de las alertas |
+
+- **Cómo se informa.** Cada porcentaje lleva su intervalo de Wilson al 95 %, como en la medición de la auditoría,
+  porque con 5 personas el intervalo es ancho y hay que decirlo. Los resultados se dan por grupo (economistas y
+  personas nuevas) y en conjunto.
+- **Si un criterio no se cumple, se informa tal cual.** No se reinterpreta, no se repiten las sesiones para mejorar la
+  cifra y no se cambia el criterio. Lo que falló va al capítulo de resultados y a trabajo futuro, con la cita textual de
+  dónde se trabaron.
+- **Pensar en voz alta (propuesta por ratificar).** Hablar mientras se trabaja alarga los tiempos. El consejo propone
+  cronometrar la tarea en silencio y pedir el «qué pensó» justo después de cada una (forma retrospectiva). Si el tutor lo
+  aprueba, se cambia la frase «piense en voz alta mientras las hace» del consentimiento leído en voz alta.
+
+### Plan B de participantes
+
+- **Fecha límite: 2026-12-10.** Si ese día no hay 5 personas con día y hora, se activa el plan B y se avisa al tutor.
+- **Perfil del plan B:** personas que hacen presupuestos de obra con APU y no conocen Sílice. Por ejemplo, ingenieros
+  civiles que presupuestan, estudiantes de los últimos semestres de ingeniería civil que ya hicieron APU en su práctica,
+  o presupuestistas de otras empresas.
+- **Lo que no cambia:** las mismas tareas, el mismo guion y la misma versión `medicion-v1`. La sesión puede ser remota
+  (la persona maneja Sílice en el equipo de Eugenio por control remoto), y eso se anota como límite.
+- **Cómo se reporta:** los participantes del plan B se informan aparte de los economistas de la empresa.
+
+### Piloto (antes de la primera sesión)
+
+- Una persona ajena al proyecto hace las tres tareas, la prueba de las alertas y el SUS, cronometrada, con el guion tal
+  cual.
+- Sirve para ver si las consignas se entienden y si los tiempos máximos alcanzan. **Sus resultados no cuentan** en la
+  tesis.
+- Si el piloto obliga a cambiar una consigna, el cambio se anota con fecha y motivo **antes** de la primera sesión.
+
+### La versión que se mide
+
+- `medicion-v1` es una etiqueta de git sobre la versión reestructurada, que se congela el 2026-12-16.
+- Antes de la primera sesión, en **cada equipo donde habrá sesión**:
+  - instalar esa versión;
+  - abrir la carpeta de demostración;
+  - recorrer T1, T2 y T3 una vez.
+  Si algo no abre, se arregla antes de empezar, no durante las sesiones.
+- Desde la primera sesión hasta la última no cambia nada del programa. Si apareciera un defecto que impide una tarea, se
+  anota como límite y no se corrige en medio de la medición.
+
+### Para ratificar con el tutor
+
+1. Los cinco criterios de la tabla de arriba.
+2. Pensar en voz alta de forma retrospectiva.
+3. El plan B de participantes y su fecha límite.
+4. El SUS como instrumento adicional (ver «Cómo encaja en el anteproyecto»), y la validación de las tareas, la hoja de
+   observación y la prueba de las alertas por los 3 expertos.

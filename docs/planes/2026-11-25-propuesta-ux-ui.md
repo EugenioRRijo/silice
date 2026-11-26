@@ -78,7 +78,7 @@ Los informes no describen fallos sueltos. Describen una forma de construir que h
 
 - Coma decimal y punto de miles en toda entrada y salida.
 - Trato de usted.
-- Los datos reales nunca salen del equipo.
+- Los libros de la empresa y lo derivado de ellos nunca salen del equipo.
 - La lógica de negocio y las cifras las calcula el servidor. La interfaz no calcula montos ni veredictos: el «CUMPLE /
   NO CUMPLE» de `aprobar/logica.ts:78-105` (D #1) pasa al servidor.
 - Sílice corre en WebView2, el Chromium de Edge, con una CSP estricta.

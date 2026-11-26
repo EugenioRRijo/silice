@@ -134,9 +134,11 @@ export default function PaginaActualizacion() {
 
   const lista = presupuestos.tipo === "listo" ? presupuestos.lista : [];
   const base: PresupuestoListado | undefined = lista[Number(elegido)];
+  const leyendoLista = vista.tipo === "cargando";
   const revalorando = resultado.tipo === "revalorando";
-  // Mientras se descarta la versión guardada no se revalora: el «hecho» tardío diría descartada a la versión nueva.
-  const ocupada = revalorando || descarte.tipo === "enCurso";
+  // Mientras se lee la lista previa o se descarta la versión guardada no se revalora: la primera aún no mostró las
+  // altas de catálogo posibles y el «hecho» tardío del descarte diría descartada a la versión nueva.
+  const ocupada = leyendoLista || revalorando || descarte.tipo === "enCurso";
 
   const revalorar = (evento: FormEvent) => {
     evento.preventDefault();
@@ -291,25 +293,27 @@ export default function PaginaActualizacion() {
             <Button type="submit" kind="primary" size="md" disabled={archivo === null || ocupada}>
               Actualizar precios del presupuesto
             </Button>
-            {revalorando && <InlineLoading description="Revalorando…" status="active" />}
+            {leyendoLista && !revalorando && (
+              <InlineLoading description="Leyendo la lista de precios…" status="active" aria-live="off" />
+            )}
+            {revalorando && <InlineLoading description="Revalorando…" status="active" aria-live="off" />}
           </div>
         </form>
       )}
 
-      <div aria-live="polite" aria-atomic="true">
-        {resultado.tipo === "error" && <AvisoError error={resultado.error} titulo="No se pudo revalorar" />}
-        {resultado.tipo === "listo" && (
-          <ResultadoRevaloracion
-            respuesta={resultado.respuesta}
-            proyecto={resultado.proyecto}
-            descarte={descarte}
-            alDescartar={descartar}
-            alPedirDescarte={() => setDescarte({ tipo: "confirmar" })}
-            alCancelarDescarte={() => setDescarte({ tipo: "no" })}
-            alExpirar={alExpirar}
-          />
-        )}
-      </div>
+      {/* AvisoError ya es role="alert" y ResultadoRevaloracion lleva el foco a su h2 (y sus avisos son role="status"). */}
+      {resultado.tipo === "error" && <AvisoError error={resultado.error} titulo="No se pudo revalorar" />}
+      {resultado.tipo === "listo" && (
+        <ResultadoRevaloracion
+          respuesta={resultado.respuesta}
+          proyecto={resultado.proyecto}
+          descarte={descarte}
+          alDescartar={descartar}
+          alPedirDescarte={() => setDescarte({ tipo: "confirmar" })}
+          alCancelarDescarte={() => setDescarte({ tipo: "no" })}
+          alExpirar={alExpirar}
+        />
+      )}
     </div>
   );
 }
