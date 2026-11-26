@@ -67,8 +67,8 @@ describe("color de acción de la empresa en toda la aplicación", () => {
   });
 
   // Cara «Papel y resaltador» (2026-11-26): el foco pasa al dorado de las notas, en un solo lugar (tokens.scss).
-  test("el foco se reasigna solo en tokens.scss, al borde del resaltador", () => {
-    expect(tokens).toMatch(/--cds-focus:\s*var\(--silice-resaltador-borde\)/);
+  test("el foco se reasigna solo en tokens.scss, a su token de foco (3:1 en claro y oscuro, WCAG 1.4.11)", () => {
+    expect(tokens).toMatch(/--cds-focus:\s*var\(--silice-foco\)/);
     expect(leer("marco/marco.scss")).not.toMatch(/--cds-focus(-inverse)?\s*:/);
   });
 
