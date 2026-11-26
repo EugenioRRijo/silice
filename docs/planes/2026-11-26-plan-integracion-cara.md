@@ -42,3 +42,20 @@ Después siguen los lotes de comportamiento de la [ficha de B1](../bitacora/2026
 3. Mutaciones a mano en lo nuevo (ub-mode: matar sobrevivientes).
 4. Una mirada en el navegador en claro y oscuro contra el tablero del lienzo.
 5. Commit en `feature/front-b1`; revisión de Neon o de Opus al cerrar cada dos lotes.
+
+## Después de C10: auditoría de la app completa (pedido de Eugenio, 2026-11-26)
+
+«ok enfoquemos la reestructuracion hasta c10 y luego auditemos la app para que ningun boton este roto y herramienta se
+rompa, validemos tambien la logica de la auditoria y de la aplicacion en general».
+
+1. **Nada roto (recorrido de clics):** un recorrido automático (Playwright, sobre `scripts/recorrido_ux_playwright.py`)
+   por cada ruta del contrato, en claro y oscuro, con la obra de demostración: pulsa cada botón y enlace visible, y
+   falla ante un error en la consola, un 4xx/5xx inesperado, una pantalla en blanco, un botón sin efecto o un foco
+   perdido. Cada hallazgo, con su captura, va a una bitácora fechada.
+2. **Lógica de la auditoría:** el inyector de fallas, las metamórficas, el oráculo de LibreOffice, la sensibilidad de
+   umbrales y la traza por causa (Fase 1 del plan no circular) corren contra las reglas selladas; cada regla detecta
+   lo que debe y no inventa hallazgos; las reglas no cambian sin acta (sello `reglas-congeladas-2026-11-24`).
+3. **Lógica general:** la suite completa de Python (`uv run pytest -W error -q -n auto --dist loadfile`) y del front,
+   ruff, lint, tsc, `meta_datos`, la guardia del núcleo, y mutantes en cálculo, reglas y cuentas; un auditor
+   independiente (Opus) revisa sin recibir las conclusiones del orquestador, y cada hallazgo se verifica contra el
+   código antes de corregirse con prueba en rojo.
