@@ -69,3 +69,25 @@ Viene del veredicto del consejo:
   restante) va a trabajo futuro.
 - El congelamiento del 2026-11-23 sigue vigente para todo lo que no sea el front: auditoría, alertas, reglas y mercado
   (lista cerrada del consejo del 2026-11-24).
+
+## Enmienda: lo que se decidió al construir B0 (2026-11-25)
+
+- **Foco al navegar.** Cuando la persona cambia de espacio (de la Vista general a una obra, o a Producción, Precios o
+  Cuenta), el foco va al título de la pantalla. Dentro del mismo espacio, el foco se queda en el enlace, como en unas
+  pestañas. Es un punto medio entre la guía de Google («Update single-page application (SPA) titles during page
+  transitions») y la decisión de F6, ya arbitrada (`docs/planes/PLAN_REDISENO_F6.md:167`).
+  - Si la pantalla nueva ya enfocó un campo propio, se respeta.
+  - Al crear una obra, el foco va al título de la obra nueva.
+- **Título de la ventana.** Lo pone solo el marco y conserva el nombre de la obra.
+- **Diálogos.** El título sigue siendo un `h2`, como pide DESIGN.md. La guía de Google pide `h1`, y esa decisión
+  queda para Eugenio. La franja lateral de 4 px se quitó, porque era adorno.
+- **Error de un campo de cifras.** Se anuncia medio segundo después de salir del campo. Eugenio no lo objetó.
+- **Quién construye.** Gemini se quedó sin créditos y Eugenio decidió no contar con él hasta nuevo aviso. Construye
+  Sonnet y audita Opus.
+- **Skills, al pie de la letra.** Por pedido de Eugenio, ui-ux-pro-max, la guía de Google y ub-mode se aplican tal
+  cual. Del sistema de diseño de ui-ux-pro-max se toma el estilo «Data-Dense Dashboard» y su lista previa a entregar.
+  Sus colores y su tipografía no se toman, porque chocan con DESIGN.md y con el uso sin conexión.
+- **Auditorías.** Opus hizo tres:
+  - devolvió 5 hallazgos mayores y todos se corrigieron, con la prueba en rojo primero y una mutación por punto;
+  - los menores también se corrigieron;
+  - ninguna pantalla usa todavía las piezas: B1 será la primera.
