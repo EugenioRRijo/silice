@@ -732,6 +732,33 @@ Factors, 7*(4), e21161. https://doi.org/10.2196/21161
 - **Lo que respalda:** el SUS en español del guion de la prueba con usuarios (quinto instrumento).
 - **Límite:** validado en México con usuarios de aplicaciones electrónicas, no con presupuestistas.
 
+### Sauro y Lewis (2016)
+
+Sauro, J., & Lewis, J. R. (2016). *Quantifying the user experience: Practical statistics for user
+research* (2.ª ed.). Morgan Kaufmann.
+
+- **Estado:** pendiente
+- **Verificación (secundaria), 2026‑11‑25:** búsqueda web (MeasuringU, Bentley University UX Center,
+  UXPA Journal). Esas fuentes dan 68 como el puntaje SUS del percentil 50 y una escala de notas
+  curvada, construida con 241 estudios, en la que 68 queda en el centro de la C.
+- **Falta:** cotejar con el libro los metadatos (editorial, año, ISBN) y el corte exacto de la F. Las
+  fuentes secundarias dan 51,6 o 51,7.
+- **Lo que respalda:** la referencia de 68 del SUS y el umbral de «problema grave» de los criterios
+  fijados antes de medir en el guion de la prueba con usuarios.
+
+### Sauro (2011)
+
+Sauro, J. (2011). *What is a good task-completion rate?* MeasuringU.
+
+- **Estado:** pendiente
+- **Verificación (secundaria), 2026‑11‑25:** búsqueda web (páginas de MeasuringU). Un análisis de
+  1.189 tareas de 115 pruebas de usabilidad (90 % moderadas) dio un promedio de 78 % de tareas
+  completadas, con el cuartil inferior por debajo de 49 % y el superior por encima de 92 %.
+- **Falta:** la URL exacta del artículo, su fecha y la cita textual.
+- **Límite:** es una entrada de blog técnico, no un artículo revisado por pares. El mismo autor advierte
+  que la tasa buena depende del contexto.
+- **Lo que respalda:** el criterio de eficacia (4 de 5 personas) del guion de la prueba con usuarios.
+
 ### Landis y Koch (1977)
 
 Landis, J. R., & Koch, G. G. (1977). The measurement of observer agreement for categorical data.
