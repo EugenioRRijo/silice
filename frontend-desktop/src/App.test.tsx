@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "./api/cliente";
 import { App } from "./App";
+import { useAnunciar } from "./comun/Anunciador";
+import { PAGINAS } from "./shell/rutas";
 import oraculo from "../../tests/fixtures/replica/libro_minimo.json";
 import type { LibroAuditadoRespuesta, LibroVisualRespuesta } from "./api/tipos";
 import { crearHojaFalsa } from "./visor/hojaFalsa";
@@ -515,5 +517,38 @@ describe("App", () => {
       expect(espia).not.toHaveBeenCalled();
       espia.mockRestore();
     });
+  });
+
+  test("monta un solo anunciador y un componente bajo App escribe en la región polite con useAnunciar", async () => {
+    const usuario = userEvent.setup();
+    function EmisorBajoApp() {
+      const anunciar = useAnunciar();
+      return (
+        <div>
+          <h1>Vista general</h1>
+          <button type="button" onClick={() => anunciar("Se agregó FRI-01 al presupuesto")}>
+            Probar anuncio
+          </button>
+        </div>
+      );
+    }
+    const paginasDePrueba = PAGINAS.map((p) => (p.id === "inicio" ? { ...p, cargar: async () => ({ default: EmisorBajoApp }) } : p));
+
+    const { container } = render(<App paginas={paginasDePrueba} />);
+    const boton = await screen.findByRole("button", { name: "Probar anuncio" }, { timeout: 5000 });
+    await screen.findByText("Todavía no hay obras");
+
+    const regionesCortes = container.querySelectorAll('[aria-live="polite"]');
+    const regionesUrgentes = container.querySelectorAll('[aria-live="assertive"]');
+    expect(regionesCortes).toHaveLength(1);
+    expect(regionesUrgentes).toHaveLength(1);
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(regionesCortes[0]).toHaveTextContent("");
+
+    await usuario.click(boton);
+
+    expect(regionesCortes[0]).toHaveTextContent("Se agregó FRI-01 al presupuesto");
+    expect(container.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+    expect(regionesUrgentes[0]).toHaveTextContent("");
   });
 });

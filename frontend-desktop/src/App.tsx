@@ -9,9 +9,11 @@ import type { ConsultaPrimerArranque } from "./bienvenida/usePrimerArranque";
 import { CambiarContrasena } from "./sesion/CambiarContrasena";
 import { Entrar } from "./sesion/Entrar";
 import { useSesion } from "./sesion/useSesion";
+import { ProveedorDeAnuncios } from "./comun/Anunciador";
 import { Marco } from "./marco/Marco";
 import { ProveedorDelTema } from "./marco/useTema";
 import { MenuCuenta } from "./shell/MenuCuenta";
+import type { PaginaDef } from "./shell/rutas";
 import { crearAlmacen } from "./visor/almacen";
 import type { AlmacenDelVisor } from "./visor/almacen";
 import type { CrearHojaVisor } from "./visor/hojaVisor";
@@ -38,11 +40,12 @@ function CabeceraSinMarco({ nombre, alSalir }: { nombre?: string; alSalir: () =>
 }
 
 interface Props {
-  // Solo en pruebas: el visor de hojas (por omision, Univer).
+  // Solo en pruebas: el visor de hojas (por omision, Univer) y el registro de pantallas.
   crearHoja?: CrearHojaVisor;
+  paginas?: readonly PaginaDef[];
 }
 
-export function App({ crearHoja }: Props = {}) {
+export function App({ crearHoja, paginas }: Props = {}) {
   const { estado, entrar, reclamar, cambiarContrasena, salir, expirar } = useSesion();
   // Sin sesion se pregunta si la instalacion aun no tiene cuentas; si no tiene, la entrada es la bienvenida (BCP-4). Cualquier
   // fallo de la consulta es «Entrar». Una sesion vencida supone que ya hay cuentas: ahi no se pregunta.
@@ -78,14 +81,17 @@ export function App({ crearHoja }: Props = {}) {
       <ProveedorDelTema>
         {estado.tipo === "activa" && !estado.sesion.debe_cambiar_clave ? (
           <HashRouter>
-            <Marco
-              sesion={estado.sesion}
-              alSalir={alSalir}
-              alExpirar={expirar}
-              alCambiarContrasena={cambiarContrasena}
-              almacen={almacen}
-              crearHoja={crearHoja}
-            />
+            <ProveedorDeAnuncios>
+              <Marco
+                sesion={estado.sesion}
+                alSalir={alSalir}
+                alExpirar={expirar}
+                alCambiarContrasena={cambiarContrasena}
+                paginas={paginas}
+                almacen={almacen}
+                crearHoja={crearHoja}
+              />
+            </ProveedorDeAnuncios>
           </HashRouter>
         ) : (
           <>

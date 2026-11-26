@@ -400,8 +400,21 @@ el acento ni un color de severidad suelto: la severidad se sigue diciendo **en p
 ## Movimiento
 
 Ninguno decorativo (Eugenio, 2026-10-18). Solo las transiciones de estado propias de los componentes Carbon
-(70-110 ms, `motion(standard, productive)`); los halos aparecen sin animación; nada anima al cargar la página;
-`prefers-reduced-motion: reduce` quita incluso esas transiciones.
+(70-110 ms, `motion(standard, productive)`); los halos aparecen sin animación; nada anima al cargar la página.
+
+**Enmienda del 2026-11-26** (Eugenio, para la reestructuración; guías `motion`, `animate-to-from-top-layer` y
+`animate-element-entry-exit`, y la regla de ui-ux-pro-max «Animate 1-2 key elements per view maximum»):
+- **Movimiento funcional permitido**, solo donde orienta: el inspector lateral entra desde su lado y el menú «Más
+  acciones» y los diálogos aparecen con un fundido corto.
+  - Como máximo 2 elementos animados por vista.
+  - De 150 a 240 ms (`moderate-01` y `moderate-02` de Carbon), con `ease-out` al entrar.
+  - Solo `transform` y `opacity`.
+  - Sigue sin animarse nada al cargar la página ni nada decorativo.
+- **Con movimiento reducido**, se sigue la guía `motion`: «only dampen or disable spatial movement». Se quitan el
+  desplazamiento y la escala, y se conservan los cambios de color de botones y enlaces.
+  - La animación se declara dentro de `@media (prefers-reduced-motion: no-preference)`, para que el estado sin
+    movimiento sea el de partida.
+  - Nunca se pone `animation-duration: 0.01ms` global.
 
 ## Texto
 
