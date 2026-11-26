@@ -35,7 +35,7 @@ export const PASOS_DE_EMPIEZA_AQUI: Readonly<Record<PasoId, PasoDeEmpiezaAqui>> 
   obra: {
     papel: "arma",
     titulo: "Cree la obra",
-    texto: "Pulse «Nueva obra» (en la barra de la izquierda o en «Cartera por moneda»), escriba el «Nombre de la obra», revise la «Moneda» y pulse «Crear la obra».",
+    texto: "Pulse «Nueva obra» (el botón amarillo de la barra de arriba), escriba el «Nombre de la obra», revise la «Moneda» y pulse «Crear la obra».",
   },
   presupuesto: {
     papel: "arma",

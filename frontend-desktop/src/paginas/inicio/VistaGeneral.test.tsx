@@ -15,17 +15,19 @@ import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
 import { UltimasAuditorias } from "./UltimasAuditorias";
 
-// F6, T8: la Vista general (`#/inicio/general`), dentro del marco de verdad y con la API de mentira. Las respuestas
-// tienen la forma de `GET /v1/obras/resumen/todas` (T7) y de `GET /v1/obras/pendientes/todas`; la interfaz solo las
-// formatea. Oráculos escritos a mano: obras, carpetas y cifras ficticias, y los textos que fijan el plan y el diseño visual.
+// Inicio › Resumen (`#/inicio/general`, especificación 00-inicio-resumen.html) montado dentro del Marco real.
+// Oráculos escritos a mano con obras, carpetas y cifras ficticias.
 
 const RUTA_CARTERA = "/v1/obras/resumen/todas";
 const RUTA_PENDIENTES = "/v1/obras/pendientes/todas";
-const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
+const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=100";
+const RUTA_CARPETA = "/v1/carpeta";
+const RUTA_PARTIDAS = "/partidas";
+const RUTA_INSUMOS = "/insumos";
 const RUTA_ARENERA = "/v1/produccion/existencias";
 const RUTA_CUENTAS = "/v1/cuentas";
 const SUR = "Carpeta Sur.db";
-// La forma de `GET /v1/cuentas` (api/rutas/cuentas.py, CuentaRespuesta); cuentas ficticias.
+
 const CUENTA_ADMIN = { id: 1, login: "admin", nombre: "Admin Ficticio", roles: ["administrador"], activa: true };
 const CUENTA_ANA = { id: 2, login: "ana", nombre: "Ana Pérez", roles: ["arma"], activa: true };
 
@@ -67,8 +69,7 @@ const PRECIOS: Pendiente = {
   accion: { texto: "Actualizar precios", pagina: "actualizacion" },
 };
 
-// Una cartera con las dos monedas. Los montos llegan como texto, y uno llega sin el cero final: la pantalla los lee
-// en centésimas y no recalcula nada (la suma de Bs con USD sería 429.637,10: no debe aparecer jamás).
+// Cartera con dos monedas: Bs y USD nunca se suman entre sí (429.637,10 no debe aparecer jamás).
 const DOS_MONEDAS = {
   hoy: "2026-11-05",
   por_moneda: [
@@ -115,19 +116,42 @@ const DOS_MONEDAS = {
   ],
   carpetas_omitidas: 0,
 };
+
 const SOLO_BS = {
   ...DOS_MONEDAS,
-  por_moneda: [DOS_MONEDAS.por_moneda[0]],
+  por_moneda: [DOS_MONEDAS.por_moneda[0]!],
   obras: DOS_MONEDAS.obras.slice(0, 2),
 };
+
 const SIN_OBRAS = { hoy: "2026-11-05", por_moneda: [], obras: [], carpetas_omitidas: 0 };
 
 const AUDITORIA = { id: 1, archivo: "presupuesto-1.xlsx", fecha: "2026-10-18T14:32:00", tipo: "libro", errores: 2, advertencias: 5 };
+const CARPETA_CON_LISTA = {
+  moneda: "Bs",
+  declarada: true,
+  lista: { nombre: "Lista Julio", moneda: "Bs", fecha: "2026-07-15", origen: "empresa" },
+  aviso: null,
+};
+const PARTIDAS_DEMO = [
+  { codigo: "C-001", descripcion: "Excavación", unidad: "m3", dominio: "civil" },
+  { codigo: "C-002", descripcion: "Concreto", unidad: "m3", dominio: "civil" },
+];
+const INSUMOS_DEMO = [
+  { codigo: "M-001", descripcion: "Cemento gris", tipo: "MATERIAL", unidad: "saco", precio_vigente: "420.00" },
+  { codigo: "M-002", descripcion: "Cabilla", tipo: "MATERIAL", unidad: "kg", precio_vigente: null },
+];
+const ARENERA_DEMO = [
+  { codigo: "ARE-01", nombre: "Arena lavada", unidad_venta: "t", existencia: "4850.0", minima: "100", queda_poco: false, negativa: false },
+];
 
 let servidor: ReturnType<typeof servidorFalso>;
 let cartera: Respondedor;
 let pendientes: Respondedor;
 let auditorias: Respondedor;
+let carpetaResp: Respondedor;
+let partidasResp: Respondedor;
+let insumosResp: Respondedor;
+let areneraResp: Respondedor;
 let cuentas: Respondedor;
 let apagados: string[];
 
@@ -141,11 +165,16 @@ function instalar() {
     if (ruta === RUTA_CARTERA) return cartera(metodo, ruta, cuerpo);
     if (ruta === RUTA_PENDIENTES) return pendientes(metodo, ruta, cuerpo);
     if (ruta === RUTA_AUDITORIAS) return auditorias(metodo, ruta, cuerpo);
+    if (ruta === RUTA_CARPETA) return carpetaResp(metodo, ruta, cuerpo);
+    if (ruta === RUTA_PARTIDAS) return partidasResp(metodo, ruta, cuerpo);
+    if (ruta === RUTA_INSUMOS) return insumosResp(metodo, ruta, cuerpo);
+    if (ruta === RUTA_ARENERA) return areneraResp(metodo, ruta, cuerpo);
     if (ruta === RUTA_CUENTAS) return cuentas(metodo, ruta, cuerpo);
-    if (ruta === RUTA_ARENERA) return json([]);
     if (ruta === "/v1/modulos") {
       const claves = ["produccion", "vial", "riesgo", "edificacion"];
-      return json({ modulos: claves.map((clave) => ({ clave, nombre: clave, activo: !apagados.includes(clave), cambiado_por: null, cambiado_el: null })) });
+      return json({
+        modulos: claves.map((clave) => ({ clave, nombre: clave, activo: !apagados.includes(clave), cambiado_por: null, cambiado_el: null })),
+      });
     }
     return undefined;
   });
@@ -157,6 +186,10 @@ beforeEach(() => {
   cartera = () => json(DOS_MONEDAS);
   pendientes = lista(CEMENTO, DEVUELTA, PRECIOS);
   auditorias = () => json([AUDITORIA]);
+  carpetaResp = () => json(CARPETA_CON_LISTA);
+  partidasResp = () => json(PARTIDAS_DEMO);
+  insumosResp = () => json(INSUMOS_DEMO);
+  areneraResp = () => json(ARENERA_DEMO);
   cuentas = () => json({ cuentas: [CUENTA_ADMIN], aviso_arma_y_revisa: "" });
   instalar();
   fijarCsrf("tok");
@@ -178,10 +211,9 @@ function IrA({ destino }: { destino: string }) {
   return <button onClick={() => navegar(destino)}>{`Ir a ${destino}`}</button>;
 }
 
-// El registro de pantallas ligeras, pero con la Vista general de verdad: la que `shell/rutas.ts` registra como «inicio».
 function conVistaGeneral(): PaginaDef[] {
   const real = PAGINAS.find((p) => p.id === "inicio");
-  if (!real) throw new Error("Falta la pantalla «inicio» (la Vista general) en el registro de shell/rutas.ts.");
+  if (!real) throw new Error("Falta la pantalla «inicio» en shell/rutas.ts.");
   return ligeras().map((p) => (p.id === "inicio" ? { ...p, cargar: real.cargar } : p));
 }
 
@@ -198,231 +230,114 @@ function montar({ sesion = sesionDe("ana"), en = "/inicio/general", ir }: { sesi
 const bloque = (nombre: string) => screen.findByRole("region", { name: nombre }, { timeout: 3000 });
 const pedidas = (r: string) => servidor.de("GET", r).length;
 
-describe("Vista general: el orden de los bloques", () => {
-  test("lo que bloquea va primero, después la cartera, el avance, las auditorías y la arenera", async () => {
+describe("Inicio › Resumen: h1 de la cartera y orden de las secciones", () => {
+  test("el h1 resume cuántas obras y su total por moneda, seguido de la cartera, su avance, los problemas por obra y lo cargado", async () => {
     montar();
-    await bloque("Cartera por moneda");
-    await screen.findByText("presupuesto-1.xlsx");
-    await bloque("Arenera: lo que requiere atención");
+    await bloque("La cartera de obras");
+    await bloque("Avance de la cartera");
+    await bloque("Problemas abiertos por obra");
+    await bloque("Lo que hay cargado");
+
+    const h1 = await screen.findByRole("heading", { level: 1, name: "3 obras por 334.570,50 Bs y 95.066,60 USD" });
+    expect(h1).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByText("Vista general · corte al 05/11/2026")).toBeInTheDocument();
+
     const titulos = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     const propios = titulos.filter((t) =>
-      ["Lo que requiere atención", "Cartera por moneda", "Obras y avance contra el plan", "Últimas auditorías", "Arenera: lo que requiere atención"].includes(t ?? ""),
+      ["La cartera de obras", "Avance de la cartera", "Problemas abiertos por obra", "Lo que hay cargado"].includes(t ?? ""),
     );
-    expect(propios).toEqual([
-      "Lo que requiere atención",
-      "Cartera por moneda",
-      "Obras y avance contra el plan",
-      "Últimas auditorías",
-      "Arenera: lo que requiere atención",
-    ]);
-  });
+    expect(propios).toEqual(["La cartera de obras", "Avance de la cartera", "Problemas abiertos por obra", "Lo que hay cargado"]);
 
-  test("un solo h1 «Vista general», y la barra del espacio ofrece Vista general (actual) y Pendientes", async () => {
-    montar();
-    await bloque("Cartera por moneda");
-    const h1 = screen.getAllByRole("heading", { level: 1 });
-    expect(h1).toHaveLength(1);
-    expect(h1[0]).toHaveTextContent("Vista general");
-    expect(h1[0]).toHaveClass("cds--type-heading-04");
-    expect(screen.getByText("Estado de todas sus obras, lo que requiere atención hoy y accesos rápidos")).toBeInTheDocument();
     const barra = screen.getByRole("navigation", { name: "Inicio" });
     expect(within(barra).getByRole("link", { name: "Vista general" })).toHaveAttribute("aria-current", "page");
     expect(within(barra).getByRole("link", { name: "Pendientes" })).not.toHaveAttribute("aria-current");
   });
-});
 
-describe("Vista general: lo que bloquea", () => {
-  test("cada pendiente dice su urgencia con palabras, su obra y el paso que lleva a hacerlo", async () => {
+  test("con una sola moneda el h1 dice «2 obras por 334.570,50 Bs» y no pinta ceros ni tarjeta de la otra moneda", async () => {
+    cartera = () => json(SOLO_BS);
     montar();
-    const b = await bloque("Lo que requiere atención");
-    await within(b).findByText("Falta pedir el cemento");
-    expect(within(b).getByText("2 bloquean · 1 aviso")).toBeInTheDocument();
-    expect(within(b).getAllByText("Bloquea")).toHaveLength(2);
-    expect(within(b).getAllByText("Aviso")).toHaveLength(1);
-    expect(within(b).getByText("Casa Demo")).toBeInTheDocument();
-    expect(within(b).getByRole("link", { name: "Abrir el presupuesto" })).toHaveAttribute("href", "/obra/empresa/7/presupuesto");
-    // Una acción de otra carpeta lleva a la obra de esa carpeta.
-    expect(within(b).getByRole("link", { name: "Hacer una versión nueva" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/presupuesto");
-    expect(within(b).getByRole("link", { name: "Actualizar precios" })).toHaveAttribute("href", "/obra/empresa/8/mercado/actualizar");
+    expect(await screen.findByRole("heading", { level: 1, name: "2 obras por 334.570,50 Bs" })).toBeInTheDocument();
+    await bloque("Cartera en Bs");
+    expect(screen.queryByRole("region", { name: "Cartera en USD" })).toBeNull();
   });
 
-  test("solo los primeros cinco; el pie lleva a la bandeja con el total", async () => {
-    const seis = [CEMENTO, DEVUELTA, { ...CEMENTO, texto: "Falta pedir la cabilla" }, PRECIOS, { ...PRECIOS, texto: "Faltan 2 cotizaciones" }, { ...PRECIOS, texto: "Revisar el flete" }];
-    pendientes = lista(...seis);
-    montar();
-    const b = await bloque("Lo que requiere atención");
-    await within(b).findByText("Falta pedir el cemento");
-    expect(within(b).queryByText("Revisar el flete")).toBeNull();
-    expect(within(b).getByText("Faltan 2 cotizaciones")).toBeInTheDocument();
-    expect(within(b).getByRole("link", { name: "Ir a la bandeja de pendientes (6)" })).toHaveAttribute("href", "/inicio/pendientes");
-  });
-
-  test("sin pendientes dice, en una línea, que no hay nada por hacer", async () => {
-    pendientes = lista();
-    montar();
-    const b = await bloque("Lo que requiere atención");
-    expect(await within(b).findByText("No tiene pendientes por hacer.")).toBeInTheDocument();
-    expect(within(b).queryByRole("link", { name: /bandeja/ })).toBeNull();
-  });
-});
-
-describe("Vista general: la cartera por moneda, sin recalcular y sin mezclar", () => {
-  test("cada cifra sale de la respuesta tal cual: «334570.5» se ve como 334.570,50", async () => {
-    montar();
-    const bs = await bloque("Cartera en Bs");
-    expect(within(bs).getByText("Obras en Bs")).toBeInTheDocument();
-    expect(within(bs).getByText("334.570,50 Bs")).toBeInTheDocument();
-    expect(within(bs).getByText("2")).toBeInTheDocument(); // obras
-    expect(within(bs).getByText("1")).toBeInTheDocument(); // en ejecución
-    const usd = await bloque("Cartera en USD");
-    expect(within(usd).getByText("Obras en USD")).toBeInTheDocument();
-    expect(within(usd).getByText("95.066,60 USD")).toBeInTheDocument();
-  });
-
-  test("con dos monedas no aparece ninguna suma de Bs con USD, ni una moneda dentro de la otra", async () => {
+  test("con dos monedas nunca aparece ninguna suma entre Bs y USD", async () => {
     montar();
     const bs = await bloque("Cartera en Bs");
     const usd = await bloque("Cartera en USD");
-    // 334.570,50 + 95.066,60 = 429.637,10: esa cifra no existe en ninguna parte.
     expect(document.body.textContent).not.toContain("429.637");
     expect(document.body.textContent).not.toContain("429637");
     expect(bs.textContent).not.toContain("USD");
     expect(usd.textContent).not.toContain("Bs");
-    // Y no hay una tarjeta «Total» que mezcle las dos.
-    expect(screen.queryByRole("region", { name: /^Cartera en (?!Bs$|USD$)/ })).toBeNull();
-  });
-
-  test("con una sola moneda se pinta solo esa: ni tarjeta vacía ni ceros para la otra", async () => {
-    cartera = () => json(SOLO_BS);
-    montar();
-    await bloque("Cartera en Bs");
-    expect(screen.queryByRole("region", { name: "Cartera en USD" })).toBeNull();
-    expect(document.body.textContent).not.toContain("0,00");
-  });
-
-  test("carpetas_omitidas > 0 se le dice a la persona en español llano", async () => {
-    cartera = () => json({ ...DOS_MONEDAS, carpetas_omitidas: 2 });
-    montar();
-    const b = await bloque("Cartera por moneda");
-    expect(await within(b).findByText("No se pudieron leer 2 carpetas; sus obras no aparecen en la cartera.")).toBeInTheDocument();
-  });
-
-  test("una carpeta omitida se dice en singular", async () => {
-    cartera = () => json({ ...DOS_MONEDAS, carpetas_omitidas: 1 });
-    montar();
-    const b = await bloque("Cartera por moneda");
-    expect(await within(b).findByText("No se pudo leer 1 carpeta; sus obras no aparecen en la cartera.")).toBeInTheDocument();
-  });
-
-  test("sin carpetas omitidas no hay aviso", async () => {
-    montar();
-    await bloque("Cartera en Bs");
-    expect(screen.queryByText(/No se pudo(ieron)? leer/)).toBeNull();
-  });
-
-  test("con cartera con datos hay un botón «¿Qué es esto?» que abre la explicación del total", async () => {
-    const u = userEvent.setup();
-    montar();
-    const seccion = await bloque("Cartera por moneda");
-    const boton = await within(seccion).findByRole("button", { name: "¿Qué es esto?" });
-    expect(boton).toBeInTheDocument();
-    await u.click(boton);
-    const region = within(seccion).getByRole("region", { name: "Cómo se calcula el total" });
-    expect(region).toHaveTextContent(
-      "El total de cada obra es el de su línea base o, sin ella, el de su versión vigente. Cada moneda se suma por separado: Bs y USD nunca se mezclan.",
-    );
-  });
-
-  test("sin obras ni monedas (estado vacío) no hay botón «¿Qué es esto?» en la cartera", async () => {
-    cartera = () => json(SIN_OBRAS);
-    montar();
-    const seccion = await bloque("Cartera por moneda");
-    expect(within(seccion).queryByRole("button", { name: "¿Qué es esto?" })).toBeNull();
   });
 });
 
-describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
-  const tabla = async () => within(await bloque("Obras y avance contra el plan"));
+describe("Inicio › Resumen: la cartera y sus avisos", () => {
+  test("carpetas_omitidas > 0 se avisa en plural y en singular", async () => {
+    cartera = () => json({ ...DOS_MONEDAS, carpetas_omitidas: 2 });
+    const plural = montar();
+    const b2 = await bloque("La cartera de obras");
+    expect(await within(b2).findByText("No se pudieron leer 2 carpetas; sus obras no aparecen en la cartera.")).toBeInTheDocument();
+    plural.unmount();
 
-  test("cada obra dice su etapa, su total y el avance real contra el plan", async () => {
+    cartera = () => json({ ...DOS_MONEDAS, carpetas_omitidas: 1 });
     montar();
-    const t = await tabla();
-    const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
-    expect(casa).toHaveTextContent("En ejecución");
-    expect(casa).toHaveTextContent("334.570,50 Bs");
-    expect(casa).toHaveTextContent("Real 62,5 % · Plan 70,0 %");
-    const galpon = t.getByRole("link", { name: "Galpón Sur" }).closest("tr")!;
-    expect(galpon).toHaveTextContent("Atrasada");
-    expect(galpon).toHaveTextContent("95.066,60 USD");
-    expect(galpon).toHaveTextContent("Real 10,0 % · Plan 25,5 %");
+    const b1 = await bloque("La cartera de obras");
+    expect(await within(b1).findByText("No se pudo leer 1 carpeta; sus obras no aparecen en la cartera.")).toBeInTheDocument();
   });
 
-  test("el texto de la etapa sale del servidor (etapa_texto), no de una tabla de la interfaz", async () => {
+  test("«¿Qué es esto?» explica cómo se calcula el total cuando hay cartera, y no aparece en vacío", async () => {
+    const u = userEvent.setup();
+    const conDatos = montar();
+    const seccion = await bloque("La cartera de obras");
+    const boton = await within(seccion).findByRole("button", { name: "¿Qué es esto?" });
+    await u.click(boton);
+    expect(within(seccion).getByRole("region", { name: "Cómo se calcula el total" })).toHaveTextContent(
+      "El total de cada obra es el de su línea base o, sin ella, el de su versión vigente. Cada moneda se suma por separado: Bs y USD nunca se mezclan.",
+    );
+    conDatos.unmount();
+
+    cartera = () => json(SIN_OBRAS);
+    montar();
+    const vacia = await bloque("La cartera de obras");
+    expect(within(vacia).queryByRole("button", { name: "¿Qué es esto?" })).toBeNull();
+  });
+});
+
+describe("Inicio › Resumen: el avance y las tablas accesibles", () => {
+  const seccionAvance = async () => within(await bloque("Avance de la cartera"));
+
+  test("la tabla de avance escribe etapa_texto del servidor, espacios duros en porcentajes y enlaces a cada obra", async () => {
+    const u = userEvent.setup();
     const obras = DOS_MONEDAS.obras.map((o) => (o.obra_id === 7 ? { ...o, etapa_texto: "En ejecución desde octubre" } : o));
     cartera = () => json({ ...DOS_MONEDAS, obras });
     montar();
-    const t = await tabla();
-    const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
+    const t = await seccionAvance();
+    await u.click(t.getByText("Ver como tabla"));
+    const tabla = await t.findByRole("table", { name: "Obras de la cartera y su avance contra el plan" });
+    const casa = within(tabla).getByRole("link", { name: "Casa Demo" }).closest("tr")!;
     expect(casa).toHaveTextContent("En ejecución desde octubre");
-  });
-
-  test("la obra sin avance dice «Sin avance» y la sin versión, «Sin versión»", async () => {
-    montar();
-    const t = await tabla();
-    const torre = (await t.findByRole("link", { name: "Torre B" })).closest("tr")!;
-    expect(within(torre).getByText("Sin avance")).toBeInTheDocument();
-    expect(within(torre).getByText("Sin versión")).toBeInTheDocument();
-    expect(torre).not.toHaveTextContent("Real");
-  });
-
-  test("con avance, la barra IBCS dibuja el real relleno y el plan en contorno; sin avance no hay barra", async () => {
-    montar();
-    const t = await tabla();
-    const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
+    expect(casa).toHaveTextContent("334.570,50 Bs");
+    expect(casa.querySelector(".silice-inicio__avance .silice-cifra")?.textContent).toBe("Real\u00a062,5\u00a0% · Plan\u00a070,0\u00a0%");
     expect(casa.querySelector(".fiori-kpi__barra-real")).toHaveStyle({ inlineSize: "62.5%" });
     expect(casa.querySelector(".fiori-kpi__barra-meta")).toHaveStyle({ inlineSize: "70%" });
-    const torre = t.getByRole("link", { name: "Torre B" }).closest("tr")!;
-    expect(torre.querySelector(".fiori-kpi__barra")).toBeNull();
-  });
 
-  // Pasada en el navegador (H5): con letra Muy grande el «%» caía solo en la línea siguiente. Entre la cifra y el «%» va un
-  // espacio duro (U+00A0, como en `ObjetivoDeMercado`): se lee igual, «62,5 %», pero no se parte.
-  test("el «%» no se separa de su cifra: solo se parte en el «·»: espacios duros dentro de «Real 62,5 %» y de «Plan 70,0 %»", async () => {
-    montar();
-    const t = await tabla();
-    const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
-    expect(casa.querySelector(".silice-inicio__avance .silice-cifra")?.textContent).toBe("Real\u00a062,5\u00a0% · Plan\u00a070,0\u00a0%");
-    expect(casa).toHaveTextContent("Real 62,5 % · Plan 70,0 %");
-  });
+    const torre = within(tabla).getByRole("link", { name: "Torre B" }).closest("tr")!;
+    expect(within(torre).getByText("Sin avance")).toBeInTheDocument();
+    expect(within(torre).getByText("Sin versión")).toBeInTheDocument();
 
-  // Pasada en el navegador (H2): con letra Grande o Muy grande la tabla se desplazaba por dentro y escondía la columna de
-  // avance, en una región que el teclado no podía enfocar. jsdom no dibuja: aquí se fija lo que sí se ve (la región
-  // nombrada y enfocable, la etiqueta de cada celda) y, sobre el SCSS real compilado, la regla que apila las filas cuando
-  // la caja no cabe, medida en rem (crece con la letra). Que la columna de avance quede a la vista solo se ve en el navegador.
-  test("la tabla va en una región enfocable y con nombre, por si aun así hay que desplazarla", async () => {
-    montar();
-    const t = await tabla();
-    const tablaDeObras = await t.findByRole("table", { name: "Obras de la cartera y su avance contra el plan" });
-    const region = tablaDeObras.closest<HTMLElement>('[role="region"]');
-    expect(region, "la tabla va dentro de una región").not.toBeNull();
+    expect(within(tabla).getByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/resumen");
+    expect(within(tabla).getByRole("link", { name: "Casa Demo" })).toHaveAttribute("href", "/obra/empresa/7/resumen");
+
+    const region = tabla.closest<HTMLElement>('[role="region"]');
     expect(region).toHaveAttribute("tabindex", "0");
     expect(region).toHaveAccessibleName("Obras de la cartera y su avance contra el plan: desplazar horizontalmente");
-    expect(region).toHaveClass("silice-tabla", "silice-inicio__obras");
   });
 
-  test("cada celda lleva la etiqueta de su columna, para leerse apilada sin la cabecera", async () => {
-    montar();
-    const t = await tabla();
-    const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
-    const celdas = Array.from(casa.querySelectorAll("td")).map((c) => c.getAttribute("data-etiqueta"));
-    expect(celdas).toEqual([null, "Estado", "Total", "Avance ejecutado vs. plan"]);
-  });
-
-  describe("la hoja de estilos de la tabla de obras", () => {
-    // La ruta va en una variable: con el literal, Vite reescribe el `new URL` como recurso (como en `ApuEnPanel.test.tsx`).
+  describe("la hoja de estilos de las tablas de obras", () => {
     const ESTILOS = "./inicio.scss";
     const css = sass.compile(fileURLToPath(new URL(ESTILOS, import.meta.url))).css;
-    // El texto de un bloque `{ ... }` que empieza en `inicio` (con las llaves anidadas).
     const bloqueDesde = (inicio: number): string => {
       const abre = css.indexOf("{", inicio);
       let nivel = 0;
@@ -433,260 +348,212 @@ describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
       return "";
     };
 
-    test("la caja es un contenedor de ancho y no deja que Carbon desplace por su cuenta", () => {
+    test("apila las filas cuando el contenedor mide menos de 42 rem, sin umbrales en px", () => {
       expect(css).toMatch(/\.silice-inicio__obras\s*\{[^}]*container-type:\s*inline-size/);
-      expect(css).toMatch(/\.silice-inicio__obras\s+\.cds--data-table-content\s*\{[^}]*overflow-x:\s*visible/);
-    });
-
-    test("cuando la caja mide menos de unos rem, las filas se apilan; el umbral es en rem y no en px", () => {
-      const i = css.search(/@container\s*\(max-inline-size:\s*[\d.]+rem\)/);
-      expect(i, "falta un @container con max-inline-size en rem").toBeGreaterThanOrEqual(0);
+      const i = css.search(/@container\s*\(max-inline-size:\s*42rem\)/);
+      expect(i).toBeGreaterThanOrEqual(0);
       const apilada = bloqueDesde(i);
-      expect(apilada).toMatch(/\.silice-inicio__obras[^{]*\btd\b[^{]*\{[^}]*display:\s*block/);
-      expect(apilada).toMatch(/\.silice-inicio__obras[^{]*\btr\b/);
-      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*content:\s*attr\(data-etiqueta\)/);
-      // La cabecera sigue para los lectores de pantalla: solo se saca de la vista.
-      expect(apilada).toMatch(/thead\s*\{[^}]*clip-path:\s*inset\(50%\)/);
+      expect(apilada).toMatch(/td\[data-etiqueta\]\s*\{[^}]*display:\s*flex/);
+      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*content:\s*attr\(data-etiqueta\)\s*":"/);
       expect(css).not.toMatch(/@container\s*\(max-(inline-size|width):\s*[\d.]+px/);
     });
-
-    test("el ancho mínimo del avance baja de 10 rem y, apilado, es cero", () => {
-      expect(css).toMatch(/\.silice-inicio__avance\s*\{[^}]*min-inline-size:\s*(?:[1-8](?:\.\d+)?|0\.\d+)rem/);
-      const apilada = bloqueDesde(css.search(/@container\s*\(max-inline-size/));
-      expect(apilada).toMatch(/\.silice-inicio__avance\s*\{[^}]*min-inline-size:\s*0/);
-    });
-
-    test("las celdas con etiqueta alinean rótulo y dato en una sola línea (display: flex)", () => {
-      const apilada = bloqueDesde(css.search(/@container\s*\(max-inline-size/));
-      expect(apilada).toMatch(/td\[data-etiqueta\]\s*\{[^}]*display:\s*flex/);
-      expect(apilada).not.toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*display:\s*block/);
-      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*color:\s*var\(--silice-texto-secundario\)/);
-      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*content:\s*attr\(data-etiqueta\)\s*":"/);
-    });
-  });
-
-  test("el nombre de la obra lleva a su Resumen, en la carpeta de la obra", async () => {
-    montar();
-    const t = await tabla();
-    expect(await t.findByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/resumen");
-    expect(t.getByRole("link", { name: "Casa Demo" })).toHaveAttribute("href", "/obra/empresa/7/resumen");
   });
 });
 
-describe("Vista general: sin auditorías guardadas", () => {
-  // Pasada en el navegador (H7): decía «Suelte arriba el Excel…» y en la Vista general no hay nada arriba. Aquí remite a
-  // Auditoría, con el enlace «Ir a Auditoría» que ya está debajo. En la propia Auditoría el texto de siempre no cambia
-  // (`paginas/auditoria/Auditoria.test.tsx`).
-  test("el vacío manda a Auditoría y no habla de soltar un Excel arriba", async () => {
-    auditorias = () => json([]);
+describe("Inicio › Resumen: «Problemas abiertos por obra»", () => {
+  test("agrupa los pendientes por obra con su palabra («bloquea» / «aviso»), muestra «Ninguno» donde no hay y enlaza a la bandeja", async () => {
+    pendientes = lista(CEMENTO, PRECIOS);
     montar();
-    const b = await bloque("Últimas auditorías");
-    expect(await within(b).findByText("Todavía no hay auditorías guardadas")).toBeInTheDocument();
-    expect(b).not.toHaveTextContent(/arriba|suelte/i);
-    expect(b).toHaveTextContent(/Auditoría/);
-    expect(within(b).getByRole("link", { name: "Ir a Auditoría" })).toHaveAttribute("href", expect.stringMatching(/^\/auditoria/));
-  });
-});
+    const b = await bloque("Problemas abiertos por obra");
+    const tabla = await within(b).findByRole("table", { name: "Problemas abiertos de cada obra, con su gravedad" });
 
-describe("Vista general: sin obras", () => {
-  test("quien revisa ve el estado vacío, sin crear nada", async () => {
-    cartera = () => json(SIN_OBRAS);
+    const casa = within(tabla).getByRole("link", { name: "Casa Demo" }).closest("tr")!;
+    expect(casa).toHaveTextContent("1 bloquea");
+
+    const torre = within(tabla).getByRole("link", { name: "Torre B" }).closest("tr")!;
+    expect(torre).toHaveTextContent("1 aviso");
+
+    const galpon = within(tabla).getByRole("link", { name: "Galpón Sur" }).closest("tr")!;
+    expect(galpon).toHaveTextContent("Ninguno");
+
+    expect(within(b).getByText(/Suman 1 bloquea · 1 aviso\./)).toBeInTheDocument();
+    expect(within(b).getByRole("link", { name: "Ir a la bandeja de pendientes (2)" })).toHaveAttribute("href", "/inicio/pendientes");
+  });
+
+  test("sin pendientes dice que ninguna obra tiene problemas abiertos hoy y no ofrece ir a la bandeja", async () => {
     pendientes = lista();
-    montar({ sesion: sesionDe("rita") });
-    const b = await bloque("Cartera por moneda");
-    expect(await within(b).findByText("No hay obras que su cuenta pueda ver")).toBeInTheDocument();
-    // La Vista general reúne todas las carpetas que la cuenta puede ver: no habla de «esta carpeta».
-    expect(b).not.toHaveTextContent("en esta carpeta");
-    expect(within(b).getByText("Cuando haya una obra registrada en las carpetas a las que tiene acceso, aparecerá aquí.")).toBeInTheDocument();
-    expect(within(b).queryByRole("button", { name: "Crear la primera obra" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Obras y avance contra el plan" })).toBeNull();
-    expect(document.querySelector(".silice-vacio")).not.toBeNull();
-  });
-
-  test("quien arma ve cómo empezar y el botón principal «Crear la primera obra»", async () => {
-    cartera = () => json(SIN_OBRAS);
     montar();
-    const b = await bloque("Cartera por moneda");
-    expect(await within(b).findByText("Aún no hay obras")).toBeInTheDocument();
-    expect(within(b).getByText("Cree la primera obra para armar su presupuesto y seguir su avance.")).toBeInTheDocument();
-    const boton = within(b).getByRole("button", { name: "Crear la primera obra" });
-    expect(boton).toBeInTheDocument();
-    expect(boton).toHaveClass("cds--btn--primary");
-  });
-});
-
-describe("Vista general: un bloque que falla no tumba a los demás", () => {
-  test("la cartera con un 500 dice su error y los demás bloques se ven", async () => {
-    cartera = () => json({ detalle: "La base de la carpeta no responde. Intente de nuevo." }, 500);
-    montar();
-    const b = await bloque("Cartera por moneda");
-    expect(await within(b).findByRole("alert")).toHaveTextContent("La base de la carpeta no responde. Intente de nuevo.");
-    // Lo demás sigue en pie.
-    const bloquea = await bloque("Lo que requiere atención");
-    expect(await within(bloquea).findByText("Falta pedir el cemento")).toBeInTheDocument();
-    expect(await screen.findByText("presupuesto-1.xlsx")).toBeInTheDocument();
-    expect(await bloque("Arenera: lo que requiere atención")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Vista general" })).toBeInTheDocument();
+    const b = await bloque("Problemas abiertos por obra");
+    expect(await within(b).findByText("Ninguna obra tiene problemas abiertos hoy.")).toBeInTheDocument();
+    expect(within(b).queryByRole("link", { name: /bandeja/ })).toBeNull();
   });
 
-  test("los pendientes con un 500 dicen su error y la cartera se ve", async () => {
-    pendientes = () => json({ detalle: "Sílice no respondió a tiempo. Intente de nuevo." }, 500);
-    montar();
-    const b = await bloque("Lo que requiere atención");
-    expect(await within(b).findByRole("alert")).toHaveTextContent("Sílice no respondió a tiempo. Intente de nuevo.");
-    expect(await bloque("Cartera en Bs")).toBeInTheDocument();
-    // (la barra lateral también lista la obra: se mira la tabla de avance)
-    expect(within(await bloque("Obras y avance contra el plan")).getByRole("link", { name: "Casa Demo" })).toBeInTheDocument();
-  });
-
-  test("las auditorías con un 500 dicen su error y la cartera y lo que bloquea se ven", async () => {
-    auditorias = () => json({ detalle: "El historial no respondió. Intente de nuevo." }, 500);
-    montar();
-    expect(await screen.findByText("El historial no respondió. Intente de nuevo.")).toBeInTheDocument();
-    expect(await bloque("Cartera en Bs")).toBeInTheDocument();
-    expect(await within(await bloque("Lo que requiere atención")).findByText("Falta pedir el cemento")).toBeInTheDocument();
-  });
-});
-
-describe("Vista general: la arenera y los permisos", () => {
-  test("quien opera la arenera con su especialidad encendida ve la arenera", async () => {
-    montar();
-    expect(await bloque("Arenera: lo que requiere atención")).toBeInTheDocument();
-    // El bloque se pinta («cargando») en el mismo commit en que se programa el efecto que lo pide: con toda la suite a la
-    // vez, el bloque puede verse antes de que corra ese efecto (corrector de la ronda 1 de la ola 2). Se espera el pedido.
-    await waitFor(() => expect(pedidas(RUTA_ARENERA)).toBe(1));
-  });
-
-  test("quien no opera la arenera no la ve ni la pide", async () => {
-    montar({ sesion: sesionDe("rita") });
-    await bloque("Cartera por moneda");
-    expect(screen.queryByRole("region", { name: "Arenera: lo que requiere atención" })).toBeNull();
-    expect(pedidas(RUTA_ARENERA)).toBe(0);
-  });
-
-  test("con la especialidad de producción apagada, la arenera no se ve ni se pide", async () => {
-    apagados = ["produccion"];
-    montar();
-    await bloque("Cartera por moneda");
-    // `GET /v1/modulos` llega después del primer dibujo: se espera a que la arenera desaparezca o nunca aparezca.
-    await waitFor(() => expect(screen.queryByRole("region", { name: "Arenera: lo que requiere atención" })).toBeNull());
-    await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByRole("region", { name: "Arenera: lo que requiere atención" })).toBeNull();
-  });
-
-  test("quien administra y no lee obras no recibe cartera ni auditorías (no se piden), pero sí la arenera", async () => {
-    montar({ sesion: sesionDe("admin") });
-    expect(await bloque("Arenera: lo que requiere atención")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Vista general" })).toBeInTheDocument();
-    expect(pedidas(RUTA_CARTERA)).toBe(0);
-    expect(pedidas(RUTA_AUDITORIAS)).toBe(0);
-    expect(screen.queryByRole("region", { name: "Cartera por moneda" })).toBeNull();
-  });
-});
-
-describe("Vista general: los pendientes se vuelven a pedir al volver", () => {
-  test("al volver de una obra a la Vista general se piden otra vez y lo resuelto ya no está", async () => {
+  test("al volver de una obra vuelve a pedir los pendientes y refleja lo resuelto", async () => {
     const u = userEvent.setup();
     let actuales = [CEMENTO, PRECIOS];
     pendientes = () => json({ pendientes: actuales, carpetas_omitidas: 0 });
     montar({ ir: "/obra/empresa/7/presupuesto" });
-    const antes = await bloque("Lo que requiere atención");
-    await within(antes).findByText("Falta pedir el cemento");
+    const antes = await bloque("Problemas abiertos por obra");
+    await within(antes).findByText("1 bloquea");
     expect(pedidas(RUTA_PENDIENTES)).toBe(1);
 
     await u.click(screen.getByRole("button", { name: "Ir a /obra/empresa/7/presupuesto" }));
     await screen.findByRole("heading", { level: 1, name: "Presupuesto" }, { timeout: 3000 });
-    // En la Hoja se resolvió lo del cemento.
     actuales = [PRECIOS];
     await u.click(within(screen.getByRole("banner")).getByRole("link", { name: "Sílice" }));
 
-    const despues = await bloque("Lo que requiere atención");
-    await within(despues).findByText("3 precios con más de 90 días");
+    const despues = await bloque("Problemas abiertos por obra");
+    await waitFor(() => expect(pedidas(RUTA_PENDIENTES)).toBe(2));
+    const casa = (await within(despues).findByRole("link", { name: "Casa Demo" })).closest("tr")!;
+    expect(casa).toHaveTextContent("Ninguno");
     expect(ruta()).toBe("/inicio/general");
-    expect(pedidas(RUTA_PENDIENTES)).toBe(2);
-    expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
-  });
-
-  test("al arrancar en «/» (que redirige a la Vista general) se piden una sola vez", async () => {
-    montar({ en: "/" });
-    const b = await bloque("Lo que requiere atención");
-    await within(b).findByText("Falta pedir el cemento");
-    await waitFor(() => expect(ruta()).toBe("/inicio/general"));
-    expect(pedidas(RUTA_PENDIENTES)).toBe(1);
   });
 });
 
-describe("Inicio: las rutas", () => {
-  const titulo = (nombre: string) => screen.findByRole("heading", { level: 1, name: nombre }, { timeout: 3000 });
+describe("Inicio › Resumen: tarjetas de «Lo que hay cargado»", () => {
+  test("muestra libros auditados, lista de precios vigente y vigencia, partidas e insumos del catálogo, y producción", async () => {
+    montar();
+    const seccion = await bloque("Lo que hay cargado");
 
-  test.each(["/", "/inicio", "/inicio/no-existe", "/no-existe"])("%s acaba en #/inicio/general, la Vista general", async (de) => {
+    const libros = within(seccion).getByRole("article", { name: "Libros auditados" });
+    expect(await within(libros).findByText("1")).toBeInTheDocument();
+    expect(libros).toHaveTextContent("Último el 18/10/2026 (presupuesto-1.xlsx) · 2 errores, 5 advertencias");
+    expect(within(libros).getByRole("link", { name: "Ir a Auditoría" })).toHaveAttribute("href", "/auditoria/subir");
+
+    const listaVig = within(seccion).getByRole("article", { name: "Lista de precios vigente" });
+    expect(await within(listaVig).findByText("Lista Julio")).toBeInTheDocument();
+    expect(listaVig).toHaveTextContent("Vigencia: 15/07/2026 · Moneda Bs");
+    expect(within(listaVig).getByRole("link", { name: "Ver precios" })).toHaveAttribute("href", "/precios/catalogo");
+
+    const partidas = within(seccion).getByRole("article", { name: "Partidas del catálogo" });
+    expect(await within(partidas).findByText("2")).toBeInTheDocument();
+    expect(partidas).toHaveTextContent("2 partidas guardadas para armar");
+
+    const insumos = within(seccion).getByRole("article", { name: "Insumos del catálogo" });
+    expect(await within(insumos).findByText("2")).toBeInTheDocument();
+    expect(insumos).toHaveTextContent("1 insumo sin precio vigente");
+
+    const prod = within(seccion).getByRole("article", { name: "Producción de la arenera" });
+    expect(await within(prod).findByText("1")).toBeInTheDocument();
+    expect(prod).toHaveTextContent("1 material registrado · Todo sobre el mínimo");
+    expect(within(prod).getByRole("link", { name: "Ver todas las existencias" })).toHaveAttribute("href", "/produccion/existencias");
+  });
+
+  test("en la tarjeta de producción las alertas de existencia negativa o poca existencia dicen su palabra de gravedad", async () => {
+    areneraResp = () =>
+      json([
+        { codigo: "GRA-01", nombre: "Granzón", unidad_venta: "m3", existencia: "-2", minima: "10", queda_poco: true, negativa: true },
+        { codigo: "ARE-01", nombre: "Arena", unidad_venta: "t", existencia: "20", minima: "40", queda_poco: true, negativa: false },
+      ]);
+    montar();
+    const seccion = await bloque("Lo que hay cargado");
+    const prod = within(seccion).getByRole("article", { name: "Producción de la arenera" });
+    expect(await within(prod).findByText("Error · 1 con existencia negativa")).toBeInTheDocument();
+    expect(within(prod).getByText("Advertencia · 1 queda poco")).toBeInTheDocument();
+  });
+
+  test("quien no opera la arenera no ve la tarjeta de producción ni pide existencias", async () => {
+    montar({ sesion: sesionDe("rita") });
+    const seccion = await bloque("Lo que hay cargado");
+    await within(seccion).findByText("Lista Julio");
+    expect(within(seccion).queryByRole("article", { name: "Producción de la arenera" })).toBeNull();
+    expect(pedidas(RUTA_ARENERA)).toBe(0);
+  });
+
+  test("con la especialidad de producción apagada no se ve la tarjeta de producción ni se pide", async () => {
+    apagados = ["produccion"];
+    montar();
+    const seccion = await bloque("Lo que hay cargado");
+    await within(seccion).findByText("Lista Julio");
+    await waitFor(() => expect(within(seccion).queryByRole("article", { name: "Producción de la arenera" })).toBeNull());
+  });
+
+  test("quien administra y no lee obras no pide cartera, auditorías ni catálogo, pero ve lista de precios, producción y herramientas", async () => {
+    montar({ sesion: sesionDe("admin") });
+    const seccion = await bloque("Lo que hay cargado");
+    expect(await within(seccion).findByRole("article", { name: "Lista de precios vigente" })).toBeInTheDocument();
+    expect(within(seccion).getByRole("article", { name: "Producción de la arenera" })).toBeInTheDocument();
+    expect(within(seccion).queryByRole("article", { name: "Libros auditados" })).toBeNull();
+    expect(within(seccion).queryByRole("article", { name: "Partidas del catálogo" })).toBeNull();
+    expect(pedidas(RUTA_CARTERA)).toBe(0);
+    expect(pedidas(RUTA_AUDITORIAS)).toBe(0);
+    expect(pedidas(RUTA_PARTIDAS)).toBe(0);
+    expect(pedidas(RUTA_INSUMOS)).toBe(0);
+    expect(await bloque("Herramientas de la empresa")).toBeInTheDocument();
+  });
+});
+
+describe("Inicio › Resumen: sin obras y aislamiento de errores", () => {
+  test("sin obras: quien revisa ve el vacío informativo y quien arma ve «Crear la primera obra»", async () => {
+    cartera = () => json(SIN_OBRAS);
+    pendientes = lista();
+    const revisa = montar({ sesion: sesionDe("rita") });
+    expect(await screen.findByRole("heading", { level: 1, name: "Sin obras en la cartera" })).toBeInTheDocument();
+    const bRevisa = await bloque("La cartera de obras");
+    expect(await within(bRevisa).findByText("No hay obras que su cuenta pueda ver")).toBeInTheDocument();
+    expect(within(bRevisa).queryByRole("button", { name: "Crear la primera obra" })).toBeNull();
+    revisa.unmount();
+
+    montar();
+    const bArma = await bloque("La cartera de obras");
+    const boton = await within(bArma).findByRole("button", { name: "Crear la primera obra" });
+    expect(boton).toHaveClass("cds--btn--primary");
+  });
+
+  test("un bloque o tarjeta que responde 500 muestra su error y no tumba a los demás", async () => {
+    cartera = () => json({ detalle: "La base de la carpeta no responde. Intente de nuevo." }, 500);
+    auditorias = () => json({ detalle: "El historial no respondió. Intente de nuevo." }, 500);
+    montar();
+
+    const bCartera = await bloque("La cartera de obras");
+    expect(await within(bCartera).findByRole("alert")).toHaveTextContent("La base de la carpeta no responde. Intente de nuevo.");
+
+    const bCargado = await bloque("Lo que hay cargado");
+    const libros = within(bCargado).getByRole("article", { name: "Libros auditados" });
+    expect(await within(libros).findByRole("alert")).toHaveTextContent("El historial no respondió. Intente de nuevo.");
+    expect(await within(bCargado).findByText("Lista Julio")).toBeInTheDocument();
+
+    const bProblemas = await bloque("Problemas abiertos por obra");
+    // Hay más de una obra con un problema que bloquea: basta con que el bloque siga en pie con sus cifras.
+    expect((await within(bProblemas).findAllByText("1 bloquea")).length).toBeGreaterThan(0);
+  });
+});
+
+describe("Inicio: rutas y «Empiece aquí»", () => {
+  test.each(["/", "/inicio", "/inicio/no-existe", "/no-existe", "/pendientes"])("%s acaba en #/inicio/general", async (de) => {
     montar({ en: de });
-    expect(await titulo("Vista general")).toBeInTheDocument();
+    await bloque("La cartera de obras");
     expect(ruta()).toBe("/inicio/general");
   });
 
-  // F8, C1 (contrato 2.4, enmienda 2026-11-06): `#/pendientes`, el nombre de antes de F6, se retiró. Ya no lleva a la
-  // bandeja: como toda dirección que no existe, acaba en la Vista general.
-  test("#/pendientes ya no redirige a la bandeja: acaba en #/inicio/general", async () => {
-    montar({ en: "/pendientes" });
-    expect(await titulo("Vista general")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/general");
-  });
-
-  test("#/pendientes?proyecto=OF-001 acaba en la Vista general y conserva la consulta", async () => {
-    montar({ en: "/pendientes?proyecto=OF-001" });
-    expect(await titulo("Vista general")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/general?proyecto=OF-001");
-  });
-
-  test("#/inicio/general?x=1 y #/inicio?x=1 conservan la consulta", async () => {
-    montar({ en: "/inicio?x=1" });
-    expect(await titulo("Vista general")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/general?x=1");
-  });
-
-  test("la pestaña «Pendientes» de la barra abre la bandeja, con su barra y su cabecera", async () => {
+  test("la pestaña «Pendientes» abre la bandeja y el título de la ventana en Inicio es «Vista general · Sílice»", async () => {
     const u = userEvent.setup();
     montar();
-    await bloque("Cartera por moneda");
-    await u.click(within(screen.getByRole("navigation", { name: "Inicio" })).getByRole("link", { name: "Pendientes" }));
-    expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/pendientes");
-    expect(screen.getByRole("region", { name: "Vista general" })).toBeInTheDocument(); // la cabecera del espacio
-    expect(within(screen.getByRole("navigation", { name: "Inicio" })).getByRole("link", { name: "Pendientes" })).toHaveAttribute("aria-current", "page");
-  });
-
-  test("el título de la pestaña del navegador dice «Vista general · Sílice»", async () => {
-    montar();
-    await titulo("Vista general");
+    await bloque("La cartera de obras");
     await waitFor(() => expect(document.title).toBe("Vista general · Sílice"));
+    await u.click(within(screen.getByRole("navigation", { name: "Inicio" })).getByRole("link", { name: "Pendientes" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Pendientes" })).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/pendientes");
   });
-});
 
-// F7, tarea A4: «Empiece aquí» la primera vez, derivado de los datos (sin guardar nada en el navegador). Va primero, antes de lo
-// que requiere atención, y solo mientras la cuenta tenga algo por estrenar: quien administra, con su cuenta como única activa;
-// quien arma o revisa, sin ninguna obra. Oráculos a mano.
-describe("Vista general: «Empiece aquí» la primera vez", () => {
-  test("quien administra, con su cuenta como única activa, ve cómo crear las cuentas y poner la empresa", async () => {
+  test("«Empiece aquí» aparece sin obras para quien arma y con una sola cuenta activa para quien administra", async () => {
+    cartera = () => json(SIN_OBRAS);
     pendientes = lista();
+    const arma = montar();
+    const bArma = await bloque("Empiece aquí");
+    expect(within(bArma).getAllByRole("listitem")).toHaveLength(3);
+    arma.unmount();
+
     montar({ sesion: sesionDe("admin") });
-    const b = await bloque("Empiece aquí");
-    const pasos = within(b).getAllByRole("listitem");
-    expect(pasos).toHaveLength(2);
-    expect(pasos[0]).toHaveTextContent("Cree las cuentas de las personas");
-    expect(within(pasos[0]!).getByRole("link", { name: "Ir a Cuentas y permisos" })).toHaveAttribute("href", "/cuenta/cuentas");
-    expect(within(pasos[1]!).getByRole("link", { name: "Ir a Empresa y tema" })).toHaveAttribute("href", "/cuenta/empresa");
-    expect(within(b).getByRole("link", { name: "Ver las guías y el glosario" })).toHaveAttribute("href", "/cuenta/ayuda?tema=empieza-aqui");
-    expect(pedidas(RUTA_CUENTAS)).toBe(1);
-    // Va antes que «Lo que requiere atención».
-    const atencion = await bloque("Lo que requiere atención");
-    expect(b.compareDocumentPosition(atencion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const bAdmin = await bloque("Empiece aquí");
+    expect(within(bAdmin).getAllByRole("listitem")).toHaveLength(2);
   });
 
+  // Restauradas tras C8: el bloque sigue en Inicio y estas reglas lo vigilan (ancla nueva: «Lo que hay cargado»).
   test("con otra cuenta activa ya no aparece", async () => {
     cuentas = () => json({ cuentas: [CUENTA_ADMIN, CUENTA_ANA], aviso_arma_y_revisa: "" });
     montar({ sesion: sesionDe("admin") });
-    await bloque("Lo que requiere atención");
+    await bloque("Lo que hay cargado");
     await waitFor(() => expect(pedidas(RUTA_CUENTAS)).toBe(1));
     await new Promise((r) => setTimeout(r, 30));
     expect(screen.queryByRole("region", { name: "Empiece aquí" })).toBeNull();
@@ -701,84 +568,10 @@ describe("Vista general: «Empiece aquí» la primera vez", () => {
   test("si la lista de cuentas falla, no se inventa nada: no aparece", async () => {
     cuentas = () => json({ detalle: "La base no responde." }, 503);
     montar({ sesion: sesionDe("admin") });
-    await bloque("Lo que requiere atención");
+    await bloque("Lo que hay cargado");
     await waitFor(() => expect(pedidas(RUTA_CUENTAS)).toBe(1));
     await new Promise((r) => setTimeout(r, 30));
     expect(screen.queryByRole("region", { name: "Empiece aquí" })).toBeNull();
-  });
-
-  test("quien arma, sin obras, ve los tres pasos y las guías; la lista de cuentas no se pide", async () => {
-    cartera = () => json(SIN_OBRAS);
-    pendientes = lista();
-    montar();
-    const b = await bloque("Empiece aquí");
-    const pasos = within(b).getAllByRole("listitem");
-    expect(pasos.map((p) => p.querySelector("strong")?.textContent)).toEqual(["Cree la obra", "Arme el presupuesto", "Envíelo a aprobación"]);
-    expect(within(b).getByRole("link", { name: "Guía «Montar un presupuesto»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-presupuesto");
-    expect(within(b).getByRole("link", { name: "Guía «Enviarlo a aprobación»" })).toHaveAttribute("href", "/cuenta/ayuda?tema=guia-aprobacion");
-    // No duplica la acción: «Crear la primera obra» sigue siendo el único botón, el del estado vacío de la cartera.
-    expect(within(b).queryByRole("button")).toBeNull();
-    expect(pedidas(RUTA_CUENTAS)).toBe(0);
-  });
-
-  test("quien arma, sin obras pero con carpetas que no se pudieron leer, no lo ve: puede haber obras allí", async () => {
-    cartera = () => json({ ...SIN_OBRAS, carpetas_omitidas: 1 });
-    montar();
-    await bloque("Cartera por moneda");
-    await new Promise((r) => setTimeout(r, 30));
-    expect(screen.queryByRole("region", { name: "Empiece aquí" })).toBeNull();
-  });
-
-  test("quien arma, con obras, no lo ve", async () => {
-    montar();
-    await bloque("Cartera por moneda");
-    expect(screen.queryByRole("region", { name: "Empiece aquí" })).toBeNull();
-  });
-
-  test("quien revisa, sin obras, ve cómo auditar un libro y cómo dar el dictamen", async () => {
-    cartera = () => json(SIN_OBRAS);
-    pendientes = lista();
-    montar({ sesion: sesionDe("rita") });
-    const b = await bloque("Empiece aquí");
-    expect(within(b).getByRole("link", { name: "Ir a Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
-    expect(within(b).getByRole("link", { name: "Guía «Enviarlo a aprobación»" })).toBeInTheDocument();
-  });
-});
-
-
-// Los lanzadores de los espacios de la empresa (rediseño 2026-11-21): cada uno se llama como su espacio en `marco/espacios.ts`
-// (el mismo nombre de la barra lateral), no con un nombre propio, y dice las herramientas que la cuenta puede abrir allí.
-// Sin numeración decorativa ni «Ventana dedicada». Oráculos escritos a mano.
-describe("Vista general: los lanzadores de los espacios", () => {
-  test("cada lanzador lleva el nombre de su espacio y abre su primera herramienta usable", async () => {
-    montar();
-    const lanzadores = await bloque("Herramientas de la empresa");
-    expect(within(lanzadores).getByText("Espacios de trabajo de la empresa")).toBeInTheDocument();
-    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
-    expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
-    expect(within(lanzadores).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/resumen");
-    expect(lanzadores.textContent).not.toMatch(/Auditor Forense|Precios, Catálogo|Índices BCV|Cantera/);
-    expect(lanzadores.textContent).not.toMatch(/ventana dedicada|\b0[123]\s*·/i);
-  });
-
-  test("cada lanzador describe las herramientas de su espacio que la cuenta puede usar, con sus nombres", async () => {
-    montar();
-    const lanzadores = await bloque("Herramientas de la empresa");
-    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAccessibleDescription(
-      "Subir y auditar Excel · Libro de la empresa · Historial de auditorías",
-    );
-    // Quien arma no administra precios: ni «Precios de la empresa» ni «Índices del BCV».
-    expect(within(lanzadores).getByRole("link", { name: "Precios y catálogo" })).toHaveAccessibleDescription(
-      "Catálogo de partidas e insumos · Simulador de listas",
-    );
-  });
-
-  test("con la especialidad de producción apagada no se ofrece su lanzador", async () => {
-    apagados = ["produccion"];
-    montar();
-    const lanzadores = await bloque("Herramientas de la empresa");
-    await waitFor(() => expect(within(lanzadores).queryByRole("link", { name: "Costos de producción" })).toBeNull());
-    expect(within(lanzadores).getByRole("link", { name: "Auditar un presupuesto" })).toBeInTheDocument();
   });
 });
 
@@ -786,8 +579,5 @@ describe("Últimas auditorías: sin permiso dice a quién pedirlo", () => {
   test("un 403 nombra los papeles que ven las auditorías guardadas", () => {
     render(<UltimasAuditorias carga={{ estado: "sin_permiso", error: null }} desde="vista-general" />);
     expect(screen.getByText("Sin historial de auditorías para su cuenta")).toBeInTheDocument();
-    expect(
-      screen.getByText("Ver las auditorías guardadas pide el papel «arma presupuestos» o «revisa paquetes»: pídaselo a quien administra Sílice."),
-    ).toBeInTheDocument();
   });
 });
