@@ -1,0 +1,46 @@
+<!--{"orden": 8, "titulo": "Auditar › Problemas de la obra", "area": "obra", "herramienta": "auditar", "opcion": "Problemas de la obra", "accion": "Generar el dictamen", "indice": {"rotulo": "Por regla", "items": ["Precio sin fuente (1)", "Componente fuera del total (1)", "Distinto de la base (1)"]}}-->
+<span class="sobre">Auditoría del presupuesto V2 · 12 reglas revisadas</span>
+<h1>3 problemas por resolver</h1>
+<div class="datos"><span class="t-err">2 errores</span><span class="t-adv">1 advertencia</span><span>0 de 3 resueltos</span><span>9 reglas sin problemas</span></div>
+<div class="prog" role="progressbar" aria-label="Problemas resueltos" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" style="margin-top:12px"><span style="width:0%"></span></div>
+<h2>Precio sin fuente</h2>
+<div class="marco" style="background:var(--sel);border-color:var(--sel-borde)">
+  <div style="padding:16px 20px">
+    <span class="t-err">Error · P-03 <sup>1</sup></span>
+    <p style="margin:4px 0 0;font-size:16px;line-height:24px;font-weight:500">El precio de P-03 no sale de ninguna lista cargada</p>
+    <p class="txt" style="color:var(--t1)">Concreto f'c 210 kg/cm², 145,00 m³ a 3.120,00 Bs. La lista más cercana dice 2.856,00.</p>
+    <div class="tarjetas" style="margin-top:16px">
+      <div class="tarjeta"><span class="et">El presupuesto dice</span><span class="cifra">3.120,00</span></div>
+      <div class="tarjeta"><span class="et">Lista más cercana</span><span class="cifra">2.856,00</span></div>
+      <div class="tarjeta"><span class="et">Efecto en el total</span><span class="cifra">−38.280,00</span><span class="cmp">frente al total de la V2</span></div>
+    </div>
+    <div class="fila-acc" style="margin-top:16px"><button type="button" class="btn1">Usar el precio de la lista</button><button type="button" class="btn2">Dejarlo y anotar la fuente</button><a href="#" class="btn3">Ver la partida en Presupuestar</a></div>
+  </div>
+</div>
+<h2>Los otros dos</h2>
+<div class="marco">
+  <table>
+    <caption class="oc">Problemas abiertos de la obra</caption>
+    <thead><tr><th scope="col">Gravedad</th><th scope="col">Partida</th><th scope="col">Qué pasa</th><th scope="col" class="num">Efecto en el total</th><th scope="col"></th></tr></thead>
+    <tbody>
+      <tr><td><span class="t-err">Error</span> <sup>2</sup></td><td class="cod">P-03</td><td>El aditivo plastificante (42,00 por m³) no suma al precio</td><td class="num">+6.090,00</td><td><a href="#">Revisar el análisis</a></td></tr>
+      <tr><td><span class="t-adv">Advertencia</span> <sup>3</sup></td><td class="cod">P-04</td><td>El acero supera la base de la empresa en 15,8 %</td><td class="num">−24.598,00</td><td><a href="#">Comparar con la base</a></td></tr>
+    </tbody>
+  </table>
+</div>
+<details style="margin-top:16px"><summary style="cursor:pointer;font-weight:500">Reglas sin problemas (9)</summary><p class="txt">Unidades coherentes, cantidades positivas, IVA aplicado una vez y seis más.</p></details>
+<!--MARGEN-->
+<article class="nota act" style="margin-top:156px">
+  <div class="cab"><span class="no">1</span><span>Por qué es un error</span></div>
+  <p>Sin fuente, quien revise el presupuesto no puede comprobar de dónde salió el precio. Queda abierto en el dictamen hasta que se resuelva.</p>
+  <div class="acc"><a href="#">Leer la regla completa</a></div>
+</article>
+<article class="nota">
+  <div class="cab"><span class="no">2</span><span>Viene del libro</span></div>
+  <p>El libro Excel de la obra trae el mismo hueco en la hoja «APU P-03», celda F18.</p>
+</article>
+<article class="nota">
+  <div class="cab"><span class="no">3</span><span>En la V1 aprobada</span></div>
+  <p>El acero estaba en 16,10. Subió en esta versión.</p>
+</article>
+<p class="ficticio">Obra de demostración, con datos ficticios.</p>

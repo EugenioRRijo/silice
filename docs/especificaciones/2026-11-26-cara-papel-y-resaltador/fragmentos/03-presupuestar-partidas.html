@@ -1,0 +1,53 @@
+<!--{"orden": 3, "titulo": "Presupuestar › Partidas", "area": "obra", "herramienta": "presupuestar", "opcion": "Partidas", "accion": "Guardar versión", "meta": "1 cambio sin guardar", "indice": {"rotulo": "En este presupuesto", "items": ["1 · Movimiento de tierra", "2 · Concreto y acero"]}}-->
+<span class="sobre">Presupuesto · versión V2 · moneda Bs</span>
+<h1>1.284.560,00 Bs <small>sin IVA</small></h1>
+<div class="datos"><span>1.490.089,60 Bs con IVA (16 %)</span><span>5 partidas en 2 capítulos</span><a href="#">Ver el valor exacto</a></div>
+<div class="filtros" role="group" aria-label="Mostrar partidas">
+  <button type="button" aria-pressed="true">Todas<span class="n">5</span></button>
+  <button type="button" aria-pressed="false">Con notas<span class="n">2</span></button>
+  <button type="button" aria-pressed="false" class="err">Errores<span class="n">2</span></button>
+  <button type="button" aria-pressed="false" class="adv">Advertencias<span class="n">1</span></button>
+  <span class="ayuda">Haga clic en una cantidad para cambiarla</span>
+</div>
+<div class="marco">
+  <table>
+    <caption class="oc">Partidas del presupuesto V2, con el precio de referencia debajo de cada precio</caption>
+    <thead><tr><th scope="col">Código</th><th scope="col">Descripción</th><th scope="col" class="num">Cantidad</th><th scope="col" class="num">Precio</th><th scope="col" class="num">Total</th><th scope="col">Notas</th></tr></thead>
+    <tbody>
+      <tr class="cap"><th scope="rowgroup" colspan="4">1 · Movimiento de tierra</th><td class="num">601.286,00</td><td></td></tr>
+      <tr><td class="cod">P-01</td><td>Movimiento de tierra a máquina</td><td class="num"><span class="can">1.250,00</span><span class="ud">m³</span></td><td class="num">312,40<span class="ref">lista 305,00 · +2,4 %</span></td><td class="num">390.500,00</td><td class="ninguna">Ninguna</td></tr>
+      <tr><td class="cod">P-02</td><td>Relleno compactado</td><td class="num"><span class="can">860,00</span><span class="ud">m³</span></td><td class="num">245,10<span class="ref">lista 248,00 · −1,2 %</span></td><td class="num">210.786,00</td><td class="ninguna">Ninguna</td></tr>
+      <tr class="cap"><th scope="rowgroup" colspan="4">2 · Concreto y acero</th><td class="num">683.274,00</td><td></td></tr>
+      <tr class="sel" aria-selected="true"><td class="cod">P-03</td><td>Concreto f'c 210 kg/cm²</td><td class="num"><input class="edit" type="text" inputmode="decimal" value="145,00" aria-label="Cantidad de P-03"><span class="ud">m³</span></td><td class="num">3.120,00<span class="ref err">sin fuente en la lista</span></td><td class="num">452.400,00</td><td><a href="#" class="nt err">2 errores<sup>1 2</sup></a></td></tr>
+      <tr><td class="cod">P-04</td><td>Acero de refuerzo</td><td class="num"><span class="can">9.800,00</span><span class="ud">kg</span></td><td class="num">18,42<span class="ref adv">base 15,91 · +15,8 %</span></td><td class="num">180.516,00</td><td><a href="#" class="nt adv">1 advertencia<sup>3</sup></a></td></tr>
+      <tr><td class="cod">P-05</td><td>Encofrado de madera</td><td class="num"><span class="can">420,00</span><span class="ud">m²</span></td><td class="num">119,90<span class="ref">lista 121,50 · −1,3 %</span></td><td class="num">50.358,00</td><td class="ninguna">Ninguna</td></tr>
+    </tbody>
+    <tfoot><tr>
+      <td class="cod">Nueva</td>
+      <td><label><span class="oc">Próxima partida</span><input class="nueva" type="text" value="Friso de pared"></label></td>
+      <td class="num"><label><span class="oc">Cantidad</span><input class="nueva c" type="text" inputmode="decimal" value="50"></label></td>
+      <td colspan="3"><button type="button" class="agregar">Agregar</button></td>
+    </tr></tfoot>
+  </table>
+</div>
+<span class="pie">«Friso de pared» no está en el catálogo: <a href="#">Crear la partida «Friso de pared»</a> · Intro agrega, Esc limpia</span>
+<!--MARGEN-->
+<div class="comp">
+  <span class="meta">Cada precio se compara con</span>
+  <button type="button" aria-haspopup="listbox">Lista de referencia de julio <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+  <span class="meta">y con la base de la empresa</span>
+</div>
+<article class="nota act" style="margin-top:308px">
+  <div class="cab"><span class="no">1</span><span class="sev err">Error</span><span>Precio sin fuente</span></div>
+  <p>El 3.120,00 de P-03 no sale de ninguna lista. La más cercana dice 2.856,00: el total bajaría 38.280,00.</p>
+  <div class="acc"><a href="#">Usar 2.856,00</a><a href="#">Anotar la fuente</a></div>
+</article>
+<article class="nota">
+  <div class="cab"><span class="no">2</span><span class="sev err">Error</span><span>Componente fuera del total</span></div>
+  <p>El aditivo de P-03 (42,00 por m³) no suma al precio. <a href="#">Ver el análisis</a></p>
+</article>
+<article class="nota">
+  <div class="cab"><span class="no">3</span><span class="sev adv">Advertencia</span><span>Distinto de la base</span></div>
+  <p>El acero de P-04 supera la base en 15,8 %. En la V1 aprobada estaba en 16,10.</p>
+</article>
+<p class="ficticio">Obra de demostración, con datos ficticios.</p>

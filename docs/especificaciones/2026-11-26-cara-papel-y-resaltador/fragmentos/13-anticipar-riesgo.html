@@ -1,0 +1,47 @@
+<!--{"orden": 13, "titulo": "Anticipar › Riesgo", "area": "obra", "herramienta": "anticipar", "opcion": "Riesgo", "accion": "Volver a simular", "indice": {"rotulo": "Última simulación", "items": ["Hoy, 10:42", "5.000 corridas"], "texto": true}}-->
+<span class="sobre">Riesgo del presupuesto V2 · con 80 % de confianza</span>
+<h1>La obra cuesta hasta 1.398.400,00 Bs <sup style="font-family:var(--f-ui);font-size:14px">1</sup></h1>
+<div class="datos"><span>Presupuesto 1.284.560,00</span><span>Contingencia sugerida 113.840,00 (8,9 %)</span><a href="#">Ver el valor exacto</a></div>
+<svg class="grafica" viewBox="0 0 720 104" role="img" aria-labelledby="rango-t" style="max-width:720px;margin-top:24px">
+  <title id="rango-t">Rango del costo: de 1.251.300 (P10) a 1.441.700 (P90); P80 en 1.398.400; el presupuesto en 1.284.560</title>
+  <rect x="20" y="40" width="680" height="16" rx="8" class="g-area" style="opacity:.5"/>
+  <rect x="20" y="40" width="525" height="16" rx="8" class="g-area"/>
+  <line x1="139" y1="28" x2="139" y2="68" class="g-base"/>
+  <text x="139" y="18" text-anchor="middle" class="g-txt">Presupuesto</text>
+  <line x1="545" y1="30" x2="545" y2="66" class="g-res" style="stroke-width:3"/>
+  <text x="545" y="18" text-anchor="middle" class="g-fuerte">P80</text>
+  <text x="20" y="92" class="g-txt">P10 · 1.251.300</text>
+  <text x="275" y="92" text-anchor="middle" class="g-txt">P50 · 1.322.900</text>
+  <text x="700" y="92" text-anchor="end" class="g-txt">P90 · 1.441.700</text>
+</svg>
+<p class="txt">En 8 de cada 10 corridas el costo final quedó por debajo de la marca P80.</p>
+<h2>Lo que más mueve el riesgo</h2>
+<div class="marco">
+  <table>
+    <caption class="oc">Partidas que más aportan al riesgo</caption>
+    <thead><tr><th scope="col">Partida</th><th scope="col">Qué varía</th><th scope="col" style="width:200px">Peso en el riesgo</th><th scope="col" class="num"></th></tr></thead>
+    <tbody>
+      <tr class="sel"><td class="cod">P-03</td><td>Concreto f'c 210 · precio del cemento <sup>2</sup></td><td><div class="prog res" style="margin-top:7px"><span style="width:46%"></span></div></td><td class="num">46 %</td></tr>
+      <tr><td class="cod">P-04</td><td>Acero de refuerzo · precio del kg <sup>3</sup></td><td><div class="prog" style="margin-top:7px"><span style="width:31%"></span></div></td><td class="num">31 %</td></tr>
+      <tr><td class="cod">P-01</td><td>Movimiento de tierra · rendimiento</td><td><div class="prog" style="margin-top:7px"><span style="width:14%"></span></div></td><td class="num">14 %</td></tr>
+      <tr><td class="cod t2">—</td><td class="t2">Las otras 2 partidas</td><td><div class="prog" style="margin-top:7px"><span style="width:9%"></span></div></td><td class="num t2">9 %</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="fila-acc"><a href="#" class="btn2">Probar un escenario: el cemento sube 10 %</a></div>
+<!--MARGEN-->
+<article class="nota act suelta" style="margin-top:44px">
+  <div class="cab"><span class="no">1</span><span>De dónde sale</span></div>
+  <p>5.000 corridas con los rangos de precio de las listas cargadas. El P80 es la marca que la empresa usa para fijar la contingencia.</p>
+  <div class="acc"><a href="#">Ver los rangos usados</a></div>
+</article>
+<article class="nota" style="margin-top:196px">
+  <div class="cab"><span class="no">2</span><span class="sev err">Error</span><span>abierto en Auditar</span></div>
+  <p>El rango de P-03 parte de un precio sin fuente. Si lo corrige, el P80 puede bajar.</p>
+  <div class="acc"><a href="#">Ir al problema</a></div>
+</article>
+<article class="nota">
+  <div class="cab"><span class="no">3</span><span class="sev adv">Advertencia</span></div>
+  <p>El acero ya está 15,8 % sobre la base; su rango hacia arriba es corto.</p>
+</article>
+<p class="ficticio">Obra de demostración, con datos ficticios.</p>
