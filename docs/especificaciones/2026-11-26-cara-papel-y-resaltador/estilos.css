@@ -188,3 +188,26 @@ kbd.k{font-family:var(--f-ui);font-size:12px;padding:0 4px;border:1px solid var(
 .opc .grp{margin:16px 10px 4px;font-size:12px;line-height:16px;color:var(--t2)}
 .opc .grp:first-child{margin-top:0}
 .opc a .n.adv{color:var(--adv)}
+/* C11 (2026-11-26): barra de estado, notificaciones apiladas y panel. */
+.hm{position:relative}
+.estado-barra{display:flex;align-items:center;gap:8px;height:28px;padding:0 16px;background:var(--lateral);border-top:1px solid var(--linea);font-size:12px;line-height:16px;color:var(--t2)}
+.estado-barra .ic{width:14px;height:14px}
+.estado-barra .sep{color:var(--t3)}
+.campana{position:relative;display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;border:0;border-radius:6px;background:transparent;color:var(--t1)}
+.campana:hover,.campana[aria-expanded=true]{background:var(--alzado)}
+.campana .n{position:absolute;top:0;right:0;min-width:14px;padding:0 3px;border-radius:7px;background:var(--error);color:#fff;font-size:10px;line-height:14px;text-align:center}
+.avisos{position:absolute;right:16px;bottom:40px;display:flex;flex-direction:column;gap:8px;width:340px;z-index:3}
+.aviso-t{padding:12px 16px;border:1px solid var(--linea);border-radius:12px;background:var(--hoja);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.aviso-t .cab,.cab-p{display:flex;align-items:center;gap:8px}
+.aviso-t p{margin:4px 0 0;color:var(--t2);font-size:13px}
+.aviso-t a{display:inline-block;margin-top:8px;font-size:13px;font-weight:500}
+.cerrar{margin-left:auto;width:24px;height:24px;border:0;border-radius:6px;background:transparent;color:var(--t2);font-size:16px;line-height:1}
+.cerrar:hover{background:var(--alzado);color:var(--t1)}
+.panel-notif{position:absolute;top:140px;right:0;bottom:28px;width:380px;overflow:auto;padding:16px 20px;background:var(--hoja);border-left:1px solid var(--linea);box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:4}
+.panel-notif h2{margin:0;font-size:16px;line-height:24px;font-weight:500}
+.panel-notif h3{margin:16px 0 8px;font-size:12px;line-height:16px;font-weight:400;color:var(--t2)}
+.np{padding:10px 12px;border-radius:8px;margin-bottom:4px}
+.np.sin-leer{background:var(--sel)}
+.np p{margin:2px 0 0;font-size:12px;line-height:16px;color:var(--t2)}
+.np a{font-size:13px;font-weight:500}
+.pie-p{margin-top:16px;font-size:12px;line-height:16px;color:var(--t2)}

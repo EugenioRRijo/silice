@@ -427,9 +427,31 @@ def opciones(meta: dict) -> str:
         '<div class="cabl"><span>Lugares</span>'
         f'<button type="button" aria-label="Reducir a iconos">{icono("plegar")}</button></div>'
     )
+    return f'<aside class="lat" aria-label="Barra lateral">{cab}{nav}{widgets(meta)}</aside>'
+
+
+ICONO_CAMPANA = (
+    '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">'
+    '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>'
+)
+
+
+def barra_de_estado(meta: dict) -> str:
+    abierto = meta.get("notificaciones") == "panel"
     return (
-        f'<aside class="lat" aria-label="Barra lateral">{cab}{nav}{widgets(meta)}{CARPETA}</aside>'
+        '<footer class="estado-barra" aria-label="Barra de estado">'
+        f"{icono('carpeta')}<span>Carpeta Obras 2026</span>"
+        '<span class="sep" aria-hidden="true">·</span><span>Guardado hace 2 min</span>'
+        '<span style="flex-grow:1"></span>'
+        f'<button type="button" class="campana" aria-expanded="{"true" if abierto else "false"}" '
+        f'aria-controls="panel-notif" aria-label="Notificaciones, 3 sin leer">{ICONO_CAMPANA}'
+        '<span class="n" aria-hidden="true">3</span></button></footer>'
     )
+
+
+AVISOS = (RAIZ / "avisos.html").read_text(encoding="utf-8").strip()
+
+PANEL = (RAIZ / "panel-notificaciones.html").read_text(encoding="utf-8").strip()
 
 
 def pagina(meta: dict, principal: str, margen: str, modo: str) -> str:
@@ -467,6 +489,9 @@ def pagina(meta: dict, principal: str, margen: str, modo: str) -> str:
 </main>
 {aside}
 </div>
+{AVISOS if meta.get("notificaciones") else ""}
+{PANEL if meta.get("notificaciones") == "panel" else ""}
+{barra_de_estado(meta)}
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{{"$preview":{{"width":1440,"height":960}}}}'>
@@ -484,6 +509,8 @@ def leer(fragmento: Path) -> tuple[dict, str, str]:
     cabecera, resto = texto.split("\n", 1)
     meta = json.loads(cabecera.strip()[4:-3])
     principal, _, margen = resto.partition("<!--MARGEN-->")
+    if meta.get("base"):
+        _, principal, margen = leer(fragmento.parent / f"{meta['base']}.html")
     return meta, principal, margen
 
 
