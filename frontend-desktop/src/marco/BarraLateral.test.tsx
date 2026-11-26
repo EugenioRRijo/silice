@@ -10,6 +10,7 @@ import { cancelarSalida } from "../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../shell/sucio";
 import { ConObras, sesionDe } from "../shell/obras/datosDePrueba";
 import { BarraLateral } from "./BarraLateral";
+import { ContextoLayoutDelMarco } from "./useWorkspaceLayout";
 import { ContextoPendientes } from "./usePendientes";
 import type { PendientesDelMarco } from "./usePendientes";
 
@@ -1028,5 +1029,34 @@ describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
     const zona = await screen.findByRole("navigation", { name: "Costos y producción" });
     expect(within(zona).getAllByRole("link").map((e) => e.textContent)).toEqual(["Auditar un presupuesto", "Precios y catálogo"]);
     expect(screen.queryByRole("link", { name: "Costos de producción" })).toBeNull();
+  });
+});
+
+// A5: la barra entera es un landmark `nav` con su nombre, plegada o desplegada.
+describe("BarraLateral: el nav «Obras y espacios» (A5)", () => {
+  it("con la barra desplegada existe y contiene las obras", async () => {
+    pintar();
+    const lista = await listaDeObras();
+    const nav = screen.getByRole("navigation", { name: "Obras y espacios" });
+    expect(within(nav).getByRole("list", { name: "Obras" })).toBe(lista);
+  });
+
+  it("con la barra plegada existe y contiene la Vista general", async () => {
+    render(
+      <MemoryRouter initialEntries={["/inicio/pendientes"]}>
+        <ContextoAplicacion.Provider value={{ sesion: sesionDe("ana"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}>
+          <ContextoPendientes.Provider value={SIN_PENDIENTES}>
+            <ContextoLayoutDelMarco.Provider value={{ sidebarCollapsed: true, toggleSidebar: vi.fn() }}>
+              <ConObras>
+                <BarraLateral obraAbierta={null} />
+              </ConObras>
+            </ContextoLayoutDelMarco.Provider>
+          </ContextoPendientes.Provider>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+    const nav = await screen.findByRole("navigation", { name: "Obras y espacios" });
+    expect(within(nav).getByRole("link", { name: "Vista general" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mostrar barra lateral" })).toBeInTheDocument();
   });
 });

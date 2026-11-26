@@ -744,6 +744,55 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
 
 // Foco 3 de la revisión: los enlaces de las barras están dentro del lienzo, que el marco no intercepta; por eso la barra
 // pregunta ella misma (como useNavegarSeguro). Pasar entre Partidas y Componer no pregunta: ProveedorDeLaHoja.test.tsx.
+describe("Marco: foco y título al navegar (A5)", () => {
+  test("al cambiar de espacio con la barra lateral, el foco va al h1 de la pantalla nueva y la ventana la nombra", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" }));
+    const h1 = await titulo("Vista general");
+    await waitFor(() => expect(h1).toHaveFocus());
+    expect(h1).toHaveAttribute("tabindex", "-1");
+    expect(document.title.startsWith("Vista general")).toBe(true);
+  });
+
+  test("la frontera: dentro de la obra el foco se queda en el enlace del conmutador; al pasar a la Vista general va al h1", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/control/reajuste" });
+    await titulo("Reajuste de precios");
+    const enlace = within(screen.getByRole("navigation", { name: "Vistas de Control de obra" })).getByRole("link", { name: "Escenarios" });
+    await u.click(enlace);
+    await titulo("Escenarios de sensibilidad");
+    await new Promise((r) => setTimeout(r, 80));
+    expect(enlace).toHaveFocus();
+    await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" }));
+    const h1 = await titulo("Vista general");
+    await waitFor(() => expect(h1).toHaveFocus());
+  });
+
+  test("con replace no se fuerza el foco al h1", async () => {
+    const u = userEvent.setup();
+    function IrConReplace() {
+      const navegar = useNavigate();
+      return (
+        <>
+          <h1>Presupuesto</h1>
+          <button type="button" onClick={() => navegar("/obra/empresa/7/mercado", { replace: true })}>
+            Redirigir
+          </button>
+        </>
+      );
+    }
+    montar({ en: "/obra/empresa/7/presupuesto", paginas: ligeras({ hoja: IrConReplace }) });
+    await titulo("Presupuesto");
+    await u.click(screen.getByRole("button", { name: "Redirigir" }));
+    const h1 = await titulo("Estudio de mercado");
+    await new Promise((r) => setTimeout(r, 80));
+    expect(ruta()).toBe("/obra/empresa/7/mercado");
+    expect(h1).not.toHaveFocus();
+  });
+});
+
 describe("Marco: salir de una sección o subvista con cambios sin guardar (F6, T5)", () => {
   function HojaSucia() {
     useFormularioSucio("hoja", true);
@@ -1354,8 +1403,8 @@ describe("Marco: vocabulario y alcance", () => {
 
 // Ronda 2 del árbitro (Tarea 8): el bloque «el foco no se pierde cuando la acción quita el control» de las pruebas del
 // armazón anterior, llevado al marco. Al cambiar de pantalla, si el foco se perdió (lo tenía un control que ya no está),
-// pasa al único h1 de la nueva; si lo tiene un control que sigue (un enlace de la barra lateral, de la barra de la obra o de la persona), no se
-// toca; la carga inicial y sus redirecciones (`replace`) no lo roban; y el h1 de un esqueleto no lo retiene.
+// pasa al único h1 de la nueva; si lo tiene un control que sigue en el mismo espacio (un enlace de la barra de la obra) no se
+// toca, pero al cambiar de espacio (barra lateral, barra de arriba, A5) el foco va al h1 aunque lo tenga el enlace; la carga inicial y sus redirecciones (`replace`) no lo roban; y el h1 de un esqueleto no lo retiene.
 describe("Marco: el foco no se pierde cuando la acción quita el control", () => {
   function MesaQueVa() {
     const ir = useNavigate();
@@ -1385,15 +1434,15 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     expect(nuevo).toHaveAttribute("tabindex", "-1");
   });
 
-  test("un enlace de la barra lateral conserva el foco: solo se mueve si se perdió", async () => {
+  test("un enlace de la barra lateral deja el foco en el h1 de la pantalla nueva aunque lo tuviera él (A5)", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/resumen" });
     await titulo("Resumen de la obra");
     const enlace = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" });
     await u.click(enlace);
-    await titulo("Vista general");
-    await new Promise((r) => setTimeout(r, 80));
-    expect(enlace).toHaveFocus();
+    const nuevo = await titulo("Vista general");
+    await waitFor(() => expect(nuevo).toHaveFocus());
+    expect(enlace).not.toHaveFocus();
   });
 
   test("un enlace de la barra de la obra que sigue tras navegar conserva el foco", async () => {
@@ -1409,16 +1458,16 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     expect(enlace).toHaveFocus();
   });
 
-  test("el enlace de la persona, en la barra de arriba, conserva el foco al llevar a la Cuenta", async () => {
+  test("el enlace de la persona, en la barra de arriba, deja el foco en el h1 de la Cuenta (A5)", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto" });
     await titulo("Presupuesto");
     const enlace = within(screen.getByRole("banner")).getByRole("link", { name: "Cuenta de Ana Pérez" });
     await u.click(enlace);
-    await titulo("Configuración");
+    const nuevo = await titulo("Configuración");
     expect(ruta()).toBe("/cuenta/preferencias");
-    await new Promise((r) => setTimeout(r, 80));
-    expect(enlace).toHaveFocus();
+    await waitFor(() => expect(nuevo).toHaveFocus());
+    expect(enlace).not.toHaveFocus();
     expect(enlace).toHaveAttribute("aria-current", "page");
   });
 

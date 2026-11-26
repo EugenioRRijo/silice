@@ -681,19 +681,25 @@ function obraDeLaRuta(pathname: string): { carpeta: string | null; obraId: numbe
   return { carpeta, obraId: Number(pathname.split("/")[3]) };
 }
 
-// Al cambiar de pantalla, si el foco se perdió (lo tenía un control de la anterior), pasa al h1 de la nueva: el lector
-// de pantalla la anuncia y el siguiente Tab parte de ahí. Si lo tiene otro control, no se toca; la primera carga y las
-// redirecciones (`replace` a otra ruta) tampoco (focoAlTitulo.ts espera el h1 de la pantalla, que se carga a demanda).
+// Al cambiar de espacio (la clave del contenido: de la Vista general a una obra, de una obra a otra, a la Cuenta o a un
+// espacio de herramientas), el foco pasa al h1 de la nueva aunque lo tenga el enlace pulsado: el lector de pantalla la
+// anuncia y la ventana pasa a llamarse como ella. Dentro del mismo espacio (otra sección de la obra, otra subvista u otra
+// herramienta) el foco se queda en el enlace de la barra, y solo va al h1 si se perdió (decisión de F6, T5). La primera
+// carga y las redirecciones (`replace` a otra ruta) no (focoAlTitulo.ts espera el h1, que se carga a demanda).
 function useFocoAlTitulo(pathname: string, clave: string) {
   const rutaPrevia = useRef(pathname);
   const clavePrevia = useRef(clave);
+  const espacio = claveDelContenido(pathname);
+  const espacioPrevio = useRef(espacio);
   const tipo = useNavigationType();
   useEffect(() => {
     const mismaRuta = rutaPrevia.current === pathname;
     if (mismaRuta && clavePrevia.current === clave) return;
     rutaPrevia.current = pathname;
     clavePrevia.current = clave;
+    const cambiaDeEspacio = espacioPrevio.current !== espacio;
+    espacioPrevio.current = espacio;
     if (!mismaRuta && tipo === "REPLACE") return;
-    return enfocarElTitulo();
-  }, [pathname, clave, tipo]);
+    return enfocarElTitulo({ forzar: cambiaDeEspacio });
+  }, [pathname, clave, tipo, espacio]);
 }

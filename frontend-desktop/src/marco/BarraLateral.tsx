@@ -144,6 +144,8 @@ export function BarraLateral({ obraAbierta }: Props) {
       data-collapsed={sidebarCollapsed ? "true" : "false"}
       aria-label="Barra lateral"
     >
+      {/* El landmark de toda la barra, plegada o desplegada. `display: contents` para que no sea una caja más del flex. */}
+      <nav aria-label="Obras y espacios" style={{ display: "contents" }}>
       {sidebarCollapsed ? (
         <div className="silice-marco-lateral__riel">
           <div className="silice-marco-lateral__riel-arriba">
@@ -248,6 +250,7 @@ export function BarraLateral({ obraAbierta }: Props) {
           <ZonaDeCostos espacios={espacios} espacioActivo={espacioActivo} idBase={base} />
         </>
       )}
+      </nav>
 
       <DialogoNuevaObra
         abierto={nuevaAbierta}

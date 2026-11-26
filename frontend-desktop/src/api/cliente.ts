@@ -2,6 +2,36 @@
 // (credentials same-origin); el token anti-CSRF se guarda SOLO en memoria y va en X-Silice-CSRF en los
 // POST y DELETE. Nada se escribe en localStorage ni en sessionStorage (RT-9).
 
+const MENSAJE_RESPUESTA_INVALIDA =
+  "El servidor respondió algo que esta pantalla no esperaba. Vuelva a intentarlo; si se repite, avise al equipo de Sílice.";
+
+function codigoPorEstado(estado: number): string {
+  if (estado === 0) return "sin_conexion";
+  if (estado === 401) return "no_autenticado";
+  if (estado === 403) return "sin_permiso";
+  if (estado === 404) return "no_encontrado";
+  if (estado === 409) return "conflicto";
+  if (estado === 422) return "datos_invalidos";
+  if (estado >= 500 && estado < 600) return "error_del_servidor";
+  return "error_http";
+}
+
+function codigoDe(cuerpo: unknown, estado: number): string {
+  if (cuerpo && typeof cuerpo === "object") {
+    const { codigo } = cuerpo as { codigo?: unknown };
+    if (typeof codigo === "string" && codigo) return codigo;
+  }
+  return codigoPorEstado(estado);
+}
+
+function campoDe(cuerpo: unknown): string | undefined {
+  if (cuerpo && typeof cuerpo === "object") {
+    const { campo } = cuerpo as { campo?: unknown };
+    if (typeof campo === "string" && campo) return campo;
+  }
+  return undefined;
+}
+
 export class ErrorDeApi extends Error {
   readonly estado: number;
   readonly detalle: string;
@@ -9,32 +39,56 @@ export class ErrorDeApi extends Error {
   // El cuerpo JSON de la respuesta tal cual (o null si no era JSON): algunas rutas traen campos extra, como `faltan`
   // en la importacion de la bascula. No se muestra: lo que se le dice a la persona es siempre `detalle`.
   readonly cuerpo: unknown;
+  readonly codigo: string;
+  readonly campo?: string;
 
-  constructor(estado: number, detalle: string, reintentarEnSegundos: number | null = null, cuerpo: unknown = null) {
+  constructor(
+    estado: number,
+    detalle: string,
+    reintentarEnSegundos: number | null = null,
+    cuerpo: unknown = null,
+    codigo?: string,
+  ) {
     super(detalle);
     this.name = "ErrorDeApi";
     this.estado = estado;
     this.detalle = detalle;
     this.reintentarEnSegundos = reintentarEnSegundos;
     this.cuerpo = cuerpo;
+    this.codigo = codigo ?? codigoDe(cuerpo, estado);
+    const campo = campoDe(cuerpo);
+    if (campo !== undefined) this.campo = campo;
   }
 }
 
 let csrf: string | null = null;
+const oyentesDeSesion = new Set<() => void>();
+// Bandera por episodio de 401: evita disparar N avisos seguidos y se limpia con la próxima respuesta exitosa (o al cambiar el CSRF).
+let sesionPerdidaAvisada = false;
 
 export function fijarCsrf(valor: string | null): void {
   csrf = valor;
+  sesionPerdidaAvisada = false;
 }
 
-export interface OpcionesDePeticion {
+export function alPerderSesion(fn: () => void): () => void {
+  oyentesDeSesion.add(fn);
+  return () => {
+    oyentesDeSesion.delete(fn);
+  };
+}
+
+export interface OpcionesDePeticion<T = unknown> {
   metodo?: "GET" | "POST" | "PUT" | "DELETE";
   cuerpo?: FormData | object;
   // Para abortar una peticion que ya no sirve (un buscador que recibe otro texto). Un aborto se relanza tal cual
   // (AbortError), sin envolverlo en ErrorDeApi: no es un servidor caido (diseno de autocompletado, H-13).
   senal?: AbortSignal;
+  // Analizador opcional en la frontera: valida o transforma el JSON recibido antes de entregarlo a la pantalla.
+  leer?: (datos: unknown) => T;
 }
 
-export interface OpcionesBinarias extends OpcionesDePeticion {
+export interface OpcionesBinarias extends Omit<OpcionesDePeticion, "leer"> {
   // Nombre del archivo si la respuesta no trae Content-Disposition.
   respaldo?: string;
 }
@@ -59,7 +113,7 @@ function detalleDe(cuerpo: unknown, estado: number): string {
 
 // Arma la peticion (token CSRF, cuerpo JSON o multipart), la manda y, si la API contesta con error, lanza
 // ErrorDeApi con el `detalle` tal cual. Comparten esto `pedir` (JSON) y `pedirBinario` (archivos).
-async function enviar(ruta: string, opciones: OpcionesDePeticion): Promise<Response> {
+async function enviar(ruta: string, opciones: Pick<OpcionesDePeticion, "metodo" | "cuerpo" | "senal">): Promise<Response> {
   const metodo = opciones.metodo ?? "GET";
   const cabeceras = new Headers();
   if (CON_TOKEN.has(metodo) && csrf) cabeceras.set("X-Silice-CSRF", csrf);
@@ -89,20 +143,37 @@ async function enviar(ruta: string, opciones: OpcionesDePeticion): Promise<Respo
   if (!respuesta.ok) {
     const contenido: unknown = await respuesta.json().catch(() => null);
     const espera = Number(respuesta.headers.get("Retry-After"));
-    throw new ErrorDeApi(
+    const error = new ErrorDeApi(
       respuesta.status,
       detalleDe(contenido, respuesta.status),
       Number.isFinite(espera) && espera > 0 ? espera : null,
       contenido,
     );
+    if (respuesta.status === 401 && !sesionPerdidaAvisada && oyentesDeSesion.size > 0) {
+      sesionPerdidaAvisada = true;
+      for (const oyente of [...oyentesDeSesion]) oyente();
+    }
+    throw error;
   }
+  sesionPerdidaAvisada = false;
   return respuesta;
 }
 
-export async function pedir<T = unknown>(ruta: string, opciones: OpcionesDePeticion = {}): Promise<T> {
+export async function pedir<T>(ruta: string, opciones: OpcionesDePeticion<T> & { leer: (datos: unknown) => T }): Promise<T>;
+export async function pedir<T = unknown>(ruta: string, opciones?: OpcionesDePeticion<T>): Promise<T>;
+export async function pedir<T = unknown>(ruta: string, opciones: OpcionesDePeticion<T> = {}): Promise<T> {
   const respuesta = await enviar(ruta, opciones);
-  if (respuesta.status === 204) return undefined as T;
-  return (await respuesta.json()) as T;
+  if (!opciones.leer) {
+    if (respuesta.status === 204) return undefined as T;
+    return (await respuesta.json()) as T;
+  }
+  let datos: unknown = null;
+  try {
+    datos = respuesta.status === 204 ? undefined : await respuesta.json();
+    return opciones.leer(datos);
+  } catch {
+    throw new ErrorDeApi(respuesta.status, MENSAJE_RESPUESTA_INVALIDA, null, datos, "respuesta_invalida");
+  }
 }
 
 function quitarRuta(nombre: string): string {
