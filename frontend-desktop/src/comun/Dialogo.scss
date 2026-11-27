@@ -1,8 +1,10 @@
 // Diálogo modal común sobre <dialog> nativo y showModal() (Propuesta A1 / B0).
+// Todas las reglas llevan `dialog.silice-dialogo`: la clase `silice-dialogo` la usa también MarcoDeDialogo (un <div>), y un
+// selector sin el elemento le llegaba cuando este archivo estaba cargado (p. ej. `:not([open])` lo ocultaba entero).
 // Sin sombras decorativas, sin esquinas redondeadas ni animaciones de entrada (DESIGN.md).
 // Todos los tamaños y espaciados van en rem sobre la rejilla de 4 px (0,25 rem).
 
-.silice-dialogo {
+dialog.silice-dialogo {
   box-sizing: border-box;
   margin: auto;
   padding: 0;
@@ -16,11 +18,11 @@
   max-block-size: calc(100dvh - 2rem);
 }
 
-.silice-dialogo:not([open]) {
+dialog.silice-dialogo:not([open]) {
   display: none;
 }
 
-.silice-dialogo[open] {
+dialog.silice-dialogo[open] {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -36,20 +38,20 @@ dialog.silice-dialogo::backdrop {
   overscroll-behavior: contain;
 }
 
-.silice-dialogo__cabecera {
+dialog.silice-dialogo .silice-dialogo__cabecera {
   flex: 0 0 auto;
   padding: 1rem 1.5rem 0.75rem;
   border-block-end: 1px solid var(--cds-border-subtle);
 }
 
-.silice-dialogo__titulo {
+dialog.silice-dialogo .silice-dialogo__titulo {
   margin: 0;
   color: var(--silice-texto);
   line-height: 1.3;
 }
 
 // Un diálogo largo desplaza su cuerpo por dentro, nunca la página; cabecera y pie quedan siempre visibles.
-.silice-dialogo__cuerpo {
+dialog.silice-dialogo .silice-dialogo__cuerpo {
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -64,7 +66,7 @@ dialog.silice-dialogo::backdrop {
 }
 
 // Orden de Carbon para un modal (UX-14): el secundario a la izquierda y el principal o destructivo a la derecha.
-.silice-dialogo__pie {
+dialog.silice-dialogo .silice-dialogo__pie {
   flex: 0 0 auto;
   display: flex;
   flex-direction: row;
@@ -79,7 +81,7 @@ dialog.silice-dialogo::backdrop {
 }
 
 @media (forced-colors: active) {
-  .silice-dialogo {
+  dialog.silice-dialogo {
     border: 1px solid CanvasText;
   }
 }

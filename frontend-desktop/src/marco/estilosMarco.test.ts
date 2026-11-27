@@ -40,7 +40,86 @@ describe("la barra superior del marco ocupa el hueco que reserva el cuerpo", () 
     expect(barra).toMatch(/position:\s*fixed/);
     expect(barra).toMatch(/inset-block-start:\s*0/);
     expect(barra).toMatch(/inset-inline:\s*0/);
-    expect(reglaDe(marco, ".silice-marco")).toMatch(/min-block-size:\s*calc\(100vh - 3rem\)/);
+    expect(reglaDe(marco, ".silice-marco")).toMatch(/block-size:\s*calc\(100vh - 3rem\)/);
+  });
+});
+
+// Recorrido funcional del 2026-11-27 (1366×768): la barra de estado era `sticky` al pie de la ventana y tapaba el final de la
+// barra lateral y del contenido; la barra lateral (alto de la ventana, con la lista de obras en una caja que podía encogerse
+// a 0) escondía todas las obras. El marco mide el alto de la ventana bajo la barra de arriba: el cuerpo ocupa lo que queda y
+// se desplaza por dentro (la lateral y el contenido, cada uno con el suyo) y la barra de estado es su última fila, en el
+// flujo, sin tapar nada.
+describe("el marco mide el alto de la ventana: cuerpo con su desplazamiento y barra de estado como última fila", () => {
+  const marco = () => leer("marco/marco.scss");
+
+  test("el marco es una columna de alto fijo que no desplaza la página", () => {
+    const regla = reglaDe(marco(), ".silice-marco") ?? "(no hay regla)";
+    expect(regla).toMatch(/display:\s*flex/);
+    expect(regla).toMatch(/flex-direction:\s*column/);
+    expect(regla).toMatch(/(^|[\s;])block-size:\s*calc\(100vh - 3rem\)/);
+    expect(regla).toMatch(/overflow:\s*clip/);
+  });
+
+  // Recorrido funcional del 2026-11-27 (reajuste, escenarios, revisar…): lo que Carbon coloca en `position: absolute` (el texto
+  // `cds--visually-hidden`, p. ej.) tomaba el documento como bloque contenedor y se salía del contenido que se desplaza: el
+  // documento crecía a 1123 px en una ventana de 768, el `focus()` lo desplazaba 56 px y la barra lateral y el contenido
+  // quedaban corridos con una franja vacía abajo. El marco, la lateral y el contenido son su propio bloque contenedor, y el
+  // marco recorta (`clip`, no `hidden`: `hidden` también se desplaza por programa).
+  test("el marco, la barra lateral y el contenido contienen lo absoluto de su interior", () => {
+    const fuente = marco();
+    expect(reglaDe(fuente, ".silice-marco") ?? "").toMatch(/(^|[\s;])position:\s*relative/);
+    expect(reglaDe(fuente, "  > .silice-marco-lateral") ?? "").toMatch(/position:\s*relative/);
+    expect(reglaDe(fuente, "\n.silice-contenido") ?? "").toMatch(/position:\s*relative/);
+  });
+
+  test("el cuerpo toma el alto que queda y puede encogerse; la lateral y el contenido se desplazan por dentro", () => {
+    const fuente = marco();
+    const cuerpo = reglaDe(fuente, ".silice-marco__cuerpo") ?? "(no hay regla)";
+    expect(cuerpo).toMatch(/flex:\s*1\s+1\s+0/);
+    expect(cuerpo).toMatch(/min-block-size:\s*0/);
+    const lateral = reglaDe(fuente, "  > .silice-marco-lateral") ?? "(no hay regla)";
+    expect(lateral).toMatch(/overflow-y:\s*auto/);
+    expect(lateral).not.toMatch(/position:\s*sticky|block-size:\s*calc/);
+    const contenido = reglaDe(fuente, "\n.silice-contenido") ?? "(no hay regla)";
+    expect(contenido).toMatch(/overflow-y:\s*auto/);
+    expect(contenido).toMatch(/min-block-size:\s*0/);
+  });
+
+  test("la barra de estado no es sticky ni flota: es la última fila del marco y no se encoge", () => {
+    const regla = reglaDe(leer("marco/BarraDeEstado.scss"), ".silice-barra-estado") ?? "(no hay regla)";
+    expect(regla).not.toMatch(/position:\s*(sticky|fixed|absolute)/);
+    expect(regla).toMatch(/flex:\s*none/);
+  });
+
+  test("la cabecera fija de la Hoja se pega al borde del contenido que se desplaza, no a 3 rem de él", () => {
+    expect(reglaDe(marco(), "\n.silice-contenido") ?? "").toMatch(/--silice-alto-marco-fijo:\s*0/);
+  });
+
+  test("las pantallas de alto completo miden lo que queda sin la barra de estado", () => {
+    expect(marco()).toMatch(/--silice-alto-util:\s*calc\(100vh - 3rem - var\(--silice-alto-estado\)\)/);
+    for (const ruta of ["paginas/pendientes/Bandeja.scss", "visor/visor.scss"]) {
+      expect(leer(ruta)).toMatch(/block-size:\s*var\(--silice-alto-util,\s*calc\(100vh - 3rem\)\)/);
+      expect(leer(ruta)).not.toMatch(/block-size:\s*calc\(100vh - 3rem\)/);
+    }
+  });
+});
+
+// La lista de obras de la barra lateral nunca se encoge a cero: con poco alto, la barra se desplaza y la lista conserva un
+// mínimo a la vista (en 1366×768 las ocho obras de la siembra desaparecían: `min-block-size: 0` + `overflow-y: auto`).
+describe("la lista de obras de la barra lateral no se encoge a cero", () => {
+  const lateral = () => leer("marco/BarraLateral.scss");
+
+  test("el árbol de obras tiene un alto mínimo y la caja que lo contiene no lo comprime", () => {
+    const arbol = reglaDe(lateral(), ".silice-marco-lateral__arbol") ?? "(no hay regla)";
+    expect(arbol).toMatch(/min-block-size:\s*[1-9][\d.]*rem/);
+    const obras = reglaDe(lateral(), ".silice-marco-lateral__obras") ?? "(no hay regla)";
+    expect(arbol).toMatch(/overflow-y:\s*auto/);
+    expect(obras).not.toMatch(/min-block-size:\s*0/);
+  });
+
+  test("ni la caja de obras ni la zona de navegación declaran un mínimo de 0 (el automático suma el del árbol)", () => {
+    const nav = reglaDe(lateral(), ".silice-marco-lateral__nav") ?? "(no hay regla)";
+    expect(nav).not.toMatch(/min-block-size:\s*0/);
   });
 });
 

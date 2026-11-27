@@ -386,4 +386,14 @@ describe("Dialogo: estilos", () => {
     expect(css).toMatch(/\.silice-dialogo\s*\{[^}]*border:\s*1px solid var\(--cds-border-subtle\)/);
     expect(css).not.toMatch(/\.silice-dialogo--destructivo/);
   });
+
+  // Recorrido funcional del 2026-11-27: «Nueva obra» (MarcoDeDialogo, un <div role="dialog"> con la clase `silice-dialogo`)
+  // salía con `display: none` en las pantallas que cargan este archivo (la de la obra, p. ej.): `.silice-dialogo:not([open])`
+  // también alcanzaba al <div>, que nunca lleva `open`. Las reglas de este archivo son solo del elemento <dialog>.
+  it("sus reglas son solo del elemento <dialog>: no alcanzan a los diálogos del marco (MarcoDeDialogo)", () => {
+    const selectores = [...css.matchAll(/([^{}]+)\{/g)].map((m) => (m[1] ?? "").trim()).filter((t) => !t.startsWith("@"));
+    const delDialogo = selectores.flatMap((t) => t.split(",")).map((t) => t.trim()).filter((t) => t.includes(".silice-dialogo"));
+    expect(delDialogo.length).toBeGreaterThan(0);
+    expect(delDialogo.filter((t) => !t.startsWith("dialog.silice-dialogo"))).toEqual([]);
+  });
 });

@@ -2,14 +2,13 @@
 // Solo tokens --silice-* y unidades rem.
 
 .silice-barra-estado {
-  position: sticky;
-  inset-block-end: 0;
-  z-index: var(--silice-z-cabecera-obra);
+  // Última fila del marco (marco.scss): en el flujo, sin flotar sobre lo que desplaza el cuerpo.
+  flex: none;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  min-block-size: 1.75rem;
+  min-block-size: var(--silice-alto-estado, 1.75rem);
   padding: 0 1rem;
   background-color: var(--silice-lateral);
   border-block-start: 1px solid var(--silice-linea);

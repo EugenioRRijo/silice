@@ -1,11 +1,23 @@
 @use "umbrales" as u;
 @use "@carbon/styles/scss/type";
 
-// Marco de la interfaz (Marco.tsx): barra superior fija (3 rem), barra lateral colapsable y contenido en piedra suave.
+// Marco de la interfaz (Marco.tsx): barra superior fija (3 rem), barra lateral y contenido en piedra suave, y la barra de estado
+// como última fila. Mide el alto de la ventana bajo la barra de arriba (el cuerpo del documento reserva esos 3 rem) y no
+// desplaza la página: el cuerpo toma lo que queda y se desplaza por dentro (la lateral y el contenido, cada uno con el
+// suyo), así la barra de estado queda siempre a la vista, al pie, sin tapar ni cortar nada (recorrido funcional 2026-11-27).
 .silice-marco {
+  // Lo que queda para una pantalla de alto completo (la Bandeja, el visor): sin la barra de arriba ni la de estado.
+  --silice-alto-estado: 1.75rem;
+  --silice-alto-util: calc(100vh - 3rem - var(--silice-alto-estado));
+
+  // Bloque contenedor de lo absoluto de su interior, y recorta con `clip`: ni la página ni el marco se desplazan, ni siquiera
+  // por programa (`focus()`, `scrollIntoView`), que es lo que hace `hidden`.
+  position: relative;
   display: flex;
   flex-direction: column;
-  min-block-size: calc(100vh - 3rem);
+  box-sizing: border-box;
+  block-size: calc(100vh - 3rem);
+  overflow: clip;
   background-color: var(--silice-stone);
 
   > .silice-marco-barra {
@@ -18,13 +30,13 @@
 
 .silice-marco__cuerpo {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-block-size: 0;
 
   > .silice-marco-lateral {
-    position: sticky;
-    inset-block-start: 3rem;
-    block-size: calc(100vh - 3rem);
+    // Su propio desplazamiento: si no cabe todo, la barra baja; las obras no se esconden (BarraLateral.scss). Es el bloque
+    // contenedor de lo absoluto de su interior: sin él, eso se salía de la barra y alargaba el documento.
+    position: relative;
     overflow-y: auto;
     border-inline-end: 1px solid var(--silice-border);
   }
@@ -55,9 +67,15 @@
 }
 
 .silice-contenido {
+  // Lo que el marco ya fija arriba del contenido, para lo que se pega al desplazar (la cabecera de la Hoja): el contenido
+  // se desplaza por dentro, así que se pega a su propio borde y no a 3 rem de él.
+  --silice-alto-marco-fijo: 0rem;
+
   box-sizing: border-box;
   min-inline-size: 0;
-  min-block-size: calc(100vh - 3rem);
+  min-block-size: 0;
+  position: relative;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 

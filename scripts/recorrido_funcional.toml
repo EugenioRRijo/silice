@@ -7,8 +7,9 @@
 #
 # Lo ejecuta `scripts/recorrido_ux_playwright.py --funcional`, en el orden de este archivo. Cada fila
 # entra como una persona, por el marco de F6 (F8, C2) y nunca por dirección: la obra en la barra
-# lateral, que fija también su carpeta (con `proyecto`, esa obra; sin él, la primera de la carpeta),
-# y su sección y su vista en las barras de la obra; un espacio de la empresa en «Costos y producción»
+# lateral, que fija también su carpeta (con `proyecto`, esa obra; sin él, la primera de la carpeta) y
+# la abre en el Presupuesto (B1-10), y su sección y su vista en la barra de la obra de dos filas (C4:
+# «Herramientas de la obra», «Opciones de …» y el menú «Versión»); un espacio en «Costos y producción»
 # y su herramienta en su barra; la Cuenta con el botón de la persona y su sección en su barra. Quien
 # no ve obras abre la carpeta en Cuenta › Carpetas. Cuentas ficticias de `tests/fixtures/sesion_web.py`:
 # admin (administra), ana (arma), rita (revisa). Carpetas de trabajo: los casos de demostración que
@@ -53,7 +54,9 @@ pasos = [
   { accion = "llenar", rotulo = "Repítala", valor = "clave de firma de prueba 01" },
   { accion = "pulsar", nombre = "Generar la clave" },
 ]
-espera = { texto = "Huella de la clave de firma" }
+# 720a3e8e (claridad): la «huella» se llama ahora «Código de verificación de la clave (SHA-256)»
+# (paginas/administracion/Empresa.tsx).
+espera = { texto = "Código de verificación de la clave (SHA-256):" }
 
 # Un cambio de precio ANTERIOR a hoy (vigencia 2026-10-01) en demo: «Histórico» debe quitarlo al filtrar
 # «desde hoy». La demostración no trae ninguno (tabla cambio_precio vacía en demo.db). Va después de la
@@ -70,7 +73,8 @@ pasos = [
   { accion = "llenar", rotulo = "Fecha de vigencia", valor = "2026-10-01" },
   { accion = "llenar", rotulo = "Nombre de la lista", valor = "Lista antigua ficticia" },
   { accion = "subir", zona = "Suelte aquí la lista de precios", archivo = "lista_precios" },
-  { accion = "pulsar", nombre = "Revalorar presupuesto" },
+  # G2 (6a21b6a1): el botón es «Actualizar precios del presupuesto» (paginas/actualizacion/index.tsx).
+  { accion = "pulsar", nombre = "Actualizar precios del presupuesto" },
 ]
 espera = { textos = ["Comparativo por partida", "Informe de auditoría de la versión nueva"] }
 
@@ -124,12 +128,14 @@ espera = { texto = "Lista creada" }
 # ---------------------------------------------------------------------------------------------
 # Trabajo (ana)
 
-# F6, T8: la Vista general (`/inicio/general`), la entrada de la app. Escrita sin navegador: se comprueba en el recorrido.
+# F6, T8: la Vista general (`/inicio/general`), la entrada de la app. C8 (cea67609) la rehízo: la cartera, su
+# avance, los problemas abiertos por obra y lo cargado (paginas/inicio/textos.ts); «Últimas auditorías» quedó en
+# Auditoría.
 [[pantalla]]
 ruta = "inicio"
 cuenta = "ana"
-accion = "(solo lectura) abrir la Vista general -> lo que requiere atención, la cartera y las últimas auditorías"
-espera = { textos = ["Vista general", "Lo que requiere atención", "Cartera por moneda", "Últimas auditorías"] }
+accion = "(solo lectura) abrir la Vista general -> la cartera, su avance, los problemas abiertos y lo cargado"
+espera = { textos = ["Vista general", "La cartera de obras", "Avance de la cartera", "Problemas abiertos por obra", "Lo que hay cargado"] }
 
 [[pantalla]]
 ruta = "acerca"
@@ -140,26 +146,31 @@ espera = { textos = ["Versión", "Al día"] }
 [[pantalla]]
 ruta = "auditoria"
 cuenta = "ana"
-accion = "soltar el libro ficticio en «Audite un presupuesto» y auditar por mi cuenta -> el informe con sus hallazgos"
+# B2 (d0e52fd9): una sola página en tres pasos (paginas/auditoria/AuditarUnLibro.tsx); el botón es «Auditar el
+# libro» y el resultado dice «El libro no tiene hallazgos» y ofrece «Ver la hoja marcada». El libro limpio no tiene
+# hallazgos desde 79ceaf74: sus 2 reglas que no aplican (R2, R7) ya no se cuentan como hallazgos.
+accion = "soltar el libro ficticio en «Subir y auditar Excel» y auditarlo -> la respuesta y la hoja marcada"
 pasos = [
   { accion = "subir", zona = "Suelte aquí el libro .xlsx del presupuesto", archivo = "libro_limpio" },
-  { accion = "pulsar", nombre = "Auditar por mi cuenta" },
+  { accion = "pulsar", nombre = "Auditar el libro" },
 ]
-espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (2)", "Total general"] }
+espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "El libro no tiene hallazgos", "Ver la hoja marcada"] }
 
 [[pantalla]]
 ruta = "obras"
 cuenta = "ana"
 carpeta = "demo.db"
-accion = "crear una obra con «Nueva obra» (barra lateral) -> la obra aparece en la mesa de control"
+# C3-C5 (86dea770): ya no hay mesa de control; al crear, la app abre la obra nueva en su Resumen y la suma a la lista de la
+# barra lateral. El cliente se guarda pero ninguna pantalla lo muestra (ver el informe del recorrido 2026-11-27).
+accion = "crear una obra con «Nueva obra» (barra lateral) -> la app abre la obra nueva en su Resumen"
 pasos = [
   { accion = "pulsar", nombre = "Nueva obra", fuera = true },
   { accion = "llenar", rotulo = "Nombre de la obra", valor = "Obra ficticia del recorrido funcional", fuera = true },
   { accion = "llenar", rotulo = "Cliente (opcional)", valor = "Contratista Demo, C.A.", fuera = true },
   { accion = "elegir", rotulo = "Moneda", opcion = "Bs", fuera = true },
-  { accion = "pulsar", nombre = "Crear obra", fuera = true },
+  { accion = "pulsar", nombre = "Crear la obra", fuera = true },
 ]
-espera = { textos = ["Obra ficticia del recorrido funcional", "Contratista Demo, C.A."] }
+espera = { textos = ["Obra ficticia del recorrido funcional", "Portada de la obra", "Resumen"] }
 
 [[pantalla]]
 ruta = "catalogo"
@@ -212,7 +223,8 @@ carpeta = "demo.db"
 accion = "generar un escenario con utilidad 0,20 -> comparación contra el presupuesto base"
 pasos = [
   { accion = "llenar", rotulo = "Nombre del escenario", valor = "utilidad alta ficticia" },
-  { accion = "llenar", rotulo = "Utilidad", valor = "0,20" },
+  # 720a3e8e (claridad): el rótulo dice la fracción con su ejemplo.
+  { accion = "llenar", rotulo = "Utilidad (fracción; ej. 0,10 = 10 %)", valor = "0,20" },
   { accion = "pulsar", nombre = "Generar escenario" },
 ]
 espera = { textos = ["Comparación contra el base", "utilidad alta ficticia"] }
@@ -230,7 +242,8 @@ ruta = "aprobar"
 cuenta = "rita"
 carpeta = "demo.db"
 accion = "(solo lectura) abrir Aprobar una versión sin envíos pendientes -> dice que no hay versiones esperando dictamen"
-espera = { textos = ["Aprobar una versión", "No hay versiones esperando dictamen."] }
+# 0d3e3cc5: el vacío es un título sin punto final (paginas/aprobar/index.tsx).
+espera = { textos = ["Aprobar una versión", "No hay versiones esperando dictamen"] }
 
 [[pantalla]]
 # B1-10 (2026-11-26): el Presupuesto abre la grilla nueva; esta fila mira que la grilla, su frase y la fila de alta
@@ -295,7 +308,8 @@ pasos = [
   { accion = "esperar", texto = "Paquete listo" },
   { accion = "pulsar", nombre = "Descargar el paquete", descarga = "paquete" },
 ]
-espera = { texto = "Paquete listo y firmado.", descarga = "paquete", huella = true }
+# bd826757: el aviso es un título sin punto final (paginas/entregar/index.tsx).
+espera = { texto = "Paquete listo y firmado", descarga = "paquete", huella = true }
 
 [[pantalla]]
 ruta = "actualizacion"
@@ -306,7 +320,8 @@ pasos = [
   { accion = "elegir", rotulo = "Presupuesto base", opcion = "DEMO-001" },
   { accion = "llenar", rotulo = "Código de la versión nueva", valor = "FUN-02" },
   { accion = "subir", zona = "Suelte aquí la lista de precios", archivo = "lista_precios" },
-  { accion = "pulsar", nombre = "Revalorar presupuesto" },
+  # G2 (6a21b6a1): el botón es «Actualizar precios del presupuesto» (paginas/actualizacion/index.tsx).
+  { accion = "pulsar", nombre = "Actualizar precios del presupuesto" },
 ]
 espera = { textos = ["Comparativo por partida", "Informe de auditoría de la versión nueva"] }
 
@@ -320,13 +335,14 @@ pasos = [
   { accion = "elegir", rotulo = "Versión del contrato", opcion = "001" },
   { accion = "llenar", rotulo = "Inicio del contrato", valor = "2026-01-15" },
   { accion = "llenar", rotulo = "Duración (meses)", valor = "24" },
-  { accion = "llenar", rotulo = "El primer año corre desde", valor = "2026-01-15" },
+  # 720a3e8e (claridad) y 0fd177d3: rótulos llanos en la cláusula (paginas/reajuste/index.tsx).
+  { accion = "llenar", rotulo = "Inicio del primer año de obra", valor = "2026-01-15" },
   { accion = "llenar", rotulo = "Mes base de los índices", valor = "2026-01-01" },
   { accion = "elegir", rotulo = "Periodicidad", opcion = "mensual" },
-  { accion = "elegir", rotulo = "Mecanismo", opcion = "ambos" },
-  { accion = "elegir", rotulo = "Estructura", opcion = "declarada" },
-  { accion = "llenar", rotulo = "R (fracción no reajustable)", valor = "0,10" },
-  { accion = "llenar", rotulo = "Fuente de R", valor = "memoria" },
+  { accion = "elegir", rotulo = "Método de reajuste", opcion = "Comparar ambos métodos" },
+  { accion = "elegir", rotulo = "Pesos de materiales, equipos y mano de obra", opcion = "Pesos fijos del contrato" },
+  { accion = "llenar", rotulo = "Parte del contrato que no se reajusta (R)", valor = "0,10" },
+  { accion = "llenar", rotulo = "Cláusula o documento que fija la parte que no se reajusta (R)", valor = "memoria" },
   { accion = "llenar", rotulo = "Fuente de la cláusula", valor = "contrato ficticio" },
   { accion = "llenar", rotulo = "Responsable", valor = "Ing." },
   { accion = "llenar", rotulo = "Serie, Componentes fila 1", valor = "FIC-MAT" },
@@ -347,7 +363,8 @@ pasos = [
   { accion = "llenar", rotulo = "Fuente, Ejecutado fila 1", valor = "AV-01" },
   { accion = "pulsar", nombre = "Calcular" },
 ]
-espera = { texto = "Escalatoria y comprobación, lado a lado" }
+# El resultado se rotula «Resultado: escalatoria frente a comprobación directa» (paginas/reajuste/index.tsx, ETIQUETA_RESULTADO).
+espera = { texto = "Resultado: escalatoria frente a comprobación directa" }
 
 [[pantalla]]
 ruta = "control"
@@ -356,8 +373,9 @@ carpeta = "obra_control.db"
 proyecto = "OBRA-GENERADA"
 accion = "cambiar un parámetro de control con su fuente -> «1 parámetro(s) cambiado(s)» y el valor nuevo en la tabla"
 pasos = [
-  { accion = "elegir", rotulo = "Parámetro a cambiar", opcion = "Umbral de SPI para error" },
-  { accion = "llenar", rotulo = "Nuevo valor de Umbral de SPI para error", valor = "0,85" },
+  # e52b5d1d: el umbral se llama «SPI mínimo antes de marcar «Error»» (paginas/control/PestanaLineaBase.tsx).
+  { accion = "elegir", rotulo = "Parámetro a cambiar", opcion = "SPI mínimo antes de marcar «Error»" },
+  { accion = "llenar", rotulo = "Nuevo valor de SPI mínimo antes de marcar «Error»", valor = "0,85" },
   { accion = "llenar", rotulo = "Fuente del cambio de parámetros", valor = "Acta ficticia AF-01" },
   { accion = "pulsar", nombre = "Guardar parámetros" },
 ]
@@ -477,7 +495,9 @@ accion = "abrir el libro ficticio de la empresa -> hoja con sus hallazgos"
 pasos = [
   { accion = "subir", zona = "Suelte aquí el libro .xlsx de la empresa", archivo = "libro_limpio" },
 ]
-espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (2)", "Total general"] }
+# 79ceaf74: las reglas que no aplicaron (R2 y R7 en este libro) van aparte, fuera de la cuenta de hallazgos
+# (visor/ListaHallazgos.tsx): el libro limpio da «Hallazgos (0)».
+espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (0)", "Reglas que no aplicaron a este libro (2)", "Total general"] }
 
 [[pantalla]]
 ruta = "historial"

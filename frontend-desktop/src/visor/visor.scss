@@ -19,7 +19,7 @@ body {
   box-sizing: border-box;
   inline-size: 100%;
   max-inline-size: 100vw;
-  block-size: calc(100vh - 3rem);
+  block-size: var(--silice-alto-util, calc(100vh - 3rem));
   min-block-size: 0;
 }
 
@@ -569,7 +569,7 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  block-size: calc(100vh - 3rem);
+  block-size: var(--silice-alto-util, calc(100vh - 3rem));
   min-block-size: 0;
 
   > h1 {

@@ -76,6 +76,15 @@ def test_por_omision_mide_los_tres_anchos_de_la_pasada_y_las_tres_letras() -> No
     assert not args.funcional and not args.umbrales
 
 
+def test_el_modo_funcional_usa_el_alto_del_portatil_salvo_que_se_pida_otro() -> None:
+    # 768 px es el alto del portátil de la empresa; `--alto` sirve para mirar detrás de un defecto
+    # que solo se da con ventanas bajas, sin cambiar lo que se mide por omisión.
+    assert analizador().parse_args(["--salida", "x", "--funcional"]).alto == 768
+    assert analizador().parse_args(["--salida", "x", "--funcional", "--alto", "1080"]).alto == 1080
+    with pytest.raises(SystemExit):
+        analizador().parse_args(["--salida", "x", "--alto", "0"])
+
+
 @pytest.mark.parametrize("retirada", ["--sidebar", "--especiales"])
 def test_las_opciones_del_menu_de_modulos_ya_no_existen(retirada: str) -> None:
     # `--sidebar` medía el sidebar de módulos y `--especiales`, el selector de obra y el diálogo
@@ -253,37 +262,69 @@ def test_la_pantalla_de_cada_enlace(enlace: str, id_: str | None) -> None:
     assert pagina_de_la_ruta(enlace) == id_
 
 
-# --------------------------- cómo llega una persona (F6) ----------------------------------------
+# --------------------------- cómo llega una persona (F6, C3-C5, B1-10) ---------------------------
 #
 # Cada paso: dónde se pulsa («lateral», la barra lateral; «cuenta», el botón de la cuenta de la
-# barra de arriba; «barra», una barra de pestañas del espacio, con su nombre accesible) y el texto
-# del enlace. «obra» en la barra lateral es la obra elegida para el recorrido.
+# barra de arriba; «barra», una barra de enlaces, con su nombre accesible; «portada», el nombre de
+# la obra en su barra, que lleva a la portada; «menu», un menú de botón con su opción) y el texto
+# del enlace. «obra» en la barra lateral es la obra elegida para el recorrido, que desde B1-10 abre
+# en el Presupuesto (ficha de B1, D1). Dentro de la obra, la barra de dos filas de la cara «Papel y
+# resaltador» (especificación 2026-11-26): fila 1, «Herramientas de la obra» (Presupuestar,
+# Auditar, Anticipar); fila 2, «Opciones de <herramienta>»; Versiones, en el menú «Versión».
+
+_OBRA = {"donde": "lateral", "nombre": "obra"}
+_PRESUPUESTAR = "Opciones de Presupuestar"
+
+
+def _herramienta(nombre: str) -> dict[str, str]:
+    return {"donde": "barra", "barra": "Herramientas de la obra", "nombre": nombre}
+
+
+def _opcion(barra: str, nombre: str) -> dict[str, str]:
+    return {"donde": "barra", "barra": barra, "nombre": nombre}
+
 
 CAMINOS = {
-    "inicio": [{"donde": "lateral", "nombre": "Vista general"}],
-    "obras": [{"donde": "lateral", "nombre": "obra"}],
-    "hoja": [
-        {"donde": "lateral", "nombre": "obra"},
-        {"donde": "barra", "barra": "Secciones de la obra", "nombre": "Presupuesto"},
-    ],
-    "componer": [
-        {"donde": "lateral", "nombre": "obra"},
-        {"donde": "barra", "barra": "Secciones de la obra", "nombre": "Presupuesto"},
-        {"donde": "barra", "barra": "Vistas de Presupuesto", "nombre": "Componer"},
-    ],
+    "inicio": [{"donde": "lateral", "nombre": "Inicio"}],
+    # La obra abre en el Presupuesto: no hace falta otro clic.
+    "hoja": [_OBRA],
+    "obras": [_OBRA, {"donde": "portada", "nombre": "Portada de la obra"}],
     "tablero": [
-        {"donde": "lateral", "nombre": "obra"},
-        {"donde": "barra", "barra": "Vistas de Resumen", "nombre": "Tablero"},
+        _OBRA,
+        {"donde": "portada", "nombre": "Portada de la obra"},
+        _opcion("Opciones de la portada", "Tablero"),
     ],
+    "componer": [_OBRA, _opcion(_PRESUPUESTAR, "Componer un APU")],
+    "hoja_pestanas": [_OBRA, _opcion(_PRESUPUESTAR, "Espacio, plan y ajustes")],
+    "tramos": [_OBRA, _opcion(_PRESUPUESTAR, "Tramos de la vía")],
+    "archivos": [_OBRA, _opcion(_PRESUPUESTAR, "Plano o cómputo")],
+    "mercado": [_OBRA, _opcion(_PRESUPUESTAR, "Precios de mercado")],
+    # «Actualizar precios» no es opción de la segunda fila: Mercado conserva su barra de vistas.
+    "actualizacion": [
+        _OBRA,
+        _opcion(_PRESUPUESTAR, "Precios de mercado"),
+        _opcion("Vistas de Mercado", "Actualizar precios"),
+    ],
+    "versiones": [_OBRA, {"donde": "menu", "menu": "Versión", "nombre": "Versiones"}],
+    "aprobar": [_OBRA, _herramienta("Auditar")],
+    "revisar": [
+        _OBRA,
+        _herramienta("Auditar"),
+        _opcion("Opciones de Auditar", "Revisar un paquete"),
+    ],
+    "entregar": [_OBRA, _herramienta("Auditar"), _opcion("Opciones de Auditar", "Entregar")],
+    "control": [_OBRA, _herramienta("Anticipar")],
     "reajuste": [
-        {"donde": "lateral", "nombre": "obra"},
-        {"donde": "barra", "barra": "Secciones de la obra", "nombre": "Control de obra"},
-        {"donde": "barra", "barra": "Vistas de Control de obra", "nombre": "Reajuste"},
+        _OBRA,
+        _herramienta("Anticipar"),
+        _opcion("Opciones de Anticipar", "Reajuste de precios"),
     ],
-    "riesgo": [
-        {"donde": "lateral", "nombre": "obra"},
-        {"donde": "barra", "barra": "Secciones de la obra", "nombre": "Riesgo"},
+    "escenarios": [
+        _OBRA,
+        _herramienta("Anticipar"),
+        _opcion("Opciones de Anticipar", "Escenarios"),
     ],
+    "riesgo": [_OBRA, _herramienta("Anticipar"), _opcion("Opciones de Anticipar", "Riesgo")],
     "costos": [
         {"donde": "lateral", "nombre": "Costos de producción"},
         {"donde": "barra", "barra": "Costos de producción", "nombre": "Costos del período"},
@@ -326,10 +367,32 @@ def test_toda_pantalla_del_registro_tiene_camino_y_ninguno_pasa_por_el_menu_reti
     for r in rutas_de_la_interfaz():
         camino = camino_por_el_marco(r["id"])
         assert camino, r["id"]
-        assert {p["donde"] for p in camino} <= {"lateral", "cuenta", "barra"}, r["id"]
+        assert {p["donde"] for p in camino} <= {"lateral", "cuenta", "barra", "portada", "menu"}
         assert not any("Sílice" == p["nombre"] for p in camino), r["id"]
+        # La barra de la obra de antes de C4 ya no existe.
+        assert not any(p.get("barra") == "Secciones de la obra" for p in camino), r["id"]
     with pytest.raises(ValueError):
         camino_por_el_marco("pendientes")
+
+
+def test_la_obra_abre_en_el_presupuesto() -> None:
+    # B1-10 (D1 de la ficha de B1, 2026-11-26): la barra lateral y el buscador abren la obra en el
+    # Presupuesto, la pantalla «hoja».
+    from scripts.recorrido_ux_playwright import pagina_de_entrada_de_la_obra, ruta_de_entrada
+
+    assert pagina_de_entrada_de_la_obra() == "hoja"
+    assert ruta_de_entrada(("demo.db", 2)) == "#/obra/demo.db/2/presupuesto"
+    assert ruta_de_entrada((None, 7)) == "#/obra/empresa/7/presupuesto"
+
+
+def test_cada_rotulo_que_busca_el_recorrido_esta_escrito_en_su_fuente() -> None:
+    # Los nombres accesibles de las barras viven en el JSX, no en una tabla: si alguien los cambia,
+    # el recorrido deja de encontrarlos. Esta prueba lo dice antes que el navegador.
+    from scripts.recorrido_ux_playwright import RAIZ, ROTULOS_DEL_MARCO
+
+    marco = RAIZ / "frontend-desktop" / "src" / "marco"
+    for _clave, (texto, archivo) in ROTULOS_DEL_MARCO.items():
+        assert texto in (marco / archivo).read_text(encoding="utf-8"), (texto, archivo)
 
 
 # --------------------------- la obra del recorrido -----------------------------------------------
@@ -923,3 +986,48 @@ def test_una_pantalla_que_el_marco_no_ofrece_al_rol_no_lleva_veredicto_de_carga(
     informe = informe_de_carga(filas)
     assert "| Componer (`componer`) | — | — | — | — | no ofrecida al rol |" in informe.splitlines()
     assert "bien: 1 · revisar: 0 · falla: 0 · sin medida: 0 · no ofrecida al rol: 1" in informe
+
+
+# --------------------------- el marco no se sale de la ventana (2026-11-27) ----------------------
+
+
+def test_el_marco_quieto_no_es_desborde() -> None:
+    from scripts.recorrido_ux_playwright import desborde_del_marco
+
+    marco = {"documento_alto": 768, "ventana_alto": 768, "scroll_y": 0, "marco_scroll": 0}
+    assert desborde_del_marco(marco) is None
+    # Medio píxel de redondeo no es desborde; sin medida (la página no contestó) tampoco.
+    assert desborde_del_marco({**marco, "documento_alto": 769}) is None
+    assert desborde_del_marco(None) is None
+
+
+def test_un_documento_mas_alto_que_la_ventana_o_corrido_es_desborde() -> None:
+    # Lo que se vio en reajuste, escenarios y revisar: el documento medía 1123 px en una ventana
+    # de 768 y el `focus()` lo había corrido 56 px, con la barra lateral y el contenido corridos.
+    from scripts.recorrido_ux_playwright import desborde_del_marco
+
+    marco = {"documento_alto": 1123, "ventana_alto": 768, "scroll_y": 56, "marco_scroll": 0}
+    dicho = desborde_del_marco(marco)
+    assert dicho is not None
+    assert "1123" in dicho
+    assert "768" in dicho
+    assert "56" in dicho
+    assert desborde_del_marco({**marco, "documento_alto": 768, "scroll_y": 0, "marco_scroll": 30})
+
+
+def test_las_filas_citan_el_rotulo_de_hoy_de_crear_la_obra_y_del_resultado_del_reajuste() -> None:
+    # Dos filas fallaban por un texto de antes: «Crear obra» (hoy «Crear la obra») y el resultado
+    # del reajuste.
+    from scripts.recorrido_ux_playwright import ACCIONES_TOML, RAIZ, cargar_filas_funcionales
+
+    src = RAIZ / "frontend-desktop" / "src"
+    filas = {f["ruta"]: f for f in cargar_filas_funcionales(ACCIONES_TOML)["pantalla"]}
+    crear = [p["nombre"] for p in filas["obras"]["pasos"] if p["accion"] == "pulsar"][-1]
+    assert crear == "Crear la obra"
+    assert f'"{crear}"' in (src / "shell" / "obras" / "DialogoNuevaObra.tsx").read_text(
+        encoding="utf-8"
+    )
+    resultado = filas["reajuste"]["espera"]["texto"]
+    assert f'"{resultado}"' in (src / "paginas" / "reajuste" / "index.tsx").read_text(
+        encoding="utf-8"
+    )
