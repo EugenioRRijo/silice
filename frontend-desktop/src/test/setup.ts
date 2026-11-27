@@ -32,6 +32,16 @@ if (!window.matchMedia) {
   });
 }
 
+// Respaldo solo para pruebas: jsdom no implementa `transform.baseVal` de SVG y d3 (dentro de Carbon Charts) lo lee al
+// animar ejes y barras (`transform.baseVal.consolidate()`); sin esto, cada gráfico deja errores no atrapados. `null`
+// es «sin transformación», lo mismo que d3 hace con un atributo vacío. El navegador real sí lo implementa.
+if (typeof SVGElement !== "undefined" && !("transform" in SVGElement.prototype)) {
+  Object.defineProperty(SVGElement.prototype, "transform", {
+    configurable: true,
+    get: () => ({ baseVal: { consolidate: () => null } }),
+  });
+}
+
 // Respaldo solo para pruebas: jsdom no implementa showModal; el navegador real sí.
 if (typeof HTMLDialogElement !== "undefined" && !HTMLDialogElement.prototype.showModal) {
   const ENFOCABLES =

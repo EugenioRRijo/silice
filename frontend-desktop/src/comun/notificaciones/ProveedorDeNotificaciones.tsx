@@ -107,6 +107,10 @@ interface CargaInicialSincrona {
 function leerInicial(almacen: AlmacenDeNotificaciones, instante: Date): CargaInicialSincrona {
   const respuesta = almacen.cargar();
   if (esPromesa(respuesta)) {
+    // El inicializador de useState puede correr dos veces (modo estricto) y una de las promesas queda sin consumir: se
+    // marca atendida aquí para que un fallo de carga (sin red, 401) no quede como rechazo sin atrapar. El efecto sigue
+    // leyendo esta misma promesa con su propio catch.
+    respuesta.catch(() => {});
     return { vigentes: [], recortadas: false, pendienteAsync: respuesta };
   }
   const vigentes = ordenarPorFechaDescendente(descartarVencidas(respuesta, instante));
