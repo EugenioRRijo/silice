@@ -233,7 +233,17 @@ accion = "(solo lectura) abrir Aprobar una versión sin envíos pendientes -> di
 espera = { textos = ["Aprobar una versión", "No hay versiones esperando dictamen."] }
 
 [[pantalla]]
+# B1-10 (2026-11-26): el Presupuesto abre la grilla nueva; esta fila mira que la grilla, su frase y la fila de alta
+# estén. La de las pestañas viejas («Ajustes de costo») es la de «hoja_pestanas», más abajo.
 ruta = "hoja"
+cuenta = "ana"
+carpeta = "demo.db"
+proyecto = "Sílice: caso de demostracion"
+accion = "(solo lectura) abrir el Presupuesto -> la grilla con su frase de respuesta y la fila de alta"
+espera = { textos = ["El presupuesto suma", "Agregar al presupuesto"] }
+
+[[pantalla]]
+ruta = "hoja_pestanas"
 cuenta = "ana"
 carpeta = "demo.db"
 proyecto = "Sílice: caso de demostracion"

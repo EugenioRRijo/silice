@@ -91,7 +91,7 @@ def test_cada_ruta_se_lee_del_registro() -> None:
     from scripts.recorrido_ux_playwright import rutas_de_la_interfaz
 
     rutas = {r["id"]: r for r in rutas_de_la_interfaz()}
-    assert len(rutas) == 32
+    assert len(rutas) == 33  # B1-10: «hoja_pestanas», la vista por pestañas de antes
     assert rutas["inicio"]["titulo"] == "Vista general"
     assert rutas["inicio"]["accion"] is None
     assert rutas["hoja"]["titulo"] == "Presupuesto"
@@ -105,12 +105,13 @@ def test_cada_ruta_se_lee_del_registro() -> None:
     assert all("area" not in r for r in rutas.values())
 
 
-# Sin obra: las 16 pantallas de la obra van a su dirección corta, que el marco lleva a la obra de la
+# Sin obra: las 17 pantallas de la obra van a su dirección corta, que el marco lleva a la obra de la
 # sesión (contrato §2.4, que se queda tras F8); las demás, a su espacio, a la Cuenta o a Inicio.
 RUTAS_SIN_OBRA = {
     "obras": "/obras",
     "tablero": "/tablero",
     "hoja": "/hoja",
+    "hoja_pestanas": "/hoja_pestanas",
     "componer": "/componer",
     "tramos": "/tramos",
     "archivos": "/archivos",
@@ -147,6 +148,7 @@ RUTAS_DE_OBRA = {
     "obras": "resumen",
     "tablero": "resumen/tablero",
     "hoja": "presupuesto",
+    "hoja_pestanas": "presupuesto/pestanas",
     "componer": "presupuesto/componer",
     "tramos": "tramos",
     "archivos": "archivos",
