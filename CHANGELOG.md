@@ -7,6 +7,52 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Cambiado
+- **Cara «Papel y resaltador», modo claro y oscuro y botones «contorno de papel»** (2026-11-26; decisiones de Eugenio).
+  Toda la interfaz adopta la paleta «Papel y resaltador» en modo claro y modo oscuro (`tokens.scss` con `light-dark()` y
+  Carbon sobre los tokens nuevos) y las letras empaquetadas Instrument Sans y Newsreader (sin IBM Plex). En **Cuenta ›
+  «Configuración»**, el selector **«Apariencia»** deja elegir entre «Claro», «Oscuro» y «Como el sistema (ahora …)», sin
+  parpadeo al cargar y sin cambiar los PDF ni el Excel que se entregan. Los botones pasan al estilo «contorno de papel»
+  (escala 28/32/40, foco dorado visible con teclado y «Nueva obra» en amarillo) y los botones inactivos siguen accesibles
+  con Tab y explican por qué no se pueden pulsar.
+- **Marco renovado: barra lateral de lugares, barra de la obra en dos filas e Inicio con la cartera** (2026-11-26;
+  aclaración y pedido de Eugenio). La barra superior queda como una franja fina con la marca, la carpeta activa, el botón
+  amarillo «Nueva obra», el buscador (`Ctrl+K`) y la cuenta. La barra lateral muestra los lugares —«Espacios de la
+  empresa» (Inicio y «Costos y producción»), todas las «Obras» con sus pendientes, el bloque «En cifras» y la «Carpeta
+  abierta»— y se puede reducir a una columna de iconos (`Ctrl+B`). Dentro de cada obra, la barra en dos filas pone arriba
+  el nombre hacia la «Portada de la obra», las herramientas **«Presupuestar»**, **«Auditar»** y **«Anticipar»** y el menú
+  **«Versión»**, y en la segunda fila las opciones de la herramienta abierta. **Inicio** muestra el resumen de la cartera
+  por moneda (sin sumar Bs con USD), el avance, los problemas por obra y lo cargado; el diálogo **«Nueva obra»**
+  («Componer la obra») agrupa «Datos de la obra», «Cómo empezar» (en blanco o desde un cómputo en Excel) y «Dónde se
+  guarda».
+- **Presupuesto nuevo en una sola grilla editable** (2026-11-26/27; ficha B1). Abrir una obra desde la barra lateral o el
+  buscador lleva directo al Presupuesto, ahora en una sola superficie sin pestañas con su «¿Qué es esto?» y la frase de
+  respuesta en es-VE encima de la tabla. La cabecera fija mantiene a la vista **«Total sin IVA»** (con el valor exacto en
+  el desplegable, sin `title`), **«Con IVA (16 %)»**, **«Problemas (n)»**, el único botón principal del paso y el menú
+  **«Más acciones»** («Subtotales por frente» en panel lateral, «Descargar Excel», «Descargar PDF», «Traer un plano o
+  cómputo», «Espacio, plan y ajustes» y «Descartar cambios» con confirmación). La grilla se navega y edita como Excel
+  (una parada de Tab, flechas, Enter/F2 para editar cantidades en celda, Esc para restaurar, errores 422 sin borrar lo
+  escrito y recarga ante 409). Abrir una fila despliega el inspector acoplado de la partida (cómo se midió, «Volver a la
+  calculada», montos exactos, objetivo de mercado, APU editable y «Quitar del presupuesto» con diálogo de confirmación);
+  **«Problemas (n)»** abre los hallazgos agrupados por regla con severidad en palabra y «Ir a la partida». Debajo de la
+  grilla vive la fila de alta en línea (búsqueda en catálogo, «Buscar parecidas», «Crear la partida «…»» que abre Componer
+  y vuelve con el foco en Cantidad, y el pliegue «Cálculo y nota (opcional)»). Las pestañas de antes siguen en la subvista
+  **«Espacio, plan y ajustes»**.
+- **Auditar un libro en un solo flujo con «Qué hacer»** (2026-11-27; ficha B2). La pantalla **«Auditar un libro»** reúne
+  la auditoría de un Excel en una sola página de tres pasos —1 «Suba el libro», 2 qué se encontró y 3 «Conclusión y
+  entrega»— sin saltar de pantalla ni duplicar filas en el historial. Se retira «Auditar por mi cuenta» y queda un único
+  botón principal, **«Auditar el libro»**; la «Fecha de la revisión» y «Auditar con recorrido guiado» pasan a **«Más
+  opciones»**, y el libro con un APU por hoja al pliegue «Otro tipo de libro: un APU por hoja». El resultado muestra
+  primero las causas raíz de varios casos, luego los hallazgos uno por uno, las reglas no aplicables plegadas y la sección
+  nueva **«Alertas de precio»** (sin fuente, base de la empresa, otra versión y USD-Bs, con las no contrastables
+  agrupadas). Cada hallazgo y alerta ofrece el botón plegado **«Qué hacer»** (servido por `GET /v1/libros/que-hacer` desde
+  `aplicacion/que_hacer.py`, fuera de los archivos sellados y de `core/`), también disponible en el detalle del «Historial
+  de auditorías». En la conclusión, **«Descargar el informe en PDF»** es el principal cuando hay hallazgos y **«Ver la
+  hoja marcada»** pide la réplica al pulsar sin auditar otra vez.
+- **Gráficos renovados con detalles y tabla alternativa** (2026-11-26; pedido de Eugenio: «mejorar la presentacion de los
+  graficos existentes difenreciando y mostrando detalles a lo largo del grafico»). Control, Riesgo, Inicio, Mercado,
+  Escenarios y Producción adoptan la paleta validada para claro y oscuro con color fijo por serie, rejilla recesiva,
+  títulos con unidad, cifras en es-VE, rótulos selectivos (corte y trazos distintos en Control; P10, P50, P80 y P90 en
+  Riesgo), pequeños múltiplos por moneda en Producción (sin doble eje) y la vista **«Ver como tabla»**.
 - **Pruebas en paralelo y repartidas** (2026-11-24; regla de Eugenio). La suite corre con `pytest-xdist` (`-n auto --dist
   loadfile`); en la CI, Ubuntu la corre entera con la cobertura y Windows sin cobertura en 4 máquinas a la vez
   (`SILICE_TROZO=k/N`, `tests/fixtures/trozos.py`: cada prueba cae en un solo trozo y las de los demás salen
@@ -46,6 +92,15 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   lectores de pantalla. Backlog de UX en `docs/planes/2026-11-22-backlog-ux.md`.
 
 ### Corregido
+- **Accesibilidad, contraste del foco a 3:1 en claro y oscuro y movimiento reducido** (2026-11-26; decisión de Eugenio
+  sobre la guía de movimiento). Los tokens de la capa editorial anterior pasan a leer de la cara nueva con `light-dark()`
+  para que el modo oscuro alcance toda la interfaz con contraste AA medido. El foco del teclado usa el token nuevo
+  `--silice-foco` (`light-dark(#8A6A00, #C9A227)`) en todos los anillos de foco y en `--cds-focus`, pasando de
+  2,0–2,3:1 a 4,2–4,9:1 en claro y 6,0–7,8:1 en oscuro (por encima del 3:1 de WCAG 1.4.11). Con movimiento reducido se
+  conservan las transiciones de color y el indicador de carga gira a 8 s en vez de congelarse. Además se montó el
+  anunciador centralizado de la aplicación, se retiraron las fechas ISO en `title` en la tabla de Actividad, se corrigió
+  una llave huérfana en `BarraSuperior.scss` (con prueba de compilación de todas las hojas `.scss`) y se eliminaron los
+  rechazos de promesas sin atrapar al cargar notificaciones y gráficos.
 - **Tres huecos de reglas que halló la medición una falla por vez, cerrados antes del congelamiento** (2026-11-24;
   `docs/bitacora/2026-11-24-huecos-de-reglas-antes-del-congelamiento.md`). L1 avisa del BUSCARV que busca el código de
   otra fila; L4 avisa del costo directo que deja fuera un componente que hoy vale 0; L5 avisa de las celdas de un APU,
@@ -64,6 +119,43 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   como otra cifra. El experimento se re-congeló con acta (`docs/bitacora/2026-11-22-recongelado-experimento-3.md`).
 
 ### Agregado
+- **Registro con código de 20 caracteres** (2026-11-26/27; decisión de Eugenio: «creo que sera mejor que se registrara con
+  su nombre y contraseña y al correo le llegue un codigo de 20 letras para que se convierta en constructor o revisor»).
+  En la pantalla de entrada, **«Crear una cuenta»** registra una solicitud (`POST /v1/solicitudes`, tabla
+  `solicitud_cuenta` y columna `usuario.correo`, migraciones `ins_0013` e `ins_0016`) sin crear todavía cuenta ni sesión.
+  Quien administra ve las **«Solicitudes»** en **Cuenta › «Cuentas y permisos»**, elige el papel («Arma presupuestos» o
+  «Revisa») y pulsa **«Aprobar y generar el código»** (o **«Rechazar»** con confirmación): el código único de 20
+  caracteres (5 grupos de 4, vence en 7 días, guardado solo como SHA-256) se muestra una sola vez con **«Copiar el
+  código»** y **«Enviarlo por correo»** (`mailto:` local, sin salida de red). La persona activa su cuenta y abre sesión
+  desde **«Tengo un código»** (`POST /v1/solicitudes/canjear`). Se cerraron además los cinco hallazgos bajos de la
+  revisión de seguridad pedidos por Eugenio: cupo en memoria por equipo (IPv6 `/64`) antes de Argon2, comprobación al
+  canjear de que quien aprobó siga activo y administre cuentas, rastro en eventos al reutilizar una solicitud, verificación
+  previa de `Origin` antes de leer el cuerpo y `GET /v1/solicitudes` sin escrituras.
+- **Notificaciones en la campanita, avisos por evento, preferencias y fecha de entrega al cliente** (2026-11-26/27;
+  decisiones de Eugenio: «las notificaciones esten al menos 3 minitos como notificacion de marcador y se guarden en una
+  campanita abajo a la derecha como lo tiene visual studio code y se abre un side bar a la derecha», categorías por evento
+  acordadas y «la fecha de entrega al cliente en las notificaciones»). Una barra de estado inferior muestra la carpeta
+  abierta y la campanita con el contador de avisos sin leer; las tarjetas emergentes duran 3 minutos para listo e
+  información (se pausan con el ratón, el foco o un diálogo abierto) y permanecen hasta cerrarse para advertencia y error.
+  El panel lateral **«Notificaciones»** agrupa por «Hoy», «Ayer» y fecha, filtra por «Todas» y «Sin leer», permite «Marcar
+  todas como leídas» y guarda los avisos por persona durante 30 días (máximo 200, tabla `notificacion`, `ins_0014`, rutas
+  `GET/POST /v1/notificaciones` y `POST /v1/notificaciones/leidas`, solo enlaces internos). Las acciones clave (guardar
+  versión, enviar a aprobación, dictaminar, entregar al cliente, restaurar, cargar listas o referencia de precios y
+  revalorar) confirman en la campanita; además, el servidor crea avisos por evento (`ins_0015`, una vez por clave y sin
+  avisar a quien hizo la acción ni afectar la operación avisada) en cinco categorías: **«Versiones por dictaminar»** (con
+  recordatorio a los 2 días hábiles, obligatoria para quien revisa), **«Dictamen de sus versiones»**, **«Compras por
+  pedir»**, **«Listas de precios nuevas»** y **«Entregas al cliente»** (advertencia desde 3 días hábiles antes y error
+  desde el día). Cada persona elige qué recibir en **Cuenta › «Notificaciones»** (`GET/PUT /v1/notificaciones/preferencias`).
+  El campo opcional **«Fecha de entrega al cliente»** (escrito a mano en `dd/mm/aaaa`, rechaza fechas pasadas antes de
+  crear la obra) vive en «Nueva obra» y en el «Resumen» (`entrega_de_obra` en `caso_0025`,
+  `GET/PUT /v1/obras/{codigo}/entrega`).
+- **Actividad por persona al estilo de GitHub y filtro «Por persona»** (2026-11-26; decisión de Eugenio: «el reporte puede
+  ser como lo hace github en su pagina web»). La nueva pantalla **Cuenta › Actividad** (`GET /v1/actividad`, visible para
+  la propia cuenta y para quien administra cuentas) reúne versiones guardadas, envíos y dictámenes y auditorías de libros
+  en un calendario anual en una sola tinta, cifras, lista de actividad reciente filtrable y **«Ver como tabla»**, con
+  enlaces «Ver mi actividad» en Configuración y «Ver su actividad» en Cuentas y permisos. **«Versiones»** y **«Historial
+  de auditorías»** incorporan el filtro **«Por persona»** (con contador y estado vacío que nombra el filtro) y enlaces a
+  la actividad desde el nombre de quien guardó, dictaminó o auditó (`GET /v1/auditorias-libro` incluye ahora `usuario`).
 - **Cadena completa de inyección, recálculo y medición** (2026-11-24): `aplicacion/trasplante_valores.py` trasplanta
   únicamente los valores cacheados `<v>` (y su atributo `t`) de las celdas con fórmula desde un `.xlsx` recalculado
   sin alterar estilos ni estructura del libro original; `scripts/medir_inyeccion.py` encadena `inyectar`, recálculo

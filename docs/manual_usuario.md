@@ -16,6 +16,7 @@ Contenido:
 
 1. Qué es Sílice y quién hace qué
 2. Entrar por primera vez
+   - 2.3 Crear una cuenta y el código de 20 caracteres
 3. Moverse por Sílice
 4. Crear una obra y armar su presupuesto
 5. La franja del paso: «Te falta» y «Siguiente paso»
@@ -26,9 +27,10 @@ Contenido:
 10. Obras viales y producción
 11. Control de obra
 12. Auditar un presupuesto
-13. El asistente de IA
-14. Problemas frecuentes
-15. Lo que cambió respecto del manual anterior
+13. Notificaciones
+14. El asistente de IA
+15. Problemas frecuentes
+16. Lo que cambió respecto del manual anterior
 
 ## 1. Qué es Sílice y quién hace qué
 
@@ -71,20 +73,18 @@ Una cuenta puede tener varios papeles. Si alguien trabaja solo, puede ser a la v
 
 ### 1.3 Qué ve cada papel
 
-**En la barra de secciones de cada obra** (la franja de pestañas bajo el nombre de la obra; sección 3.6).
-Algunas secciones tienen además vistas propias, que se eligen con un conmutador pequeño arriba de la
-pantalla:
+**En la barra de cada obra** (en dos filas: herramientas arriba y sus opciones debajo; sección 3.6):
 
 | Sección de la obra | Arma | Revisa | Administra |
 |---|---|---|---|
-| «Resumen» | Sí, con sus vistas «Resumen» y «Tablero» | Sí, con «Resumen» y «Tablero» | No |
-| «Presupuesto» | Sí, y lo edita; vistas «Presupuesto» y «Componer» | Sí, en solo lectura y sin «Componer» | No |
+| «Resumen» (Portada de la obra) | Sí, con «Resumen» y «Tablero» | Sí, con «Resumen» y «Tablero» | No |
+| «Presupuesto» | Sí, y lo edita; opciones «Partidas», «Componer un APU» y «Espacio, plan y ajustes» | Sí, en solo lectura y sin «Componer un APU» | No |
 | «Tramos» (solo con el módulo vial encendido) | Sí | No | No |
-| «Archivos y planos» | Sí, y sube archivos | Sí, en solo lectura | No |
-| «Versiones» | Sí, y restaura | Sí, en solo lectura | No |
-| «Aprobaciones» | Sí; vistas «Aprobar» y «Entregar» | Sí; vistas «Aprobar» y «Revisar un paquete» | No |
-| «Mercado» | Sí; vistas «Estudio» (las cuatro pestañas) y «Actualizar precios» | Sí; solo «Estudio», con «Histórico de precios» y «Cotizaciones de la obra» | No |
-| «Control de obra» | Sí; vistas «Control», «Reajuste» y «Escenarios» | No | No |
+| «Archivos y planos» («Plano o cómputo») | Sí, y sube archivos | Sí, en solo lectura | No |
+| «Versiones» (en el menú «Versión») | Sí, y restaura | Sí, en solo lectura | No |
+| «Aprobaciones» (herramienta «Auditar») | Sí; «Aprobar» y «Entregar» | Sí; «Aprobar» y «Revisar un paquete» | No |
+| «Mercado» («Precios de mercado») | Sí; «Estudio» (las cuatro pestañas) y «Actualizar precios» | Sí; solo «Estudio», con «Histórico de precios» y «Cotizaciones de la obra» | No |
+| «Control de obra» (herramienta «Anticipar») | Sí; «Control de obra», «Reajuste de precios» y «Escenarios» | No | No |
 | «Riesgo» (solo con el módulo de riesgo encendido) | Sí | Sí | No |
 
 Quien solo administra no ve la zona «Obras» de la barra lateral: su trabajo está en «Costos y
@@ -100,7 +100,7 @@ pestañas; cada quien ve solo las pestañas que puede usar:
 
 | Entrada | Pestañas | Arma | Revisa | Administra |
 |---|---|---|---|---|
-| «Auditar un presupuesto» | «Subir y auditar Excel», «Libro de la empresa» e «Historial de auditorías» | Sí, las tres | Sí, las tres | Solo «Subir y auditar Excel», y no puede auditar |
+| «Auditar un presupuesto» | «Subir y auditar Excel» («Auditar un libro»), «Libro de la empresa» e «Historial de auditorías» | Sí, las tres | Sí, las tres | Solo «Subir y auditar Excel», y no puede auditar |
 | «Precios y catálogo» | «Precios de la empresa», «Catálogo de partidas e insumos», «Índices del BCV» y «Simulador de listas» | «Catálogo de partidas e insumos» y «Simulador de listas» | «Catálogo de partidas e insumos» | «Precios de la empresa» e «Índices del BCV» |
 | «Costos de producción» (solo con el módulo de producción encendido) | «Resumen de arenera», «Existencias», «Costos del período», «Costo por tonelada», «Receta de la planta» y «Producir mezcla» | Sí | No | Sí |
 
@@ -110,6 +110,7 @@ pestañas; cada quien ve solo las pestañas que puede usar:
 |---|---|---|---|
 | «Configuración» | Sí | Sí | Sí |
 | «Contraseña» | Sí | Sí | Sí |
+| «Notificaciones» | Sí | Sí | Sí |
 | «Cuentas y permisos» | No | No | Sí |
 | «Empresa y tema» | No | No | Sí |
 | «Carpetas» | No | No | Sí |
@@ -124,7 +125,7 @@ que cambian algo. Esos botones no aparecen en gris: simplemente no están. En el
 Cuenta. Si no recuerda dónde está, búsquela por su nombre con Ctrl+K (sección 3.3): por ejemplo
 «Entregar paquete», «Reajuste de precios» o «Riesgo de la obra».
 
-«Simulador de listas» y «Escenarios» desaparecen si la instalación está en modo entrega (sección 14.3).
+«Simulador de listas» y «Escenarios» desaparecen si la instalación está en modo entrega (sección 15.3).
 
 ### 1.4 Los módulos que se encienden y se apagan
 
@@ -134,7 +135,7 @@ encenderla otra vez, todo vuelve como estaba.
 
 Si abre una pantalla de un módulo apagado verá «Apagada» y «Esta función está apagada en esta
 instalación. Quien administra puede encenderla en la Cuenta, sección «Especialidades, IA e
-instalación».». Cómo se encienden: sección 2.7.
+instalación».». Cómo se encienden: sección 2.8.
 
 ## 2. Entrar por primera vez
 
@@ -198,19 +199,61 @@ En «Cambiar una cuenta» el administrador elige la cuenta en «Cuenta que va a 
 Siempre debe quedar un administrador activo. Si no, Sílice dice «Debe quedar al menos un administrador
 activo.».
 
-### 2.3 Entrar cada día
+### 2.3 Crear una cuenta y el código de 20 caracteres
+
+En lugar de que el administrador cree la cuenta a mano con una contraseña temporal, una persona también puede
+pedir su cuenta desde la entrada y activarla con un código de 20 caracteres que aprueba el administrador.
+
+**Paso 1: la persona pide la cuenta.**
+
+1. En la pantalla «Entrar», pulse «Crear una cuenta».
+2. Llene «Nombre», «Correo» (por ejemplo `nombre@empresa.com`), «Usuario» (de 3 a 40 caracteres: letras sin
+   tilde, números, punto o guion), «Contraseña» (de 10 a 128 caracteres, distinta de su usuario) y «Confirme
+   la contraseña».
+3. Pulse «Enviar la solicitud».
+
+Sílice guarda una solicitud (la cuenta aún no existe ni puede entrar) y le avisa que, cuando el administrador
+la apruebe, recibirá un código de 20 caracteres en su correo. Debajo aparecen «Ya tengo el código» y «Volver».
+
+**Paso 2: el administrador aprueba la solicitud y entrega el código.**
+
+1. Abra su Cuenta, sección «Cuentas y permisos». Arriba de la lista de cuentas aparece el bloque «Solicitudes»
+   con «Nombre», «Usuario», «Correo», «Fecha», «Estado» («Pendiente», «Aprobada», «Rechazada», «Usada» o
+   «Vencida») y «Acción».
+2. En la fila de la solicitud, elija el papel en «Papel»: «Arma presupuestos» o «Revisa».
+3. Pulse «Aprobar y generar el código» (o «Rechazar» si no corresponde, y confirme en «Rechazar la solicitud»).
+4. Se abre el diálogo «Código de activación» con un código único de 20 caracteres en 5 grupos de 4 y su fecha
+   de vencimiento (vence a los 7 días). **Este código no se vuelve a mostrar** al pulsar «Cerrar».
+5. Pulse «Copiar el código» para copiarlo al portapapeles, o «Enviarlo por correo» para abrir el programa de
+   correo de su equipo con el mensaje ya preparado (Sílice no sale a la red).
+
+Si el código vence antes de usarse, la solicitud pasa a «Vencida» y el administrador puede volver a aprobarla
+para generar un código nuevo (el anterior deja de valer). Para dar permisos de administrador a una cuenta ya
+activa, use «Cambiar una cuenta» (sección 2.2).
+
+**Paso 3: la persona activa su cuenta.**
+
+1. En la pantalla «Entrar», pulse «Tengo un código» (o «Ya tengo el código» después de enviar su solicitud).
+2. Escriba su «Usuario», la «Contraseña» que eligió al pedir la cuenta y el «Código» de 20 caracteres (en 5
+   grupos de 4, tal como lo recibió).
+3. Pulse «Canjear el código y entrar».
+
+Si los tres datos coinciden y el código sigue vigente, Sílice crea la cuenta con el papel que eligió el
+administrador y abre la sesión de inmediato. El código sirve una sola vez.
+
+### 2.4 Entrar cada día
 
 1. Abra Sílice. Verá la pantalla «Entrar».
 2. Escriba su «Usuario» y su «Contraseña».
 3. Pulse «Entrar».
 
 Si se equivoca, verá «Usuario o contraseña incorrectos.». Tras cinco intentos fallidos la cuenta se
-bloquea 15 minutos (sección 14).
+bloquea 15 minutos (sección 15).
 
 Si la sesión vence mientras trabaja, Sílice vuelve a «Entrar» con el aviso «Su sesión venció. Entre de
 nuevo para seguir.».
 
-### 2.4 La primera entrada con una contraseña temporal
+### 2.5 La primera entrada con una contraseña temporal
 
 Si el administrador le dio una contraseña temporal, al entrar verá «Cambie su contraseña»:
 
@@ -223,7 +266,7 @@ Cuenta, sección «Contraseña» (sección 3.9), o escriba «contraseña» en el
 se cierran las sesiones de su cuenta abiertas en otros navegadores o pestañas; en el que usa seguirá con
 la sesión abierta.
 
-### 2.5 Si el administrador perdió el acceso
+### 2.6 Si el administrador perdió el acceso
 
 En la pantalla «Entrar», pulse «Perdí el acceso de administrador».
 
@@ -237,12 +280,12 @@ En la pantalla «Entrar», pulse «Perdí el acceso de administrador».
 Si el usuario ya existe, recupera su acceso; si no existe, se crea. Para volver sin hacer nada, pulse
 «Volver a Entrar».
 
-### 2.6 Para quien olvidó su contraseña (cuentas que no administran)
+### 2.7 Para quien olvidó su contraseña (cuentas que no administran)
 
 Sílice no recupera contraseñas. Pídale al administrador que use «Restablecer la contraseña» (sección
-2.2). Entrará con la temporal y la cambiará (sección 2.4).
+2.2). Entrará con la temporal y la cambiará (sección 2.5).
 
-### 2.7 Lo que el administrador deja listo
+### 2.8 Lo que el administrador deja listo
 
 Todo está en su Cuenta: pulse el botón con su nombre, arriba a la derecha (sección 3.9). Cada sección
 apila sus bloques, uno debajo del otro:
@@ -257,7 +300,7 @@ apila sus bloques, uno debajo del otro:
 - **«Especialidades, IA e instalación»**:
   - **«Especialidades».** Un interruptor por módulo («Producción», «Vial», «Edificación» y «Riesgo»),
     con «Apagada» o «Encendida».
-  - **«Asistente de IA».** Ver la sección 13.
+  - **«Asistente de IA».** Ver la sección 14.
   - **«Claves de API»**: para conectar otros programas. Se usa poco.
   - **«Instalación».** «Crear respaldo ahora» guarda una copia de todo; se descarga con su botón
     «Descargar … (.zip)». Restaurar un respaldo se explica en el manual de instalación.
@@ -265,44 +308,54 @@ apila sus bloques, uno debajo del otro:
   Aquí se crea una («Crear», con su «Nombre de la carpeta» y su «Moneda de trabajo», que después no se
   cambia), se sube una copiada de otro equipo («Subir un archivo») o se abre la de demostración
   («Demostración»). La pestaña de demostración solo aparece si la cuenta también arma presupuestos.
-- **«Cuentas y permisos»**: las cuentas (sección 2.2) y **«Accesos»**, el registro de entradas.
+- **«Cuentas y permisos»**: las «Solicitudes» de cuenta nueva (sección 2.3), las cuentas (sección 2.2) y
+  **«Accesos»**, el registro de entradas.
 
 El logo y los colores de la empresa no se cambian desde la pantalla: son archivos (`tema.json` y
 `logo.png`) en la carpeta `tema` dentro de la carpeta de datos de Sílice.
 
 ## 3. Moverse por Sílice
 
-La pantalla tiene tres partes: la barra de arriba, la barra lateral a la izquierda y el contenido.
+La pantalla tiene cuatro partes: la barra de arriba, la barra lateral a la izquierda, el contenido en el centro
+y la barra de estado abajo.
 
-### 3.1 La barra de arriba
+### 3.1 La barra de arriba y la barra de estado
 
-De izquierda a derecha:
+De izquierda a derecha, la barra de arriba trae:
 
 1. **El logo de la empresa**, o la palabra «Sílice». Al pulsarlo vuelve a la Vista general (sección 3.4).
-2. **La carpeta activa**: «Carpeta activa: …» con el nombre de la carpeta de trabajo en que está.
-3. **El buscador**: el botón «Buscar una obra, sección o pantalla… (Ctrl+K)».
-4. **Su cuenta**: un círculo con sus iniciales y su nombre. Al pulsarlo se abre su Cuenta (sección 3.9).
+2. **La carpeta activa** («Carpeta activa: …») y dónde está ubicado.
+3. **«Nueva obra»** (el botón amarillo): abre el diálogo para crear una obra nueva (sección 4.1).
+4. **El buscador**: el botón «Buscar una obra, sección o pantalla… (Ctrl+K)».
+5. **Su cuenta**: un círculo con sus iniciales y su nombre. Al pulsarlo se abre su Cuenta (sección 3.9).
    Allí está «Salir de la sesión».
 
 Si está viendo la carpeta de demostración aparece también el botón «Demostración», que avisa «Está viendo
 datos inventados.» y ofrece «Volver a la carpeta de la empresa». Si tiene un recorrido guiado en curso y
 plegó su columna, aparece el botón «Recorrido» para volver a mostrarla (sección 12.4).
 
-La barra de arriba ya no dice dónde está ni tiene el tamaño de letra: cada pantalla dice su nombre en su
-cabecera, y el tamaño de letra está en su Cuenta.
+En el borde inferior está la **barra de estado**, con la carpeta abierta a la izquierda y la **campanita**
+de notificaciones abajo a la derecha (sección 13).
+
+La barra de arriba ya no tiene el tamaño de letra ni el modo de color: ambos están en su Cuenta, sección
+«Configuración».
 
 ### 3.2 La barra lateral
 
-Tiene tres zonas:
+La barra lateral muestra todos los lugares de Sílice:
 
-- **«Vista general»**, con un número: cuántas cosas esperan algo de usted. Lleva a la Vista general
-  (sección 3.4).
-- **«Obras»**: el botón «Nueva obra» y la lista de obras, por nombre. Si dos obras de carpetas distintas
-  se llaman igual, junto al nombre se lee su carpeta. Cada obra con pendientes lleva su número. Al hacer
-  clic en una obra se abre su «Resumen»; sus demás secciones están en la barra de la obra (sección 3.6).
-- **«Costos y producción»**: «Auditar un presupuesto», «Precios y catálogo» y «Costos de producción»
-  (solo las que su papel puede usar; sección 1.3). Cada una abre un espacio con su nombre arriba y sus
-  pestañas debajo.
+- **«Espacios de la empresa»**: «Inicio», con un número de cuántas cosas esperan algo de usted (lleva a la
+  Vista general, sección 3.4), y **«Costos y producción»** («Auditar un presupuesto», «Precios y catálogo» y
+  «Costos de producción», solo las que su papel puede usar; sección 1.3).
+- **«Obras»**: el botón «Nueva obra» y la lista de todas las obras, por nombre. Si dos obras de carpetas
+  distintas se llaman igual, junto al nombre se lee su carpeta. Cada obra con pendientes muestra cuántos tiene
+  y si bloquean o son avisos. Al hacer clic en una obra se abre directamente su **«Presupuesto»**; sus demás
+  herramientas y secciones están en la barra de la obra (sección 3.6).
+- **«En cifras»**: los pendientes que bloquean y los avisos de la obra abierta (o de todas si está en Inicio).
+- **«Carpeta abierta»** al pie, con el enlace «Cambiar» si su cuenta puede cambiar de carpeta.
+
+Puede reducir la barra lateral a una columna de iconos con el botón **«Reducir a iconos»** (arriba de la barra,
+o con **Ctrl+B**) y volver a abrirla con **«Ampliar la barra»**.
 
 Con letra «Grande» o «Muy grande», el grupo «Costos y producción» se pliega para dejarle sitio a las
 obras. Haga clic en «Costos y producción» para desplegarlo. Nada desaparece.
@@ -323,29 +376,23 @@ después busque la pantalla.
 
 ### 3.4 La Vista general
 
-Es la primera pantalla al entrar. Arriba dice «Vista general» y, debajo, hay dos pestañas: «Vista
-general» y «Pendientes» (sección 3.5). La Vista general muestra, en este orden:
+Es la primera pantalla al entrar. Tiene dos pestañas: «Vista general» y «Pendientes» (sección 3.5). La Vista
+general muestra, en orden:
 
-1. **«Lo que requiere atención»**: primero lo que bloquea. Un resumen como «2 bloquean · 3 avisos» y los
-   cinco pendientes más urgentes, cada uno con su urgencia («Bloquea» o «Aviso»), su obra, qué pasa y un
-   enlace al paso que lo resuelve. Debajo, «Ir a la bandeja de pendientes (…)» lleva a todos. Si no hay
-   nada, dice «No tiene pendientes por hacer.».
-2. **«Cartera por moneda»**: un recuadro por moneda, por ejemplo «Obras en Bs» y «Obras en USD», cada
-   uno con «Total vigente», «Obras» y «En ejecución». Los bolívares y los dólares nunca se suman entre
-   sí. Si todavía no hay obras, dice «Aún no hay obras» y, a quien arma, le ofrece «Nueva obra».
-3. **«Obras y avance contra el plan»**: una fila por obra con «Obra», «Estado», «Total» y «Avance
-   ejecutado vs. plan», por ejemplo «Real 40 % · Plan 55 %», con una barra llena para lo real y una
-   barra con borde para lo planificado. Una obra sin avance registrado dice «Sin avance»; una sin
-   versión guardada, «Sin versión» en el total. El nombre de la obra lleva a su Resumen.
-4. **«Últimas auditorías»**: las cinco últimas, con «Archivo», «Tipo», «Fecha» y «Resultado». El enlace
-   «Ir a Auditoría» abre «Auditar un presupuesto».
-5. **«Arenera: lo que requiere atención»**: solo si su cuenta opera la arenera y el módulo de
-   producción está encendido. Muestra los materiales que tienen poco o que dan existencia negativa; si
-   no hay ninguno, dice «Todo sobre el mínimo».
+1. **Resumen de la cartera**: arriba, el total vigente por moneda (los bolívares y los dólares nunca se suman
+   entre sí), cuántas obras están en ejecución y cuántos pendientes bloquean o avisan. Si todavía no hay obras,
+   ofrece «Nueva obra» a quien arma.
+2. **«Empiece aquí»** (solo la primera vez, según su papel; sección 3.10).
+3. **Gráficos de la cartera y avance**: la cartera por moneda, el avance ejecutado contra el plan y la vista
+   «Ver como tabla».
+4. **Problemas por obra**: las obras con pendientes abiertos y el acceso a lo que bloquea. Si no hay ninguno,
+   indica que no hay problemas abiertos.
+5. **Lo cargado**: tarjetas con las últimas auditorías guardadas, la carpeta y su lista de precios, el catálogo
+   de partidas e insumos y, si su cuenta opera la arenera y el módulo de producción está encendido, el estado
+   de existencias.
 
-La pantalla no calcula nada por su cuenta: muestra las cifras que ya guardó Sílice. Quien solo
-administra ve «Lo que requiere atención» y, si opera la arenera, su bloque; la cartera, el avance y las
-auditorías son de quien arma o revisa.
+La pantalla no calcula nada por su cuenta: muestra las cifras que ya guardó Sílice. Quien solo administra ve
+los accesos a los espacios de la empresa que puede usar.
 
 ### 3.5 Pendientes
 
@@ -358,51 +405,47 @@ Ejemplos de pendientes: «VIV-002 espera dictamen», «VIV-001 devuelta: …», 
 «3 hallazgos de error o críticos en VIV-002».
 
 El botón lleva directo a la pantalla del paso. Por ejemplo, un pendiente de «Actualizar precios» abre
-«Mercado» › «Actualizar precios» de esa obra, y uno de «Entregar» abre «Aprobaciones» › «Entregar». Si
-su papel no permite dar ese paso, en lugar del botón se lee «Su cuenta no puede dar este paso.».
+«Mercado» › «Actualizar precios» de esa obra, y uno de «Entregar» abre «Auditar» › «Entregar». Si su papel
+no permite dar ese paso, en lugar del botón se lee «Su cuenta no puede dar este paso.».
 
 Si no hay nada, verá «No tiene pendientes.» y «Cuando una obra necesite algo de usted, aparecerá aquí.».
 Quien solo administra siempre ve esa frase.
 
-### 3.6 La cabecera de la obra y su barra de secciones
+### 3.6 La barra de la obra en dos filas
 
-Al abrir una obra, encima de cada sección aparece una franja con:
+Al abrir una obra, encima del contenido aparece la barra de la obra en dos filas:
 
-- el nombre de la obra;
-- «Estado:» con una de estas palabras: «En elaboración», «En aprobación», «Aprobada», «En ejecución» o
-  «Atrasada» (la única en color);
-- «Versión: V-004», o «Versión abierta: V-003 (la vigente es V-004)» si abrió una versión anterior;
-- debajo, la moneda y la lista de precios de la carpeta, por ejemplo «Moneda: USD · Lista para armar:
-  Lista USD de la carpeta (ficticia) al 01/10/2026».
+- **Primera fila**:
+  - a la izquierda, el nombre de la obra con el rótulo «Portada de la obra» (al pulsarlo abre el «Resumen»);
+  - en el centro, las tres herramientas de la obra: **«Presupuestar»**, **«Auditar»** y **«Anticipar»**;
+  - a la derecha, el menú **«Versión»**, que abre «Versiones», «Pedir aprobación» y «Entregar al cliente».
+- **Segunda fila**: las opciones de la herramienta que tiene abierta:
 
-Justo debajo está la **barra de secciones de la obra**: «Resumen», «Presupuesto», «Tramos», «Archivos y
-planos», «Versiones», «Aprobaciones», «Mercado», «Control de obra» y «Riesgo» (solo las que su papel
-puede usar y cuyos módulos están encendidos; sección 1.3). La sección en la que está queda marcada.
-
-Algunas secciones tienen varias vistas. Entonces, arriba de la pantalla aparece un conmutador pequeño
-con sus nombres:
-
-| Sección | Vistas del conmutador |
+| Herramienta o lugar | Opciones de la segunda fila |
 |---|---|
-| «Resumen» | «Resumen» · «Tablero» |
-| «Presupuesto» | «Presupuesto» · «Componer» |
-| «Aprobaciones» | «Aprobar» · «Revisar un paquete» · «Entregar» |
-| «Mercado» | «Estudio» · «Actualizar precios» |
-| «Control de obra» | «Control» · «Reajuste» · «Escenarios» |
+| Portada de la obra | «Resumen» · «Tablero» |
+| «Presupuestar» | «Partidas» · «Componer un APU» · «Espacio, plan y ajustes» · «Tramos de la vía» · «Plano o cómputo» · «Precios de mercado» |
+| «Auditar» | «Aprobar» · «Revisar un paquete» · «Entregar» |
+| «Anticipar» | «Control de obra» · «Reajuste de precios» · «Escenarios» · «Riesgo» |
 
-Solo ve las vistas que su papel puede usar. Si le queda una sola, el conmutador no aparece. Por ejemplo,
-quien revisa ve en «Aprobaciones» solo «Aprobar» y «Revisar un paquete», y en «Presupuesto» no ve
-conmutador.
+Solo aparecen las herramientas y opciones que su papel puede usar y cuyos módulos están encendidos (sección
+1.3). Dentro de «Precios de mercado» queda un conmutador pequeño arriba para pasar entre «Estudio» y
+«Actualizar precios».
 
-No confunda el conmutador «Presupuesto | Componer» con las pestañas de dentro del Presupuesto
-(«Partidas», «Análisis de precio (APU)» y las demás; sección 4.2): esas siguen igual.
+Debajo de la barra de la obra, una línea informativa indica el estado de la obra («En elaboración», «En
+aprobación», «Aprobada», «En ejecución» o «Atrasada»), la versión abierta, la moneda y la lista para armar de
+la carpeta.
 
 ### 3.7 El Resumen de la obra
 
-La sección «Resumen» muestra la obra de un vistazo:
+Haga clic en el nombre de la obra («Portada de la obra») para abrir «Resumen». Muestra la obra de un vistazo:
 
 - arriba, la franja del paso (sección 5);
-- las cifras «Total», «Avance real contra plan», «Versión de la línea base» (o «Versión vigente» si la obra aún no tiene línea base) y «Etapa»;
+- las cifras «Total», «Avance real contra plan», «Versión del contrato (línea base)» (o «Última versión
+  guardada» si la obra aún no tiene línea base) y «Etapa»;
+- **«Fecha de entrega al cliente»** (opcional, escrita a mano en formato `dd/mm/aaaa`): quien arma puede
+  anotarla o cambiarla y pulsar **«Guardar fecha»** (dejarla vacía la quita). Sílice avisa en las
+  notificaciones desde 3 días hábiles antes (sección 13);
 - «Pendientes de esta obra», cada uno con su botón.
 
 ### 3.8 Salir sin perder trabajo
@@ -411,8 +454,8 @@ Si tiene cambios sin guardar y elige otra obra o una entrada de «Costos y produ
 «Cambios sin guardar». Pulse «Quedarme» para volver, o «Salir» si está seguro. El texto le dice qué pasa
 con los cambios.
 
-Entre «Presupuesto», «Componer», «Archivos y planos» y «Versiones» de la misma obra puede moverse sin
-miedo: comparten el mismo borrador y no preguntan.
+Entre «Partidas», «Componer un APU», «Espacio, plan y ajustes», «Plano o cómputo» y «Versiones» de la misma
+obra puede moverse sin miedo: comparten el mismo borrador y no preguntan.
 
 Si abre otra obra en otra pestaña del navegador, la primera pestaña muestra «Esta obra se abrió en otra
 pestaña». Pulse «Retomar» para seguir allí.
@@ -423,17 +466,24 @@ Pulse el círculo con sus iniciales y su nombre, arriba a la derecha. Se abre su
 su nombre, su usuario y sus papeles, y el botón «Salir de la sesión». Debajo, las secciones que su papel
 puede usar:
 
-- **«Configuración»**, para todas las cuentas. Es el único sitio donde se cambia el tamaño
-  de letra: «Normal», «Grande» o «Muy grande» (100 %, 125 % y 150 %). Una frase de muestra deja ver al
-  instante cómo queda. Sílice recuerda su elección en ese navegador. Debajo, «Datos de la cuenta»:
-  «Nombre», «Usuario» y «Rol».
+- **«Configuración»**, para todas las cuentas:
+  - **«Tamaño de letra»**: es el único sitio donde se elige entre «Normal», «Grande» o «Muy grande» (100 %,
+    125 % y 150 %). Una frase de muestra deja ver al instante cómo queda.
+  - **«Apariencia»**: elija «Claro», «Oscuro» o «Como el sistema (ahora …)». El modo oscuro cambia solo la
+    pantalla: los PDF y el Excel que se entregan no cambian. Sílice recuerda su elección en ese navegador.
+  - **«Datos de la cuenta»**: «Nombre», «Usuario», «Rol» y el enlace **«Ver mi actividad»**, que abre el
+    reporte de actividad de su cuenta (calendario anual, cifras, lista de actividad reciente filtrable y «Ver
+    como tabla»).
 - **«Contraseña»**, para todas las cuentas. Escriba la «Contraseña actual», la «Contraseña nueva» y
   «Confirme la contraseña nueva», con las reglas de la sección 2.1, y pulse «Cambiar contraseña». Arriba
   del formulario se lee qué pasa con las otras sesiones de su cuenta (se cierran; la de este navegador
   sigue abierta). Al terminar verá «Contraseña cambiada.».
+- **«Notificaciones»**, para todas las cuentas. Elija con un interruptor qué categorías de avisos quiere
+  recibir en la campanita (sección 13).
 - **«Cuentas y permisos»**, **«Empresa y tema»**, **«Carpetas»** y **«Especialidades, IA e
-  instalación»**, solo para quien administra (sección 2.7). «Carpetas» pide además poder crear y subir
-  carpetas.
+  instalación»**, solo para quien administra (sección 2.8). En «Cuentas y permisos» también están las
+  «Solicitudes» de cuenta nueva (sección 2.3) y el enlace **«Ver su actividad»** en cada cuenta. «Carpetas»
+  pide además poder crear y subir carpetas.
 - **«Ayuda y acerca de Sílice»**, para todas las cuentas. Su título es el mismo, «Ayuda y acerca de Sílice».
   Primero va la ayuda: «Empiece aquí», «Guías por tarea» y «Glosario» (sección 3.10). Después, la versión del
   programa, el estado de las bases de datos y qué módulos están instalados. Al final, «Recorridos guiados»
@@ -446,12 +496,12 @@ está repartido en las cuatro secciones de quien administra.
 
 Sílice trae su propia ayuda, en tres sitios:
 
-- **«¿Qué es esto?» encima de cada pantalla.** En cada sección de la obra y en cada herramienta de
-  «Auditar un presupuesto», «Precios y catálogo» y «Costos de producción», y en «Pendientes», un botón
-  «¿Qué es esto?» va justo encima del título. Al pulsarlo se abre, debajo, para qué sirve la pantalla y
-  cuándo usarla, con un enlace a su guía y a las palabras del glosario que usa; al pulsarlo otra vez, o con
-  Esc, se pliega. En el «Presupuesto» no hay uno para toda la pantalla: cada pestaña tiene el suyo
-  (sección 4.2). Si su cuenta no puede usar la pantalla, no aparece.
+- **«¿Qué es esto?» encima de cada pantalla.** En el «Presupuesto», en cada sección de la obra, en cada
+  herramienta de «Auditar un presupuesto», «Precios y catálogo» y «Costos de producción», y en «Pendientes»,
+  un botón «¿Qué es esto?» va justo encima del título. Al pulsarlo se abre, debajo, para qué sirve la pantalla
+  y cuándo usarla, con un enlace a su guía y a las palabras del glosario que usa; al pulsarlo otra vez, o con
+  Esc, se pliega. En «Espacio, plan y ajustes», cada pestaña conserva además el suyo (sección 4.6). Si su
+  cuenta no puede usar la pantalla, no aparece.
 - **«Empiece aquí» en la Vista general**, solo la primera vez. Quien administra lo ve mientras su cuenta
   sea la única activa: le dice cómo crear las cuentas de las personas y poner los datos de la empresa.
   Quien arma lo ve mientras no tenga ninguna obra: crear la obra, armar el presupuesto y enviarlo a
@@ -473,85 +523,104 @@ cantidades, revisar el APU, guardar la versión y ver el IVA.
 
 ### 4.1 Crear la obra
 
-1. En la barra lateral, pulse «Nueva obra».
-2. Llene el diálogo «Nueva obra»:
-   - «Nombre de la obra» (hasta 120 caracteres; no puede repetirse en la carpeta).
-   - Debajo se lee «Se creará en …» con el nombre de la carpeta de trabajo.
-   - «Cliente (opcional)» y «Ubicación (opcional)».
-   - «Tipo de obra»: «Sin especificar», «Obra civil», «Telecomunicaciones», «Industrial» o «Sistemas».
-   - «Moneda»: «Bolívares (Bs)» o «Dólares estadounidenses (USD)». Si la carpeta ya tiene moneda, viene
-     elegida. Si elige la otra, la ayuda dice que la obra se valorará convirtiendo los precios con la tasa
-     del BCV del día.
-3. Pulse «Crear obra».
+1. En la barra superior (el botón amarillo) o en la barra lateral, pulse «Nueva obra».
+2. Llene el diálogo «Nueva obra» («Componer la obra»), dividido en tres bloques:
+   - **«Datos de la obra»**:
+     - «Nombre de la obra» (hasta 120 caracteres; no puede repetirse en la carpeta).
+     - «Cliente (opcional)» y «Ubicación (opcional)».
+     - «Tipo de obra»: «Sin especificar», «Obra civil», «Telecomunicaciones», «Industrial» o «Sistemas».
+     - «Moneda»: «Bolívares (Bs)» o «Dólares estadounidenses (USD)». Si la carpeta ya tiene moneda, viene
+       elegida. Si elige la otra, la ayuda dice que la obra se valorará convirtiendo los precios con la tasa
+       del BCV del día.
+     - «Fecha de entrega al cliente» (opcional, cuando crea la obra en la carpeta abierta): escríbala a mano
+       en formato `dd/mm/aaaa`; no admite fechas pasadas. Si la anota, Sílice avisa en las notificaciones
+       desde 3 días hábiles antes (sección 13).
+   - **«Cómo empezar»**: elija «En blanco» (para agregar las partidas una a una) o «Desde un cómputo en
+     Excel» (al crearla se abre «Plano o cómputo»).
+   - **«Dónde se guarda»**: muestra la carpeta («Se creará en …»), la primera versión y quién la crea.
+3. Pulse «Crear la obra».
 
-Sílice abre el «Resumen» de la obra nueva. La franja dice «Siguiente paso: Agregue la primera partida»,
-con el botón «Agregue la primera partida», que lleva al Presupuesto.
+Si eligió empezar en blanco, Sílice abre la portada de la obra («Resumen») y la franja le ofrece «Agregue
+la primera partida», que lleva al Presupuesto. Cuando vuelva a abrir la obra desde la barra lateral o el
+buscador, se abrirá directamente en el Presupuesto.
 
 ### 4.2 La pantalla «Presupuesto», de arriba abajo
 
-Haga clic en «Presupuesto» en la barra de la obra. Verá, en este orden:
+Al abrir una obra desde la barra lateral (o al elegir «Presupuestar» › «Partidas» en la barra de la obra),
+el Presupuesto se muestra en una sola pantalla, sin pestañas, con el botón «¿Qué es esto?» arriba. Verá, de
+arriba abajo:
 
-1. **Una línea de estado** bajo el título: «Versión V-004 · 2 cambios sin guardar» (o «Borrador en blanco ·
-   …»), «Aprobación:» con el estado de la versión y el «Total» en la moneda de la obra. Si tiene cambios,
-   aparece «Descartar cambios».
-2. **La franja del paso** («Te falta:» o «Siguiente paso:»), con el único botón principal de la pantalla, y a
-   su lado **«Descargar Excel»**, que baja el presupuesto en un libro de Excel, y **«Descargar PDF»**, que
-   lo baja en un PDF para imprimir o enviar: la obra, la versión, la fecha y la moneda; cada partida con su
-   unidad, cantidad, precio unitario y total; el subtotal, el IVA y el total con IVA; y después el APU de cada
-   partida en su página (materiales, equipos y mano de obra y el cierre hasta el precio unitario). Si la obra
-   tiene frentes (12.6), las partidas salen por frente, cada uno con su subtotal. Sale lo
-   que se ve en la pantalla, también lo que aún no se guardó (el PDF lo dice), con coma decimal y punto de
-   miles.
-3. **Las pestañas**: «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y
-   «Ajustes de costo». En una obra de edificación con espacio aparece además, delante, «Espacio y
-   metrajes».
-
-Cada pestaña tiene un botón «¿Qué es esto?» que despliega su explicación. Quien edita ve además, siempre
-a la vista: «Escriba los decimales con coma: 2,5; el punto separa los miles: 1.234,56.». En «Partidas»,
-«Agregar partida», ese aviso y «¿Qué es esto?» van en una sola fila sobre la tabla, para que las partidas
-se vean sin bajar la pantalla.
+1. **La cabecera fija** (sigue a la vista al bajar por las partidas):
+   - **Línea de estado**: «Versión V-004 · 2 cambios sin guardar» (o «Borrador en blanco · …»), el estado de
+     «Aprobación:», **«Total sin IVA»** en la moneda de la obra (con el botón «Ver el valor exacto» para leer
+     la cifra sin redondear) y debajo **«Con IVA (16 %)»** cuando la obra tiene partidas.
+   - **Franja de acciones**: el botón **«Problemas (n)»** (abre el panel lateral con los hallazgos agrupados
+     por regla), la franja del paso («Te falta:» o «Siguiente paso:») con el único botón principal de la
+     pantalla y el menú **«Más acciones»** («Más acciones del presupuesto»).
+2. **El menú «Más acciones»**: reúne lo ocasional sin recargar la cabecera:
+   - **«Subtotales por frente»**: abre el panel lateral con el subtotal de cada frente (sección 12.6);
+   - **«Descargar Excel»**: baja el presupuesto en un libro de Excel;
+   - **«Descargar PDF»**: baja el presupuesto en un PDF para imprimir o enviar (la obra, la versión, la fecha
+     y la moneda; cada partida con su unidad, cantidad, precio unitario y total; el subtotal, el IVA y el
+     total con IVA; y después el APU de cada partida en su página; si la obra tiene frentes, agrupado por
+     frente; sale lo que se ve en pantalla, también lo no guardado, con coma decimal y punto de miles);
+   - **«Traer un plano o cómputo»**: lleva a Archivos y planos («Plano o cómputo»);
+   - **«Espacio, plan y ajustes»**: abre las pestañas de espacio, APU, plan, precios y ajustes de costo
+     (sección 4.6; también está en la segunda fila de «Presupuestar»);
+   - **«Descartar cambios»** (solo cuando hay cambios sin guardar): pide confirmación antes de borrar lo no
+     guardado.
+3. **La frase de respuesta**: encima de la grilla resume el total sin IVA, cuántas partidas hay y cuántas
+   tienen problemas por revisar (o indica que Sílice revisó las reglas y no halló problemas).
+4. **La grilla de partidas**: funciona como una hoja de Excel con teclado (una sola parada de Tab, flechas
+   para moverse entre celdas, **Enter** o **F2** para editar una cantidad y **Esc** para restaurarla). Al pie
+   de la grilla se leen **«Total sin IVA»**, **«IVA (16 %)»** y **«Total con IVA»**.
+5. **La fila de alta**: debajo de la grilla (solo para quien edita), siempre a la mano para agregar una
+   partida sin abrir diálogos.
 
 **Borrador.** Lo que usted cambia se aplica al borrador de la obra cuando deja de escribir. El borrador
 no es una versión: para que quede guardado hay que pulsar «Guardar versión…» (sección 4.8). Si cierra
 Sílice con cambios, al volver verá «Retomar borrador» con dos botones: «Retomar borrador de … (n
 cambios)» para seguir, o «Descartar y abrir de nuevo».
 
-### 4.3 Agregar partidas: una sola puerta, tres caminos
+### 4.3 Agregar partidas: desde la fila de alta, tres caminos
 
-Pulse «Agregar partida» en la pestaña «Partidas» (o «Agregar la primera partida» en la franja). Se abre
-el diálogo «Agregar partida». Ahí hay tres maneras de elegir la partida.
+Debajo de la grilla está la fila de alta. Si la obra aún no tiene partidas, pulsar «Agregar la primera
+partida» en la cabecera lleva el foco directamente al campo «Partida». Allí hay tres maneras de elegir la
+partida.
 
 **Camino 1: buscarla en el catálogo.**
 
-1. En «Partida», escriba al menos 2 letras del código o de la descripción. Por ejemplo «bloque».
-2. Aparece la lista «Partidas del catálogo». Cada opción muestra la descripción y, debajo, el código, la
+1. En «Partida», escriba al menos 2 letras del código o de la descripción (por ejemplo «bloque»).
+2. Aparece la lista de sugerencias del catálogo. Cada opción muestra la descripción y, debajo, el código, la
    unidad, el tipo de obra y si tiene composición.
 3. Elija con las flechas y Enter, o con un clic. Si hay muchas, pulse «Ver más resultados» o escriba más
    letras.
 
-Si no la encuentra, Sílice dice «No encontramos «…».» y le sugiere los otros dos caminos.
+Si no aparece, verá «¿No la encuentra?» con la indicación de probar otra palabra, usar «Buscar parecidas» o
+elegir «Crear la partida».
 
 **Camino 2: «Buscar parecidas».**
 
 Úselo cuando sabe cómo se describe la partida, pero no su código.
 
 1. Escriba en «Partida» cómo se describe. Por ejemplo «pared de bloques de arcilla de 15 cm».
-2. Pulse «Buscar parecidas».
+2. Debajo de la fila de alta aparece «Buscar parecidas»: púlselo.
 3. Sílice muestra las propuestas «de mayor a menor similitud». Cada una trae su puntaje, su código y su
    descripción. Con «Ver el análisis de …» ve sus materiales, equipos y mano de obra.
-4. Pulse «Usar esta partida» en la que le sirva.
+4. Pulse «Usar esta partida» en la que le sirva. La partida queda elegida y el foco pasa a «Cantidad».
 
 Si ninguna se parece lo suficiente, verá «Ninguna partida del catalogo supera el umbral de similitud: la
 partida se crearia desde cero.». Entonces use el camino 3. Esta búsqueda necesita el instalador completo;
-si falta, Sílice lo dice (sección 14).
+si falta, Sílice lo dice (sección 15).
 
-**Camino 3: «Componer una partida».**
+**Camino 3: «Crear la partida «…»».**
 
 Úselo cuando la partida no existe en el catálogo. Al final de la lista de sugerencias está la opción
-«Componer una partida nueva con el código «…»». Se abre el panel «Componer una partida».
+«Crear la partida «…»» (con lo que escribió). Al elegirla se abre el panel «Componer una partida» con ese
+código o descripción ya cargado.
 
-La misma composición, como pantalla propia, está en la vista «Componer» del conmutador «Presupuesto |
-Componer» (sección 3.6). Pasar de una vista a la otra no cierra el borrador ni pregunta por los cambios.
+La misma composición, como pantalla propia, está en «Presupuestar» › «Componer un APU» (sección 3.6). Pasar
+de una vista a la otra no cierra el borrador ni pregunta por los cambios.
 
 Antes de empezar, lea el aviso: «Esto cambia el catálogo de la empresa: la partida queda para todas las
 obras.».
@@ -574,7 +643,7 @@ obras.».
 6. Pulse «Guardar composición». Si un precio difiere del de la lista, Sílice pregunta en «Precios
    distintos a los de la lista»; pulse «Guardar así» o «Volver».
 
-Al guardar, el panel se cierra y el diálogo «Agregar partida» vuelve con la partida nueva elegida.
+Al guardar, el panel se cierra, la partida nueva queda elegida en la fila de alta y el foco pasa a «Cantidad».
 
 Para guardar hace falta que la carpeta tenga su lista de precios para armar. Si no la tiene, el panel lo
 avisa en «Sin lista de precios para armar» y ofrece «Crear la lista a partir de MaPreX». Si la empresa ya tiene
@@ -587,41 +656,50 @@ Cuidado: si cierra el panel sin guardar, lo compuesto se pierde sin preguntar.
 
 **Después de elegir la partida, por cualquiera de los tres caminos:**
 
-1. «Cantidad (…)»: la cantidad, con coma decimal. Por ejemplo 210 o 12,5.
-2. «Cálculo (opcional)»: cómo sale la cantidad, por ejemplo `6*3-2` o `2,5*4`. Admite números, `+`, `-`,
-   `*`, `×`, `/` y paréntesis. Si escribe el cálculo y deja la cantidad vacía, Sílice la toma del cálculo.
-   Si escribe los dos y no coinciden, le pide corregir uno.
-3. «Nota de medición (opcional)»: por ejemplo «6 m × 35 m de muro, menos vanos».
-4. Pulse «Agregar al presupuesto».
+1. «Cantidad» (con su unidad entre paréntesis): escriba la cantidad con coma decimal, por ejemplo `50` o
+   `12,5`.
+2. Si quiere anotar de dónde sale, abra el pliegue «Cálculo y nota (opcional): Sin cálculo ni nota. Cambiar»:
+   - «Cálculo (opcional)»: cómo sale la cantidad, por ejemplo `6*3-2` o `2,5*4`. Admite números, `+`, `-`,
+     `*`, `×`, `/` y paréntesis. Si escribe el cálculo y deja la cantidad vacía, Sílice la toma del cálculo.
+     Si escribe los dos y no coinciden, le pide corregir uno.
+   - «Nota de medición (opcional)»: por ejemplo «6 m × 35 m de muro, menos vanos».
+3. Pulse **«Agregar al presupuesto»**.
 
-En la pestaña se lee «Se agregó … al presupuesto.».
+La fila nueva entra en la grilla con el foco en su celda «Cantidad» y el total de la cabecera se actualiza al
+instante.
 
-### 4.4 Cambiar o quitar una partida
+### 4.4 Cambiar, inspeccionar o quitar una partida y ver los problemas
 
-La tabla de «Partidas» tiene las columnas «Partida», «Descripción», «Unidad», «Cantidad», «Cómo se
-midió», «Precio unitario», «Objetivo de mercado», «Total», «Estado» y «Quitar».
+La grilla del Presupuesto tiene siete columnas: «Partida», «Descripción», «Unidad», «Cantidad», «Precio
+unitario», «Total» y «Problemas».
 
-- **Cambiar la cantidad:** escriba en la celda «Cantidad». Enter o la flecha abajo pasan a la fila
-  siguiente; Esc devuelve el último valor aceptado.
-- **Cantidad escrita a mano:** si la partida tenía una cantidad calculada, la celda dice «(calculada: …)» y
-  ofrece «Volver a la calculada».
-- **Cantidad sin cálculo:** Sílice lo advierte en la columna «Estado». Escriba cómo se obtuvo si quiere que
-  la pueda verificar.
-- **Quitar:** pulse «Quitar» en la fila y confirme. Mientras no guarde la versión, puede descartar el
-  cambio.
-- **Filas en amarillo:** una fila con un hallazgo crítico, de error o de advertencia lleva fondo amarillo
-  claro. La columna «Estado» dice cuál es; «Ver en Revisión» lleva al detalle.
+- **Cambiar la cantidad en la grilla:** sitúese en la celda «Cantidad» y empiece a escribir (o pulse **F2** o
+  **Enter**). Al dejar de escribir o pulsar **Enter** se guarda en el borrador y baja a la fila siguiente;
+  hacer clic fuera también confirma, y **Esc** restaura el valor anterior. Si escribe una cifra inválida, la
+  celda queda marcada con el motivo sin borrar lo que escribió.
+- **Abrir el inspector de la partida:** pulse **Enter** o haga doble clic sobre una fila para abrir el panel
+  lateral acoplado con su código, descripción y unidad. Allí ve:
+  - «Cómo se midió» (cálculo y nota);
+  - «Cantidad calculada» y, si se escribió a mano sobre una calculada, el botón **«Volver a la calculada»**;
+  - «Precio unitario» y «Total» con sus valores exactos;
+  - «Objetivo de mercado» (cuando se fijó en Mercado, sección 8.2);
+  - «Análisis de precio unitario (APU)» (sección 4.5);
+  - **«Quitar del presupuesto»** (solo para quien edita): pide confirmación en el diálogo «Quitar partida»
+    («Cancelar» / «Quitar»). Mientras no guarde la versión, puede descartar el cambio.
+  Cierre el inspector con «Cerrar» o con **Esc**: el foco vuelve a la celda desde la que lo abrió.
+- **Ver los problemas:** las filas con hallazgos críticos, de error o de advertencia muestran en la columna
+  «Problemas» un ícono, la severidad en palabra y el resumen. Pulse **«Problemas (n)»** en la cabecera fija
+  para abrir el panel lateral «Problemas»: muestra el total («3 problemas en 2 partidas»), los agrupa por
+  regla con su gravedad en palabra y ofrece **«Ir a la partida»**, que lleva el foco a esa fila en la grilla.
+  Si no hay problemas, el panel dice «Sin problemas» y cuántas reglas revisó Sílice.
 - **«Pendiente»** en «Precio unitario» o «Total»: la partida no tiene APU en el catálogo y no suma.
 
-Debajo de la tabla se lee «Total del presupuesto …» y el IVA (sección 4.9).
+Al pie de la grilla se leen «Total sin IVA», «IVA (16 %)» y «Total con IVA» (sección 4.9).
 
-### 4.5 El APU en el panel lateral
+### 4.5 El APU en el inspector lateral
 
-En «Partidas», el código de cada fila con precio es un botón. Al pulsarlo se abre a la derecha el panel
-«APU de MOV-01 · Movilización y desmovilización de equipos (ficticia) · unidad» (con el código y la
-descripción de su partida). La tabla sigue a la vista.
-
-En el panel:
+Al abrir una fila de la grilla (doble clic o Enter), el inspector lateral incluye el bloque «Análisis de
+precio unitario (APU)», manteniendo la grilla a la vista:
 
 - un bloque por rubro («Materiales · 1 línea(s)», «Equipos», «Mano de obra») con su subtotal;
 - «Rendimiento (unidades por día)»;
@@ -638,12 +716,15 @@ Quien edita puede:
 Estos cambios se hacen en la copia de esta versión: el catálogo de la empresa no cambia. Agregar,
 cambiar y quitar líneas solo se puede en una versión guardada.
 
-Cierre el panel con «Cerrar» o con Esc. Si la pantalla es estrecha, el panel se pone encima de la tabla.
+Cierre el inspector con «Cerrar» o con Esc. Si la pantalla es estrecha, el panel se pone encima de la grilla.
 
-La pestaña «Análisis de precio (APU)» muestra lo mismo, con una lista de partidas a la izquierda y el
-buscador «Buscar partida».
+La vista por pestañas «Espacio, plan y ajustes» (sección 4.6) conserva también la pestaña «Análisis de precio
+(APU)» completa, con la lista de partidas a la izquierda y el buscador «Buscar partida».
 
-### 4.6 Las demás pestañas del Presupuesto
+### 4.6 «Espacio, plan y ajustes» (las demás pestañas del Presupuesto)
+
+Para entrar a las pestañas que acompañan al Presupuesto, abra **«Espacio, plan y ajustes»** en la segunda fila
+de «Presupuestar» o dentro del menú **«Más acciones»** del Presupuesto. Allí están:
 
 - **«Plan y equilibrio».** Reparte cada partida entre los períodos del plan; cada fila debe sumar
   exactamente 1. Con «Plan desde los rendimientos», Sílice arma el plan con la cantidad y el rendimiento
@@ -657,21 +738,22 @@ buscador «Buscar partida».
   empresa o la de un precio tecleado); el nombre de la lista de la que se copió no cuenta como fuente. «Buscar variaciones atípicas de precio» señala los insumos que cambiaron demasiado.
   Muestra la versión guardada, no los cambios sin guardar. El enlace «Registrar una cotización en
   Mercado» lleva a la sección 8.4.
-- **«Revisión».** El informe de auditoría del borrador, con todas las reglas: «Presupuesto … · Hallazgos:
-  … · Resultado: …» y la tabla «Hallazgos» con regla, severidad, partida y descripción. Si llegó desde
-  «Ver en Revisión», solo se ven los de esa fila; «Quitar filtro» muestra todos.
 - **«Ajustes de costo».** Cuatro parámetros: FCAS, bono de alimentación, administración y utilidad.
   Cambiarlos recalcula todos los APU y el total. Aquí está también «Convertir la moneda…» (sección 9.6).
 - **«Espacio y metrajes»** (obras de edificación). Se describe el espacio en tablas («Orígenes de medida»,
   «Ambientes», «Fuentes», «Puntos», «Vértices de recorridos») y Sílice deriva las cantidades. Ojo: en
   «Vértices» la coma separa las coordenadas y el decimal va con punto, por ejemplo `0,0,0; 2.5,0,0`. Lo
   más cómodo es importar un plano (sección 7).
+- **«Análisis de precio (APU)»**, **«Partidas»** y **«Revisión»**: siguen disponibles aquí mientras se usan
+  junto a las demás pestañas, aunque el trabajo diario de partidas y problemas se hace en la grilla principal
+  (secciones 4.2 a 4.5).
 
 ### 4.7 Cargar el cómputo desde un archivo CSV
 
 Si ya tiene el cómputo en un archivo, no hace falta agregar partida por partida.
 
-1. Vaya a «Archivos y planos» de la obra.
+1. Vaya a «Plano o cómputo» (Archivos y planos) en la barra de la obra, o pulse «Traer un plano o cómputo»
+   en «Más acciones» del Presupuesto.
 2. Pulse «Subir plano o cómputo» (o «Cargar cómputo» si la edificación está apagada).
 3. Suelte el archivo `.csv` en la zona, o haga clic para elegirlo. Se abre «Cargar cómputo».
 4. Elija «Tipo de obra del archivo»: «Civil» (viene elegido), «Telecomunicaciones», «Industrial» o
@@ -684,8 +766,8 @@ Si ya tiene el cómputo en un archivo, no hace falta agregar partida por partida
      «medido», pulse «Registrar el rendimiento» y vuelva a pulsar «Llevar al presupuesto».
    - Si un ítem no tiene partida en el catálogo, aparece «Pendientes» con propuestas. Pulse «Aplicar la
      propuesta» y vuelva a llevar, o pulse «Llevar sin los pendientes».
-8. Verá «Se llevaron 18 partidas al presupuesto.» (o el número que corresponda) y el enlace «Ver en
-   Partidas».
+8. Verá «Se llevaron 18 partidas al presupuesto.» (o el número que corresponda) y el enlace «Ver en el
+   presupuesto».
 
 Las partidas quedan en el borrador. Falta guardar la versión (sección 4.8).
 
@@ -754,9 +836,10 @@ elegir entre «Guardar de todos modos» y «Abrir la versión …».
 
 ### 4.9 El IVA
 
-Debajo de «Total del presupuesto», en la pestaña «Partidas», se leen tres líneas:
+En la cabecera fija del Presupuesto se ven «Total sin IVA» y «Con IVA (16 %)», y al pie de la grilla se leen
+tres filas:
 
-- «Subtotal»
+- «Total sin IVA»
 - «IVA (16 %)»
 - «Total con IVA»
 
@@ -766,8 +849,9 @@ presupuesto van sin IVA.
 
 ### 4.10 Si quiere empezar de nuevo
 
-- **«Descartar cambios»** (en «Estado del borrador»): borra lo que no guardó. Sílice pregunta antes; los
-  cambios descartados no se recuperan.
+- **«Descartar cambios»** (en el menú «Más acciones» del Presupuesto): borra lo que no guardó. Sílice pide
+  confirmación en «Descartar cambios» («Cancelar» / «Descartar y abrir de nuevo»); los cambios descartados
+  no se recuperan.
 - **Abrir otra versión**: desde «Versiones» (sección 6.1).
 
 ### 4.11 El desperdicio de un material en Componer
@@ -829,7 +913,7 @@ Sílice revisa en este orden y muestra la primera que se cumple:
 |---|---|---|
 | «Te falta: Agregue la primera partida» | La obra no tiene partidas | Pulse «Agregar la primera partida» (sección 4.3) |
 | «Siguiente paso: Hay 3 cambios sin guardar» | Cambió algo y no lo guardó | Pulse «Guardar versión…», «Guardar primera versión…» o, si solo cambió el desglose del desperdicio, «Guardar el desglose…» (sección 4.8) |
-| «Te falta: Hay 2 hallazgos graves: revíselos antes de enviar» | La auditoría encontró errores o hallazgos críticos | Pulse «Ir a Revisión», corrija y guarde |
+| «Te falta: Hay 2 hallazgos graves: revíselos antes de enviar» | La auditoría encontró errores o hallazgos críticos | Pulse «Ir a Revisión» (abre el panel «Problemas»), corrija y guarde |
 | «Te falta: La versión V-004 fue devuelta: corrija lo observado» | Quien revisa la devolvió | Pulse «Hacer una versión nueva», corrija y guarde (sección 6.7) |
 | «Siguiente paso: La versión V-004 espera dictamen» | Ya la envió | Nada: espere el dictamen |
 | «Siguiente paso: Envíe la versión V-004 a aprobación» | Todo listo | Pulse «Enviar a aprobación…» (sección 6.5) |
@@ -867,8 +951,11 @@ se guarda sin crear versión.
 
 ### 6.1 La sección «Versiones»
 
-Arriba está la «Cadena de sellos» (sección 6.9). Debajo, la tabla «Versiones de la obra» con:
-«Versión», «Fecha», «Motivo», «Sale de», «Cambios», «Estado de aprobación», «Vigente» y «Acciones».
+Se abre desde el menú «Versión» › «Versiones» de la barra de la obra. Arriba está la «Cadena de sellos»
+(sección 6.9) y el filtro **«Por persona»** («Todas las personas»), con el contador de versiones mostradas y
+el botón «Quitar el filtro» si ninguna coincide. Debajo, la tabla «Versiones de la obra» con:
+«Versión», «Fecha», «Motivo», «Sale de», «Cambios», «Estado de aprobación», «Vigente» y «Acciones». El
+nombre de quien guardó o dictaminó cada versión es un enlace a su actividad.
 
 - La versión **vigente** dice «Sí» en «Vigente»: es la última guardada que no se descartó.
 - La que tiene abierta dice «(abierta)» junto a su código.
@@ -969,7 +1056,7 @@ administrador. Él puede restaurar la base desde un respaldo (manual de instalac
 2. Elija «Obra» y «Versión». Viene elegida la última aprobada.
 3. Revise los datos: «Total», «Hallazgos», «Cadena».
 4. Escriba «Para quién es (opcional)» y la «Contraseña de la clave de firma» (la del administrador,
-   sección 2.7).
+   sección 2.8).
 5. Pulse «Generar paquete» y después «Descargar el paquete».
 
 Si la versión no está aprobada, el paquete sale rotulado «Versión NO aprobada», con la fecha. Si no hay
@@ -1483,59 +1570,100 @@ Sin línea base, las demás pestañas piden «Declare primero la línea base de 
 ## 12. Auditar un presupuesto
 
 «Auditar un presupuesto», en la barra lateral, abre un espacio con tres pestañas: «Subir y auditar
-Excel» (la pantalla «Inicio de auditoría»), «Libro de la empresa» e «Historial de auditorías». Sirve
-para revisar un
-presupuesto en Excel, propio o de terceros. El archivo no se guarda: solo quedan el resumen y los
-hallazgos.
+Excel» (la pantalla **«Auditar un libro»**), «Libro de la empresa» e «Historial de auditorías». Sirve
+para revisar un presupuesto en Excel, propio o de terceros. El archivo original no se modifica ni se guarda:
+solo quedan el resumen y los hallazgos.
 
-### 12.1 Auditar un libro
+### 12.1 Auditar un libro en tres pasos
 
-1. Suelte el `.xlsx` en «Suelte aquí el libro .xlsx del presupuesto, o haga clic para elegirlo».
-2. Pulse «Auditar por mi cuenta», o «Auditar con recorrido guiado» si es la primera vez (sección 12.4).
-3. Se abre «Libro de la empresa». Mientras trabaja dice «Leyendo el libro y auditándolo…».
+Todo el flujo ocurre en **«Auditar un libro»**, en una sola página con tres pasos seguidos (ya no existe el
+botón «Auditar por mi cuenta» ni hace falta saltar a otra pantalla para leer los hallazgos):
+
+**Paso 1: «Suba el libro».**
+
+1. Suelte el `.xlsx` en «Suelte aquí el libro .xlsx del presupuesto, o haga clic para elegirlo». Mientras no
+   haya archivo, el botón «Auditar el libro» permanece inactivo y explica por qué.
+2. Si necesita cambiar la fecha o usar el recorrido guiado, abra el pliegue **«Más opciones»**:
+   - **«Fecha de la revisión»**: por omisión se revisa con la fecha de hoy («Se revisa con la fecha de hoy.»).
+     Con la misma fecha, el mismo libro da siempre el mismo resultado.
+   - **«Auditar con recorrido guiado»**: lleva el libro a «Libro de la empresa» con la columna de tres pasos
+     (sección 12.4).
+3. Pulse **«Auditar el libro»**. Mientras trabaja se lee «Auditando el libro…». Si ocurre un error, Sílice
+   conserva el archivo elegido y ofrece «Reintentar».
 
 Los topes de seguridad de la sección 12.5 (filas, columnas y celdas del libro entero) valen para todo libro
 que se audita o se abre en el visor: si el libro los pasa, Sílice lo rechaza con el mismo aviso y le dice la hoja.
 
-### 12.2 Leer el resultado
+**Paso 2: qué se encontró.**
 
-- **Arriba, tres indicadores:** «Subtotal sin IVA», «IVA» y «Total general». Cada uno trae la cifra del
-  libro, «Según Sílice …» y la diferencia con la palabra «favorable» o «desfavorable».
-- **Libro contra Sílice.** Si el libro dice **menos** que Sílice, sale «favorable» en verde, pero con la
-  nota «Libro menor»: un libro que olvidó partidas o costos también sale menor. Lea la nota completa en
-  «Total general» y revise antes de aceptar.
-- **A la izquierda, la hoja del libro**, tal como está, con las celdas marcadas. Hay botones para acercar
-  y alejar.
+Al terminar, el titular resume el resultado («6 hallazgos en el libro» o «El libro no tiene hallazgos») con el
+desglose por gravedad («3 errores · 3 advertencias»). Debajo aparecen:
+
+- **«Por causa raíz (n)»**: agrupa los hallazgos que comparten una misma causa («Corregir una causa arregla
+  todos sus casos»), con la gravedad en palabra e ícono, la regla con su nombre y código, lo encontrado frente
+  a lo esperado y las celdas afectadas.
+- **«Uno por uno (n)»**: los demás hallazgos de más a menos graves, con celda, gravedad, regla, impacto y
+  descripción.
+- **«Reglas que no aplicaron a este libro (n)»** (plegado): reglas que no tenían nada que revisar en ese
+  libro; no cuentan como hallazgos.
+- **«Alertas de precio (n)»**: precios que conviene confirmar con quien hizo el libro (por ejemplo «Sin
+  fuente», «Base de la empresa», «Otra versión» o «USD-Bs» fuera del umbral; las que no se pudieron contrastar
+  por falta de tasa del BCV salen agrupadas en una línea). No son errores del libro y no llevan color de
+  gravedad.
+- **«Qué hacer»**: cada causa raíz, cada hallazgo y cada alerta de precio tiene el botón **«Qué hacer»**
+  (cerrado por omisión). Al pulsarlo despliega qué significa y qué conviene revisar en el Excel.
+
+**Paso 3: «Conclusión y entrega».**
+
+Muestra el veredicto del servidor (**«El libro cumple»** o **«El libro no cumple»**), los tres indicadores de
+totales («Subtotal sin IVA», «IVA» y «Total general», cada uno con la cifra del libro, «Según Sílice» y la
+diferencia «favorable» o «desfavorable», con la nota «Libro menor» cuando el libro suma menos que Sílice) y
+las acciones siguientes:
+
+- **«Descargar el informe en PDF»** (botón principal cuando hay hallazgos): baja el informe de la auditoría
+  para entregar a quien hizo el libro, con el libro, la fecha del libro y la de devolución, si cumple o no,
+  los totales frente a Sílice, la huella SHA-256 abreviada del archivo y una fila por hallazgo. Bajarlo no
+  duplica la fila en el historial; como se vuelve a calcular al bajarlo, usa las tasas y los precios de ese
+  momento.
+- **«Auditar otro libro»** (botón principal cuando no hay hallazgos; también disponible en el paso 1 cuando hay
+  hallazgos): limpia el resultado para subir otro archivo.
+- **«Ver la hoja marcada»**: prepara la réplica visual del Excel al pulsarlo y abre «Libro de la empresa» con
+  el mismo resultado, sin auditar otra vez ni duplicar el historial.
+- **«Ver el historial»**: lleva a «Historial de auditorías».
+
+### 12.2 Ver la hoja marcada («Libro de la empresa»)
+
+Al pulsar «Ver la hoja marcada» en la conclusión (o al usar el recorrido guiado), se abre la pestaña «Libro
+de la empresa» con la réplica visual del presupuesto:
+
+- **Arriba, tres indicadores:** «Subtotal sin IVA», «IVA» y «Total general», con la cifra del libro, «Según
+  Sílice …» y la diferencia «favorable» o «desfavorable» (con la nota «Libro menor» si el libro suma menos
+  que Sílice, para recordar que un libro al que le faltan partidas o costos también sale menor).
+- **A la izquierda, la hoja del libro**, tal como está, con las celdas marcadas y botones para acercar y
+  alejar.
 - **A la derecha, «Hallazgos (n)»**, con filtros «Crítico», «Error», «Advertencia» e «Información». Haga
   clic en un hallazgo para ir a su celda. Los que caen en filas ocultas o fuera del libro van en grupos
   aparte.
+- **«Descargar PDF»** (bajo los indicadores): baja el mismo informe en PDF.
 
 Si no hay nada que objetar, verá «La auditoría terminó y el libro no tiene hallazgos.».
 
-**Descargar PDF.** Con el resultado en pantalla, el botón «Descargar PDF» (a la derecha, bajo los
-indicadores) baja el informe de la auditoría para entregar a quien hizo el libro. Debajo del botón, una
-línea lo recuerda. Es un PDF con el libro, la fecha del libro y la de devolución, si
-cumple o no, los totales del libro frente a los de Sílice y una fila por hallazgo, de la regla a la acción.
-Lleva la misma fecha de devolución con la que se auditó lo que ve. Bajarlo no guarda nada ni agrega una fila
-al historial: la auditoría ya quedó guardada cuando la hizo. Si no se puede preparar, el aviso de error lo
-dice junto al botón. El PDF lleva, bajo el encabezado, la huella (SHA-256 abreviado) del libro auditado, que lo
-ata a ese archivo; como el informe se vuelve a calcular al bajarlo, usa las tasas y los precios de ese momento,
-que pueden diferir de los de la auditoría que ve en pantalla si cambiaron desde entonces.
-
 ### 12.3 El historial
 
-Abra la pestaña «Historial de auditorías» de «Auditar un presupuesto». Filtre por fechas, tipo y
-resultado. «Ver el detalle»
-muestra quién la hizo, los totales, los hallazgos y la huella del archivo.
+Abra la pestaña «Historial de auditorías» de «Auditar un presupuesto». Filtre por «Desde», «Hasta», «Tipo»,
+«Resultado» y **«Por persona»** («Todas las personas»). La tabla muestra «Archivo», «Tipo», «Fecha y hora»,
+«Quién» (con enlace a la actividad de esa persona), «Resultado» y «Detalle». Al pulsar **«Ver el detalle»**
+se ven los totales, la huella del archivo y la tabla «Hallazgos guardados», que incluye la columna **«Qué
+hacer»** con la misma guía plegada que en «Auditar un libro».
 
-Las últimas auditorías también aparecen en «Inicio de auditoría», bajo «Últimas auditorías guardadas».
+Las últimas auditorías también aparecen al pie de «Auditar un libro», bajo «Últimas auditorías guardadas».
 
 ### 12.4 El recorrido guiado
 
-Con «Auditar con recorrido guiado» aparece a la derecha la columna «Recorrido», con tres pasos: «Suba el
-libro», «Lea el resumen y los hallazgos» y «Compruebe que quedó guardada». Cada paso dice qué hacer y
-cuándo terminó. «Ocultar» la pliega y «Terminar recorrido» la quita. Si la plegó, el botón «Recorrido» de
-la barra de arriba la vuelve a mostrar.
+En «Auditar un libro», abra «Más opciones» y pulse «Auditar con recorrido guiado». Aparece a la derecha la
+columna «Recorrido», con tres pasos: «Suba el libro», «Lea el resumen y los hallazgos» y «Compruebe que quedó
+guardada». Cada paso dice qué hacer y cuándo terminó. «Ocultar» la pliega y «Terminar recorrido» la quita.
+Si la plegó, el botón «Recorrido» de la barra de arriba la vuelve a mostrar.
 
 El recorrido también se empieza desde su Cuenta, sección «Ayuda y acerca de Sílice», con «Empezar el
 recorrido «Auditar un libro de la empresa»».
@@ -1546,8 +1674,8 @@ arma o revisa.
 ### 12.5 Auditar un libro con un APU por hoja
 
 Algunos programas de APU exportan un libro con **una hoja por partida** (solo valores, sin fórmulas) y,
-aparte, el libro del presupuesto. Ese libro no es el de la plantilla de la sección 12.1: se audita en su
-propio bloque, «Libro con un APU por hoja», más abajo en «Inicio de auditoría».
+aparte, el libro del presupuesto. Ese libro no es el de la plantilla de la sección 12.1: se audita en el
+pliegue **«Otro tipo de libro: un APU por hoja»**, debajo del flujo principal en «Auditar un libro».
 
 1. En «Perfil del libro», elija cómo se lee el libro. Cada opción dice qué hoja del presupuesto compara y
    de dónde viene: «apu_por_hoja · lee la hoja PRESUPUESTO (del paquete)», o «(de esta instalación)» si
@@ -1651,14 +1779,74 @@ del libro, y su moneda debe ser la de la carpeta y la de la obra (una obra en US
 frente con otro precio), entra como variante «…-B». Llevar el mismo libro otra vez no duplica nada: reemplaza los
 renglones de esas hojas.
 
-**El presupuesto por frente.** En la pestaña Presupuesto de la Hoja, debajo del total, pulse «Ver el presupuesto
-por frente»: la tabla «Presupuesto por frente» da cada frente, sus renglones (y cuántos están pendientes) y su
-subtotal, y debajo el «Total general». Las cifras las calcula Sílice; los renglones sin frente van al final, en
-«(sin frente)», como en el PDF. Para poner el frente de un renglón a mano, elíjalo en «Renglón», escriba el «Frente» y
-pulse «Poner el frente» (vacío lo quita). Un frente no puede llamarse «Sin frente» ni «(sin frente)», para que no se
-confunda con ese grupo: ni a mano ni desde el libro (a una hoja del presupuesto con ese nombre, cámbiele el nombre). El frente se guarda con la versión.
+**El presupuesto por frente.** En el Presupuesto, abra el menú «Más acciones» y elija «Subtotales por frente»
+para abrir el panel lateral «Subtotales por frente» (también sigue disponible debajo del total en «Espacio,
+plan y ajustes»): la tabla «Presupuesto por frente» da cada frente, sus renglones (y cuántos están pendientes)
+y su subtotal, y debajo el «Total general». Las cifras las calcula Sílice; los renglones sin frente van al
+final, en «(sin frente)», como en el PDF. Para poner el frente de un renglón a mano, elíjalo en «Renglón»,
+escriba el «Frente» y pulse «Poner el frente» (vacío lo quita). Un frente no puede llamarse «Sin frente» ni
+«(sin frente)», para que no se confunda con ese grupo: ni a mano ni desde el libro (a una hoja del presupuesto
+con ese nombre, cámbiele el nombre). El frente se guarda con la versión.
 
-## 13. El asistente de IA
+## 13. Notificaciones
+
+Sílice guarda sus avisos personales durante 30 días (hasta 200 por cuenta) para que no pierda nada si cambia
+de pantalla o cierra el programa.
+
+### 13.1 La campanita y los avisos en pantalla
+
+En la barra de estado, abajo a la derecha, está el botón de la **campanita** («Notificaciones»). Cuando tiene
+avisos sin leer muestra la cantidad sobre el ícono.
+
+Cada vez que termina una acción importante (guardar una versión, enviarla a aprobación, registrar un dictamen,
+entregar un paquete al cliente, restaurar una versión, cargar una lista o referencia de precios o revalorar un
+presupuesto) o llega un aviso del servidor, aparece una tarjeta abajo a la derecha («Notificaciones nuevas»):
+
+- Los avisos de gravedad «Listo» e «Información» permanecen 3 minutos en pantalla y se cierran solos. El
+  contador se pausa si coloca el ratón o el foco encima, o mientras haya un diálogo abierto.
+- Los avisos de gravedad «Advertencia» y «Error» permanecen a la vista hasta que usted los cierre con su botón
+  de cierre.
+
+En todos los casos, el aviso queda guardado en la campanita.
+
+### 13.2 El panel «Notificaciones»
+
+Al pulsar la campanita se abre a la derecha el panel **«Notificaciones»** (se cierra con su botón de cierre o
+con Esc). En él puede:
+
+- cambiar entre **«Todas»** y **«Sin leer»**;
+- revisar los avisos agrupados por día (**«Hoy»**, **«Ayer»** y la fecha `dd/mm/aaaa`), cada uno con su
+  gravedad en palabra, título, detalle, hora y enlace directo a la pantalla correspondiente (al seguir el enlace
+  se marca como leído);
+- pulsar **«Marcar todas como leídas»**;
+- abrir sus preferencias desde el enlace **«Elegir qué notificaciones recibir»** al pie del panel («Las
+  notificaciones se guardan 30 días.»).
+
+### 13.3 Qué avisa cada categoría
+
+Además de las confirmaciones de sus propias acciones, el servidor genera avisos automáticos por evento cuando
+algo pide actuar o cambia datos que usted usa. Cada evento avisa una sola vez y nunca le avisa a la misma
+persona que realizó la acción:
+
+| Categoría | Para quién | Qué avisa |
+|---|---|---|
+| «Versiones por dictaminar» | Quien revisa | Cuando una versión espera su dictamen, y un recordatorio de advertencia si lleva 2 días hábiles esperando |
+| «Dictamen de sus versiones» | Quien arma | Cuando una versión que usted envió fue aprobada, aprobada con observaciones, devuelta (advertencia) o retirada porque otra cuenta envió una versión nueva |
+| «Compras por pedir» | Quien arma (en obras donde trabajó y con línea base) | Advertencia desde 2 días hábiles antes de la fecha «pedir a más tardar» de un material sin pedir, y error desde ese día |
+| «Listas de precios nuevas» | Quien arma | Cuando alguien carga una lista de precios de la empresa o la referencia MaPreX |
+| «Entregas al cliente» | Quien arma (en obras donde trabajó con «Fecha de entrega al cliente») | Advertencia desde 3 días hábiles antes de la fecha de entrega al cliente, y error desde ese día mientras la obra no se haya entregado (la fecha se anota en «Nueva obra» o en el «Resumen», secciones 3.7 y 4.1) |
+
+### 13.4 Elegir qué recibir (Cuenta › «Notificaciones»)
+
+Abra su Cuenta y elija **«Notificaciones»** (o pulse «Elegir qué notificaciones recibir» al pie del panel).
+Verá las categorías que corresponden a los permisos de su cuenta, cada una con su descripción y un interruptor
+(«Encendida» / «Apagada»).
+
+- Todas vienen encendidas y cada cambio se guarda al momento.
+- Apagar una categoría no borra las notificaciones que ya recibió: solo deja de crear las nuevas.
+- Para quien revisa, **«Versiones por dictaminar»** permanece siempre encendida y no se puede apagar.
+
+## 14. El asistente de IA
 
 Hoy la interfaz de Sílice **no tiene** una ventana para conversar con el asistente de IA. No hay botón ni
 panel del asistente en el Presupuesto ni en otra sección.
@@ -1680,23 +1868,24 @@ del borrador, sin precios, montos ni nombres de obra, empresa o personas.
 Dejar esto configurado no agrega todavía ninguna pantalla. Cuando el asistente llegue a la interfaz, este
 manual lo explicará.
 
-## 14. Problemas frecuentes
+## 15. Problemas frecuentes
 
-### 14.1 Al entrar
+### 15.1 Al entrar
 
 | Mensaje | Qué pasa | Qué hacer |
 |---|---|---|
 | «El código de instalación no es válido o ya se usó.» | El código está mal copiado, ya se usó o no existe | Cópielo otra vez del archivo `codigo_instalacion.txt`. Si ya se usó, entre con la cuenta creada |
 | «Usuario o contraseña incorrectos.» | Uno de los dos está mal | Revise mayúsculas y el teclado. Si la olvidó, pida al administrador que la restablezca |
+| «El usuario, la contraseña o el código no son válidos» | En «Tengo un código», alguno de los tres datos no coincide, el código ya se usó o venció (7 días) | Revise los datos y el código. Si venció, pida al administrador que vuelva a aprobar su solicitud en «Cuentas y permisos» (sección 2.3) |
 | «Demasiados intentos fallidos. Espere 15 minutos o pida al administrador que desbloquee la cuenta.» | La cuenta se bloqueó | Espere, o que el administrador pulse «Desbloquear» |
 | «Demasiados intentos fallidos en este equipo. Espere unos segundos y vuelva a probar.» | Muchos intentos seguidos | Espere los segundos que indica el botón |
 | «Esa contraseña es demasiado común; elija otra.» | La contraseña es muy conocida | Use una frase larga |
-| «Su contraseña es temporal: elija una propia antes de seguir.» | Entró con la contraseña temporal | Cámbiela (sección 2.4) |
+| «Su contraseña es temporal: elija una propia antes de seguir.» | Entró con la contraseña temporal | Cámbiela (sección 2.5) |
 | «Su sesión venció. Entre de nuevo para seguir.» | Pasó mucho tiempo sin actividad | Entre otra vez |
 | «No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.» | La consola de Sílice está cerrada | Cierre la ventana de Sílice y abra «Sílice» desde el menú Inicio |
 | «Sílice se detuvo» (en la ventana) | El servidor de Sílice terminó con la ventana abierta | Cierre la ventana y abra «Sílice» otra vez; si se repite, envíe el archivo de la carpeta `%LOCALAPPDATA%\Silice\registros` |
 
-### 14.2 Mientras trabaja
+### 15.2 Mientras trabaja
 
 | Mensaje | Qué pasa | Qué hacer |
 |---|---|---|
@@ -1706,7 +1895,7 @@ manual lo explicará.
 | «Ya existe una obra llamada «…»: elija otro nombre o abra esa.» | El nombre está repetido en la carpeta | Use otro nombre |
 | «Escriba un número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56.» | La cifra se escribió con punto decimal (2.5) o con otro formato | Escriba 2,5 o 1.234,56 |
 | «Elija la partida de la lista de sugerencias.» | Escribió en «Partida» pero no eligió | Elija una opción de la lista |
-| «La partida «…» no está en el catálogo: compóngala primero en Componer.» | La partida no existe | Use «Componer una partida» (sección 4.3) |
+| «La partida «…» no está en el catálogo: compóngala primero en Componer.» | La partida no existe | Use «Crear la partida «…»» en la fila de alta (sección 4.3) |
 | «El cálculo da … y la cantidad es …: corrija uno de los dos.» | El cálculo y la cantidad no coinciden | Corrija uno de los dos |
 | «El borrador cambió en otra ventana: vuelva a cargarlo.» | Tiene la obra abierta en dos pestañas | Pulse «Recargar el borrador» y trabaje en una sola pestaña |
 | «Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó)…» | Sílice se reinició con cambios sin guardar | Pulse «Abrir de nuevo»; lo no guardado se perdió |
@@ -1726,7 +1915,7 @@ manual lo explicará.
 | «Esta versión no se puede guardar: alguna partida ya no tiene composición vigente en el catálogo.» | Una partida perdió su composición | Revise el catálogo; quien arma la compone de nuevo |
 | «La pantalla no cargó. Vuelva a cargar Sílice (F5)…» | Falló una pantalla | Pulse F5; si sigue, avise al administrador |
 
-### 14.3 Para quien administra el equipo
+### 15.3 Para quien administra el equipo
 
 - **La carpeta de la empresa.** Al arrancar, el lanzador de Sílice fija la carpeta de trabajo de la
   empresa con la variable `SILICE_CASO`, y el modo entrega con `SILICE_MODO_ENTREGA=1` (que oculta el
@@ -1734,37 +1923,35 @@ manual lo explicará.
   `ARENIA_MODO_ENTREGA`, ya no se aceptan desde la 0.7.0. Los detalles están en el [manual
   técnico](manual_tecnico.md).
 - **La instalación nueva no muestra «Bienvenida a Sílice».** Ya hay una cuenta creada: use «Entrar», o
-  «Perdí el acceso de administrador» (sección 2.5).
+  «Perdí el acceso de administrador» (sección 2.6).
 - **Una persona no ve sus obras.** Revise sus papeles en su Cuenta, «Cuentas y permisos»: para ver
   obras necesita «arma» o «revisa».
 
-## 15. Lo que cambió respecto del manual anterior
+## 16. Lo que cambió respecto del manual anterior
 
-El manual anterior describía la interfaz de Streamlit y la primera interfaz nueva. Estas pantallas ya no
-existen; su función está ahora en otro lugar:
+El manual anterior describía la interfaz de Streamlit y versiones anteriores de la interfaz nueva. Estas
+pantallas o flujos cambiaron de lugar o de forma:
 
 | Antes | Ahora |
 |---|---|
-| «Inicio» con la lista de casos y los recorridos | La «Vista general» al entrar (sección 3.4); las carpetas de trabajo en la Cuenta › «Carpetas»; el recorrido guiado en «Auditar un presupuesto» y en la Cuenta › «Ayuda y acerca de Sílice» |
-| La barra de herramientas («Proyecto», «Guardar version», «Exportar Excel»…) | La barra lateral con las obras; las secciones en la barra de cada obra; «Nueva obra»; guardar en la franja del paso; «Descargar Excel» en el Presupuesto |
+| «Inicio» con la lista de casos y los recorridos | La «Vista general» al entrar (sección 3.4); las carpetas de trabajo en la Cuenta › «Carpetas»; el recorrido guiado en «Auditar un libro» › «Más opciones» y en la Cuenta › «Ayuda y acerca de Sílice» |
+| La barra de herramientas («Proyecto», «Guardar version», «Exportar Excel»…) | La barra lateral de lugares reducible a iconos (`Ctrl+B`), la barra de la obra en dos filas («Presupuestar», «Auditar», «Anticipar» y «Versión»), «Nueva obra» amarilla, guardar en la franja del paso y «Descargar Excel» / «Descargar PDF» en «Más acciones» del Presupuesto |
 | «Pendientes» como primera pantalla | La «Vista general»; la bandeja «Pendientes» es su segunda pestaña (sección 3.5) |
-| Las secciones de la obra desplegadas en la barra lateral | La barra de secciones bajo el nombre de la obra; la barra lateral solo lista las obras (sección 3.6) |
+| Al elegir una obra se abría el «Resumen» | Al elegir una obra en la barra lateral o el buscador abre directamente su «Presupuesto»; el «Resumen» está en «Portada de la obra» (sección 3.6) |
+| «Presupuesto» en seis o siete pestañas con diálogo aparte para agregar partidas | Grilla editable en una sola pantalla con cabecera fija («Total sin IVA», «Problemas (n)» y «Más acciones»), inspector lateral de la partida y fila de alta en línea; las pestañas de antes siguen en «Espacio, plan y ajustes» (sección 4.2 a 4.6) |
+| «Inicio de auditoría» con «Auditar por mi cuenta» saltando al visor | «Auditar un libro» en tres pasos en una sola página, con alertas de precio, «Qué hacer» plegado en cada hallazgo, «Más opciones» (fecha y recorrido guiado), «Descargar el informe en PDF» y «Ver la hoja marcada» a pedido (sección 12.1) |
+| Cuentas creadas solo a mano por el administrador | También solicitud desde «Crear una cuenta», aprobación con código único de 20 caracteres en Cuenta › «Cuentas y permisos» y activación en «Tengo un código» (sección 2.3) |
+| Avisos solo dentro de cada pantalla | Barra de estado con la campanita abajo a la derecha, tarjetas emergentes, panel «Notificaciones» con historial de 30 días, avisos por evento y preferencias en Cuenta › «Notificaciones» (sección 13) |
 | La zona «Empresa» de la barra lateral | El grupo «Costos y producción»; «Empresa y personas» y «Ayuda» pasaron a la Cuenta |
-| La pantalla «Administración», con siete pestañas | Cuatro secciones de la Cuenta: «Cuentas y permisos», «Empresa y tema», «Carpetas» y «Especialidades, IA e instalación» (sección 2.7) |
-| Las migas («Mis obras / … / Presupuesto») y el tamaño de letra en la barra de arriba | La barra de arriba muestra la carpeta activa; el tamaño de letra está solo en la Cuenta › «Configuración» |
+| La pantalla «Administración», con siete pestañas | Cuatro secciones de la Cuenta: «Cuentas y permisos», «Empresa y tema», «Carpetas» y «Especialidades, IA e instalación» (sección 2.8) |
+| Las migas («Mis obras / … / Presupuesto») y el tamaño de letra en la barra de arriba | La barra de arriba muestra la carpeta activa; el tamaño de letra y la «Apariencia» (claro/oscuro) están en Cuenta › «Configuración» |
 | «Salir» en el menú de la cuenta | «Salir de la sesión», arriba de su Cuenta (sección 3.9) |
-| «Tablero del proyecto», «Componer una partida», «Entregar paquete», «Revisar un paquete», «Actualizar precios», «Reajuste de precios», «Escenarios de sensibilidad» y «Riesgo de la obra» solo con Ctrl+K | Vistas y secciones de la obra (secciones 1.3 y 3.6); Ctrl+K las sigue encontrando |
-| «Precios de la empresa», «Índices del BCV», «Libro de la empresa», «Historial de auditorías» y las pantallas de producción solo con Ctrl+K | Pestañas de «Precios y catálogo», «Auditar un presupuesto» y «Costos de producción» |
-| «Elaborar un presupuesto» | «Archivos y planos» › «Subir plano o cómputo» › «Cargar cómputo» |
-| «Partidas similares» | «Agregar partida» › «Buscar parecidas», dentro del Presupuesto |
+| «Elaborar un presupuesto» | «Plano o cómputo» (Archivos y planos) › «Subir plano o cómputo» › «Cargar cómputo» |
+| «Partidas similares» | «Buscar parecidas» en la fila de alta del Presupuesto |
 | «Histórico de precios» como pantalla suelta | La pestaña «Histórico de precios» de «Mercado» |
-| «Hoja del proyecto» u «Hoja de la obra», con nueve pestañas | «Presupuesto», con seis pestañas (siete con «Espacio y metrajes») |
-| La pestaña «Parámetros» | La pestaña «Ajustes de costo» |
-| La pestaña «Trazabilidad» y el selector «Versión» de la hoja | La sección «Versiones» de la obra |
-| El APU en tres paneles | El APU en el panel lateral, al pulsar el código de la partida |
-| Componer solo en su pantalla | También en el panel «Componer una partida», sin salir de la obra |
-| La herramienta «Importar plano» | «Archivos y planos» › «Subir plano o cómputo» |
-| El panel de chat del asistente de IA | No existe en la interfaz actual; solo su configuración (sección 13) |
+| La pestaña «Parámetros» | La pestaña «Ajustes de costo» en «Espacio, plan y ajustes» |
+| La pestaña «Trazabilidad» y el selector «Versión» de la hoja | La sección «Versiones» de la obra (con filtro «Por persona») |
+| El panel de chat del asistente de IA | No existe en la interfaz actual; solo su configuración (sección 14) |
 | El Visor 3D del modelo | Retirado |
 | La creación del primer administrador, pendiente | La pantalla «Bienvenida a Sílice» con el código de instalación |
 | Las guías de cada tarea solo en este manual | También dentro de Sílice: «¿Qué es esto?» en cada pantalla, «Empiece aquí» en la Vista general la primera vez, y guías y glosario en la Cuenta › «Ayuda y acerca de Sílice» (sección 3.10) |
