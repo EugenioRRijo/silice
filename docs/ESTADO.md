@@ -492,6 +492,14 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
       siembra ficticia; el 2026-11-27 mostró tres defectos del marco (la lista de obras de la barra lateral no se ve, el
       diálogo «Nueva obra» no aparece y la barra de estado corta el contenido), en corrección, y el guion se está poniendo
       al día con el marco nuevo ([plan](planes/2026-11-26-plan-integracion-cara.md)).
+    - **B1-11 recortado (2026-11-27):** retirar «Partidas» y «Revisión» de la vista por pestañas dejó 5 errores de
+      tipos y más de 47 pruebas en rojo en 8 archivos de `paginas/hoja`; se deshizo y queda para después de medir, como
+      permite la ficha (§5, orden de recorte). Durante la medición conviven los dos caminos: la grilla nueva en
+      `…/presupuesto` y las pestañas de antes en `…/presupuesto/pestanas`. Al retomarlo, la tabla de Gemini de qué
+      prueba vieja cubre la superficie sirve de punto de partida.
+    - **Deuda del inspector de la partida (B1-6):** «Quitar» espera los envíos pendientes de cantidades
+      (`esperarEnvios`) pero no se cancela si el último cambio dio 422 ni se encola con las escrituras de
+      `useCantidadesDeLaSuperficie`, como hacía `accionarEnOrden` en la vista por pestañas.
     - **B1-12 (medir y contener la grilla):** recortable; solo se aplica si la medición en Chromium con 500 filas supera
       los 200 ms al editar una celda
       ([ficha B1 §4 y §5](especificaciones/2026-11-26-cara-papel-y-resaltador/b1/ficha-b1.md)).
