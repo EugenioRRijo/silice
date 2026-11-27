@@ -444,3 +444,72 @@ describe("estilos de la grilla (guías responsive-table y single-line-overflow, 
     expect(new Set(escala).size).toBe(4);
   });
 });
+
+describe("abrir la fila (alAbrir, B1-10)", () => {
+  test("Enter sobre una celda que no se edita abre la fila con su id, la columna y la celda, y consume la tecla", async () => {
+    const alAbrir = vi.fn();
+    montar({ alAbrir });
+    const u = userEvent.setup();
+    const descripcion = celda("Excavación manual");
+    descripcion.focus();
+    await u.keyboard("{Enter}");
+    expect(alAbrir).toHaveBeenCalledTimes(1);
+    expect(alAbrir).toHaveBeenCalledWith("a", "descripcion", descripcion);
+  });
+
+  test("Enter sobre una celda editable edita en lugar de abrir", async () => {
+    const alAbrir = vi.fn();
+    montar({ alAbrir });
+    const u = userEvent.setup();
+    celda("10,5").focus();
+    await u.keyboard("{Enter}");
+    expect(alAbrir).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+  });
+
+  test("con un modificador o con la tecla ya consumida no abre nada", async () => {
+    const alAbrir = vi.fn();
+    montar({ alAbrir });
+    const u = userEvent.setup();
+    celda("Excavación manual").focus();
+    await u.keyboard("{Control>}{Enter}{/Control}");
+    await u.keyboard("{Alt>}{Enter}{/Alt}");
+    expect(alAbrir).not.toHaveBeenCalled();
+  });
+
+  test("el doble clic sobre una celda abre la fila, salvo que algo dentro ya lo atendiera", async () => {
+    const alAbrir = vi.fn();
+    const columnas: ColumnaDeGrilla<Fila>[] = [
+      ...COLUMNAS.slice(0, 3),
+      {
+        clave: "total",
+        titulo: "Total",
+        valor: (f) => f.total,
+        render: (f) => (
+          <span
+            onDoubleClick={(e) => {
+              e.preventDefault();
+            }}
+          >
+            {f.total}
+          </span>
+        ),
+      },
+    ];
+    montar({ alAbrir, columnas });
+    const u = userEvent.setup();
+    await u.dblClick(celda("Relleno compactado"));
+    expect(alAbrir).toHaveBeenCalledTimes(1);
+    expect(alAbrir).toHaveBeenCalledWith("b", "descripcion", celda("Relleno compactado"));
+    await u.dblClick(screen.getByText("3.000,00"));
+    expect(alAbrir).toHaveBeenCalledTimes(1);
+  });
+
+  test("sin alAbrir, Enter sobre una celda que no se edita no hace nada", async () => {
+    montar();
+    const u = userEvent.setup();
+    celda("Excavación manual").focus();
+    await u.keyboard("{Enter}");
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+});

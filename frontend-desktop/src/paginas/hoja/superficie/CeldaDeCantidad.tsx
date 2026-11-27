@@ -188,7 +188,18 @@ export function CeldaDeCantidad({
           />
         </div>
       ) : (
-        <span className="silice-celda-cantidad__valor" onDoubleClick={soloLectura ? undefined : () => abrir(null)}>
+        <span
+          className="silice-celda-cantidad__valor"
+          onDoubleClick={
+            soloLectura
+              ? undefined
+              : (e) => {
+                  // La celda lo atendió: la grilla no abre además el inspector de la fila.
+                  e.preventDefault();
+                  abrir(null);
+                }
+          }
+        >
           {valor}
         </span>
       )}

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import "./Grilla.scss";
 import { estadoInicialDeGrilla, eventoDesdeTecla, siguiente } from "./logicaGrilla";
 import type { EstadoDeGrilla, EventoDeGrilla, TransicionDeGrilla } from "./logicaGrilla";
@@ -34,6 +34,9 @@ export interface PropiedadesDeGrilla<F> {
   // Se llama cuando la persona cambia de celda activa (no al montar).
   readonly alActivar?: ((idDeFila: string, clave: string) => void) | undefined;
   readonly filaElegida?: string | null | undefined;
+  // Abrir la fila (su inspector): Enter sobre una celda que no se edita, o doble clic en una celda que nada dentro atendió.
+  // Recibe la celda para que quien abre sepa a dónde devolver el foco al cerrar.
+  readonly alAbrir?: ((idDeFila: string, clave: string, celda: HTMLElement) => void) | undefined;
   // Filas de pie (tr con su td), dentro de un tfoot.
   readonly pie?: ReactNode;
 }
@@ -55,6 +58,7 @@ export function Grilla<F>({
   alEditar,
   alActivar,
   filaElegida,
+  alAbrir,
   pie,
 }: PropiedadesDeGrilla<F>) {
   const [estadoCrudo, setEstado] = useState<EstadoDeGrilla>(() => estadoInicialDeGrilla());
@@ -164,6 +168,22 @@ export function Grilla<F>({
     if (evento === null) {
       return;
     }
+    // Enter sobre una celda que no se edita: la fila se abre (la máquina no hace nada con ella).
+    if (
+      evento.tipo === "enter" &&
+      alAbrir !== undefined &&
+      !enCampo &&
+      estado.modo === "navegar" &&
+      valorEditable(estado.activa.fila, estado.activa.columna) === null
+    ) {
+      const f = filas[estado.activa.fila];
+      const c = columnas[estado.activa.columna];
+      if (f !== undefined && c !== undefined) {
+        e.preventDefault();
+        alAbrir(idDeFila(f), c.clave, objetivo);
+        return;
+      }
+    }
     const transicion = despachar(evento);
     if (transicion.consumir) {
       e.preventDefault();
@@ -217,6 +237,12 @@ export function Grilla<F>({
                     ]
                       .filter(Boolean)
                       .join(" "),
+                    onDoubleClick:
+                      alAbrir === undefined
+                        ? undefined
+                        : (e: MouseEvent<HTMLElement>) => {
+                            if (!e.defaultPrevented) alAbrir(id, c.clave, e.currentTarget);
+                          },
                     onFocus: (e: { target: EventTarget; currentTarget: EventTarget }) => {
                       if (e.target === e.currentTarget) {
                         despachar({

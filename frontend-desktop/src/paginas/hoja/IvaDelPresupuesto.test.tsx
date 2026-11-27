@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { vistaPresupuesto } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaPresupuesto } from "./logica";
 
 // Tarea 5b del plan F4 (decisión de Eugenio, 31/10/2026, plan vial T18): debajo de «Total del presupuesto» se leen el

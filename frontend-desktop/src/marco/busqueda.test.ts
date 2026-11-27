@@ -37,7 +37,7 @@ describe("resultadosDe", () => {
     expect(r[0]).toEqual({
       texto: "Clínica Las Mercedes",
       detalle: "Carpeta Norte",
-      ruta: "/obra/Carpeta%20Norte.db/1/resumen",
+      ruta: "/obra/Carpeta%20Norte.db/1/presupuesto",
     });
   });
 
@@ -87,8 +87,8 @@ describe("resultadosDe", () => {
     // Las nueve secciones de una obra (Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado,
     // Control de obra y Riesgo) ya no caben con las dos pantallas de Empresa cuyo orden se mira. Con «vial» y «riesgo»
     // apagados se van «Tramos» y «Riesgo», y sin `aprobar_version`, `revisar_paquete` ni `entregar_paquete` (F6, T5: una sección
-    // con una subvista usable se ofrece) se va «Aprobaciones»; «Resumen» no sale porque lleva a
-    // la misma ruta que la obra. Quedan la obra, sus cinco secciones y dos de Empresa: ocho. No se apaga «edificación»: desde la Tarea 12 de F4 «Archivos y
+    // con una subvista usable se ofrece) se va «Aprobaciones»; «Presupuesto» no sale porque lleva a
+    // la misma ruta que la obra (D1 de B1: la obra abre en el Presupuesto). Quedan la obra, sus cinco secciones y dos de Empresa: ocho. No se apaga «edificación»: desde la Tarea 12 de F4 «Archivos y
     // planos» no es de ningún módulo y no se quita con él.
     const sinVialNiAprobar = ofertaDe(
       PAGINAS.flatMap((p) => (p.accion === null || ["aprobar_version", "revisar_paquete", "entregar_paquete"].includes(p.accion) ? [] : [p.accion])),
@@ -97,20 +97,21 @@ describe("resultadosDe", () => {
     );
     const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinVialNiAprobar).map((r) => r.texto);
     expect(textos[0]).toBe("Precio alto");
-    expect(textos[1]).toBe("Precio alto › Presupuesto");
+    expect(textos[1]).toBe("Precio alto › Resumen");
     const i = (t: string) => textos.indexOf(t);
-    expect(i("Precio alto › Control de obra")).toBeGreaterThan(i("Precio alto › Presupuesto"));
+    expect(i("Precio alto › Control de obra")).toBeGreaterThan(i("Precio alto › Resumen"));
     expect(i("Catálogo de partidas e insumos")).toBeGreaterThan(i("Precio alto › Control de obra"));
     expect(i("Precios de la empresa")).toBeGreaterThan(i("Catálogo de partidas e insumos"));
   });
 
-  it("si sale la obra no repite su sección «Resumen», que lleva a la misma ruta", () => {
+  it("si sale la obra no repite su sección «Presupuesto», que lleva a la misma ruta (D1 de B1)", () => {
     const r = resultadosDe("precio", [obra(null, 1, "Precio alto")], COMPLETA);
-    expect(r.map((x) => x.texto)).not.toContain("Precio alto › Resumen");
+    expect(r.map((x) => x.texto)).not.toContain("Precio alto › Presupuesto");
+    expect(r.map((x) => x.texto)).toContain("Precio alto › Resumen");
     const rutas = r.map((x) => x.ruta);
     expect(new Set(rutas).size).toBe(rutas.length);
-    // Sin la obra entre los resultados, la sección sí se alcanza: «resumen» no encuentra la obra «Torre B».
-    expect(resultadosDe("torre resumen", [TORRE], COMPLETA).map((x) => x.texto)).toEqual(["Torre B › Resumen"]);
+    // Sin la obra entre los resultados, la sección sí se alcanza: «presupuesto» no encuentra la obra «Torre B».
+    expect(resultadosDe("torre presupuesto", [TORRE], COMPLETA).map((x) => x.texto)).toEqual(["Torre B › Presupuesto"]);
   });
 
   it("alcanza las pantallas que no tienen sitio en el árbol", () => {

@@ -1,21 +1,20 @@
 import type { ColumnaDeGrilla } from "../../../comun/Grilla";
-import { Severidad } from "../../../comun/Severidad";
 import { unidadEscrita } from "../../../comun/unidades";
-import { cifrasEnTextoEsVe, formatoEsVe } from "../../../indicadores/formatoEsVe";
-import { estadoLlano } from "../estadoLlano";
+import { formatoEsVe } from "../../../indicadores/formatoEsVe";
+import { CeldaDeCantidad } from "./CeldaDeCantidad";
+import type { CantidadesDeLaSuperficie } from "./useCantidadesDeLaSuperficie";
+import { CeldaDeProblemas, textoDeCeldaDeProblemas } from "./CeldaDeProblemas";
 import type { FilaDeLaGrilla } from "./logica";
 
-// Columnas de la grilla del Presupuesto en solo lectura (lote B1-4, ficha-b1 §1.6 y §3.2):
-// las cifras llegan del servidor y se presentan en es-VE sin title ni recalcular montos;
-// las partidas sin precio dicen «Pendiente» en texto; la gravedad siempre va con su palabra junto al ícono.
+// Columnas de la grilla del Presupuesto (lotes B1-4 y B1-10, ficha-b1 §1.6 y §3.2): las cifras llegan del servidor y se
+// presentan en es-VE sin title ni recalcular montos; las partidas sin precio dicen «Pendiente» en texto; la gravedad siempre
+// va con su palabra junto al ícono (`CeldaDeProblemas`). Con las cantidades de la superficie (`useCantidadesDeLaSuperficie`)
+// la columna Cantidad es la celda editable (`CeldaDeCantidad`); sin ellas es solo texto (solo lectura).
 
-function textoDeProblema(fila: FilaDeLaGrilla): string {
-  if (fila.problema === null) return "Sin problemas";
-  return estadoLlano(cifrasEnTextoEsVe(fila.problema.texto), fila.problema.severidad);
-}
-
-/** Construye las siete columnas de la grilla de partidas en solo lectura. */
-export function columnasDePresupuesto(): readonly ColumnaDeGrilla<FilaDeLaGrilla>[] {
+/** Construye las siete columnas de la grilla de partidas. */
+export function columnasDePresupuesto(
+  cantidades?: Pick<CantidadesDeLaSuperficie, "celda">,
+): readonly ColumnaDeGrilla<FilaDeLaGrilla>[] {
   return [
     {
       clave: "partida",
@@ -36,7 +35,8 @@ export function columnasDePresupuesto(): readonly ColumnaDeGrilla<FilaDeLaGrilla
       clave: "cantidad",
       titulo: "Cantidad",
       numerica: true,
-      valor: (f) => f.cantidad,
+      valor: (f) => (cantidades === undefined ? f.cantidad : cantidades.celda(f.fila).valor),
+      ...(cantidades === undefined ? {} : { render: (f: FilaDeLaGrilla) => <CeldaDeCantidad {...cantidades.celda(f.fila)} /> }),
     },
     {
       clave: "pu",
@@ -53,22 +53,8 @@ export function columnasDePresupuesto(): readonly ColumnaDeGrilla<FilaDeLaGrilla
     {
       clave: "problemas",
       titulo: "Problemas",
-      valor: (f) => {
-        if (f.problema === null) return "Sin problemas";
-        const detalle = textoDeProblema(f);
-        return detalle === f.problema.palabra ? f.problema.palabra : `${f.problema.palabra}: ${detalle}`;
-      },
-      render: (f) => {
-        if (f.problema === null) {
-          return <span className="silice-superficie__sin-problemas">Sin problemas</span>;
-        }
-        return (
-          <span className="silice-superficie__problema">
-            <Severidad valor={f.problema.severidad} />
-            <span className="silice-superficie__problema-texto">{textoDeProblema(f)}</span>
-          </span>
-        );
-      },
+      valor: (f) => textoDeCeldaDeProblemas(f.problema),
+      render: (f) => <CeldaDeProblemas problema={f.problema} />,
     },
   ];
 }

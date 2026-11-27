@@ -89,7 +89,7 @@ describe("OPCIONES_DE_HERRAMIENTA (la segunda fila de la barra de la obra)", () 
   const titulos = (h: keyof typeof OPCIONES_DE_HERRAMIENTA) => OPCIONES_DE_HERRAMIENTA[h].map((o) => o.titulo);
 
   it("cada herramienta trae las opciones acordadas, en orden", () => {
-    expect(titulos("presupuestar")).toEqual(["Partidas", "Componer un APU", "Tramos de la vía", "Plano o cómputo", "Precios de mercado"]);
+    expect(titulos("presupuestar")).toEqual(["Partidas", "Componer un APU", "Espacio, plan y ajustes", "Tramos de la vía", "Plano o cómputo", "Precios de mercado"]);
     expect(titulos("auditar")).toEqual(["Aprobar", "Revisar un paquete", "Entregar"]);
     expect(titulos("anticipar")).toEqual(["Control de obra", "Reajuste de precios", "Escenarios", "Riesgo"]);
     expect(titulos("portada")).toEqual(["Resumen", "Tablero"]);
@@ -100,6 +100,7 @@ describe("OPCIONES_DE_HERRAMIENTA (la segunda fila de la barra de la obra)", () 
     expect(rutas("presupuestar")).toEqual([
       "/obra/a.db/3/presupuesto",
       "/obra/a.db/3/presupuesto/componer",
+      "/obra/a.db/3/presupuesto/pestanas",
       "/obra/a.db/3/tramos",
       "/obra/a.db/3/archivos",
       "/obra/a.db/3/mercado",

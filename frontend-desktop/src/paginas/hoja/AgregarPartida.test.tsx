@@ -10,7 +10,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, FilaPresupuesto, Resumen, VersionesRespuesta, VistaPresupuesto } from "./logica";
 
 // Tarea 11 del plan de montar un presupuesto: la Hoja agrega y quita partidas (rutas de la Tarea 9) y una obra sin

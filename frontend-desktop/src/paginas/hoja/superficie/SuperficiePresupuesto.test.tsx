@@ -244,7 +244,7 @@ describe("SuperficiePresupuesto (lote B1-4)", () => {
     expect(document.querySelectorAll(".cds--btn--primary")).toHaveLength(1);
   });
 
-  test("prueba 1 de §1.10: hay 8 controles de decisión a la vista por omisión o menos (sin «Ver el valor exacto»)", async () => {
+  test("prueba 1 de §1.10: hay 8 controles de decisión a la vista por omisión o menos, con la fila de alta incluida (sin «Ver el valor exacto» ni lo plegado)", async () => {
     const { container } = montar();
     await screen.findByRole("grid", { name: "Presupuesto" });
     await screen.findByRole("button", { name: /^Problemas \(/ });
@@ -253,7 +253,8 @@ describe("SuperficiePresupuesto (lote B1-4)", () => {
       .queryAllByRole("button")
       .filter((b) => !(b.getAttribute("aria-label") ?? b.textContent ?? "").startsWith("Ver el valor exacto"));
     const enlaces = screen.queryAllByRole("link");
-    const camposTexto = screen.queryAllByRole("textbox");
+    // Lo que está dentro de un pliegue cerrado («Cálculo y nota») no se ve ni se tabula: no cuenta como decisión a la vista.
+    const camposTexto = screen.queryAllByRole("textbox").filter((c) => c.closest("details:not([open])") === null);
     const combos = screen.queryAllByRole("combobox");
     const grillas = screen.queryAllByRole("grid");
     const summaries = container.querySelectorAll("summary");

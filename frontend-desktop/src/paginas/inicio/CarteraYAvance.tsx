@@ -357,7 +357,7 @@ function BloqueAvanceDeLaCartera({
 
   return (
     <section className="silice-inicio__seccion silice-inicio__seccion--compacta" aria-labelledby="inicio-avance">
-      <h2 id="inicio-avance" className="silice-inicio__subtitulo-seccion">
+      <h2 id="inicio-avance" className="silice-inicio__subtitulo-seccion cds--type-heading-compact-02">
         {TEXTOS.avance.titulo}
       </h2>
 
@@ -478,7 +478,7 @@ export function CarteraYAvance({
     <>
       <section className="silice-inicio__seccion" aria-labelledby="inicio-cartera">
         <div className="silice-inicio__cabecera-seccion">
-          <h2 id="inicio-cartera" className="silice-inicio__titulo-seccion">
+          <h2 id="inicio-cartera" className="silice-inicio__titulo-seccion cds--type-heading-compact-02">
             {TEXTOS.cartera.titulo}
           </h2>
           {carga.estado === "listo" && porMoneda.length > 0 && (

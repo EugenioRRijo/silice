@@ -171,17 +171,23 @@ describe("pestanasUsables", () => {
     ]);
   });
 
-  it("también filtra las subvistas: sin editar_hoja, Presupuesto queda con una sola (y la barra de subvistas no se pinta)", () => {
-    const subvistas = SUBVISTAS.presupuesto ?? [];
-    const solasPartidas = pestanasUsables(subvistas, (h) => `/p/${h.id}`, ["leer_proyecto"], false, []);
-    expect(ids(solasPartidas)).toEqual([""]);
+  it("también filtra las subvistas: sin editar_hoja, Mercado queda con una sola (y la barra de subvistas no se pinta)", () => {
+    const subvistas = SUBVISTAS.mercado ?? [];
+    const solasPrincipal = pestanasUsables(subvistas, (h) => `/p/${h.id}`, ["leer_proyecto"], false, []);
+    expect(ids(solasPrincipal)).toEqual([""]);
     const { container } = render(
       <MemoryRouter>
-        <BarraDeEspacio etiqueta="Vistas de Presupuesto" pestanas={solasPartidas} activa="" nivel="subvista" />
+        <BarraDeEspacio etiqueta="Vistas de Mercado" pestanas={solasPrincipal} activa="" nivel="subvista" />
       </MemoryRouter>,
     );
     expect(container).toBeEmptyDOMElement();
-    expect(ids(pestanasUsables(subvistas, (h) => `/p/${h.id}`, ["leer_proyecto", "editar_hoja"], false, []))).toEqual(["", "componer"]);
+    expect(ids(pestanasUsables(subvistas, (h) => `/p/${h.id}`, ["leer_proyecto", "editar_hoja"], false, []))).toEqual(["", "actualizar"]);
+  });
+
+  it("Presupuesto: quien solo lee ve la superficie y «Espacio, plan y ajustes»; quien edita, además Componer (B1-10)", () => {
+    const subvistas = SUBVISTAS.presupuesto ?? [];
+    expect(ids(pestanasUsables(subvistas, (h) => `/p/${h.id}`, ["leer_proyecto"], false, []))).toEqual(["", "pestanas"]);
+    expect(ids(pestanasUsables(subvistas, (h) => `/p/${h.id}`, ["leer_proyecto", "editar_hoja"], false, []))).toEqual(["", "componer", "pestanas"]);
   });
 
   it("una herramienta cuya pantalla no existe no se ofrece", () => {

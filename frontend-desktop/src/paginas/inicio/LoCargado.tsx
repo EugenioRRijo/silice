@@ -195,7 +195,7 @@ export function LoCargado({ auditorias, carpeta, partidas, insumos, arenera, enl
 
   return (
     <section className="silice-inicio__seccion" aria-labelledby="inicio-cargado">
-      <h2 id="inicio-cargado" className="silice-inicio__subtitulo-seccion">
+      <h2 id="inicio-cargado" className="silice-inicio__subtitulo-seccion cds--type-heading-compact-02">
         {TEXTOS.cargado.titulo}
       </h2>
       <div className="silice-inicio__tarjetas">

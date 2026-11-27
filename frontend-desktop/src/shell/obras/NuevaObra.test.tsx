@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
-import PaginaHoja from "../../paginas/hoja/index";
+import PaginaHoja from "../../paginas/hoja/pestanas";
 import { ContextoAplicacion } from "../contexto";
 import type { Aplicacion } from "../contexto";
 import { DialogoSalida } from "../DialogoSalida";

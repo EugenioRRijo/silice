@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { atipicosRespuesta, cuerpoDeVista, preciosRespuesta, vistaParametros } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, PreciosRespuesta, Resumen, VersionesRespuesta } from "./logica";
 
 // Rebanada 3d-2 (front): cotizar (S3), retirar (S4) y convertir (S5), contrato

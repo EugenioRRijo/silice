@@ -90,6 +90,16 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "leer_proyecto",
     cargar: () => import("../paginas/hoja"),
   },
+  // B1-10: la vista por pestañas de antes, ahora la subvista «Espacio, plan y ajustes» del Presupuesto (su `id` es el de la
+  // subvista `pestanas` de `marco/espacios.ts`). Quien revisa la ve igual que la superficie, en solo lectura.
+  {
+    id: "hoja_pestanas",
+    titulo: "Espacio, plan y ajustes",
+    enUnaLinea: "El espacio, el plan, los precios y los ajustes",
+    seccion: "Trabajo",
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/hoja/pestanas"),
+  },
   {
     id: "versiones",
     titulo: "Versiones",

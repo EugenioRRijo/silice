@@ -252,8 +252,9 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true 
           <p className="cds--type-body-compact-01">{textoLlevadas(paso.cuantas)}</p>
           {paso.otroBorrador && <p className="cds--type-body-compact-01">{OTRO_BORRADOR}</p>}
           {obra !== null && enRuta && (
-            <Link className="cds--link" to={rutaDeObra(obra.carpeta, obra.obraId, "presupuesto")} onClick={() => hoja.irAPestana("partidas")}>
-              Ver en Partidas
+            // El Presupuesto abre en su superficie y lleva el foco a la grilla de partidas (B1-10, ficha-b1 §3.4).
+            <Link className="cds--link" to={rutaDeObra(obra.carpeta, obra.obraId, "presupuesto")} state={{ enfocarGrilla: true }}>
+              Ver en el presupuesto
             </Link>
           )}
         </div>

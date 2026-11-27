@@ -8,7 +8,7 @@ import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import type { ReactNode } from "react";
 import { FranjaDelPresupuesto } from "./FranjaDelPresupuesto";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Hallazgos, VersionesRespuesta } from "./logica";
 
 // Tarea 5 del plan F4: la franja «Te falta / Siguiente paso» del Presupuesto, con un solo botón principal por pantalla, y las

@@ -142,6 +142,8 @@ export const SUBVISTAS: Partial<Record<SeccionId, readonly HerramientaDef[]>> = 
   presupuesto: [
     { id: "", titulo: "Presupuesto", pagina: "hoja" },
     { id: "componer", titulo: "Componer", pagina: "componer" },
+    // B1-10: las pestañas de antes (espacio, APU, plan, precios y ajustes), a un clic de la superficie.
+    { id: "pestanas", titulo: "Espacio, plan y ajustes", pagina: "hoja_pestanas" },
   ],
   aprobaciones: [
     { id: "", titulo: "Aprobar", pagina: "aprobar" },

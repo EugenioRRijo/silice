@@ -30,6 +30,10 @@ export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
   { id: "riesgo", titulo: "Riesgo", pagina: "riesgo", ayuda: "Cuánto puede subir el presupuesto de la obra si cambian los precios." },
 ];
 
+// La sección con que abre una obra desde la barra lateral y el buscador (D1 de la ficha de B1, 2026-11-26): el Presupuesto, que
+// responde de una vez cuánto cuesta la obra y qué tiene que revisar. El Resumen sigue siendo una sección más.
+export const SECCION_DE_ENTRADA: SeccionId = "presupuesto";
+
 // Busca solo entre las propias (un `id` como «toString» no es sección).
 export function seccionPorId(id: string): SeccionDef | undefined {
   return SECCIONES_DE_OBRA.find((s) => s.id === id);

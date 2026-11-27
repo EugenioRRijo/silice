@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaApu, vistaEspacio, vistaParametros } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
 // Tarea 8 del plan F4: «Agregar línea» y «Cambiar el insumo» son un solo diálogo (`LineaDelApu`) con dos modos. Cada línea

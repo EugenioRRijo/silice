@@ -9,6 +9,20 @@
   min-inline-size: 0;
 }
 
+// B1-10: la grilla y la fila de alta a la izquierda; el inspector (de la partida o de los problemas) a la derecha, acoplado
+// (`.silice-con-panel`, de `comun/PanelLateral.scss`). Sin el panel, el cuerpo es solo la columna de la izquierda.
+.silice-superficie__cuerpo {
+  min-inline-size: 0;
+}
+
+.silice-superficie__principal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  align-content: start;
+  min-inline-size: 0;
+}
+
 .silice-superficie__respuesta {
   display: flex;
   flex-wrap: wrap;

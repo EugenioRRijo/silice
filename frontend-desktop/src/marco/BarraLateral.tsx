@@ -17,7 +17,7 @@ import { obrasAlcanzables, useOferta } from "./oferta";
 import { iconoDeOpcion } from "./riel";
 import { RielLateral } from "./RielLateral";
 import type { CifraDeRiel, CifrasDeRiel, OpcionDeRiel } from "./RielLateral";
-import { RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, esRutaDeInicio, rutaDeObra } from "./secciones";
+import { RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCION_DE_ENTRADA, esRutaDeInicio, rutaDeObra } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
 import { usePendientes } from "./usePendientes";
 import { useWorkspaceLayout } from "./useWorkspaceLayout";
@@ -97,7 +97,7 @@ export function BarraLateral({ obraAbierta }: Props) {
     return (
       <li key={clave}>
         <Link
-          to={rutaDeObra(o.carpeta, o.obra_id, "resumen")}
+          to={rutaDeObra(o.carpeta, o.obra_id, SECCION_DE_ENTRADA)}
           aria-label={nombre === o.obra ? undefined : nombre}
           aria-current={clave === claveAbierta ? "page" : undefined}
           aria-describedby={gravedad === "" ? undefined : idDeGravedad}
@@ -170,7 +170,7 @@ export function BarraLateral({ obraAbierta }: Props) {
       texto: o.obra,
       icono: iconoDeOpcion("resumen"),
       inicial: o.obra.trim().charAt(0).toLocaleUpperCase("es"),
-      ruta: rutaDeObra(o.carpeta, o.obra_id, "resumen"),
+      ruta: rutaDeObra(o.carpeta, o.obra_id, SECCION_DE_ENTRADA),
       actual: clave === claveAbierta,
       cuenta,
       detalle: cuenta > 0 ? TEXTOS_PENDIENTES.porHacer(cuenta) : undefined,

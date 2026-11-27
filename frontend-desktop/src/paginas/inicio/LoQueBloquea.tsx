@@ -77,7 +77,7 @@ export function LoQueBloquea({
 
   return (
     <section className="silice-inicio__seccion silice-inicio__seccion--compacta" aria-labelledby="inicio-bloquea">
-      <h2 id="inicio-bloquea" className="silice-inicio__subtitulo-seccion">
+      <h2 id="inicio-bloquea" className="silice-inicio__subtitulo-seccion cds--type-heading-compact-02">
         {TEXTOS.bloquea.titulo}
       </h2>
       {carga.estado === "cargando" && (

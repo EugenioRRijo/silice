@@ -101,7 +101,7 @@ function Cuerpo({ proyecto }: { proyecto: string }) {
             <p className="cds--type-body-compact-01">
               <Link
                 className="cds--link"
-                to={rutaDeObra(obra.carpeta, obra.obraId, "presupuesto")}
+                to={rutaDeObra(obra.carpeta, obra.obraId, "presupuesto", "pestanas")}
                 onClick={() => {
                   hoja.pedirEspacio();
                   hoja.irAPestana("espacio");

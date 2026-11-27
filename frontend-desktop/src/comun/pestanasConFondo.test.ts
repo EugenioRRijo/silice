@@ -27,7 +27,7 @@ describe("pestañas internas con fondo en toda la app", () => {
 
   test("la guardia encuentra las pestañas de Control, del Presupuesto y de Mercado", () => {
     const conPestanas = archivos.filter((a) => aperturasDeTabList(readFileSync(a, "utf8")).length > 0).map((a) => relative(RAIZ, a).replaceAll("\\", "/"));
-    expect(conPestanas).toEqual(expect.arrayContaining(["paginas/control/index.tsx", "paginas/hoja/index.tsx", "paginas/mercado/index.tsx"]));
+    expect(conPestanas).toEqual(expect.arrayContaining(["paginas/control/index.tsx", "paginas/hoja/pestanas.tsx", "paginas/mercado/index.tsx"]));
   });
 
   test("cada <TabList> lleva `contained`, como las de Control de obra", () => {

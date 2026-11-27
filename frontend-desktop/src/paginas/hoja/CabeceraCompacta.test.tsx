@@ -7,7 +7,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import { EstadoDelBorrador } from "./EstadoDelBorrador";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
 // Cabecera compacta del Presupuesto (decisión de Eugenio, 2026-11-05): a 1366×768 con letra Normal la primera partida debe

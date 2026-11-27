@@ -21,7 +21,7 @@ export const HERRAMIENTAS_DE_OBRA: readonly HerramientaDef[] = [
   { id: "anticipar", titulo: "Anticipar", secciones: ["control", "riesgo"] },
 ];
 
-// Las subvistas (Componer, Actualizar, Revisar, Entregar, Reajuste, Escenarios, Tablero) siguen a su sección: no cambian de
+// Las subvistas (Componer, Espacio plan y ajustes, Actualizar, Revisar, Entregar, Reajuste, Escenarios, Tablero) siguen a su sección: no cambian de
 // herramienta. `subvista` queda en la firma para quien la tiene a mano.
 export function herramientaDe(seccion: SeccionId, subvista?: string): Herramienta {
   void subvista;
@@ -67,6 +67,8 @@ export const OPCIONES_DE_HERRAMIENTA: Record<HerramientaConOpciones, readonly Op
   presupuestar: [
     { id: "partidas", titulo: "Partidas", seccion: "presupuesto", subvista: "" },
     { id: "componer", titulo: "Componer un APU", seccion: "presupuesto", subvista: "componer" },
+    // B1-10: las pestañas de antes (espacio, APU, plan, precios y ajustes), a un clic de la superficie.
+    { id: "pestanas", titulo: "Espacio, plan y ajustes", seccion: "presupuesto", subvista: "pestanas" },
     { id: "tramos", titulo: "Tramos de la vía", seccion: "tramos", subvista: "" },
     { id: "archivos", titulo: "Plano o cómputo", seccion: "archivos", subvista: "" },
     { id: "mercado", titulo: "Precios de mercado", seccion: "mercado", subvista: "" },

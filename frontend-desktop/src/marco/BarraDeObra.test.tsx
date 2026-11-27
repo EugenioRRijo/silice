@@ -99,16 +99,18 @@ describe("BarraDeObra: las herramientas", () => {
 describe("BarraDeObra: la segunda fila (opciones de la herramienta activa)", () => {
   const opciones = (nombre: string) => within(screen.getByRole("navigation", { name: nombre }));
 
-  it("en Presupuestar ofrece sus cinco opciones, con la actual marcada", () => {
+  it("en Presupuestar ofrece sus seis opciones, con la actual marcada", () => {
     pintar({ seccion: "presupuesto" });
     const nav = opciones("Opciones de Presupuestar");
     expect(nav.getAllByRole("link").map((l) => l.textContent)).toEqual([
       "Partidas",
       "Componer un APU",
+      "Espacio, plan y ajustes",
       "Tramos de la vía",
       "Plano o cómputo",
       "Precios de mercado",
     ]);
+    expect(nav.getByRole("link", { name: "Espacio, plan y ajustes" })).toHaveAttribute("href", "/obra/a.db/3/presupuesto/pestanas");
     expect(nav.getByRole("link", { name: "Componer un APU" })).toHaveAttribute("href", "/obra/a.db/3/presupuesto/componer");
     expect(nav.getByRole("link", { name: "Partidas" })).toHaveAttribute("aria-current", "page");
     expect(nav.getAllByRole("link").filter((l) => l.getAttribute("aria-current") === "page")).toHaveLength(1);
@@ -145,6 +147,7 @@ describe("BarraDeObra: la segunda fila (opciones de la herramienta activa)", () 
     expect(opciones("Opciones de Presupuestar").getAllByRole("link").map((l) => l.textContent)).toEqual([
       "Partidas",
       "Componer un APU",
+      "Espacio, plan y ajustes",
       "Precios de mercado",
     ]);
   });

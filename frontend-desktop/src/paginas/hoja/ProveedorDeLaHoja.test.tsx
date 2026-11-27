@@ -11,7 +11,7 @@ import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
 import { cuerpoDeVista } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 import { ContextoDelBorradorAbierto } from "../../comun/borradorAbierto";
 import { ContextoDeLaHoja, useHojaDeLaObra } from "./ProveedorDeLaHoja";

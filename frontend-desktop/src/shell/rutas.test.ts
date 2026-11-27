@@ -13,6 +13,7 @@ const REGISTRO: [string, string, string | null][] = [
   ["historial", "Revisión", "leer_proyecto"],
   ["obras", "Trabajo", null],
   ["hoja", "Trabajo", "leer_proyecto"], // F4 2b: quien revisa la ve en solo lectura
+  ["hoja_pestanas", "Trabajo", "leer_proyecto"], // B1-10: las pestañas de antes, subvista «Espacio, plan y ajustes»
   ["versiones", "Trabajo", "leer_proyecto"], // F4, Tarea 6: la sección Versiones de la obra
   ["archivos", "Trabajo", "leer_proyecto"], // F4 Tarea 11: quien revisa ve el registro; subir exige editar_hoja
   ["tablero", "Trabajo", "leer_proyecto"],
@@ -49,7 +50,7 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 31 pantallas del contrato y la Vista general, en su orden, con su seccion y su accion", () => {
+  test("tiene las 31 pantallas del contrato, la Vista general y «Espacio, plan y ajustes» (B1-10), en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
@@ -123,13 +124,13 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["inicio", "auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 32 (las 31 del contrato y la Vista general)", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
+  test("con todas las acciones se usan las 33 (las 31 del contrato, la Vista general y las pestañas del Presupuesto)", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(33);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (30)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (31)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(30);
+    expect(vistas).toHaveLength(31);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 

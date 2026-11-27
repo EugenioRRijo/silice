@@ -251,7 +251,7 @@ export function FilaDeAlta({
 
   return (
     <section className="silice-fila-alta">
-      <h2 id={idTitulo} className="cds--visually-hidden">
+      <h2 id={idTitulo} className="cds--visually-hidden cds--type-heading-compact-02">
         Agregar partida al presupuesto
       </h2>
       <form

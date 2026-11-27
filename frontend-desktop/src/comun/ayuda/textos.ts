@@ -433,17 +433,17 @@ export const GUIAS: readonly Guia[] = [
         titulo: "Crear la obra y agregar sus partidas",
         pasos: [
           "En la barra de la izquierda, pulse «Nueva obra». Escriba el «Nombre de la obra», revise la «Moneda» y pulse «Crear la obra». Se abre el «Resumen» de la obra.",
-          "En la barra de secciones de la obra, vaya a «Presupuesto». En la pestaña «Partidas», pulse «Agregar partida».",
-          "En «Partida», busque por código o por una palabra de la descripción y elija la del catálogo. Si no está, «Buscar parecidas» propone partidas que se le parecen, o elija la última sugerencia, «Componer una partida nueva», para armar su APU en el panel (queda en el catálogo de la empresa, para todas las obras).",
+          "En la barra de secciones de la obra, vaya a «Presupuesto». Bajo la tabla de partidas está la fila para agregar una.",
+          "En «Partida», busque por código o por una palabra de la descripción y elija la del catálogo. Si no está, elija la última sugerencia, «Crear la partida» con su descripción, para armar su APU en el panel (queda en el catálogo de la empresa, para todas las obras).",
           "Escriba la cantidad (o el «Cálculo (opcional)», por ejemplo 6*3-2) y pulse «Agregar al presupuesto». Repita con cada partida.",
-          "Para cambiar una cantidad, escríbala en su celda de la tabla. El código de cada partida abre su APU en el panel de la derecha, y la pestaña «Análisis de precio (APU)» permite ajustarlo.",
+          "Para cambiar una cantidad, escríbala en su celda de la tabla. Con Enter, o con doble clic, sobre las demás celdas de una partida se abre en el panel de la derecha cómo se midió y su APU, y ahí se ajusta. «Problemas» lista lo que Sílice halló y lleva a la partida. El plan, los precios y los ajustes de costo están en «Espacio, plan y ajustes».",
         ],
       },
       {
         titulo: "Guardar y descargar",
         pasos: [
           "Lo que cambia queda en el borrador. Cuando esté listo, pulse «Guardar versión…» (la primera vez, «Guardar primera versión…») en la franja de arriba, escriba de dónde salen los datos y confirme: nace una versión. Si lo único que cambió es el desglose del desperdicio de un material (la misma cantidad, con otra neta y otro porcentaje), el botón de la franja dice «Guardar ajuste de desperdicio…» y el del diálogo «Guardar el desglose»: guarda ese desglose, no pide la fuente y no crea versión; la versión abierta sigue siendo la misma. Bajo la tabla «Materiales» del APU, una línea dice quién guardó el desglose que se ve y cuándo (si no consta quién, lo dice).",
-          "«Descargar Excel», al lado de la franja, baja el presupuesto en Excel; «Descargar PDF», en un PDF listo para imprimir o enviar, con el APU de cada partida después del presupuesto.",
+          "En «Más acciones», al lado de la franja, «Descargar Excel» baja el presupuesto en Excel y «Descargar PDF», en un PDF listo para imprimir o enviar, con el APU de cada partida después del presupuesto.",
           "Si las cantidades vienen de un archivo, en «Archivos y planos» pulse «Subir plano o cómputo»: un plano .dxf o .ifc, o un cómputo .csv que se lleva con «Llevar al presupuesto». Después guarde la versión igual.",
         ],
       },

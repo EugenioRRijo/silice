@@ -12,6 +12,7 @@ import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
 import { cuerpoDeVista } from "../hoja/datosDePrueba";
 import PaginaHoja from "../hoja/index";
+import PaginaHojaPestanas from "../hoja/pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "../hoja/logica";
 import { importada, respuestaDeFusion } from "./datosDePlano";
 import PaginaArchivos from "./index";
@@ -168,7 +169,7 @@ function Ubicacion() {
 function montar(en = "/obra/empresa/7/archivos", sesion: SesionRespuesta = sesionDe("ana")) {
   render(
     <MemoryRouter initialEntries={[en]}>
-      <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PaginaHoja, archivos: PaginaArchivos })} />
+      <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PaginaHoja, hoja_pestanas: PaginaHojaPestanas, archivos: PaginaArchivos })} />
       <Ubicacion />
     </MemoryRouter>,
   );
@@ -347,10 +348,10 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
     expect(principales()).toEqual([]);
   });
 
-  test("«Describir el espacio a mano» lleva a Presupuesto con «Espacio y metrajes» a la vista y elegida", async () => {
+  test("«Describir el espacio a mano» lleva a «Espacio, plan y ajustes» con «Espacio y metrajes» a la vista y elegida", async () => {
     const u = montar();
     await u.click(await screen.findByRole("link", { name: "Describir el espacio a mano" }));
-    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto/pestanas"));
     const pestana = await screen.findByRole("tab", { name: "Espacio y metrajes" });
     expect(pestana).toHaveAttribute("aria-selected", "true");
   });
@@ -377,7 +378,7 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
 
   test("en «Espacio y metrajes» ya no está el bloque «Importar plano (DXF o IFC)» y sí el enlace a Archivos y planos", async () => {
     espacioVacio = false;
-    const u = montar("/obra/empresa/7/presupuesto");
+    const u = montar("/obra/empresa/7/presupuesto/pestanas");
     expect(await screen.findByRole("tab", { name: "Espacio y metrajes" })).toHaveAttribute("aria-selected", "true");
     await screen.findByText("Cantidades derivadas");
     expect(screen.queryByRole("button", { name: "Importar plano (DXF o IFC)" })).toBeNull();

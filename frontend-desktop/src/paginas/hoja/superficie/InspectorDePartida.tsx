@@ -27,7 +27,7 @@ import "./inspector.scss";
 
 // Inspector lateral acoplado de una partida del Presupuesto (lote B1-6, ficha-b1 §1.6, §1.10 prueba 7 y §4).
 // Guías `dialog` («Use for … inspectors…», «DO include a visible close button in every non-modal dialog», «autofocus on
-// the safe action») y `html` (región `<aside>` con encabezado `<h2>`, sin trampa de foco cuando va acoplado).
+// the safe action») y `html` (región `<aside>` con un encabezado de segundo nivel, sin trampa de foco cuando va acoplado).
 
 export interface PropiedadesDeInspectorDePartida {
   readonly borrador: BorradorAbierto | null;

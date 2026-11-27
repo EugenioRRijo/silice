@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { vistaEspacio, vistaPresupuesto } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaEspacio, VistaPresupuesto } from "./logica";
 
 // Rebanada 3c-1: las cinco tablas del espacio se editan. El servidor se simula con respuestas ficticias con la forma del

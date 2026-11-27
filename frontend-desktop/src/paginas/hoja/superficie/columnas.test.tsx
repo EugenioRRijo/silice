@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { Grilla } from "../../../comun/Grilla";
 import { vistaPresupuesto } from "../datosDePrueba";
 import { columnasDePresupuesto } from "./columnas";
@@ -141,5 +141,41 @@ describe("columnasDePresupuesto", () => {
     await u.click(celdaCantidad);
     await u.keyboard("{F2}{Enter}99");
     expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  test("con las cantidades de la superficie, la celda Cantidad es la celda editable y muestra lo escrito (no lo del servidor)", () => {
+    const filas = filasEjemplo();
+    const celda = vi.fn((f: { clave: string; partida: string; cantidad: string }) => ({
+      etiqueta: `Cantidad, ${f.partida}`,
+      valor: f.partida === "AF-LLAVE" ? "77,7" : f.cantidad,
+      alCambiar: vi.fn(),
+      alRestaurar: vi.fn(),
+      alConfirmar: vi.fn(),
+    }));
+    render(
+      <Grilla<FilaDeLaGrilla>
+        etiqueta="Presupuesto"
+        columnas={columnasDePresupuesto({ celda })}
+        filas={filas}
+        idDeFila={(f) => f.clave}
+      />,
+    );
+    const filaLlave = within(screen.getByRole("grid", { name: "Presupuesto" })).getByRole("row", { name: /AF-LLAVE/ });
+    expect(within(filaLlave).getByRole("gridcell", { name: "77,7" })).toBeInTheDocument();
+    expect(within(filaLlave).queryByRole("gridcell", { name: "1.234,5" })).toBeNull();
+    expect(celda).toHaveBeenCalled();
+  });
+
+  test("la columna Problemas dice cuántos problemas tiene la partida cuando son varios", () => {
+    const vista = vistaPresupuesto();
+    const base = filasDeLaGrilla(vista, null)[0]!;
+    const fila: FilaDeLaGrilla = {
+      ...base,
+      problema: { severidad: "ERROR", palabra: "Error", texto: "Cantidad dudosa", total: 3 },
+    };
+    render(
+      <Grilla<FilaDeLaGrilla> etiqueta="Presupuesto" columnas={columnasDePresupuesto()} filas={[fila]} idDeFila={(f) => f.clave} />,
+    );
+    expect(screen.getByRole("gridcell", { name: /Error.*3 problemas/ })).toBeInTheDocument();
   });
 });

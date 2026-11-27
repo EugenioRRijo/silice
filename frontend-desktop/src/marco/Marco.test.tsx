@@ -569,9 +569,9 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
       ["presupuesto", "aprobaciones", "control"].map((s) => `/obra/empresa/7/${s}`),
     );
     expect(actuales(herramientas)).toEqual(["Presupuestar"]);
-    expect(textos(opciones)).toEqual(["Partidas", "Componer un APU", "Tramos de la vía", "Plano o cómputo", "Precios de mercado"]);
+    expect(textos(opciones)).toEqual(["Partidas", "Componer un APU", "Espacio, plan y ajustes", "Tramos de la vía", "Plano o cómputo", "Precios de mercado"]);
     expect(within(opciones).getAllByRole("link").map((e) => e.getAttribute("href"))).toEqual(
-      ["presupuesto", "presupuesto/componer", "tramos", "archivos", "mercado"].map((s) => `/obra/empresa/7/${s}`),
+      ["presupuesto", "presupuesto/componer", "presupuesto/pestanas", "tramos", "archivos", "mercado"].map((s) => `/obra/empresa/7/${s}`),
     );
     expect(actuales(opciones)).toEqual(["Partidas"]);
     expect(within(cabecera).queryByRole("heading")).toBeNull();
@@ -678,7 +678,7 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
   test.each([
     // Integración C3-C5: Presupuesto y Aprobaciones se eligen en la segunda fila de la obra; Mercado conserva su conmutador
     // porque «Actualizar precios» no es una opción de la fila.
-    ["Opciones de Presupuestar", ["Partidas", "Componer un APU", "Tramos de la vía", "Plano o cómputo", "Precios de mercado"], "/obra/empresa/7/presupuesto"],
+    ["Opciones de Presupuestar", ["Partidas", "Componer un APU", "Espacio, plan y ajustes", "Tramos de la vía", "Plano o cómputo", "Precios de mercado"], "/obra/empresa/7/presupuesto"],
     ["Opciones de Auditar", ["Aprobar", "Revisar un paquete", "Entregar"], "/obra/empresa/7/aprobaciones"],
     ["Vistas de Mercado", ["Estudio", "Actualizar precios"], "/obra/empresa/7/mercado"],
   ])("%s ofrece %j para quien puede usarlas todas", async (nombre, esperadas, en) => {
@@ -693,6 +693,19 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
     await titulo("Presupuesto");
     expect(screen.queryByRole("navigation", { name: "Vistas de Presupuesto" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Componer" })).toBeNull();
+  });
+
+  // B1-10: las pestañas de antes son la subvista «Espacio, plan y ajustes», una opción más de la segunda fila de la obra;
+  // quien solo revisa también la ve (en solo lectura).
+  test("«Espacio, plan y ajustes» es una opción de Presupuestar que lleva a la subvista de las pestañas", async () => {
+    const u = userEvent.setup();
+    montar({ sesion: sesionDe("rita"), en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    const enlace = within(opcionesDe("Presupuestar")).getByRole("link", { name: "Espacio, plan y ajustes" });
+    expect(enlace).toHaveAttribute("href", "/obra/empresa/7/presupuesto/pestanas");
+    await u.click(enlace);
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto/pestanas"));
+    expect(await titulo("Espacio, plan y ajustes")).toBeInTheDocument();
   });
 
   test("las secciones sin subvistas no tienen conmutador", async () => {
@@ -1052,8 +1065,8 @@ describe("Marco: las direcciones viejas de las subvistas de la obra (F6, T5)", (
 });
 
 // Decisión de Eugenio (2026-11-04): al elegir una obra en la barra lateral se abre su Resumen; no se conserva la sección.
-describe("Marco: elegir una obra en la barra lateral abre su Resumen (F6, T5)", () => {
-  test("desde una subvista de una obra, elegir otra abre el Resumen de la otra", async () => {
+describe("Marco: elegir una obra en la barra lateral abre su Presupuesto (F6, T5 y D1 de B1)", () => {
+  test("desde una subvista de una obra, elegir otra abre el Presupuesto de la otra", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/control/reajuste" });
     await titulo("Reajuste de precios");
@@ -1061,18 +1074,18 @@ describe("Marco: elegir una obra en la barra lateral abre su Resumen (F6, T5)", 
     expect(within(lista).getByRole("link", { name: "Casa Demo" })).toHaveAttribute("aria-current", "page");
     expect(within(lista).getByRole("link", { name: "Torre B" })).not.toHaveAttribute("aria-current");
     await u.click(within(lista).getByRole("link", { name: "Torre B" }));
-    expect(await titulo("Resumen de la obra")).toBeInTheDocument();
-    expect(ruta()).toBe("/obra/empresa/8/resumen");
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/8/presupuesto");
     expect(within(screen.getByRole("list", { name: "Obras" })).getByRole("link", { name: "Torre B" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("elegir la obra que ya está abierta, desde otra sección, lleva a su Resumen", async () => {
+  test("elegir la obra que ya está abierta, desde otra sección, lleva a su Presupuesto", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/versiones" });
     await titulo("Versiones");
     await u.click(within(await screen.findByRole("list", { name: "Obras" })).getByRole("link", { name: "Casa Demo" }));
-    expect(await titulo("Resumen de la obra")).toBeInTheDocument();
-    expect(ruta()).toBe("/obra/empresa/7/resumen");
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/presupuesto");
   });
 });
 
@@ -1095,7 +1108,7 @@ describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
     await u.click(within(lista).getByRole("link", { name: "Torre B" }));
     await u.click(within(await screen.findByRole("dialog", { name: "Cambios sin guardar" })).getByRole("button", { name: "Salir y descartar" }));
-    await waitFor(() => expect(ruta()).toBe("/obra/empresa/8/resumen"));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/8/presupuesto"));
   });
 
   test("con un borrador de la Hoja con cambios, ir a una obra de otra carpeta pregunta por él y «Quedarme» no cambia de carpeta", async () => {
@@ -1191,7 +1204,7 @@ describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
     montar({ en: "/obra/empresa/7/presupuesto" });
     expect(await titulo("Presupuesto")).toBeInTheDocument();
     await u.click(await within(await screen.findByRole("list", { name: "Obras" })).findByRole("link", { name: "Galpón Sur" }));
-    await waitFor(() => expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/resumen"));
+    await waitFor(() => expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/presupuesto"));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
     await waitFor(() => expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: SUR }]));
   });

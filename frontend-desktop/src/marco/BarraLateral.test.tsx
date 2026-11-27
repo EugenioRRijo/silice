@@ -212,12 +212,12 @@ describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () 
     }
   });
 
-  it("cada obra enlaza a su Resumen, aunque la persona esté en otra sección o subvista de otra obra (no se conserva la sección)", async () => {
+  it("cada obra enlaza a su Presupuesto (D1 de B1), aunque la persona esté en otra sección o subvista de otra obra (no se conserva la sección)", async () => {
     pintar({ abierta, ruta: RUTA_DE_CLINICA });
     const lista = await listaDeObras();
-    expect(within(lista).getByRole("link", { name: "Clínica Las Mercedes" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/resumen");
-    expect(within(lista).getByRole("link", { name: "Torre B" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/2/resumen");
-    expect(within(lista).getByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/resumen");
+    expect(within(lista).getByRole("link", { name: "Clínica Las Mercedes" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/presupuesto");
+    expect(within(lista).getByRole("link", { name: "Torre B" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/2/presupuesto");
+    expect(within(lista).getByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/presupuesto");
   });
 
   it("la obra de la ruta lleva aria-current=page en cualquier sección o subvista; las demás no", async () => {
@@ -395,7 +395,7 @@ describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
     await u.tab();
     expect(screen.getByRole("link", { name: "Galpón Sur" })).toHaveFocus();
     await u.keyboard("{Enter}");
-    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Sur.db/3/resumen");
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Sur.db/3/presupuesto");
   });
 
   it("las flechas no mueven el foco entre obras: no hay patrón de árbol", async () => {

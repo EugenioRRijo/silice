@@ -74,14 +74,14 @@ describe("ofertaDe con edificación apagada (plan vial, Tarea 19, T19-5)", () =>
 });
 
 describe("ofertaDe (F6, T2): las pantallas de los espacios y las subvistas", () => {
-  it("las pantallas de los espacios y las subvistas (las 20 que no son sección ni entrada) salen en «herramientas»", () => {
+  it("las pantallas de los espacios y las subvistas (las 21 que no son sección ni entrada) salen en «herramientas»", () => {
     expect(
       ofertaDe(TODAS, false)
         .herramientas.map((p) => p.id)
         .sort(),
     ).toEqual(
       [
-        "tablero", "componer", "revisar", "entregar", "actualizacion", "reajuste", "escenarios",
+        "tablero", "componer", "hoja_pestanas", "revisar", "entregar", "actualizacion", "reajuste", "escenarios",
         "produccion", "existencias", "costos", "costo_tonelada", "receta_planta", "producir_mezcla",
         "auditoria", "libros", "historial",
         "precios_empresa", "catalogo", "indices", "simulador",
