@@ -88,9 +88,9 @@ describe("Inicio de auditoría", () => {
     return fetchFalso.mock.calls.map((c) => String(c[0]));
   }
 
-  test("su h1 es «Inicio de auditoría» y no trae «Herramientas principales» ni la arenera", async () => {
+  test("su h1 es «Auditar un libro» y no trae «Herramientas principales» ni la arenera", async () => {
     montar();
-    expect(screen.getByRole("heading", { level: 1, name: "Inicio de auditoría" })).toHaveClass("cds--type-heading-04");
+    expect(screen.getByRole("heading", { level: 1, name: "Auditar un libro" })).toHaveClass("cds--type-heading-04");
     expect(screen.getByText("Suba un presupuesto en Excel para recalcular sus partidas y detectar errores")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
@@ -103,29 +103,36 @@ describe("Inicio de auditoría", () => {
   describe("zona del Excel", () => {
     test("dice qué se hace con el libro y que no se guarda", () => {
       montar();
-      expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
-      expect(screen.getByText(/no se guarda/i)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Suba el libro" })).toBeInTheDocument();
+      expect(screen.getByText(/no se modifica ni se guarda/i)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Suelte aquí el libro \.xlsx/ })).toBeInTheDocument();
     });
 
-    test("sin archivo los dos botones están a la vista pero deshabilitados", () => {
+    test("sin archivo hay un solo principal, inactivo, y el recorrido guiado queda en «Más opciones», deshabilitado", () => {
       montar();
+      const principal = screen.getByRole("button", { name: "Auditar el libro" });
+      expect(principal).toHaveAttribute("aria-disabled", "true");
+      expect(principal).toHaveClass("cds--btn--primary");
       const guiado = screen.getByRole("button", { name: "Auditar con recorrido guiado" });
-      const propio = screen.getByRole("button", { name: "Auditar por mi cuenta" });
       expect(guiado).toBeDisabled();
-      expect(propio).toBeDisabled();
-      expect(guiado).toHaveClass("cds--btn--primary");
-      expect(propio).toHaveClass("cds--btn--tertiary");
-      expect(guiado.compareDocumentPosition(propio) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(guiado.closest("details")).not.toHaveAttribute("open");
+      expect(screen.queryByRole("button", { name: "Auditar por mi cuenta" })).not.toBeInTheDocument();
     });
 
-    test("con un archivo aparecen sus dos botones y el nombre del archivo", async () => {
+    test("a la vista, antes de auditar, solo dos pliegues: más opciones y el libro con un APU por hoja", () => {
+      montar();
+      const resumenes = [...document.querySelectorAll("summary")].map((r) => r.textContent);
+      expect(resumenes).toEqual(["Más opciones", "Otro tipo de libro: un APU por hoja"]);
+      expect([...document.querySelectorAll("details")].every((d) => !d.hasAttribute("open"))).toBe(true);
+    });
+
+    test("con un archivo aparece su nombre y el principal se activa", async () => {
       const usuario = userEvent.setup();
       montar();
       await usuario.upload(campoArchivo(), new File(["x"], "obra-norte.xlsx"));
       expect(screen.getByRole("status")).toHaveTextContent("Archivo elegido: obra-norte.xlsx");
+      expect(screen.getByRole("button", { name: "Auditar el libro" })).not.toHaveAttribute("aria-disabled");
       expect(screen.getByRole("button", { name: "Auditar con recorrido guiado" })).toBeEnabled();
-      expect(screen.getByRole("button", { name: "Auditar por mi cuenta" })).toBeEnabled();
     });
 
     test("«Auditar con recorrido guiado» deja el archivo en modo guiado, pone en curso el recorrido y lleva al libro", async () => {
@@ -142,19 +149,6 @@ describe("Inicio de auditoría", () => {
       expect(recorridoEnCurso()).toBe(RECORRIDO_AUDITAR);
     });
 
-    test("«Auditar por mi cuenta» lo deja en modo propio y lleva al libro, sin recorrido", async () => {
-      const usuario = userEvent.setup();
-      montar();
-      const archivo = new File(["x"], "obra-norte.xlsx");
-      await usuario.upload(campoArchivo(), archivo);
-      await usuario.click(screen.getByRole("button", { name: "Auditar por mi cuenta" }));
-      expect(await screen.findByRole("heading", { name: "Pantalla del libro" })).toBeInTheDocument();
-      const pendiente = tomarArchivoPendiente();
-      expect(pendiente?.archivo).toBe(archivo);
-      expect(pendiente?.modo).toBe("propio");
-      expect(recorridoEnCurso()).toBeNull();
-    });
-
     test("un archivo inválido elegido después de uno válido deja intacto el anterior", async () => {
       const usuario = userEvent.setup({ applyAccept: false });
       montar();
@@ -162,7 +156,7 @@ describe("Inicio de auditoría", () => {
       await usuario.upload(campoArchivo(), archivo);
       await usuario.upload(campoArchivo(), new File(["x"], "foto.png"));
       expect(screen.getByRole("status")).toHaveTextContent("Archivo elegido: obra-norte.xlsx");
-      await usuario.click(screen.getByRole("button", { name: "Auditar por mi cuenta" }));
+      await usuario.click(screen.getByRole("button", { name: "Auditar con recorrido guiado" }));
       expect(tomarArchivoPendiente()?.archivo).toBe(archivo);
     });
 
@@ -172,7 +166,7 @@ describe("Inicio de auditoría", () => {
       await usuario.upload(campoArchivo(), new File(["x"], "foto.png"));
       expect(screen.getByRole("alert")).toHaveTextContent("Solo se aceptan archivos .xlsx.");
       expect(screen.getByRole("button", { name: "Auditar con recorrido guiado" })).toBeDisabled();
-      expect(screen.getByRole("button", { name: "Auditar por mi cuenta" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Auditar el libro" })).toHaveAttribute("aria-disabled", "true");
     });
 
     test("elegir otro archivo reemplaza al anterior", async () => {
@@ -200,7 +194,7 @@ describe("Inicio de auditoría", () => {
       iniciarRecorrido(RECORRIDO_AUDITAR);
       // El paso siguiente (Libro) pide `leer_proyecto`, igual que la sección donde se anuncia el recorrido (VD-10).
       montar({ sesion: { ...SESION, acciones: ["revisar_paquete"] } });
-      await screen.findByRole("heading", { name: "Inicio de auditoría" });
+      await screen.findByRole("heading", { name: "Auditar un libro" });
       expect(screen.queryByRole("region", { name: "Últimas auditorías guardadas" })).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /Seguir con el paso/ })).not.toBeInTheDocument();
     });
@@ -261,7 +255,7 @@ describe("Inicio de auditoría", () => {
       auditorias = () => json({ detalle: "No encontrado." }, 404);
       montar();
       expect(await screen.findByText("El historial de auditorías aún no está disponible")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Suba el libro" })).toBeInTheDocument();
     });
 
     test("mientras cargan, las auditorías lo dicen", () => {
@@ -289,7 +283,7 @@ describe("Inicio de auditoría", () => {
   describe("según las acciones de la cuenta", () => {
     test("quien revisa conserva la zona del Excel y el historial", async () => {
       montar({ sesion: { ...SESION, login: "rita", roles: ["revisa"], acciones: ["leer_proyecto", "revisar_paquete", "aprobar_version"] } });
-      expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Suba el libro" })).toBeInTheDocument();
       expect(await screen.findByRole("region", { name: "Últimas auditorías guardadas" })).toBeInTheDocument();
       // E2E-2: el bloque del libro con un APU por hoja pide además la lista de perfiles.
       expect([...rutasPedidas()].sort()).toEqual(["/v1/auditorias-libro?limite=5", "/v1/libros/perfiles-apu-por-hoja"]);

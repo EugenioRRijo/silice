@@ -151,6 +151,7 @@ TABLA = {
     ("POST", "/v1/libros/auditoria/pdf"): LEER,  # el informe de hallazgos en PDF
     ("POST", "/v1/libros/pdf"): LEER,
     ("POST", "/v1/libros/replica"): LEER,
+    ("GET", "/v1/libros/que-hacer"): LEER,  # B2: el «Qué hacer» de cada hallazgo y alerta
     ("POST", "/v1/libros/apu-por-hoja"): LEER,  # F5 vial, tarea 6
     ("GET", "/v1/libros/perfiles-apu-por-hoja"): LEER,  # E2E-2: elegir el perfil
     ("POST", "/v1/libros/hojas"): LEER,  # libro por frentes: elegir las hojas del presupuesto
@@ -196,6 +197,8 @@ TABLA = {
     ("GET", "/v1/obras/todas"): LEER,  # rediseño del marco, T3; con la clave, solo el proceso
     ("GET", "/v1/obras/pendientes/todas"): LEER,  # rediseño F3, T1; el alcance lo da el rol
     ("GET", "/v1/obras/resumen/todas"): LEER,  # rediseño F6, T7; con la clave, solo el proceso
+    ("GET", "/v1/obras/{codigo}/entrega"): LEER,  # Lote G5: fecha de entrega al cliente
+    ("PUT", "/v1/obras/{codigo}/entrega"): EDITAR,
     ("GET", "/v1/mercado/{lado}/{codigo:path}"): EDITAR,  # T14: estudio de mercado
     ("POST", "/v1/mercado/observaciones"): EDITAR,
     ("POST", "/v1/mercado/observaciones/{observacion_id}/anular"): EDITAR,

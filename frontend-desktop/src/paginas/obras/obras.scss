@@ -63,6 +63,25 @@
   font-weight: 500;
 }
 
+.silice-resumen__entrega {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-inline-size: 0;
+  padding: 1.25rem;
+  background-color: var(--silice-surface);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
+}
+
+.silice-resumen__entrega-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
 .silice-resumen__pendientes {
   display: grid;
   align-content: start;

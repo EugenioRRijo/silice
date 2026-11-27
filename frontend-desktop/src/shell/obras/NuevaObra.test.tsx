@@ -65,6 +65,7 @@ describe("«Nueva obra › Componer la obra» (secciones, controles y validacion
     expect(within(caja).getByText("Así se verá en la lista de obras y en el presupuesto que se entrega")).toBeInTheDocument();
     expect(within(caja).getByRole("textbox", { name: /^Cliente/ })).toBeInTheDocument();
     expect(within(caja).getByRole("textbox", { name: /^Ubicación/ })).toBeInTheDocument();
+    expect(within(caja).getByRole("textbox", { name: "Fecha de entrega al cliente" })).toBeInTheDocument();
     expect(within(caja).getByText("Decide qué catálogo y qué reglas de auditoría se usan")).toBeInTheDocument();
     expect(
       within(within(caja).getByRole("combobox", { name: "Tipo de obra" }))
@@ -263,6 +264,46 @@ describe("«Nueva obra › Componer la obra» (secciones, controles y validacion
       <DialogoNuevaObra abierto={false} alCerrar={vi.fn()} alCrear={vi.fn()} destino={{ carpeta: null, titulo: "Carpeta de la empresa" }} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  test("con «Fecha de entrega al cliente» escrita como dd/mm/aaaa la fija después de crear la obra; mal escrita avisa sin crear", async () => {
+    const u = userEvent.setup();
+    const caja = await abrirNuevaObra(u);
+    await waitFor(() => expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await u.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Puente Este");
+    const campoFecha = within(caja).getByRole("textbox", { name: "Fecha de entrega al cliente" });
+    await u.type(campoFecha, "31/02/2026");
+    await u.click(within(caja).getByRole("button", { name: "Crear la obra" }));
+    expect(await within(caja).findByText("La fecha escrita no existe en el calendario.")).toBeInTheDocument();
+    expect(servidor.de("POST", "/v1/proyectos")).toEqual([]);
+
+    await u.clear(campoFecha);
+    await u.type(campoFecha, "15/12/2026");
+    await u.click(within(caja).getByRole("button", { name: "Crear la obra" }));
+    await waitFor(() => expect(servidor.de("POST", "/v1/proyectos")).toHaveLength(1));
+    await waitFor(() =>
+      expect(servidor.de("PUT", "/v1/obras/10/entrega").map((l) => l.cuerpo)).toEqual([
+        { fecha_entrega: "2026-12-15" },
+      ]),
+    );
+  });
+
+  test("una «Fecha de entrega al cliente» ya pasada avisa antes de crear: no queda una obra creada sin su fecha", async () => {
+    const u = userEvent.setup();
+    const caja = await abrirNuevaObra(u);
+    await waitFor(() => expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await u.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Puente Este");
+    await u.type(within(caja).getByRole("textbox", { name: "Fecha de entrega al cliente" }), "01/01/2020");
+    await u.click(within(caja).getByRole("button", { name: "Crear la obra" }));
+    expect(await within(caja).findByText("La fecha de entrega al cliente no puede estar en el pasado.")).toBeInTheDocument();
+    expect(servidor.de("POST", "/v1/proyectos")).toEqual([]);
+    expect(servidor.llamadas.filter((l) => l.metodo === "PUT" && l.ruta.endsWith("/entrega"))).toEqual([]);
+  });
+
+  test("en otra carpeta que la abierta no pide la fecha de entrega (se fija en el Resumen de la obra)", async () => {
+    render(<DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={vi.fn()} destino={{ carpeta: "s2.db", titulo: "S2", enOtraCarpeta: true }} />);
+    expect(await screen.findByText("Se creará en S2")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Fecha de entrega al cliente" })).toBeNull();
   });
 });
 

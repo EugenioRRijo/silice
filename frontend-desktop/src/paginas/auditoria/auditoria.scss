@@ -1,0 +1,230 @@
+// «Auditar un libro» en una sola página (B2). Cara «Papel y resaltador»: solo tokens --silice-* (claro y oscuro), tamaños en
+// rem y sin anchos fijos ni @media en px. La gravedad es siempre palabra más ícono; el color de las alertas de precio no es
+// el de la gravedad (dos semánticas separadas).
+
+.silice-libro {
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  min-inline-size: 0;
+}
+
+.silice-libro__seccion {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  min-inline-size: 0;
+
+  > h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--silice-t1);
+    // El foco del titular de resultado lo ve el teclado y el lector de pantalla: lleva el anillo de la cara.
+    &:focus-visible {
+      outline: 2px solid var(--silice-foco);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.silice-libro__numero {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border: 1px solid var(--silice-borde-fuerte);
+  border-radius: 50%;
+  color: var(--silice-t2);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  flex: none;
+}
+
+.silice-libro__acciones,
+.silice-libro__paso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  min-inline-size: 0;
+}
+
+.silice-libro__informe {
+  display: grid;
+  gap: 0.25rem;
+  max-inline-size: 36rem;
+}
+
+.silice-libro__datos {
+  margin: 0;
+  color: var(--silice-t2);
+}
+
+.silice-libro__problemas {
+  display: grid;
+  gap: 1.25rem;
+  min-inline-size: 0;
+
+  h3 {
+    margin: 0 0 0.25rem;
+  }
+}
+
+.silice-libro__lista {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.silice-libro__tarjeta {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--silice-hoja);
+  border: 1px solid var(--silice-linea);
+  border-radius: 6px;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+
+  p {
+    margin: 0;
+  }
+}
+
+.silice-libro__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.25rem;
+  color: var(--silice-t2);
+
+  strong {
+    color: var(--silice-t1);
+    font-weight: 500;
+  }
+}
+
+.silice-libro__gravedad {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-end: 0.25rem;
+  color: var(--halo-color, var(--silice-t2));
+}
+
+.silice-libro__traza,
+.silice-libro__celdas {
+  color: var(--silice-t2);
+}
+
+.silice-libro__plegado {
+  display: grid;
+  gap: 0.5rem;
+  min-inline-size: 0;
+
+  > summary {
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--silice-t1);
+    min-block-size: 2rem;
+    display: flex;
+    align-items: center;
+  }
+
+  > summary:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: 2px;
+  }
+
+  > :not(summary) {
+    margin-block-start: 0.5rem;
+  }
+}
+
+.silice-libro__veredicto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--silice-linea);
+  border-radius: 6px;
+  color: var(--silice-t1);
+  min-inline-size: 0;
+}
+
+.silice-libro__veredicto--cumple {
+  background: var(--silice-gravedad-ok-fondo);
+  border-color: var(--silice-gravedad-ok-borde);
+
+  .silice-libro__icono-veredicto {
+    color: var(--silice-gravedad-ok);
+  }
+}
+
+.silice-libro__veredicto--no-cumple {
+  background: var(--silice-gravedad-error-fondo);
+  border-color: var(--silice-gravedad-error-borde);
+
+  .silice-libro__icono-veredicto {
+    color: var(--silice-gravedad-error);
+  }
+}
+
+.silice-libro__esqueleto {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+// «Qué hacer»: un botón que se lee como enlace subrayado (terciario de la cara) y, abierto, un cuerpo con el resaltador.
+.silice-quehacer {
+  display: grid;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-quehacer__boton {
+  justify-self: start;
+  min-block-size: 2rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--silice-t1);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: 2px;
+  }
+}
+
+.silice-quehacer__cuerpo {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--silice-resaltador);
+  border-inline-start: 3px solid var(--silice-resaltador-borde);
+  border-radius: 0 6px 6px 0;
+  color: var(--silice-t1);
+
+  p {
+    margin: 0;
+  }
+}
+
+.silice-quehacer__nota {
+  color: var(--silice-t2);
+}

@@ -42,7 +42,7 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   {
     id: "auditoria",
-    titulo: "Inicio de auditoría",
+    titulo: "Auditar un libro",
     enUnaLinea: "Suelte un Excel y vea las últimas auditorías",
     seccion: "Revisión",
     accion: null,

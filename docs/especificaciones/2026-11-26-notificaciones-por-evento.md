@@ -10,8 +10,11 @@ que tipos de notificaciones vamos a usar»), Claude propuso la lista con el crit
 3. compras por pedir (procura);
 4. se cargó una lista de precios nueva.
 
+**Entregas al cliente: construida el 2026-11-27.** Eugenio la pidió en la lista de pendientes («la fecha de entrega al
+cliente en las notificaciones»): campo opcional «Fecha de entrega al cliente» (dd/mm/aaaa, escrito a mano) en Nueva
+obra y en el Resumen, tabla `entrega_de_obra` fuera de `core/` (caso_0025) y quinta categoría «entregas».
+
 **Para después de medir:**
-- entregas al cliente, porque necesita el campo nuevo «Fecha de entrega al cliente»;
 - el plazo propio «Responder antes del».
 
 **No serán notificación:**

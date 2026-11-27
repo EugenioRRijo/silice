@@ -63,11 +63,15 @@ DESCRIPCIONES = {
         "Listas de precios nuevas",
         "Se cargó una lista o una referencia de precios nueva.",
     ),
+    "entregas": (
+        "Entregas al cliente",
+        "Se acerca o ya llegó la fecha de entrega al cliente de una obra en la que trabajó.",
+    ),
 }
 
 
 def _categorias(**cambios: tuple[bool, bool, bool]) -> list[dict]:
-    """Las cuatro categorías con (activa, aplica, obligatoria) de cada una."""
+    """Las cinco categorías con (activa, aplica, obligatoria) de cada una."""
     return [
         {
             "categoria": categoria,
@@ -86,12 +90,14 @@ DE_ANA = _categorias(
     dictamen=(True, True, False),
     compras=(True, True, False),
     listas_de_precios=(True, True, False),
+    entregas=(True, True, False),
 )
 DE_RITA = _categorias(
     por_dictaminar=(True, True, True),
     dictamen=(True, False, False),
     compras=(True, False, False),
     listas_de_precios=(True, False, False),
+    entregas=(True, False, False),
 )
 
 
@@ -201,8 +207,8 @@ def test_apagar_compras_cambia_solo_las_de_quien_lo_pide() -> None:
         ),
         (
             "ana",
-            {"categorias": [{"categoria": "entregas", "activa": False}]},
-            "No existe la categoría «entregas».",
+            {"categorias": [{"categoria": "inexistente", "activa": False}]},
+            "No existe la categoría «inexistente».",
         ),
         (
             "ana",

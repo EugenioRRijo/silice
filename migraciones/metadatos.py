@@ -16,6 +16,7 @@ from aplicacion.tablas_causas import METADATA_CAUSAS
 from aplicacion.tablas_corte import METADATA_CORTE
 from aplicacion.tablas_desperdicio import METADATA_DESPERDICIO
 from aplicacion.tablas_eleccion import METADATA_ELECCION
+from aplicacion.tablas_entrega import METADATA_ENTREGA
 from aplicacion.tablas_importaciones import METADATA_IMPORTACIONES
 from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
 from aplicacion.tablas_medicion import METADATA_MEDICION
@@ -49,6 +50,7 @@ METADATAS_CASO: tuple[MetaData, ...] = (
     METADATA_VIAL,
     METADATA_IMPORTACIONES,
     METADATA_RIESGO,
+    METADATA_ENTREGA,
 )
 METADATAS_INSTALACION: tuple[MetaData, ...] = (
     BaseSeguridad.metadata,

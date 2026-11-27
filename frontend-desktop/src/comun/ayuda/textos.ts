@@ -518,10 +518,10 @@ export const GUIAS: readonly Guia[] = [
         titulo: "Subir y leer la auditoría",
         pasos: [
           "En la barra de la izquierda, pulse «Auditar un presupuesto»: se abre «Subir y auditar Excel».",
-          "Suelte el libro .xlsx en la zona de arriba y pulse «Auditar con recorrido guiado» (Sílice lo acompaña paso a paso) o «Auditar por mi cuenta».",
-          "Se abre «Libro de la empresa». Revise la «Fecha de la revisión»: es la fecha con la que se audita, y con la misma fecha el mismo libro da siempre el mismo resultado.",
-          "Compare el total del libro con el «Según Sílice» y revise los hallazgos, de los críticos a los informativos; elija uno para ver su celda marcada en el libro. «Filtrar por severidad» deja ver solo los de una gravedad.",
-          "Si quiere llevarse el resultado, pulse «Descargar PDF» (a la derecha, bajo los indicadores): baja un informe para entregar a quien hizo el libro, con las fechas, los totales y cada hallazgo con su celda y qué corregir.",
+          "Suelte el libro .xlsx en la zona de arriba y pulse «Auditar el libro». Todo se ve junto: qué se encontró, qué hacer con cada hallazgo y la conclusión. Si es la primera vez, en «Más opciones» está «Auditar con recorrido guiado»: Sílice lo acompaña paso a paso.",
+          "Revise la «Fecha de la revisión» en «Más opciones»: es la fecha con la que se audita (por omisión, hoy), y con la misma fecha el mismo libro da siempre el mismo resultado. Para ver los hallazgos sobre la hoja del libro, pulse «Ver la hoja marcada».",
+          "Lea la frase de arriba, que dice cuántos hallazgos hay, y revise cada uno, de los críticos a los informativos: «Qué hacer» abre qué quiere decir y qué conviene corregir. Las alertas de precio (sin fuente, base de la empresa, USD-Bs) no son errores del libro: son precios que conviene confirmar.",
+          "En «Conclusión y entrega» pulse «Descargar el informe en PDF»: baja un informe para entregar a quien hizo el libro, con las fechas, los totales y cada hallazgo con su celda y qué corregir.",
           "El libro no se modifica ni se guarda. El resumen y los hallazgos quedan en «Historial de auditorías», donde «Ver el detalle» los vuelve a mostrar.",
         ],
       },
@@ -712,9 +712,9 @@ export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
 
   // Auditar un presupuesto.
   auditoria: {
-    titulo: "Inicio de auditoría",
+    titulo: "Auditar un libro",
     parrafos: [
-      "Suelte el Excel de un presupuesto y Sílice recalcula cada partida y le dice lo que no cuadra. El archivo no se guarda: solo quedan el resumen y los hallazgos. Con «Auditar con recorrido guiado», Sílice lo acompaña paso a paso.",
+      "Suelte el Excel de un presupuesto y Sílice recalcula cada partida y le dice lo que no cuadra. El archivo no se guarda: solo quedan el resumen y los hallazgos. Ahí mismo ve qué se encontró, qué hacer con cada hallazgo y la conclusión.",
     ],
     guia: "auditar",
     terminos: ["libro", "hallazgo"],

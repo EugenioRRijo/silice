@@ -50,11 +50,13 @@ from api.rutas import (
     indices,
     libros,
     libros_informe,
+    libros_que_hacer,
     listas,
     mercado,
     modulos,
     notificaciones,
     obras,
+    obras_entrega,
     precios_empresa,
     presupuestos,
     presupuestos_calculo,
@@ -146,6 +148,8 @@ app.include_router(auditorias.router)  # S3 §10: POST /v1/auditorias
 app.include_router(libros.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
 # el informe de hallazgos de un libro en PDF (P2): el mismo acceso que las demás rutas de libros
 app.include_router(libros_informe.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
+# B2: el «Qué hacer» de cada hallazgo y alerta (solo lectura; aparte de `libros.py`, sellado)
+app.include_router(libros_que_hacer.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
 # Migracion: el simulador de listas (no escribe en la base); clave o sesion con EDITAR_HOJA
 app.include_router(
     simulador.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
@@ -243,6 +247,7 @@ app.include_router(consulta.router)
 # MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),
 # los datos de la mesa de control; el acceso va en cada ruta
 app.include_router(obras.router)
+app.include_router(obras_entrega.router)
 # T14 (montar un presupuesto): /v1/mercado, estudio de mercado y «Usar este precio»
 # (EDITAR_HOJA en la ruta)
 app.include_router(mercado.router)

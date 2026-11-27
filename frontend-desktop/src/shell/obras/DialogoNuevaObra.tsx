@@ -6,6 +6,7 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CarpetaRespuesta, ProyectoRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { anteriorA, hoyIso, leerFechaEscrita } from "../../comun/fechaEscrita";
 import { TIPO_DE_OBRA } from "../../comun/logicaBusqueda";
 import { MONEDAS, rotuloDeMoneda } from "../../comun/monedas";
 import { rutaDeObra } from "../../marco/secciones";
@@ -42,6 +43,10 @@ const ID_FORMULARIO = "silice-nueva-obra";
 const CARPETA_DE_LA_EMPRESA = "empresa";
 
 const conMayuscula = (texto: string) => texto.charAt(0).toLocaleUpperCase("es") + texto.slice(1);
+
+// El mismo texto que el 422 de `PUT /v1/obras/{codigo}/entrega` (`aplicacion/entrega_de_obra.py`): aquí se mira
+// antes de crear, para que una fecha pasada no deje la obra creada sin su fecha (y un segundo intento, una obra doble).
+const MENSAJE_FECHA_PASADA = "La fecha de entrega al cliente no puede estar en el pasado.";
 
 function ConRouter({ children }: { children: (navegar: (ruta: string) => void) => JSX.Element }): JSX.Element {
   const navegar = useNavigate();
@@ -87,6 +92,8 @@ function Formulario({
   const [ubicacion, setUbicacion] = useState("");
   const [dominio, setDominio] = useState("");
   const [moneda, setMoneda] = useState("");
+  const [fechaEntrega, setFechaEntrega] = useState("");
+  const [errorFechaEntrega, setErrorFechaEntrega] = useState<string | null>(null);
   const [inicio, setInicio] = useState<ModoDeInicioObra>("en_blanco");
   // La moneda de la carpeta: undefined mientras llega, null si no tiene.
   const [deLaCarpeta, setDeLaCarpeta] = useState<string | null | undefined>(undefined);
@@ -129,6 +136,18 @@ function Formulario({
       setFaltaMoneda(true);
       return;
     }
+    // En otra carpeta el campo no se ofrece: `PUT /v1/obras/{codigo}/entrega` va a la carpeta de la sesión.
+    const lecturaFecha = enOtraCarpeta ? { ok: true as const, iso: null } : leerFechaEscrita(fechaEntrega);
+    const errorDeFecha = !lecturaFecha.ok
+      ? lecturaFecha.error
+      : lecturaFecha.iso !== null && anteriorA(lecturaFecha.iso, hoyIso())
+        ? MENSAJE_FECHA_PASADA
+        : null;
+    if (errorDeFecha !== null) {
+      setErrorFechaEntrega(errorDeFecha);
+      document.getElementById(`${base}-fecha-entrega`)?.focus();
+      return;
+    }
     setOcupado(true);
     try {
       const cuerpo = { nombre, moneda, dominio, descripcion: "", cliente, ubicacion };
@@ -136,6 +155,12 @@ function Formulario({
         metodo: "POST",
         cuerpo: { ...cuerpo, carpeta: destino.carpeta ?? CARPETA_DE_LA_EMPRESA },
       });
+      if (lecturaFecha.ok && lecturaFecha.iso !== null) {
+        await pedir(`/v1/obras/${encodeURIComponent(obra.codigo)}/entrega`, {
+          metodo: "PUT",
+          cuerpo: { fecha_entrega: lecturaFecha.iso },
+        });
+      }
       alCrear(obra, inicio);
       if (inicio === "computo" && /^\d+$/.test(obra.codigo) && navegar !== null) {
         const rutaComputo = rutaDeObra(destino.carpeta, Number(obra.codigo), "archivos");
@@ -255,6 +280,24 @@ function Formulario({
             <p className="silice-nueva-obra__nota-bcv" role="note">
               <strong>Si elige otra moneda:</strong> {NOTA_TASA_BCV}
             </p>
+          )}
+          {!enOtraCarpeta && (
+            <div className="silice-nueva-obra__par">
+              <CampoTexto
+                id={`${base}-fecha-entrega`}
+                labelText="Fecha de entrega al cliente"
+                placeholder="dd/mm/aaaa"
+                helperText="Opcional · dd/mm/aaaa"
+                value={fechaEntrega}
+                maxLength={10}
+                invalid={errorFechaEntrega !== null}
+                invalidText={errorFechaEntrega ?? ""}
+                onChange={(e) => {
+                  setFechaEntrega(e.target.value);
+                  setErrorFechaEntrega(null);
+                }}
+              />
+            </div>
           )}
         </section>
 

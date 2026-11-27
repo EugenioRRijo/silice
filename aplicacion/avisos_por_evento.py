@@ -1,8 +1,8 @@
-"""Notificaciones por evento y qué recibir (C11b; especificación
+"""Notificaciones por evento y qué recibir (C11b y Lote G5; especificación
 `docs/especificaciones/2026-11-26-notificaciones-por-evento.md`, acordada con Eugenio el
 2026-11-26).
 
-El servidor crea notificaciones cuando pasa algo y se las deja a quienes les importa. Cuatro
+El servidor crea notificaciones cuando pasa algo y se las deja a quienes les importa. Cinco
 categorías (`Categoria`), todas encendidas por omisión; cada persona puede apagarlas, salvo la 1
 para quien revisa:
 
@@ -17,18 +17,21 @@ para quien revisa:
    línea base). Sin línea base no hay fechas y no hay aviso.
 4. `listas_de_precios`: se cargó una lista de la empresa o la referencia MaPreX, para quienes arman
    (menos quien la cargó).
+5. `entregas`: una obra en la que la persona trabajó tiene fecha de entrega al cliente y aún no se
+   ha entregado: Advertencia desde 3 días hábiles antes y Error desde el día de la entrega.
 
 **Una sola vez por evento.** Cada notificación lleva una clave (`aprobacion:<carpeta>:<envío>:
-<versión>:enviada`, `compra:…`, `lista:…`) y la base no admite dos iguales para una persona
-(`notificaciones.agregar`, índice único). Como la retención es de 30 días, una clave vuelve a
-quedar libre a los 30 días: un recordatorio o una compra vencida que siguen igual se repiten una vez
-al mes.
+<versión>:enviada`, `compra:…`, `lista:…`, `entrega:…`) y la base no admite dos iguales para una
+persona (`notificaciones.agregar`, índice único). Como la retención es de 30 días, una clave vuelve
+a quedar libre a los 30 días: un recordatorio, una compra vencida o una entrega vencida que siguen
+igual se repiten una vez al mes.
 
 **Dónde nace cada una.** Las de un momento (envío, dictamen, retiro, lista nueva) las crean los
 ganchos `de_aprobaciones` (lo llama `indice_aprobaciones.escribir_reflejo` al cambiar el índice) y
 `lista_cargada` (las rutas de Precios de la empresa, tras confirmar la carpeta). Las que dependen de
-la fecha (recordatorio y compras) las calcula `barrer` al listar (`GET /v1/notificaciones`), sin
-hilo de fondo y solo para quien lista; las compras, en la carpeta que esa persona tiene abierta.
+la fecha (recordatorio, compras y entregas) las calcula `barrer` al listar
+(`GET /v1/notificaciones`), sin hilo de fondo y solo para quien lista; las compras y entregas, en la
+carpeta que esa persona tiene abierta.
 
 **Nunca rompen lo que avisan.** Un fallo al avisar se registra y se descarta (cada inserción va en
 su propio `SAVEPOINT`): el índice, la lista o el listado siguen igual. Las funciones solo hacen
@@ -38,12 +41,13 @@ su propio `SAVEPOINT`): el índice, la lista o el listado siguen igual. Las func
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from urllib.parse import quote
 
@@ -51,7 +55,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from aplicacion import aprobaciones, indice_aprobaciones, notificaciones, procura
+from aplicacion import aprobaciones, entrega_de_obra, indice_aprobaciones, notificaciones, procura
 from aplicacion.indice_aprobaciones import FilaIndice
 from aplicacion.mesa import dias_habiles_entre
 from aplicacion.notificaciones import (
@@ -64,13 +68,16 @@ from aplicacion.notificaciones import (
 from aplicacion.plural import plural
 from aplicacion.revision import login_de
 from core import models
+from core.budget.calendario import es_habil
+from core.budget.valuaciones import linea_base_vigente
 from core.models.cadena import EslabonVersion
-from seguridad.modelo import PreferenciaNotificacion, Usuario
+from seguridad.modelo import EventoAcceso, PreferenciaNotificacion, Usuario
 from seguridad.permisos import Rol, roles_de
 from seguridad.sesiones import SesionActiva
 
 __all__ = [
     "CATEGORIAS",
+    "DIAS_AVISO_ENTREGA",
     "DIAS_PARA_RECORDAR",
     "MENSAJE_OBLIGATORIA",
     "RUTA_DE_LAS_LISTAS",
@@ -91,12 +98,16 @@ _registro = logging.getLogger(__name__)
 
 #: Días hábiles de espera de un envío desde los que se recuerda a quien revisa.
 DIAS_PARA_RECORDAR = 2
+#: Días hábiles antes de la fecha de entrega al cliente desde los que se avisa.
+DIAS_AVISO_ENTREGA = 3
 #: Precios de la empresa en la interfaz (`frontend-desktop/src/marco/espacios.ts`).
 RUTA_DE_LAS_LISTAS = "/precios/listas"
 #: El segmento de la carpeta de la empresa en las rutas de obra (`marco/secciones.ts`).
 _SEGMENTO_DE_LA_EMPRESA = "empresa"
 _VER_LA_APROBACION = "Ver la aprobación"
 _VER_LAS_LISTAS = "Ver los precios de la empresa"
+_VER_EL_RESUMEN = "Ver el resumen de la obra"
+_SECCION_RESUMEN = "resumen"
 _TEXTO_PROCURA, _SECCION_PROCURA = procura.VER_LA_PROCURA
 
 MENSAJE_OBLIGATORIA = (
@@ -110,6 +121,7 @@ class Categoria(StrEnum):
     DICTAMEN = "dictamen"
     COMPRAS = "compras"
     LISTAS_DE_PRECIOS = "listas_de_precios"
+    ENTREGAS = "entregas"
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +160,12 @@ CATEGORIAS: tuple[DefinicionCategoria, ...] = (
         Categoria.LISTAS_DE_PRECIOS,
         "Listas de precios nuevas",
         "Se cargó una lista o una referencia de precios nueva.",
+        frozenset({Rol.ARMA}),
+    ),
+    DefinicionCategoria(
+        Categoria.ENTREGAS,
+        "Entregas al cliente",
+        "Se acerca o ya llegó la fecha de entrega al cliente de una obra en la que trabajó.",
         frozenset({Rol.ARMA}),
     ),
 )
@@ -507,7 +525,7 @@ def lista_cargada(
         _registro.warning("No se pudo avisar la lista de precios nueva.", exc_info=True)
 
 
-# --- el barrido al listar: recordatorios y compras ------------------------------------------------
+# --- el barrido al listar: recordatorios, compras y entregas --------------------------------------
 
 
 def barrer(
@@ -520,25 +538,40 @@ def barrer(
     abrir_carpeta: Callable[[], AbstractContextManager[Session]] | None,
 ) -> None:
     """Lo que vence con la fecha, para `persona` y solo para ella (`GET /v1/notificaciones`):
-    las compras por pedir de las obras de la carpeta abierta (`caso`, que `abrir_carpeta` abre
-    solo si la categoría está encendida) y el recordatorio de lo que espera su dictamen desde 2
-    días hábiles. Primero lee la carpeta y después escribe la instalación. Nada de esto falla
-    hacia afuera: un error se registra y el listado sigue."""
+    las compras por pedir y las entregas al cliente de las obras de la carpeta abierta (`caso`,
+    que `abrir_carpeta` abre solo si alguna de las dos categorías está encendida) y el recordatorio
+    de lo que espera su dictamen desde 2 días hábiles. Primero lee la carpeta y después escribe la
+    instalación. Nada de esto falla hacia afuera: un error se registra y el listado sigue."""
     hoy = ahora.date()
     compras: list[Evento] = []
-    if (
-        abrir_carpeta is not None
-        and Rol.ARMA in persona.roles
-        and _activa(sesion, persona.usuario_id, Categoria.COMPRAS)
-    ):
-        try:
-            with abrir_carpeta() as sesion_caso:
-                compras = _compras(sesion_caso, persona.usuario, hoy, caso, carpeta_empresa)
-        except Exception:  # noqa: BLE001 (una carpeta que no abre no impide listar)
-            _registro.warning("No se pudo revisar la procura de %s.", caso, exc_info=True)
+    entregas: list[Evento] = []
+    if abrir_carpeta is not None and Rol.ARMA in persona.roles:
+        ver_compras = _activa(sesion, persona.usuario_id, Categoria.COMPRAS)
+        ver_entregas = _activa(sesion, persona.usuario_id, Categoria.ENTREGAS)
+        if ver_compras or ver_entregas:
+            entregados = _detalles_de_entregas(sesion) if ver_entregas else ()
+            try:
+                with abrir_carpeta() as sesion_caso:
+                    if ver_compras:
+                        compras = _compras(
+                            sesion_caso, persona.usuario, hoy, caso, carpeta_empresa
+                        )
+                    if ver_entregas:
+                        entregas = _entregas(
+                            sesion_caso,
+                            persona.usuario,
+                            hoy,
+                            caso,
+                            carpeta_empresa,
+                            entregados,
+                        )
+            except Exception:  # noqa: BLE001 (una carpeta que no abre no impide listar)
+                _registro.warning("No se pudo revisar la carpeta %s.", caso, exc_info=True)
     try:
         for evento in compras:
             emitir(sesion, Categoria.COMPRAS, evento, [persona.usuario_id], ahora)
+        for evento in entregas:
+            emitir(sesion, Categoria.ENTREGAS, evento, [persona.usuario_id], ahora)
         if Rol.REVISA in persona.roles:
             _recordar(sesion, persona, ahora, carpeta_empresa)
     except Exception:  # noqa: BLE001 (el listado sigue aunque un aviso falle)
@@ -633,4 +666,108 @@ def _compras(
                     ),
                 )
             )
+    return eventos
+
+
+def _detalles_de_entregas(sesion: Session) -> Sequence[str]:
+    """Los detalles de los paquetes exportados registrados en `instalacion.db`."""
+    return sesion.scalars(
+        select(EventoAcceso.detalle).where(EventoAcceso.tipo == "paquete exportado")
+    ).all()
+
+
+def _obra_entregada(
+    sesion_caso: Session, proyecto_id: int, entregas_registradas: Sequence[str]
+) -> bool:
+    """True si alguna versión de la obra ya tiene un paquete exportado en la instalación."""
+    if not entregas_registradas:
+        return False
+    sellos = sesion_caso.scalars(
+        select(EslabonVersion.huella_eslabon)
+        .join(models.Presupuesto, models.Presupuesto.id == EslabonVersion.presupuesto_id)
+        .where(models.Presupuesto.proyecto_id == proyecto_id)
+    ).all()
+    return any(
+        f"sello_version {sello}" in detalle
+        for sello in sellos
+        for detalle in entregas_registradas
+    )
+
+
+def _feriados_de_la_obra(sesion_caso: Session, nombre_obra: str) -> frozenset[date]:
+    fila = linea_base_vigente(sesion_caso, nombre_obra, date.max)
+    if fila is None or fila.calendario is None:
+        return frozenset()
+    return frozenset(date.fromisoformat(dia) for dia in json.loads(fila.calendario.feriados))
+
+
+def _habiles_antes(fecha: date, dias: int, feriados: Collection[date]) -> date:
+    """El día hábil que queda `dias` días hábiles antes de `fecha`."""
+    dia = fecha
+    while dias > 0:
+        dia -= timedelta(days=1)
+        if es_habil(dia, feriados):
+            dias -= 1
+    return dia
+
+
+def _entregas(
+    sesion_caso: Session,
+    usuario: str,
+    hoy: date,
+    caso: str | None,
+    carpeta_empresa: str | None,
+    entregas_registradas: Sequence[str],
+) -> list[Evento]:
+    """Las entregas al cliente al día `hoy` de las obras de `usuario` en esta carpeta que tienen
+    fecha de entrega fijada y aún no se han entregado: Advertencia desde 3 días hábiles antes y
+    Error desde el día de la entrega."""
+    fechas = entrega_de_obra.entregas_de_la_carpeta(sesion_caso)
+    if not fechas:
+        return []
+    eventos = []
+    for proyecto_id in _obras_de(sesion_caso, usuario):
+        fecha_entrega = fechas.get(proyecto_id)
+        if fecha_entrega is None:
+            continue
+        obra = sesion_caso.get(models.Proyecto, proyecto_id)
+        if obra is None or _obra_entregada(sesion_caso, proyecto_id, entregas_registradas):
+            continue
+        feriados = _feriados_de_la_obra(sesion_caso, obra.nombre)
+        if hoy < _habiles_antes(fecha_entrega, DIAS_AVISO_ENTREGA, feriados):
+            continue
+        vencida = hoy >= fecha_entrega
+        if vencida:
+            titulo = (
+                f"«{obra.nombre}» no está entregada y debía entregarse el "
+                f"{_dia(fecha_entrega)}."
+            )
+            detalle = (
+                f"Obra «{obra.nombre}». La fecha de entrega al cliente era el "
+                f"{_dia(fecha_entrega)}."
+            )
+        else:
+            titulo = f"Entregue «{obra.nombre}» antes del {_dia(fecha_entrega)}."
+            detalle = (
+                f"Obra «{obra.nombre}». La fecha de entrega al cliente es el "
+                f"{_dia(fecha_entrega)}."
+            )
+        eventos.append(
+            Evento(
+                clave=_clave(
+                    "entrega",
+                    caso or _SEGMENTO_DE_LA_EMPRESA,
+                    proyecto_id,
+                    fecha_entrega.isoformat(),
+                    "vencida" if vencida else "aviso",
+                ),
+                gravedad="error" if vencida else "advertencia",
+                titulo=titulo,
+                detalle=detalle,
+                enlace_texto=_VER_EL_RESUMEN,
+                enlace_ruta=_ruta_de_obra(
+                    caso, carpeta_empresa, str(proyecto_id), _SECCION_RESUMEN
+                ),
+            )
+        )
     return eventos

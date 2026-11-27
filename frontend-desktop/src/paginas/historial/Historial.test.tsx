@@ -6,6 +6,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
+import { catalogoDePrueba } from "../auditoria/datosDePrueba";
 import PaginaHistorial from "./index";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -79,14 +80,17 @@ describe("Historial de auditorías", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let lista: () => Response;
   let detalle: (id: string) => Response;
+  let queHacer: () => Response;
 
   beforeEach(() => {
+    queHacer = () => json({ detalle: "no" }, 404);
     vi.stubGlobal("fetch", fetchFalso);
     lista = () => json(LISTA);
     detalle = (id) => json(id === "1" ? DETALLE_LIBRO : DETALLE_PDF);
     fetchFalso.mockImplementation(async (entrada) => {
       const ruta = typeof entrada === "string" ? entrada : entrada instanceof URL ? entrada.pathname : entrada.url;
       if (ruta === "/v1/auditorias-libro?limite=100") return lista();
+      if (ruta === "/v1/libros/que-hacer") return queHacer();
       const m = /^\/v1\/auditorias-libro\/(\d+)$/.exec(ruta);
       if (m) return detalle(m[1]!);
       return json({ detalle: "no" }, 404);
@@ -345,6 +349,45 @@ describe("Historial de auditorías", () => {
     expect(screen.queryByRole("button", { name: /descargar/i })).not.toBeInTheDocument();
     expect(screen.getByText(/El libro y el PDF no se guardan/)).toBeInTheDocument();
   });
+
+  describe("«Qué hacer» en el detalle (B2)", () => {
+    test("cada hallazgo guardado trae su «Qué hacer», cerrado, con la guía del servidor", async () => {
+      queHacer = () => json(catalogoDePrueba());
+      const u = userEvent.setup();
+      dibujar();
+      await screen.findByText("presupuesto-a.xlsx");
+      await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
+      const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+      const tabla = within(panel).getByRole("table", { name: "Hallazgos guardados" });
+      const boton = await within(tabla).findByRole("button", { name: "Qué hacer con «Componente fuera del total»" });
+      expect(boton).toHaveAttribute("aria-expanded", "false");
+      expect(within(tabla).queryByText("Corrija el rango de la suma.")).not.toBeInTheDocument();
+      await u.click(boton);
+      expect(within(tabla).getByText("Corrija el rango de la suma.")).toBeInTheDocument();
+      expect(within(tabla).getByRole("button", { name: "Qué hacer con «Cierre de la curva de inversión»" })).toBeInTheDocument();
+    });
+
+    test("sin catálogo (el servidor no lo tiene) el detalle se ve igual, sin botones", async () => {
+      const u = userEvent.setup();
+      dibujar();
+      await screen.findByText("presupuesto-a.xlsx");
+      await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
+      const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+      expect(await within(panel).findByText("El CD no cuadra con la suma.")).toBeInTheDocument();
+      expect(within(panel).queryByRole("button", { name: /Qué hacer/ })).not.toBeInTheDocument();
+    });
+
+    test("un detalle sin hallazgos no pide el catálogo en vano ni pinta botones", async () => {
+      queHacer = () => json(catalogoDePrueba());
+      const u = userEvent.setup();
+      dibujar();
+      await screen.findByText("revision.pdf");
+      await u.click(screen.getByRole("button", { name: "Ver el detalle de revision.pdf" }));
+      const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+      expect(await within(panel).findByText("Esta auditoría no dejó hallazgos guardados")).toBeInTheDocument();
+      expect(within(panel).queryByRole("button", { name: /Qué hacer/ })).not.toBeInTheDocument();
+    });
+  });
 });
 
 // C10b: filtro «Por persona» y enlaces a la actividad de quien auditó.
@@ -427,4 +470,5 @@ describe("Historial: filtro «Por persona» y enlaces a la actividad", () => {
     expect(within(filas[3]!).getByText("api (clave de API)")).toBeInTheDocument();
     expect(within(filas[3]!).queryByRole("link")).toBeNull();
   });
+
 });

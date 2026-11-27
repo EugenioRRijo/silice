@@ -944,7 +944,7 @@ aprobarla. El modelo está en `seguridad/modelo.py` (`SolicitudCuenta`) y solo l
 
 | Tabla | Columnas | Restricciones |
 |---|---|---|
-| `solicitud_cuenta` | `id` PK, `login` (60, normalizado), `nombre` (120), `correo` (254), `huella_clave` (200, Argon2), `creada`, `estado` (`pendiente` \| `aprobada` \| `rechazada` \| `usada` \| `vencida`), `papel` (`arma` \| `revisa`; nulo hasta aprobar), `huella_codigo` (64, SHA-256 del código normalizado; nulo sin código vigente), `vence` (nulo; aprobada + 7 días), `resuelta_por` (120) | `login` UK: una solicitud rechazada o vencida se reutiliza si se pide de nuevo |
+| `solicitud_cuenta` | `id` PK, `login` (60, normalizado), `nombre` (120), `correo` (254), `huella_clave` (200, Argon2), `creada`, `estado` (`pendiente` \| `aprobada` \| `rechazada` \| `usada` \| `vencida`), `papel` (`arma` \| `revisa`; nulo hasta aprobar), `huella_codigo` (64, SHA-256 del código normalizado; nulo sin código vigente), `vence` (nulo; aprobada + 7 días), `resuelta_por` (120), `resuelta_por_id` (FK → `usuario.id`, nulo; agregado en `ins_0016_solicitud_resuelta_por`) | `login` UK: una solicitud rechazada o vencida se reutiliza si se pide de nuevo; `fk_solicitud_cuenta_resuelta_por_id`: al canjear se exige que esa cuenta siga activa y administradora |
 
 La misma revisión agrega `usuario.correo` (254, nulo, `''` por omisión para las cuentas anteriores). Ni la contraseña ni
 el código se guardan en claro; el código solo viaja una vez, en la respuesta de la aprobación.
@@ -974,7 +974,20 @@ revisión agrega a `notificacion` la columna `clave_evento` y crea la tabla de p
 | Tabla | Columnas | Restricciones |
 |---|---|---|
 | `notificacion` (agregado) | `clave_evento` (255, nula; nula en las que crea el front) | índice único `ux_notificacion_usuario_clave (usuario_id, clave_evento)`: un evento no se repite para una persona (las nulas no chocan) |
-| `preferencia_notificacion` | `usuario_id` FK → `usuario.id`, `categoria` (40: `por_dictaminar` \| `dictamen` \| `compras` \| `listas_de_precios`), `activa` (bool) | PK `(usuario_id, categoria)`; sin fila, la categoría está encendida; `por_dictaminar` no se apaga para quien revisa (lo decide la aplicación) |
+| `preferencia_notificacion` | `usuario_id` FK → `usuario.id`, `categoria` (40: `por_dictaminar` \| `dictamen` \| `compras` \| `listas_de_precios` \| `entregas`), `activa` (bool) | PK `(usuario_id, categoria)`; sin fila, la categoría está encendida; `por_dictaminar` no se apaga para quien revisa (lo decide la aplicación) |
 
-Como la retención es de 30 días, la clave de un evento vuelve a quedar libre a los 30 días: un recordatorio o una compra
-vencida que siguen igual se repiten una vez al mes.
+Como la retención es de 30 días, la clave de un evento vuelve a quedar libre a los 30 días: un recordatorio, una compra
+vencida o una entrega vencida que siguen igual se repiten una vez al mes.
+
+### 13.2 Fecha de entrega al cliente de una obra (base del caso, revisión `caso_0025_entrega_de_obra`)
+
+Lote G5 (decisión de Eugenio del 2026-11-26, [notificaciones por evento](especificaciones/2026-11-26-notificaciones-por-evento.md) §4):
+la fecha en que hay que entregarle el presupuesto al cliente vive en la carpeta de la obra, fuera de `core/`. El modelo
+está en `aplicacion/tablas_entrega.py` (`METADATA_ENTREGA`), sin clave foránea a `core.models`, y solo lo lee y escribe
+`aplicacion/entrega_de_obra.py`. Alimenta la categoría `entregas` del barrido perezoso de `aplicacion/avisos_por_evento.py`
+(Advertencia desde 3 días hábiles antes y Error desde el día de la entrega mientras la obra siga sin entregar, para quien
+trabajó en ella).
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `entrega_de_obra` | `proyecto_codigo` PK (40, el código de la obra como texto), `fecha_entrega` (`date`, nula si se quitó), `actualizada` (`datetime`), `actualizada_por` (200, el responsable `Nombre <login>` o la clave de API) | una fila por obra; `fecha_entrega` no puede estar en el pasado al fijarla (lo valida la aplicación) |

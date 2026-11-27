@@ -1680,6 +1680,30 @@
         }
       }
     },
+    "/v1/libros/que-hacer": {
+      "get": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Que Hacer De Los Hallazgos",
+        "description": "La guía por código de regla (`reglas`), por tipo de alerta (`alertas`) y la genérica.",
+        "operationId": "que_hacer_de_los_hallazgos_v1_libros_que_hacer_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Que Hacer De Los Hallazgos V1 Libros Que Hacer Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/simulador": {
       "post": {
         "tags": [
@@ -3513,7 +3537,7 @@
           "solicitudes"
         ],
         "summary": "Listar Solicitudes",
-        "description": "Las solicitudes, las más nuevas primero (lo vencido ya marcado como `vencida`).",
+        "description": "Las solicitudes, las más nuevas primero (solo lectura; `vencida` se calcula al responder).",
         "operationId": "listar_solicitudes_v1_solicitudes_get",
         "responses": {
           "200": {
@@ -12095,6 +12119,104 @@
         }
       }
     },
+    "/v1/obras/{codigo}/entrega": {
+      "get": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Obtener Entrega De La Obra",
+        "description": "Lee la fecha de entrega al cliente de la obra `codigo` en la carpeta abierta.",
+        "operationId": "obtener_entrega_de_la_obra_v1_obras__codigo__entrega_get",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Codigo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntregaDeObraRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Actualizar Entrega De La Obra",
+        "description": "Fija o quita (`null`) la fecha de entrega al cliente de la obra `codigo`.",
+        "operationId": "actualizar_entrega_de_la_obra_v1_obras__codigo__entrega_put",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Codigo"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntregaDeObraPeticion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntregaDeObraRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/mercado/objetivos": {
       "get": {
         "tags": [
@@ -20616,6 +20738,76 @@
         "type": "object",
         "title": "EnlaceNotificacion"
       },
+      "EntregaDeObraPeticion": {
+        "properties": {
+          "fecha_entrega": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Entrega",
+            "description": "Fecha de entrega al cliente (aaaa-mm-dd), o null para quitarla"
+          }
+        },
+        "type": "object",
+        "title": "EntregaDeObraPeticion"
+      },
+      "EntregaDeObraRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto",
+            "description": "El código de la obra"
+          },
+          "fecha_entrega": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Entrega",
+            "description": "La fecha de entrega al cliente (aaaa-mm-dd), o null si no tiene"
+          },
+          "actualizada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualizada",
+            "description": "Cuándo se actualizó por última vez (ISO), o null"
+          },
+          "actualizada_por": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualizada Por",
+            "description": "Quién fijó o quitó la fecha, o null"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "fecha_entrega"
+        ],
+        "title": "EntregaDeObraRespuesta"
+      },
       "EntregaPeticion": {
         "properties": {
           "proyecto": {
@@ -27690,7 +27882,7 @@
               "$ref": "#/components/schemas/PreferenciaDeNotificacionCambio"
             },
             "type": "array",
-            "maxItems": 8,
+            "maxItems": 10,
             "title": "Categorias"
           }
         },
@@ -30550,6 +30742,11 @@
             ],
             "title": "Vence",
             "description": "Cuándo deja de valer el código de una aprobada"
+          },
+          "reutilizada": {
+            "type": "boolean",
+            "title": "Reutilizada",
+            "description": "True si este usuario ya se había pedido antes y se rechazó o venció"
           }
         },
         "type": "object",
@@ -30561,7 +30758,8 @@
           "creada",
           "estado",
           "papel",
-          "vence"
+          "vence",
+          "reutilizada"
         ],
         "title": "SolicitudRespuesta"
       },

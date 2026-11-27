@@ -33,8 +33,10 @@ from sqlalchemy.orm import Session
 from aplicacion import avisos_por_evento as avisos
 from aplicacion import indice_aprobaciones
 from aplicacion.avisos_por_evento import Categoria, Evento, PreferenciaInvalida
+from aplicacion.entrega_de_obra import fijar_entrega
 from aplicacion.indice_aprobaciones import FilaIndice, Reflejo
 from aplicacion.procura import registrar_compra
+from aplicacion.tablas_entrega import crear_esquema_entrega
 from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
 from aplicacion.tablas_procura import crear_esquema_procura
 from core.catalog import abrir_sesion as abrir_sesion_caso
@@ -154,6 +156,7 @@ def test_las_cuatro_categorias_vienen_encendidas_y_cada_una_aplica_a_su_rol(bd: 
         ("dictamen", True, True, False),
         ("compras", True, True, False),
         ("listas_de_precios", True, True, False),
+        ("entregas", True, True, False),
     ]
     rita = avisos.preferencias(bd, _usuario(bd, "rita").id)
     assert [(p.categoria, p.activa, p.aplica, p.obligatoria) for p in rita] == [
@@ -161,18 +164,21 @@ def test_las_cuatro_categorias_vienen_encendidas_y_cada_una_aplica_a_su_rol(bd: 
         ("dictamen", True, False, False),
         ("compras", True, False, False),
         ("listas_de_precios", True, False, False),
+        ("entregas", True, False, False),
     ]
     assert [p.titulo for p in ana] == [
         "Versiones por dictaminar",
         "Dictamen de sus versiones",
         "Compras por pedir",
         "Listas de precios nuevas",
+        "Entregas al cliente",
     ]
     assert [p.descripcion for p in ana] == [
         "Una versión espera su dictamen, y un recordatorio si lleva 2 días hábiles esperando.",
         "Una versión que usted envió fue aprobada, devuelta o retirada.",
         "Un material de una obra en la que trabajó debe pedirse pronto o ya debía pedirse.",
         "Se cargó una lista o una referencia de precios nueva.",
+        "Se acerca o ya llegó la fecha de entrega al cliente de una obra en la que trabajó.",
     ]
 
 
@@ -186,6 +192,7 @@ def test_apagar_una_categoria_es_solo_de_esa_cuenta_y_se_puede_encender(bd: Sess
         "dictamen": True,
         "compras": False,
         "listas_de_precios": True,
+        "entregas": True,
     }
     assert all(p.activa for p in avisos.preferencias(bd, tomas))
     avisos.fijar_preferencias(bd, ana, [("compras", True)])
@@ -209,8 +216,8 @@ def test_quien_revisa_no_puede_apagar_las_versiones_por_dictaminar(bd: Session) 
 
 def test_una_categoria_desconocida_o_repetida_se_rechaza(bd: Session) -> None:
     ana = _usuario(bd, "ana").id
-    with pytest.raises(PreferenciaInvalida, match="No existe la categoría «entregas»."):
-        avisos.fijar_preferencias(bd, ana, [("entregas", False)])
+    with pytest.raises(PreferenciaInvalida, match="No existe la categoría «inexistente»."):
+        avisos.fijar_preferencias(bd, ana, [("inexistente", False)])
     with pytest.raises(PreferenciaInvalida, match="La categoría «compras» está repetida."):
         avisos.fijar_preferencias(bd, ana, [("compras", False), ("compras", True)])
     assert all(p.activa for p in avisos.preferencias(bd, ana))
@@ -614,10 +621,125 @@ def test_sin_linea_base_no_hay_avisos_de_compra(bd: Session, carpeta) -> None:
 
 def test_compras_apagadas_no_abren_la_carpeta(bd: Session, carpeta) -> None:
     _vivienda(carpeta)
-    avisos.fijar_preferencias(bd, _usuario(bd, "ana").id, [("compras", False)])
+    avisos.fijar_preferencias(
+        bd, _usuario(bd, "ana").id, [("compras", False), ("entregas", False)]
+    )
     abiertas: list[int] = []
     _compras(bd, carpeta, "ana", date(2026, 12, 4), abiertas)
     assert _de(bd, "ana") == [] and abiertas == []
+
+
+# --- categoría 5: entregas al cliente (Lote G5) ---------------------------------------------------
+
+ENTREGA_AVISO = (
+    "advertencia",
+    "Entregue «Vivienda Demo 80 m2» antes del 04/12/2026.",
+    "Obra «Vivienda Demo 80 m2». La fecha de entrega al cliente es el 04/12/2026.",
+    "Ver el resumen de la obra",
+    "/obra/carpeta.db/1/resumen",
+)
+ENTREGA_VENCIDA = (
+    "error",
+    "«Vivienda Demo 80 m2» no está entregada y debía entregarse el 04/12/2026.",
+    "Obra «Vivienda Demo 80 m2». La fecha de entrega al cliente era el 04/12/2026.",
+    "Ver el resumen de la obra",
+    "/obra/carpeta.db/1/resumen",
+)
+
+
+def _vivienda_con_entrega(
+    motor,
+    fecha_entrega: date = date(2026, 12, 4),
+    *,
+    feriados: tuple[date, ...] = (),
+    linea_base: bool = False,
+) -> None:
+    crear_esquema_entrega(motor)
+    with abrir_sesion_caso(motor) as s:
+        pv.sembrar(s)
+        if linea_base:
+            pv.declarar_linea_base(s, feriados)
+        fijar_entrega(
+            s,
+            OBRA,
+            fecha_entrega,
+            responsable=ANA,
+            ahora=datetime(2026, 11, 1, 9, 0),
+        )
+        s.commit()
+
+
+def test_entregas_bordes_de_fecha_aviso_vencida_y_sin_repetir(bd: Session, carpeta) -> None:
+    _vivienda_con_entrega(carpeta, date(2026, 12, 4))
+    avisos.fijar_preferencias(bd, _usuario(bd, "ana").id, [("compras", False)])
+    _compras(bd, carpeta, "ana", date(2026, 11, 30))  # lun: 4 días hábiles antes -> nada
+    assert _de(bd, "ana") == []
+    _compras(bd, carpeta, "ana", date(2026, 12, 1))  # mar: 3 días hábiles antes -> advertencia
+    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO]
+    _compras(bd, carpeta, "ana", date(2026, 12, 2))  # mié: 2 días hábiles antes -> no repite
+    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO]
+    _compras(bd, carpeta, "ana", date(2026, 12, 3))  # jue: 1 día hábil antes -> no repite
+    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO]
+    _compras(bd, carpeta, "ana", date(2026, 12, 4))  # vie: el día -> error
+    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO, ENTREGA_VENCIDA]
+    _compras(bd, carpeta, "ana", date(2026, 12, 7))  # lun: después sin entregar -> no repite
+    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO, ENTREGA_VENCIDA]
+    assert [n.clave_evento for n in _de(bd, "ana")] == [
+        "entrega:carpeta.db:1:2026-12-04:aviso",
+        "entrega:carpeta.db:1:2026-12-04:vencida",
+    ]
+
+
+def test_entregas_solo_para_quien_trabajo_en_la_obra_y_si_esta_encendida(
+    bd: Session, carpeta
+) -> None:
+    _vivienda_con_entrega(carpeta, date(2026, 12, 4))
+    _compras(bd, carpeta, "tomas", date(2026, 12, 4))  # arma, pero no trabajó en la obra
+    _compras(bd, carpeta, "rita", date(2026, 12, 4))  # revisa
+    assert _de(bd, "tomas") == [] and _de(bd, "rita") == []
+
+    # Si Ana apaga «entregas», no se crea aviso de entrega.
+    avisos.fijar_preferencias(
+        bd, _usuario(bd, "ana").id, [("compras", False), ("entregas", False)]
+    )
+    _compras(bd, carpeta, "ana", date(2026, 12, 4))
+    assert _de(bd, "ana") == []
+
+
+def test_entregas_con_feriado_y_obra_ya_entregada(bd: Session, carpeta) -> None:
+    """Con miércoles 02/12 feriado, 3 días hábiles antes del viernes 04/12 es el lunes 30/11. Si la
+    obra ya tiene un paquete exportado, deja de avisar."""
+    from core.models.cadena import EslabonVersion
+    from seguridad.modelo import EventoAcceso
+
+    _vivienda_con_entrega(
+        carpeta,
+        date(2026, 12, 4),
+        feriados=(date(2026, 12, 2),),
+        linea_base=True,
+    )
+    avisos.fijar_preferencias(bd, _usuario(bd, "ana").id, [("compras", False)])
+    _compras(bd, carpeta, "ana", date(2026, 11, 27))  # vie: 4 días hábiles antes
+    assert _de(bd, "ana") == []
+    _compras(bd, carpeta, "ana", date(2026, 11, 30))  # lun: 3 días hábiles antes
+    assert [n.titulo for n in _de(bd, "ana")] == [ENTREGA_AVISO[1]]
+
+    # Si el paquete de la versión ya se exportó, el día de entrega no emite Error de sin entregar.
+    with abrir_sesion_caso(carpeta) as s:
+        sello = s.scalar(select(EslabonVersion.huella_eslabon))
+    assert sello is not None
+    bd.add(
+        EventoAcceso(
+            tipo="paquete exportado",
+            fecha_hora=datetime(2026, 12, 1, 12, 0),
+            login_intentado="ana",
+            ip_cliente="127.0.0.1",
+            detalle=f"paq-1; version VIV-001; sello_version {sello}",
+        )
+    )
+    bd.commit()
+    _compras(bd, carpeta, "ana", date(2026, 12, 4))
+    assert len(_de(bd, "ana")) == 1
 
 
 def test_una_carpeta_que_no_abre_no_impide_el_recordatorio(bd: Session) -> None:

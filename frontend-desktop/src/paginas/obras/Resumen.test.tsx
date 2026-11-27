@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { pedir } from "../../api/cliente";
+import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { ObraFilaRespuesta, PendienteDeObra } from "../../api/tipos";
 import { EspacioDeObra } from "../../marco/EspacioDeObra";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
@@ -240,6 +240,79 @@ describe("Resumen de la obra abierta", () => {
     expect(screen.queryByRole("button", { name: "Probar con datos de demostración" })).toBeNull();
     expect(screen.queryByText("Cree su primera obra")).toBeNull();
   });
+
+  it("lee «Fecha de entrega al cliente» en dd/mm/aaaa, permite guardarla o quitarla, y valida el formato y el 422", async () => {
+    const u = userEvent.setup();
+    let fechaGuardada: string | null = "2026-12-15";
+    pedirFalso.mockImplementation(async (ruta: string, opciones: { metodo?: string; cuerpo?: unknown } = {}) => {
+      const metodo = opciones.metodo ?? "GET";
+      if (metodo === "GET" && ruta === "/v1/obras/3/entrega") {
+        return { proyecto: "3", fecha_entrega: fechaGuardada };
+      }
+      if (metodo === "PUT" && ruta === "/v1/obras/3/entrega") {
+        const datos = (opciones.cuerpo ?? {}) as { fecha_entrega: string | null };
+        if (datos.fecha_entrega === "2026-11-01") {
+          throw new ErrorDeApi(422, "La fecha de entrega al cliente no puede estar en el pasado.");
+        }
+        fechaGuardada = datos.fecha_entrega;
+        return { proyecto: "3", fecha_entrega: fechaGuardada };
+      }
+      return { obras: [], pendientes: [], grupos: [] };
+    });
+
+    const aplicacion: Aplicacion = {
+      sesion: sesionDe("ana"),
+      proyecto: "3",
+      caso: null,
+      recargarProyectos: vi.fn(),
+      alExpirar: vi.fn(),
+    };
+    const abierta: ObraAbierta = {
+      carpeta: NORTE,
+      obraId: 3,
+      ficha: { estado: "lista", obra: FILA },
+      recargarFicha: vi.fn(),
+    };
+    render(
+      <MemoryRouter initialEntries={[rutaDeObra(NORTE, 3, "resumen")]}>
+        <ContextoAplicacion.Provider value={aplicacion}>
+          <ContextoPendientes.Provider value={sinPendientes()}>
+            <ContextoDeLaObra.Provider value={abierta}>
+              <PaginaObras />
+            </ContextoDeLaObra.Provider>
+          </ContextoPendientes.Provider>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+
+    const campo = await screen.findByRole("textbox", { name: "Fecha de entrega al cliente" });
+    await waitFor(() => expect(campo).toHaveValue("15/12/2026"));
+
+    // Fecha mal escrita: avisa sin llamar al PUT.
+    await u.clear(campo);
+    await u.type(campo, "99/99/2026");
+    await u.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    expect(await screen.findByText("La fecha escrita no existe en el calendario.")).toBeInTheDocument();
+
+    // Fecha en el pasado rechazada por el servidor (422).
+    await u.clear(campo);
+    await u.type(campo, "01/11/2026");
+    await u.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    expect(await screen.findByText("La fecha de entrega al cliente no puede estar en el pasado.")).toBeInTheDocument();
+
+    // Fecha válida: envía PUT con aaaa-mm-dd y confirma.
+    await u.clear(campo);
+    await u.type(campo, "20/12/2026");
+    await u.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    expect(await screen.findByText("Fecha de entrega guardada.")).toBeInTheDocument();
+    expect(fechaGuardada).toBe("2026-12-20");
+
+    // Vaciar la fecha y guardar envía null.
+    await u.clear(campo);
+    await u.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    expect(await screen.findByText("Fecha de entrega quitada.")).toBeInTheDocument();
+    expect(fechaGuardada).toBeNull();
+  });
 });
 
 // Foco de la tarea 1: la ficha se lee una vez por obra abierta y el Resumen la reutiliza (no lee `/v1/obras/resumen`
@@ -267,6 +340,8 @@ describe("una lectura del resumen por obra abierta", () => {
           return undefined;
         case "GET /v1/obras/resumen":
           return { moneda: "Bs", hoy: "2026-10-31", obras: [FILA, ...OTRAS] };
+        case "GET /v1/obras/3/entrega":
+          return { proyecto: "3", fecha_entrega: null };
       }
       throw new Error(`Ruta inesperada: ${clave}`);
     });

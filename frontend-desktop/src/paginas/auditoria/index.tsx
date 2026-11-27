@@ -1,26 +1,20 @@
-import { Button } from "@carbon/react";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { SubidaArchivo } from "../../comun/SubidaArchivo";
+import { Link } from "react-router";
 import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
-import { RECORRIDO_AUDITAR, iniciarRecorrido, pasoDeRuta, useRecorrido } from "../../shell/recorrido";
+import { pasoDeRuta, useRecorrido } from "../../shell/recorrido";
 import { paginaPorId, usable } from "../../shell/rutas";
-import { fijarArchivoPendiente } from "../inicio/archivoPendiente";
-import type { ModoDeAuditoria } from "../inicio/archivoPendiente";
 import { UltimasAuditorias } from "../inicio/UltimasAuditorias";
 import { AuditarApuPorHoja } from "./AuditarApuPorHoja";
+import { AuditarUnLibro } from "./AuditarUnLibro";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
 import { useCarga } from "../../comun/useCarga";
 
 const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 
-// Inicio de «Auditoría»: arriba el Excel de un presupuesto (con o sin recorrido guiado), debajo lo ultimo que se audito.
-// Cada bloque responde una pregunta («¿que hago?», «¿donde estaba?»); nada de tarjetas de adorno.
+// «Auditar un libro» (B2): arriba el flujo de una sola página (subir, qué se encontró, conclusión y entrega), plegado el libro
+// con un APU por hoja y debajo lo último que se auditó. Cada bloque responde una pregunta («¿qué hago?», «¿dónde estaba?»).
 export default function PaginaAuditoria() {
   const { alExpirar, caso, proyecto, nombreProyecto, sesion, modulosApagados } = useAplicacion();
-  const navegar = useNavigate();
-  const [archivo, setArchivo] = useState<File | null>(null);
   // Auditar y el historial son de quien puede leer proyectos (la API contestaria 403, VB-9); quien no puede no ve la
   // seccion vacia: se omite (VD-10).
   const puedeAuditar = sesion.acciones.includes("leer_proyecto");
@@ -33,47 +27,15 @@ export default function PaginaAuditoria() {
   const paginaSiguiente = siguiente ? paginaPorId(siguiente.pagina) : undefined;
   const puedeSeguir = paginaSiguiente !== undefined && usable(paginaSiguiente, sesion.acciones, sesion.modo_entrega, modulosApagados);
 
-  const auditar = (modo: ModoDeAuditoria) => {
-    if (!archivo) return;
-    fijarArchivoPendiente(archivo, modo);
-    if (modo === "guiado") iniciarRecorrido(RECORRIDO_AUDITAR);
-    void navegar(rutaOPendientes("libros"));
-  };
-
   return (
     <div className="silice-inicio silice-pagina">
-      <h1 className="cds--type-heading-04">Inicio de auditoría</h1>
+      <h1 className="cds--type-heading-04">Auditar un libro</h1>
       <p className="silice-inicio__nota cds--type-body-compact-01">
         Suba un presupuesto en Excel para recalcular sus partidas y detectar errores
       </p>
 
       {puedeAuditar ? (
-        <section className="silice-inicio__bloque" aria-labelledby="auditoria-excel">
-          <h2 id="auditoria-excel" className="cds--type-heading-compact-02">
-            Audite un presupuesto
-          </h2>
-          <p className="silice-inicio__nota cds--type-body-compact-01">
-            Suelte el Excel del presupuesto. Sílice recalcula cada partida y le dice lo que no cuadra. El archivo no se
-            guarda; solo quedan el resumen y los hallazgos.
-          </p>
-          <SubidaArchivo
-            id="auditoria-subida"
-            etiqueta="Suelte aquí el libro .xlsx del presupuesto, o haga clic para elegirlo"
-            extensiones={[".xlsx"]}
-            alElegir={setArchivo}
-          />
-          <p role="status" className="silice-inicio__nota cds--type-body-compact-01">
-            {archivo ? `Archivo elegido: ${archivo.name}` : ""}
-          </p>
-          <div className="silice-inicio__acciones">
-            <Button kind="primary" size="md" disabled={!archivo} onClick={() => auditar("guiado")}>
-              Auditar con recorrido guiado
-            </Button>
-            <Button kind="tertiary" size="md" disabled={!archivo} onClick={() => auditar("propio")}>
-              Auditar por mi cuenta
-            </Button>
-          </div>
-        </section>
+        <AuditarUnLibro />
       ) : (
         <section className="silice-inicio__bloque" aria-labelledby="auditoria-excel">
           <h2 id="auditoria-excel" className="cds--type-heading-compact-02">
@@ -88,7 +50,14 @@ export default function PaginaAuditoria() {
 
       {/* F5 vial, tarea 6: el libro con un APU por hoja y su presupuesto (otro perfil, otra subida). */}
       {puedeAuditar && (
-        <AuditarApuPorHoja alExpirar={alExpirar} obra={nombreProyecto ?? null} puedeLlevar={sesion.acciones.includes("editar_hoja")} />
+        <details className="silice-libro__plegado">
+          <summary>Otro tipo de libro: un APU por hoja</summary>
+          <AuditarApuPorHoja
+            alExpirar={alExpirar}
+            obra={nombreProyecto ?? null}
+            puedeLlevar={sesion.acciones.includes("editar_hoja")}
+          />
+        </details>
       )}
 
       {puedeAuditar && (
