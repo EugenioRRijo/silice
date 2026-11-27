@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-25 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-27 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -106,6 +106,7 @@ instalador con huella SHA-256 firmada.
 
 | PR o rama | Qué trae | Estado |
 |---|---|---|
+| `feature/front-b1` | Reestructuración del front («Papel y resaltador», marco, Presupuesto nuevo B1, Auditar un libro B2, registro con código C9, notificaciones C11/C11b y entrega, actividad C10/C10b, gráficos C7/C7b y accesibilidad) y enmienda del ensayo de detección (§3) | **Aún no está en `main`**; en revisión en el navegador (2026-11-27); la fusión del PR la decide Eugenio |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -113,6 +114,97 @@ autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada t
 `.worktrees/td-*` (autorización de Eugenio del 2026-11-06), que se quita al cerrar la fase.
 
 ## 3. Trabajo en curso
+
+### Rama `feature/front-b1` (2026-11-26 a 2026-11-27; aún no está en `main`)
+
+Esta rama sigue el [plan de integración de la cara](planes/2026-11-26-plan-integracion-cara.md) y **aún no está
+fusionada en `main`**: `main` sigue intacta hasta la fusión final del PR, que decide Eugenio. `core/`, los archivos
+sellados por `reglas-congeladas-2026-11-24` y `aplicacion/hoja.py` permanecen sin cambios (verificados por
+`tests/unit/test_sellos_de_reglas.py`).
+
+**Qué trae:**
+- **Cara «Papel y resaltador» (claro y oscuro) y botones (C0, C1, C2):** tokens `--silice-*` con
+  `color-scheme: light dark` y `light-dark()` que alimentan `--cds-*` de Carbon (y alcanzan también
+  `estilos/editorial.scss` en modo oscuro), tipografías Instrument Sans (400/500/600) y Newsreader (400) empaquetadas
+  con `@fontsource` 5.3.0 (sin IBM Plex); selector de «Apariencia» en Cuenta › Configuración (Claro, Oscuro, Como el
+  sistema) con `public/modo-inicial.js` bajo CSP `'self'` antes del pintado; botones «contorno de papel» sobre Carbon
+  (escala 28/32/40 en `rem`, foco dorado con `:focus-visible` y botón amarillo «Nueva obra») y `comun/BotonInactivo`
+  (`aria-disabled` sin `disabled`, que sigue en el Tab y explica por qué no se puede).
+- **Marco e Inicio (C3, C4, C5, C8):** franja superior global (`BarraSuperior`: Sílice, buscador, «Nueva obra» amarilla
+  y cuenta), barra de la obra en dos filas (`BarraDeObra`: nombre hacia la Portada, herramientas Presupuestar, Auditar y
+  Anticipar, menú Versión y segunda fila con las opciones de la herramienta), `BarraDeEspacio`, barra lateral de lugares
+  (`RielLateral` con «Espacios de la empresa», «Obras» con sus pendientes, «En cifras» y la carpeta, reducible a iconos),
+  Inicio › Resumen con cartera, avance, problemas por obra y lo cargado (solo rutas existentes y cifras del servidor), y
+  la vista «Componer la obra».
+- **Presupuesto nuevo (B1-0 a B1-10, C6 y G3; [ficha B1](especificaciones/2026-11-26-cara-papel-y-resaltador/b1/ficha-b1.md)):**
+  `ProveedorDeAnuncios` montado en `App`, analizadores de la Hoja, lógica pura de la superficie, máquina de teclado y
+  componente `comun/Grilla` (`table role="grid"`, una sola parada de Tab y teclado tipo Excel); cabecera fija (B1-3) con
+  `MontoExacto` en `Toggletip` (sin `title` ni `aria-live`), «Total sin IVA» y total con IVA, «Problemas», «¿Qué es
+  esto?» y «Más acciones» (menú `popover` con «Subtotales por frente» en panel lateral, enlaces a Archivos y a
+  «Espacio, plan y ajustes», y «Descartar cambios» con diálogo destructivo); superficie de solo lectura y frase de
+  respuesta en `es-VE` (B1-4); edición de cantidades en celda con pausa, `rev`, 422 y 409 (B1-5); inspector de la
+  partida acoplado (B1-6); problemas agrupados por regla como notas al margen (B1-7); fila de alta con máquina pura
+  (B1-8); creación de partida desde la fila de alta con `ComponerEnPanel` (B1-9, plan B de la ficha); y cambio de ruta
+  (B1-10): `…/presupuesto` abre la grilla nueva, la obra abre en Presupuesto (D1) y las pestañas anteriores quedan en
+  `…/presupuesto/pestanas` («Espacio, plan y ajustes», página `hoja_pestanas`, ya incluida en el recorrido UX con 33
+  pantallas).
+- **Auditar un libro (B2; [ficha B2](especificaciones/2026-11-26-cara-papel-y-resaltador/b2/ficha-b2.md)):** una sola
+  página en tres pasos (subir; qué se encontró, con causas raíz, hallazgos, las alertas de precio A1 a A3 que ninguna
+  pantalla mostraba y «Qué hacer» plegado; conclusión y entrega). «Ver la hoja marcada» pide la réplica al pulsar sin
+  auditar dos veces. Agrega una capa de presentación fuera de lo sellado (`aplicacion/que_hacer.py` y
+  `GET /v1/libros/que-hacer`) y `comun/QueHacer`, reutilizado también en el detalle del Historial.
+- **Registro con código de 20 caracteres (C9 y G4):** migraciones `ins_0013` e `ins_0016`, `seguridad/solicitudes.py`,
+  `seguridad/retencion.py` y rutas `/v1/solicitudes*`. En la pantalla de entrada, «Crear una cuenta» y «Tengo un
+  código»; en Cuentas y permisos, la sección Solicitudes para aprobar (código mostrado una sola vez, con «Copiar el
+  código» y «Enviarlo por correo» vía `mailto`) o rechazar con diálogo destructivo. La revisión de seguridad («aprobado
+  con cambios») quedó cerrada, incluidos sus 5 hallazgos bajos en G4 (cupo por equipo antes de Argon2, comprobación de
+  que quien aprobó siga activo y administre cuentas, trazabilidad de solicitudes reutilizadas, validación previa de
+  `Origin` y `GET /v1/solicitudes` sin escrituras).
+- **Notificaciones y fecha de entrega (C11, C11b, G2, G3 y G5):** barra de estado inferior con la carpeta y la
+  campanita, avisos emergentes (3 minutos para listo e información; advertencia y error hasta cerrarse), panel lateral
+  no modal con Hoy/Ayer, persistencia de 30 días por persona (`ins_0014`, hasta 200) y rutas `/v1/notificaciones*`. En
+  C11b, cuatro categorías por evento (versión esperando dictamen con recordatorio a los 2 días hábiles, versión
+  aprobada/devuelta/retirada, compras por pedir y lista de precios nueva), preferencias (`ins_0015`,
+  `GET/PUT /v1/notificaciones/preferencias`) y pantalla Cuenta › Notificaciones (`/cuenta/notificaciones`). En G2 y G3
+  se conectaron las confirmaciones «listo» al dictaminar, entregar, restaurar una versión, cargar listas o referencia de
+  precios, revalorar, guardar una versión y enviarla a aprobación. En G5 se incorporó la fecha de entrega al cliente
+  (`entrega_de_obra` en `caso_0025`, fuera de `core/`, rutas `GET/PUT /v1/obras/{codigo}/entrega`), la quinta categoría
+  «entregas» (3 días hábiles antes y el día; Error desde el día) y el campo escrito a mano (`comun/fechaEscrita`) en
+  Nueva obra y Resumen.
+- **Actividad por persona (C10 y C10b):** `GET /v1/actividad` (solo lectura, `aplicacion/actividad.py`) reuniendo
+  versiones guardadas, envíos, dictámenes y auditorías de libros; página Cuenta › Actividad con calendario anual en una
+  sola tinta, cifras, actividad reciente filtrable y «Ver como tabla», con enlaces desde Cuentas y permisos. En C10b,
+  filtro «Por persona» en Versiones e Historial de auditorías (tras incluir `usuario` en `GET /v1/auditorias-libro`) y
+  enlace desde cada nombre (`comun/EnlaceDePersona`).
+- **Gráficos (C7 y C7b):** paleta validada por modo (`paletaGraficos`) con color fijo por serie, cifras en `es-VE`,
+  etiquetas directas, globo con detalle y «Ver como tabla» en Control (`CurvaPlanAvance`), Riesgo (P10, P50, P80 y P90
+  rotulados) e Inicio (C7), y en Mercado, Escenarios y Producción en pequeños múltiplos por moneda, sin doble eje (C7b).
+- **Accesibilidad, estilos, auditoría independiente y documentación:** enmienda de movimiento funcional en `DESIGN.md` y
+  movimiento reducido que conserva el color y desacelera el spinner de Carbon a 8 s; contraste AA en ambos modos y
+  anillo de foco `--silice-foco` sobre 3:1 (4,2–4,9:1 en claro y 6,0–7,8:1 en oscuro); sin `title` para cifras ni fechas
+  ISO (VD-5); `estilos/todasCompilan.test.ts` compila las 81 hojas `.scss`; sin rechazos de promesas no atrapados en
+  notificaciones ni gráficos. Una auditoría independiente (Claude Opus, solo lectura) dictaminó «apta para medir» la
+  lógica de la auditoría (reglas y sellos intactos; oráculo con LibreOffice real: 0 discrepancias en 188 celdas) y «apta
+  con cambios» B2 y la lógica general; sus hallazgos quedaron corregidos el 2026-11-27 (`fdd20ca1`: alertas de precio de
+  `fusion/alertas.py` en `es-VE`, nombres de reglas de `core.verification.reglas` con tildes, globo de `CurvaPlanAvance`,
+  textos de «Qué hacer» y «Hoy vence…», entrega válida solo con exportación posterior a fijar la fecha y salida con
+  código 2 sin sobrescribir en `medir_auditoria_libro`). Además se actualizaron `CHANGELOG.md` y el manual de usuario
+  (`46665a0a`) y se volvió a medir y documentar el ensayo de detección (`567ce9d7`).
+
+**Cómo se verificó (cifras de los commits de la rama):**
+- **Python:** suite completa en verde con **14.492 aprobadas y 0 fallos** y `ruff` limpio en G4 (`8766e58e`) y en B2 +
+  G5 (`d0e52fd9`); tras las correcciones de la auditoría independiente (`fdd20ca1`), en verde sellos, alertas, libros,
+  nombres, `que_hacer`, avisos, entrega y medición, con `ruff` limpio; `test_recorrido_ux_playwright.py` en verde
+  (`5042be5a`); `meta_datos` 4/4 y pruebas de documentos, manuales y `CHANGELOG` en verde (`46665a0a`, `567ce9d7`).
+- **Front:** suite del front con **5.341 de 5.342** antes de C8 (la restante era de la ayuda, cerrada en C8, `86dea770`)
+  y sin rechazos no atrapados tras `a3df3b4d` (de 49 a 0); en los lotes posteriores: B1-9 y B1-10 con **2.242/2.242**
+  (hoja, marco, shell, archivos y guardias; duplicado 0,67 %), G3 con **1.129/1.129**, G2 con **224/224**, B2 y G5 con
+  **305/305**, C11 con **811/811** y **41/41** (C11b), C7b con **426/426**, C10 con **293** del front (y 43 de Python),
+  C9 con **226/226**, C8 con **105/105**, C10b con **96/96**, y **583/583** en las áreas tocadas por `fdd20ca1`.
+  `npm run lint` en 0, `tsc` en 0, `npm run build` en 0 y las **81 hojas `.scss`** compiladas en verde (`cb695c08`).
+- **Oráculo y mutantes:** oráculo con LibreOffice real con **0 discrepancias en 188 celdas** (`fdd20ca1`); mutantes a
+  mano muertos en los lotes nuevos (entre ellos 23 en B2, 19 en `Grilla`, 15 en edición de cantidades, 12 en C11b y 11
+  en C9a).
 
 **Rediseño F6, espacios enrutados** (PR #106; [plan](planes/PLAN_REDISENO_F6.md),
 [seguimiento](bitacora/2026-11-04-f6-construccion.md)). La app abre en la **Vista general**; barra lateral plana; cada
@@ -301,6 +393,28 @@ subir nada.
      (`.claude/hookify.*.local.md`). Mientras, leer con Read o Grep en vez de rodear el bloqueo.
    - **Commit `534b382f`** (`feature/depurar-logica-1120`): el cuerpo del mensaje tiene una frase cortada («El resumen de
      la fusión pasa a ,»). Reescribir la historia espera decisión de Eugenio.
+16. **Rama `feature/front-b1` y enmienda del ensayo (2026-11-27):**
+    - **Ratificar las decisiones D1 a D12 de B2**
+      ([ficha B2 §5](especificaciones/2026-11-26-cara-papel-y-resaltador/b2/ficha-b2.md)): tomadas por Claude como
+      recomendación fundamentada y pendientes de ratificación o cambio por Eugenio (una sola página con tres secciones,
+      tercer paso llamado «Conclusión y entrega», «Qué hacer» plegado y fuera de las tarjetas impresas de la prueba de
+      comprensión, códigos estables y ruta de solo lectura sin tocar `libros.py`, réplica pedida al pulsar «Ver la hoja
+      marcada», alertas USD-Bs «dentro del umbral» ocultas y «no contrastables» agrupadas, retiro de «Auditar por mi
+      cuenta» con recorrido guiado y fecha de revisión en «Más opciones», Historial solo con «Qué hacer» y sin estados
+      inexistentes, reutilización de tokens `--silice-*`, `QueHacer` en `comun/` y título «Auditar un libro»).
+    - **Cifra de detección del ensayo (enmienda del 2026-11-27)**
+      ([acta y enmienda](bitacora/2026-11-25-cifra-oficial-de-deteccion.md)): la auditoría independiente halló que el
+      «4 de 12 / 10 de 12» del 2026-11-25 se había medido con el inyector de `890a6ed2` (corregido después en
+      `2951ba20`). Al volver a medir el 2026-11-27 con las herramientas en `06ba7491` (mismo libro ficticio, taxonomía
+      de plantilla, semilla 7, n = 12): **todas a la vez** (cifra oficial; exige hallazgo en la celda exacta sin
+      evaluador, mide localización) dio **3 de 12 (25,0 %, Wilson 95 % [8,9 %; 53,2 %])** y **una por vez** (secundaria;
+      cuenta cualquier hallazgo nuevo, mide reacción) dio **11 de 12 (91,7 %, Wilson 95 % [64,6 %; 98,5 %])**. No son
+      resultados de la tesis y no cambia la decisión de que la oficial sea todas a la vez; pero el riesgo frente al
+      umbral de fracaso del 50 % en el ensayo —y la diferencia entre localización y reacción— indica que buena parte de
+      las fallas produce un hallazgo en otra celda y **conviene mirarlo con el tutor antes de medir**. Toda cifra se
+      cita con el commit de las herramientas con que se obtuvo.
+    - **Fusión del PR de `feature/front-b1` a `main`:** la rama no se fusiona hasta que Eugenio lo decida (`main` sigue
+      sin cambios hasta el merge final).
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
@@ -372,6 +486,18 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
    (2026-11-20, `feature/riesgo-mapa-guardado`, DS-90 a DS-94): el caso guarda por versión la serie que mueve cada insumo
    (migración `caso_0023_riesgo_mapa`). Queda como mejora, si Eugenio quiere ver más movimiento en Riesgo, una obra aparte para él (hoy la reserva de la demo es pequeña, unos 74 USD, para no
    desequilibrar Control).
+10. **Cierre de `feature/front-b1` y camino a `medicion-v1` (2026-11-27):**
+    - **Revisión en el navegador y recorrido funcional de botones (en curso el 2026-11-27):** el recorrido funcional en
+      Playwright (`scripts/recorrido_ux_playwright.py --funcional`) ejecuta la acción principal de las 33 pantallas con la
+      siembra ficticia; el 2026-11-27 mostró tres defectos del marco (la lista de obras de la barra lateral no se ve, el
+      diálogo «Nueva obra» no aparece y la barra de estado corta el contenido), en corrección, y el guion se está poniendo
+      al día con el marco nuevo ([plan](planes/2026-11-26-plan-integracion-cara.md)).
+    - **B1-12 (medir y contener la grilla):** recortable; solo se aplica si la medición en Chromium con 500 filas supera
+      los 200 ms al editar una celda
+      ([ficha B1 §4 y §5](especificaciones/2026-11-26-cara-papel-y-resaltador/b1/ficha-b1.md)).
+    - **Anotado para después de medir:** el plazo «Responder antes del» en las notificaciones y el envío del código de
+      20 caracteres por correo vía SMTP (`C9b`; en `C9a` el código se entrega en pantalla con copia y enlace `mailto`).
+    - **Etiqueta `medicion-v1`:** fecha tope **2026-12-16**, versión congelada para la prueba con personas.
 
 ### Declarado fuera de alcance (sprint 1120b, 2026-11-20)
 
