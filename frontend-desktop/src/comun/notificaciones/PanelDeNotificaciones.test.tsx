@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router";
 import * as sass from "sass";
 import { describe, expect, test } from "vitest";
 import { Campanita } from "./Campanita";
-import { PanelDeNotificaciones } from "./PanelDeNotificaciones";
+import { PanelDeNotificaciones, RUTA_DE_PREFERENCIAS } from "./PanelDeNotificaciones";
 import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "./ProveedorDeNotificaciones";
 import type { Notificacion } from "./modelo";
 
@@ -140,6 +140,21 @@ describe("PanelDeNotificaciones", () => {
     expect(screen.queryByRole("complementary", { name: "Notificaciones" })).toBeNull();
     expect(campanita).toHaveFocus();
     expect(campanita).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("el pie enlaza a «Elegir qué notificaciones recibir», la pantalla de preferencias de la Cuenta", async () => {
+    const usuario = userEvent.setup();
+    montarPanel();
+
+    await usuario.click(screen.getByRole("button", { name: "Notificaciones, 3 sin leer" }));
+    const panel = screen.getByRole("complementary", { name: "Notificaciones" });
+
+    expect(RUTA_DE_PREFERENCIAS).toBe("/cuenta/notificaciones");
+    expect(within(panel).getByRole("link", { name: "Elegir qué notificaciones recibir" })).toHaveAttribute(
+      "href",
+      "/cuenta/notificaciones",
+    );
+    expect(within(panel).getByText("Las notificaciones se guardan 30 días.")).toBeInTheDocument();
   });
 
   test("el SCSS del panel usa solo tokens --silice-*, ancho de 23,75 rem (380 px) y sin font-size en px", () => {

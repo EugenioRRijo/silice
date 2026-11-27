@@ -9,6 +9,10 @@ import "./PanelDeNotificaciones.scss";
 
 type FiltroDePanel = "todas" | "sin-leer";
 
+// La pantalla de Cuenta › Notificaciones (C11b). Vive aquí porque lo común no importa de las páginas: la página
+// `paginas/notificaciones` la vuelve a exportar y el marco la registra con esta misma ruta.
+export const RUTA_DE_PREFERENCIAS = "/cuenta/notificaciones";
+
 export interface PropsDelPanelDeNotificaciones {
   ahora?: Date;
   rutaPreferencias?: string;
@@ -16,7 +20,7 @@ export interface PropsDelPanelDeNotificaciones {
 
 export function PanelDeNotificaciones({
   ahora,
-  rutaPreferencias,
+  rutaPreferencias = RUTA_DE_PREFERENCIAS,
 }: PropsDelPanelDeNotificaciones = {}): JSX.Element {
   const {
     notificaciones,
@@ -175,14 +179,10 @@ export function PanelDeNotificaciones({
 
           <p className="silice-panel-notificaciones__pie">
             Las notificaciones se guardan 30 días.
-            {rutaPreferencias !== undefined && (
-              <>
-                {" "}
-                <EnlaceDeNotificacionVista
-                  enlace={{ texto: "Elegir qué notificaciones recibir", ruta: rutaPreferencias }}
-                />
-              </>
-            )}
+            {" "}
+            <EnlaceDeNotificacionVista
+              enlace={{ texto: "Elegir qué notificaciones recibir", ruta: rutaPreferencias }}
+            />
           </p>
         </>
       )}
