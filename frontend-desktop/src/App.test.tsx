@@ -54,11 +54,16 @@ describe("App", () => {
       if (ruta === "/v1/obras/todas") return json({ carpeta_actual: null, obras: [] });
       if (ruta === "/v1/obras/pendientes/todas") return json({ pendientes: [], carpetas_omitidas: 0 });
       if (ruta === "/v1/tema") return json({ acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] });
+      // C11: el marco pide las notificaciones de la persona; sin esto caerían en el 401 y la sesión se daría por perdida.
+      if (ruta === "/v1/notificaciones" && metodo === "GET") return json({ notificaciones: [], sin_leer: 0, retencion_dias: 30, maximo: 200 });
       if (metodo === "GET" && (ruta.startsWith("/v1/obras/") || ruta.startsWith("/v1/aprobaciones"))) {
         return json({ detalle: "No encontrado." }, 404);
       }
       if (ruta.startsWith("/v1/auditorias-libro")) return json([]);
       if (ruta === "/v1/acerca") return json({ detalle: "No encontrado." }, 404);
+      // Lo que pide Inicio (C8) al aterrizar: la carpeta y el catálogo. Un 404 lo deja sin esas tarjetas; el 401 de
+      // abajo daría la sesión por perdida.
+      if (ruta === "/v1/carpeta" || ruta === "/partidas" || ruta === "/insumos") return json({ detalle: "No encontrado." }, 404);
       if (ruta === "/v1/sesion/preferencias" && metodo === "PUT") return new Response(null, { status: 204 });
       // El servidor real contesta estas dos con sesión: con el 401 de abajo, el cliente daría la sesión por perdida
       // y borraría el token anti-CSRF (alPerderSesion, B0), y el DELETE de «Salir» saldría sin él.

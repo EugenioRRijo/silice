@@ -21,6 +21,7 @@ import { RecorridosGuiados } from "./RecorridosGuiados";
 
 // La actividad se carga a demanda: pesa lo que pesa su calendario y casi nadie la abre en cada sesión.
 const Actividad = lazy(() => import("../paginas/actividad/Actividad"));
+const PreferenciasDeNotificaciones = lazy(() => import("../paginas/notificaciones/PreferenciasDeNotificaciones"));
 
 interface Props {
   sesion: SesionRespuesta;
@@ -105,6 +106,7 @@ function Preferencias({ sesion }: { sesion: SesionRespuesta }) {
 function Contenido({ def, sesion, pantalla }: { def: CuentaDef; sesion: SesionRespuesta; pantalla: Props["pantalla"] }) {
   if (def.id === "preferencias") return <Preferencias sesion={sesion} />;
   if (def.id === "contrasena") return <ContrasenaDeLaCuenta />;
+  if (def.id === "notificaciones") return <PreferenciasDeNotificaciones />;
   const montada = def.pagina === null ? null : pantalla(def.pagina);
   if (def.id !== "ayuda") return <>{montada}</>;
   return (
@@ -165,7 +167,8 @@ export function EspacioDeCuenta({ sesion, pantalla, alSalir }: Props) {
         <Suspense fallback={<EsqueletoPagina />}>
           {puede ? (
             <div className={def.id === "ayuda" ? undefined : "silice-pagina silice-cuenta-seccion"}>
-              {def.id !== "ayuda" && <h1 className="cds--type-heading-04">{def.titulo}</h1>}
+              {/* La Ayuda y Notificaciones ponen su propio h1: la pantalla tiene uno solo. */}
+              {def.id !== "ayuda" && def.id !== "notificaciones" && <h1 className="cds--type-heading-04">{def.titulo}</h1>}
               <Contenido def={def} sesion={sesion} pantalla={pantalla} />
             </div>
           ) : (

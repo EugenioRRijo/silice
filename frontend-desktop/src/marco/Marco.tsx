@@ -1,23 +1,7 @@
 import { InlineNotification } from "../comun/carbonEs";
-import {
-  Suspense,
-  createElement,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Suspense, createElement, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactElement, ReactNode } from "react";
-import {
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-  useNavigationType,
-} from "react-router";
+import { Navigate, Route, Routes, useLocation, useNavigate, useNavigationType } from "react-router";
 import { recordarObra } from "../api/carpetaYObra";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
@@ -34,11 +18,7 @@ import type { Aplicacion, MonedaPendiente } from "../shell/contexto";
 import { DialogoSalida } from "../shell/DialogoSalida";
 import { LimiteDeError } from "../shell/LimiteDeError";
 import { MarcaDemostracion } from "../shell/MarcaDemostracion";
-import {
-  terminarRecorrido,
-  useColumnaOculta,
-  useRecorrido,
-} from "../shell/recorrido";
+import { terminarRecorrido, useColumnaOculta, useRecorrido } from "../shell/recorrido";
 import { PAGINAS, paginaPorId, rutaDe, usable } from "../shell/rutas";
 import type { PaginaDef } from "../shell/rutas";
 import { esClicSimple } from "../shell/navegarSeguro";
@@ -54,14 +34,7 @@ import { EspacioDeCuenta } from "./EspacioDeCuenta";
 import { EspacioDeHerramientas, RaizDelEspacio } from "./EspacioDeHerramientas";
 import { EspacioDeInicio, RaizDeInicio } from "./EspacioDeInicio";
 import { EspacioDeObra } from "./EspacioDeObra";
-import {
-  ESPACIOS,
-  SECCIONES_DE_CUENTA,
-  esEspacio,
-  espacioDeLaPagina,
-  rutaDeCuenta,
-  subvistaDeLaPagina,
-} from "./espacios";
+import { ESPACIOS, SECCIONES_DE_CUENTA, esEspacio, espacioDeLaPagina, rutaDeCuenta, subvistaDeLaPagina } from "./espacios";
 import type { EspacioId } from "./espacios";
 import { enfocarElTitulo, nombrarLaVentana } from "./focoAlTitulo";
 import { almacenDeLaApi } from "../comun/notificaciones/almacenDeLaApi";
@@ -76,23 +49,12 @@ import { ofertaDe } from "./oferta";
 import { carpetaDelDestino, ubicar } from "./ubicar";
 import { abrirNuevaObra, cerrarNuevaObra } from "./nuevaObra";
 import type { VigilanteDeObra } from "./otraPestana";
-import {
-  PATRON_DE_OBRA,
-  RUTA_DE_INICIO,
-  RUTA_DE_PENDIENTES,
-  RUTA_DE_VISTA_GENERAL,
-  SECCIONES_DE_OBRA,
-  rutaDeObra,
-} from "./secciones";
+import { PATRON_DE_OBRA, RUTA_DE_INICIO, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
 import type { SeccionId } from "./secciones";
 import { useModulos } from "./useModulos";
 import { ContextoObras, useCargaDeObras } from "./useObras";
 import { ContextoPendientes, useCargaDePendientes } from "./usePendientes";
-import {
-  ContextoLayoutDelMarco,
-  guardarBarraColapsada,
-  leerBarraColapsada,
-} from "./useWorkspaceLayout";
+import { ContextoLayoutDelMarco, guardarBarraColapsada, leerBarraColapsada } from "./useWorkspaceLayout";
 
 const CARPETA_CAMBIADA = "Carpeta cambiada";
 
@@ -128,39 +90,24 @@ interface Aviso {
 }
 
 // La obra elegida en la sesión (la de la carpeta abierta), «cargando» mientras llegan las obras, o null.
-type ObraDeLaSesion =
-  { carpeta: string | null; obraId: number } | "cargando" | null;
+type ObraDeLaSesion = { carpeta: string | null; obraId: number } | "cargando" | null;
 
 // Marco de la interfaz (plan del rediseño del marco, Tarea 8): barra superior con la marca, la carpeta activa, el buscador y
 // la persona (F6, T6), barra lateral con Pendientes, las obras y «Costos y producción», y el contenido de la ruta. Monta lo que seguía vigente del armazón anterior: el
 // límite de error, «Cambios sin guardar», la marca de la demostración, los avisos, el recorrido guiado y la sesión
 // vencida. Pasa de 250 líneas porque reúne el estado que comparten todas las pantallas (sesión, carpeta, obra elegida,
 // moneda pendiente) con las rutas; las piezas con lógica propia viven aparte (ubicar.ts, EspacioDeObra, useObraDeLaRuta).
-export function Marco({
-  sesion,
-  alSalir: alSalirDeApp,
-  alExpirar: alExpirarDeApp,
-  alCambiarContrasena,
-  paginas = PAGINAS,
-  almacen,
-  crearHoja,
-  vigilante,
-}: PropsDelMarco) {
+export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, alCambiarContrasena, paginas = PAGINAS, almacen, crearHoja, vigilante }: PropsDelMarco) {
   const ubicacion = useLocation();
   const navegar = useNavigate();
   const { acciones, modo_entrega: modoEntrega } = sesion;
   const puedeEditarHoja = acciones.includes("editar_hoja");
-  const [proyecto, setProyecto] = useState<string | null>(
-    () => sesion.eleccion?.proyecto ?? null,
-  );
+  const [proyecto, setProyecto] = useState<string | null>(() => sesion.eleccion?.proyecto ?? null);
   const [error, setError] = useState<unknown>(null);
   const [aviso, setAviso] = useState<Aviso | null>(() =>
-    sesion.eleccion?.aviso
-      ? { titulo: CARPETA_CAMBIADA, texto: sesion.eleccion.aviso }
-      : null,
+    sesion.eleccion?.aviso ? { titulo: CARPETA_CAMBIADA, texto: sesion.eleccion.aviso } : null,
   );
-  const [monedaPendiente, setMonedaPendiente] =
-    useState<MonedaPendiente | null>(null);
+  const [monedaPendiente, setMonedaPendiente] = useState<MonedaPendiente | null>(null);
   const [declarandoMoneda, setDeclarandoMoneda] = useState(false);
   // La carpeta abierta ahora (sin .db): la moneda pendiente es de SU carpeta y nunca se declara en otra.
   const carpetaAbierta = useRef<string | null>(null);
@@ -168,11 +115,7 @@ export function Marco({
   const [generacion, setGeneracion] = useState(0);
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
   // Lo que la instalación apagó (plan vial, Tarea 19): no se ofrece ni se abre.
-  const {
-    apagados: modulosApagados,
-    leidos: modulosLeidos,
-    recargar: recargarModulos,
-  } = useModulos();
+  const { apagados: modulosApagados, leidos: modulosLeidos, recargar: recargarModulos } = useModulos();
 
   // Un recorrido en curso, la pregunta de salida abierta, los formularios sucios y el diálogo «Nueva obra» no
   // sobreviven a la sesión.
@@ -231,10 +174,7 @@ export function Marco({
       recargarPendientes();
       if (!saliendoDeObraDemo.current) setGeneracion((g) => g + 1);
       saliendoDeObraDemo.current = false;
-      setAviso({
-        titulo: CARPETA_CAMBIADA,
-        texto: `Ahora trabaja con la carpeta «${carpeta}».`,
-      });
+      setAviso({ titulo: CARPETA_CAMBIADA, texto: `Ahora trabaja con la carpeta «${carpeta}».` });
     },
     [recargarObras, recargarPendientes],
   );
@@ -245,12 +185,7 @@ export function Marco({
         .map((o) => ({ codigo: String(o.obra_id), nombre: o.obra })),
     [obras.obras, obras.carpetaActual],
   );
-  const {
-    casos,
-    abrir: abrirCarpeta,
-    volverALaEmpresa,
-    recargar: recargarCasos,
-  } = useCarpetaDeTrabajo({
+  const { casos, abrir: abrirCarpeta, volverALaEmpresa, recargar: recargarCasos } = useCarpetaDeTrabajo({
     puedeVerBorradores: puedeEditarHoja,
     obras: obrasDeLaCarpeta,
     alExpirar,
@@ -258,8 +193,7 @@ export function Marco({
     alCambiar: alCambiarCarpeta,
   });
   useEffect(() => {
-    if (casos)
-      carpetaAbierta.current = casos.actual.nombre.replace(/\.db$/, "");
+    if (casos) carpetaAbierta.current = casos.actual.nombre.replace(/\.db$/, "");
   }, [casos]);
 
   const elegirObra = useCallback(
@@ -280,15 +214,10 @@ export function Marco({
     (carpeta: string | null, obraId: number) => {
       setProyecto(String(obraId));
       const clave = `${carpeta ?? ""}|${obraId}`;
-      const conocida = listaDeObras.some(
-        (o) => o.carpeta === carpeta && o.obra_id === obraId,
-      );
+      const conocida = listaDeObras.some((o) => o.carpeta === carpeta && o.obra_id === obraId);
       if (carpeta === carpetaActual && conocida) recargadaPara.current = null;
       if (carpeta !== carpetaActual) recargarCasos();
-      if (
-        (carpeta !== carpetaActual || !conocida) &&
-        recargadaPara.current !== clave
-      ) {
+      if ((carpeta !== carpetaActual || !conocida) && recargadaPara.current !== clave) {
         recargadaPara.current = clave;
         recargarObras();
       }
@@ -304,16 +233,12 @@ export function Marco({
       }
       setDeclarandoMoneda(true);
       try {
-        await pedir("/v1/carpeta/moneda", {
-          metodo: "PUT",
-          cuerpo: { moneda },
-        });
+        await pedir("/v1/carpeta/moneda", { metodo: "PUT", cuerpo: { moneda } });
         if (carpetaAbierta.current === carpeta) setMonedaPendiente(null);
         return true;
       } catch (e) {
         if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
-        else if (carpetaAbierta.current === carpeta)
-          setMonedaPendiente({ carpeta, moneda, error: e });
+        else if (carpetaAbierta.current === carpeta) setMonedaPendiente({ carpeta, moneda, error: e });
         return false;
       } finally {
         setDeclarandoMoneda(false);
@@ -326,9 +251,7 @@ export function Marco({
   // Salvo el de un cambio de carpeta que la persona pidió para ir a una herramienta (`abrirDePendiente`) o al volver
   // de una obra de demostración: ese aviso dice dónde está trabajando ahora y sobrevive a esa navegación (incluida la
   // redirección de `/` a la Vista general).
-  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<
-    string | null
-  >(null);
+  const [rutaQueConservaElAviso, setRutaQueConservaElAviso] = useState<string | null>(null);
 
   // «Volver a la carpeta de la empresa» desde la marca de la demostración.
   const volver = useCallback(() => {
@@ -358,20 +281,11 @@ export function Marco({
     setRutaDelAviso(ubicacion.pathname);
     const conservaEnInicio =
       rutaQueConservaElAviso === RUTA_DE_INICIO &&
-      (ubicacion.pathname === RUTA_DE_INICIO ||
-        ubicacion.pathname === RUTA_DE_VISTA_GENERAL);
-    if (
-      aviso &&
-      !conservaEnInicio &&
-      rutaQueConservaElAviso !== ubicacion.pathname
-    )
-      setAviso(null);
+      (ubicacion.pathname === RUTA_DE_INICIO || ubicacion.pathname === RUTA_DE_VISTA_GENERAL);
+    if (aviso && !conservaEnInicio && rutaQueConservaElAviso !== ubicacion.pathname) setAviso(null);
     if (
       rutaQueConservaElAviso !== null &&
-      !(
-        rutaQueConservaElAviso === RUTA_DE_INICIO &&
-        ubicacion.pathname === RUTA_DE_INICIO
-      )
+      !(rutaQueConservaElAviso === RUTA_DE_INICIO && ubicacion.pathname === RUTA_DE_INICIO)
     ) {
       setRutaQueConservaElAviso(null);
     }
@@ -388,22 +302,10 @@ export function Marco({
   const irSeguro = useCallback(
     async (destino: string) => {
       const carpeta = carpetaDelDestino(destino);
-      const cambiaDeCarpeta =
-        carpeta !== undefined && carpeta !== carpetaActual;
+      const cambiaDeCarpeta = carpeta !== undefined && carpeta !== carpetaActual;
       try {
-        const borradores =
-          cambiaDeCarpeta && puedeEditarHoja
-            ? await hojasConCambios(obrasDeLaCarpeta)
-            : [];
-        if (
-          await confirmarSalida(
-            cambiaDeCarpeta ? "carpeta" : "salir",
-            borradores,
-            null,
-            destino,
-          )
-        )
-          navegar(destino);
+        const borradores = cambiaDeCarpeta && puedeEditarHoja ? await hojasConCambios(obrasDeLaCarpeta) : [];
+        if (await confirmarSalida(cambiaDeCarpeta ? "carpeta" : "salir", borradores, null, destino)) navegar(destino);
       } catch (e) {
         fallo(e);
       }
@@ -417,12 +319,7 @@ export function Marco({
       const turno = ++turnoDePendiente.current;
       if (antes !== undefined) {
         try {
-          if (
-            !(await (antes.carpeta === null
-              ? volverALaEmpresa()
-              : abrirCarpeta(antes.carpeta)))
-          )
-            return;
+          if (!(await (antes.carpeta === null ? volverALaEmpresa() : abrirCarpeta(antes.carpeta)))) return;
         } catch (e) {
           fallo(e);
           return;
@@ -445,23 +342,14 @@ export function Marco({
     if (!enlace) return;
     const href = enlace.getAttribute("href") ?? "";
     const destino = href.startsWith("#") ? href.slice(1) : href;
-    if (
-      !destino.startsWith("/") ||
-      destino === `${ubicacion.pathname}${ubicacion.search}`
-    )
-      return;
+    if (!destino.startsWith("/") || destino === `${ubicacion.pathname}${ubicacion.search}`) return;
     const carpeta = carpetaDelDestino(destino);
     const cambiaDeCarpeta = carpeta !== undefined && carpeta !== carpetaActual;
     // Los enlaces del contenido: las pantallas preguntan por su cuenta por lo suyo (useNavegarSeguro, confirmarSalida), pero
     // nadie pregunta por los borradores de la Hoja cuando el enlace abre una obra de otra carpeta (la Vista general): ese
     // cambio los olvida en el servidor. Se intercepta solo entonces, y `irSeguro` pregunta una sola vez por todo.
     const deLaPantalla = contenido.current?.contains(enlace) === true;
-    if (
-      deLaPantalla
-        ? !cambiaDeCarpeta
-        : formulariosSucios(destino).length === 0 && !cambiaDeCarpeta
-    )
-      return;
+    if (deLaPantalla ? !cambiaDeCarpeta : formulariosSucios(destino).length === 0 && !cambiaDeCarpeta) return;
     e.preventDefault();
     void irSeguro(destino);
   };
@@ -472,14 +360,10 @@ export function Marco({
 
   // La carpeta abierta, con el título que da el servidor («Carpeta de la empresa» la de la empresa); mientras no llega, el
   // nombre de su archivo sin la extensión. Sin nada que decir (cuenta sin lectura de obras y sin lista de carpetas), null.
-  const carpetaActiva =
-    obras.tituloActual || casos?.actual.nombre.replace(/\.db$/, "") || null;
+  const carpetaActiva = obras.tituloActual || casos?.actual.nombre.replace(/\.db$/, "") || null;
   // C11: las notificaciones de esta persona se guardan en el servidor 30 días (f7520d3b); un almacén por sesión.
   const almacenDeNotificaciones = useMemo(() => almacenDeLaApi(), []);
-  const nombreProyecto =
-    obras.obras.find(
-      (o) => o.carpeta === carpetaActual && String(o.obra_id) === proyecto,
-    )?.obra ?? null;
+  const nombreProyecto = obras.obras.find((o) => o.carpeta === carpetaActual && String(o.obra_id) === proyecto)?.obra ?? null;
   const aplicacion = useMemo<Aplicacion>(
     () => ({
       sesion,
@@ -501,44 +385,18 @@ export function Marco({
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [
-      sesion,
-      proyecto,
-      nombreProyecto,
-      casos,
-      modulosApagados,
-      modulosLeidos,
-      recargarModulos,
-      recargarObras,
-      elegirObra,
-      abrirCarpeta,
-      monedaPendiente,
-      declararMoneda,
-      declarandoMoneda,
-      alExpirar,
-      alCambiarContrasena,
-      almacen,
-      crearHoja,
-    ],
+    [sesion, proyecto, nombreProyecto, casos, modulosApagados, modulosLeidos, recargarModulos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, alCambiarContrasena, almacen, crearHoja],
   );
 
   let obraDeLaSesion: ObraDeLaSesion = null;
-  if (obras.estado === "cargando" && obras.obras.length === 0)
-    obraDeLaSesion = "cargando";
+  if (obras.estado === "cargando" && obras.obras.length === 0) obraDeLaSesion = "cargando";
   else {
-    const o = obras.obras.find(
-      (x) => x.carpeta === carpetaActual && String(x.obra_id) === proyecto,
-    );
+    const o = obras.obras.find((x) => x.carpeta === carpetaActual && String(x.obra_id) === proyecto);
     if (o) obraDeLaSesion = { carpeta: o.carpeta, obraId: o.obra_id };
   }
 
   const pantalla = (pagina: PaginaDef | undefined): ReactNode => (
-    <PantallaDeRuta
-      pagina={pagina}
-      acciones={acciones}
-      modoEntrega={modoEntrega}
-      apagados={modulosApagados}
-    />
+    <PantallaDeRuta pagina={pagina} acciones={acciones} modoEntrega={modoEntrega} apagados={modulosApagados} />
   );
   // Con la columna del recorrido a la vista, el contenido le cede su ancho (ColumnaRecorrido.scss).
   const recorrido = useRecorrido();
@@ -549,19 +407,12 @@ export function Marco({
   // lateral se ve también dentro de ellos (es la que lleva de un espacio a otro y a cada obra); `enVentanaDedicada` solo sirve
   // para que la barra de arriba no repita el contexto, que ya dice el espacio.
   const primerSegmento = ubicacion.pathname.split("/")[1] ?? "";
-  const espacioActivo: EspacioId | null = esEspacio(primerSegmento)
-    ? primerSegmento
-    : null;
+  const espacioActivo: EspacioId | null = esEspacio(primerSegmento) ? primerSegmento : null;
   const enVentanaDedicada = espacioActivo !== null;
-  const oferta = useMemo(
-    () => ofertaDe(acciones, modoEntrega, modulosApagados),
-    [acciones, modoEntrega, modulosApagados],
-  );
+  const oferta = useMemo(() => ofertaDe(acciones, modoEntrega, modulosApagados), [acciones, modoEntrega, modulosApagados]);
 
   // Barra lateral colapsable (256px <-> 48px) con persistencia local y atajo Ctrl+B.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() =>
-    leerBarraColapsada(),
-  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => leerBarraColapsada());
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
@@ -591,8 +442,7 @@ export function Marco({
 
   // Transicion rapida al cambiar entre estaciones mayores (Obras <-> Auditoria / Precios / Produccion).
   const estacionActual: EstacionMayor = espacioActivo ?? "obras";
-  const [estacionPrevia, setEstacionPrevia] =
-    useState<EstacionMayor>(estacionActual);
+  const [estacionPrevia, setEstacionPrevia] = useState<EstacionMayor>(estacionActual);
   const [transicion, setTransicion] = useState<EstacionMayor | null>(null);
   if (estacionPrevia !== estacionActual) {
     setEstacionPrevia(estacionActual);
@@ -605,21 +455,11 @@ export function Marco({
   const migaContextual = useMemo(() => {
     if (enVentanaDedicada) return null;
     if (ubicacion.pathname === RUTA_DE_PENDIENTES) return "Inicio / Pendientes";
-    if (
-      ubicacion.pathname === RUTA_DE_VISTA_GENERAL ||
-      ubicacion.pathname === RUTA_DE_INICIO
-    )
-      return "Inicio / Vista general";
-    if (
-      ubicacion.pathname === "/cuenta" ||
-      ubicacion.pathname.startsWith("/cuenta/")
-    )
-      return "Perfil y configuración";
+    if (ubicacion.pathname === RUTA_DE_VISTA_GENERAL || ubicacion.pathname === RUTA_DE_INICIO) return "Inicio / Vista general";
+    if (ubicacion.pathname === "/cuenta" || ubicacion.pathname.startsWith("/cuenta/")) return "Perfil y configuración";
     if (obraActualRuta !== null) {
       const nombreObra = obras.obras.find(
-        (o) =>
-          o.carpeta === obraActualRuta.carpeta &&
-          o.obra_id === obraActualRuta.obraId,
+        (o) => o.carpeta === obraActualRuta.carpeta && o.obra_id === obraActualRuta.obraId,
       )?.obra;
       return nombreObra ? `Obras / ${nombreObra}` : "Obras";
     }
@@ -638,197 +478,131 @@ export function Marco({
         <ContextoObras.Provider value={obras}>
           <ContextoLayoutDelMarco.Provider value={layoutDelMarco}>
             <ProveedorDeNotificaciones almacen={almacenDeNotificaciones}>
-              <div
-                className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`}
-                onClickCapture={alClicAntes}
-              >
-                {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
-                <button
-                  type="button"
-                  className="silice-saltar cds--type-body-compact-01"
-                  onClick={() => contenido.current?.focus()}
+            <div className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`} onClickCapture={alClicAntes}>
+              {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
+              <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => contenido.current?.focus()}>
+                Saltar al contenido
+              </button>
+              <BarraSuperior
+                alAbrirBuscador={() => setBuscadorAbierto(true)}
+                nombre={sesion.nombre}
+                carpeta={carpetaActiva}
+                migaContextual={migaContextual}
+                enVentanaDedicada={enVentanaDedicada}
+                espacioActivo={espacioActivo}
+                espacios={oferta.espacios}
+                extra={
+                  <>
+                    <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("abrir_carpeta")} alVolver={volver} />
+                    <BotonRecorrido />
+                  </>
+                }
+              />
+              <div className="silice-marco__cuerpo">
+                <BarraLateral obraAbierta={obraActualRuta} />
+                <main
+                  id="contenido"
+                  ref={contenido}
+                  className={`silice-contenido${contenidoExpandido ? " silice-contenido--expandido" : ""}`}
+                  tabIndex={-1}
                 >
-                  Saltar al contenido
-                </button>
-                <BarraSuperior
-                  alAbrirBuscador={() => setBuscadorAbierto(true)}
-                  nombre={sesion.nombre}
-                  carpeta={carpetaActiva}
-                  migaContextual={migaContextual}
-                  enVentanaDedicada={enVentanaDedicada}
-                  espacioActivo={espacioActivo}
-                  espacios={oferta.espacios}
-                  extra={
-                    <>
-                      <MarcaDemostracion
-                        activa={casos?.es_demostracion === true}
-                        puedeVolver={acciones.includes("abrir_carpeta")}
-                        alVolver={volver}
+                {(error !== null || aviso) && (
+                  <div className="silice-avisos">
+                    <AvisoError error={error} titulo="No se pudo completar la acción" alCerrar={() => setError(null)} />
+                    {aviso && (
+                      <InlineNotification
+                        kind="info"
+                        title={aviso.titulo}
+                        subtitle={aviso.texto}
+                        lowContrast
+                        onClose={() => {
+                          setAviso(null);
+                          return false;
+                        }}
                       />
-                      <BotonRecorrido />
-                    </>
-                  }
-                />
-                <div className="silice-marco__cuerpo">
-                  <BarraLateral obraAbierta={obraActualRuta} />
-                  <main
-                    id="contenido"
-                    ref={contenido}
-                    className={`silice-contenido${contenidoExpandido ? " silice-contenido--expandido" : ""}`}
-                    tabIndex={-1}
-                  >
-                    {(error !== null || aviso) && (
-                      <div className="silice-avisos">
-                        <AvisoError
-                          error={error}
-                          titulo="No se pudo completar la acción"
-                          alCerrar={() => setError(null)}
-                        />
-                        {aviso && (
-                          <InlineNotification
-                            kind="info"
-                            title={aviso.titulo}
-                            subtitle={aviso.texto}
-                            lowContrast
-                            onClose={() => {
-                              setAviso(null);
-                              return false;
-                            }}
-                          />
-                        )}
-                      </div>
                     )}
-                    <LimiteDeError
-                      key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`}
-                      reinicio={ubicacion.pathname}
-                    >
-                      <Suspense fallback={<EsqueletoPagina />}>
-                        <Routes>
-                          {/* Inicio (F6, T8): la app abre en la Vista general. `/pendientes`, el nombre de antes de F6, se retiró en F8. */}
-                          <Route index element={<ALaVistaGeneral />} />
-                          <Route path="/inicio" element={<RaizDeInicio />} />
-                          <Route
-                            path="/inicio/:vista"
-                            element={
-                              <EspacioDeInicio
-                                general={pantalla(
-                                  paginaPorId("inicio", paginas),
-                                )}
-                                pendientes={
-                                  <Bandeja
-                                    alAbrir={abrirDePendiente}
-                                    obras={obras.obras}
-                                    carpetaActual={
-                                      obras.estado === "lista"
-                                        ? obras.carpetaActual
-                                        : undefined
-                                    }
-                                  />
-                                }
-                              />
-                            }
+                  </div>
+                )}
+                <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`} reinicio={ubicacion.pathname}>
+                  <Suspense fallback={<EsqueletoPagina />}>
+                    <Routes>
+                      {/* Inicio (F6, T8): la app abre en la Vista general. `/pendientes`, el nombre de antes de F6, se retiró en F8. */}
+                      <Route index element={<ALaVistaGeneral />} />
+                      <Route path="/inicio" element={<RaizDeInicio />} />
+                      <Route
+                        path="/inicio/:vista"
+                        element={
+                          <EspacioDeInicio
+                            general={pantalla(paginaPorId("inicio", paginas))}
+                            pendientes={<Bandeja alAbrir={abrirDePendiente} obras={obras.obras} carpetaActual={obras.estado === "lista" ? obras.carpetaActual : undefined} />}
                           />
-                          <Route
-                            path={PATRON_DE_OBRA}
-                            element={
-                              <EspacioDeObra
-                                obras={obras.obras}
-                                casos={casos}
-                                alEntrar={alEntrarEnObra}
-                                pantalla={(id) =>
-                                  pantalla(paginaPorId(id, paginas))
-                                }
-                                vigilante={vigilante}
-                              />
-                            }
+                        }
+                      />
+                      <Route
+                        path={PATRON_DE_OBRA}
+                        element={
+                          <EspacioDeObra
+                            obras={obras.obras}
+                            casos={casos}
+                            alEntrar={alEntrarEnObra}
+                            pantalla={(id) => pantalla(paginaPorId(id, paginas))}
+                            vigilante={vigilante}
                           />
-                          {/* La Cuenta (F6, T6): `/cuenta` abre «Configuración». */}
-                          <Route path="/cuenta" element={<RaizDeLaCuenta />} />
+                        }
+                      />
+                      {/* La Cuenta (F6, T6): `/cuenta` abre «Configuración». */}
+                      <Route path="/cuenta" element={<RaizDeLaCuenta />} />
+                      <Route
+                        path="/cuenta/:seccion"
+                        element={<EspacioDeCuenta sesion={sesion} pantalla={(id) => pantalla(paginaPorId(id, paginas))} alSalir={alSalir} />}
+                      />
+                      {/* Producción, Auditoría y Precios (F6, T4): `/<espacio>` abre su primera herramienta usable (contrato 1). */}
+                      {ESPACIOS_DEL_MARCO.flatMap((espacio) => [
+                        <Route
+                          key={`${espacio}-raiz`}
+                          path={`/${espacio}`}
+                          element={<RaizDelEspacio espacio={espacio} acciones={acciones} modoEntrega={modoEntrega} apagados={modulosApagados} />}
+                        />,
+                        <Route
+                          key={espacio}
+                          path={`/${espacio}/:herramienta`}
+                          element={
+                            <EspacioDeHerramientas
+                              espacio={espacio}
+                              pantalla={(id) => pantalla(paginaPorId(id, paginas))}
+                              acciones={acciones}
+                              modoEntrega={modoEntrega}
+                              apagados={modulosApagados}
+                            />
+                          }
+                        />,
+                      ])}
+                      {/* Las direcciones cortas (`/hoja`, `/reajuste`…): la ruta canónica de una pantalla sin obra (`rutaCanonica`). */}
+                      {paginas
+                        .filter((p) => tieneDireccionCorta(p.id))
+                        .map((p) => (
                           <Route
-                            path="/cuenta/:seccion"
-                            element={
-                              <EspacioDeCuenta
-                                sesion={sesion}
-                                pantalla={(id) =>
-                                  pantalla(paginaPorId(id, paginas))
-                                }
-                                alSalir={alSalir}
-                              />
-                            }
+                            key={p.id}
+                            path={rutaDe(p)}
+                            element={<DireccionCorta pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
                           />
-                          {/* Producción, Auditoría y Precios (F6, T4): `/<espacio>` abre su primera herramienta usable (contrato 1). */}
-                          {ESPACIOS_DEL_MARCO.flatMap((espacio) => [
-                            <Route
-                              key={`${espacio}-raiz`}
-                              path={`/${espacio}`}
-                              element={
-                                <RaizDelEspacio
-                                  espacio={espacio}
-                                  acciones={acciones}
-                                  modoEntrega={modoEntrega}
-                                  apagados={modulosApagados}
-                                />
-                              }
-                            />,
-                            <Route
-                              key={espacio}
-                              path={`/${espacio}/:herramienta`}
-                              element={
-                                <EspacioDeHerramientas
-                                  espacio={espacio}
-                                  pantalla={(id) =>
-                                    pantalla(paginaPorId(id, paginas))
-                                  }
-                                  acciones={acciones}
-                                  modoEntrega={modoEntrega}
-                                  apagados={modulosApagados}
-                                />
-                              }
-                            />,
-                          ])}
-                          {/* Las direcciones cortas (`/hoja`, `/reajuste`…): la ruta canónica de una pantalla sin obra (`rutaCanonica`). */}
-                          {paginas
-                            .filter((p) => tieneDireccionCorta(p.id))
-                            .map((p) => (
-                              <Route
-                                key={p.id}
-                                path={rutaDe(p)}
-                                element={
-                                  <DireccionCorta
-                                    pagina={p}
-                                    obraDeLaSesion={obraDeLaSesion}
-                                    pantalla={pantalla}
-                                  />
-                                }
-                              />
-                            ))}
-                          <Route path="*" element={<ALaVistaGeneral />} />
-                        </Routes>
-                      </Suspense>
-                    </LimiteDeError>
-                  </main>
-                </div>
-                {/* C11: barra de estado con la campanita, la pila de notificaciones nuevas y el panel a la derecha. */}
-                <BarraDeEstado carpeta={carpetaActiva} />
-                <RegionDeNotificaciones />
-                <PanelDeNotificaciones />
-                <ColumnaRecorrido
-                  paginas={paginas}
-                  acciones={acciones}
-                  modoEntrega={modoEntrega}
-                />
-                <Buscador
-                  abierto={buscadorAbierto}
-                  alCerrar={() => setBuscadorAbierto(false)}
-                  alElegir={(ruta) => void irSeguro(ruta)}
-                />
-                {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
-                <DialogoSalida paginas={paginas} />
-                <ModeTransitionOverlay
-                  destino={transicion}
-                  alTerminar={alTerminarTransicion}
-                />
-              </div>
+                        ))}
+                      <Route path="*" element={<ALaVistaGeneral />} />
+                    </Routes>
+                  </Suspense>
+                </LimiteDeError>
+              </main>
+            </div>
+              {/* C11: barra de estado con la campanita, la pila de notificaciones nuevas y el panel a la derecha. */}
+              <BarraDeEstado carpeta={carpetaActiva} />
+              <RegionDeNotificaciones />
+              <PanelDeNotificaciones />
+              <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
+              <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
+              {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
+              <DialogoSalida paginas={paginas} />
+              <ModeTransitionOverlay destino={transicion} alTerminar={alTerminarTransicion} />
+            </div>
             </ProveedorDeNotificaciones>
           </ContextoLayoutDelMarco.Provider>
         </ContextoObras.Provider>
@@ -838,24 +612,10 @@ export function Marco({
 }
 
 // La pantalla con su permiso: la que la cuenta no puede usar dice por qué (la API también la rechazaría).
-function PantallaDeRuta({
-  pagina,
-  acciones,
-  modoEntrega,
-  apagados,
-}: {
-  pagina: PaginaDef | undefined;
-  acciones: readonly string[];
-  modoEntrega: boolean;
-  apagados: readonly string[];
-}) {
+function PantallaDeRuta({ pagina, acciones, modoEntrega, apagados }: { pagina: PaginaDef | undefined; acciones: readonly string[]; modoEntrega: boolean; apagados: readonly string[] }) {
   if (!pagina) return <APendientes />;
   // Una pantalla de una especialidad apagada lo dice (a quien sí podría usarla); las demás, «Sin permiso».
-  if (
-    !usable(pagina, acciones, modoEntrega, apagados) &&
-    usable(pagina, acciones, modoEntrega)
-  )
-    return <AvisoApagada />;
+  if (!usable(pagina, acciones, modoEntrega, apagados) && usable(pagina, acciones, modoEntrega)) return <AvisoApagada />;
   if (!usable(pagina, acciones, modoEntrega)) return <AvisoSinPermiso />;
   return elementoDe(pagina);
 }
@@ -881,15 +641,11 @@ function RaizDeLaCuenta() {
 }
 
 // La sección o la subvista de la obra donde vive una pantalla, o undefined si no es de la obra.
-function destinoEnLaObra(
-  paginaId: string,
-): { id: SeccionId; subvista: string | undefined } | undefined {
+function destinoEnLaObra(paginaId: string): { id: SeccionId; subvista: string | undefined } | undefined {
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === paginaId);
   if (seccion) return { id: seccion.id, subvista: undefined };
   const deSubvista = subvistaDeLaPagina(paginaId);
-  return deSubvista
-    ? { id: deSubvista.seccion, subvista: deSubvista.subvista.id }
-    : undefined;
+  return deSubvista ? { id: deSubvista.seccion, subvista: deSubvista.subvista.id } : undefined;
 }
 
 // Si la pantalla tiene dirección corta (`#/<id>`): la tienen las de la obra y las que no viven en ningún espacio, en la
@@ -897,10 +653,7 @@ function destinoEnLaObra(
 // Auditoría, Precios y la Cuenta la perdieron en F8 (`/produccion` y `/auditoria` son la raíz de su espacio).
 function tieneDireccionCorta(paginaId: string): boolean {
   if (paginaId === "inicio" || esEspacio(paginaId)) return false;
-  return (
-    espacioDeLaPagina(paginaId) === undefined &&
-    !SECCIONES_DE_CUENTA.some((c) => c.pagina === paginaId)
-  );
+  return espacioDeLaPagina(paginaId) === undefined && !SECCIONES_DE_CUENTA.some((c) => c.pagina === paginaId);
 }
 
 // La dirección corta de una pantalla (contrato 2.4): es su ruta canónica sin obra (`rutaCanonica`), la que usan el buscador
@@ -910,32 +663,15 @@ function tieneDireccionCorta(paginaId: string): boolean {
 // redirige. La de una pantalla que no es de la obra la abre ahí mismo. Las demás direcciones de antes de F6 (Pendientes,
 // las herramientas de los espacios, Administración, Acerca de y `#/empresa/…`) se retiraron en F8 (contrato 2.4, enmienda
 // 2026-11-06): como toda dirección que no existe, llevan a la Vista general.
-function DireccionCorta({
-  pagina,
-  obraDeLaSesion,
-  pantalla,
-}: {
-  pagina: PaginaDef;
-  obraDeLaSesion: ObraDeLaSesion;
-  pantalla: (p: PaginaDef | undefined) => ReactNode;
-}) {
+function DireccionCorta({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; obraDeLaSesion: ObraDeLaSesion; pantalla: (p: PaginaDef | undefined) => ReactNode }) {
   const { search } = useLocation();
   const destino = destinoEnLaObra(pagina.id);
   if (!destino) return pantalla(pagina);
   if (obraDeLaSesion === "cargando") return <EsqueletoPagina />;
   if (obraDeLaSesion) {
-    return (
-      <Navigate
-        to={`${rutaDeObra(obraDeLaSesion.carpeta, obraDeLaSesion.obraId, destino.id, destino.subvista)}${search}`}
-        replace
-      />
-    );
+    return <Navigate to={`${rutaDeObra(obraDeLaSesion.carpeta, obraDeLaSesion.obraId, destino.id, destino.subvista)}${search}`} replace />;
   }
-  return search ? (
-    pantalla(pagina)
-  ) : (
-    <Navigate to={RUTA_DE_PENDIENTES} replace />
-  );
+  return search ? pantalla(pagina) : <Navigate to={RUTA_DE_PENDIENTES} replace />;
 }
 
 // Lo que vuelve a montar el contenido al navegar: cada pantalla, salvo las secciones de una misma obra, que comparten el
@@ -945,26 +681,16 @@ function claveDelContenido(pathname: string): string {
   // Lo mismo en un espacio de herramientas o en la Cuenta: la cabecera y la barra no se vuelven a montar al cambiar de
   // herramienta o de sección.
   const [, primero, segundo, ...resto] = pathname.split("/");
-  if (
-    primero !== undefined &&
-    esEspacio(primero) &&
-    segundo !== undefined &&
-    resto.length === 0
-  )
-    return `espacio|${primero}`;
-  if (primero === "cuenta" && segundo !== undefined && resto.length === 0)
-    return "cuenta";
+  if (primero !== undefined && esEspacio(primero) && segundo !== undefined && resto.length === 0) return `espacio|${primero}`;
+  if (primero === "cuenta" && segundo !== undefined && resto.length === 0) return "cuenta";
   // Inicio (F6, T8): lo mismo entre la Vista general y Pendientes.
-  if (primero === "inicio" && segundo !== undefined && resto.length === 0)
-    return "espacio|inicio";
+  if (primero === "inicio" && segundo !== undefined && resto.length === 0) return "espacio|inicio";
   const obra = obraDeLaRuta(pathname);
   return obra === null ? pathname : `obra|${obra.carpeta ?? ""}|${obra.obraId}`;
 }
 
 // La obra de la ruta, para marcarla en la barra lateral.
-function obraDeLaRuta(
-  pathname: string,
-): { carpeta: string | null; obraId: number } | null {
+function obraDeLaRuta(pathname: string): { carpeta: string | null; obraId: number } | null {
   const carpeta = carpetaDelDestino(pathname);
   if (carpeta === undefined) return null;
   return { carpeta, obraId: Number(pathname.split("/")[3]) };
@@ -1003,8 +729,7 @@ function useFocoAlTitulo(pathname: string, clave: string, sinTitulo: boolean) {
       forzar: forzarPendiente.current,
       alEnfocar: (h1) => {
         forzarPendiente.current = false;
-        if (sinTituloAhora.current)
-          nombrarLaVentana(h1.textContent?.trim() ?? "");
+        if (sinTituloAhora.current) nombrarLaVentana(h1.textContent?.trim() ?? "");
       },
     });
   }, [pathname, clave, tipo, espacio]);

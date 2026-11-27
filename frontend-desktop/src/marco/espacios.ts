@@ -192,7 +192,7 @@ export function vistaDeLaSeccion(
   return { pagina: destino.pagina, redirigeA: segmento === undefined && destino.id === "" ? null : destino.id };
 }
 
-export type CuentaId = "preferencias" | "contrasena" | "cuentas" | "empresa" | "carpetas" | "sistema" | "ayuda";
+export type CuentaId = "preferencias" | "contrasena" | "notificaciones" | "cuentas" | "empresa" | "carpetas" | "sistema" | "ayuda";
 
 // `pagina` es la pantalla que monta la sección (null: la sección no tiene pantalla en `PAGINAS`, como el tamaño de
 // letra). «Administración» se reparte en cuatro secciones: las cuatro nombran su pantalla para que `usable` aplique
@@ -210,6 +210,8 @@ export interface CuentaDef {
 export const SECCIONES_DE_CUENTA: readonly CuentaDef[] = [
   { id: "preferencias", titulo: "Configuración", pagina: null, ayuda: "El tamaño de letra de la pantalla y los datos de su cuenta." },
   { id: "contrasena", titulo: "Contraseña", pagina: null, ayuda: "Cambiar la contraseña de su cuenta." },
+  // C11b: qué notificaciones recibe (2026-11-26); como Configuración y Contraseña, toda cuenta la tiene.
+  { id: "notificaciones", titulo: "Notificaciones", pagina: null, ayuda: "Qué avisos le llegan a la campanita." },
   { id: "cuentas", titulo: "Cuentas y permisos", pagina: "administracion", ayuda: "Las cuentas de las personas, sus permisos y los accesos." },
   { id: "empresa", titulo: "Empresa y tema", pagina: "administracion", ayuda: "Los datos de la empresa, su clave de firma y los colores del programa." },
   { id: "carpetas", titulo: "Carpetas", pagina: "administracion", ademas: "cambiar_caso", ayuda: "Las carpetas de la instalación: abrir, crear, subir y la demostración." },

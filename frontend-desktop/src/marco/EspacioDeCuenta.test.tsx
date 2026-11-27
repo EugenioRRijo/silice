@@ -22,6 +22,8 @@ const SUR = "Carpeta Sur.db";
 const TITULOS = {
   preferencias: "Configuración",
   contrasena: "Contraseña",
+  // C11b: qué notificaciones recibe; toda cuenta la tiene, como Configuración y Contraseña.
+  notificaciones: "Notificaciones",
   cuentas: "Cuentas y permisos",
   empresa: "Empresa y tema",
   carpetas: "Carpetas",
@@ -30,7 +32,7 @@ const TITULOS = {
 } as const;
 const TODAS = Object.values(TITULOS);
 const RUTAS = Object.keys(TITULOS).map((id) => `/cuenta/${id}`);
-const SOLO_DOS = [TITULOS.preferencias, TITULOS.contrasena, TITULOS.ayuda];
+const SOLO_DOS = [TITULOS.preferencias, TITULOS.contrasena, TITULOS.notificaciones, TITULOS.ayuda];
 const MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta pantalla o acción.";
 const CONTENIDO = "Contenido de administración";
 const JERGA = /módulo|área|página|carpeta de trabajo|streamlit/i;

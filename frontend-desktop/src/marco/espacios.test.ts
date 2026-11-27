@@ -309,10 +309,12 @@ describe("ESPACIOS (contrato 2.2) y SECCIONES_DE_CUENTA (contrato 3)", () => {
     });
   });
 
-  test("la Cuenta tiene sus siete secciones, con los títulos del contrato", () => {
+  // C11b (2026-11-26): «Notificaciones», qué avisos recibe, se suma a las siete del contrato.
+  test("la Cuenta tiene sus ocho secciones, con los títulos del contrato y Notificaciones", () => {
     expect(SECCIONES_DE_CUENTA.map((c) => [c.id, c.titulo])).toEqual([
       ["preferencias", "Configuración"],
       ["contrasena", "Contraseña"],
+      ["notificaciones", "Notificaciones"],
       ["cuentas", "Cuentas y permisos"],
       ["empresa", "Empresa y tema"],
       ["carpetas", "Carpetas"],

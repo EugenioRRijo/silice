@@ -177,22 +177,22 @@ describe("ofertaDe: las secciones de la Cuenta (F6, T6)", () => {
   const cuenta = (acciones: string[], entrega = false) => ofertaDe(acciones, entrega).cuenta.map((c) => c.id);
 
   it("toda cuenta tiene preferencias, contraseña y ayuda, aun sin ninguna acción y en modo entrega", () => {
-    expect(cuenta([])).toEqual(["preferencias", "contrasena", "ayuda"]);
-    expect(cuenta([], true)).toEqual(["preferencias", "contrasena", "ayuda"]);
+    expect(cuenta([])).toEqual(["preferencias", "contrasena", "notificaciones", "ayuda"]);
+    expect(cuenta([], true)).toEqual(["preferencias", "contrasena", "notificaciones", "ayuda"]);
   });
 
   it("administrar_cuentas abre cuentas, empresa y sistema, pero no carpetas", () => {
-    expect(cuenta(["administrar_cuentas"])).toEqual(["preferencias", "contrasena", "cuentas", "empresa", "sistema", "ayuda"]);
+    expect(cuenta(["administrar_cuentas"])).toEqual(["preferencias", "contrasena", "notificaciones", "cuentas", "empresa", "sistema", "ayuda"]);
   });
 
   it("carpetas pide las dos acciones: ninguna de las dos sola alcanza", () => {
     expect(cuenta(["cambiar_caso"])).not.toContain("carpetas");
     expect(cuenta(["administrar_cuentas"])).not.toContain("carpetas");
-    expect(cuenta(["administrar_cuentas", "cambiar_caso"])).toEqual(["preferencias", "contrasena", "cuentas", "empresa", "carpetas", "sistema", "ayuda"]);
+    expect(cuenta(["administrar_cuentas", "cambiar_caso"])).toEqual(["preferencias", "contrasena", "notificaciones", "cuentas", "empresa", "carpetas", "sistema", "ayuda"]);
   });
 
   it("activar_modulos no abre nada por sí sola", () => {
-    expect(cuenta(["activar_modulos"])).toEqual(["preferencias", "contrasena", "ayuda"]);
+    expect(cuenta(["activar_modulos"])).toEqual(["preferencias", "contrasena", "notificaciones", "ayuda"]);
   });
 
   it("cada sección trae una ayuda corta, sin la jerga del marco", () => {

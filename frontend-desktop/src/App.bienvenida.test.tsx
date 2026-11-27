@@ -73,6 +73,8 @@ describe("App: primer arranque y recuperar acceso", () => {
       // de abajo y la sesion se daria por vencida.
       if (ruta === "/v1/obras/todas") return json({ carpeta_actual: null, obras: [] });
       if (ruta === "/v1/tema") return json({ acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] });
+      // C11: el marco pide las notificaciones de la persona; sin esto caerían en el 401 y la sesión se daría por perdida.
+      if (ruta === "/v1/notificaciones" && metodo === "GET") return json({ notificaciones: [], sin_leer: 0, retencion_dias: 30, maximo: 200 });
       if (metodo === "GET" && (ruta.startsWith("/v1/obras/") || ruta.startsWith("/v1/aprobaciones"))) {
         return json({ detalle: "No encontrado." }, 404);
       }
