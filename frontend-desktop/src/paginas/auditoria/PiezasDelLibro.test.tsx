@@ -159,7 +159,10 @@ describe("AlertasDePrecio", () => {
     expect(a2).toHaveTextContent("Base de la empresa · MT-08");
     expect(a2).toHaveTextContent("el libro usa 18,00 USD; precio propio de la instalación 15,00 USD del 2026-10-15: +20,00 %, pasa del umbral de 5,00 %");
     expect(a3).toHaveTextContent("USD-Bs · MT-08");
-    expect(a3).toHaveTextContent("900,00 Bs al 2026-10-01 (tasa 50,00) y 990,00 Bs al 2026-11-24 (tasa 55,00): +10,00 %");
+    // La forma que manda fusion/alertas.py: montos a dos decimales y la tasa exacta, sin ceros finales («tasa 50», no «50,00»).
+    expect(a3).toHaveTextContent(
+      "900,00 Bs al 2026-10-01 (tasa 50) y 990,00 Bs al 2026-11-24 (tasa 55): +10,00 %, pasa del umbral de 5,00 %",
+    );
     expect(document.querySelector("[style*='--halo-color']")).toBeNull();
     expect(document.querySelector("[data-icono]")).toBeNull();
   });

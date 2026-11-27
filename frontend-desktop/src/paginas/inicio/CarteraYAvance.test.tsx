@@ -112,6 +112,24 @@ describe("Inicio › Resumen: el gráfico principal «La cartera de obras»", ()
     expect(within(tabla).getAllByText("1 aviso").length).toBeGreaterThan(0);
   });
 
+  test("una cifra que no es un decimal de la API no se dibuja como barra (valorParaDibujar, no Number)", () => {
+    montar({
+      ...CARTERA,
+      por_moneda: [{ moneda: "Bs", obras: 2, total: "3000.00", en_ejecucion: 0 }],
+      obras: [
+        obra(1, "Obra clara", "Bs", "2000.00", "aprobada", "Aprobada", null, null),
+        obra(2, "Obra rara", "Bs", "1e3", "aprobada", "Aprobada", null, null),
+      ],
+    });
+    const enBs = within(seccionCartera()).getByRole("region", { name: "Cartera en Bs" });
+    const ancho = (nombre: string) => {
+      const fila = Array.from(enBs.querySelectorAll(".silice-cartera-grafico__fila")).find((f) => f.textContent?.includes(nombre))!;
+      return (fila.querySelector(".silice-cartera-grafico__barra--presupuesto") as HTMLElement).style.inlineSize;
+    };
+    expect(ancho("Obra clara")).toBe("100%");
+    expect(ancho("Obra rara")).toBe("0%");
+  });
+
   test("escalaHorizontal produce marcas limpias y maneja cero sin NaN", () => {
     expect(escalaHorizontal(2915780)).toEqual({ tope: 3000000, marcas: [0, 1000000, 2000000, 3000000] });
     expect(escalaHorizontal(0)).toEqual({ tope: 0, marcas: [0] });

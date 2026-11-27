@@ -18,7 +18,9 @@ mensaje "no contrastable: la instalación no tiene la tasa del BCV de <fecha>". 
 ejemplo, la verificación local sin base), todas las alertas en Bs son "no contrastable".
 
 `variacion` es una **fracción** (0,05 = 5 %), como el umbral, sin redondear: se redondea solo al
-presentar (NORMAS §2.3). Las conversiones entre monedas son las del catálogo
+presentar (NORMAS §2.3). Los mensajes, que lee la persona, van en es-VE (coma decimal y punto
+de miles): montos a dos decimales, la tasa exacta y los porcentajes a dos decimales, todos
+ROUND_HALF_UP. Las conversiones entre monedas son las del catálogo
 (`core.catalog.moneda.convertir`, con sus `MONEDAS` Bs y USD).
 
 Este módulo no lee el reloj: las dos fechas las da quien llama (`fusion.proceso`).
@@ -34,7 +36,9 @@ from decimal import Decimal
 
 from adapters.hoja_empresa.modelo import FilaAlerta, InsumoLeido, LibroLeido
 from adapters.hoja_empresa.perfil import normalizar
+from aplicacion.cifras import texto_de_cifra
 from core.catalog.moneda import MONEDAS, convertir
+from core.verification.texto import formatear_decimal
 from fusion.mapeo import moneda_del_libro
 
 __all__ = [
@@ -78,12 +82,22 @@ class ContextoPrecios:
     umbral: Decimal = UMBRAL_POR_DEFECTO
 
 
-def _texto(valor: Decimal) -> str:
-    return format(valor, "f")
+def _monto(valor: Decimal) -> str:
+    """Un precio en el mensaje: dos decimales ROUND_HALF_UP (NORMAS §2.3), coma decimal y punto de
+    miles («1.100,00»). El campo `precio`/`precio_bs` de la fila sigue exacto."""
+    return texto_de_cifra(Decimal(formatear_decimal(valor, 2)))
+
+
+def _tasa_texto(tasa: Decimal) -> str:
+    """La tasa del BCV en el mensaje, exacta y sin ceros finales («100», «36,5432»): redondearla
+    descuadraría el producto que el mensaje muestra al lado."""
+    return texto_de_cifra(Decimal(formatear_decimal(tasa)))
 
 
 def _pct(fraccion: Decimal) -> str:
-    return f"{fraccion * 100:+.2f} %"
+    """Una fracción como porcentaje con signo y dos decimales ROUND_HALF_UP: «+10,00 %»."""
+    texto = texto_de_cifra(Decimal(formatear_decimal(fraccion * 100, 2)))
+    return f"{texto if texto.startswith('-') else '+' + texto} %"
 
 
 def _variacion(nuevo: Decimal, anterior: Decimal) -> Decimal | None:
@@ -147,7 +161,7 @@ def _alerta_empresa(
     if propio is None:
         return None
     precio, fecha, moneda_propia = propio
-    referencia = f"precio propio de la instalación {_texto(precio)} {moneda_propia} del {fecha}"
+    referencia = f"precio propio de la instalación {_monto(precio)} {moneda_propia} del {fecha}"
     if moneda_propia != moneda:
         if moneda_propia not in MONEDAS or moneda not in MONEDAS:
             return _fila(
@@ -168,7 +182,7 @@ def _alerta_empresa(
                 f"{fecha.isoformat()} para llevarlo a {moneda}",
             )
         precio = convertir(precio, moneda_propia, moneda, tasa)
-        referencia += f" ({_texto(precio)} {moneda} a la tasa {_texto(tasa)})"
+        referencia += f" ({_monto(precio)} {moneda} a la tasa {_tasa_texto(tasa)})"
     variacion = _variacion(insumo.precio, precio)
     if variacion is None or abs(variacion) < contexto.umbral:
         return None
@@ -177,7 +191,7 @@ def _alerta_empresa(
         TIPO_EMPRESA,
         moneda,
         fecha_libro,
-        f"el libro usa {_texto(insumo.precio)} {moneda}; {referencia}: {_pct(variacion)}, pasa "
+        f"el libro usa {_monto(insumo.precio)} {moneda}; {referencia}: {_pct(variacion)}, pasa "
         f"del umbral de {_pct(contexto.umbral).lstrip('+')}",
         variacion=variacion,
     )
@@ -212,8 +226,8 @@ def _alertas_version(
                 moneda,
                 fecha_libro,
                 f"en la otra versión ({otro.nombre}, {anterior.celda}) costaba "
-                f"{_texto(anterior.precio)} {moneda}; en esta ({insumo.celda}) "
-                f"{_texto(insumo.precio)}{cambio}",
+                f"{_monto(anterior.precio)} {moneda}; en esta ({insumo.celda}) "
+                f"{_monto(insumo.precio)}{cambio}",
                 variacion=variacion,
             )
         )
@@ -257,16 +271,16 @@ def _alerta_bs(
         ahora = convertir(insumo.precio, "Bs", "USD", t_devolucion)
         precio_bs = insumo.precio
         detalle = (
-            f"{_texto(antes)} USD al {fecha_libro} (tasa {_texto(t_libro)}) y "
-            f"{_texto(ahora)} USD al {fecha_devolucion} (tasa {_texto(t_devolucion)})"
+            f"{_monto(antes)} USD al {fecha_libro} (tasa {_tasa_texto(t_libro)}) y "
+            f"{_monto(ahora)} USD al {fecha_devolucion} (tasa {_tasa_texto(t_devolucion)})"
         )
     else:
         antes = convertir(insumo.precio, "USD", "Bs", t_libro)
         ahora = convertir(insumo.precio, "USD", "Bs", t_devolucion)
         precio_bs = ahora
         detalle = (
-            f"{_texto(antes)} Bs al {fecha_libro} (tasa {_texto(t_libro)}) y "
-            f"{_texto(ahora)} Bs al {fecha_devolucion} (tasa {_texto(t_devolucion)})"
+            f"{_monto(antes)} Bs al {fecha_libro} (tasa {_tasa_texto(t_libro)}) y "
+            f"{_monto(ahora)} Bs al {fecha_devolucion} (tasa {_tasa_texto(t_devolucion)})"
         )
     variacion = _variacion(ahora, antes)
     pasa = variacion is not None and abs(variacion) >= umbral

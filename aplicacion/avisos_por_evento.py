@@ -584,6 +584,8 @@ def _recordar(
     for fila in indice_aprobaciones.pendientes(sesion):
         if aprobaciones.misma_cuenta(persona.usuario, fila.enviado_por):
             continue
+        # Lunes a viernes, sin feriados: una aprobación no tiene línea base con calendario de la
+        # obra (ver `aplicacion.mesa.dias_habiles_entre` y la §2 de la especificación, #8).
         dias = dias_habiles_entre(fila.enviado_el.date(), ahora.date())
         if dias < DIAS_PARA_RECORDAR:
             continue
@@ -669,18 +671,32 @@ def _compras(
     return eventos
 
 
-def _detalles_de_entregas(sesion: Session) -> Sequence[str]:
-    """Los detalles de los paquetes exportados registrados en `instalacion.db`."""
-    return sesion.scalars(
-        select(EventoAcceso.detalle).where(EventoAcceso.tipo == "paquete exportado")
-    ).all()
+def _detalles_de_entregas(sesion: Session) -> Sequence[tuple[datetime, str]]:
+    """`(cuándo, detalle)` de los paquetes exportados registrados en `instalacion.db`."""
+    return [
+        (fecha_hora, detalle)
+        for fecha_hora, detalle in sesion.execute(
+            select(EventoAcceso.fecha_hora, EventoAcceso.detalle).where(
+                EventoAcceso.tipo == "paquete exportado"
+            )
+        )
+    ]
 
 
 def _obra_entregada(
-    sesion_caso: Session, proyecto_id: int, entregas_registradas: Sequence[str]
+    sesion_caso: Session,
+    proyecto_id: int,
+    entregas_registradas: Sequence[tuple[datetime, str]],
+    desde: datetime | None,
 ) -> bool:
-    """True si alguna versión de la obra ya tiene un paquete exportado en la instalación."""
-    if not entregas_registradas:
+    """True si alguna versión de la obra tiene un paquete exportado en la instalación desde `desde`
+    (la última vez que se fijó la fecha de entrega, inclusive): uno exportado antes no es la
+    entrega de esa fecha (auditoría antes de medicion-v1, #9). Las dos horas vienen del mismo
+    reloj (`api.sesion_web.ahora`). Sin `desde`, cuenta cualquier exportación."""
+    detalles = [
+        detalle for cuando, detalle in entregas_registradas if desde is None or cuando >= desde
+    ]
+    if not detalles:
         return False
     sellos = sesion_caso.scalars(
         select(EslabonVersion.huella_eslabon)
@@ -690,7 +706,7 @@ def _obra_entregada(
     return any(
         f"sello_version {sello}" in detalle
         for sello in sellos
-        for detalle in entregas_registradas
+        for detalle in detalles
     )
 
 
@@ -717,27 +733,38 @@ def _entregas(
     hoy: date,
     caso: str | None,
     carpeta_empresa: str | None,
-    entregas_registradas: Sequence[str],
+    entregas_registradas: Sequence[tuple[datetime, str]],
 ) -> list[Evento]:
     """Las entregas al cliente al día `hoy` de las obras de `usuario` en esta carpeta que tienen
     fecha de entrega fijada y aún no se han entregado: Advertencia desde 3 días hábiles antes y
-    Error desde el día de la entrega."""
+    Error desde el día de la entrega. El Error es uno por fecha (misma clave): el mismo día dice
+    «Hoy vence la entrega…» y, si se lista por primera vez después, que «debía entregarse»
+    (auditoría antes de medicion-v1, #7)."""
     fechas = entrega_de_obra.entregas_de_la_carpeta(sesion_caso)
     if not fechas:
         return []
     eventos = []
     for proyecto_id in _obras_de(sesion_caso, usuario):
-        fecha_entrega = fechas.get(proyecto_id)
-        if fecha_entrega is None:
+        entrega = fechas.get(proyecto_id)
+        if entrega is None or entrega.fecha_entrega is None:
             continue
+        fecha_entrega = entrega.fecha_entrega
         obra = sesion_caso.get(models.Proyecto, proyecto_id)
-        if obra is None or _obra_entregada(sesion_caso, proyecto_id, entregas_registradas):
+        if obra is None or _obra_entregada(
+            sesion_caso, proyecto_id, entregas_registradas, entrega.actualizada
+        ):
             continue
         feriados = _feriados_de_la_obra(sesion_caso, obra.nombre)
         if hoy < _habiles_antes(fecha_entrega, DIAS_AVISO_ENTREGA, feriados):
             continue
         vencida = hoy >= fecha_entrega
-        if vencida:
+        if hoy == fecha_entrega:
+            titulo = f"Hoy vence la entrega de «{obra.nombre}»."
+            detalle = (
+                f"Obra «{obra.nombre}». La fecha de entrega al cliente es hoy, "
+                f"{_dia(fecha_entrega)}."
+            )
+        elif vencida:
             titulo = (
                 f"«{obra.nombre}» no está entregada y debía entregarse el "
                 f"{_dia(fecha_entrega)}."

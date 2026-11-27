@@ -22,10 +22,15 @@ from core.verification.valuaciones import FuenteYFechasDeValuacion, ValuacionDen
 
 __all__ = ["NOMBRES_DE_REGLAS", "nombre_de_regla"]
 
+#: Los nombres de `core.verification.reglas.REGLAS` con sus tildes, y nada más: ni una palabra
+#: distinta (la auditoría antes de medicion-v1 halló R3, R5 y R7 con nombres que el núcleo no usa;
+#: `tests/unit/test_nombres_reglas.py` compara letra por letra sin tildes).
 _TILDES_NUCLEO: dict[str, str] = {
-    "R3": "Consistencia matemática",
-    "R5": "Trazabilidad geométrica",
-    "R7": "Parámetros de obra",
+    "R1": "Trazabilidad geométrica",
+    "R2": "Cierre de la curva de inversión",
+    "R5": "Balance volumétrico",
+    "R6": "Criterio de depreciación",
+    "R7": "Conciliación presupuesto-plan",
     "R13": "Valuación dentro del presupuesto",
     "R14": "Fuente y fechas de la valuación",
 }

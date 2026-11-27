@@ -638,6 +638,15 @@ ENTREGA_AVISO = (
     "Ver el resumen de la obra",
     "/obra/carpeta.db/1/resumen",
 )
+#: El mismo día de la entrega (auditoría antes de medicion-v1, #7): sigue siendo Error (spec §2),
+#: pero no dice «debía entregarse» de hoy.
+ENTREGA_HOY = (
+    "error",
+    "Hoy vence la entrega de «Vivienda Demo 80 m2».",
+    "Obra «Vivienda Demo 80 m2». La fecha de entrega al cliente es hoy, 04/12/2026.",
+    "Ver el resumen de la obra",
+    "/obra/carpeta.db/1/resumen",
+)
 ENTREGA_VENCIDA = (
     "error",
     "«Vivienda Demo 80 m2» no está entregada y debía entregarse el 04/12/2026.",
@@ -680,14 +689,64 @@ def test_entregas_bordes_de_fecha_aviso_vencida_y_sin_repetir(bd: Session, carpe
     assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO]
     _compras(bd, carpeta, "ana", date(2026, 12, 3))  # jue: 1 día hábil antes -> no repite
     assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO]
-    _compras(bd, carpeta, "ana", date(2026, 12, 4))  # vie: el día -> error
-    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO, ENTREGA_VENCIDA]
+    _compras(bd, carpeta, "ana", date(2026, 12, 4))  # vie: el día -> error «Hoy vence»
+    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO, ENTREGA_HOY]
     _compras(bd, carpeta, "ana", date(2026, 12, 7))  # lun: después sin entregar -> no repite
-    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO, ENTREGA_VENCIDA]
+    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_AVISO, ENTREGA_HOY]
     assert [n.clave_evento for n in _de(bd, "ana")] == [
         "entrega:carpeta.db:1:2026-12-04:aviso",
         "entrega:carpeta.db:1:2026-12-04:vencida",
     ]
+
+
+def test_desde_el_dia_siguiente_dice_que_debia_entregarse(bd: Session, carpeta) -> None:
+    """Quien lista por primera vez el lunes siguiente recibe la frase de vencida, no «Hoy vence»."""
+    _vivienda_con_entrega(carpeta, date(2026, 12, 4))
+    avisos.fijar_preferencias(bd, _usuario(bd, "ana").id, [("compras", False)])
+    _compras(bd, carpeta, "ana", date(2026, 12, 5))  # sáb: el día siguiente
+    assert [_forma(n) for n in _de(bd, "ana")] == [ENTREGA_VENCIDA]
+    assert [n.clave_evento for n in _de(bd, "ana")] == ["entrega:carpeta.db:1:2026-12-04:vencida"]
+
+
+def _exportar(bd: Session, motor, cuando: datetime) -> None:
+    from core.models.cadena import EslabonVersion
+    from seguridad.modelo import EventoAcceso
+
+    with abrir_sesion_caso(motor) as s:
+        sello = s.scalar(select(EslabonVersion.huella_eslabon))
+    assert sello is not None
+    bd.add(
+        EventoAcceso(
+            tipo="paquete exportado",
+            fecha_hora=cuando,
+            login_intentado="ana",
+            ip_cliente="127.0.0.1",
+            detalle=f"paq-1; version VIV-001; sello_version {sello}",
+        )
+    )
+    bd.commit()
+
+
+@pytest.mark.parametrize(
+    ("exportado", "avisa"),
+    [
+        # La fecha se fijó el 01/11/2026 a las 09:00 (`_vivienda_con_entrega`).
+        (datetime(2026, 10, 31, 17, 0), True),  # antes de fijar la fecha: no es esta entrega
+        (datetime(2026, 11, 1, 8, 59), True),
+        (datetime(2026, 11, 1, 9, 0), False),  # el mismo instante ya cuenta
+        (datetime(2026, 11, 20, 10, 0), False),
+    ],
+)
+def test_solo_cuenta_lo_exportado_desde_que_se_fijo_la_fecha(
+    bd: Session, carpeta, exportado: datetime, avisa: bool
+) -> None:
+    """Auditoría antes de medicion-v1 (#9): un paquete exportado antes de fijar la fecha de entrega
+    no es la entrega de esa fecha."""
+    _vivienda_con_entrega(carpeta, date(2026, 12, 4))
+    avisos.fijar_preferencias(bd, _usuario(bd, "ana").id, [("compras", False)])
+    _exportar(bd, carpeta, exportado)
+    _compras(bd, carpeta, "ana", date(2026, 12, 4))
+    assert [_forma(n) for n in _de(bd, "ana")] == ([ENTREGA_HOY] if avisa else [])
 
 
 def test_entregas_solo_para_quien_trabajo_en_la_obra_y_si_esta_encendida(

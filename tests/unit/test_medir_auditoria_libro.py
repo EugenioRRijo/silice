@@ -292,6 +292,27 @@ def test_no_sobrescribe_una_planilla(fuera: Path):
         m.escribir_planilla([], ruta, raiz_repo=fuera.parent / "repo")
 
 
+@pytest.mark.parametrize("orden", ["clave", "revision"])
+def test_las_demas_ordenes_tampoco_sobrescriben_y_dan_2(
+    fuera: Path, orden: str, capsys: pytest.CaptureFixture[str]
+):
+    """Auditoría antes de medicion-v1 (#11): sin traza de Python, con el mensaje y el código 2."""
+    from tests.fixtures.libros_empresa import libro_limpio
+
+    fuera.mkdir()
+    origen = fuera / "obra.xlsx"
+    origen.write_bytes(libro_limpio().datos)
+    existente = fuera / "ya.xlsx"
+    existente.write_bytes(b"x")
+    libro = [str(origen)] if orden == "revision" else []
+    codigo = m.main(
+        [orden, *libro, "--salida", str(existente), "--raiz-repo", str(fuera.parent / "repo")]
+    )
+    assert codigo == 2
+    assert "ya existe; no se sobrescribe una planilla" in capsys.readouterr().out
+    assert existente.read_bytes() == b"x"
+
+
 def test_clave_de_siembra_ida_y_vuelta(fuera: Path):
     fuera.mkdir()
     ruta = fuera / "clave.xlsx"
@@ -708,8 +729,11 @@ def test_exportar_revisa_el_destino_antes_de_recalcular_y_sin_libreoffice_da_2(
     existente.write_bytes(b"x")
     espia = _Espia()
     comun = ["--recalcular", "--fecha", "2026-10-13", "--raiz-repo", str(fuera.parent / "repo")]
-    with pytest.raises(FileExistsError):
-        m.main(["exportar", str(origen), "--salida", str(existente), *comun], recalculador=espia)
+    # Negarse a sobrescribir es un mensaje y el código 2, no una traza (auditoría, #11).
+    codigo = m.main(["exportar", str(origen), "--salida", str(existente), *comun],
+                    recalculador=espia)  # fmt: skip
+    assert codigo == 2
+    assert "ya existe; no se sobrescribe una planilla" in capsys.readouterr().out
     assert espia.llamadas == []  # no recalculó para después negarse a escribir
 
     class _Sin:

@@ -324,7 +324,7 @@ describe("Historial de auditorías", () => {
         hallazgos: [
           {
             regla: "L4",
-            nombre_regla: "Costo directo incompleto",
+            nombre_regla: "Componente fuera del total",
             hoja: "APU-02",
             celda: "G7",
             severidad: "ADVERTENCIA",
@@ -339,7 +339,7 @@ describe("Historial de auditorías", () => {
     await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
     const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
     const tabla = within(panel).getByRole("table", { name: "Hallazgos guardados" });
-    expect(within(tabla).getByText("Costo directo incompleto (L4)")).toBeInTheDocument();
+    expect(within(tabla).getByText("Componente fuera del total (L4)")).toBeInTheDocument();
     expect(within(tabla).getByText("R2")).toBeInTheDocument();
   });
 

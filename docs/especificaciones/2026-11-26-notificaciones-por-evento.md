@@ -54,6 +54,10 @@ importa. Cada persona elige en **Cuenta › Notificaciones** qué categorías re
 | **Entregas al cliente** | Falta poco para la fecha de entrega del presupuesto (3 días hábiles antes y el día) | Quien trabajó en esa obra | **No existe**: ver §4 | Advertencia; el día es Error |
 
 Reglas comunes:
+- **Días hábiles del recordatorio de dictamen:** se cuentan de lunes a viernes **sin feriados**
+  (`aplicacion/mesa.py`, `dias_habiles_entre`), porque una aprobación no tiene línea base de la que leer el calendario
+  de la obra; un feriado adelanta el recordatorio un día. Las compras y las entregas sí descuentan los feriados de la
+  línea base (auditoría antes de medicion-v1, 2026-11-27).
 - **Una sola vez por evento:** la notificación lleva una clave del evento (por ejemplo `aprobacion:V3:enviada`). Si
   la misma clave ya existe para esa persona, no se repite.
 - **Las fechas se revisan sin hilo de fondo**, igual que los borradores: un barrido perezoso al listar

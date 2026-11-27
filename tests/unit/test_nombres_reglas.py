@@ -7,6 +7,7 @@ con mayúscula inicial, mensaje legible y el código de regla al final entre par
 
 from __future__ import annotations
 
+import unicodedata
 from datetime import date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
@@ -46,13 +47,36 @@ def test_el_catalogo_cubre_las_reglas_del_nucleo_libro_y_fusion() -> None:
 
 
 def test_nombre_de_regla_devuelve_tildes_y_vacio_si_desconocida() -> None:
-    assert nombre_de_regla("R3") == "Consistencia matemática"
+    assert nombre_de_regla("R3") == "Coherencia dimensional"
     assert nombre_de_regla("R13") == "Valuación dentro del presupuesto"
     assert nombre_de_regla("R14") == "Fuente y fechas de la valuación"
     assert nombre_de_regla("L4") == "Componente fuera del total"
     assert nombre_de_regla("F1") == "P.U. recalculado"
     assert nombre_de_regla("AH1") == "Precio unitario del APU contra el recalculado"
     assert nombre_de_regla("DESCONOCIDA") == ""
+
+
+def _sin_tildes(texto: str) -> str:
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn"
+    )
+
+
+def test_los_nombres_del_nucleo_son_los_de_core_con_sus_tildes() -> None:
+    """Auditoría independiente antes de medicion-v1 (#2): el catálogo cambiaba el nombre de R3, R5
+    y R7 en vez de solo ponerle tilde. Oráculo: `core.verification.reglas.REGLAS`, leído a mano."""
+    assert {r.codigo: nombre_de_regla(r.codigo) for r in REGLAS} == {
+        "R1": "Trazabilidad geométrica",
+        "R2": "Cierre de la curva de inversión",
+        "R3": "Coherencia dimensional",
+        "R4": "Correspondencia de especificaciones",
+        "R5": "Balance volumétrico",
+        "R6": "Criterio de depreciación",
+        "R7": "Conciliación presupuesto-plan",
+    }
+    # Y nunca otro nombre: quitadas las tildes, es el de `core/` letra por letra.
+    for regla in REGLAS:
+        assert _sin_tildes(nombre_de_regla(regla.codigo)) == regla.nombre
 
 
 def test_estado_de_valuaciones_usa_severidad_y_mensaje_en_espanol_y_elige_la_mas_grave() -> None:

@@ -146,3 +146,29 @@ def test_el_catalogo_se_sirve_con_reglas_alertas_y_generico() -> None:
     assert c["alertas"][TIPO_BS]["sin_aviso_si"] == list(
         qh.que_hacer_de_alerta(TIPO_BS).sin_aviso_si
     )
+
+
+# --- Auditoría independiente antes de medicion-v1 (#5 y #6) ---------------------------------------
+
+
+def test_l5_cubre_tambien_las_celdas_que_dan_error_al_calcular() -> None:
+    """L5 informa #REF! y vínculos externos, pero también #DIV/0! o #VALOR! en la cadena de montos
+    (`adapters/hoja_empresa/reglas_calculo.py`, `l5_celdas_con_error`): el texto lo dice."""
+    q = qh.que_hacer_de_regla("L5")
+    assert "o una celda da error al calcular" in q.significa
+    # Como los muestra Excel en español (en el archivo se guardan en inglés: #DIV/0!, #VALUE!).
+    assert "#¡DIV/0!" in q.que_hacer and "#¡VALOR!" in q.que_hacer
+
+
+@pytest.mark.parametrize("codigo", ["L6", "R6"])
+def test_l6_y_r6_dicen_que_confirmar_y_no_que_decidir(codigo: str) -> None:
+    """F-D7: el auditor no decide la intención de quien hizo el libro."""
+    q = qh.que_hacer_de_regla(codigo)
+    assert q.que_hacer.startswith("Confirme con quien hizo el libro si ")
+
+
+def test_ninguna_guia_le_pide_al_auditor_que_decida() -> None:
+    textos = [qh.que_hacer_de_regla(c) for c in CODIGOS_DEL_LIBRO]
+    textos += [qh.que_hacer_de_alerta(t) for t in TIPOS_DE_ALERTA]
+    decide = re.compile(r"\bdecida\b", re.IGNORECASE)
+    assert [q.codigo for q in textos if decide.search(q.que_hacer)] == []

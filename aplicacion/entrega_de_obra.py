@@ -141,13 +141,19 @@ def fijar_entrega(
     )
 
 
-def entregas_de_la_carpeta(sesion: Session) -> dict[int, date]:
-    """`{proyecto_id: fecha_entrega}` de las obras de la carpeta con fecha de entrega vigente. Sin
-    la tabla, devuelve `{}` sin escribir nada."""
+def entregas_de_la_carpeta(sesion: Session) -> dict[int, EntregaDeLaObra]:
+    """`{proyecto_id: entrega}` de las obras de la carpeta con fecha de entrega vigente, con cuándo
+    se fijó (`actualizada`: un paquete exportado antes no es la entrega de esa fecha). Sin la
+    tabla, devuelve `{}` sin escribir nada."""
     if not hay_tabla_entrega(sesion):
         return {}
     return {
-        int(fila.proyecto_codigo): fila.fecha_entrega
+        int(fila.proyecto_codigo): EntregaDeLaObra(
+            proyecto_codigo=fila.proyecto_codigo,
+            fecha_entrega=fila.fecha_entrega,
+            actualizada=fila.actualizada,
+            actualizada_por=fila.actualizada_por,
+        )
         for fila in sesion.scalars(
             select(EntregaDeObra).where(EntregaDeObra.fecha_entrega.is_not(None))
         )

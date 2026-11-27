@@ -81,7 +81,8 @@ def test_fijar_y_leer_fecha_futura_y_del_mismo_dia(sesion: Session) -> None:
     assert entrega == esperada
     assert leer_entrega(sesion, "1") == esperada
     assert leer_entrega(sesion, "Torre Norte") == esperada
-    assert entregas_de_la_carpeta(sesion) == {1: date(2026, 12, 15)}
+    # Con cuándo se fijó: un paquete exportado antes no cuenta como entrega (auditoría, #9).
+    assert entregas_de_la_carpeta(sesion) == {1: esperada}
 
     # Fijar la fecha en el mismo día (hoy) no es pasado y se admite.
     later = datetime(2026, 11, 27, 14, 0)

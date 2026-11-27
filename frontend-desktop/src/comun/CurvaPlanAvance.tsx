@@ -1,8 +1,8 @@
 import type { LineChartOptions } from "@carbon/charts-react";
 import { lazy, Suspense, useEffect, useRef } from "react";
-import { DECIMAL, formatoMontoEsVe } from "../indicadores/formatoEsVe";
+import { formatoMontoEsVe } from "../indicadores/formatoEsVe";
 import { EsqueletoPagina } from "./EsqueletoPagina";
-import { coloresDeSerie, ESCALA_DE_ETIQUETAS, escalaDeColor, formatoNumeroEsVe, slotsPorRol, useModoEfectivo } from "./paletaGraficos";
+import { coloresDeSerie, ESCALA_DE_ETIQUETAS, escalaDeColor, formatoNumeroEsVe, slotsPorRol, useModoEfectivo, valorParaDibujar } from "./paletaGraficos";
 import { TablaDensa } from "./TablaDensa";
 
 const GraficoCarbon = lazy(() => import("./GraficoCarbon"));
@@ -60,7 +60,7 @@ export function periodoLegible(periodo: string): string {
 
 export function filasDeGrafico(series: SerieDeCurva[]): { group: string; key: string; value: number }[] {
   return series.flatMap((s) =>
-    s.puntos.map((p) => ({ group: s.nombre, key: periodoLegible(p.periodo), value: Number(p.valor) })),
+    s.puntos.map((p) => ({ group: s.nombre, key: periodoLegible(p.periodo), value: valorParaDibujar(p.valor) })),
   );
 }
 
@@ -69,21 +69,6 @@ export function periodos(series: SerieDeCurva[]): string[] {
   const vistos: string[] = [];
   for (const s of series) for (const p of s.puntos) if (!vistos.includes(p.periodo)) vistos.push(p.periodo);
   return vistos;
-}
-
-// Resta de dos decimales de la API («80.00» − «100.00» = «-20.00») con enteros grandes: sin float, sin perder cifras.
-// Lo que no es un decimal da null.
-export function restaDecimal(a: string, b: string): string | null {
-  const x = DECIMAL.exec(a.trim());
-  const y = DECIMAL.exec(b.trim());
-  if (!x || !y) return null;
-  const decimales = Math.max((x[3] ?? "").length, (y[3] ?? "").length);
-  const escalado = (m: RegExpExecArray) => BigInt(`${m[2]}${(m[3] ?? "").padEnd(decimales, "0")}`) * (m[1] === "-" ? -1n : 1n);
-  const resta = escalado(x) - escalado(y);
-  const digitos = (resta < 0n ? -resta : resta).toString().padStart(decimales + 1, "0");
-  const entera = decimales > 0 ? digitos.slice(0, -decimales) : digitos;
-  const fraccion = decimales > 0 ? digitos.slice(-decimales) : "";
-  return `${resta < 0n ? "-" : ""}${entera}${fraccion ? `.${fraccion}` : ""}`;
 }
 
 // El ultimo periodo con dato de lo ejecutado: hasta ahi llega lo real y de ahi en adelante solo hay plan o pronostico.
@@ -130,8 +115,9 @@ function esc(texto: string): string {
   return texto.replace(/[&<>"']/g, (c) => ESCAPES[c]!);
 }
 
-// El globo de un punto (Carbon lo pide como HTML): la fecha, el valor de cada serie en ella (el valor primero, el nombre
-// despues) y, si hay plan y real, la diferencia. Los nombres de serie vienen de la API: se escapan.
+// El globo de un punto (Carbon lo pide como HTML): la fecha y el valor de cada serie en ella (el valor primero, el nombre
+// despues), tal como los manda el servidor: la pantalla no resta ni calcula cifras. Los nombres de serie vienen de la API:
+// se escapan.
 export function globoDelPunto(
   series: SerieDeCurva[],
   clave: string,
@@ -152,17 +138,6 @@ export function globoDelPunto(
         return [`<li style="display:flex;gap:8px;align-items:center">${llave}<strong>${esc(monto(punto.valor))}</strong><span>${esc(rotulo)}</span></li>`];
       }),
   );
-  const plan = series.find((s) => s.rol === "plan" && en(s));
-  const real = series.find((s) => s.rol === "real" && en(s));
-  if (plan && real) {
-    const diferencia = restaDecimal(en(real)!.valor, en(plan)!.valor);
-    if (diferencia !== null) {
-      const signo = /^[0-9]/.test(diferencia) && !/^0(\.0+)?$/.test(diferencia) ? "+" : "";
-      filas.push(
-        `<li style="display:flex;gap:8px;align-items:center"><strong>${esc(monto(`${signo}${diferencia}`))}</strong><span>Diferencia (real − planificado)</span></li>`,
-      );
-    }
-  }
   return `<div style="padding:8px 12px"><p style="margin:0 0 4px;font-weight:600">${esc(clave)}</p><ul style="list-style:none;margin:0;padding:0">${filas.join("")}</ul></div>`;
 }
 

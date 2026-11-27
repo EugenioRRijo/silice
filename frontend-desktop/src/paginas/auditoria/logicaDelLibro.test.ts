@@ -171,6 +171,15 @@ describe("causasMultiples y hallazgosSueltos", () => {
 describe("avisosDePrecio", () => {
   const catalogo = catalogoDePrueba();
 
+  it("los datos de prueba tienen la forma exacta de los mensajes del servidor (fusion/alertas.py): es-VE, tasa sin ceros finales", () => {
+    const usdBs = alertasDePrueba().filter((a) => a.tipo === "USD-Bs");
+    for (const a of usdBs) {
+      expect(a.mensaje).toMatch(
+        /^\d{1,3}(\.\d{3})*,\d{2} Bs al \d{4}-\d{2}-\d{2} \(tasa \d{1,3}(\.\d{3})*(,\d*[1-9])?\) y \d{1,3}(\.\d{3})*,\d{2} Bs al \d{4}-\d{2}-\d{2} \(tasa \d{1,3}(\.\d{3})*(,\d*[1-9])?\): [+-]\d+,\d{2} %, (pasa|dentro) del umbral de \d+,\d{2} %$/,
+      );
+    }
+  });
+
   it("deja las tres alertas de la prueba y calla la que está dentro del umbral", () => {
     const avisos = avisosDePrecio(alertasDePrueba(), catalogo);
     expect(avisos.map((a) => [a.tipo, a.codigos])).toEqual([

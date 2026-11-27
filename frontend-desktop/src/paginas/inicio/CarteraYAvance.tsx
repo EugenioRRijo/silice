@@ -4,6 +4,7 @@ import type { Etapa, MonedaDeLaCartera, ObraDeLaCartera, ResumenTodasRespuesta }
 import { AvisoError } from "../../comun/AvisoError";
 import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { valorParaDibujar } from "../../comun/paletaGraficos";
 import { QueEsEsto } from "../../comun/QueEsEsto";
 import type { Carga } from "../../comun/useCarga";
 import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -72,9 +73,10 @@ export function escalaHorizontal(maximo: number): { tope: number; marcas: number
   return { tope: marcas[marcas.length - 1] ?? maximo, marcas };
 }
 
+// Solo para la geometría de las barras (valorParaDibujar): lo que se lee sigue siendo el texto del servidor.
 function numeroFinito(valor: string | null): number | null {
   if (valor === null) return null;
-  const n = Number(valor);
+  const n = valorParaDibujar(valor);
   return Number.isFinite(n) ? n : null;
 }
 

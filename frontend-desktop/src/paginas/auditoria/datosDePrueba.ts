@@ -51,7 +51,9 @@ function alerta(parcial: Partial<AlertaDePrecio> & Pick<AlertaDePrecio, "codigo"
   };
 }
 
-// A1 a A3 de la prueba de comprensión, más una USD-Bs dentro del umbral (no avisa).
+// A1 a A3 de la prueba de comprensión, más una USD-Bs dentro del umbral (no avisa). Los mensajes tienen la forma exacta que
+// manda fusion/alertas.py (es-VE): montos y porcentajes a dos decimales, la tasa del BCV exacta y sin ceros finales
+// («tasa 50», «tasa 50,5»); el front los muestra tal cual, sin reformatear.
 export function alertasDePrueba(): AlertaDePrecio[] {
   return [
     alerta({
@@ -74,14 +76,15 @@ export function alertasDePrueba(): AlertaDePrecio[] {
       tasa: "55.00",
       precio_bs: "990.00",
       mensaje:
-        "900,00 Bs al 2026-10-01 (tasa 50,00) y 990,00 Bs al 2026-11-24 (tasa 55,00): +10,00 %, pasa del umbral de 5,00 %",
+        "900,00 Bs al 2026-10-01 (tasa 50) y 990,00 Bs al 2026-11-24 (tasa 55): +10,00 %, pasa del umbral de 5,00 %",
     }),
     alerta({
       codigo: "MT-01",
       tipo: "USD-Bs",
+      precio: "10.00",
       variacion: "0.01",
       mensaje:
-        "500,00 Bs al 2026-10-01 (tasa 50,00) y 505,00 Bs al 2026-11-24 (tasa 50,50): +1,00 %, dentro del umbral de 5,00 %",
+        "500,00 Bs al 2026-10-01 (tasa 50) y 505,00 Bs al 2026-11-24 (tasa 50,5): +1,00 %, dentro del umbral de 5,00 %",
     }),
   ];
 }

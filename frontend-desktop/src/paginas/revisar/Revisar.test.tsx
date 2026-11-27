@@ -451,7 +451,7 @@ describe("Revisar un paquete", () => {
             {
               titulo: "El emisor no los declaró",
               hallazgos: [
-                { regla: "R11", nombre_regla: "Precio fuera de rango", severidad: "INFO", descripcion: "Con nombre" },
+                { regla: "R11", nombre_regla: "Precio fuera de rango frente a MaPreX", severidad: "INFO", descripcion: "Con nombre" },
                 { regla: "R4", nombre_regla: "", severidad: "ADVERTENCIA", descripcion: "Sin nombre" },
               ],
             },
@@ -469,7 +469,7 @@ describe("Revisar un paquete", () => {
         return json({
           ...EXTERNO,
           hallazgos: [
-            { regla: "R2", nombre_regla: "Consistencia de montos", severidad: "ERROR", descripcion: "La curva no cierra" },
+            { regla: "R2", nombre_regla: "Cierre de la curva de inversión", severidad: "ERROR", descripcion: "La curva no cierra" },
             { regla: "R7", nombre_regla: "", severidad: "INFO", descripcion: "Parámetro sin nombre" },
           ],
         });
@@ -478,14 +478,14 @@ describe("Revisar un paquete", () => {
     });
     const usuario = await subirYEsperar();
     const tablaPaquete = screen.getByRole("table", { name: "El emisor no los declaró" });
-    expect(within(tablaPaquete).getByText("Precio fuera de rango (R11)")).toBeInTheDocument();
+    expect(within(tablaPaquete).getByText("Precio fuera de rango frente a MaPreX (R11)")).toBeInTheDocument();
     expect(within(tablaPaquete).getByText("R4")).toBeInTheDocument();
 
     await usuario.click(screen.getByRole("tab", { name: "Presupuesto en Excel" }));
     const campos = document.querySelectorAll('input[type="file"]');
     await usuario.upload(campos[campos.length - 1] as HTMLInputElement, new File(["PK"], "externo.xlsx"));
     const tablaExcel = await screen.findByRole("table", { name: "Hallazgos del presupuesto en Excel" });
-    expect(within(tablaExcel).getByText("Consistencia de montos (R2)")).toBeInTheDocument();
+    expect(within(tablaExcel).getByText("Cierre de la curva de inversión (R2)")).toBeInTheDocument();
     expect(within(tablaExcel).getByText("R7")).toBeInTheDocument();
   });
 });

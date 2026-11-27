@@ -97,16 +97,20 @@ _REGLAS: dict[str, tuple[str, str]] = {
         "propósito, déjelo anotado.",
     ),
     "L5": (
-        "Una fórmula apunta a una celda u hoja que ya no existe, o a otro archivo.",
+        "Una fórmula apunta a una celda u hoja que ya no existe o a otro archivo, o una celda da "
+        "error al calcular.",
         "Busque las celdas con #REF! o con un vínculo a otro archivo y escriba de nuevo la "
         "fórmula con la celda "
-        "correcta. Si el vínculo externo es a propósito, copie su valor dentro del libro.",
+        "correcta. Si el vínculo externo es a propósito, copie su valor dentro del libro. Si la "
+        "celda da error al calcular (#¡DIV/0!, #¡VALOR!), revise la celda que la fórmula lee o "
+        "divide: suele estar vacía o tener texto en lugar de un número.",
     ),
     "L6": (
         "Un porcentaje o un rendimiento que debería venir de los parámetros del libro está "
         "escrito a mano en un "
         "análisis.",
-        "Decida si el valor propio es intencional. Si no lo es, enlácelo de nuevo con el "
+        "Confirme con quien hizo el libro si el valor propio es intencional. Si no lo es, "
+        "enlácelo de nuevo con el "
         "parámetro del libro; si lo es, "
         "déjelo y anote la razón junto a la celda.",
     ),
@@ -177,8 +181,8 @@ _REGLAS: dict[str, tuple[str, str]] = {
     ),
     "R6": (
         "Un mismo insumo lleva factores de depreciación distintos en distintos análisis.",
-        "Decida cuál es el factor correcto para el insumo y úselo en todos los análisis. Las "
-        "primeras partidas de la "
+        "Confirme con quien hizo el libro si los factores distintos son intencionales; si no lo "
+        "son, use el mismo factor en todos los análisis del insumo. Las primeras partidas de la "
         "lista son las que menos se repiten y las más probables de corregir.",
     ),
     "R7": (

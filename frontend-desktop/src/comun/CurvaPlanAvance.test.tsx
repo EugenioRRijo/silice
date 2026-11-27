@@ -7,7 +7,6 @@ import {
   globoDelPunto,
   periodoLegible,
   periodos,
-  restaDecimal,
   rotulosDeCurva,
   TRAZO_DE_GASTADO,
   TRAZO_DE_PLAN,
@@ -136,16 +135,16 @@ const DIAS: SerieDeCurva[] = [
   },
 ];
 
-describe("el detalle a lo largo de la curva", () => {
-  test("restaDecimal resta con decimales exactos y sin pasar por float", () => {
-    expect(restaDecimal("80.00", "100.00")).toBe("-20.00");
-    expect(restaDecimal("0.3", "0.1")).toBe("0.2");
-    expect(restaDecimal("100", "0.25")).toBe("99.75");
-    expect(restaDecimal("5", "5")).toBe("0");
-    expect(restaDecimal("12345678901234567890.5", "1")).toBe("12345678901234567889.5");
-    expect(restaDecimal("n/d", "1")).toBeNull();
+describe("filasDeGrafico: la cifra del servidor pasa a geometría solo por valorParaDibujar", () => {
+  test("un decimal de la API se dibuja; lo que no es un decimal con punto no se dibuja (NaN) en vez de leerse como número", () => {
+    const filas = filasDeGrafico([
+      { nombre: "PV", rol: "plan", puntos: [{ periodo: "Dia 1", valor: "100.50" }, { periodo: "Dia 2", valor: "1e3" }, { periodo: "Dia 3", valor: "0x10" }] },
+    ]);
+    expect(filas.map((f) => f.value)).toEqual([100.5, Number.NaN, Number.NaN]);
   });
+});
 
+describe("el detalle a lo largo de la curva", () => {
   test("rotula el inicio, el corte y el final con el valor de cada serie en es-VE", () => {
     const r = rotulosDeCurva(DIAS, "USD");
     expect(r.map((x) => [x.etiqueta, x.periodo, x.partes])).toEqual([
@@ -164,22 +163,23 @@ describe("el detalle a lo largo de la curva", () => {
     expect(rotulosDeCurva([completa[0]!], "").map((x) => x.etiqueta)).toEqual(["Inicio", "Final"]);
   });
 
-  test("el globo del punto lleva la fecha, lo planificado, lo real y la diferencia", () => {
+  test("el globo del punto dice lo planificado y lo real tal como los manda el servidor, sin restarlos", () => {
     const html = globoDelPunto(DIAS, "Día 2", "USD", { PV: "#9A9184", EV: "#2A78D6" });
     expect(html).toContain("Día 2");
     expect(html).toContain("100,00 USD");
     expect(html).toContain("80,00 USD");
     expect(html).toContain("Planificado");
     expect(html).toContain("Real");
-    expect(html).toContain("Diferencia");
-    expect(html).toContain("-20,00 USD");
+    // La pantalla no calcula cifras (DESIGN.md): ni la línea «Diferencia» ni el resultado de la resta.
+    expect(html).not.toContain("Diferencia");
+    expect(html).not.toContain("-20,00");
     expect(html).toContain("#2A78D6");
   });
 
-  test("el globo de un punto sin dato real no inventa diferencia", () => {
+  test("el globo de un punto sin dato real solo dice lo que hay", () => {
     const html = globoDelPunto(DIAS, "Día 3", "USD", {});
     expect(html).toContain("200,00 USD");
-    expect(html).not.toContain("Diferencia");
+    expect(html).not.toContain("Real (");
   });
 
   test("el globo no deja pasar HTML de un nombre de serie", () => {
@@ -195,7 +195,7 @@ describe("el detalle a lo largo de la curva", () => {
     const rotulos = screen.getByRole("list", { name: "Valores del inicio, el corte y el final" });
     expect(within(rotulos).getAllByRole("listitem")).toHaveLength(3);
     expect(within(rotulos).getByText(/real 80,00 USD/)).toBeInTheDocument();
-    expect(g.getAttribute("data-globo")).toContain("Diferencia");
+    expect(g.getAttribute("data-globo")).not.toContain("Diferencia");
   });
 
   test("el grafico tiene nombre accesible y la tabla trae las mismas cifras", () => {
