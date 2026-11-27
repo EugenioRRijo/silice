@@ -23,7 +23,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0013_solicitud_cuenta"
 ANTERIOR = "ins_0012_conteo_anulado"
-CABEZA = "ins_0014_notificacion"  # C11 cuelga de esta
+CABEZA = "ins_0015_notificacion_por_evento"  # la cabeza (C11b)
 TABLA = "solicitud_cuenta"
 COLUMNAS = [
     "id", "login", "nombre", "correo", "huella_clave", "creada", "estado", "papel",

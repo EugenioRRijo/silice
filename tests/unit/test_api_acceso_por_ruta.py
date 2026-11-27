@@ -219,6 +219,9 @@ TABLA = {
     ("GET", "/v1/notificaciones"): CUALQUIERA,
     ("POST", "/v1/notificaciones"): CUALQUIERA,
     ("POST", "/v1/notificaciones/leidas"): CUALQUIERA,
+    # C11b: qué categorías recibe cada cuenta; solo las propias (clave -> 403).
+    ("GET", "/v1/notificaciones/preferencias"): CUALQUIERA,
+    ("PUT", "/v1/notificaciones/preferencias"): CUALQUIERA,
     ("GET", "/v1/aprobaciones/resumen"): APROBAR,
     ("POST", "/v1/aprobaciones/abrir"): APROBAR,
     ("GET", "/v1/aprobaciones/{envio_id}"): APROBAR,

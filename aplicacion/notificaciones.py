@@ -12,6 +12,9 @@ Reglas:
   listar también se aplica el límite).
 - Seguridad en `enlace_ruta`: solo rutas internas que empiecen por «/», sin «//», sin «\\», sin
   esquema ni caracteres de control, y de hasta 300 caracteres.
+- C11b: la que crea el servidor por un evento lleva `clave_evento` (hasta 255 caracteres), única
+  por persona en la base (`ux_notificacion_usuario_clave`); `existe_clave` dice si ya está. Las
+  reglas de quién la recibe viven en `aplicacion/avisos_por_evento.py`.
 """
 
 from __future__ import annotations
@@ -35,10 +38,12 @@ __all__ = [
     "MAX_ENLACE_TEXTO",
     "MAX_TITULO",
     "RETENCION",
+    "MAX_CLAVE_EVENTO",
     "DatosNotificacion",
     "ItemNotificacion",
     "agregar",
     "contar_sin_leer",
+    "existe_clave",
     "listar",
     "marcar_leidas",
     "validar_ruta",
@@ -52,6 +57,7 @@ MAX_TITULO = 200
 MAX_DETALLE = 1000
 MAX_ENLACE_TEXTO = 120
 MAX_ENLACE_RUTA = 300
+MAX_CLAVE_EVENTO = 255
 
 _MENSAJE_RUTA_INSEGURA = (
     "La ruta del enlace debe ser interna (empezar por «/», sin «//» ni esquema)."
@@ -194,9 +200,16 @@ def agregar(
     usuario_id: int,
     datos: DatosNotificacion,
     ahora: datetime,
+    *,
+    clave_evento: str | None = None,
 ) -> ItemNotificacion:
-    """Valida, purga vencidas, guarda la notificación de `usuario_id` y aplica el tope de 200."""
+    """Valida, purga vencidas, guarda la notificación de `usuario_id` y aplica el tope de 200.
+
+    Con `clave_evento` (C11b) la base no admite otra con la misma clave para esa persona: una
+    repetida es un `IntegrityError` al hacer `flush` (quien llama decide si lo absorbe)."""
     gravedad, titulo, detalle, enlace_texto, enlace_ruta = _validar_datos(datos)
+    if clave_evento is not None and not 0 < len(clave_evento) <= MAX_CLAVE_EVENTO:
+        raise ValueError(f"La clave del evento debe tener de 1 a {MAX_CLAVE_EVENTO} caracteres.")
     _purgar_vencidas(sesion, usuario_id, ahora)
     fila = Notificacion(
         usuario_id=usuario_id,
@@ -207,11 +220,25 @@ def agregar(
         enlace_ruta=enlace_ruta,
         creada=ahora,
         leida=False,
+        clave_evento=clave_evento,
     )
     sesion.add(fila)
     sesion.flush()
     _podar_excedente(sesion, usuario_id)
     return _a_item(fila)
+
+
+def existe_clave(sesion: Session, usuario_id: int, clave_evento: str) -> bool:
+    """Si `usuario_id` ya tiene una notificación con `clave_evento` (leída o no)."""
+    return (
+        sesion.scalar(
+            select(Notificacion.id).where(
+                Notificacion.usuario_id == usuario_id,
+                Notificacion.clave_evento == clave_evento,
+            )
+        )
+        is not None
+    )
 
 
 def marcar_leidas(

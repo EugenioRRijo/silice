@@ -962,3 +962,19 @@ estado y en su panel lateral derecho. Cada cuenta ve y marca solo las suyas. El 
 Las filas estrictamente anteriores a `ahora − 30 días` se descartan y borran por persona al consultar o agregar; cada
 cuenta conserva como máximo 200 notificaciones, ordenadas de más reciente a más antigua (`creada` descendente, `id`
 descendente).
+
+### 13.1 Notificaciones por evento y qué recibir (revisión `ins_0015_notificacion_por_evento`)
+
+C11b (2026-11-26, [notificaciones por evento](especificaciones/2026-11-26-notificaciones-por-evento.md)): el servidor
+crea notificaciones cuando pasa algo (un envío a aprobación, su dictamen o retiro, una lista de precios nueva) o cuando
+vence una fecha (el recordatorio de dictamen a los 2 días hábiles y las compras por pedir, calculados al listar). La
+revisión agrega a `notificacion` la columna `clave_evento` y crea la tabla de preferencias. Las reglas viven en
+`aplicacion/avisos_por_evento.py`, que es el único que lee y escribe `preferencia_notificacion`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `notificacion` (agregado) | `clave_evento` (255, nula; nula en las que crea el front) | índice único `ux_notificacion_usuario_clave (usuario_id, clave_evento)`: un evento no se repite para una persona (las nulas no chocan) |
+| `preferencia_notificacion` | `usuario_id` FK → `usuario.id`, `categoria` (40: `por_dictaminar` \| `dictamen` \| `compras` \| `listas_de_precios`), `activa` (bool) | PK `(usuario_id, categoria)`; sin fila, la categoría está encendida; `por_dictaminar` no se apaga para quien revisa (lo decide la aplicación) |
+
+Como la retención es de 30 días, la clave de un evento vuelve a quedar libre a los 30 días: un recordatorio o una compra
+vencida que siguen igual se repiten una vez al mes.

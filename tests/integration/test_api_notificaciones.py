@@ -35,7 +35,6 @@ from operacion.base_datos import (
     Destino,
     aplicar_revisiones,
     deshacer_revisiones,
-    revision_head,
 )
 from seguridad.base import abrir_sesion, crear_motor
 from seguridad.modelo import Notificacion, Usuario
@@ -363,7 +362,8 @@ def test_escrituras_exigen_csrf_y_origin_propio() -> None:
 def test_migracion_ins_0014_subida_restricciones_indice_bajada_y_adopcion(
     tmp_path: Path,
 ) -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0014_notificacion"
+    # Hasta `ins_0014` (desde C11b la cabeza es `ins_0015`, que agrega `clave_evento`: lo prueba
+    # `test_migracion_notificacion_por_evento.py`).
     base = tmp_path / "instalacion.db"
     aplicar_revisiones(base, Destino.INSTALACION, "ins_0013_solicitud_cuenta")
     with closing(sqlite3.connect(base)) as c:
@@ -374,7 +374,7 @@ def test_migracion_ins_0014_subida_restricciones_indice_bajada_y_adopcion(
         )
         c.commit()
 
-    aplicar_revisiones(base, Destino.INSTALACION)
+    aplicar_revisiones(base, Destino.INSTALACION, "ins_0014_notificacion")
     with closing(sqlite3.connect(base)) as c:
         c.execute("PRAGMA foreign_keys = ON")
         cols = [f[1] for f in c.execute("PRAGMA table_info(notificacion)")]
@@ -417,7 +417,7 @@ def test_migracion_ins_0014_subida_restricciones_indice_bajada_y_adopcion(
         assert "notificacion" not in tablas
         assert c.execute("SELECT login FROM usuario").fetchall() == [("ana",)]
 
-    aplicar_revisiones(base, Destino.INSTALACION)
+    aplicar_revisiones(base, Destino.INSTALACION, "ins_0014_notificacion")
     with closing(sqlite3.connect(base)) as c:
         tablas = {n for (n,) in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert "notificacion" in tablas

@@ -179,7 +179,9 @@ class ClaveApi(Base):
 
 
 class Notificacion(Base):
-    """Notificaciones persistentes por persona durante 30 días (C11, `ins_0014`)."""
+    """Notificaciones persistentes por persona durante 30 días (C11, `ins_0014`). C11b
+    (`ins_0015`): las que crea el servidor por un evento llevan `clave_evento`, única por persona
+    (las del front van sin clave)."""
 
     __tablename__ = "notificacion"
     __table_args__ = (
@@ -188,6 +190,7 @@ class Notificacion(Base):
             name="ck_notificacion_gravedad",
         ),
         Index("ix_notificacion_usuario_creada", "usuario_id", "creada"),
+        Index("ux_notificacion_usuario_clave", "usuario_id", "clave_evento", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -199,3 +202,16 @@ class Notificacion(Base):
     enlace_ruta: Mapped[str] = mapped_column(String(300), default="")
     creada: Mapped[datetime] = mapped_column(DateTime)
     leida: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: C11b (`ins_0015`): la clave del evento que la creó; nula en las que crea el front.
+    clave_evento: Mapped[str | None] = mapped_column(String(255), default=None)
+
+
+class PreferenciaNotificacion(Base):
+    """Qué categorías de notificaciones por evento recibe cada persona (C11b, `ins_0015`). Sin
+    fila, la categoría está encendida; la lee y escribe `aplicacion/avisos_por_evento.py`."""
+
+    __tablename__ = "preferencia_notificacion"
+
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id"), primary_key=True)
+    categoria: Mapped[str] = mapped_column(String(40), primary_key=True)
+    activa: Mapped[bool] = mapped_column(Boolean)

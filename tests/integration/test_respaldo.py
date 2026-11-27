@@ -98,7 +98,7 @@ def test_la_instalacion_va_siempre_en_el_juego_aunque_no_se_migre(datos: Datos) 
     assert (base["archivo"], base["destino"], base["revision_origen"]) == (
         "instalacion.db",
         "instalacion",
-        "ins_0014_notificacion",
+        "ins_0015_notificacion_por_evento",
     )
     assert base["filas_por_tabla"] == {
         "alembic_version": 1,
@@ -125,6 +125,7 @@ def test_la_instalacion_va_siempre_en_el_juego_aunque_no_se_migre(datos: Datos) 
         "modulo_cambio": 0,
         "solicitud_cuenta": 0,
         "notificacion": 0,
+        "preferencia_notificacion": 0,
     }
 
 

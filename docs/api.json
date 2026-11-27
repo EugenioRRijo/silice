@@ -3928,7 +3928,7 @@
           "notificaciones"
         ],
         "summary": "Listar Notificaciones",
-        "description": "Las notificaciones vigentes (últimos 30 días) de la cuenta actual, más nuevas primero.",
+        "description": "Las notificaciones vigentes (últimos 30 días) de la cuenta actual, más nuevas primero,\ndespués de crear las que vencen hoy para ella (recordatorios y compras, C11b).",
         "operationId": "listar_notificaciones_v1_notificaciones_get",
         "responses": {
           "200": {
@@ -4009,6 +4009,68 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MarcarLeidasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notificaciones/preferencias": {
+      "get": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Leer Preferencias",
+        "description": "Qué categorías de notificaciones recibe la cuenta actual (C11b).",
+        "operationId": "leer_preferencias_v1_notificaciones_preferencias_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenciasDeNotificacionRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Fijar Preferencias",
+        "description": "Enciende o apaga categorías de la cuenta actual; las que no nombra quedan como estaban.",
+        "operationId": "fijar_preferencias_v1_notificaciones_preferencias_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenciasDeNotificacionCambio"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenciasDeNotificacionRespuesta"
                 }
               }
             }
@@ -27533,6 +27595,65 @@
         ],
         "title": "PreciosHojaRespuesta"
       },
+      "PreferenciaDeNotificacionCambio": {
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Categoria"
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categoria",
+          "activa"
+        ],
+        "title": "PreferenciaDeNotificacionCambio"
+      },
+      "PreferenciaDeNotificacionRespuesta": {
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "title": "Categoria"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa"
+          },
+          "aplica": {
+            "type": "boolean",
+            "title": "Aplica",
+            "description": "Si a la cuenta le llega esta categoría por su rol"
+          },
+          "obligatoria": {
+            "type": "boolean",
+            "title": "Obligatoria",
+            "description": "Si su rol no la deja apagar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categoria",
+          "titulo",
+          "descripcion",
+          "activa",
+          "aplica",
+          "obligatoria"
+        ],
+        "title": "PreferenciaDeNotificacionRespuesta"
+      },
       "Preferencias": {
         "properties": {
           "modulo": {
@@ -27561,6 +27682,39 @@
         },
         "type": "object",
         "title": "Preferencias"
+      },
+      "PreferenciasDeNotificacionCambio": {
+        "properties": {
+          "categorias": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenciaDeNotificacionCambio"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Categorias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categorias"
+        ],
+        "title": "PreferenciasDeNotificacionCambio"
+      },
+      "PreferenciasDeNotificacionRespuesta": {
+        "properties": {
+          "categorias": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenciaDeNotificacionRespuesta"
+            },
+            "type": "array",
+            "title": "Categorias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categorias"
+        ],
+        "title": "PreferenciasDeNotificacionRespuesta"
       },
       "PreferenciasRespuesta": {
         "properties": {
