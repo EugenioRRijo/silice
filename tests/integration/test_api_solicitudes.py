@@ -10,6 +10,7 @@ campos y la misma cookie. Datos ficticios (`lucia`, `ejemplo.com`).
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -19,6 +20,7 @@ from sqlalchemy import select
 from api import dependencias
 from api.main import app
 from operacion import config
+from seguridad import solicitudes
 from seguridad.base import abrir_sesion, crear_motor
 from seguridad.modelo import EventoAcceso, SolicitudCuenta, Usuario
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
@@ -49,7 +51,9 @@ MENSAJE_LIMITE = (
     "Hay demasiadas solicitudes pendientes. Pida al administrador que revise las que hay."
 )
 FORMATO = re.compile(r"^[A-Z2-7]{4}(-[A-Z2-7]{4}){4}$")
-CAMPOS_SOLICITUD = {"id", "nombre", "login", "correo", "creada", "estado", "papel", "vence"}
+CAMPOS_SOLICITUD = {
+    "id", "nombre", "login", "correo", "creada", "estado", "papel", "vence", "reutilizada",
+}
 AJENO = {"Origin": "http://otro.sitio.example"}
 
 
@@ -62,7 +66,9 @@ def _plantilla(tmp_path_factory) -> Path:
 def _instalacion(_plantilla: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv(dependencias.VARIABLE_BASE, raising=False)
     copiar_instalacion(_plantilla)
+    solicitudes.CUPO.reiniciar()
     yield
+    solicitudes.CUPO.reiniciar()
     dependencias.cerrar_motores()
 
 
@@ -183,6 +189,7 @@ def test_el_administrador_ve_las_solicitudes_con_sus_campos(admin) -> None:
         "Lucía Prueba", "lucia", "lucia@ejemplo.com", "pendiente"
     )
     assert fila["papel"] is None and fila["vence"] is None and fila["creada"]
+    assert fila["reutilizada"] is False
 
 
 @pytest.mark.parametrize("login", ["ana", "rita"])
@@ -333,3 +340,99 @@ def test_el_registro_de_accesos_no_guarda_ni_el_codigo_ni_la_contrasena(admin) -
     )
     secretos = (codigo, codigo.replace("-", ""), PEDIDO["contrasena"], "otra clave larga")
     assert not [t for t in textos for secreto in secretos if secreto in t]
+
+
+# --- hallazgos de C9a (lote G4): #5, #6, #8 y #9 en HTTP ------------------------------------
+
+
+def test_el_canje_da_401_generico_si_quien_aprobo_dejo_de_ser_administrador(admin) -> None:
+    """#5: una aprobación no sobrevive a quien la dio (desactivado o sin rol de administrador)."""
+    _pedir()
+    nav_admin, ficha_admin = admin
+    id_ana = _leer(lambda s: s.scalar(select(Usuario.id).where(Usuario.login == "ana")))
+    subir = nav_admin.post(
+        f"/v1/cuentas/{id_ana}/roles",
+        json={"roles": ["arma", "administrador"]},
+        headers=protegida(ficha_admin),
+    )
+    assert subir.status_code == 200, subir.text
+    ana_admin = con_cuenta(app, "ana")
+    codigo = _aprobar(ana_admin, _id()).json()["codigo"]
+    bajar = nav_admin.post(
+        f"/v1/cuentas/{id_ana}/desactivar",
+        json={},
+        headers=protegida(ficha_admin),
+    )
+    assert bajar.status_code == 200, bajar.text
+    respuesta = _canjear(codigo)
+    assert respuesta.status_code == 401
+    assert respuesta.json() == {"detalle": MENSAJE_CANJE}
+    assert COOKIE not in respuesta.cookies
+    ultimo = _leer(
+        lambda s: s.scalars(select(EventoAcceso).order_by(EventoAcceso.id.desc())).first()
+    )
+    assert ultimo.tipo == "codigo rechazado" and ultimo.detalle == "aprobador revocado"
+
+
+def test_get_solicitudes_marca_reutilizada_tras_rechazar_y_volver_a_pedir(admin) -> None:
+    """#6: al reutilizar una rechazada queda rastro en el evento y `reutilizada: true` en GET."""
+    _pedir()
+    navegador, ficha = admin
+    assert (
+        navegador.post(
+            f"/v1/solicitudes/{_id()}/rechazar", json={}, headers=protegida(ficha)
+        ).status_code
+        == 200
+    )
+    assert _pedir(correo="lucia2@ejemplo.com").status_code == 201
+    lista = navegador.get("/v1/solicitudes")
+    assert lista.status_code == 200
+    fila = lista.json()["solicitudes"][0]
+    assert fila["estado"] == "pendiente" and fila["reutilizada"] is True
+    evento = _leer(
+        lambda s: s.scalars(
+            select(EventoAcceso)
+            .where(EventoAcceso.tipo == "solicitud")
+            .order_by(EventoAcceso.id.desc())
+        ).first()
+    )
+    assert evento.detalle == (
+        "reutiliza una solicitud rechazada resuelta por Admin de Prueba <admin>"
+    )
+
+
+@pytest.mark.parametrize("ruta", ["/v1/solicitudes", "/v1/solicitudes/canjear"])
+@pytest.mark.parametrize("cuerpo", [b"{}", b'{"login": 123}', b"{json roto"])
+def test_origen_ajeno_da_403_antes_de_leer_un_cuerpo_invalido_o_roto(
+    ruta: str, cuerpo: bytes
+) -> None:
+    """#8: la puerta de `Origin` corre antes de leer el cuerpo (403 con no-store, nunca 422)."""
+    respuesta = cliente(app).post(
+        ruta,
+        content=cuerpo,
+        headers={**AJENO, "Content-Type": "application/json"},
+    )
+    assert respuesta.status_code == 403, respuesta.text
+    assert respuesta.headers["Cache-Control"] == "no-store"
+    assert set(respuesta.json()) == {"detalle"}
+
+
+def test_get_solicitudes_calcula_vencida_sin_escribir_en_la_base(admin) -> None:
+    """#9: GET /v1/solicitudes calcula `vencida` al responder y no modifica la tabla."""
+    _pedir()
+    solicitud_id = _id()
+    assert _aprobar(admin, solicitud_id).status_code == 200
+    motor = crear_motor(config.ruta_instalacion())
+    sesion = abrir_sesion(motor)
+    try:
+        fila = sesion.get(SolicitudCuenta, solicitud_id)
+        fila.vence = datetime(2026, 1, 1, 0, 0, 0)
+        sesion.commit()
+    finally:
+        sesion.close()
+        motor.dispose()
+    navegador, _ = admin
+    respuesta = navegador.get("/v1/solicitudes")
+    assert respuesta.status_code == 200
+    assert respuesta.json()["solicitudes"][0]["estado"] == "vencida"
+    assert _leer(lambda s: s.get(SolicitudCuenta, solicitud_id).estado) == "aprobada"

@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 
 from seguridad import cuentas, solicitudes
 from seguridad.modelo import EventoAcceso, IntentoAcceso, SolicitudCuenta, Usuario
@@ -50,6 +50,13 @@ class FrenoQueCuenta(cuentas.FrenoGlobal):
     def registrar_fallo(self, ahora) -> None:
         self.fallos += 1
         super().registrar_fallo(ahora)
+
+
+@pytest.fixture(autouse=True)
+def _reiniciar_cupo():
+    solicitudes.CUPO.reiniciar()
+    yield
+    solicitudes.CUPO.reiniciar()
 
 
 @pytest.fixture
@@ -260,14 +267,30 @@ def test_listar_las_trae_todas_las_mas_nuevas_primero(base) -> None:
     assert [s.id for s in solicitudes.listar(sesion, admin, AHORA)] == [nueva.id, vieja.id]
 
 
-def test_al_listar_las_aprobadas_que_vencieron_pasan_a_vencida(base) -> None:
+def test_al_listar_las_aprobadas_que_vencieron_salen_vencidas_sin_escribir(base) -> None:
+    """#9: GET /v1/solicitudes no escribe; el estado `vencida` se calcula al responder."""
     sesion, admin = base
     pedida, _ = _aprobada(sesion, admin)
     justo_antes = AHORA + SIETE_DIAS - timedelta(seconds=1)
     assert [s.estado for s in solicitudes.listar(sesion, admin, justo_antes)] == ["aprobada"]
-    assert [s.estado for s in solicitudes.listar(sesion, admin, AHORA + SIETE_DIAS)] == ["vencida"]
+
+    escrituras: list[str] = []
+    motor = sesion.get_bind()
+
+    def vigilar(_conn, _cursor, sentencia, *_resto) -> None:
+        cabeza = sentencia.lstrip().upper()
+        if cabeza.startswith(("INSERT", "UPDATE", "DELETE", "BEGIN IMMEDIATE")):
+            escrituras.append(sentencia)
+
+    event.listen(motor, "before_cursor_execute", vigilar)
+    try:
+        vistas = solicitudes.listar(sesion, admin, AHORA + SIETE_DIAS)
+    finally:
+        event.remove(motor, "before_cursor_execute", vigilar)
+    assert [s.estado for s in vistas] == ["vencida"]
+    assert escrituras == []
     sesion.expire_all()
-    assert sesion.get(SolicitudCuenta, pedida.id).estado == "vencida"
+    assert sesion.get(SolicitudCuenta, pedida.id).estado == "aprobada"
 
 
 # --- aprobar --------------------------------------------------------------------------------
@@ -455,13 +478,22 @@ def test_un_segundo_canje_del_mismo_codigo_falla(base, freno) -> None:
 
 def test_un_dia_antes_de_vencer_vale_y_a_los_7_dias_exactos_no(base, freno) -> None:
     sesion, admin = base
-    _, aprobacion = _aprobada(sesion, admin)
+    pedida_vencida, aprobacion = _aprobada(sesion, admin)
     with pytest.raises(cuentas.ErrorDeAcceso) as error:
         _canjear(sesion, aprobacion.codigo, freno, cuando=AHORA + SIETE_DIAS)
     assert str(error.value) == MENSAJE_CANJE
     assert _ultimo_evento(sesion).detalle == "codigo vencido"
+    sesion.expire_all()
+    assert sesion.get(SolicitudCuenta, pedida_vencida.id).estado == "vencida"
+    otra = _solicitar(sesion, "lucia.vigente", ip="10.0.0.9")
+    aprobada_vigente = solicitudes.aprobar(sesion, admin, otra.id, "arma", AHORA)
     ultimo_segundo = AHORA + SIETE_DIAS - timedelta(seconds=1)
-    assert _canjear(sesion, aprobacion.codigo, freno, cuando=ultimo_segundo).login == LOGIN
+    assert (
+        _canjear(
+            sesion, aprobada_vigente.codigo, freno, login="lucia.vigente", cuando=ultimo_segundo
+        ).login
+        == "lucia.vigente"
+    )
 
 
 def _fallo(sesion, freno, codigo, **extra) -> str:
@@ -759,3 +791,219 @@ def test_crear_usuario_puede_usar_el_login_de_una_solicitud_muerta(base, como) -
         cuando = AHORA + SIETE_DIAS
     usuario = cuentas.crear_usuario(sesion, admin, LOGIN, NOMBRE, ("arma",), CONTRASENA, cuando)
     assert usuario.login == LOGIN
+
+
+# --- hallazgos bajos e informativos de C9a (lote G4) ----------------------------------------
+
+# #4: cupo en memoria tomado y sumado ANTES de Argon2, e IPv6 agrupada por /64
+
+
+def test_el_cupo_en_memoria_se_cuenta_antes_de_argon2(
+    base, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cinco intentos que abortan en Argon2 (cero filas en `evento_acceso`) ya llenan el cupo en
+    memoria: el sexto se rechaza sin llamar a `_huella`."""
+    sesion, _ = base
+    llamadas: list[str] = []
+
+    def huella_que_aborta(contrasena: str) -> str:
+        llamadas.append(contrasena)
+        raise RuntimeError("corte antes de escribir")
+
+    monkeypatch.setattr(solicitudes, "_huella", huella_que_aborta)
+    for i in range(5):
+        with pytest.raises(RuntimeError, match="corte antes de escribir"):
+            _solicitar(sesion, f"persona{i}")
+    assert len(llamadas) == 5
+    assert sesion.scalars(select(EventoAcceso).where(EventoAcceso.tipo == "solicitud")).all() == []
+    with pytest.raises(solicitudes.DemasiadasSolicitudes) as error:
+        _solicitar(sesion, "persona5")
+    assert str(error.value) == MENSAJE_LIMITE
+    assert len(llamadas) == 5
+
+
+def test_ipv6_del_mismo_prefijo_64_comparten_cupo_y_otro_64_no(base) -> None:
+    sesion, _ = base
+    for i in range(5):
+        _solicitar(sesion, f"ipv6.p{i}", ip=f"2001:db8:abcd:0001::{i + 1:x}")
+    with pytest.raises(solicitudes.DemasiadasSolicitudes) as error:
+        _solicitar(sesion, "ipv6.sexta", ip="2001:db8:abcd:0001:ffff:1234::9")
+    assert str(error.value) == MENSAJE_LIMITE
+    # otro prefijo /64 sí puede
+    creada = _solicitar(sesion, "ipv6.otro64", ip="2001:db8:abcd:0002::1")
+    assert creada.login == "ipv6.otro64"
+
+
+def test_exigir_cupo_en_la_base_tambien_agrupa_ipv6_por_64(base) -> None:
+    """Aunque el contador en memoria nazca limpio (reinicio del proceso), `_exigir_cupo` agrupa
+    los eventos de la base por `/64` en IPv6."""
+    sesion, _ = base
+    for i in range(5):
+        _solicitar(sesion, f"reinicio.p{i}", ip=f"2001:db8:cafe:0010::{i + 1:x}")
+    cupo_nuevo = solicitudes.CupoPorEquipo()
+    with pytest.raises(solicitudes.DemasiadasSolicitudes) as error:
+        solicitudes.solicitar(
+            sesion,
+            NOMBRE,
+            CORREO,
+            "reinicio.sexta",
+            CLAVE,
+            AHORA + timedelta(minutes=5),
+            ip="2001:db8:cafe:0010:9999::7",
+            cupo=cupo_nuevo,
+        )
+    assert str(error.value) == MENSAJE_LIMITE
+    # otro /64 pasa incluso con el cupo nuevo
+    creada = solicitudes.solicitar(
+        sesion,
+        NOMBRE,
+        CORREO,
+        "reinicio.otro64",
+        CLAVE,
+        AHORA + timedelta(minutes=5),
+        ip="2001:db8:cafe:0011::1",
+        cupo=cupo_nuevo,
+    )
+    assert creada.login == "reinicio.otro64"
+
+
+def test_ipv4_mapeada_en_ipv6_comparte_cupo_con_ipv4(base) -> None:
+    sesion, _ = base
+    for i in range(5):
+        _solicitar(sesion, f"mapeada{i}", ip=IP)
+    with pytest.raises(solicitudes.DemasiadasSolicitudes):
+        _solicitar(sesion, "mapeada5", ip=f"::ffff:{IP}")
+
+
+def test_cupo_en_memoria_se_libera_a_la_hora_exacta() -> None:
+    cupo = solicitudes.CupoPorEquipo()
+    for _ in range(5):
+        assert cupo.tomar("2001:db8:1:2::1", AHORA) is True
+    assert cupo.tomar("2001:db8:1:2:aaaa::2", AHORA + timedelta(minutes=59, seconds=59)) is False
+    assert cupo.tomar("2001:db8:1:2:bbbb::3", AHORA + timedelta(hours=1)) is True
+
+
+# #5: la aprobación guarda `resuelta_por_id` y no sobrevive si quien la dio dejó de ser admin activo
+
+
+def test_aprobar_y_rechazar_guardan_resuelta_por_id(base) -> None:
+    sesion, admin = base
+    pedida = _solicitar(sesion)
+    assert pedida.resuelta_por_id is None
+    solicitudes.aprobar(sesion, admin, pedida.id, "arma", AHORA)
+    sesion.expire_all()
+    assert sesion.get(SolicitudCuenta, pedida.id).resuelta_por_id == admin.id
+    solicitudes.rechazar(sesion, admin, pedida.id, AHORA)
+    sesion.expire_all()
+    assert sesion.get(SolicitudCuenta, pedida.id).resuelta_por_id == admin.id
+    otra = _solicitar(sesion, cuando=AHORA + timedelta(hours=2))
+    assert otra.resuelta_por_id is None
+
+
+def test_canjear_falla_si_quien_aprobo_fue_desactivado(
+    base, freno, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sesion, admin = base
+    admin2 = persona(sesion, admin, "admin2", ("administrador",))
+    _, aprobacion = _aprobada(sesion, admin2)
+    cuentas.desactivar(sesion, admin, admin2.id, AHORA + timedelta(minutes=5))
+    verificadas: list[str] = []
+    original = solicitudes._coincide
+    monkeypatch.setattr(
+        solicitudes, "_coincide", lambda h, c: verificadas.append(c) or original(h, c)
+    )
+    assert _fallo(sesion, freno, aprobacion.codigo, cuando=AHORA + timedelta(minutes=10)) == (
+        MENSAJE_CANJE
+    )
+    assert _ultimo_evento(sesion).detalle == "aprobador revocado"
+    assert verificadas == []
+    assert freno.fallos == 1
+    assert sesion.scalar(select(Usuario).where(Usuario.login == LOGIN)) is None
+
+
+def test_canjear_falla_si_quien_aprobo_perdio_el_rol_de_administrador(base, freno) -> None:
+    sesion, admin = base
+    admin2 = persona(sesion, admin, "admin2", ("administrador",))
+    pedida, aprobacion = _aprobada(sesion, admin2)
+    cuentas.cambiar_roles(sesion, admin, admin2.id, ("arma",), AHORA + timedelta(minutes=5))
+    assert _fallo(sesion, freno, aprobacion.codigo, cuando=AHORA + timedelta(minutes=10)) == (
+        MENSAJE_CANJE
+    )
+    assert _ultimo_evento(sesion).detalle == "aprobador revocado"
+    # otro administrador activo puede volver a aprobarla y el código nuevo sí vale
+    nueva = solicitudes.aprobar(sesion, admin, pedida.id, "arma", AHORA + timedelta(minutes=15))
+    creada = _canjear(sesion, nueva.codigo, freno, cuando=AHORA + timedelta(minutes=20))
+    assert creada.login == LOGIN
+
+
+def test_canjear_falla_si_resuelta_por_id_es_nulo(base, freno) -> None:
+    """Una aprobación heredada de una base anterior a `ins_0016` no tiene aprobador verificable."""
+    sesion, admin = base
+    pedida, aprobacion = _aprobada(sesion, admin)
+    pedida.resuelta_por_id = None
+    sesion.commit()
+    assert _fallo(sesion, freno, aprobacion.codigo) == MENSAJE_CANJE
+    assert _ultimo_evento(sesion).detalle == "aprobador revocado"
+
+
+# #6: reutilizar una rechazada o vencida deja historia en el evento y marca `reutilizada`
+
+
+def test_reutilizar_una_rechazada_anota_la_historia_y_la_marca_reutilizada(base) -> None:
+    sesion, admin = base
+    pedida = _solicitar(sesion)
+    assert [s.reutilizada for s in solicitudes.listar(sesion, admin, AHORA)] == [False]
+    solicitudes.rechazar(sesion, admin, pedida.id, AHORA)
+    _solicitar(sesion, correo="lucia2@ejemplo.com", cuando=AHORA + timedelta(hours=2))
+    evento = _ultimo_evento(sesion)
+    assert evento.tipo == "solicitud"
+    assert evento.detalle == (
+        "reutiliza una solicitud rechazada resuelta por Admin de Prueba <admin>"
+    )
+    vistas = solicitudes.listar(sesion, admin, AHORA + timedelta(hours=2))
+    assert [(v.login, v.estado, v.reutilizada) for v in vistas] == [(LOGIN, "pendiente", True)]
+
+
+def test_reutilizar_una_vencida_anota_la_historia_y_la_marca_reutilizada(base) -> None:
+    """Incluso si nadie listó tras vencer (en la base aún dice `aprobada`), el detalle registra
+    `vencida` y no `aprobada`."""
+    sesion, admin = base
+    _aprobada(sesion, admin)
+    despues = AHORA + SIETE_DIAS + timedelta(minutes=1)
+    _solicitar(sesion, correo="lucia3@ejemplo.com", cuando=despues)
+    evento = _ultimo_evento(sesion)
+    assert evento.tipo == "solicitud"
+    assert evento.detalle == "reutiliza una solicitud vencida resuelta por Admin de Prueba <admin>"
+    vistas = solicitudes.listar(sesion, admin, despues)
+    assert [(v.login, v.estado, v.reutilizada) for v in vistas] == [(LOGIN, "pendiente", True)]
+
+
+# #9: el estado `vencida` se persiste en aprobar, canjear y solicitar (nunca en listar)
+
+
+def test_el_estado_vencida_se_persiste_en_aprobar_canjear_y_solicitar(base, freno) -> None:
+    sesion, admin = base
+    despues = AHORA + SIETE_DIAS
+
+    # 1) Al aprobar otra solicitud, una aprobada ya vencida pasa a `vencida` en la base.
+    v1, _ = _aprobada(sesion, admin)
+    p2 = _solicitar(sesion, "segunda", ip="10.0.0.2")
+    solicitudes.aprobar(sesion, admin, p2.id, "arma", despues)
+    sesion.expire_all()
+    assert sesion.get(SolicitudCuenta, v1.id).estado == "vencida"
+
+    # 2) Al canjear (fallo por vencida o éxito de otra), las vencidas se persisten.
+    v2 = _solicitar(sesion, "tercera", ip="10.0.0.3", cuando=despues)
+    solicitudes.aprobar(sesion, admin, v2.id, "arma", despues)
+    p3 = _solicitar(sesion, "cuarta", ip="10.0.0.4", cuando=despues + timedelta(days=1))
+    ap3 = solicitudes.aprobar(sesion, admin, p3.id, "arma", despues + timedelta(days=1))
+    _canjear(sesion, ap3.codigo, freno, login="cuarta", cuando=despues + SIETE_DIAS)
+    sesion.expire_all()
+    assert sesion.get(SolicitudCuenta, v2.id).estado == "vencida"
+
+    # 3) Al solicitar una nueva cuenta, una aprobada ya vencida pasa a `vencida` en la base.
+    v3 = _solicitar(sesion, "quinta", ip="10.0.0.5", cuando=despues + SIETE_DIAS)
+    solicitudes.aprobar(sesion, admin, v3.id, "arma", despues + SIETE_DIAS)
+    _solicitar(sesion, "sexta", ip="10.0.0.6", cuando=despues + SIETE_DIAS * 2)
+    sesion.expire_all()
+    assert sesion.get(SolicitudCuenta, v3.id).estado == "vencida"

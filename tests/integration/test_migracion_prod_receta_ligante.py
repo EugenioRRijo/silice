@@ -19,7 +19,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0011_receta_ligante"
 ANTERIOR = "ins_0010_modulo"
-CABEZA = "ins_0015_notificacion_por_evento"  # la cabeza (C11b)
+CABEZA = "ins_0016_solicitud_resuelta_por"  # la cabeza (G4 #5)
 TABLA = "prod_receta_componente"
 ANTES = ["id", "receta_id", "orden", "codigo", "cantidad_por_t", "unidad", "tipo"]
 

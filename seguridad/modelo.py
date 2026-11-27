@@ -48,6 +48,10 @@ class Usuario(Base):
     )
 
 
+#: Con nombre: `ins_0016` la agrega recreando la tabla en lote, que lo exige.
+FK_SOLICITUD_RESUELTA_POR = "fk_solicitud_cuenta_resuelta_por_id"
+
+
 class SolicitudCuenta(Base):
     """Una persona pide una cuenta (C9a, `ins_0013`): no es una cuenta ni da sesión hasta canjear
     el código que genera el administrador al aprobarla. Ni la contraseña ni el código se guardan:
@@ -66,6 +70,11 @@ class SolicitudCuenta(Base):
     huella_codigo: Mapped[str | None] = mapped_column(String(64), default=None)  # SHA-256
     vence: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     resuelta_por: Mapped[str] = mapped_column(String(120), default="")
+    #: G4 #5 (`ins_0016`): quién aprobó o rechazó, para comprobar al canjear que sigue activo y
+    #: administrador; nulo en pendientes o en filas anteriores a la migración.
+    resuelta_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuario.id", name=FK_SOLICITUD_RESUELTA_POR), nullable=True, default=None
+    )
 
 
 class IntentoAcceso(Base):

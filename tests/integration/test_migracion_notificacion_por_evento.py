@@ -25,6 +25,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0015_notificacion_por_evento"
 ANTERIOR = "ins_0014_notificacion"
+CABEZA = "ins_0016_solicitud_resuelta_por"  # la cabeza (G4 #5)
 COLUMNAS_0014 = [
     "id", "usuario_id", "gravedad", "titulo", "detalle", "enlace_texto", "enlace_ruta", "creada",
     "leida",
@@ -73,7 +74,7 @@ def _base_en_0014_con_una_notificacion(tmp_path: Path) -> Path:
 
 
 def test_es_la_cabeza_de_la_instalacion() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+    assert revision_head(Destino.INSTALACION) == CABEZA
 
 
 def test_agrega_la_clave_al_final_y_las_de_antes_quedan_sin_clave(tmp_path: Path) -> None:

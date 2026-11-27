@@ -23,11 +23,11 @@ from operacion.base_datos import (
 
 REVISION = "ins_0013_solicitud_cuenta"
 ANTERIOR = "ins_0012_conteo_anulado"
-CABEZA = "ins_0015_notificacion_por_evento"  # la cabeza (C11b)
+CABEZA = "ins_0016_solicitud_resuelta_por"  # la cabeza (G4 #5)
 TABLA = "solicitud_cuenta"
 COLUMNAS = [
     "id", "login", "nombre", "correo", "huella_clave", "creada", "estado", "papel",
-    "huella_codigo", "vence", "resuelta_por",
+    "huella_codigo", "vence", "resuelta_por", "resuelta_por_id",
 ]
 ANTES_USUARIO = [
     "id", "login", "nombre", "huella_clave", "roles", "activo", "debe_cambiar_clave",
@@ -71,7 +71,7 @@ def test_crea_la_tabla_y_el_correo_de_las_cuentas_de_hoy_queda_vacio(tmp_path: P
         ]
         assert _columnas(conexion, TABLA) == COLUMNAS
         nulas = {f[1] for f in conexion.execute(f"PRAGMA table_info({TABLA})") if not f[3]}
-        assert nulas == {"papel", "huella_codigo", "vence"}
+        assert nulas == {"papel", "huella_codigo", "vence", "resuelta_por_id"}
 
 
 def test_el_login_de_una_solicitud_es_unico(tmp_path: Path) -> None:

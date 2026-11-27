@@ -2,22 +2,27 @@
 `2026-11-26-registro-con-codigo` §6).
 
 Toda la lógica es de `seguridad.solicitudes`; aquí solo el esquema HTTP y la traducción de sus
-errores. Como en `api.rutas.cuentas`, toda respuesta lleva `Cache-Control: no-store` (el código
-viaja una vez) y los 422 de validación no repiten lo enviado (la contraseña y el código van en el
-cuerpo, nunca en la URL ni en el registro).
+errores. Toda respuesta lleva `Cache-Control: no-store` (también las de error: el código viaja una
+vez) y los 422 de validación no repiten lo enviado (la contraseña y el código van en el cuerpo,
+nunca en la URL ni en el registro). En las dos rutas públicas (`POST /v1/solicitudes` y
+`POST /v1/solicitudes/canjear`), la puerta de `Origin` corre antes de leer el cuerpo
+(`_PuertaPrevia`, como en `api.rutas.primer_arranque`): un `Origin` ajeno siempre responde 403,
+nunca 422.
 
 - `POST /v1/solicitudes` (cualquiera, sin sesión) `{nombre, correo, login, contrasena}` → 201
-  `{mensaje}`; 403 con un `Origin` presente y ajeno; 409 login en uso (de una cuenta o de una
-  solicitud viva, sin decir cuál); 422 datos; 429 pasado el tope (5 por equipo en una hora, 50
-  pendientes).
+  `{mensaje}`; 403 con un `Origin` presente y ajeno (antes del cuerpo); 409 login en uso (de una
+  cuenta o de una solicitud viva, sin decir cuál); 422 datos; 429 pasado el tope (5 por equipo en
+  una hora, 50 pendientes).
 - `GET /v1/solicitudes` (`administrar_cuentas`) → `{solicitudes: [{id, nombre, login, correo,
-  creada, estado, papel, vence}]}`, las más nuevas primero; antes pasa a `vencida` lo vencido.
+  creada, estado, papel, vence, reutilizada}]}`, las más nuevas primero; solo lectura (calcula
+  `vencida` al responder sin escribir en la base).
 - `POST /v1/solicitudes/{id}/aprobar` (`administrar_cuentas`) `{papel}` (`arma` o `revisa`) →
   `{codigo: "XXXX-XXXX-XXXX-XXXX-XXXX", vence, mailto}`: la única vez que viaja el código.
 - `POST /v1/solicitudes/{id}/rechazar` (`administrar_cuentas`) → `{mensaje}`.
 - `POST /v1/solicitudes/canjear` (cualquiera, sin sesión) `{login, contrasena, codigo}` → abre la
   sesión con `api.rutas.sesion.abrir_sesion_web`, la misma puerta de `POST /v1/sesion`: el mismo
-  cuerpo, la misma cookie, 403 por `Origin`, 423 bloqueada y 429 con `Retry-After`; 401 genérico.
+  cuerpo, la misma cookie, 403 por `Origin` (antes del cuerpo), 423 bloqueada y 429 con
+  `Retry-After`; 401 genérico (también si el aprobador fue revocado).
 
 Las rutas del administrador: 401 sin sesión, 403 sin el rol, con clave de API o sin CSRF, 404 si
 la solicitud no existe, 409 si ya se resolvió (rechazada o usada) o si su login ya es una cuenta,
@@ -26,23 +31,26 @@ la solicitud no existe, 409 si ya se resolvió (rechazada o usada) o si su login
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from api.rutas.cuentas import MENSAJE_SIN_CUENTA, Administrador, RutaCuentas
+from api.rutas.cuentas import MENSAJE_SIN_CUENTA, Administrador
 from api.rutas.sesion import Detalle, SesionRespuesta, abrir_sesion_web
 from api.sesion_web import MENSAJE_ORIGEN, ahora, origen_propio
-from api.sin_eco import sin_eco
+from api.sin_cache import RutaSinCache
+from api.sin_eco import RutaSinEco, sin_eco
 from operacion.base_datos import ErrorDeBase
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, solicitudes
 from seguridad.cuentas import Dormir
-from seguridad.modelo import SolicitudCuenta, Usuario
+from seguridad.modelo import Usuario
 from seguridad.sesiones import SesionActiva
 
 MENSAJE_PEDIDO_INVALIDO = (
@@ -55,7 +63,37 @@ MENSAJE_CANJE_INVALIDO = (
     f"{cuentas.MAXIMO_CONTRASENA} caracteres)."
 )
 
-router = APIRouter(tags=["solicitudes"], route_class=RutaCuentas)
+_RUTAS_PUBLICAS = frozenset({"/v1/solicitudes", "/v1/solicitudes/canjear"})
+
+
+class _PuertaPrevia(APIRoute):
+    """Comprueba `Origin` antes de leer el cuerpo en `POST /v1/solicitudes` y
+    `POST /v1/solicitudes/canjear`: un cuerpo inválido o JSON roto con `Origin` ajeno responde
+    403, nunca 422."""
+
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        original = super().get_route_handler()
+        if "POST" not in self.methods or self.path not in _RUTAS_PUBLICAS:
+            return original
+
+        async def manejador(request: Request) -> Response:
+            if (
+                request.method == "POST"
+                and "origin" in request.headers
+                and not origen_propio(request)
+            ):
+                raise HTTPException(status_code=403, detail=MENSAJE_ORIGEN)
+            return await original(request)
+
+        return manejador
+
+
+class _RutaSolicitudes(RutaSinCache, _PuertaPrevia, RutaSinEco):
+    """De fuera adentro: `no-store` en todo (también en errores), puerta de `Origin` antes del
+    cuerpo en las rutas públicas, 422 sin eco y la ruta."""
+
+
+router = APIRouter(tags=["solicitudes"], route_class=_RutaSolicitudes)
 
 
 class SolicitudNueva(BaseModel):
@@ -78,6 +116,9 @@ class SolicitudRespuesta(BaseModel):
     estado: str = Field(description="pendiente, aprobada, rechazada, usada o vencida")
     papel: str | None = Field(description="arma o revisa; lo fija el administrador al aprobar")
     vence: datetime | None = Field(description="Cuándo deja de valer el código de una aprobada")
+    reutilizada: bool = Field(
+        description="True si este usuario ya se había pedido antes y se rechazó o venció"
+    )
 
 
 class SolicitudesRespuesta(BaseModel):
@@ -104,7 +145,7 @@ def _ip(request: Request) -> str:
     return request.client.host if request.client else ""
 
 
-def _fila(solicitud: SolicitudCuenta) -> SolicitudRespuesta:
+def _fila(solicitud: solicitudes.SolicitudListada) -> SolicitudRespuesta:
     return SolicitudRespuesta(
         id=solicitud.id,
         nombre=solicitud.nombre,
@@ -114,6 +155,7 @@ def _fila(solicitud: SolicitudCuenta) -> SolicitudRespuesta:
         estado=solicitud.estado,
         papel=solicitud.papel,
         vence=solicitud.vence,
+        reutilizada=solicitud.reutilizada,
     )
 
 
@@ -180,8 +222,6 @@ _DE_ADMINISTRADOR = {
 @sin_eco(MENSAJE_PEDIDO_INVALIDO)
 def pedir_cuenta(datos: SolicitudNueva, request: Request) -> Mensaje:
     """Pide una cuenta: guarda una solicitud (no una cuenta) que el administrador aprobará."""
-    if "origin" in request.headers and not origen_propio(request):
-        raise HTTPException(status_code=403, detail=MENSAJE_ORIGEN)
 
     def pedir(bd: Session) -> Mensaje:
         solicitudes.solicitar(
@@ -194,7 +234,7 @@ def pedir_cuenta(datos: SolicitudNueva, request: Request) -> Mensaje:
 
 @router.get("/v1/solicitudes", response_model=SolicitudesRespuesta)
 def listar_solicitudes(activa: Administrador) -> SolicitudesRespuesta:
-    """Las solicitudes, las más nuevas primero (lo vencido ya marcado como `vencida`)."""
+    """Las solicitudes, las más nuevas primero (solo lectura; `vencida` se calcula al responder)."""
     return _como_administrador(
         activa,
         lambda bd, actor: SolicitudesRespuesta(

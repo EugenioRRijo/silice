@@ -24,7 +24,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0012_conteo_anulado"
 ANTERIOR = "ins_0011_receta_ligante"
-CABEZA = "ins_0015_notificacion_por_evento"  # la cabeza (C11b)
+CABEZA = "ins_0016_solicitud_resuelta_por"  # la cabeza (G4 #5)
 TABLA = "prod_movimiento"
 ANTES = [
     "id",

@@ -12,24 +12,36 @@ de 15 minutos, el freno global, el bloqueo de escritura (`_tomar_escritura`) y e
 generación, normalización y huella). Como en `cuentas`, cada función que cambia estado confirma su
 propia transacción y el reloj (`ahora`) y la espera (`dormir`) se inyectan.
 
-Decisiones que la especificación deja abiertas (anotadas en el informe de C9a):
+Decisiones y endurecimiento de la revisión de seguridad de C9a:
 
-- El tope «5 por equipo cada hora» cuenta los eventos `solicitud` de esa IP en la última hora (un
-  evento de hace una hora exacta ya no cuenta): la tabla de la especificación no guarda la IP y el
-  registro de accesos sí. Las 50 pendientes se cuentan en `solicitud_cuenta`.
+- El tope «5 por equipo cada hora» se aplica primero en memoria (`CUPO`, al estilo de `FRENO` pero
+  por equipo) ANTES de Argon2, para que una ráfaga concurrente no pague 64 MiB por intento, y se
+  verifica también contra los eventos `solicitud` y `solicitud fallida` en la base (`_exigir_cupo`).
+  En ambos se agrupa IPv6 por su prefijo `/64` (y las IPv4 mapeadas en IPv6 con su IPv4). Las 50
+  pendientes se cuentan en `solicitud_cuenta`.
 - El login es único en `solicitud_cuenta`: una solicitud rechazada o vencida no retiene su login;
-  pedirlo de nuevo reutiliza la fila, que vuelve a empezar como pendiente.
+  pedirlo de nuevo reutiliza la fila (que vuelve a empezar como pendiente), deja en el evento
+  `solicitud` el detalle «reutiliza una solicitud <estado> resuelta por <quién>» y `listar` marca
+  `reutilizada=True` para que la interfaz avise al administrador.
+- Una aprobación guarda `resuelta_por_id` (FK a `usuario.id`) y no sobrevive a quien la dio: al
+  canjear se exige que esa cuenta siga activa y administradora; si no, se rechaza con el mismo
+  mensaje genérico y el detalle `aprobador revocado`.
+- `listar` es de solo lectura: calcula `vencida` al responder sin escribir en la base; el paso a
+  `vencida` se persiste en `aprobar`, `canjear` y `solicitar`.
 - El motivo de un canje rechazado (`sin solicitud`, `solicitud <estado>`, `codigo vencido`,
-  `codigo`, `contrasena`) queda en el detalle del evento, que solo ve el administrador; a la persona
-  siempre se le dice lo mismo. Nunca el código ni la contraseña.
+  `aprobador revocado`, `codigo`, `contrasena`) queda en el detalle del evento, que solo ve el
+  administrador; a la persona siempre se le dice lo mismo. Nunca el código ni la contraseña.
 """
 
 from __future__ import annotations
 
 import hmac
+import ipaddress
 import re
+import threading
 import time
 import unicodedata
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from urllib.parse import quote
@@ -61,8 +73,8 @@ from seguridad.cuentas import (
     validar_login,
 )
 from seguridad.modelo import EventoAcceso, IntentoAcceso, SolicitudCuenta, Usuario
-from seguridad.permisos import Rol, texto_de_roles
-from seguridad.retencion import por_login, vigente, viva
+from seguridad.permisos import Accion, Rol, permitido, roles_de, texto_de_roles
+from seguridad.retencion import estado_efectivo, por_login, vigente, viva
 
 VIGENCIA = timedelta(days=7)
 VENTANA_POR_EQUIPO = timedelta(hours=1)
@@ -97,6 +109,9 @@ MAXIMO_PARTE_LOCAL = 64
 TIPO_FALLIDA = "solicitud fallida"
 #: Los eventos que gastan el cupo del equipo: la solicitud guardada y la que dio 409.
 TIPOS_DEL_CUPO = ("solicitud", TIPO_FALLIDA)
+#: Prefijo del detalle en `evento_acceso` cuando una solicitud reutiliza una rechazada o vencida.
+PREFIJO_REUTILIZADA = "reutiliza una solicitud"
+_MAXIMO_CLAVES_EN_MEMORIA = 256
 
 #: La parte local como `dot-atom` de RFC 5322, solo ASCII y sin `%` (no se admite un
 #: enrutamiento `a%b@c` que un servidor de correo podría reinterpretar).
@@ -133,6 +148,98 @@ class Aprobacion:
     codigo: str
     vence: datetime
     mailto: str
+
+
+@dataclass(frozen=True, slots=True)
+class SolicitudListada:
+    """Vista de solo lectura de una solicitud: `estado` calcula `vencida` al responder sin
+    escribir en la base, y `reutilizada` indica si ese usuario ya se pidió antes."""
+
+    id: int
+    nombre: str
+    login: str
+    correo: str
+    creada: datetime
+    estado: str
+    papel: str | None
+    vence: datetime | None
+    reutilizada: bool
+
+
+def clave_de_equipo(ip: str) -> str:
+    """Clave de cupo para una dirección de cliente: la IPv4 tal cual (también si viene mapeada en
+    IPv6 como `::ffff:...`), el prefijo `/64` en IPv6 (un mismo equipo puede rotar su sufijo
+    dentro del `/64`), o el texto recortado si no es una dirección IP válida."""
+    texto = ip.strip()
+    if not texto:
+        return ""
+    sin_zona = texto.split("%", 1)[0]
+    try:
+        direccion = ipaddress.ip_address(sin_zona)
+    except ValueError:
+        return texto
+    if isinstance(direccion, ipaddress.IPv6Address):
+        if direccion.ipv4_mapped is not None:
+            return str(direccion.ipv4_mapped)
+        return str(ipaddress.IPv6Network((direccion, 64), strict=False))
+    return str(direccion)
+
+
+class CupoPorEquipo:
+    """Contador en memoria de intentos de solicitud por equipo (por `/64` en IPv6), al estilo de
+    `FrenoGlobal`: se toma y suma ANTES de Argon2 para que una ráfaga no pague 64 MiB por intento.
+    Estado del proceso (excepción declarada de S3 §4.4, igual que `FRENO`)."""
+
+    def __init__(
+        self,
+        maximo: int = MAXIMO_POR_EQUIPO,
+        ventana: timedelta = VENTANA_POR_EQUIPO,
+    ) -> None:
+        self._maximo = maximo
+        self._ventana = ventana
+        self._intentos: dict[str, deque[datetime]] = {}
+        self._candado = threading.Lock()
+
+    def tomar(self, ip: str, ahora: datetime) -> bool:
+        """Consume un intento del equipo si está bajo el tope (`True`); si ya llegó al límite en
+        la última hora, no suma nada y devuelve `False`."""
+        clave = clave_de_equipo(ip)
+        with self._candado:
+            cola = self._intentos.get(clave)
+            if cola is not None:
+                self._podar(cola, ahora)
+                if not cola:
+                    del self._intentos[clave]
+                    cola = None
+            if cola is not None and len(cola) >= self._maximo:
+                return False
+            if cola is None:
+                cola = deque()
+                self._intentos[clave] = cola
+            cola.append(ahora)
+            if len(self._intentos) > _MAXIMO_CLAVES_EN_MEMORIA:
+                self._limpiar_vacias(ahora)
+            return True
+
+    def reiniciar(self) -> None:
+        with self._candado:
+            self._intentos.clear()
+
+    def _podar(self, cola: deque[datetime], ahora: datetime) -> None:
+        while cola and ahora - cola[0] >= self._ventana:
+            cola.popleft()
+
+    def _limpiar_vacias(self, ahora: datetime) -> None:
+        vacias = []
+        for clave, cola in self._intentos.items():
+            self._podar(cola, ahora)
+            if not cola:
+                vacias.append(clave)
+        for clave in vacias:
+            del self._intentos[clave]
+
+
+CUPO = CupoPorEquipo()
 
 
 # --- validación -----------------------------------------------------------------------------
@@ -189,17 +296,16 @@ def _login_libre(session: Session, login: str, ahora: datetime) -> SolicitudCuen
 
 def _exigir_cupo(session: Session, ip: str, ahora: datetime) -> None:
     """`DemasiadasSolicitudes` con 5 intentos de este equipo en la última hora (las solicitudes
-    guardadas y las que dieron 409; los de hace una hora exacta ya no cuentan) o con 50
-    pendientes en total."""
-    del_equipo = session.scalar(
-        select(func.count())
-        .select_from(EventoAcceso)
-        .where(
+    guardadas y las que dieron 409; los de hace una hora exacta ya no cuentan; IPv6 agrupado por
+    `/64`) o con 50 pendientes en total."""
+    objetivo = clave_de_equipo(ip)
+    recientes = session.scalars(
+        select(EventoAcceso.ip_cliente).where(
             EventoAcceso.tipo.in_(TIPOS_DEL_CUPO),
-            EventoAcceso.ip_cliente == ip,
             EventoAcceso.fecha_hora > ahora - VENTANA_POR_EQUIPO,
         )
     )
+    del_equipo = sum(1 for registrada in recientes if clave_de_equipo(registrada) == objetivo)
     pendientes = session.scalar(
         select(func.count())
         .select_from(SolicitudCuenta)
@@ -207,6 +313,21 @@ def _exigir_cupo(session: Session, ip: str, ahora: datetime) -> None:
     )
     if del_equipo >= MAXIMO_POR_EQUIPO or pendientes >= MAXIMO_PENDIENTES:
         raise DemasiadasSolicitudes(MENSAJE_LIMITE)
+
+
+def _persistir_vencidas(session: Session, ahora: datetime) -> None:
+    """Pasa a `vencida` en la base toda aprobada cuyo código ya venció (`vence` ≤ `ahora`)."""
+    vencidas = session.scalars(
+        select(SolicitudCuenta)
+        .where(
+            SolicitudCuenta.estado == "aprobada",
+            SolicitudCuenta.vence.is_not(None),
+            SolicitudCuenta.vence <= ahora,
+        )
+        .execution_options(populate_existing=True)
+    )
+    for solicitud in vencidas:
+        solicitud.estado = "vencida"
 
 
 # --- pedir una cuenta -----------------------------------------------------------------------
@@ -229,16 +350,21 @@ def solicitar(
     ahora: datetime,
     *,
     ip: str = "",
+    cupo: CupoPorEquipo | None = None,
 ) -> SolicitudCuenta:
     """Guarda una solicitud pendiente (no una cuenta). Valida con las reglas de siempre
     (`validar_login`, `validar_contrasena`), el nombre y la forma del correo (`ValueError`);
-    `DemasiadasSolicitudes` pasado el tope y `LoginEnUso` si el login ya es de alguien. El tope y
-    el login se miran antes de Argon2 (que un aluvión no pague 64 MiB por intento) y otra vez con
-    el bloqueo de escritura tomado, que es lo que vale."""
+    `DemasiadasSolicitudes` pasado el tope y `LoginEnUso` si el login ya es de alguien. El cupo en
+    memoria se toma y suma ANTES de Argon2 (y se verifica en la base antes y con el bloqueo de
+    escritura tomado). Reutilizar una rechazada o vencida anota en el evento `solicitud` qué fila
+    reutiliza y quién la resolvió."""
+    cupo = CUPO if cupo is None else cupo
     login_normal = validar_login(login)
     validar_contrasena(contrasena, login_normal)
     nombre_limpio = validar_nombre(nombre)
     correo_limpio = validar_correo(correo)
+    if not cupo.tomar(ip, ahora):
+        raise DemasiadasSolicitudes(MENSAJE_LIMITE)
     _exigir_cupo(session, ip, ahora)
     try:
         _login_libre(session, login_normal, ahora)
@@ -257,14 +383,21 @@ def solicitar(
     except ValueError:
         session.rollback()
         raise
+    detalle = ""
     if solicitud is None:
         solicitud = SolicitudCuenta(login=login_normal)
         session.add(solicitud)
+    else:
+        estado_previo = estado_efectivo(solicitud, ahora)
+        quien = solicitud.resuelta_por or "desconocido"
+        detalle = f"{PREFIJO_REUTILIZADA} {estado_previo} resuelta por {quien}"
     solicitud.nombre, solicitud.correo = nombre_limpio, correo_limpio
     solicitud.huella_clave = huella
     solicitud.creada, solicitud.estado, solicitud.resuelta_por = ahora, "pendiente", ""
+    solicitud.resuelta_por_id = None
     solicitud.papel = solicitud.huella_codigo = solicitud.vence = None
-    eventos.registrar(session, "solicitud", ahora, login=login_normal, ip=ip)
+    _persistir_vencidas(session, ahora)
+    eventos.registrar(session, "solicitud", ahora, login=login_normal, ip=ip, detalle=detalle)
     session.commit()
     return solicitud
 
@@ -292,22 +425,45 @@ def _resoluble(session: Session, solicitud_id: int) -> SolicitudCuenta:
     return solicitud
 
 
-def listar(session: Session, actor: Usuario, ahora: datetime) -> list[SolicitudCuenta]:
-    """Todas las solicitudes, las más nuevas primero. Antes, las aprobadas cuyo código ya venció
-    (`vence` ≤ `ahora`) pasan a `vencida`. Solo el administrador (`PermisoDenegado`)."""
-    _como_administrador(session, actor)
-    aprobadas = session.scalars(select(SolicitudCuenta).where(SolicitudCuenta.estado == "aprobada"))
-    for solicitud in aprobadas:
-        if not vigente(solicitud, ahora):
-            solicitud.estado = "vencida"
-    session.commit()
-    return list(
+def _logins_reutilizados(session: Session) -> set[str]:
+    """Los logins cuya solicitud reutilizó una fila rechazada o vencida."""
+    return set(
         session.scalars(
-            select(SolicitudCuenta).order_by(
-                SolicitudCuenta.creada.desc(), SolicitudCuenta.id.desc()
+            select(EventoAcceso.login_intentado)
+            .where(
+                EventoAcceso.tipo == "solicitud",
+                EventoAcceso.detalle.like(f"{PREFIJO_REUTILIZADA}%"),
             )
+            .distinct()
         )
     )
+
+
+def listar(session: Session, actor: Usuario, ahora: datetime) -> list[SolicitudListada]:
+    """Todas las solicitudes, las más nuevas primero. Solo lectura (no toma bloqueo de escritura
+    ni escribe en la base): una aprobada cuyo código ya venció (`vence` ≤ `ahora`) sale como
+    `vencida` al responder; el cambio se persiste en `aprobar`, `canjear` y `solicitar`. Solo el
+    administrador (`PermisoDenegado`)."""
+    session.refresh(actor)
+    _exigir_administrador(actor)
+    reutilizadas = _logins_reutilizados(session)
+    filas = session.scalars(
+        select(SolicitudCuenta).order_by(SolicitudCuenta.creada.desc(), SolicitudCuenta.id.desc())
+    )
+    return [
+        SolicitudListada(
+            id=solicitud.id,
+            nombre=solicitud.nombre,
+            login=solicitud.login,
+            correo=solicitud.correo,
+            creada=solicitud.creada,
+            estado=estado_efectivo(solicitud, ahora),
+            papel=solicitud.papel,
+            vence=solicitud.vence,
+            reutilizada=solicitud.login in reutilizadas,
+        )
+        for solicitud in filas
+    ]
 
 
 def enlace_de_correo(solicitud: SolicitudCuenta, codigo: str, vence: datetime) -> str:
@@ -347,6 +503,8 @@ def aprobar(
     solicitud.estado, solicitud.papel, solicitud.vence = "aprobada", papel, vence
     solicitud.huella_codigo = _huella_codigo(codigo)
     solicitud.resuelta_por = responsable_de(actor)
+    solicitud.resuelta_por_id = actor.id
+    _persistir_vencidas(session, ahora)
     eventos.registrar(
         session,
         "solicitud aprobada",
@@ -374,6 +532,7 @@ def rechazar(
     solicitud.estado = "rechazada"
     solicitud.papel = solicitud.huella_codigo = solicitud.vence = None
     solicitud.resuelta_por = responsable_de(actor)
+    solicitud.resuelta_por_id = actor.id
     eventos.registrar(
         session, "solicitud rechazada", ahora, login=solicitud.login, detalle=f"por {actor.login}"
     )
@@ -384,17 +543,31 @@ def rechazar(
 # --- canjear el código ----------------------------------------------------------------------
 
 
+def _aprobador_vigente(session: Session, solicitud: SolicitudCuenta) -> bool:
+    """True si quien aprobó sigue existiendo, activo y con permiso de administrar cuentas."""
+    if solicitud.resuelta_por_id is None:
+        return False
+    aprobador = session.get(Usuario, solicitud.resuelta_por_id, populate_existing=True)
+    return (
+        aprobador is not None
+        and aprobador.activo
+        and permitido(roles_de(aprobador.roles), Accion.ADMINISTRAR_CUENTAS)
+    )
+
+
 def _motivo_sin_contrasena(
-    solicitud: SolicitudCuenta | None, codigo: str, ahora: datetime
+    session: Session, solicitud: SolicitudCuenta | None, codigo: str, ahora: datetime
 ) -> str | None:
-    """Lo que se exige antes de la contraseña, en el orden de la especificación (§4): estado
-    `aprobada`, `vence` > ahora y la huella del código. `None` si todo eso vale."""
+    """Lo que se exige antes de la contraseña, en este orden: estado `aprobada`, `vence` > ahora,
+    aprobador activo y administrador, y la huella del código. `None` si todo eso vale."""
     if solicitud is None:
         return "sin solicitud"
     if solicitud.estado != "aprobada":
         return f"solicitud {solicitud.estado}"
     if not vigente(solicitud, ahora):
         return "codigo vencido"
+    if not _aprobador_vigente(session, solicitud):
+        return "aprobador revocado"
     if not hmac.compare_digest(solicitud.huella_codigo or "", _huella_codigo(codigo)):
         return "codigo"
     return None
@@ -413,10 +586,11 @@ def canjear(
 ) -> Usuario:
     """Crea la cuenta de una solicitud aprobada si el usuario, la contraseña y el código valen, y
     pasa la solicitud a `usada`, todo en una transacción con el bloqueo de escritura. Se exige, en
-    este orden, estado `aprobada`, `vence` > ahora, la huella del código y la contraseña (Argon2,
-    que solo corre si lo anterior vale). Cualquier fallo da `ErrorDeAcceso(MENSAJE_CANJE)` y cuenta
-    en el contador del login y en el freno, como `cuentas.autenticar`; el quinto seguido bloquea
-    (`CuentaBloqueada`). Confirma en todos los casos."""
+    este orden, estado `aprobada`, `vence` > ahora, aprobador aún activo y administrador, la huella
+    del código y la contraseña (Argon2, que solo corre si lo anterior vale). Cualquier fallo da
+    `ErrorDeAcceso(MENSAJE_CANJE)` y cuenta en el contador del login y en el freno, como
+    `cuentas.autenticar`; el quinto seguido bloquea (`CuentaBloqueada`). Confirma en todos los
+    casos y persiste las solicitudes aprobadas que ya vencieron."""
     freno = FRENO if freno is None else freno
     espera = freno.espera(ahora)
     if espera:
@@ -429,7 +603,7 @@ def canjear(
         and fila_previa.bloqueado_hasta is not None
         and ahora < fila_previa.bloqueado_hasta
     )
-    pasa = not bloqueado_antes and _motivo_sin_contrasena(previa, codigo, ahora) is None
+    pasa = not bloqueado_antes and _motivo_sin_contrasena(session, previa, codigo, ahora) is None
     huella = previa.huella_clave if pasa else ""
     session.rollback()  # Argon2 corre sin el bloqueo de escritura
     correcta = pasa and _coincide(huella, contrasena)
@@ -440,7 +614,7 @@ def canjear(
         session.commit()
         raise CuentaBloqueada(MENSAJE_BLOQUEO)
     solicitud = por_login(session, clave, releer=True)
-    motivo = _motivo_sin_contrasena(solicitud, codigo, ahora)
+    motivo = _motivo_sin_contrasena(session, solicitud, codigo, ahora)
     if motivo is None and not (correcta and solicitud.huella_clave == huella):
         motivo = "contrasena"
     existe = session.scalar(select(Usuario.id).where(Usuario.login == clave)) is not None
@@ -448,6 +622,7 @@ def canjear(
         motivo = "la cuenta ya existe"
     if motivo is not None:
         bloquea = _fallar(session, fila, ahora, freno)
+        _persistir_vencidas(session, ahora)
         eventos.registrar(session, "codigo rechazado", ahora, login=clave, ip=ip, detalle=motivo)
         if bloquea:
             eventos.registrar(session, "bloqueo", ahora, login=clave, ip=ip, detalle="5 fallos")
@@ -468,6 +643,7 @@ def canjear(
     session.add(usuario)
     session.flush()
     solicitud.estado, solicitud.huella_codigo = "usada", None
+    _persistir_vencidas(session, ahora)
     fila.fallos_seguidos, fila.bloqueado_hasta = 0, None
     eventos.registrar(
         session,

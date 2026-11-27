@@ -14,8 +14,15 @@ from seguridad.modelo import SolicitudCuenta
 
 def vigente(solicitud: SolicitudCuenta, ahora: datetime) -> bool:
     """El código de una aprobada sirve mientras `ahora < vence`: a los 7 días exactos ya no. Es
-    la misma cota para el canje y para pasarla a `vencida` al listar."""
+    la misma cota para el canje y para el estado `vencida` al responder."""
     return solicitud.vence is not None and ahora < solicitud.vence
+
+
+def estado_efectivo(solicitud: SolicitudCuenta, ahora: datetime) -> str:
+    """El estado actual de la solicitud: una `aprobada` cuyo código venció es `vencida`."""
+    if solicitud.estado == "aprobada" and not vigente(solicitud, ahora):
+        return "vencida"
+    return solicitud.estado
 
 
 def viva(solicitud: SolicitudCuenta, ahora: datetime) -> bool:
