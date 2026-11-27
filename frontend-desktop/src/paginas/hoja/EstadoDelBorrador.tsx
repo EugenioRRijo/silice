@@ -2,12 +2,15 @@ import { Button } from "@carbon/react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { MontoExacto } from "../../comun/MontoExacto";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { porcentajeDeAlicuota } from "../control/logica";
+import type { Impuestos } from "../control/logica";
 import { textoDeCambios } from "./logica";
 import type { BorradorAbierto } from "./logica";
 
 // La línea de estado del Presupuesto (decisión de Eugenio, 2026-11-05: cabecera compacta). Una sola región, «Estado del
 // borrador», con la versión y los cambios sin guardar, la aprobación de la versión (la pone `FranjaDelPresupuesto`, que es
-// quien la lee) y el total. Ya no lleva título propio: la región conserva el nombre para quien lee con lector de pantalla.
+// quien la lee), el total sin IVA (y con IVA cuando está disponible) y «Descartar» cuando toca.
 //
 // B1-3 (ficha-b1 §3.2; guía `accessibility`): el total se dice con `MontoExacto`: sin `title` y sin región viva propia (el
 // anuncio único lo da `useAnunciar`); el valor exacto está en su Toggletip. «Descartar cambios» (fantasma) y su confirmación
@@ -20,9 +23,11 @@ interface Props {
   puedeEditar: boolean;
   // La aprobación de la versión abierta (`AprobacionDeVersion`), entre los cambios y el total. Nada si no hay versión.
   aprobacion?: ReactNode;
+  // Impuestos calculados por el servidor; cuando llegan, «Con IVA (16 %) …» va debajo de «Total sin IVA».
+  impuestos?: Impuestos;
 }
 
-export function EstadoDelBorrador({ borrador, alDescartar, puedeEditar, aprobacion }: Props) {
+export function EstadoDelBorrador({ borrador, alDescartar, puedeEditar, aprobacion, impuestos }: Props) {
   const { base, resumen } = borrador;
   const [confirmando, setConfirmando] = useState(false);
   const puedeDescartar = alDescartar !== undefined && puedeEditar && resumen.cambios > 0;
@@ -32,9 +37,16 @@ export function EstadoDelBorrador({ borrador, alDescartar, puedeEditar, aprobaci
         {base.version === null ? "Borrador en blanco" : `Versión ${base.version}`} · {textoDeCambios(resumen.cambios)}
       </p>
       {aprobacion}
-      <p className="silice-hoja__total cds--type-heading-compact-02">
-        Total <MontoExacto texto={resumen.total.texto} exacto={resumen.total.exacto} unidad={resumen.moneda} />
-      </p>
+      <div className="silice-hoja__total-bloque">
+        <div className="silice-hoja__total cds--type-heading-compact-02">
+          Total sin IVA <MontoExacto texto={resumen.total.texto} exacto={resumen.total.exacto} unidad={resumen.moneda} />
+        </div>
+        {impuestos !== undefined && (
+          <p className="silice-hoja__total-iva cds--type-body-compact-01 silice-cifra">
+            {`Con IVA (${porcentajeDeAlicuota(impuestos.alicuota)} %) ${formatoEsVe(impuestos.total)} ${resumen.moneda}`}
+          </p>
+        )}
+      </div>
       {puedeDescartar && !confirmando && (
         <Button kind="ghost" size="sm" onClick={() => setConfirmando(true)}>
           Descartar cambios

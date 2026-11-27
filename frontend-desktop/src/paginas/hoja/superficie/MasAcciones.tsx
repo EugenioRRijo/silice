@@ -2,10 +2,11 @@ import { ChevronDown } from "@carbon/icons-react";
 import { Button } from "@carbon/react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent, JSX, KeyboardEvent, ReactNode } from "react";
+import { Link } from "react-router";
 import { Dialogo } from "../../../comun/Dialogo";
 
-// «Más acciones del presupuesto» (B1-3, ficha-b1 §1.6): el menú de lo ocasional (Excel, PDF y descartar los cambios) para que
-// la cabecera fija no pase del tope de decisiones a la vista.
+// «Más acciones del presupuesto» (B1-3, ficha-b1 §1.6): el menú de lo ocasional (subtotales por frente, Excel, PDF,
+// archivos, espacio/plan/ajustes y descartar los cambios) para que la cabecera fija no pase del tope de decisiones a la vista.
 //
 // Es un menú, no un diálogo: lleva el atributo `popover` (guía `dialog`, Regla 3), no `<dialog>`. Se usa `popover="manual"`
 // y no `auto` a propósito: con `auto`, pulsar el botón que lo abre cuenta como «clic fuera», lo cierra y el `onClick` lo
@@ -19,11 +20,26 @@ interface Props {
   // Cambios sin guardar del borrador; sin cambios (o sin `alDescartar`) no se ofrece descartar.
   cambios: number;
   alDescartar?: () => void;
+  // Abre el panel «Subtotales por frente».
+  alVerFrentes?: () => void;
+  // Enlace o acción para «Traer un plano o cómputo» (sección Archivos de la obra).
+  rutaArchivos?: string;
+  alIrAArchivos?: () => void;
+  // Enlace a «Espacio, plan y ajustes» (subvista de pestañas).
+  rutaPestanas?: string;
   // Las demás opciones del menú (hoy «Descargar Excel» y «PDF»).
   children?: ReactNode;
 }
 
-export function MasAcciones({ cambios, alDescartar, children }: Props): JSX.Element {
+export function MasAcciones({
+  cambios,
+  alDescartar,
+  alVerFrentes,
+  rutaArchivos,
+  alIrAArchivos,
+  rutaPestanas,
+  children,
+}: Props): JSX.Element {
   const [abierto, setAbierto] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
@@ -95,7 +111,50 @@ export function MasAcciones({ cambios, alDescartar, children }: Props): JSX.Elem
         Más acciones
       </Button>
       <ul ref={menu} id={idMenu} popover="manual" hidden={!abierto} className="silice-hoja__mas-acciones-menu">
+        {alVerFrentes !== undefined && (
+          <li>
+            <Button
+              kind="ghost"
+              size="md"
+              onClick={() => {
+                setAbierto(false);
+                // Devuelve el foco al botón antes de abrir el panel para que cerrar el panel lo regrese allí.
+                boton.current?.focus();
+                alVerFrentes();
+              }}
+            >
+              Subtotales por frente
+            </Button>
+          </li>
+        )}
         {children !== undefined && children !== null && <li>{children}</li>}
+        {rutaArchivos !== undefined ? (
+          <li>
+            <Link className="cds--btn cds--btn--ghost cds--btn--md" to={rutaArchivos} onClick={() => setAbierto(false)}>
+              Traer un plano o cómputo
+            </Link>
+          </li>
+        ) : alIrAArchivos !== undefined ? (
+          <li>
+            <Button
+              kind="ghost"
+              size="md"
+              onClick={() => {
+                setAbierto(false);
+                alIrAArchivos();
+              }}
+            >
+              Traer un plano o cómputo
+            </Button>
+          </li>
+        ) : null}
+        {rutaPestanas !== undefined && (
+          <li>
+            <Link className="cds--btn cds--btn--ghost cds--btn--md" to={rutaPestanas} onClick={() => setAbierto(false)}>
+              Espacio, plan y ajustes
+            </Link>
+          </li>
+        )}
         {puedeDescartar && (
           <li>
             <Button

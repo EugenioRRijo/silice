@@ -47,13 +47,13 @@ const DE_LOS_ESPACIOS = Object.values(ESPACIOS).flatMap((e) => e.herramientas.ma
 const PROHIBIDAS = /(?<!\p{L})(m[oó]dulos?|[aá]reas?|p[aá]ginas?|streamlit|carpetas? de trabajo|proyectos?)(?!\p{L})/iu;
 
 describe("«¿Qué es esto?» de cada pantalla (A1)", () => {
-  test("cada pantalla de la obra y de los tres espacios tiene su ayuda, salvo el Presupuesto y sus pestañas, que la tienen por pestaña", () => {
-    expect(DE_LA_OBRA).toHaveLength(17); // las nueve secciones y las ocho subvistas que no son la raíz («hoja» y «hoja_pestanas» entre ellas)
+  test("cada pantalla de la obra y de los tres espacios tiene su ayuda, salvo las pestañas del Presupuesto, que la tienen por pestaña", () => {
+    expect(DE_LA_OBRA).toHaveLength(17); // las nueve secciones y las ocho subvistas que no son la raíz («hoja_pestanas» entre ellas)
     expect(DE_LOS_ESPACIOS).toHaveLength(13);
-    const sinAyudaPropia = ["hoja", "hoja_pestanas"];
+    const sinAyudaPropia = ["hoja_pestanas"];
     const faltan = [...DE_LA_OBRA, ...DE_LOS_ESPACIOS].filter((p) => !sinAyudaPropia.includes(p!) && AYUDA_DE_PANTALLAS[p!] === undefined);
     expect(faltan).toEqual([]);
-    expect(AYUDA_DE_PANTALLAS.hoja).toBeUndefined();
+    expect(AYUDA_DE_PANTALLAS.hoja).toBeDefined();
     expect(AYUDA_DE_PANTALLAS.hoja_pestanas).toBeUndefined();
     expect(AYUDA_DE_PANTALLAS.pendientes).toBeDefined();
   });

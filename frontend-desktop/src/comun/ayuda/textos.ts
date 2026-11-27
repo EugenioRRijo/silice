@@ -539,8 +539,17 @@ export interface AyudaDePantalla {
 }
 
 // El «¿Qué es esto?» de cada pantalla de la obra, de los espacios de la empresa y de Pendientes, por el id de la pantalla
-// (`shell/rutas.ts`). El Presupuesto («hoja») no está: cada una de sus pestañas ya trae el suyo (`paginas/hoja/textos.ts`).
+// (`shell/rutas.ts`). Las pestañas clásicas (`hoja_pestanas`) ya traen el suyo en `paginas/hoja/textos.ts`.
 export const AYUDA_DE_PANTALLAS: Readonly<Record<string, AyudaDePantalla>> = {
+  hoja: {
+    titulo: "Presupuesto",
+    parrafos: [
+      "El presupuesto de la obra: su tabla de partidas con cantidades, precios unitarios, totales y problemas abiertos. Desde la tabla se editan las cantidades, se abre el detalle y los insumos de cada partida, o se agregan partidas del catálogo en la fila de alta.",
+      "Lo que cambia queda en un borrador sin tocar la versión anterior; «Guardar versión…» fija una versión nueva y deja rastro de la fuente. En «Más acciones» están las exportaciones, los «Subtotales por frente», «Traer un plano o cómputo» y «Espacio, plan y ajustes».",
+    ],
+    guia: "presupuesto",
+    terminos: ["partida", "apu", "borrador", "version"],
+  },
   // La obra.
   obras: {
     titulo: "Resumen de la obra",

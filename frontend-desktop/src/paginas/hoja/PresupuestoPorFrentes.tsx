@@ -48,12 +48,14 @@ interface FilaDelPresupuesto {
 interface Props {
   id: string;
   rev: number;
-  filas: FilaDelPresupuesto[];
+  filas: readonly FilaDelPresupuesto[];
   moneda: string;
   puedeEditar: boolean;
   // El servidor aceptó un frente: su resumen pasa a la barra de estado de la página.
   alAceptar: (resumen: Resumen) => void;
   alAusente: () => void;
+  // En la superficie nueva se monta ya abierto dentro de un PanelLateral, sin título ni botón propio para ocultar.
+  enPanel?: boolean;
 }
 
 // El grupo de los renglones sin frente (`frente: null`), como lo rotula el PDF (`aplicacion/frentes.py`, `SIN_FRENTE`): entre
@@ -81,7 +83,16 @@ function sinFrentes(editable: boolean, propias: number): string {
 const renglones = (f: Frente) =>
   f.pendientes > 0 ? `${f.renglones} (${f.pendientes} ${f.pendientes === 1 ? "pendiente" : "pendientes"})` : String(f.renglones);
 
-export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alAceptar, alAusente }: Props): JSX.Element {
+export function PresupuestoPorFrentes({
+  id,
+  rev,
+  filas,
+  moneda,
+  puedeEditar,
+  alAceptar,
+  alAusente,
+  enPanel = false,
+}: Props): JSX.Element {
   const { alExpirar } = useAplicacion();
   const [abierto, setAbierto] = useState(false);
   const [vista, setVista] = useState<VistaFrentes | null>(null);
@@ -125,21 +136,27 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
   }
 
   useEffect(() => {
-    if (!abierto || pedidaPara.current === null || pedidaPara.current === rev) return;
+    const debePedir = enPanel ? pedidaPara.current !== rev : abierto && pedidaPara.current !== null && pedidaPara.current !== rev;
+    if (!debePedir) return;
+    const anterior = pedidaPara.current;
     pedidaPara.current = rev;
     const pedido = ++ultimo.current;
     let vigente = true;
+    let respondido = false;
     pedir<VistaFrentes>(`/v1/hoja/borradores/${id}/vistas/frentes`)
       .then((nueva) => {
+        respondido = true;
         if (vigente && pedido === ultimo.current) setVista(nueva);
       })
       .catch((razon: unknown) => {
+        respondido = true;
         if (vigente && pedido === ultimo.current) fallar(razon);
       });
     return () => {
       vigente = false;
+      if (!respondido) pedidaPara.current = anterior;
     };
-  }, [abierto, rev, id, fallar]);
+  }, [abierto, enPanel, rev, id, fallar]);
 
   async function poner() {
     if (!elegido) return;
@@ -166,7 +183,7 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
     }
   }
 
-  if (!abierto) {
+  if (!abierto && !enPanel) {
     return (
       <div className="silice-hoja__frentes">
         <Button kind="tertiary" size="sm" onClick={() => void abrir()}>
@@ -176,11 +193,20 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
     );
   }
   return (
-    <section className="silice-hoja__frentes" aria-labelledby="hoja-frentes-titulo">
-      <h3 id="hoja-frentes-titulo" className="cds--type-heading-compact-01">
-        Presupuesto por frente
-      </h3>
+    <section
+      className="silice-hoja__frentes"
+      aria-label={enPanel ? "Subtotales por frente" : undefined}
+      aria-labelledby={enPanel ? undefined : "hoja-frentes-titulo"}
+    >
+      {!enPanel && (
+        <h3 id="hoja-frentes-titulo" className="cds--type-heading-compact-01">
+          Presupuesto por frente
+        </h3>
+      )}
       <AvisoError error={error} titulo="No se pudo leer o cambiar el presupuesto por frente" />
+      {enPanel && vista === null && error === null && (
+        <p className="cds--type-body-compact-01">Cargando subtotales por frente…</p>
+      )}
       {vista && (
         <>
           {!vista.con_frentes && <p className="cds--type-body-compact-01">{sinFrentes(puedeEditar, propias.length)}</p>}
@@ -218,9 +244,11 @@ export function PresupuestoPorFrentes({ id, rev, filas, moneda, puedeEditar, alA
           </Button>
         </div>
       )}
-      <Button kind="ghost" size="sm" disabled={ocupado} onClick={() => setAbierto(false)}>
-        Ocultar el presupuesto por frente
-      </Button>
+      {!enPanel && (
+        <Button kind="ghost" size="sm" disabled={ocupado} onClick={() => setAbierto(false)}>
+          Ocultar el presupuesto por frente
+        </Button>
+      )}
     </section>
   );
 }

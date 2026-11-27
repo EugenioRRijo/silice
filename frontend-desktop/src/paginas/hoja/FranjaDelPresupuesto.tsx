@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { FranjaDelPaso } from "../../comun/FranjaDelPaso";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useFocoAlCerrar } from "./AgregarPartida";
+import type { Impuestos } from "../control/logica";
 import { AprobacionDeVersion } from "./AprobacionDeVersion";
 import { BotonExcel } from "./BotonExcel";
 import { EstadoDelBorrador } from "./EstadoDelBorrador";
@@ -53,6 +54,7 @@ interface Props {
   // sigue como hoy.
   problemas?: ReactNode;
   masAcciones?: ReactNode;
+  impuestos?: Impuestos;
 }
 
 export function FranjaDelPresupuesto({
@@ -66,6 +68,7 @@ export function FranjaDelPresupuesto({
   alDescartar,
   problemas,
   masAcciones,
+  impuestos,
 }: Props) {
   const { base, resumen } = borrador;
   const version = base.version;
@@ -125,6 +128,7 @@ export function FranjaDelPresupuesto({
         borrador={borrador}
         alDescartar={alDescartar}
         puedeEditar={puedeEditar}
+        impuestos={impuestos}
         aprobacion={
           version !== null && (
             <AprobacionDeVersion

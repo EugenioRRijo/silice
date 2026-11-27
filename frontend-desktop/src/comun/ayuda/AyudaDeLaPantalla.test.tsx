@@ -35,9 +35,19 @@ describe("AyudaDeLaPantalla", () => {
     expect(within(region).getByRole("link", { name: "Dictamen" })).toHaveAttribute("href", "/cuenta/ayuda?tema=glosario-dictamen");
   });
 
-  test("el Presupuesto no lleva una segunda ayuda (cada pestaña tiene la suya) y una pantalla sin texto no pinta nada", () => {
+  test("el Presupuesto tiene su ayuda y la subvista de pestañas (cada pestaña tiene la suya) o una pantalla sin texto no pinta nada", async () => {
+    const u = userEvent.setup();
     const { container } = montar("hoja");
-    expect(container).toBeEmptyDOMElement();
+    const boton = screen.getByRole("button", { name: "¿Qué es esto?" });
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    await u.click(boton);
+    const region = screen.getByRole("region", { name: "Presupuesto" });
+    expect(region).toHaveTextContent("borrador");
+    expect(region).toHaveTextContent("Guardar versión…");
+    expect(container).not.toBeEmptyDOMElement();
+
+    const pestanas = montar("hoja_pestanas");
+    expect(pestanas.container).toBeEmptyDOMElement();
     const otra = montar("no-existe");
     expect(otra.container).toBeEmptyDOMElement();
   });
@@ -83,10 +93,14 @@ describe("el marco pone la ayuda encima de cada pantalla", () => {
     expect(screen.getByRole("region", { name: "Reajuste de precios" })).toHaveTextContent("Gaceta");
   });
 
-  test("en el Presupuesto no hay «¿Qué es esto?» de la pantalla", async () => {
+  test("en el Presupuesto hay «¿Qué es esto?» y explica la pantalla y el guardado", async () => {
+    const u = userEvent.setup();
     montarMarco(sesionDe("ana"), "/obra/empresa/7/presupuesto");
     await titulo("Presupuesto");
-    expect(screen.queryByRole("button", { name: "¿Qué es esto?" })).toBeNull();
+    await u.click(screen.getByRole("button", { name: "¿Qué es esto?" }));
+    const ayuda = screen.getByRole("region", { name: "Presupuesto" });
+    expect(ayuda).toHaveTextContent(/partidas/i);
+    expect(ayuda).toHaveTextContent(/guardar/i);
   });
 
   test("en una herramienta de un espacio de la empresa y en la bandeja de Pendientes", async () => {

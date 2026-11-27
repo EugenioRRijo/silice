@@ -116,6 +116,7 @@ describe("SuperficiePresupuesto (lote B1-4)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let responderVista: () => Response | Promise<Response>;
   let responderRevision: () => Response | Promise<Response>;
+  let responderFrentes: () => Response | Promise<Response>;
 
   beforeEach(() => {
     vaciarRecursosParaPruebas();
@@ -123,12 +124,22 @@ describe("SuperficiePresupuesto (lote B1-4)", () => {
     fetchFalso.mockReset();
     responderVista = () => json(vistaPresupuesto());
     responderRevision = () => json(informeAuditoria());
+    responderFrentes = () =>
+      json({
+        rev: 2,
+        frentes: [
+          { frente: "FRENTE A", renglones: 2, pendientes: 1, total: { texto: "2703.86", exacto: "2703.8602323440440333" } },
+        ],
+        total: { texto: "2703.86", exacto: "2703.8602323440440333" },
+        con_frentes: true,
+      });
     fetchFalso.mockImplementation(async (ruta) => {
       const url = String(ruta);
       const camino = new URL(url, "http://silice.local").pathname;
       if (camino === "/v1/aprobaciones") return json(APROBACIONES);
       if (camino === `/v1/hoja/borradores/${ID}/vistas/presupuesto`) return responderVista();
       if (camino === `/v1/hoja/borradores/${ID}/vistas/auditoria`) return responderRevision();
+      if (camino === `/v1/hoja/borradores/${ID}/vistas/frentes`) return responderFrentes();
       return new Response(null, { status: 404 });
     });
   });
@@ -446,5 +457,43 @@ describe("SuperficiePresupuesto (lote B1-4)", () => {
     await u.click(within(grilla).getByRole("gridcell", { name: "3" }));
     await u.keyboard("{F2}");
     expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  test("lote G3: la cabecera dice «Total sin IVA» con «Con IVA (16 %)» debajo cuando hay filas, sin <p> anidados", async () => {
+    const { container } = montar();
+    await screen.findByRole("grid", { name: "Presupuesto" });
+    const estado = screen.getByRole("region", { name: "Estado del borrador" });
+    expect(estado).toHaveTextContent("Total sin IVA 2.703,86 USD");
+    expect(estado).toHaveTextContent("Con IVA (16 %) 3.136,48 USD");
+    expect(container.querySelectorAll("p p")).toHaveLength(0);
+  });
+
+  test("lote G3: «Más acciones» ofrece «Subtotales por frente» en panel lateral y los enlaces a Archivos y a pestañas", async () => {
+    const u = userEvent.setup();
+    montar({ conObra: true });
+    await screen.findByRole("grid", { name: "Presupuesto" });
+
+    const botonMenu = screen.getByRole("button", { name: "Más acciones del presupuesto" });
+    await u.click(botonMenu);
+
+    expect(screen.getByRole("link", { name: "Traer un plano o cómputo" })).toHaveAttribute(
+      "href",
+      "/obra/empresa/1/archivos",
+    );
+    expect(screen.getByRole("link", { name: "Espacio, plan y ajustes" })).toHaveAttribute(
+      "href",
+      "/obra/empresa/1/presupuesto/pestanas",
+    );
+
+    const frentesBtn = screen.getByRole("button", { name: "Subtotales por frente" });
+    await u.click(frentesBtn);
+
+    const panel = await screen.findByRole("complementary", { name: "Subtotales por frente" });
+    expect(await within(panel).findByText("FRENTE A")).toBeInTheDocument();
+    expect(within(panel).getByText(/^Total general: /)).toBeInTheDocument();
+
+    await u.click(within(panel).getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByRole("complementary", { name: "Subtotales por frente" })).toBeNull();
+    expect(botonMenu).toHaveFocus();
   });
 });

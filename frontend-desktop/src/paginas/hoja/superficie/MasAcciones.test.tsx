@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { MasAcciones } from "./MasAcciones";
 
@@ -25,12 +26,28 @@ afterAll(() => {
   Reflect.deleteProperty(proto, "hidePopover");
 });
 
-function montar(props: { alDescartar?: () => void; cambios?: number } = {}) {
+function montar(
+  props: {
+    alDescartar?: () => void;
+    cambios?: number;
+    alVerFrentes?: () => void;
+    rutaArchivos?: string;
+    rutaPestanas?: string;
+  } = {},
+) {
   const alDescartar = props.alDescartar ?? vi.fn();
   render(
-    <MasAcciones alDescartar={alDescartar} cambios={props.cambios ?? 0}>
-      <button type="button">Descargar Excel</button>
-    </MasAcciones>,
+    <MemoryRouter>
+      <MasAcciones
+        alDescartar={alDescartar}
+        cambios={props.cambios ?? 0}
+        alVerFrentes={props.alVerFrentes}
+        rutaArchivos={props.rutaArchivos}
+        rutaPestanas={props.rutaPestanas}
+      >
+        <button type="button">Descargar Excel</button>
+      </MasAcciones>
+    </MemoryRouter>,
   );
   return { alDescartar, boton: screen.getByRole("button", { name: NOMBRE }) };
 }
@@ -127,5 +144,29 @@ describe("MasAcciones: «Descartar los cambios»", () => {
     const dialogo = await screen.findByRole("dialog", { name: "Descartar cambios" });
     await userEvent.click(within(dialogo).getByRole("button", { name: "Descartar y abrir de nuevo" }));
     expect(alDescartar).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("MasAcciones: opciones de la ficha §1.6", () => {
+  test("«Subtotales por frente» cierra el menú y llama a alVerFrentes una sola vez", async () => {
+    const alVerFrentes = vi.fn();
+    const { boton } = montar({ alVerFrentes });
+    await userEvent.click(boton);
+    await userEvent.click(screen.getByRole("button", { name: "Subtotales por frente" }));
+    expect(alVerFrentes).toHaveBeenCalledTimes(1);
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("ofrece enlaces a «Traer un plano o cómputo» y «Espacio, plan y ajustes» con sus rutas", async () => {
+    const { boton } = montar({
+      rutaArchivos: "/obra/empresa/1/archivos",
+      rutaPestanas: "/obra/empresa/1/presupuesto/pestanas",
+    });
+    await userEvent.click(boton);
+    expect(screen.getByRole("link", { name: "Traer un plano o cómputo" })).toHaveAttribute("href", "/obra/empresa/1/archivos");
+    expect(screen.getByRole("link", { name: "Espacio, plan y ajustes" })).toHaveAttribute(
+      "href",
+      "/obra/empresa/1/presupuesto/pestanas",
+    );
   });
 });

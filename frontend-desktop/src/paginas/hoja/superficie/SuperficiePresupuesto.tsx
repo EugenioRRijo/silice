@@ -13,6 +13,10 @@ import { MontoExacto } from "../../../comun/MontoExacto";
 import { rutaDeVista } from "../../../comun/borradorAbierto";
 import { useRecurso } from "../../../comun/recurso";
 import { formatoEsVe } from "../../../indicadores/formatoEsVe";
+import { SUBVISTAS } from "../../../marco/espacios";
+
+// La subvista «Espacio, plan y ajustes» (B1-10): la que monta la página de las pestañas de antes.
+const SUBVISTA_DE_PESTANAS = SUBVISTAS.presupuesto?.find((v) => v.pagina === "hoja_pestanas")?.id;
 import { ContextoDeLaObra } from "../../../marco/obraAbierta";
 import { rutaDeObra } from "../../../marco/secciones";
 import { useAplicacion } from "../../../shell/contexto";
@@ -31,6 +35,7 @@ import { CAUSA_SOLO_LECTURA } from "../logicaGuardar";
 import { usePuedeEditarLaHoja } from "../puedeEditar";
 import { TEXTOS_DEL_IVA } from "../textos";
 import { FilaDeAlta } from "./FilaDeAlta";
+import { InspectorDeFrentes } from "./InspectorDeFrentes";
 import { InspectorDePartida } from "./InspectorDePartida";
 import { InspectorDeProblemas } from "./InspectorDeProblemas";
 import { MasAcciones } from "./MasAcciones";
@@ -208,7 +213,11 @@ function SuperficieSinBorrador(): JSX.Element {
 }
 
 // Qué panel está abierto junto a la grilla: uno solo a la vez.
-type PanelAbierto = { tipo: "partida"; clave: string; celda: HTMLElement | null } | { tipo: "problemas" } | null;
+type PanelAbierto =
+  | { tipo: "partida"; clave: string; celda: HTMLElement | null }
+  | { tipo: "problemas" }
+  | { tipo: "frentes" }
+  | null;
 
 // A qué celda se lleva el foco cuando llegue la vista nueva: `base` es la vista que había al pedirlo (la nueva es otra), y
 // `clave` la fila cuya Cantidad se enfoca (sin ella, la celda activa de la grilla).
@@ -411,13 +420,25 @@ function SuperficieAbierta({
           alHacerVersionNueva?.();
         }}
         alDescartar={puedeEditarEfectivo ? alDescartar : undefined}
+        impuestos={mostrarGrilla && vista.filas.length > 0 ? vista.impuestos : undefined}
         problemas={
           <Button kind="tertiary" size="md" onClick={abrirProblemas}>
             {`Problemas (${formatoEsVe(String(totalProblemas))})`}
           </Button>
         }
         masAcciones={
-          <MasAcciones cambios={borrador.resumen.cambios} alDescartar={puedeEditarEfectivo ? alDescartar : undefined}>
+          <MasAcciones
+            cambios={borrador.resumen.cambios}
+            alDescartar={puedeEditarEfectivo ? alDescartar : undefined}
+            alVerFrentes={() => setPanel({ tipo: "frentes" })}
+            rutaArchivos={obra !== null && enRouter ? rutaDeObra(obra.carpeta, obra.obraId, "archivos") : undefined}
+            alIrAArchivos={alIrAArchivos}
+            rutaPestanas={
+              obra !== null && enRouter
+                ? rutaDeObra(obra.carpeta, obra.obraId, "presupuesto", SUBVISTA_DE_PESTANAS)
+                : undefined
+            }
+          >
             <BotonExcel id={borrador.id} />
           </MasAcciones>
         }
@@ -557,6 +578,17 @@ function SuperficieAbierta({
           alCerrar={() => setPanel(null)}
           error={revisionRecurso.carga.estado === "error" ? revisionRecurso.carga.error : undefined}
           alReintentar={revisionRecurso.recargar}
+        />
+        <InspectorDeFrentes
+          abierto={panel?.tipo === "frentes"}
+          id={borrador.id}
+          rev={borrador.resumen.rev}
+          filas={vista?.filas ?? []}
+          moneda={borrador.resumen.moneda}
+          puedeEditar={puedeEditarEfectivo}
+          alAceptar={(resumen) => alAceptar?.(resumen)}
+          alAusente={alAusente}
+          alCerrar={() => setPanel(null)}
         />
       </div>
 

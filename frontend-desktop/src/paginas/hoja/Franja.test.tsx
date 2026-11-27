@@ -185,13 +185,13 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     expect(within(zona).queryByRole("button", { name: rotulo === "Guardar versión…" ? "Guardar ajuste de desperdicio…" : "Guardar versión…" })).toBeNull();
   });
 
-  test("el estado del borrador conserva el total y «Descartar cambios» (fantasma), sin el botón de guardar", async () => {
+  test("el estado del borrador conserva el total sin IVA y «Descartar cambios» (fantasma), sin el botón de guardar", async () => {
     abierto = borrador({ cambios: 2 });
     montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
     expect(within(estado).queryByRole("button", { name: /^Guardar/ })).toBeNull();
     expect(within(estado).getByRole("button", { name: "Descartar cambios" })).toHaveClass("cds--btn--ghost");
-    expect(estado).toHaveTextContent("Total 2.703,86 USD");
+    expect(estado).toHaveTextContent("Total sin IVA 2.703,86 USD");
   });
 
   // B1-3: la cabecera de la superficie nueva trae lugares para «Problemas (n)» y «Más acciones». La vista por pestañas no los

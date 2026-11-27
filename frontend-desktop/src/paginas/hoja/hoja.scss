@@ -92,6 +92,11 @@
   }
 }
 
+.silice-hoja__total-bloque {
+  display: grid;
+  gap: 0.125rem;
+}
+
 .silice-hoja__total {
   font-variant-numeric: tabular-nums;
 
@@ -100,6 +105,23 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
+}
+
+.silice-hoja__total-iva {
+  color: var(--silice-texto-secundario);
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-hoja__frentes,
+.silice-hoja__frentes-edicion {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.silice-hoja__frentes-edicion {
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--silice-divisor);
 }
 
 // «Más acciones del presupuesto» (B1-3): el botón y su menú `popover`. El menú se ancla al botón con el posicionamiento por

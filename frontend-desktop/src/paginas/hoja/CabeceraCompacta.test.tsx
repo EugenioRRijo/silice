@@ -140,7 +140,7 @@ describe("Presupuesto: cabecera compacta", () => {
       expect(estado).toHaveTextContent("Versión 001");
       expect(estado).toHaveTextContent("2 cambios sin guardar");
       expect(within(estado).getByText("Aprobación:")).toBeInTheDocument();
-      expect(estado).toHaveTextContent("Total 2.703,86 USD");
+      expect(estado).toHaveTextContent("Total sin IVA 2.703,86 USD");
       // Deja de ser un bloque alto con su título: la región conserva el nombre, el h2 se va.
       expect(screen.queryByRole("heading", { name: "Estado del borrador" })).toBeNull();
     });
@@ -150,13 +150,35 @@ describe("Presupuesto: cabecera compacta", () => {
       montar();
       const estado = await listo();
       const total = estado.querySelector(".silice-hoja__total")!;
-      expect(total).toHaveTextContent("Total 2.703,86 USD");
+      expect(total).toHaveTextContent("Total sin IVA 2.703,86 USD");
       expect(total.hasAttribute("title")).toBe(false);
       expect(total.hasAttribute("aria-live")).toBe(false);
       expect(total.closest("[aria-live]")).toBeNull();
       expect(total.querySelector("[title]")).toBeNull();
       expect(within(total as HTMLElement).getByRole("button", { name: "Ver el valor exacto de 2.703,86 USD" })).toBeInTheDocument();
       expect(total).toHaveTextContent("Valor exacto: 2.703,8602323440440333 USD");
+    });
+
+    test("no anida <p> dentro de otro <p> en el Toggletip del total y muestra «Con IVA» debajo si llega", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const { container } = render(
+          <EstadoDelBorrador
+            borrador={borrador(0)}
+            puedeEditar
+            impuestos={{ subtotal: "2703.86", iva: "432.62", total: "3136.48", alicuota: "0.16", fuente_alicuota: "Gaceta" }}
+          />,
+        );
+        const estado = screen.getByRole("region", { name: "Estado del borrador" });
+        expect(estado).toHaveTextContent("Total sin IVA 2.703,86 USD");
+        expect(estado).toHaveTextContent("Con IVA (16 %) 3.136,48 USD");
+        await userEvent.click(screen.getByRole("button", { name: "Ver el valor exacto de 2.703,86 USD" }));
+        expect(container.querySelectorAll("p p")).toHaveLength(0);
+        const avisosDeAnidacion = errorSpy.mock.calls.filter((args) => args.some((a) => String(a).includes("cannot be a descendant of <p>")));
+        expect(avisosDeAnidacion).toHaveLength(0);
+      } finally {
+        errorSpy.mockRestore();
+      }
     });
 
     test("alDescartar es opcional: sin él la línea de estado no ofrece descartar", () => {

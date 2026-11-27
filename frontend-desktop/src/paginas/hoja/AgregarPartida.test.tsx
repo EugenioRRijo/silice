@@ -1063,7 +1063,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     abierto = borradorEnBlanco({ total: { texto: "17913.00", exacto: "17913" } });
     montar();
     await screen.findByRole("table", { name: "Presupuesto" });
-    expect(screen.getByRole("region", { name: "Estado del borrador" })).toHaveTextContent(/Total 17\.913,00 Bs/);
+    expect(screen.getByRole("region", { name: "Estado del borrador" })).toHaveTextContent(/Total sin IVA 17\.913,00 Bs/);
     expect(screen.getByText("Total del presupuesto").closest("p")).toHaveTextContent("Total del presupuesto 17.913,00 Bs");
   });
 

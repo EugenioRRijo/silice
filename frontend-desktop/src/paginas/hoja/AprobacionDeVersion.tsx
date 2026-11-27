@@ -8,8 +8,10 @@ import { ESTADOS_APROBADOS, nombreDeEstado } from "../../comun/aprobacion";
 import type { EstadoDeAprobacion } from "../../comun/aprobacion";
 import { AreaTexto } from "../../comun/AreaTexto";
 import { AvisoError } from "../../comun/AvisoError";
+import { useNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
 import { nombreDeResponsable } from "../../comun/responsable";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
@@ -116,6 +118,9 @@ function textoDeCambios(cambios: number): string | null {
 // rota) se dice con el texto del servidor y el diálogo sigue abierto.
 function DialogoEnviar({ proyecto, version, cambios, alEnviado, alCancelar }: PropsDialogo) {
   const { alExpirar } = useAplicacion();
+  const { notificar } = useNotificaciones();
+  const obra = useContext(ContextoDeLaObra);
+  const nombreObra = obra?.ficha.estado === "lista" ? obra.ficha.obra.nombre : proyecto;
   const { anfitrion, registrar } = useContext(ContextoDeDialogos);
   const caja = useRef<HTMLDivElement>(null);
   const atrapar = useAtraparFoco(caja);
@@ -158,6 +163,11 @@ function DialogoEnviar({ proyecto, version, cambios, alEnviado, alCancelar }: Pr
     setError(null);
     try {
       const r = await pedir<{ retirada?: string | null }>(RUTA, { metodo: "POST", cuerpo: { proyecto, version, nota } });
+      notificar({
+        gravedad: "listo",
+        titulo: `${version} enviada a aprobación`,
+        detalle: nombreObra,
+      });
       alEnviado(r?.retirada ?? null);
     } catch (e) {
       setMandando(false);

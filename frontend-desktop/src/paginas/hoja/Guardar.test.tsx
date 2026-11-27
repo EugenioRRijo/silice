@@ -2,6 +2,8 @@ import { act, configure, fireEvent, render, screen, within } from "@testing-libr
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import type { Notificacion } from "../../comun/notificaciones/modelo";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaApu, vistaEspacio, vistaParametros } from "./datosDePrueba";
@@ -891,6 +893,66 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     await screen.findByText("Se guardó la versión 003 con 2 cambios registrados.");
     await esperar(() => expect(versionAbierta()).toBe("003"));
     expect(screen.queryByRole("button", { name: /Retomar borrador/ })).toBeNull();
+  });
+
+  // --- Confirmaciones por notificación (lote G3) -------------------------------------------------------------------------
+
+  test("al guardar una versión nueva emite una sola confirmación «listo» con la obra; si falla o solo guarda desglose no emite versión guardada", async () => {
+    const base = crearAlmacenEnMemoria();
+    const emitidas: Notificacion[] = [];
+    const almacen = {
+      cargar: () => base.cargar(),
+      guardar: (lista: readonly Notificacion[]) => {
+        emitidas.splice(0, emitidas.length, ...lista);
+        base.guardar(lista);
+      },
+    };
+    const vista = render(
+      <ProveedorDeNotificaciones almacen={almacen}>
+        <ContextoAplicacion.Provider value={valor()}>
+          <PaginaHoja />
+        </ContextoAplicacion.Provider>
+      </ProveedorDeNotificaciones>,
+    );
+
+    // 1) Fallo de validación: no notifica.
+    alGuardar = () => json({ detalle: "Falta la fuente." }, 422);
+    const d1 = await abrirModal();
+    await escribirFuente(d1);
+    fireEvent.click(confirmar(d1));
+    await within(d1).findByText("Falta la fuente.");
+    expect(emitidas).toHaveLength(0);
+
+    // 2) Éxito con versión nueva: una sola confirmación «listo».
+    alGuardar = () => json({ codigo: "003", proyecto: "OF-001", cambios: 2, total: m("2703.86"), primera: false, mensaje: "x" });
+    versiones = VERSIONES_CON_003;
+    fireEvent.click(confirmar(d1));
+    await screen.findByText("Se guardó la versión 003 con 2 cambios registrados.");
+    await esperar(() => expect(emitidas).toHaveLength(1));
+    expect(emitidas[0]).toMatchObject({
+      gravedad: "listo",
+      titulo: "Versión 003 guardada",
+      detalle: "OF-001",
+    });
+
+    // 3) Solo desglose (version_nueva: false): no emite confirmación de versión guardada.
+    vista.unmount();
+    versiones = VERSIONES;
+    alAbrir = () => borrador("002", { cambios: 1, desgloses: 1 });
+    alCambios = () => json({ rev: 3, cambios: [] });
+    alGuardar = () =>
+      json({ codigo: "002", proyecto: "OF-001", cambios: 0, desgloses: 1, total: m("2703.86"), primera: false, version_nueva: false, mensaje: "x" });
+    render(
+      <ProveedorDeNotificaciones almacen={almacen}>
+        <ContextoAplicacion.Provider value={valor()}>
+          <PaginaHoja />
+        </ContextoAplicacion.Provider>
+      </ProveedorDeNotificaciones>,
+    );
+    const d2 = await abrirModal("Guardar ajuste de desperdicio…");
+    fireEvent.click(confirmar(d2, "Guardar el desglose"));
+    await screen.findByText(/Se guardó el desglose del desperdicio de 1 línea/);
+    expect(emitidas).toHaveLength(1);
   });
 
   // --- Estática ----------------------------------------------------------------------------------------------------------
