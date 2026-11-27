@@ -240,19 +240,6 @@
 }
 
 .silice-marco-barra__buscar-texto {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    border: 0;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-}
-
-.silice-marco-barra__buscar-texto {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
