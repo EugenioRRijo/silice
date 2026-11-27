@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { InformeAuditoriaRespuesta, SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import type { AlmacenDeNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { RegionDeNotificaciones } from "../../comun/notificaciones/RegionDeNotificaciones";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaActualizacion from "./index";
@@ -107,17 +111,35 @@ describe("Actualizar precios", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  function montar(alExpirar = vi.fn()) {
+  function montar(
+    alExpirar = vi.fn(),
+    opciones?: { almacen?: AlmacenDeNotificaciones; enObra?: boolean },
+  ) {
     const valor: Aplicacion = {
       sesion: SESION,
-      proyecto: null,
+      proyecto: opciones?.enObra ? "1" : null,
+      ...(opciones?.enObra ? { nombreProyecto: "Obra ficticia A" } : {}),
       caso: { nombre: "clinica", ruta_relativa: "data/clinica.db" },
       recargarProyectos: vi.fn(),
       alExpirar,
     };
+    const pagina = opciones?.enObra ? (
+      <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 1, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
+        <PaginaActualizacion />
+      </ContextoDeLaObra.Provider>
+    ) : (
+      <PaginaActualizacion />
+    );
     render(
       <ContextoAplicacion.Provider value={valor}>
-        <PaginaActualizacion />
+        {opciones?.almacen !== undefined ? (
+          <ProveedorDeNotificaciones almacen={opciones.almacen}>
+            {pagina}
+            <RegionDeNotificaciones />
+          </ProveedorDeNotificaciones>
+        ) : (
+          pagina
+        )}
       </ContextoAplicacion.Provider>,
     );
     return alExpirar;
@@ -501,5 +523,44 @@ describe("Actualizar precios", () => {
     presupuestos = () => json({ detalle: "Sesión ausente o vencida." }, 401);
     const alExpirar = montar();
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+  });
+
+  describe("notificaciones de confirmación al revalorar (G2)", () => {
+    test("revalorar el presupuesto notifica una sola vez con la versión nueva, el total en es-VE y el enlace al Presupuesto", async () => {
+      const almacen = crearAlmacenEnMemoria();
+      montar(vi.fn(), { almacen, enObra: true });
+      const { usuario } = await subir();
+      await screen.findByRole("checkbox", { name: /1\. Tornillo/ });
+      expect(await Promise.resolve(almacen.cargar())).toEqual([]);
+
+      await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
+      await screen.findByRole("heading", { name: "Comparativo por partida" });
+
+      const guardadas = await Promise.resolve(almacen.cargar());
+      expect(guardadas).toHaveLength(1);
+      expect(guardadas[0]).toMatchObject({
+        gravedad: "listo",
+        titulo: "Versión 002 revalorada",
+        detalle: "Obra ficticia A · 1.100,00 USD",
+        enlace: { texto: "Ver en Presupuesto", ruta: "/obra/empresa/1/presupuesto?version=002" },
+      });
+      const region = screen.getByRole("region", { name: "Notificaciones nuevas" });
+      expect(within(region).getByText("Listo")).toBeInTheDocument();
+      expect(within(region).getByText("Versión 002 revalorada")).toBeInTheDocument();
+      expect(within(region).getByText("Obra ficticia A · 1.100,00 USD")).toBeInTheDocument();
+    });
+
+    test("un fallo al revalorar muestra el error donde siempre y no notifica", async () => {
+      revalorar = () => json({ detalle: "Falta el precio de Arena ficticia." }, 422);
+      const almacen = crearAlmacenEnMemoria();
+      montar(vi.fn(), { almacen });
+      const { usuario } = await subir();
+      await screen.findByRole("checkbox", { name: /1\. Tornillo/ });
+
+      await usuario.click(screen.getByRole("button", { name: "Actualizar precios del presupuesto" }));
+      expect(await screen.findByText("Falta el precio de Arena ficticia.")).toBeInTheDocument();
+      expect(await Promise.resolve(almacen.cargar())).toEqual([]);
+      expect(within(screen.getByRole("region", { name: "Notificaciones nuevas" })).queryByRole("article")).toBeNull();
+    });
   });
 });

@@ -1,7 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import type { AlmacenDeNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { RegionDeNotificaciones } from "../../comun/notificaciones/RegionDeNotificaciones";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
@@ -121,7 +124,7 @@ describe("Entregar paquete", () => {
     vi.restoreAllMocks();
   });
 
-  function montar(proyecto: string | null = null) {
+  function montar(proyecto: string | null = null, almacen?: AlmacenDeNotificaciones) {
     const aplicacion: Aplicacion = {
       sesion: SESION,
       proyecto,
@@ -131,7 +134,14 @@ describe("Entregar paquete", () => {
     };
     return render(
       <ContextoAplicacion.Provider value={aplicacion}>
-        <PaginaEntregar />
+        {almacen !== undefined ? (
+          <ProveedorDeNotificaciones almacen={almacen}>
+            <PaginaEntregar />
+            <RegionDeNotificaciones />
+          </ProveedorDeNotificaciones>
+        ) : (
+          <PaginaEntregar />
+        )}
       </ContextoAplicacion.Provider>,
     );
   }
@@ -501,6 +511,48 @@ describe("Entregar paquete", () => {
       montar();
       await screen.findByText("836,80 USD");
       expect(screen.queryByText("Esta versión no está aprobada")).toBeNull();
+    });
+  });
+
+  describe("notificaciones de confirmación al entregar (G2)", () => {
+    test("generar el paquete notifica una sola vez con su versión y obra, y descargar el archivo no vuelve a notificar", async () => {
+      const u = userEvent.setup();
+      const almacen = crearAlmacenEnMemoria();
+      montar(null, almacen);
+
+      await screen.findByText("836,80 USD");
+      await u.click(screen.getByRole("button", { name: "Generar paquete" }));
+      await screen.findByText("Paquete listo (sin firma)");
+      await u.click(screen.getByRole("button", { name: "Descargar el paquete" }));
+
+      const guardadas = await Promise.resolve(almacen.cargar());
+      expect(guardadas).toHaveLength(1);
+      expect(guardadas[0]).toMatchObject({
+        gravedad: "listo",
+        titulo: "Paquete 002 generado",
+        detalle: "Clínica · sin firma",
+        enlace: { texto: "Ir a Entregar paquete", ruta: "/entregar" },
+      });
+      const region = screen.getByRole("region", { name: "Notificaciones nuevas" });
+      expect(within(region).getByText("Listo")).toBeInTheDocument();
+      expect(within(region).getByText("Paquete 002 generado")).toBeInTheDocument();
+      expect(within(region).getByText("Clínica · sin firma")).toBeInTheDocument();
+    });
+
+    test("un fallo al generar el paquete muestra el error donde siempre y no notifica", async () => {
+      resumenDe = () => json(resumen({ firma_disponible: true }));
+      entrega = () => json({ detalle: "La contraseña de la clave no es correcta." }, 400);
+      const u = userEvent.setup();
+      const almacen = crearAlmacenEnMemoria();
+      montar(null, almacen);
+
+      await screen.findByText("836,80 USD");
+      await u.type(screen.getByLabelText("Contraseña de la clave de firma"), "mala");
+      await u.click(screen.getByRole("button", { name: "Generar paquete" }));
+
+      expect((await alertaConTexto()).textContent).toContain("La contraseña de la clave no es correcta.");
+      expect(await Promise.resolve(almacen.cargar())).toEqual([]);
+      expect(within(screen.getByRole("region", { name: "Notificaciones nuevas" })).queryByRole("article")).toBeNull();
     });
   });
 });

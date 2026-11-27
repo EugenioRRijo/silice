@@ -4,6 +4,9 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import type { AlmacenDeNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { RegionDeNotificaciones } from "../../comun/notificaciones/RegionDeNotificaciones";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ofertaDe, seccionesDeLaObra } from "../../marco/oferta";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -147,26 +150,44 @@ function Ubicacion() {
 
 // La sección como la monta EspacioDeObra: dentro de la obra 3 de la empresa y del proveedor de la Hoja. Las demás rutas no
 // pintan nada: así «Abrir» deja ver adónde fue sin que otra pantalla consuma el `?version=`.
-function montar(sesion: SesionRespuesta = ARMA) {
-  const aplicacion: Aplicacion = { sesion, proyecto: "3", caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+function montar(
+  sesion: SesionRespuesta = ARMA,
+  opciones?: { almacen?: AlmacenDeNotificaciones; nombreProyecto?: string | null },
+) {
+  const aplicacion: Aplicacion = {
+    sesion,
+    proyecto: "3",
+    ...(opciones?.nombreProyecto !== undefined ? { nombreProyecto: opciones.nombreProyecto } : {}),
+    caso: null,
+    recargarProyectos: vi.fn(),
+    alExpirar: vi.fn(),
+  };
+  const contenido = (
+    <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
+      <MemoryRouter initialEntries={["/obra/empresa/3/versiones"]}>
+        <Routes>
+          <Route
+            path="/obra/:carpeta/:obraId/versiones"
+            element={
+              <ProveedorDeLaHoja>
+                <PaginaVersiones />
+              </ProveedorDeLaHoja>
+            }
+          />
+          <Route path="*" element={null} />
+        </Routes>
+        {opciones?.almacen !== undefined && <RegionDeNotificaciones />}
+        <Ubicacion />
+      </MemoryRouter>
+    </ContextoDeLaObra.Provider>
+  );
   render(
     <ContextoAplicacion.Provider value={aplicacion}>
-      <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
-        <MemoryRouter initialEntries={["/obra/empresa/3/versiones"]}>
-          <Routes>
-            <Route
-              path="/obra/:carpeta/:obraId/versiones"
-              element={
-                <ProveedorDeLaHoja>
-                  <PaginaVersiones />
-                </ProveedorDeLaHoja>
-              }
-            />
-            <Route path="*" element={null} />
-          </Routes>
-          <Ubicacion />
-        </MemoryRouter>
-      </ContextoDeLaObra.Provider>
+      {opciones?.almacen !== undefined ? (
+        <ProveedorDeNotificaciones almacen={opciones.almacen}>{contenido}</ProveedorDeNotificaciones>
+      ) : (
+        contenido
+      )}
     </ContextoAplicacion.Provider>,
   );
   return userEvent.setup();
@@ -564,6 +585,53 @@ describe("Versiones: restaurar", () => {
     await listo();
     expect(within(await renglon("VIV-001")).getByRole("button", { name: "Restaurar VIV-001…" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Guardar/ })).toBeNull();
+  });
+
+  test("G2: restaurar una versión notifica una sola vez con la versión nueva, la obra y el enlace al Presupuesto", async () => {
+    const almacen = crearAlmacenEnMemoria();
+    const u = montar(ARMA, { almacen, nombreProyecto: "Galpón Sur" });
+    await listo();
+    fireEvent.click(within(await renglon("VIV-001")).getByRole("button", { name: "Restaurar VIV-001…" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Fuente (por qué se restaura)" }), {
+      target: { value: "La VIV-002 salió con un error" },
+    });
+    versiones = {
+      ...versiones,
+      por_omision: "VIV-003",
+      versiones: [fila("VIV-003", "2026-10-22", "restauracion", "VIV-001", true, 0), { ...VIV_002, vigente: false }, VIV_001],
+    };
+    await u.click(within(dialogo).getByRole("button", { name: "Restaurar" }));
+    await screen.findByText("La versión VIV-001 se restauró como la versión VIV-003 (la vigente).");
+
+    const guardadas = await Promise.resolve(almacen.cargar());
+    expect(guardadas).toHaveLength(1);
+    expect(guardadas[0]).toMatchObject({
+      gravedad: "listo",
+      titulo: "Versión VIV-001 restaurada como VIV-003",
+      detalle: "Galpón Sur",
+      enlace: { texto: "Ver en Presupuesto", ruta: "/obra/empresa/3/presupuesto?version=VIV-003" },
+    });
+    const region = screen.getByRole("region", { name: "Notificaciones nuevas" });
+    expect(await within(region).findByText("Versión VIV-001 restaurada como VIV-003")).toBeInTheDocument();
+    expect(within(region).getByText("Listo")).toBeInTheDocument();
+  });
+
+  test("G2: si restaurar falla en el servidor, muestra el error en el diálogo y no notifica", async () => {
+    alRestaurar = () => json({ detalle: "No se pudo restaurar la versión pedida." }, 422);
+    const almacen = crearAlmacenEnMemoria();
+    const u = montar(ARMA, { almacen, nombreProyecto: "Galpón Sur" });
+    await listo();
+    fireEvent.click(within(await renglon("VIV-001")).getByRole("button", { name: "Restaurar VIV-001…" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Fuente (por qué se restaura)" }), {
+      target: { value: "Intento fallido" },
+    });
+    await u.click(within(dialogo).getByRole("button", { name: "Restaurar" }));
+
+    expect(await within(dialogo).findByText("No se pudo restaurar la versión pedida.")).toBeInTheDocument();
+    expect(await Promise.resolve(almacen.cargar())).toEqual([]);
+    expect(within(screen.getByRole("region", { name: "Notificaciones nuevas" })).queryByRole("article")).toBeNull();
   });
 });
 
