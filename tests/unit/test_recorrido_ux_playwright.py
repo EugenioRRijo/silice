@@ -1031,3 +1031,21 @@ def test_las_filas_citan_el_rotulo_de_hoy_de_crear_la_obra_y_del_resultado_del_r
     assert f'"{resultado}"' in (src / "paginas" / "reajuste" / "index.tsx").read_text(
         encoding="utf-8"
     )
+
+
+def test_la_siembra_deja_la_carpeta_de_la_empresa_preparada_como_el_lanzador(tmp_path) -> None:
+    # T6 (2026-11-28): el recorrido arranca Uvicorn sin `operacion.lanzador`, que prepara la
+    # carpeta de la empresa ANTES de servir. Sin ella, la primera petición que la abre la creaba
+    # en su sitio (`obtener_motor`) mientras `/v1/obras/resumen/todas` la leía en solo lectura a
+    # medio migrar («no such table: ficha_obra»): la Vista general mostraba «No se pudo leer
+    # 1 carpeta». La siembra debe dejar la instalación como la deja el lanzador.
+    from operacion import base_datos, config
+    from scripts.recorrido_ux_playwright import sembrar_datos
+
+    sembrar_datos(tmp_path / "datos")
+
+    empresa = config.ruta_caso_por_defecto()
+    assert empresa.parent == tmp_path / "datos" / "casos"
+    estado = base_datos.leer_estado(empresa)
+    assert estado.existe
+    assert estado.revision == base_datos.revision_head(base_datos.Destino.CASO)

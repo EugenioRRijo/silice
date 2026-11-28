@@ -286,6 +286,15 @@ def _sembrar_copia(origen: Path, destino: Path) -> None:
             resto.unlink(missing_ok=True)
 
 
+def preparar_empresa() -> None:
+    """La carpeta de la empresa en `head`, como `operacion.lanzador` antes de servir. Uvicorn
+    solo la crearía en su sitio con la primera petición, y la Vista general, que la lee en solo
+    lectura a la vez, la vería a medio migrar («No se pudo leer 1 carpeta»; T6, 2026-11-28)."""
+    from operacion import base_datos, config
+
+    base_datos.preparar_base(config.ruta_caso_por_defecto())
+
+
 def preparar_demo(*, reiniciar: bool = False) -> list[str]:
     """Deja los casos de demostración en la carpeta de casos; devuelve lo que sembró."""
     casos = carpeta_casos()
@@ -328,6 +337,7 @@ def main(argv: list[str] | None = None) -> int:
     args = analizador.parse_args(argv)
 
     print("Sílice: arranque de demostración (datos ficticios, solo en este equipo)")
+    preparar_empresa()
     if not args.sin_demo:
         sembrados = preparar_demo(reiniciar=args.reiniciar_demo)
         print(f"  casos sembrados: {', '.join(sembrados) if sembrados else 'ya estaban todos'}")

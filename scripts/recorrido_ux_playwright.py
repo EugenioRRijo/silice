@@ -149,15 +149,15 @@ def puerto_libre() -> int:
 
 def sembrar_datos(datos: Path) -> dict[str, str]:
     """Carpeta temporal con instalación (admin, ana, rita) y los casos de demostración."""
-    os.environ["SILICE_DATOS"] = str(datos)
-    os.environ["SILICE_USUARIO"] = str(datos / "usuario")
+    os.environ.update(SILICE_DATOS=str(datos), SILICE_USUARIO=str(datos / "usuario"))
     os.environ.pop("SILICE_INSTALACION", None)
     datos.mkdir(parents=True, exist_ok=True)
-    from start import preparar_demo
+    from start import preparar_demo, preparar_empresa
     from tests.fixtures.instalacion import CONTRASENA
     from tests.fixtures.sesion_web import NUEVA, plantilla_con_cuentas
 
     plantilla_con_cuentas(datos)
+    preparar_empresa()  # como el lanzador y `start.py`: antes de servir (T6)
     preparar_demo()
     return {"admin": CONTRASENA, "ana": NUEVA, "rita": NUEVA}
 
