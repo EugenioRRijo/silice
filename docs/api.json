@@ -12168,7 +12168,7 @@
           "obras"
         ],
         "summary": "Actualizar Entrega De La Obra",
-        "description": "Fija o quita (`null`) la fecha de entrega al cliente de la obra `codigo`.",
+        "description": "Fija o quita (`null`) la fecha de entrega al cliente de la obra `codigo` y deja el rastro.",
         "operationId": "actualizar_entrega_de_la_obra_v1_obras__codigo__entrega_put",
         "parameters": [
           {
@@ -24849,7 +24849,9 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9.223372036854776e+18,
+                  "exclusiveMinimum": 0.0
                 },
                 "type": "array",
                 "maxItems": 400

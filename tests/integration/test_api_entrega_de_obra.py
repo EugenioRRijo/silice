@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
 from api import caso_web, dependencias
 from api.dependencias import USUARIO_API
@@ -23,6 +24,8 @@ from api.main import app
 from api.rutas import obras_entrega
 from operacion import config
 from operacion.base_datos import preparar_base
+from operacion.instalacion import sesion_de_instalacion
+from seguridad.modelo import EventoAcceso
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
     ORIGEN,
@@ -200,3 +203,48 @@ def test_permisos_csrf_y_clave_de_api() -> None:
     assert con_clave.status_code == 200, con_clave.text
     assert con_clave.json()["fecha_entrega"] == "2026-12-20"
     assert con_clave.json()["actualizada_por"] == USUARIO_API
+
+
+def test_cada_cambio_de_la_fecha_deja_rastro_en_la_instalacion() -> None:
+    """T5, hallazgo 2: cada PUT deja un evento «fecha de entrega» con la obra, el valor anterior
+    y el nuevo, y quién lo pidió."""
+    ana, ficha = con_cuenta(app, "ana")
+    codigo = _crear_obra(ana, ficha)
+    ruta = f"/v1/obras/{codigo}/entrega"
+    for fecha in ("2026-12-10", "2026-12-20"):
+        hecho = ana.put(ruta, json={"fecha_entrega": fecha}, headers=protegida(ficha))
+        assert hecho.status_code == 200, hecho.text
+    with sesion_de_instalacion() as bd:
+        filas = bd.scalars(
+            select(EventoAcceso)
+            .where(EventoAcceso.tipo == "fecha de entrega")
+            .order_by(EventoAcceso.id)
+        ).all()
+        rastro = [(f.login_intentado, f.fecha_hora, f.detalle) for f in filas]
+    assert rastro == [
+        (
+            "ana",
+            MOMENTO,
+            f"obra {codigo} «Torre Norte» en la carpeta silice.db: antes sin fecha; "
+            "ahora 2026-12-10",
+        ),
+        (
+            "ana",
+            MOMENTO,
+            f"obra {codigo} «Torre Norte» en la carpeta silice.db: antes 2026-12-10; "
+            "ahora 2026-12-20",
+        ),
+    ]
+
+
+def test_un_codigo_de_digitos_enorme_da_404_y_no_422() -> None:
+    """T5, hallazgo 3: un código solo de dígitos que no cabe en el INTEGER de SQLite no es un
+    «importe mal formado»: no hay tal obra."""
+    ana, ficha = con_cuenta(app, "ana")
+    _crear_obra(ana, ficha)
+    ruta = "/v1/obras/999999999999999999999999999999/entrega"
+    leida = ana.get(ruta)
+    assert leida.status_code == 404, leida.text
+    assert leida.json()["detalle"].startswith("No hay ninguna obra")
+    fijada = ana.put(ruta, json={"fecha_entrega": "2026-12-10"}, headers=protegida(ficha))
+    assert fijada.status_code == 404, fijada.text

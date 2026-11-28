@@ -160,14 +160,28 @@ def _purgar_vencidas(sesion: Session, usuario_id: int, ahora: datetime) -> None:
     sesion.flush()
 
 
-def _podar_excedente(sesion: Session, usuario_id: int) -> None:
-    """Conserva como máximo `MAXIMO_NOTIFICACIONES` más recientes para `usuario_id`."""
+def _podar_excedente(sesion: Session, usuario_id: int, recien: int) -> None:
+    """Conserva como máximo `MAXIMO_NOTIFICACIONES` para `usuario_id`. Poda primero las que creó
+    el front (`clave_evento` nula), las más viejas antes; solo si no alcanzan, las que creó el
+    servidor por un evento: así los `POST` del front no empujan fuera un aviso del servidor (como
+    el obligatorio `por_dictaminar`; revisión de seguridad T5, n.o 5). La recién creada (`recien`)
+    nunca se poda."""
+    total = sesion.scalar(
+        select(func.count()).select_from(Notificacion).where(Notificacion.usuario_id == usuario_id)
+    )
+    exceso = (total or 0) - MAXIMO_NOTIFICACIONES
+    if exceso <= 0:
+        return
     sobrantes = list(
         sesion.scalars(
             select(Notificacion.id)
-            .where(Notificacion.usuario_id == usuario_id)
-            .order_by(Notificacion.creada.desc(), Notificacion.id.desc())
-            .offset(MAXIMO_NOTIFICACIONES)
+            .where(Notificacion.usuario_id == usuario_id, Notificacion.id != recien)
+            .order_by(
+                Notificacion.clave_evento.is_not(None),
+                Notificacion.creada.asc(),
+                Notificacion.id.asc(),
+            )
+            .limit(exceso)
         )
     )
     if sobrantes:
@@ -224,7 +238,7 @@ def agregar(
     )
     sesion.add(fila)
     sesion.flush()
-    _podar_excedente(sesion, usuario_id)
+    _podar_excedente(sesion, usuario_id, fila.id)
     return _a_item(fila)
 
 

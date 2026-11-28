@@ -4,6 +4,10 @@
 La fecha es opcional (`None` si no se ha fijado o si se quita) y no puede estar en el pasado al
 fijarla (`fecha_entrega < ahora.date()`). Ninguna función confirma: escriben con `flush` y quien
 llama confirma la transacción.
+
+Cada cambio deja rastro en el registro de accesos de la instalación (`evento_acceso`, tipo «fecha
+de entrega»: revisión de seguridad T5, hallazgo 2) con la obra, el valor anterior y el nuevo
+(`registrar_cambio`). Quién puede fijarla no cambia aquí.
 """
 
 from __future__ import annotations
@@ -23,19 +27,28 @@ from aplicacion.tablas_entrega import (
     hay_tabla_entrega,
 )
 from core import models
+from seguridad import eventos
 
 __all__ = [
     "MENSAJE_FECHA_EN_EL_PASADO",
+    "TIPO_EVENTO",
+    "CambioDeEntrega",
     "EntregaDeLaObra",
     "EntregaInvalida",
     "FechaDeEntregaEnElPasado",
     "ObraNoExiste",
+    "cambiar_entrega",
+    "detalle_del_cambio",
     "entregas_de_la_carpeta",
     "fijar_entrega",
     "leer_entrega",
+    "registrar_cambio",
 ]
 
 MENSAJE_FECHA_EN_EL_PASADO = "La fecha de entrega al cliente no puede estar en el pasado."
+#: El tipo del evento de acceso que deja cada cambio (`seguridad.eventos.TIPOS`).
+TIPO_EVENTO = "fecha de entrega"
+_SIN_FECHA = "sin fecha"
 
 
 class EntregaInvalida(ValueError):  # noqa: N818 (identificadores en español, NORMAS.md §3)
@@ -59,6 +72,15 @@ class EntregaDeLaObra:
     fecha_entrega: date | None
     actualizada: datetime | None = None
     actualizada_por: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CambioDeEntrega:
+    """Lo que hizo un `cambiar_entrega`: la obra (`nombre`), la fecha que tenía y cómo quedó."""
+
+    nombre: str
+    anterior: date | None
+    entrega: EntregaDeLaObra
 
 
 def _obra(sesion: Session, proyecto: str) -> models.Proyecto:
@@ -107,19 +129,36 @@ def fijar_entrega(
 
     `FechaDeEntregaEnElPasado` si `fecha_entrega` es anterior a `ahora.date()`; `ObraNoExiste` si la
     obra no existe. Si la tabla aún no existe en la base, la crea al guardar. Solo `flush`."""
+    return cambiar_entrega(
+        sesion, proyecto, fecha_entrega, responsable=responsable, ahora=ahora
+    ).entrega
+
+
+def cambiar_entrega(
+    sesion: Session,
+    proyecto: str,
+    fecha_entrega: date | None,
+    *,
+    responsable: str,
+    ahora: datetime,
+) -> CambioDeEntrega:
+    """`fijar_entrega` que además devuelve el nombre de la obra y la fecha que tenía antes, para
+    dejar el rastro del cambio (`registrar_cambio`). Mismas reglas y errores. Solo `flush`."""
     obra = _obra(sesion, proyecto)
     quien = _responsable(responsable)
     if fecha_entrega is not None and fecha_entrega < ahora.date():
         raise FechaDeEntregaEnElPasado(MENSAJE_FECHA_EN_EL_PASADO)
     codigo = str(obra.id)
+    sin_cambio = EntregaDeLaObra(codigo, None, None, None)
     if not hay_tabla_entrega(sesion):
         if fecha_entrega is None:
-            return EntregaDeLaObra(codigo, None, None, None)
+            return CambioDeEntrega(obra.nombre, None, sin_cambio)
         crear_esquema_entrega(sesion.connection())
     fila = sesion.get(EntregaDeObra, codigo)
+    anterior = None if fila is None else fila.fecha_entrega
     if fila is None:
         if fecha_entrega is None:
-            return EntregaDeLaObra(codigo, None, None, None)
+            return CambioDeEntrega(obra.nombre, None, sin_cambio)
         sesion.add(
             EntregaDeObra(
                 proyecto_codigo=codigo,
@@ -133,11 +172,48 @@ def fijar_entrega(
         fila.actualizada = ahora
         fila.actualizada_por = quien
     sesion.flush()
-    return EntregaDeLaObra(
+    entrega = EntregaDeLaObra(
         proyecto_codigo=codigo,
         fecha_entrega=fecha_entrega,
         actualizada=ahora,
         actualizada_por=quien,
+    )
+    return CambioDeEntrega(obra.nombre, anterior, entrega)
+
+
+def _texto_de(fecha: date | None) -> str:
+    return _SIN_FECHA if fecha is None else fecha.isoformat()
+
+
+def detalle_del_cambio(cambio: CambioDeEntrega, carpeta: str | None) -> str:
+    """El detalle del evento: `obra <código> «<nombre>» en la carpeta <carpeta>: antes <fecha>;
+    ahora <fecha>` (`sin fecha` si no tenía o se quitó). Sin secretos."""
+    donde = "la carpeta de trabajo" if carpeta is None else f"la carpeta {carpeta}"
+    return (
+        f"obra {cambio.entrega.proyecto_codigo} «{cambio.nombre}» en {donde}: "
+        f"antes {_texto_de(cambio.anterior)}; ahora {_texto_de(cambio.entrega.fecha_entrega)}"
+    )
+
+
+def registrar_cambio(
+    instalacion: Session,
+    cambio: CambioDeEntrega,
+    *,
+    carpeta: str | None,
+    login: str,
+    usuario_id: int | None,
+    ip: str,
+    ahora: datetime,
+) -> None:
+    """Agrega a `instalacion` el evento «fecha de entrega» del `cambio`. Solo `flush`."""
+    eventos.registrar(
+        instalacion,
+        TIPO_EVENTO,
+        ahora,
+        login=login[:60],
+        usuario_id=usuario_id,
+        ip=ip,
+        detalle=detalle_del_cambio(cambio, carpeta),
     )
 
 

@@ -50,3 +50,17 @@ def test_si_el_nombre_es_un_numero_el_codigo_gana(tmp_path: Path) -> None:
     finally:
         sesion.close()
         motor.dispose()
+
+
+def test_un_codigo_que_no_cabe_en_el_integer_de_sqlite_no_desborda(tmp_path: Path) -> None:
+    """T5, hallazgo 3: hasta 18 dígitos se busca como `id`; con más, solo como nombre."""
+    enorme = "9" * 30
+    motor, sesion = _caso(tmp_path / "c.db", ["Torre Demo", enorme])
+    try:
+        assert resolver_proyecto(sesion, "9" * 18) is None
+        assert resolver_proyecto(sesion, "9" * 19) is None
+        assert resolver_proyecto(sesion, "9" * 31) is None
+        assert resolver_proyecto(sesion, enorme).nombre == enorme
+    finally:
+        sesion.close()
+        motor.dispose()

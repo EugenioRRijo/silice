@@ -288,6 +288,27 @@ def test_tope_de_200_conserva_las_mas_recientes(
     assert len(en_base) == MAXIMO_NOTIFICACIONES
 
 
+def test_con_el_tope_lleno_de_avisos_del_servidor_la_nueva_queda_y_sale_el_mas_viejo(
+    bd_con_cuentas: tuple[Session, Usuario, Usuario],
+) -> None:
+    """T5, n.o 5: sin notificaciones del front que podar, se poda el aviso del servidor más viejo;
+    la recién creada nunca."""
+    sesion, ana, _ = bd_con_cuentas
+    for i in range(200):  # el tope, escrito a mano
+        notificaciones.agregar(
+            sesion,
+            ana.id,
+            _datos(f"Servidor {i}"),
+            BASE - timedelta(minutes=300 - i),
+            clave_evento=f"evento:{i}",
+        )
+    nueva = notificaciones.agregar(sesion, ana.id, _datos("Del front"), BASE)
+    titulos = {n.titulo for n in notificaciones.listar(sesion, ana.id, BASE)}
+    assert len(titulos) == 200
+    assert nueva.titulo in titulos
+    assert "Servidor 0" not in titulos and "Servidor 1" in titulos
+
+
 def test_listar_tambien_limita_a_200_si_hay_mas_en_base(
     bd_con_cuentas: tuple[Session, Usuario, Usuario],
 ) -> None:

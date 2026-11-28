@@ -22,6 +22,8 @@ from aplicacion.entrega_de_obra import (
     EntregaDeLaObra,
     FechaDeEntregaEnElPasado,
     ObraNoExiste,
+    cambiar_entrega,
+    detalle_del_cambio,
     entregas_de_la_carpeta,
     fijar_entrega,
     leer_entrega,
@@ -145,3 +147,17 @@ def test_responsable_vacio_o_demasiado_largo_se_rechaza(sesion: Session) -> None
         fijar_entrega(sesion, "1", date(2026, 12, 10), responsable="   ", ahora=AHORA)
     with pytest.raises(ValueError, match="200"):
         fijar_entrega(sesion, "1", date(2026, 12, 10), responsable="a" * 201, ahora=AHORA)
+
+
+def test_cambiar_entrega_dice_la_obra_y_la_fecha_que_tenia_para_el_rastro(sesion: Session) -> None:
+    """T5, n.o 2: el detalle del evento «fecha de entrega» al fijar y al quitar."""
+    primera = cambiar_entrega(sesion, "1", date(2026, 12, 10), responsable=ANA, ahora=AHORA)
+    assert (primera.nombre, primera.anterior) == ("Torre Norte", None)
+    assert detalle_del_cambio(primera, "silice.db") == (
+        "obra 1 «Torre Norte» en la carpeta silice.db: antes sin fecha; ahora 2026-12-10"
+    )
+    quitada = cambiar_entrega(sesion, "Torre Norte", None, responsable=ROSA, ahora=AHORA)
+    assert quitada.anterior == date(2026, 12, 10)
+    assert detalle_del_cambio(quitada, None) == (
+        "obra 1 «Torre Norte» en la carpeta de trabajo: antes 2026-12-10; ahora sin fecha"
+    )

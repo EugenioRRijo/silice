@@ -18,6 +18,7 @@ guardada por «Ana <ana>» (`tests/fixtures/carpeta_aprobaciones.py`). Datos fic
 
 from __future__ import annotations
 
+import sqlite3
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +29,7 @@ from api import caso_web, dependencias
 from api.main import app
 from api.rutas import aprobaciones as rutas_aprobaciones
 from api.rutas import notificaciones as rutas_notificaciones
+from aplicacion import avisos_por_evento
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
 from operacion.base_datos import preparar_base
@@ -323,3 +325,30 @@ def test_la_referencia_cargada_avisa_a_quienes_arman(monkeypatch) -> None:
     otra_vez = admin.post("/v1/precios-empresa/referencia", headers=protegida(ficha))
     assert otra_vez.status_code == 200
     assert _titulos(ana) == [titulo]
+
+
+def test_al_listar_no_toma_el_cerrojo_de_la_instalacion_mientras_lee_la_carpeta(
+    monkeypatch,
+) -> None:
+    """T5, hallazgo 1: el barrido lee la carpeta (procura, línea base) sin el cerrojo de escritura
+    de `instalacion.db`; otra petición puede escribir mientras tanto. Escribe después."""
+    ana, _ = _en_vivienda("ana")
+    visto: list[str] = []
+    original = avisos_por_evento._compras
+
+    def espia(*args, **kwargs):
+        otra = sqlite3.connect(str(config.ruta_instalacion()), timeout=0)
+        try:
+            otra.execute("BEGIN IMMEDIATE")
+            visto.append("pudo escribir")
+            otra.rollback()
+        except sqlite3.OperationalError as error:
+            visto.append(f"bloqueada: {error}")
+        finally:
+            otra.close()
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(avisos_por_evento, "_compras", espia)
+    respuesta = ana.get("/v1/notificaciones")
+    assert respuesta.status_code == 200, respuesta.text
+    assert visto == ["pudo escribir"]

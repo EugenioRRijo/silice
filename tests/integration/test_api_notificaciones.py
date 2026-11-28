@@ -54,6 +54,7 @@ CLAVES_LISTA = {"notificaciones", "sin_leer", "retencion_dias", "maximo"}
 CLAVES_ITEM = {"id", "gravedad", "titulo", "detalle", "enlace", "creada", "leida"}
 AJENO = {"Origin": "http://otro.sitio.example"}
 MOMENTO = datetime(2026, 11, 26, 14, 0, 0)
+MAXIMO_DEL_TOPE = 200  # el tope por cuenta (C11), escrito a mano
 
 
 @pytest.fixture(scope="module")
@@ -421,3 +422,61 @@ def test_migracion_ins_0014_subida_restricciones_indice_bajada_y_adopcion(
     with closing(sqlite3.connect(base)) as c:
         tablas = {n for (n,) in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert "notificacion" in tablas
+
+
+# --- revisión de seguridad T5 ---------------------------------------------------------------------
+
+
+def test_un_id_que_no_cabe_en_el_integer_de_sqlite_da_422_sin_hablar_de_importes() -> None:
+    """T5, hallazgo 3: `ids` enormes se rechazan al validar, no al desbordar en SQLite."""
+    ana, ficha = con_cuenta(app, "ana")
+    r = ana.post(RUTA_LEIDAS, json={"ids": [10**30]}, headers=protegida(ficha))
+    assert r.status_code == 422, r.text
+    assert "importe" not in r.text
+    assert set(r.json()) == {"detalle"}
+
+
+def test_el_422_de_forma_no_repite_lo_enviado() -> None:
+    """T5, hallazgo 4: el router usa `RutaSinEco`; un título de 3000 caracteres da 422 con
+    `detalle` y sin el texto enviado."""
+    ana, ficha = con_cuenta(app, "ana")
+    titulo = "secreto-" + "t" * 2992
+    r = ana.post(RUTA, json={"gravedad": "info", "titulo": titulo}, headers=protegida(ficha))
+    assert r.status_code == 422
+    assert r.headers["cache-control"] == "no-store"
+    assert "secreto-" not in r.text
+    assert set(r.json()) == {"detalle"}
+
+
+def test_las_del_front_no_empujan_fuera_un_aviso_del_servidor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T5, hallazgo 5: el tope de 200 poda primero las que crea el front (`clave_evento` nula);
+    un aviso por evento del servidor (p. ej. `por_dictaminar`) sobrevive a 200 POST."""
+    monkeypatch.setattr("api.rutas.notificaciones.ahora", lambda: MOMENTO)
+    ana_id = _usuario_id("ana")
+    _en_instalacion(
+        lambda s: s.add(
+            Notificacion(
+                usuario_id=ana_id,
+                gravedad="info",
+                titulo="VIV-001 espera su dictamen",
+                detalle="",
+                enlace_texto="",
+                enlace_ruta="",
+                creada=MOMENTO - timedelta(hours=1),
+                leida=False,
+                clave_evento="aprobacion:vivienda.db:1:VIV-001:enviada",
+            )
+        )
+    )
+    ana, ficha = con_cuenta(app, "ana")
+    for i in range(MAXIMO_DEL_TOPE):
+        hecha = ana.post(
+            RUTA, json={"gravedad": "listo", "titulo": f"Del front {i}"}, headers=protegida(ficha)
+        )
+        assert hecha.status_code == 201, hecha.text
+    titulos = [n["titulo"] for n in ana.get(RUTA).json()["notificaciones"]]
+    assert len(titulos) == MAXIMO_DEL_TOPE
+    assert "VIV-001 espera su dictamen" in titulos
+    assert "Del front 0" not in titulos and "Del front 199" in titulos

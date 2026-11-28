@@ -21,6 +21,8 @@ TIPOS = (
     "codigo rechazado",
     # revisión de seguridad de C9a: el 409 (login en uso) deja rastro y gasta cupo
     "solicitud fallida",
+    # revisión de seguridad T5: quién cambió la fecha de entrega al cliente de una obra
+    "fecha de entrega",
 )
 
 

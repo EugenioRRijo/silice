@@ -2,7 +2,8 @@
 
 Cada persona ve y toca solo las suyas (la sesión manda; la clave de API da 403 porque no es una
 persona). Las escrituras exigen CSRF y `Origin` propio (`exigir_clave_o_sesion`). Toda respuesta,
-también las de error, lleva `Cache-Control: no-store` (`RutaSinCache`).
+también las de error, lleva `Cache-Control: no-store` (`RutaSinCache`), y el 422 de forma responde
+`{"detalle": <mensaje fijo>}` sin repetir lo enviado (`RutaSinEco`).
 
 Contrato:
 - `GET /v1/notificaciones` -> 200 `{notificaciones, sin_leer, retencion_dias, maximo}`: descarta y
@@ -15,9 +16,11 @@ C11b (`docs/especificaciones/2026-11-26-notificaciones-por-evento.md`):
 - `GET /v1/notificaciones` antes de listar hace el barrido perezoso de lo que vence con la fecha,
   solo para quien lista (`aplicacion.avisos_por_evento.barrer`): el recordatorio de lo que espera
   su dictamen desde 2 días hábiles y las compras por pedir de las obras de la carpeta abierta.
-  Escribe, así que su sesión de la instalación es la de escritura (`BEGIN IMMEDIATE`).
+  Escribe, así que su sesión de la instalación es la de escritura (`BEGIN IMMEDIATE`), pero lee
+  la carpeta y las preferencias con la diferida: el cerrojo de escritura se toma después de leer
+  la carpeta, solo para emitir y listar (orden caso→instalación).
 - `GET /v1/notificaciones/preferencias` -> 200 `{categorias: [{categoria, titulo, descripcion,
-  activa, aplica, obligatoria}]}`: las cuatro categorías de la cuenta de la sesión.
+  activa, aplica, obligatoria}]}`: las cinco categorías de la cuenta de la sesión.
 - `PUT /v1/notificaciones/preferencias` `{categorias: [{categoria, activa}]}` -> 200 con la misma
   forma; 422 con el motivo si la categoría no existe, está repetida o es obligatoria para su rol
   (quien revisa no apaga `por_dictaminar`). Solo las propias.
@@ -39,6 +42,7 @@ from api.dependencias import (
 )
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
+from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import avisos_por_evento, notificaciones
 from aplicacion.avisos_por_evento import CATEGORIAS, Preferencia, PreferenciaInvalida
 from aplicacion.notificaciones import (
@@ -53,7 +57,26 @@ MENSAJE_CON_CLAVE = (
     "Las notificaciones son de una persona: entre con su cuenta, no con la clave de API."
 )
 
-router = APIRouter(tags=["notificaciones"], route_class=RutaSinCache)
+MENSAJE_FORMA = (
+    "La notificación no es válida: revise la gravedad, el título, el detalle y el enlace."
+)
+MENSAJE_FORMA_LEIDAS = (
+    "Indique qué notificaciones marcar: sus números (ids) o todas (todas: true)."
+)
+MENSAJE_FORMA_PREFERENCIAS = (
+    "Las preferencias no son válidas: indique cada categoría por su nombre y si queda activa."
+)
+#: El mayor `id` que cabe en el INTEGER de SQLite (64 bits con signo).
+_MAYOR_ID = 2**63 - 1
+
+
+class _RutaNotificaciones(RutaSinCache, RutaSinEco):
+    """El orden importa: `RutaSinCache` envuelve a `RutaSinEco`."""
+
+    mensaje_por_omision = MENSAJE_FORMA
+
+
+router = APIRouter(tags=["notificaciones"], route_class=_RutaNotificaciones)
 
 
 def _persona(
@@ -97,7 +120,9 @@ class NotificacionesRespuesta(BaseModel):
 
 
 class MarcarLeidasEntrada(BaseModel):
-    ids: list[int] | None = Field(default=None, max_length=MAXIMO_NOTIFICACIONES * 2)
+    ids: list[Annotated[int, Field(gt=0, le=_MAYOR_ID)]] | None = Field(
+        default=None, max_length=MAXIMO_NOTIFICACIONES * 2
+    )
     todas: bool = False
 
 
@@ -165,6 +190,7 @@ def _serializar(item: ItemNotificacion) -> NotificacionRespuesta:
 def listar_notificaciones(
     request: Request,
     activa: Persona,
+    lectura: SesionInstalacionDep,
     instalacion: SesionInstalacionEscrituraDep,
 ) -> NotificacionesRespuesta:
     """Las notificaciones vigentes (últimos 30 días) de la cuenta actual, más nuevas primero,
@@ -177,6 +203,7 @@ def listar_notificaciones(
         carpeta_empresa=carpeta_de_la_empresa(),
         caso=carpeta_de_la_peticion(request),
         abrir_carpeta=abridor_de_la_carpeta(request),
+        lectura=lectura,
     )
     items = notificaciones.listar(instalacion, activa.usuario_id, momento)
     return NotificacionesRespuesta(
@@ -209,6 +236,7 @@ def crear_notificacion(
 
 
 @router.post("/v1/notificaciones/leidas", response_model=MarcarLeidasRespuesta)
+@sin_eco(MENSAJE_FORMA_LEIDAS)
 def marcar_notificaciones_leidas(
     datos: MarcarLeidasEntrada,
     activa: Persona,
@@ -237,6 +265,7 @@ def leer_preferencias(
 
 
 @router.put("/v1/notificaciones/preferencias", response_model=PreferenciasDeNotificacionRespuesta)
+@sin_eco(MENSAJE_FORMA_PREFERENCIAS)
 def fijar_preferencias(
     datos: PreferenciasDeNotificacionCambio,
     activa: Persona,

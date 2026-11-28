@@ -1849,7 +1849,7 @@ Fuente: la [enmienda del 2026-11-28 de la ERS](ERS.md) (RF-215 a RF-224), las es
 |---|---|---|
 | `seguridad/solicitudes.py` | registro con código (RF-215 a RF-217): `solicitar`, `listar`, `aprobar`, `rechazar`, `canjear`, `enlace_de_correo`, el cupo por equipo en memoria `CupoPorEquipo` (`CUPO`) y su contraparte en la base `_exigir_cupo` | `seguridad.cuentas` (política, Argon2, contador `IntentoAcceso`, freno global, bloqueo de escritura y el código de 20 caracteres), `seguridad.eventos`, `seguridad.modelo`, `seguridad.permisos`, `seguridad.retencion` |
 | `seguridad/retencion.py` | qué solicitud retiene un usuario (`vigente`, `estado_efectivo`, `viva`, `retiene_login`); aparte de `solicitudes` para que `cuentas.crear_usuario` lo consulte sin un ciclo de importaciones | `seguridad.modelo` |
-| `aplicacion/notificaciones.py` | notificaciones por persona (RF-218): `listar`, `agregar`, `marcar_leidas`, `contar_sin_leer`, `existe_clave`, `validar_ruta`; retención de 30 días y tope de 200 | `seguridad.modelo` (`Notificacion`) |
+| `aplicacion/notificaciones.py` | notificaciones por persona (RF-218): `listar`, `agregar`, `marcar_leidas`, `contar_sin_leer`, `existe_clave`, `validar_ruta`; retención de 30 días y tope de 200 (salen primero las que creó la interfaz) | `seguridad.modelo` (`Notificacion`) |
 | `aplicacion/avisos_por_evento.py` | notificaciones por evento y qué recibir (RF-219 y RF-220): `CATEGORIAS`, `preferencias`, `fijar_preferencias`, `emitir`, los ganchos `de_aprobaciones` y `lista_cargada`, y el barrido `barrer` | `aplicacion` (`aprobaciones`, `entrega_de_obra`, `indice_aprobaciones`, `notificaciones`, `procura`, `mesa`, `plural`, `revision`), `core.models`, `core.budget.calendario`, `core.budget.valuaciones`, `core.models.cadena`, `seguridad.modelo`, `seguridad.permisos`, `seguridad.sesiones` |
 | `aplicacion/actividad.py` | actividad por persona (RF-221), solo lectura: `actividad_de`, `armar` (pura), `cuenta_existe` | `aplicacion.revision`, `aplicacion.tablas_indice_aprobacion`, `core.models`, `core.models.cadena`, `seguridad.cuentas`, `seguridad.modelo` |
 | `aplicacion/entrega_de_obra.py` y `aplicacion/tablas_entrega.py` | fecha de entrega al cliente (RF-222): `leer_entrega`, `fijar_entrega`, `entregas_de_la_carpeta`; el modelo `EntregaDeObra` (`METADATA_ENTREGA`) sin clave foránea a `core.models` | `aplicacion.listas_para_armar`, `aplicacion.proyectos`, `core.models` |
@@ -1894,9 +1894,10 @@ modelo puro `modelo.ts`); `marco/BarraDeEstado.tsx` (la carpeta y la campanita);
   igual.
 - **Avisos que dependen de la fecha.** No hay hilo de fondo. `GET /v1/notificaciones` hace primero el barrido perezoso
   (`avisos_por_evento.barrer`) solo para quien lista: el recordatorio de lo que espera su dictamen y, en la carpeta que
-  tiene abierta, las compras por pedir y las entregas al cliente. Primero lee la carpeta y después escribe la
-  instalación, con la sesión de escritura de `instalacion.db` (`BEGIN IMMEDIATE`); un error del barrido se registra y
-  el listado sigue.
+  tiene abierta, las compras por pedir y las entregas al cliente. Primero lee la carpeta y las preferencias con la
+  sesión diferida de `instalacion.db`, sin cerrojo; solo después, ya cerrada la carpeta, toma la sesión de escritura
+  (`BEGIN IMMEDIATE`) para crear los avisos y listar. Así un barrido largo no frena los inicios de sesión ni los
+  guardados de las demás personas. Un error del barrido se registra y el listado sigue.
 - **Auditar un libro (B2).** La página manda una sola `POST /v1/libros/auditoria` y pide `GET /v1/libros/que-hacer`
   aparte. Junta las dos respuestas en el navegador por código de regla y por tipo de alerta. La réplica
   (`POST /v1/libros/replica`) se pide solo al pulsar «Ver la hoja marcada».

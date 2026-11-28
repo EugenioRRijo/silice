@@ -536,20 +536,28 @@ def barrer(
     carpeta_empresa: str | None,
     caso: str | None,
     abrir_carpeta: Callable[[], AbstractContextManager[Session]] | None,
+    lectura: Session | None = None,
 ) -> None:
     """Lo que vence con la fecha, para `persona` y solo para ella (`GET /v1/notificaciones`):
     las compras por pedir y las entregas al cliente de las obras de la carpeta abierta (`caso`,
     que `abrir_carpeta` abre solo si alguna de las dos categorías está encendida) y el recordatorio
-    de lo que espera su dictamen desde 2 días hábiles. Primero lee la carpeta y después escribe la
-    instalación. Nada de esto falla hacia afuera: un error se registra y el listado sigue."""
+    de lo que espera su dictamen desde 2 días hábiles. Nada de esto falla hacia afuera: un error se
+    registra y el listado sigue.
+
+    Primero lee la carpeta y después escribe la instalación (orden caso→instalación de
+    `api.dependencias`). Las preferencias y las entregas registradas se leen con `lectura` (la
+    sesión diferida de la ruta; si falta, `sesion`), así que la de escritura (`sesion`, con
+    `BEGIN IMMEDIATE` al primer uso) no toma el cerrojo de `instalacion.db` mientras se abre y se
+    lee la carpeta: lo toma solo para emitir."""
+    lee = sesion if lectura is None else lectura
     hoy = ahora.date()
     compras: list[Evento] = []
     entregas: list[Evento] = []
     if abrir_carpeta is not None and Rol.ARMA in persona.roles:
-        ver_compras = _activa(sesion, persona.usuario_id, Categoria.COMPRAS)
-        ver_entregas = _activa(sesion, persona.usuario_id, Categoria.ENTREGAS)
+        ver_compras = _activa(lee, persona.usuario_id, Categoria.COMPRAS)
+        ver_entregas = _activa(lee, persona.usuario_id, Categoria.ENTREGAS)
         if ver_compras or ver_entregas:
-            entregados = _detalles_de_entregas(sesion) if ver_entregas else ()
+            entregados = _detalles_de_entregas(lee) if ver_entregas else ()
             try:
                 with abrir_carpeta() as sesion_caso:
                     if ver_compras:
