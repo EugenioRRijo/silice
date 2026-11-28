@@ -52,14 +52,18 @@ function Esqueleto(): JSX.Element {
   );
 }
 
+interface Props {
+  alAuditar?: () => void;
+}
+
 // «Auditar un libro» en una sola página (B2, docs/especificaciones/2026-11-26-cara-papel-y-resaltador/b2/ficha-b2.md): 1 suba
 // el libro, 2 qué se encontró y 3 conclusión y entrega. La auditoría se manda una vez; «Ver la hoja marcada» pide la réplica
 // al pulsarlo y deja el resultado en el almacén del Visor, que no audita otra vez (así no se duplica el historial).
-export function AuditarUnLibro(): JSX.Element {
+export function AuditarUnLibro({ alAuditar }: Props = {}): JSX.Element {
   const { alExpirar, almacenDelLibro } = useAplicacion();
   const navegar = useNavigate();
   const anunciar = useAnunciar();
-  const { estado, elegir, auditar, reiniciar } = useAuditoriaDelLibro(alExpirar);
+  const { estado, elegir, auditar, reiniciar } = useAuditoriaDelLibro(alExpirar, alAuditar);
   const [fecha, setFecha] = useState(fechaDeHoy);
   const [preparando, setPreparando] = useState(false);
   const [errorDeLaHoja, setErrorDeLaHoja] = useState<unknown>(null);

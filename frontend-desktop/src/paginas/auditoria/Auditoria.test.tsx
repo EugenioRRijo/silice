@@ -7,6 +7,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "../../shell/recorrido";
 import type { Aplicacion } from "../../shell/contexto";
 import { tomarArchivoPendiente } from "../inicio/archivoPendiente";
+import { auditoriaDePrueba, catalogoDePrueba } from "./datosDePrueba";
 import PaginaAuditoria from "./index";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -275,6 +276,78 @@ describe("Inicio de auditoría", () => {
       auditorias = () => json({ detalle: "Sesión vencida." }, 401);
       montar({ alExpirar });
       await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+    });
+
+    test("al auditar un libro que se guarda, refresca «Últimas auditorías guardadas» sin recargar", async () => {
+      let lista = [auditoria(6, { archivo: "previa.xlsx", errores: 1, advertencias: 0 })];
+      fetchFalso.mockImplementation(async (entrada) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/auditorias-libro?limite=5") return json(lista);
+        if (ruta === "/v1/libros/auditoria") {
+          lista = [auditoria(7, { archivo: "obra-nueva.xlsx", errores: 8, advertencias: 0 }), ...lista];
+          return json(auditoriaDePrueba());
+        }
+        if (ruta === "/v1/libros/que-hacer") return json(catalogoDePrueba());
+        if (ruta === "/v1/libros/perfiles-apu-por-hoja") return json([]);
+        return json({ detalle: "No encontrado." }, 404);
+      });
+      const usuario = userEvent.setup();
+      montar();
+      const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
+      await within(seccion).findByRole("row", { name: /previa\.xlsx/ });
+
+      await usuario.upload(campoArchivo(), new File(["x"], "obra-nueva.xlsx"));
+      await usuario.click(screen.getByRole("button", { name: "Auditar el libro" }));
+
+      await screen.findByRole("heading", { level: 2, name: "8 hallazgos en el libro" });
+      const filaNueva = await within(seccion).findByRole("row", { name: /obra-nueva\.xlsx/ });
+      expect(filaNueva).toHaveTextContent("8 errores, 0 advertencias");
+      expect(rutasPedidas().filter((r) => r === "/v1/auditorias-libro?limite=5")).toHaveLength(2);
+    });
+
+    test("un error al auditar el libro no refresca «Últimas auditorías guardadas»", async () => {
+      fetchFalso.mockImplementation(async (entrada) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/auditorias-libro?limite=5") return json([auditoria(6, { archivo: "previa.xlsx" })]);
+        if (ruta === "/v1/libros/auditoria") return json({ detalle: "El libro no se pudo interpretar." }, 422);
+        if (ruta === "/v1/libros/perfiles-apu-por-hoja") return json([]);
+        return json({ detalle: "No encontrado." }, 404);
+      });
+      const usuario = userEvent.setup();
+      montar();
+      const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
+      await within(seccion).findByRole("row", { name: /previa\.xlsx/ });
+
+      await usuario.upload(campoArchivo(), new File(["x"], "roto.xlsx"));
+      await usuario.click(screen.getByRole("button", { name: "Auditar el libro" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("El libro no se pudo interpretar.");
+      expect(rutasPedidas().filter((r) => r === "/v1/auditorias-libro?limite=5")).toHaveLength(1);
+      expect(within(seccion).getByRole("row", { name: /previa\.xlsx/ })).toBeInTheDocument();
+    });
+
+    test("si el servidor avisa que no quedó en el historial, no refresca «Últimas auditorías guardadas»", async () => {
+      fetchFalso.mockImplementation(async (entrada) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/auditorias-libro?limite=5") return json([auditoria(6, { archivo: "previa.xlsx" })]);
+        if (ruta === "/v1/libros/auditoria") {
+          return json(auditoriaDePrueba({ aviso_historial: "No se pudo guardar la auditoría en el historial." }));
+        }
+        if (ruta === "/v1/libros/que-hacer") return json(catalogoDePrueba());
+        if (ruta === "/v1/libros/perfiles-apu-por-hoja") return json([]);
+        return json({ detalle: "No encontrado." }, 404);
+      });
+      const usuario = userEvent.setup();
+      montar();
+      const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
+      await within(seccion).findByRole("row", { name: /previa\.xlsx/ });
+
+      await usuario.upload(campoArchivo(), new File(["x"], "obra-nueva.xlsx"));
+      await usuario.click(screen.getByRole("button", { name: "Auditar el libro" }));
+
+      await screen.findByRole("heading", { level: 2, name: "8 hallazgos en el libro" });
+      expect(screen.getByText("No se pudo guardar la auditoría en el historial.")).toBeInTheDocument();
+      expect(rutasPedidas().filter((r) => r === "/v1/auditorias-libro?limite=5")).toHaveLength(1);
     });
   });
 

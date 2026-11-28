@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { cuerpoDeLibro } from "./logicaDelLibro";
 import type { AuditoriaDelLibro } from "./logicaDelLibro";
@@ -22,10 +22,14 @@ export interface AuditoriaEnCurso {
   reiniciar: () => void;
 }
 
-export function useAuditoriaDelLibro(alExpirar: () => void): AuditoriaEnCurso {
+export function useAuditoriaDelLibro(alExpirar: () => void, alGuardar?: () => void): AuditoriaEnCurso {
   const [estado, setEstado] = useState<EstadoDelLibro>({ fase: "vacio" });
   // Para ignorar la respuesta de una auditoría que ya quedó atrás (otro libro, o «Auditar otro libro»).
   const turno = useRef(0);
+  const alGuardarActual = useRef(alGuardar);
+  useEffect(() => {
+    alGuardarActual.current = alGuardar;
+  });
 
   const elegir = useCallback((archivo: File) => {
     turno.current += 1;
@@ -47,7 +51,11 @@ export function useAuditoriaDelLibro(alExpirar: () => void): AuditoriaEnCurso {
           metodo: "POST",
           cuerpo: cuerpoDeLibro(archivo, fecha),
         });
-        if (mio === turno.current) setEstado({ fase: "listo", archivo, fecha, auditoria });
+        if (mio === turno.current) {
+          setEstado({ fase: "listo", archivo, fecha, auditoria });
+          // Si el servidor avisó que no quedó en el historial (`aviso_historial`), no hace falta volver a pedirlo.
+          if (!auditoria.aviso_historial) alGuardarActual.current?.();
+        }
       } catch (error) {
         if (mio !== turno.current) return;
         if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();

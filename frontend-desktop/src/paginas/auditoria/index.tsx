@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
@@ -11,6 +12,12 @@ import { useCarga } from "../../comun/useCarga";
 
 const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 
+// Aislado en su propio componente para volver a pedir `useCarga` cambiando la `key` al guardar una auditoría nueva.
+function HistorialReciente({ alExpirar }: { alExpirar: () => void }) {
+  const auditorias = useCarga<AuditoriaGuardadaRespuesta[]>(RUTA_AUDITORIAS, alExpirar);
+  return <UltimasAuditorias carga={auditorias} />;
+}
+
 // «Auditar un libro» (B2): arriba el flujo de una sola página (subir, qué se encontró, conclusión y entrega), plegado el libro
 // con un APU por hoja y debajo lo último que se auditó. Cada bloque responde una pregunta («¿qué hago?», «¿dónde estaba?»).
 export default function PaginaAuditoria() {
@@ -18,7 +25,8 @@ export default function PaginaAuditoria() {
   // Auditar y el historial son de quien puede leer proyectos (la API contestaria 403, VB-9); quien no puede no ve la
   // seccion vacia: se omite (VD-10).
   const puedeAuditar = sesion.acciones.includes("leer_proyecto");
-  const auditorias = useCarga<AuditoriaGuardadaRespuesta[]>(puedeAuditar ? RUTA_AUDITORIAS : null, alExpirar);
+  const [claveHistorial, setClaveHistorial] = useState(0);
+  const refrescarHistorial = useCallback(() => setClaveHistorial((n) => n + 1), []);
 
   const recorrido = useRecorrido();
   // El paso que sigue a este, solo si su pantalla existe aqui y la cuenta puede abrirla.
@@ -35,7 +43,7 @@ export default function PaginaAuditoria() {
       </p>
 
       {puedeAuditar ? (
-        <AuditarUnLibro />
+        <AuditarUnLibro alAuditar={refrescarHistorial} />
       ) : (
         <section className="silice-inicio__bloque" aria-labelledby="auditoria-excel">
           <h2 id="auditoria-excel" className="cds--type-heading-compact-02">
@@ -82,7 +90,7 @@ export default function PaginaAuditoria() {
               )}
             </p>
           )}
-          <UltimasAuditorias carga={auditorias} />
+          <HistorialReciente key={claveHistorial} alExpirar={alExpirar} />
         </section>
       )}
     </div>

@@ -55,7 +55,7 @@ describe("Auditar un libro, en una sola página", () => {
     terminarRecorrido();
   });
 
-  function montar(aplicacion: Partial<Aplicacion> = {}) {
+  function montar(aplicacion: Partial<Aplicacion> = {}, props: { alAuditar?: () => void } = {}) {
     const valor: Aplicacion = {
       sesion: SESION,
       proyecto: null,
@@ -70,7 +70,7 @@ describe("Auditar un libro, en una sola página", () => {
         <ProveedorDeAnuncios>
           <MemoryRouter initialEntries={["/auditoria"]}>
             <Routes>
-              <Route path="/auditoria" element={<AuditarUnLibro />} />
+              <Route path="/auditoria" element={<AuditarUnLibro {...props} />} />
               <Route path="/auditoria/libros" element={<h1>Pantalla del libro</h1>} />
               <Route path="/auditoria/historial" element={<h1>Pantalla del historial</h1>} />
             </Routes>
@@ -214,6 +214,16 @@ describe("Auditar un libro, en una sola página", () => {
       expect(screen.getByRole("button", { name: /Suelte aquí el libro \.xlsx/ })).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "8 hallazgos en el libro" })).not.toBeInTheDocument();
     });
+
+    test("avisa cuando la auditoría termina y queda guardada", async () => {
+      const alAuditar = vi.fn();
+      const usuario = userEvent.setup();
+      montar({}, { alAuditar });
+      await usuario.upload(campoArchivo(), new File(["x"], "obra.xlsx"));
+      await usuario.click(screen.getByRole("button", { name: "Auditar el libro" }));
+      await screen.findByRole("heading", { level: 2, name: "8 hallazgos en el libro" });
+      expect(alAuditar).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("las seis alertas de la prueba de comprensión, en la pantalla", () => {
@@ -341,11 +351,16 @@ describe("Auditar un libro, en una sola página", () => {
     });
 
     test("el aviso de que no quedó en el historial es del servidor y la auditoría vale", async () => {
+      const alAuditar = vi.fn();
       auditoria = () =>
         json(auditoriaDePrueba({ aviso_historial: "No se pudo guardar la auditoría en el historial." }));
-      await subirYAuditar();
+      const usuario = userEvent.setup();
+      montar({}, { alAuditar });
+      await usuario.upload(campoArchivo(), new File(["x"], "obra.xlsx"));
+      await usuario.click(screen.getByRole("button", { name: "Auditar el libro" }));
+      await screen.findByRole("heading", { level: 2, name: "8 hallazgos en el libro" });
       expect(screen.getByText("No se pudo guardar la auditoría en el historial.")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "8 hallazgos en el libro" })).toBeInTheDocument();
+      expect(alAuditar).not.toHaveBeenCalled();
     });
   });
 
@@ -365,19 +380,22 @@ describe("Auditar un libro, en una sola página", () => {
 
   describe("cuando algo falla", () => {
     test("un error al auditar muestra el detalle del servidor, conserva el archivo y deja reintentar", async () => {
+      const alAuditar = vi.fn();
       let intento = 0;
       auditoria = () => (++intento === 1 ? json({ detalle: "El libro no se pudo interpretar." }, 422) : json(auditoriaDePrueba()));
       const usuario = userEvent.setup();
-      montar();
+      montar({}, { alAuditar });
       await usuario.upload(campoArchivo(), new File(["x"], "roto.xlsx"));
       await usuario.click(screen.getByRole("button", { name: "Auditar el libro" }));
       expect(await screen.findByRole("alert")).toHaveTextContent("El libro no se pudo interpretar.");
+      expect(alAuditar).not.toHaveBeenCalled();
       expect(estadoDelArchivo()).toHaveTextContent("Archivo elegido: roto.xlsx");
       const principales = screen.getAllByRole("button").filter((b) => b.classList.contains("cds--btn--primary"));
       expect(principales.map((b) => b.textContent)).toEqual(["Reintentar"]);
       await usuario.click(principales[0]);
       await screen.findByRole("heading", { level: 2, name: "8 hallazgos en el libro" });
       expect(llamadas("/v1/libros/auditoria")).toHaveLength(2);
+      expect(alAuditar).toHaveBeenCalledTimes(1);
     });
 
     test("una respuesta 401 avisa que la sesión venció", async () => {
