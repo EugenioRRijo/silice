@@ -468,6 +468,29 @@ describe("SuperficiePresupuesto (lote B1-4)", () => {
     expect(container.querySelectorAll("p p")).toHaveLength(0);
   });
 
+  // T4 (mutante SP1): un presupuesto sin renglones no muestra «Con IVA» aunque el servidor mande el bloque de impuestos.
+  test("lote G3: sin renglones no se dice «Con IVA» en la cabecera", async () => {
+    responderVista = () => json(vistaPresupuesto({ filas: [], vacio_mensaje: "Este presupuesto todavía no tiene partidas." }));
+    montar();
+    await screen.findByText("Este presupuesto todavía no tiene partidas.");
+    const estado = screen.getByRole("region", { name: "Estado del borrador" });
+    expect(estado).toHaveTextContent("Total sin IVA");
+    expect(estado).not.toHaveTextContent("Con IVA");
+  });
+
+  // T4 (mutante IF1): el panel de subtotales por frente no pide nada al servidor hasta que se abre.
+  test("lote G3: los subtotales por frente no se piden mientras el panel está cerrado", async () => {
+    montar({ conObra: true });
+    await screen.findByRole("grid", { name: "Presupuesto" });
+    const pedidasDeFrentes = () => fetchFalso.mock.calls.filter(([ruta]) => String(ruta).includes("/vistas/frentes"));
+    expect(pedidasDeFrentes()).toHaveLength(0);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole("button", { name: "Más acciones del presupuesto" }));
+    await u.click(screen.getByRole("button", { name: "Subtotales por frente" }));
+    await screen.findByRole("complementary", { name: "Subtotales por frente" });
+    await waitFor(() => expect(pedidasDeFrentes()).toHaveLength(1));
+  });
+
   test("lote G3: «Más acciones» ofrece «Subtotales por frente» en panel lateral y los enlaces a Archivos y a pestañas", async () => {
     const u = userEvent.setup();
     montar({ conObra: true });

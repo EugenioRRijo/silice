@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -512,6 +512,26 @@ describe("Entregar paquete", () => {
       await screen.findByText("836,80 USD");
       expect(screen.queryByText("Esta versión no está aprobada")).toBeNull();
     });
+  });
+
+  // T4 (mutante EN1): si el formulario se envía otra vez mientras el paquete se está generando, no sale un segundo paquete.
+  test("enviar el formulario dos veces mientras se genera pide un solo paquete", async () => {
+    const liberadores: (() => void)[] = [];
+    const original = entrega;
+    entrega = (() =>
+      new Promise<Response>((resolver) => {
+        liberadores.push(() => resolver(original()));
+      })) as unknown as () => Response;
+    const u = userEvent.setup();
+    montar();
+    await screen.findByText("836,80 USD");
+    const formulario = screen.getByRole("button", { name: "Generar paquete" }).closest("form")!;
+    fireEvent.submit(formulario);
+    await screen.findByRole("button", { name: "Generando…" });
+    fireEvent.submit(formulario);
+    liberadores.forEach((liberar) => liberar());
+    await u.click(await screen.findByRole("button", { name: "Descargar el paquete" }));
+    expect(llamadasPost()).toHaveLength(1);
   });
 
   describe("notificaciones de confirmación al entregar (G2)", () => {

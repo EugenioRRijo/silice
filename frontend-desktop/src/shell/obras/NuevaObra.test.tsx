@@ -300,6 +300,23 @@ describe("«Nueva obra › Componer la obra» (secciones, controles y validacion
     expect(servidor.llamadas.filter((l) => l.metodo === "PUT" && l.ruta.endsWith("/entrega"))).toEqual([]);
   });
 
+  // T4 (mutante DN2): si la carpeta de destino cambia a otra después de escribir una fecha, esa fecha ya no se ve ni se aplica:
+  // no debe frenar la creación con un aviso de un campo que ya no está.
+  test("una fecha pasada escrita antes de cambiar a otra carpeta no frena la creación", async () => {
+    const u = userEvent.setup();
+    const propias = { abierto: true, alCerrar: vi.fn(), alCrear: vi.fn() };
+    const { rerender } = render(<DialogoNuevaObra {...propias} destino={{ carpeta: null, titulo: "La empresa" }} />);
+    await u.type(await screen.findByRole("textbox", { name: /^Nombre/ }), "Puente Este");
+    await u.type(screen.getByRole("textbox", { name: "Fecha de entrega al cliente" }), "01/01/2020");
+    rerender(<DialogoNuevaObra {...propias} destino={{ carpeta: "s2.db", titulo: "S2", enOtraCarpeta: true }} />);
+    expect(await screen.findByText("Se creará en S2")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Fecha de entrega al cliente" })).toBeNull();
+    await u.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "Bs");
+    await u.click(screen.getByRole("button", { name: "Crear la obra" }));
+    await waitFor(() => expect(servidor.de("POST", "/v1/proyectos")).toHaveLength(1));
+    expect(screen.queryByText("La fecha de entrega al cliente no puede estar en el pasado.")).toBeNull();
+  });
+
   test("en otra carpeta que la abierta no pide la fecha de entrega (se fija en el Resumen de la obra)", async () => {
     render(<DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={vi.fn()} destino={{ carpeta: "s2.db", titulo: "S2", enOtraCarpeta: true }} />);
     expect(await screen.findByText("Se creará en S2")).toBeInTheDocument();

@@ -598,6 +598,21 @@ describe("Precios de la empresa", () => {
       expect(within(region).getByText("Contratista Demo, C.A. 2026-09-20 · 10 precios propios")).toBeInTheDocument();
     });
 
+    // T4 (mutante PE3): un solo precio propio se dice en singular.
+    test("con un solo precio propio la notificación lo dice en singular", async () => {
+      crear = () => json({ ...CREADA, propios: 1, mensaje: "Lista «X» creada con 1 precio propio." }, 201);
+      const almacen = crearAlmacenEnMemoria();
+      montar(vi.fn(), SESION, almacen);
+      estado = () => json(CON_LISTA);
+
+      await llenarYEnviar();
+      await screen.findByText("Lista «X» creada con 1 precio propio.");
+
+      const guardadas = await Promise.resolve(almacen.cargar());
+      expect(guardadas).toHaveLength(1);
+      expect(guardadas[0]).toMatchObject({ detalle: "Contratista Demo, C.A. 2026-09-20 · 1 precio propio" });
+    });
+
     test("un fallo al crear la lista muestra el error donde siempre y no notifica", async () => {
       crear = () => json({ detalle: "No se creó la lista: archivo inválido." }, 422);
       const almacen = crearAlmacenEnMemoria();

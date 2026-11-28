@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -437,5 +437,18 @@ describe("Costos del período", () => {
     expect(screen.getByText("Ver como tabla")).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Totales por centro de noviembre de 2026" });
     expect(within(tabla).getAllByRole("row")).toHaveLength(3);
+  });
+
+  // T4 (mutante CP3): con dos monedas los gráficos van lado a lado en su rejilla; con una sola no hay rejilla.
+  test("con dos monedas los gráficos van en la rejilla de monedas y con una sola no", async () => {
+    montar();
+    const enUsd = await screen.findByRole("img", { name: "Costos vigentes por centro en noviembre de 2026 (USD)" });
+    expect(enUsd.closest(".prod-graficas-monedas")).not.toBeNull();
+    cleanup();
+
+    totales = () => json([{ centro: "cantera", moneda: "USD", total: "1550.50" }]);
+    montar();
+    const solo = await screen.findByRole("img", { name: "Costos vigentes por centro en noviembre de 2026 (USD)" });
+    expect(solo.closest(".prod-graficas-monedas")).toBeNull();
   });
 });

@@ -1,5 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, test } from "vitest";
 import {
+  useModoEfectivo,
   valorParaDibujar,
   PALETA_GRAFICOS,
   coloresDeSerie,
@@ -78,6 +80,45 @@ describe("paleta de los graficos (azul, aguamarina y naranja validados; el resto
     ]);
     expect(slots["EV-1"]).toBe("serie1");
     expect(slots["EV-2"]).not.toBe("serie1");
+  });
+
+  // T4 (mutante P3): la repetida va al neutro oscuro, no al neutro del plan, que otra serie puede estar usando.
+  test("la segunda serie de un rol toma el neutro oscuro, distinto del neutro del plan", () => {
+    const reales = slotsPorRol([
+      { nombre: "EV-1", rol: "real" },
+      { nombre: "EV-2", rol: "real" },
+    ]);
+    expect(reales["EV-2"]).toBe("neutro2");
+    const planes = slotsPorRol([
+      { nombre: "PV-1", rol: "plan" },
+      { nombre: "PV-2", rol: "plan" },
+    ]);
+    expect(planes).toEqual({ "PV-1": "neutro", "PV-2": "neutro2" });
+  });
+
+  // T4 (mutante P4): un grupo que el catálogo no trae sigue a los del catálogo, no los pisa desde el principio.
+  test("un grupo fuera del catálogo toma el lugar siguiente al último del catálogo", () => {
+    const catalogo = ["Cemento", "Acero"];
+    expect(slotsPorGrupo(["Zinc"], catalogo)).toEqual({ Zinc: "serie3" });
+    expect(slotsPorGrupo(["Zinc", "Cobre"], catalogo)).toEqual({ Zinc: "serie3", Cobre: "neutro" });
+  });
+});
+
+describe("useModoEfectivo", () => {
+  afterEach(() => {
+    delete document.documentElement.dataset.modo;
+  });
+
+  // T4 (mutante P7): un cambio de modo hecho en otro lugar de la pestaña (el selector pone `data-modo` en <html>) llega a
+  // los gráficos que ya estaban montados.
+  test("sigue el atributo data-modo de <html> cuando cambia con el gráfico ya montado", async () => {
+    document.documentElement.dataset.modo = "claro";
+    const { result } = renderHook(() => useModoEfectivo());
+    expect(result.current).toBe("claro");
+    act(() => {
+      document.documentElement.dataset.modo = "oscuro";
+    });
+    await waitFor(() => expect(result.current).toBe("oscuro"));
   });
 });
 

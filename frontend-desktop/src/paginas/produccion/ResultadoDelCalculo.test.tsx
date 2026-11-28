@@ -12,13 +12,14 @@ interface OpcionesResultado {
 }
 
 vi.mock("../../comun/GraficoCarbon", () => ({
-  default: ({ tipo, datos, opciones }: { tipo: string; datos: { group?: string; key?: string }[]; opciones: OpcionesResultado }) => {
+  default: ({ tipo, datos, opciones }: { tipo: string; datos: { group?: string; key?: string; value?: number }[]; opciones: OpcionesResultado }) => {
     const primero = datos[0];
     return (
       <div
         role="img"
         aria-label={opciones.title ?? "Gráfico"}
         data-tipo={tipo}
+        data-valores={datos.map((d) => `${d.group}:${d.key}:${d.value}`).join("|")}
         data-doble-eje={String(Boolean(opciones.axes?.right))}
         data-eje-formato={opciones.axes?.left?.ticks?.formatter?.(258.4) ?? ""}
         data-colores={JSON.stringify(opciones.color?.scale ?? null)}
@@ -65,6 +66,35 @@ describe("gráfico del costo por tonelada en el resultado", () => {
     expect(within(region).getByText(/Qué muestra:.*noviembre de 2026.*Qué leer:.*MZP-01/)).toBeInTheDocument();
     expect(within(region).getByText("Ver como tabla")).toBeInTheDocument();
     expect(within(region).getByRole("table", { name: "Costo por tonelada de noviembre de 2026" })).toBeInTheDocument();
+  });
+});
+
+// T4 (mutantes RC1 a RC3): lo que se dibuja y lo que dice la lectura salen de las cifras que mandó el servidor.
+describe("lectura y altura de las barras del costo por tonelada", () => {
+  test("la altura de cada barra es el costo presentado, no el exacto", async () => {
+    const c = calculo({ agregados: [] }, {});
+    c.productos = [{ codigo: "MZP-01", por_tonelada: "50.700123", presentado: "50.70" }];
+    const region = ver(c);
+    const grafico = await within(region).findByRole("img", { name: "Costo por tonelada por producto (Bs/t)" });
+    expect(grafico).toHaveAttribute("data-valores", "Mezcla:MZP-01:50.7");
+  });
+
+  test("un solo producto se lee con su costo y el exacto sin redondear", async () => {
+    const region = ver(calculo({ agregados: [] }, {}));
+    await within(region).findByRole("img", { name: "Costo por tonelada por producto (Bs/t)" });
+    expect(within(region).getByText(/Qué leer: MZP-01 queda en 50,70 Bs\/t \(sin redondear: 50,7 Bs\/t\)\./)).toBeInTheDocument();
+  });
+
+  test("con varios productos la lectura nombra el de mayor costo por tonelada", async () => {
+    const c = calculo({ agregados: ["AGR-12"] }, {});
+    c.productos = [
+      { codigo: "AGR-12", por_tonelada: "5", presentado: "5.00" },
+      { codigo: "MZP-01", por_tonelada: "80.4", presentado: "80.40" },
+      { codigo: "MZP-02", por_tonelada: "60", presentado: "60.00" },
+    ];
+    const region = ver(c);
+    await within(region).findByRole("img", { name: "Costo por tonelada por producto (Bs/t)" });
+    expect(within(region).getByText(/Qué leer: el mayor costo unitario corresponde a MZP-01 con 80,40 Bs\/t;/)).toBeInTheDocument();
   });
 });
 

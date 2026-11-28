@@ -115,6 +115,22 @@ describe("TengoUnCodigo", () => {
     expect(screen.getByRole("textbox", { name: "Usuario" })).toHaveFocus();
   });
 
+  // T4 (mutante TC1): un código que solo trae separadores (guiones y espacios) cuenta como vacío.
+  test("un código de solo guiones y espacios no llama a la API y lleva el foco al código", async () => {
+    const usuario = userEvent.setup();
+    render(<TengoUnCodigo />);
+    await usuario.type(screen.getByRole("textbox", { name: "Usuario" }), "mrivas");
+    await usuario.type(screen.getByLabelText("Contraseña"), CLAVE);
+    const campoCodigo = screen.getByRole("textbox", { name: "Código" });
+    campoCodigo.focus();
+    await usuario.paste("- - --");
+
+    await usuario.click(screen.getByRole("button", { name: "Canjear el código y entrar" }));
+    expect(fetchFalso).not.toHaveBeenCalled();
+    expect(campoCodigo).toHaveFocus();
+    expect(screen.getByText("Escriba el código de 20 caracteres.")).toBeInTheDocument();
+  });
+
   test("401 muestra el mensaje del servidor y limpia la contraseña y el código", async () => {
     const usuario = userEvent.setup();
     fetchFalso.mockResolvedValueOnce(

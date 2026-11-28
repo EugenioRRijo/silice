@@ -8,6 +8,7 @@ import {
   listarPersonasDeVersiones,
   motivoDeVersion,
   pasoDeVersiones,
+  personasDeVersion,
   textoDeConteoDeVersiones,
 } from "./logica";
 import type { FilaDeVersion } from "./logica";
@@ -191,5 +192,21 @@ describe("C10b: personas y filtro en Versiones", () => {
     expect(textoDeConteoDeVersiones(1, 1)).toBe("1 de 1 versión");
     expect(textoDeConteoDeVersiones(3, 12)).toBe("3 de 12 versiones");
     expect(textoDeConteoDeVersiones(1200, 1500)).toBe("1.200 de 1.500 versiones");
+  });
+
+  // T4 (mutante V3): sin versiones también va en plural.
+  test("textoDeConteoDeVersiones dice «versiones» con cero", () => {
+    expect(textoDeConteoDeVersiones(0, 0)).toBe("0 de 0 versiones");
+  });
+
+  // T4 (mutante V1): quien guardó y quien dictaminó, si es la misma persona, cuenta una vez; si son dos, las dos.
+  test("personasDeVersion no repite a la misma persona y suma a la otra", () => {
+    expect(personasDeVersion({ responsable: "Ana Pérez <ana>", usuario: null, por: "Ana Pérez <ana>" })).toEqual([
+      { clave: "u:ana", nombre: "Ana Pérez", usuario: "ana" },
+    ]);
+    expect(personasDeVersion({ responsable: "Ana Pérez <ana>", usuario: null, por: "Rita Gómez <rita>" }).map((p) => p.clave)).toEqual([
+      "u:ana",
+      "u:rita",
+    ]);
   });
 });

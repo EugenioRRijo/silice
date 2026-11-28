@@ -343,5 +343,30 @@ describe("Cuentas: sección Solicitudes (C9)", () => {
     const llamada = fetchFalso.mock.calls.find(([r]) => String(r) === "/v1/solicitudes/10/rechazar");
     expect(llamada).toBeDefined();
     expect(await screen.findByText("Solicitud rechazada.")).toBeInTheDocument();
+    // La lista se recargó bien: no hay nota de que no se pudo recargar.
+    expect(screen.queryByText(/no se pudo recargar la lista de solicitudes/)).toBeNull();
+  });
+
+  // T4 (mutante CU4): si el rechazo se hizo pero la lista no se pudo volver a leer, la nota lo dice.
+  test("si tras rechazar no se puede recargar la lista de solicitudes, lo dice junto al mensaje", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Solicitudes de cuenta" });
+    const filaMaria = within(tabla)
+      .getAllByRole("row")
+      .find((f) => within(f).queryByText("mrivas") !== null)!;
+    const sinRecarga = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = String(entrada);
+      if (url === "/v1/solicitudes" && (init?.method ?? "GET") === "GET") return json({ detalle: "Sin red." }, 500);
+      return sinRecarga(entrada, init);
+    });
+
+    await usuario.click(within(filaMaria).getByRole("button", { name: "Rechazar" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Rechazar la solicitud" });
+    await usuario.click(within(dialogo).getByRole("button", { name: "Rechazar la solicitud" }));
+
+    expect(await screen.findByText("Solicitud rechazada.")).toBeInTheDocument();
+    expect(screen.getByText("La solicitud se rechazó, pero no se pudo recargar la lista de solicitudes.")).toBeInTheDocument();
   });
 });

@@ -299,6 +299,8 @@ describe("Resumen de la obra abierta", () => {
     await u.type(campo, "01/11/2026");
     await u.click(screen.getByRole("button", { name: "Guardar fecha" }));
     expect(await screen.findByText("La fecha de entrega al cliente no puede estar en el pasado.")).toBeInTheDocument();
+    // T4 (mutante OB3): el 422 se dice junto al campo, que queda marcado como inválido, y no como un error general.
+    expect(campo).toHaveAttribute("aria-invalid", "true");
 
     // Fecha válida: envía PUT con aaaa-mm-dd y confirma.
     await u.clear(campo);
@@ -312,6 +314,14 @@ describe("Resumen de la obra abierta", () => {
     await u.click(screen.getByRole("button", { name: "Guardar fecha" }));
     expect(await screen.findByText("Fecha de entrega quitada.")).toBeInTheDocument();
     expect(fechaGuardada).toBeNull();
+  });
+
+  // T4 (mutante OB2): quien no arma presupuestos lee la fecha de entrega pero no puede escribirla ni guardarla.
+  it("quien solo revisa ve la fecha de entrega sin poder escribirla ni guardarla", async () => {
+    montar({ sesion: sesionDe("rita") });
+    const campo = await screen.findByRole("textbox", { name: "Fecha de entrega al cliente" });
+    expect(campo).toHaveAttribute("readonly");
+    expect(screen.queryByRole("button", { name: "Guardar fecha" })).toBeNull();
   });
 });
 

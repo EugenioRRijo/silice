@@ -173,4 +173,80 @@ describe("ProveedorDeNotificaciones", () => {
     expect(screen.getByText("emergente:Versión V2 guardada")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Listo: Versión V2 guardada. Vialidad Tramo 3");
   });
+
+  // T4 (mutante PR3): emitir de nuevo la misma notificación (mismo id) la reemplaza, no la duplica ni en la lista ni en pantalla.
+  test("emitir dos veces la misma notificación deja una sola, en el historial y entre las emergentes", () => {
+    render(
+      <ProveedorDeAnuncios>
+        <ProveedorDeNotificaciones>
+          <SondaDeContexto />
+        </ProveedorDeNotificaciones>
+      </ProveedorDeAnuncios>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Emitir confirmación" }));
+    fireEvent.click(screen.getByRole("button", { name: "Emitir confirmación" }));
+    expect(screen.getByTestId("resumen")).toHaveTextContent("total:1|emergentes:1|sinLeer:1");
+    expect(screen.getAllByText("emergente:Versión V2 guardada")).toHaveLength(1);
+  });
+
+  // T4 (mutante PR6): una notificación que se cierra a mano mientras espera a que cierre el diálogo ya no sale después.
+  test("lo que se cierra mientras el diálogo sigue abierto no reaparece al cerrarlo", async () => {
+    function EscenaConDialogo() {
+      const [abierto, setAbierto] = useState(true);
+      return (
+        <div>
+          <button type="button" onClick={() => setAbierto(false)}>
+            Cerrar diálogo
+          </button>
+          <SondaDeContexto />
+          <Dialogo abierto={abierto} titulo="Confirmar entrega" alCerrar={() => setAbierto(false)}>
+            <p>Revise antes de entregar.</p>
+          </Dialogo>
+        </div>
+      );
+    }
+    render(
+      <ProveedorDeAnuncios>
+        <ProveedorDeNotificaciones>
+          <EscenaConDialogo />
+        </ProveedorDeNotificaciones>
+      </ProveedorDeAnuncios>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Emitir confirmación", hidden: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar confirmación", hidden: true }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Cerrar diálogo", hidden: true }));
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("resumen")).toHaveTextContent("total:1|emergentes:0|sinLeer:1");
+    expect(screen.queryByText("emergente:Versión V2 guardada")).toBeNull();
+  });
+
+  // T4 (mutante PR7): si llega la carga del servidor y ya había algo nuevo, la lista unida se guarda aunque nada haya vencido.
+  test("al llegar la carga asíncrona con notificaciones ya emitidas guarda la lista unida", async () => {
+    const ahora = new Date("2026-11-26T14:00:00.000Z");
+    let entregar!: (lista: Notificacion[]) => void;
+    const guardar = vi.fn();
+    const almacen: AlmacenDeNotificaciones = {
+      cargar: () =>
+        new Promise<Notificacion[]>((resolver) => {
+          entregar = resolver;
+        }),
+      guardar,
+    };
+    render(
+      <ProveedorDeAnuncios>
+        <ProveedorDeNotificaciones almacen={almacen} ahora={() => ahora}>
+          <SondaDeContexto />
+        </ProveedorDeNotificaciones>
+      </ProveedorDeAnuncios>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Emitir confirmación" }));
+    await act(async () => {
+      entregar([{ id: "previa", gravedad: "info", titulo: "De antes", creada: "2026-11-25T10:00:00.000Z", leida: false }]);
+    });
+    await waitFor(() => expect(screen.getByTestId("resumen")).toHaveTextContent("total:2|emergentes:1|sinLeer:2"));
+    const ultima = guardar.mock.calls.at(-1)![0] as Notificacion[];
+    expect(ultima.map((n) => n.id).sort()).toEqual(["n-listo", "previa"]);
+  });
 });

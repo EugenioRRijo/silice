@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -120,6 +121,20 @@ describe("El presupuesto por frente", () => {
     cambiarRev(5);
     expect(await screen.findByText("Total general: 4.801,13 Bs")).toBeInTheDocument();
     expect(vistasPedidas()).toBe(2);
+  });
+
+  // T4 (mutante PF2): en el panel lateral, si la petición se cancela antes de responder (el modo estricto monta, desmonta y
+  // vuelve a montar), la vista se vuelve a pedir en vez de quedarse sin subtotales.
+  test("en el panel lateral la vista se pide de nuevo si la primera petición se canceló antes de responder", async () => {
+    const valor = { alExpirar: vi.fn() } as unknown as Aplicacion;
+    render(
+      <StrictMode>
+        <ContextoAplicacion.Provider value={valor}>
+          <PresupuestoPorFrentes id={ID} rev={3} filas={FILAS} moneda="Bs" puedeEditar alAceptar={vi.fn()} alAusente={vi.fn()} enPanel />
+        </ContextoAplicacion.Provider>
+      </StrictMode>,
+    );
+    expect(await screen.findByText("Total general: 4.701,13 Bs")).toBeInTheDocument();
   });
 
   test("con el panel cerrado, otro rev no pide nada", async () => {

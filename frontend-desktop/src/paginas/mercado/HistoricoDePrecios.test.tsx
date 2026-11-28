@@ -15,6 +15,7 @@ interface OpcionesCapturadasMercado {
     right?: unknown;
   };
   color?: { scale: Record<string, string> };
+  points?: { enabled?: boolean };
   tooltip?: { valueFormatter?: (v: number, label: string) => string; customHTML?: (data: unknown, html: string, datum: unknown) => string };
 }
 
@@ -27,6 +28,8 @@ vi.mock("../../comun/GraficoCarbon", () => ({
         aria-label={opciones.title ?? "Gráfico"}
         data-tipo={tipo}
         data-filas={datos.length}
+        data-claves={datos.map((d) => d.key).join("|")}
+        data-puntos={String(opciones.points?.enabled)}
         data-eje-titulo={opciones.axes?.left?.title ?? ""}
         data-eje-formato={opciones.axes?.left?.ticks?.formatter?.(1250.5) ?? ""}
         data-doble-eje={String(Boolean(opciones.axes?.right))}
@@ -199,6 +202,50 @@ describe("Histórico de cambios de precio", () => {
     expect(within(screen.getByRole("table", { name: "Cambios de precio" })).getAllByRole("row")).toHaveLength(4);
     expect(imagen.getAttribute("data-globo")).toContain("10/01/2026");
     expect(imagen.getAttribute("data-globo")).toContain("10,5000");
+  });
+
+  // T4 (mutante H1): un precio que no cambió se lee «0 %», no «+0 %».
+  test("una variación nula se rotula sin signo", async () => {
+    const serie = [
+      { insumo: "Cemento ficticio", precio_anterior: "10.0000", precio_nuevo: "10.0000", variacion: "0", fecha: "2026-01-10" },
+    ];
+    fetchFalso.mockImplementation(async (url) => (String(url) === "/insumos" ? json(INSUMOS) : json(serie)));
+    montar();
+    await screen.findByRole("img", { name: /Precio registrado de/ });
+    const cierre = screen.getByRole("list", { name: "Último precio por insumo" });
+    const rotulo = within(cierre).getByRole("listitem");
+    expect(rotulo).toHaveTextContent("(0 %)");
+    expect(rotulo).not.toHaveTextContent("+0");
+  });
+
+  // T4 (mutante H3): dos cambios del mismo insumo el mismo día no comparten la clave del eje.
+  test("dos cambios del mismo insumo el mismo día llevan su número de orden en el eje", async () => {
+    const serie = [
+      { insumo: "Cemento ficticio", precio_anterior: "10.00", precio_nuevo: "11.00", variacion: "0.10", fecha: "2026-01-10" },
+      { insumo: "Cemento ficticio", precio_anterior: "11.00", precio_nuevo: "12.00", variacion: "0.09", fecha: "2026-01-10" },
+    ];
+    fetchFalso.mockImplementation(async (url) => (String(url) === "/insumos" ? json(INSUMOS) : json(serie)));
+    montar();
+    const imagen = await screen.findByRole("img", { name: /Precio registrado de/ });
+    expect(imagen).toHaveAttribute("data-claves", "10/01/2026|10/01/2026 (2)");
+  });
+
+  // T4 (mutante H2): hasta 16 fechas distintas el gráfico marca cada punto; con 17 deja solo la línea.
+  test.each([
+    [16, "true"],
+    [17, "false"],
+  ])("con %i fechas distintas los puntos marcados son: %s", async (cuantas, esperado) => {
+    const serie = Array.from({ length: cuantas }, (_, i) => ({
+      insumo: "Cemento ficticio",
+      precio_anterior: "10.00",
+      precio_nuevo: "11.00",
+      variacion: "0.10",
+      fecha: `2026-01-${String(i + 1).padStart(2, "0")}`,
+    }));
+    fetchFalso.mockImplementation(async (url) => (String(url) === "/insumos" ? json(INSUMOS) : json(serie)));
+    montar();
+    const imagen = await screen.findByRole("img", { name: /Precio registrado de/ });
+    expect(imagen).toHaveAttribute("data-puntos", esperado);
   });
 
   test("el color sigue al insumo al filtrar y el título incorpora la unidad del catálogo elegido", async () => {

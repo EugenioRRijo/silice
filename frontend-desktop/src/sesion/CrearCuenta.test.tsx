@@ -167,6 +167,40 @@ describe("CrearCuenta", () => {
     expect(document.body.innerHTML).not.toContain(CLAVE_SECRETA);
   });
 
+  // T4 (mutante CC2): mientras la confirmación sigue vacía no se acusa que no coincide; en cuanto se escribe otra, sí.
+  test("la confirmación solo avisa que no coincide cuando ya se escribió algo distinto", async () => {
+    const usuario = userEvent.setup();
+    render(<CrearCuenta alVolver={vi.fn()} alIrACanjear={vi.fn()} />);
+
+    await usuario.type(screen.getByLabelText("Contraseña"), CLAVE_SECRETA);
+    expect(screen.queryByText("Las contraseñas no coinciden.")).toBeNull();
+
+    await usuario.type(screen.getByLabelText("Confirme la contraseña"), "otra");
+    expect(screen.getByText("Las contraseñas no coinciden.")).toBeInTheDocument();
+  });
+
+  // T4 (mutante CC5): los espacios sobrantes de nombre, correo y usuario no viajan al servidor.
+  test("envía el nombre, el correo y el usuario sin espacios sobrantes", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValueOnce(json({ mensaje: MENSAJE_201 }, 201));
+    render(<CrearCuenta alVolver={vi.fn()} alIrACanjear={vi.fn()} />);
+
+    await usuario.type(screen.getByRole("textbox", { name: "Nombre" }), "  María Rivas  ");
+    await usuario.type(screen.getByRole("textbox", { name: "Correo" }), " maria@empresa.com ");
+    await usuario.type(screen.getByRole("textbox", { name: "Usuario" }), " mrivas ");
+    await usuario.type(screen.getByLabelText("Contraseña"), CLAVE_SECRETA);
+    await usuario.type(screen.getByLabelText("Confirme la contraseña"), CLAVE_SECRETA);
+    await usuario.click(screen.getByRole("button", { name: "Enviar la solicitud" }));
+
+    await screen.findByText(MENSAJE_201);
+    expect(JSON.parse(String(fetchFalso.mock.calls[0]![1]?.body))).toEqual({
+      nombre: "María Rivas",
+      correo: "maria@empresa.com",
+      login: "mrivas",
+      contrasena: CLAVE_SECRETA,
+    });
+  });
+
   test("«Volver» llama a alVolver sin enviar nada", async () => {
     const usuario = userEvent.setup();
     const alVolver = vi.fn();

@@ -422,4 +422,20 @@ describe("Costo por tonelada", () => {
     const tabla = screen.getByRole("table", { name: "Toneladas producidas en noviembre de 2026" });
     expect(within(tabla).getAllByRole("row")).toHaveLength(3);
   });
+
+  // T4 (mutante PT2): con varios productos la lectura nombra el de mayor volumen; con uno solo dice que es el único.
+  test("la lectura de lo producido distingue un solo producto de varios", async () => {
+    montar();
+    await screen.findByRole("img", { name: "Toneladas producidas por producto en noviembre de 2026 (t)" });
+    expect(screen.getByText(/Qué leer: el mayor volumen del mes corresponde a AGR-12 \(150 t\)\./)).toBeInTheDocument();
+    expect(screen.queryByText(/solo se registró producción/)).toBeNull();
+  });
+
+  test("con un solo producto la lectura dice que solo se registró ese", async () => {
+    producido = () => json([{ codigo: "AGR-12", toneladas: "150" }]);
+    montar();
+    await screen.findByRole("img", { name: "Toneladas producidas por producto en noviembre de 2026 (t)" });
+    expect(screen.getByText(/Qué leer: solo se registró producción de AGR-12 \(150 t\)\./)).toBeInTheDocument();
+    expect(screen.queryByText(/el mayor volumen del mes/)).toBeNull();
+  });
 });

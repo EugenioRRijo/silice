@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
 import type { Notificacion } from "../../comun/notificaciones/modelo";
+import type { ObraFilaRespuesta } from "../../api/tipos";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
@@ -420,6 +421,30 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
         gravedad: "listo",
         titulo: "VIV-001 enviada a aprobación",
         detalle: "OF-001",
+      });
+    });
+
+    // T4 (mutante AV2): con la obra abierta y su ficha leída, la confirmación dice la obra por su nombre y no por el código.
+    test("dentro de una obra con ficha leída, la confirmación nombra la obra por su nombre", async () => {
+      const u = userEvent.setup();
+      const base = crearAlmacenEnMemoria();
+      const obra = { codigo: "1", nombre: "Vialidad Tramo 3", etapa: "en_elaboracion", etapa_texto: "En elaboración" } as ObraFilaRespuesta;
+      render(
+        <ProveedorDeNotificaciones almacen={base}>
+          <ContextoAplicacion.Provider value={valor()}>
+            <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 1, ficha: { estado: "lista", obra }, recargarFicha: vi.fn() }}>
+              {conEnrutador(<PaginaHoja />)}
+            </ContextoDeLaObra.Provider>
+          </ContextoAplicacion.Provider>
+        </ProveedorDeNotificaciones>,
+      );
+      await u.click(await screen.findByRole("button", { name: "Enviar a aprobación…" }));
+      const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
+      await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
+      await esperar(() => {
+        const guardadas = base.cargar() as readonly Notificacion[];
+        expect(guardadas).toHaveLength(1);
+        expect(guardadas[0]).toMatchObject({ titulo: "VIV-001 enviada a aprobación", detalle: "Vialidad Tramo 3" });
       });
     });
 

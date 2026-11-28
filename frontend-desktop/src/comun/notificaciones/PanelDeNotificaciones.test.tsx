@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import * as sass from "sass";
 import { describe, expect, test } from "vitest";
@@ -55,13 +56,14 @@ const SEMILLA: Notificacion[] = [
   },
 ];
 
-function montarPanel() {
-  const almacen = crearAlmacenEnMemoria(SEMILLA);
+function montarPanel(semilla: Notificacion[] = SEMILLA, extra: ReactNode = null) {
+  const almacen = crearAlmacenEnMemoria(semilla);
   return render(
     <MemoryRouter>
       <ProveedorDeNotificaciones almacen={almacen} ahora={() => AHORA}>
         <Campanita />
         <PanelDeNotificaciones ahora={AHORA} />
+        {extra}
       </ProveedorDeNotificaciones>
     </MemoryRouter>,
   );
@@ -140,6 +142,33 @@ describe("PanelDeNotificaciones", () => {
     expect(screen.queryByRole("complementary", { name: "Notificaciones" })).toBeNull();
     expect(campanita).toHaveFocus();
     expect(campanita).toHaveAttribute("aria-expanded", "false");
+  });
+
+  // T4 (mutante PN3): con un diálogo modal abierto, Esc es del diálogo y el panel de al lado no se cierra.
+  test("Esc con un diálogo modal abierto no cierra el panel", async () => {
+    const usuario = userEvent.setup();
+    montarPanel(
+      SEMILLA,
+      <div role="dialog" aria-modal="true" aria-label="Confirmar entrega">
+        Revise antes de entregar.
+      </div>,
+    );
+    await usuario.click(screen.getByRole("button", { name: "Notificaciones, 3 sin leer" }));
+    expect(screen.getByRole("complementary", { name: "Notificaciones" })).toBeInTheDocument();
+
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(screen.getByRole("complementary", { name: "Notificaciones" })).toBeInTheDocument();
+  });
+
+  // T4 (mutante PN2): el mensaje del filtro «Sin leer» distingue «todas leídas» de «no hay ninguna».
+  test("sin ninguna notificación, «Sin leer» dice que no hay recientes y no que todas están leídas", async () => {
+    const usuario = userEvent.setup();
+    montarPanel([]);
+    await usuario.click(screen.getByRole("button", { name: "Notificaciones" }));
+    const panel = screen.getByRole("complementary", { name: "Notificaciones" });
+    await usuario.click(within(panel).getByRole("button", { name: /^Sin leer\s+0$/ }));
+    expect(within(panel).getByText("No tiene notificaciones recientes.")).toBeInTheDocument();
+    expect(within(panel).queryByText("No tiene notificaciones sin leer.")).toBeNull();
   });
 
   test("el pie enlaza a «Elegir qué notificaciones recibir», la pantalla de preferencias de la Cuenta", async () => {

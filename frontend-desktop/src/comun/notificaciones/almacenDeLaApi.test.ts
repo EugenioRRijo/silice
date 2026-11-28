@@ -100,4 +100,34 @@ describe("almacenDeLaApi", () => {
     expect(cuerpos[0]).toEqual({ gravedad: "listo", titulo: "Versión V2 guardada", detalle: "", enlace: { texto: "Ver la obra", ruta: "/obras/1" } });
     expect(cuerpos[1]).toEqual({ gravedad: "listo", titulo: "Versión V2 guardada", detalle: "" });
   });
+
+  // T4 (mutante AL1): «//sitio» es una dirección de otro sitio, no una ruta de la aplicación.
+  test("un enlace que empieza por dos barras no se manda", async () => {
+    const pedir = servidorFalso();
+    const almacen = almacenDeLaApi(pedir);
+    await almacen.cargar();
+    await almacen.guardar([local({ id: "c", enlace: { texto: "Fuera", ruta: "//ejemplo.com/obras" } })]);
+    const envio = pedir.mock.calls.find(([, op]) => op?.metodo === "POST" && op.cuerpo && "titulo" in op.cuerpo);
+    expect(envio![1]!.cuerpo).toEqual({ gravedad: "listo", titulo: "Versión V2 guardada", detalle: "" });
+  });
+
+  // T4 (mutante AL4): si se guarda otra vez mientras la primera petición sigue en vuelo, la notificación no se manda dos veces.
+  test("guardar dos veces seguidas sin esperar la respuesta manda una sola petición", async () => {
+    const pendientes: (() => void)[] = [];
+    const pedir = vi.fn<PedirNotificaciones>(async (ruta, opciones) => {
+      if (ruta === "/v1/notificaciones" && (opciones?.metodo ?? "GET") === "GET") return { notificaciones: [] };
+      await new Promise<void>((resolver) => {
+        pendientes.push(resolver);
+      });
+      return { id: 1, gravedad: "listo", titulo: "x", detalle: "", enlace: null, creada: "2026-11-26T10:00:00", leida: false };
+    });
+    const almacen = almacenDeLaApi(pedir);
+    await almacen.cargar();
+    const nueva = local({});
+    const primera = almacen.guardar([nueva]);
+    const segunda = almacen.guardar([nueva]);
+    pendientes.forEach((resolver) => resolver());
+    await Promise.all([primera, segunda]);
+    expect(pedir.mock.calls.filter(([, op]) => op?.metodo === "POST")).toHaveLength(1);
+  });
 });

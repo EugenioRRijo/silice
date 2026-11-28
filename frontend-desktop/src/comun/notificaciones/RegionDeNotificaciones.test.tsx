@@ -35,6 +35,18 @@ function Disparadores() {
         type="button"
         onClick={() =>
           notificar({
+            id: "info-1",
+            gravedad: "info",
+            titulo: "Lista de precios cargada",
+          })
+        }
+      >
+        Avisar lista
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          notificar({
             id: "adv-1",
             gravedad: "advertencia",
             titulo: "Precio vencido",
@@ -257,6 +269,73 @@ describe("RegionDeNotificaciones", () => {
 
     fireEvent.click(cerrarSegunda);
     expect(controlPrevio).toHaveFocus();
+  });
+
+  // T4 (mutante RG1): al cerrar una tarjeta del medio el foco pasa a la que le sigue, no a la anterior.
+  test("al cerrar la del medio el foco pasa a la siguiente", () => {
+    montarEscena();
+    fireEvent.click(screen.getByRole("button", { name: "Guardar versión" }));
+    fireEvent.click(screen.getByRole("button", { name: "Avisar lista" }));
+    fireEvent.click(screen.getByRole("button", { name: "Avisar vencimiento" }));
+
+    const region = screen.getByRole("region", { name: "Notificaciones nuevas" });
+    const cerrarMedio = within(region).getByRole("button", { name: /Cerrar.*Lista de precios cargada/i });
+    const cerrarSiguiente = within(region).getByRole("button", { name: /Cerrar.*Precio vencido/i });
+    cerrarMedio.focus();
+    fireEvent.click(cerrarMedio);
+    expect(cerrarSiguiente).toHaveFocus();
+  });
+
+  // T4 (mutante RG3): con un diálogo modal abierto el reloj de las confirmaciones se detiene.
+  test("el reloj de una confirmación se detiene mientras hay un diálogo modal abierto", async () => {
+    vi.useFakeTimers();
+    function ConModalPosterior() {
+      const [modal, setModal] = useState(false);
+      return (
+        <MemoryRouter>
+          <ProveedorDeAnuncios>
+            <ProveedorDeNotificaciones>
+              <button type="button" onClick={() => setModal(true)}>
+                Abrir modal
+              </button>
+              <button type="button" onClick={() => setModal(false)}>
+                Terminar modal
+              </button>
+              <Disparadores />
+              <RegionDeNotificaciones />
+              <Dialogo abierto={modal} titulo="Subir archivo" alCerrar={() => setModal(false)}>
+                <p>Seleccione el archivo.</p>
+              </Dialogo>
+            </ProveedorDeNotificaciones>
+          </ProveedorDeAnuncios>
+        </MemoryRouter>
+      );
+    }
+    render(<ConModalPosterior />);
+    fireEvent.click(screen.getByRole("button", { name: "Guardar versión" }));
+    act(() => {
+      vi.advanceTimersByTime(100_000);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir modal" }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(300_000);
+    });
+    const region = screen.getByRole("region", { name: "Notificaciones nuevas", hidden: true });
+    expect(within(region).getByText("Versión V2 guardada")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Terminar modal", hidden: true }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(79_000);
+    });
+    expect(within(region).getByText("Versión V2 guardada")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(within(region).queryByText("Versión V2 guardada")).toBeNull();
   });
 
   test("el SCSS compila, usa solo tokens --silice-*, sin font-size en px y respeta prefers-reduced-motion", () => {

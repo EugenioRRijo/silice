@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import * as sass from "sass";
 import { describe, expect, test } from "vitest";
 import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../comun/notificaciones/ProveedorDeNotificaciones";
-import { BarraDeEstado } from "./BarraDeEstado";
+import { BarraDeEstado, formatearUltimoGuardado } from "./BarraDeEstado";
 
 describe("BarraDeEstado", () => {
   test("muestra la carpeta abierta, «Guardado hace …» y la campanita con sus sin leer", () => {
@@ -69,6 +69,22 @@ describe("BarraDeEstado", () => {
       </ProveedorDeNotificaciones>,
     );
     expect(screen.getByText("Guardado hace 3 h")).toBeInTheDocument();
+  });
+
+  // T4 (mutantes B1, B3, B4): los bordes de cada tramo de «Guardado hace …».
+  test.each([
+    [0, "Guardado hace unos segundos"],
+    [1, "Guardado hace 1 s"],
+    [59, "Guardado hace 59 s"],
+    [60, "Guardado hace 1 min"],
+    [3_599, "Guardado hace 59 min"],
+    [3_600, "Guardado hace 1 h"],
+    [86_399, "Guardado hace 23 h"],
+    [86_400, "Guardado hace 1 día"],
+    [172_800, "Guardado hace 2 días"],
+  ])("a los %i segundos dice «%s»", (segundos, esperado) => {
+    const ahora = new Date("2026-11-26T14:10:00.000Z");
+    expect(formatearUltimoGuardado(new Date(ahora.getTime() - segundos * 1_000), ahora)).toBe(esperado);
   });
 
   test("el SCSS usa solo tokens --silice-*, alto mínimo de 1,75 rem (28 px) y sin font-size en px", () => {
