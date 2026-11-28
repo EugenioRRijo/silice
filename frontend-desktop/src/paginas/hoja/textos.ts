@@ -24,12 +24,6 @@ export const AYUDAS: Record<PestanaId, AyudaDePestana> = {
     alEditar: `En «Vértices» cada punto se escribe x,y,z: ahí la coma separa las coordenadas y los decimales van con punto (0,0,0; 2.5,0,0). ${SE_APLICAN}`,
     cifras: true,
   },
-  partidas: {
-    general:
-      "Las cantidades salen del espacio o de las partidas que agrega con «Agregar partida», y los precios de la composición de cada partida.",
-    alEditar: `Aquí se edita la cantidad: una cantidad escrita a mano se marca en el Estado y puede volver a la calculada. ${SE_APLICAN}`,
-    cifras: true,
-  },
   apu: {
     general: "El análisis de precio de la partida elegida: las líneas de cada rubro, su subtotal y el cierre de la partida.",
     alEditar: `Se edita la cantidad de cada línea y el rendimiento, y se puede agregar una línea (un insumo de la lista de la versión o uno nuevo con su precio) o quitar otra, en la copia de esta versión: el catálogo no cambia. ${SE_APLICAN}`,
@@ -43,11 +37,6 @@ export const AYUDAS: Record<PestanaId, AyudaDePestana> = {
   precios: {
     general:
       "Lista, referencia, fecha, moneda y tasa de cada insumo, su origen y cuánto valor perdió hasta hoy (erosión). Una cotización (con su proveedor, número y fecha) vale solo para esta obra y prevalece sobre la lista global hasta que se retire.",
-    alEditar: "",
-    cifras: false,
-  },
-  revision: {
-    general: "El informe se genera siempre, con todas las reglas, sobre el borrador vigente.",
     alEditar: "",
     cifras: false,
   },

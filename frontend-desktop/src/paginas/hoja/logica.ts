@@ -9,10 +9,11 @@ import type { Impuestos } from "../control/logica";
 export const TITULO = "Presupuesto";
 export const SIN_VERSIONES = "Esta obra aún no tiene versiones";
 
-// Las pestañas del Presupuesto (Tarea 4 del plan F4): cada una con su id estable, que guarda el proveedor y que
-// usan las otras secciones para abrir una, y su título, que ve la persona. «Plan y equilibrio» junta lo que eran dos
-// (baja 23); «Trazabilidad» salió con la baja 24 (Tarea 6): su historial vive en la sección Versiones.
-export type PestanaId = "espacio" | "partidas" | "apu" | "plan" | "precios" | "revision" | "ajustes";
+// Las pestañas de la subvista «Espacio, plan y ajustes» (lote B1-11: «Partidas» y «Revisión» viven ya en la superficie
+// principal del Presupuesto): cada una con su id estable, que guarda el proveedor y que usan las otras secciones para
+// abrir una, y su título, que ve la persona. «Plan y equilibrio» junta lo que eran dos (baja 23); «Trazabilidad» salió
+// con la baja 24 (Tarea 6): su historial vive en la sección Versiones.
+export type PestanaId = "espacio" | "apu" | "plan" | "precios" | "ajustes";
 export interface PestanaDef {
   id: PestanaId;
   titulo: string;
@@ -20,18 +21,16 @@ export interface PestanaDef {
 
 export const PESTANAS: readonly PestanaDef[] = [
   { id: "espacio", titulo: "Espacio y metrajes" },
-  { id: "partidas", titulo: "Partidas" },
   { id: "apu", titulo: "Análisis de precio (APU)" },
   { id: "plan", titulo: "Plan y equilibrio" },
   { id: "precios", titulo: "Precios" },
-  { id: "revision", titulo: "Revisión" },
   { id: "ajustes", titulo: "Ajustes de costo" },
 ];
 
 // «Espacio y metrajes» solo se ve si la obra tiene espacio (no es civil) o si la persona pidió describirlo (pregunta 3 del
 // plan). La API manda `espacio_vacio` siempre; los datos de prueba anteriores no lo traen y se tratan como obra con espacio.
 // Con la especialidad «edificación» apagada en la instalación (plan vial, Tarea 19) no se ve nunca: la API cierra la edición
-// del espacio y los planos, y la Hoja sigue sirviendo a las obras viales desde «Partidas».
+// del espacio y los planos, y la subvista abre en «Análisis de precio (APU)».
 export function pestanasVisibles(
   r: { espacio_vacio?: boolean },
   espacioPedido: boolean,
@@ -603,10 +602,10 @@ export function ubicarError(detalle: string, tablas: TablaEspacio[]): UbicacionD
 
 // --- Tarea 11: agregar y quitar partidas (rutas de la Tarea 9) ---
 
-// La pestaña con que abre la Hoja: una obra sin espacio (obra civil) abre en «Partidas»; las de instalaciones, en
-// «Espacio y metrajes», como siempre.
+// La pestaña con que abre la subvista por pestañas: una obra sin espacio (obra civil) abre en «Análisis de precio (APU)»;
+// las de instalaciones, en «Espacio y metrajes», como siempre.
 export function pestanaInicial(resumen: { espacio_vacio?: boolean }): PestanaId {
-  return resumen.espacio_vacio === true ? "partidas" : "espacio";
+  return resumen.espacio_vacio === true ? "apu" : "espacio";
 }
 
 export const rutaDeAgregarPartida = (id: string) => `/v1/hoja/borradores/${id}/partidas`;

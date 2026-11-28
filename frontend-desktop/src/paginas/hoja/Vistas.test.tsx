@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { vistaApu, vistaEquilibrio, vistaEspacio, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
+import { vistaApu, vistaEquilibrio, vistaEspacio, vistaPlan } from "./datosDePrueba";
 import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
@@ -55,7 +55,7 @@ const BORRADOR: BorradorAbierto = {
   instantanea: { creadas: 0, mensaje: null },
 };
 
-type Respuestas = Partial<Record<"espacio" | "presupuesto" | "apu" | "plan" | "equilibrio", (url: string) => Response | Promise<Response>>>;
+type Respuestas = Partial<Record<"espacio" | "apu" | "plan" | "equilibrio", (url: string) => Response | Promise<Response>>>;
 
 describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -80,7 +80,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
         const nombre = /\/vistas\/([a-z]+)/.exec(url)![1] as keyof Respuestas;
         const propia = respuestas[nombre];
         if (propia) return propia(url);
-        const porOmision = { espacio: vistaEspacio, presupuesto: vistaPresupuesto, apu: vistaApu, plan: vistaPlan, equilibrio: vistaEquilibrio }[nombre]!;
+        const porOmision = { espacio: vistaEspacio, apu: vistaApu, plan: vistaPlan, equilibrio: vistaEquilibrio }[nombre]!;
         return json(porOmision());
       }
       return new Response(null, { status: 204 });
@@ -118,10 +118,10 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     montar();
     await screen.findByRole("heading", { level: 3, name: "Ambientes" });
     expect(vistasPedidas()).toEqual(["/v1/hoja/borradores/id-borrador-aaaaaaaaaaaa/vistas/espacio"]);
-    await userEvent.click(screen.getByRole("tab", { name: "Partidas" }));
-    await screen.findByRole("table", { name: "Presupuesto" });
+    await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
+    await screen.findByRole("heading", { level: 3, name: "Cierre de partida" });
     expect(vistasPedidas()).toHaveLength(2);
-    expect(vistasPedidas()[1]).toMatch(/\/vistas\/presupuesto$/);
+    expect(vistasPedidas()[1]).toMatch(/\/vistas\/apu/);
   });
 
   test("Espacio: cinco tablas con su título h3, su contador de filas y los rótulos de columna", async () => {
@@ -345,54 +345,6 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     await irA("Análisis de precio (APU)");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
     expect(screen.queryByRole("radio")).toBeNull();
-  });
-
-  // --- Presupuesto ----------------------------------------------------------------------------
-
-  test("Presupuesto: renglones con cantidad, precio unitario, total y Estado", async () => {
-    servidor();
-    montar();
-    await irA("Partidas");
-    const tabla = await screen.findByRole("table", { name: "Presupuesto" });
-    expect(within(tabla).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
-      "Partida",
-      "Descripción",
-      "Unidad",
-      "Cantidad",
-      "Cómo se midió",
-      "Precio unitario",
-      "Objetivo de mercado",
-      "Total",
-      "Estado",
-      "Quitar",
-    ]);
-    const filas = within(tabla).getAllByRole("row");
-    expect(within(filas[1]!).getByText("13,20")).toBeInTheDocument();
-    expect(within(filas[1]!).getByTitle("13,198738025")).toBeInTheDocument();
-    expect(within(filas[1]!).getByText("39,60")).toBeInTheDocument();
-    expect(within(filas[1]!).getByText("OK")).toBeInTheDocument();
-    expect(screen.getByTitle("2.703,8602323440440333")).toHaveTextContent("2.703,86 USD");
-  });
-
-  test("Presupuesto: una cantidad escrita a mano dice cuál era la calculada y una partida sin APU queda pendiente", async () => {
-    servidor();
-    montar();
-    await irA("Partidas");
-    const tabla = await screen.findByRole("table", { name: "Presupuesto" });
-    const pendiente = within(tabla).getAllByRole("row")[2]!;
-    // Desde 3c-2 la cantidad es un campo editable y la calculada se dice al lado.
-    expect(within(pendiente).getByRole("textbox", { name: "Cantidad, Presupuesto fila 2" })).toHaveValue("5");
-    expect(within(pendiente).getByText("(calculada: 3)")).toBeInTheDocument();
-    expect(within(pendiente).getAllByText("Pendiente")).toHaveLength(2); // sin precio unitario ni total
-    expect(within(pendiente).getByText("Error")).toBeInTheDocument();
-  });
-
-  test("Presupuesto: sin renglones muestra el mensaje del servidor", async () => {
-    const mensaje = "El presupuesto no tiene renglones todavía.";
-    servidor({ presupuesto: () => json(vistaPresupuesto({ filas: [], vacio_mensaje: mensaje })) });
-    montar();
-    await irA("Partidas");
-    expect(await screen.findByText(mensaje)).toBeInTheDocument();
   });
 
   // --- Plan y curva ---------------------------------------------------------------------------

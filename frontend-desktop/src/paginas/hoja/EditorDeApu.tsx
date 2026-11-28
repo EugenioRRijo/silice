@@ -9,7 +9,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { ConfirmarQuitarLinea } from "./ConfirmarQuitarLinea";
 import { LineaDelApu } from "./LineaDelApu";
 import type { LineaAgregada, ModoDeLinea } from "./LineaDelApu";
-import { useFocoAlCerrar } from "./AgregarPartida";
+import { useFocoAlCerrar } from "./useFocoAlCerrar";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";

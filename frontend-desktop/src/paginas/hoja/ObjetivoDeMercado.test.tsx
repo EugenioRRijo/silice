@@ -1,17 +1,14 @@
 import { configure, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import type { FilaDensa } from "../../comun/TablaDensa";
-import { DialogoSalida } from "../../shell/DialogoSalida";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { cancelarSalida } from "../../shell/salida";
-import { olvidarFormularios } from "../../shell/sucio";
-import PaginaHoja from "./pestanas";
+import { Cifra } from "./Cifra";
 import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
-import type { BorradorAbierto, FilaPresupuesto, VersionesRespuesta, VistaPresupuesto } from "./logica";
+import { TablaPaginada } from "./TablaPaginada";
+import type { FilaPresupuesto } from "./logica";
 
 // Tarea 16 del plan de montar un presupuesto: la Hoja muestra, junto al precio unitario de cada partida, el precio de
 // venta objetivo que se guardó en «Estudio de mercado» y el margen contra ese precio unitario (diseño §5.1: «APU
@@ -35,36 +32,10 @@ const SESION: SesionRespuesta = {
   modo_entrega: false,
 };
 
-const ID = "id-borrador-vivienda-objetivo";
 const COLUMNA = "Objetivo de mercado";
 const AYUDA =
   "Objetivo de mercado: el precio de venta que guardó en «Estudio de mercado». El margen lo compara con el precio unitario " +
   "(con utilidad, sin IVA): negativo si el objetivo queda por debajo.";
-
-const VERSIONES: VersionesRespuesta = {
-  proyecto: "VIV-80",
-  moneda: "Bs",
-  por_omision: "VIV-001",
-  versiones: [{ codigo: "VIV-001", fecha: "2026-10-25", motivo: "", origen: "", vigente: true, descartada: false, cambios: 0 }],
-};
-
-const ABIERTO: BorradorAbierto = {
-  id: ID,
-  base: { proyecto: "VIV-80", version: "VIV-001", vigente: "VIV-001", lista: "Lista de la carpeta", espacio_de: "VIV-001", solo_lectura: false, moneda: "Bs" },
-  resumen: {
-    rev: 0,
-    moneda: "Bs",
-    total: { texto: "0.00", exacto: "0" },
-    cambios: 0,
-    pendientes_catalogo: 0,
-    hallazgos: [],
-    hay_plan: false,
-    version_mas_nueva: null,
-    guardado_como: null,
-    espacio_vacio: true,
-  },
-  instantanea: { creadas: 0, mensaje: null },
-};
 
 function fila(partida: string, pu: { texto: string; exacto: string } | null, extra: Partial<FilaPresupuesto> = {}): FilaPresupuesto {
   return {
@@ -118,12 +89,38 @@ const OBJETIVOS = {
   ],
 };
 
-function vista(filas: FilaPresupuesto[]): VistaPresupuesto {
-  const impuestos = { subtotal: "0.00", iva: "0.00", total: "0.00", alicuota: "0.16", fuente_alicuota: "Fuente ficticia" };
-  return { filas, total: { texto: "0.00", exacto: "0" }, moneda: "Bs", vacio_mensaje: filas.length === 0 ? "El presupuesto no tiene renglones todavía." : null, impuestos };
+function BancoObjetivos({ filas }: { filas: FilaPresupuesto[] }) {
+  const { columna, aviso } = useObjetivosDeMercado(filas, "Bs");
+  const datos: FilaDensa[] = filas.map((f) => ({
+    id: f.clave,
+    partida: f.partida,
+    pu_texto: f.pu?.texto ?? "",
+    pu_exacto: f.pu?.exacto ?? "",
+  }));
+  return (
+    <>
+      <TablaPaginada
+        etiqueta="Presupuesto"
+        columnas={[
+          { clave: "partida", titulo: "Partida", ordenable: false },
+          {
+            clave: "pu",
+            titulo: "Precio unitario",
+            numerica: true,
+            ordenable: false,
+            celda: (f) =>
+              f.pu_texto === "" ? "Pendiente" : <Cifra valor={{ texto: f.pu_texto, exacto: f.pu_exacto ?? "" }} />,
+          },
+          columna,
+        ]}
+        filas={datos}
+      />
+      {aviso}
+    </>
+  );
 }
 
-describe("Hoja: objetivo de mercado junto al precio unitario (Tarea 16)", () => {
+describe("Hoja: objetivo de mercado y useObjetivosDeMercado (Tarea 16)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let filas: FilaPresupuesto[];
@@ -138,18 +135,11 @@ describe("Hoja: objetivo de mercado junto al precio unitario (Tarea 16)", () => 
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = String(ruta);
       const metodo = init?.method ?? "GET";
-      if (url.startsWith("/v1/hoja/versiones")) return json(VERSIONES);
-      if (url.startsWith("/v1/hoja/borradores") && !url.includes(ID) && metodo === "GET") return json({ borradores: [] });
-      if (url === "/v1/hoja/borradores" && metodo === "POST") return json(ABIERTO, 201);
-      if (url === `/v1/hoja/borradores/${ID}` && metodo === "GET") return json({ id: ID, base: ABIERTO.base, resumen: ABIERTO.resumen });
-      if (url.endsWith("/vistas/presupuesto")) return json(vista(filas));
       if (url.startsWith("/v1/mercado/objetivos") && metodo === "GET") return alObjetivos(new URL(url, "http://local"));
       return json({ detalle: `ruta inesperada ${metodo} ${url}` }, 500);
     });
   });
   afterEach(() => {
-    cancelarSalida();
-    olvidarFormularios();
     vi.unstubAllGlobals();
   });
 
@@ -167,12 +157,7 @@ describe("Hoja: objetivo de mercado junto al precio unitario (Tarea 16)", () => 
     };
     return render(
       <ContextoAplicacion.Provider value={valor}>
-        <MemoryRouter initialEntries={["/hoja"]}>
-          <Routes>
-            <Route path="/hoja" element={<PaginaHoja />} />
-          </Routes>
-          <DialogoSalida />
-        </MemoryRouter>
+        <BancoObjetivos filas={filas} />
       </ContextoAplicacion.Provider>,
     );
   }
@@ -312,7 +297,7 @@ describe("Hoja: objetivo de mercado junto al precio unitario (Tarea 16)", () => 
       ),
     ).toBeInTheDocument();
     expect(texto((await celdaDe("OBRA-04")).celda)).toBe("");
-    expect(screen.getByRole("textbox", { name: "Cantidad, Presupuesto fila 1" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Presupuesto" })).toBeInTheDocument();
   });
 
   test("con la sesión vencida (401) avisa al armazón", async () => {

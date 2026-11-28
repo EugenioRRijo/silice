@@ -17,7 +17,6 @@ import {
 } from "./logica";
 import type { EstadoFila, FilaEditable, TablaEspacio } from "./logica";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { rotuloDeOrigen } from "../../comun/rotuloDeOrigen";
 
 // A qué celda ir desde fuera (por ejemplo desde «Ir a la fila 2»); `vez` sube para repetir el mismo destino.
 export interface IrA {
@@ -61,7 +60,7 @@ function EstadoDeLaFila({ tabla, fila, estado }: { tabla: TablaEspacio; fila: Fi
       </span>
     );
   }
-  return <EstadoDeFila estado={propio} claves={[origen]} rotulo={rotuloDeOrigen(origen)} />;
+  return <EstadoDeFila estado={propio} />;
 }
 
 // Una de las tablas del espacio, editable: cada celda es un campo con nombre accesible, las listas cerradas son select

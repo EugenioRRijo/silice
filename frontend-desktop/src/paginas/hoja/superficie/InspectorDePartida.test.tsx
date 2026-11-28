@@ -12,6 +12,7 @@ import { ContextoAplicacion } from "../../../shell/contexto";
 import type { Aplicacion } from "../../../shell/contexto";
 import { vistaApu, vistaPresupuesto } from "../datosDePrueba";
 import type { BorradorAbierto, FilaPresupuesto, Resumen } from "../logica";
+import { AYUDA_OBJETIVO } from "../ObjetivoDeMercado";
 import { InspectorDePartida, resumenDeMedicion } from "./InspectorDePartida";
 import type { PropiedadesDeInspectorDePartida } from "./InspectorDePartida";
 
@@ -470,5 +471,140 @@ describe("InspectorDePartida (lote B1-6)", () => {
     expect(css).toMatch(/\.silice-inspector\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
     expect(css).not.toMatch(/font-size:\s*\d+px/);
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+  });
+
+  test("objetivo de mercado: margen negativo con U+2212, otra moneda (equivalencia y sin tasa), sin precio unitario, error 503 y cuenta que revisa", async () => {
+    responderObjetivos = () =>
+      json({
+        objetivos: [
+          {
+            codigo: "AF-LLAVE",
+            precio: "1980.00",
+            moneda: "USD",
+            margen: "-4.6",
+            equivalencia: null,
+            sin_tasa: null,
+          },
+        ],
+      });
+    const { rerender, aplicacion, props } = montar({ sesion: REVISA });
+    const panel = screen.getByRole("complementary", { name: "AF-LLAVE · Llave de paso · unidad" });
+    expect(await within(panel).findByText("1.980,00 · margen −4,6 %")).toBeInTheDocument();
+    expect(within(panel).getByText(AYUDA_OBJETIVO)).toBeInTheDocument();
+
+    // Equivalencia en otra moneda y sin precio unitario.
+    vaciarRecursosParaPruebas();
+    responderObjetivos = () =>
+      json({
+        objetivos: [
+          {
+            codigo: "AF-SALIDA",
+            precio: "31.50",
+            moneda: "USD",
+            margen: null,
+            equivalencia: {
+              precio_original: "31.50",
+              moneda_original: "USD",
+              tasa: "36.50",
+              fecha_tasa: "2026-10-20",
+              fuente_tasa: "importacion:bcv-venta",
+              fuente_legible: "BCV, publicación del 20/10/2026",
+              convertido: "1149.75",
+              moneda: "Bs",
+              operacion: "×",
+            },
+            sin_tasa: null,
+          },
+        ],
+      });
+    const filaSalida = { ...vistaPresupuesto().filas[1]!, pu: null };
+    rerender(
+      <MemoryRouter>
+        <ContextoAplicacion.Provider value={aplicacion}>
+          <ProveedorDeAnuncios>
+            <InspectorDePartida {...props} borrador={{ ...crearBorrador(), resumen: crearResumen({ moneda: "Bs" }) }} fila={filaSalida} />
+          </ProveedorDeAnuncios>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+    const panelSalida = screen.getByRole("complementary", { name: "AF-SALIDA · Salida de agua · unidad" });
+    expect(
+      await within(panelSalida).findByText(
+        "31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs · sin precio unitario, sin margen",
+      ),
+    ).toBeInTheDocument();
+
+    // Sin tasa del BCV ni error 503 rompen el inspector.
+    responderObjetivos = () => json({ detalle: "No se pudo leer el estudio." }, 503);
+    const otra = filaEditable({ clave: "ERR|1", partida: "ERR", descripcion: "Partida sin objetivo" });
+    rerender(
+      <MemoryRouter>
+        <ContextoAplicacion.Provider value={aplicacion}>
+          <ProveedorDeAnuncios>
+            <InspectorDePartida {...props} fila={otra} />
+          </ProveedorDeAnuncios>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+    expect(await within(screen.getByRole("complementary")).findByText("Sin objetivo de mercado")).toBeInTheDocument();
+  });
+
+  test("en solo lectura (quien revisa o borrador solo_lectura) el APU dentro del inspector no muestra controles que escriban", async () => {
+    const { rerender, aplicacion, props } = montar({ sesion: REVISA, props: { puedeEditar: false } });
+    const panel = screen.getByRole("complementary", { name: "AF-LLAVE · Llave de paso · unidad" });
+    expect(await within(panel).findByText("Cierre de partida")).toBeInTheDocument();
+    expect(within(panel).queryAllByRole("textbox")).toEqual([]);
+    expect(within(panel).queryByRole("button", { name: "Agregar línea" })).toBeNull();
+    expect(within(panel).queryByRole("button", { name: /^Quitar/ })).toBeNull();
+    expect(within(panel).queryByRole("button", { name: /^Cambiar el insumo/ })).toBeNull();
+
+    rerender(
+      <MemoryRouter>
+        <ContextoAplicacion.Provider value={aplicacion}>
+          <ProveedorDeAnuncios>
+            <InspectorDePartida {...props} borrador={crearBorrador({ soloLectura: true })} puedeEditar={false} />
+          </ProveedorDeAnuncios>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+    expect(await within(panel).findByText("Cierre de partida")).toBeInTheDocument();
+    expect(within(panel).queryAllByRole("textbox")).toEqual([]);
+  });
+
+  test("si el servidor devuelve el APU de otra partida, el inspector avisa sin abrir la otra", async () => {
+    responderApu = () => json({ ...vistaApu(), seleccionada: "E-02", detalle: { ...vistaApu().detalle!, codigo: "E-02", descripcion: "Relleno" } });
+    montar();
+    const panel = screen.getByRole("complementary", { name: "AF-LLAVE · Llave de paso · unidad" });
+    expect(await within(panel).findByText("AF-LLAVE no tiene análisis de precio en este presupuesto.")).toBeInTheDocument();
+    expect(within(panel).queryAllByRole("textbox")).toEqual([]);
+    expect(within(panel).queryByText("Relleno")).toBeNull();
+  });
+
+  test("cambiar el insumo de una línea del APU dentro del inspector manda POST .../insumo y avisa", async () => {
+    const u = userEvent.setup();
+    const previa = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (ruta, init) => {
+      const url = new URL(String(ruta), "http://silice.local");
+      if (url.pathname === `/v1/hoja/borradores/${ID}/insumos`) {
+        return json({ insumos: [{ codigo: "MAT-010", descripcion: "Llave de bola PVC 3/4", unidad: "pieza", precio: { texto: "8.10", exacto: "8.10" } }], hay_mas: false });
+      }
+      if (url.pathname === `/v1/hoja/borradores/${ID}/apu/AF-LLAVE/insumo` && init?.method === "POST") {
+        const c = JSON.parse(String(init.body)) as { rev: number };
+        return json({ rev: c.rev + 1, resumen: crearResumen({ rev: c.rev + 1, cambios: 1 }), apu: vistaApu() });
+      }
+      return previa(ruta, init);
+    });
+    const { props } = montar();
+    const panel = screen.getByRole("complementary", { name: "AF-LLAVE · Llave de paso · unidad" });
+    const botonCambiar = await within(panel).findByRole("button", { name: "Cambiar el insumo de Llave de bola PVC 1/2, Materiales fila 1" });
+    await u.click(botonCambiar);
+
+    const dialogo = screen.getByRole("dialog", { name: "Cambiar el insumo de Llave de bola PVC 1/2" });
+    await u.type(within(dialogo).getByRole("combobox", { name: "Insumo" }), "llave");
+    await u.click(await screen.findByRole("option", { name: /Llave de bola PVC 3\/4/ }));
+    await u.click(within(dialogo).getByRole("button", { name: "Usar este insumo" }));
+
+    expect(await within(panel).findByText("Insumo de la línea 1 cambiado: Llave de bola PVC 3/4.")).toBeInTheDocument();
+    expect(props.alAceptar).toHaveBeenCalledTimes(1);
   });
 });

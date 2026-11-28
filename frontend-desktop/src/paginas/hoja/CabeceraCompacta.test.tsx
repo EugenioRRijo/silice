@@ -33,7 +33,6 @@ const ARMA: SesionRespuesta = {
   acciones: ["editar_hoja", "leer_proyecto"],
   modo_entrega: false,
 };
-const REVISA: SesionRespuesta = { ...ARMA, login: "rita", nombre: "Rita Gómez", roles: ["revisa"], acciones: ["leer_proyecto"] };
 
 const ID = "id-borrador-aaaaaaaaaaaa";
 const VERSIONES: VersionesRespuesta = {
@@ -126,7 +125,7 @@ describe("Presupuesto: cabecera compacta", () => {
 
   async function listo() {
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    await screen.findByRole("table", { name: "Presupuesto" });
+    await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
     return estado;
   }
   const antes = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
@@ -196,12 +195,6 @@ describe("Presupuesto: cabecera compacta", () => {
       expect(antes(estado, franja)).toBe(true);
       expect(antes(franja, pestanas)).toBe(true);
     });
-
-    test("el total sigue también al pie de la tabla", async () => {
-      montar();
-      await listo();
-      expect(await screen.findByText(/Total del presupuesto/)).toBeInTheDocument();
-    });
   });
 
   describe("la franja de acciones", () => {
@@ -244,75 +237,7 @@ describe("Presupuesto: cabecera compacta", () => {
     });
   });
 
-  describe("la barra de herramientas de «Partidas»", () => {
-    const barra = () => screen.findByRole("group", { name: "Herramientas de Partidas" });
-
-    test("reúne «Agregar partida», el aviso de decimales y «¿Qué es esto?», en ese orden", async () => {
-      montar();
-      await listo();
-      const herramientas = await barra();
-      const agregar = within(herramientas).getByRole("button", { name: "Agregar partida" });
-      const decimales = within(herramientas).getByText(/Escriba los decimales con coma/);
-      const ayuda = within(herramientas).getByRole("button", { name: "¿Qué es esto?" });
-      expect(antes(agregar, decimales)).toBe(true);
-      expect(antes(decimales, ayuda)).toBe(true);
-    });
-
-    test("está entre las pestañas y la tabla", async () => {
-      montar();
-      await listo();
-      const herramientas = await barra();
-      expect(antes(screen.getByRole("tablist", { name: "Secciones del presupuesto" }), herramientas)).toBe(true);
-      expect(antes(herramientas, screen.getByRole("table", { name: "Presupuesto" }))).toBe(true);
-    });
-
-    test("«¿Qué es esto?» abierto pone su explicación dentro de la barra, tras los botones, y Esc devuelve el foco al botón", async () => {
-      montar();
-      await listo();
-      const herramientas = await barra();
-      const ayuda = within(herramientas).getByRole("button", { name: "¿Qué es esto?" });
-      await userEvent.click(ayuda);
-      const panel = within(herramientas).getByRole("region", { name: "Partidas" });
-      expect(antes(ayuda, panel)).toBe(true);
-      await userEvent.keyboard("{Escape}");
-      expect(ayuda).toHaveFocus();
-      expect(within(herramientas).queryByRole("region", { name: "Partidas" })).toBeNull();
-    });
-
-    test("quien solo revisa ve la barra con «¿Qué es esto?» y sin lo que escribe", async () => {
-      montar(REVISA);
-      await listo();
-      const herramientas = await barra();
-      expect(within(herramientas).getByRole("button", { name: "¿Qué es esto?" })).toBeInTheDocument();
-      expect(within(herramientas).queryByRole("button", { name: "Agregar partida" })).toBeNull();
-      expect(within(herramientas).queryByText(/Escriba los decimales con coma/)).toBeNull();
-    });
-
-    test("«Agregar partida» devuelve el foco a su botón al cancelar el diálogo", async () => {
-      montar();
-      await listo();
-      const agregar = within(await barra()).getByRole("button", { name: "Agregar partida" });
-      await userEvent.click(agregar);
-      const dialogo = await screen.findByRole("dialog", { name: "Agregar partida" });
-      await userEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
-      await waitFor(() => expect(agregar).toHaveFocus());
-    });
-  });
-
   describe("sin hueco antes de la tabla", () => {
-    // Causa del hueco de ~80 px: dos regiones vivas vacías (el aviso de «Partidas» y «Aplicando los cambios…») eran hijas de
-    // la rejilla de la pestaña (`gap` de 1,5 rem): cada una, aunque de alto cero, sumaba un hueco. Una región viva vacía
-    // debe sacarse del flujo (`.silice-hoja__region-viva:empty`), no dejar un contenedor vacío entre la barra y la tabla.
-    test("todo hijo vacío de la pestaña es una región viva fuera del flujo", async () => {
-      montar();
-      await listo();
-      await barra();
-      const pestana = document.querySelector(".silice-hoja__pestana")!;
-      const vacios = Array.from(pestana.children).filter((h) => h.textContent === "" && h.children.length === 0);
-      expect(vacios.length).toBeGreaterThan(0);
-      for (const v of vacios) expect(v).toHaveClass("silice-hoja__region-viva");
-    });
-
     test("las regiones vivas vacías no ocupan lugar: están sacadas del flujo en la hoja de estilos", () => {
       const nodo = (
         globalThis as unknown as {
@@ -323,6 +248,4 @@ describe("Presupuesto: cabecera compacta", () => {
       expect(scss).toMatch(/\.silice-hoja__region-viva:empty\s*\{[^}]*position:\s*absolute/);
     });
   });
-
-  const barra = () => screen.findByRole("group", { name: "Herramientas de Partidas" });
 });

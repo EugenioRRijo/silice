@@ -1,14 +1,17 @@
-import { act, configure, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeAnuncios } from "../../comun/Anunciador";
 import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
 import type { Notificacion } from "../../comun/notificaciones/modelo";
+import { vaciarRecursosParaPruebas } from "../../comun/recurso";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
-import PaginaHoja from "./pestanas";
+import PaginaHoja from "./index";
 import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
@@ -121,6 +124,7 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
   let alGuardar: () => Response;
 
   beforeEach(() => {
+    vaciarRecursosParaPruebas();
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
     alExpirar.mockReset();
@@ -156,6 +160,7 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
     });
   });
   afterEach(() => {
+    vaciarRecursosParaPruebas();
     vi.unstubAllGlobals();
   });
 
@@ -174,7 +179,9 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
   }
   function montar() {
     return render(
-      <ContextoAplicacion.Provider value={valor()}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>,
+      <ContextoAplicacion.Provider value={valor()}>
+        <ProveedorDeAnuncios>{conEnrutador(<PaginaHoja />)}</ProveedorDeAnuncios>
+      </ContextoAplicacion.Provider>,
     );
   }
   async function esperar<T>(comprobar: () => T): Promise<T> {
@@ -315,11 +322,15 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       const u = userEvent.setup();
       const recargarFicha = vi.fn();
       render(
-        <ContextoAplicacion.Provider value={valor()}>
-          <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 1, ficha: { estado: "cargando" }, recargarFicha }}>
-            <PaginaHoja />
-          </ContextoDeLaObra.Provider>
-        </ContextoAplicacion.Provider>,
+        <MemoryRouter>
+          <ContextoAplicacion.Provider value={valor()}>
+            <ProveedorDeAnuncios>
+              <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 1, ficha: { estado: "cargando" }, recargarFicha }}>
+                <PaginaHoja />
+              </ContextoDeLaObra.Provider>
+            </ProveedorDeAnuncios>
+          </ContextoAplicacion.Provider>
+        </MemoryRouter>,
       );
       await u.click(await screen.findByRole("button", { name: "Enviar a aprobación…" }));
       const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
@@ -398,7 +409,9 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       };
       render(
         <ProveedorDeNotificaciones almacen={almacen}>
-          <ContextoAplicacion.Provider value={valor()}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>
+          <ContextoAplicacion.Provider value={valor()}>
+            <ProveedorDeAnuncios>{conEnrutador(<PaginaHoja />)}</ProveedorDeAnuncios>
+          </ContextoAplicacion.Provider>
         </ProveedorDeNotificaciones>,
       );
 
@@ -447,17 +460,17 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
   });
 
   describe("devuelta: las notas y una versión nueva", () => {
-    // Tarea 5 del plan F4: el botón está en la franja del paso y se llama «Hacer una versión nueva».
-    test("se leen las notas y «Hacer una versión nueva» (de la franja) lleva a «Partidas» con el aviso", async () => {
+    // En la superficie nueva, «Hacer una versión nueva» enfoca la grilla y muestra el aviso en la zona de aprobación.
+    test("se leen las notas y «Hacer una versión nueva» (de la franja) enfoca la grilla con el aviso", async () => {
       const u = userEvent.setup();
       aprobaciones = { "VIV-001": DEVUELTA };
       montar();
       const zona = await region();
       expect(zona).toHaveTextContent("Notas de Rita: Falta el acero de la losa.");
-      expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "false");
+      await screen.findByRole("grid", { name: "Presupuesto" });
       const franja = screen.getByRole("region", { name: "Siguiente paso" });
       await u.click(within(franja).getByRole("button", { name: "Hacer una versión nueva" }));
-      await esperar(() => expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "true"));
+      await waitFor(() => expect(document.activeElement?.closest("[role='grid']")).not.toBeNull());
       expect(within(zona).getByRole("status")).toHaveTextContent("Corrija y guarde: será una versión nueva.");
       // No reabre ni envía nada: el borrador de esa versión ya está abierto.
       expect(envios()).toEqual([]);

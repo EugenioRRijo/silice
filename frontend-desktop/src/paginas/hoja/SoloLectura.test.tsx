@@ -6,7 +6,7 @@ import { ofertaDe } from "../../marco/oferta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
-import { cuerpoDeVista, preciosRespuesta, vistaPresupuesto } from "./datosDePrueba";
+import { cuerpoDeVista, preciosRespuesta } from "./datosDePrueba";
 import PaginaHoja from "./pestanas";
 import { PESTANAS } from "./logica";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
@@ -71,29 +71,6 @@ function borrador(soloLectura = false): BorradorAbierto {
   };
 }
 
-// Un renglón propio de la versión (se puede quitar) con una cantidad escrita a mano y un hallazgo: con permiso,
-// «Quitar», «Volver a la calculada» y la cantidad editable; sin él, solo el texto.
-const PRESUPUESTO = vistaPresupuesto({
-  filas: [
-    ...vistaPresupuesto().filas,
-    {
-      clave: "OC-EXC",
-      partida: "OC-EXC",
-      descripcion: "Excavación a mano",
-      unidad: "m3",
-      cantidad: "1.234,5",
-      cantidad_calculada: "1.000",
-      escrita: true,
-      pu: { texto: "12.50", exacto: "12.5" },
-      total: { texto: "15431.25", exacto: "15431.25" },
-      estado: { severidad: "ADVERTENCIA", texto: "Cantidad escrita a mano" },
-      quitable: true,
-      nota: "medido en sitio",
-      calculo: null,
-    },
-  ],
-});
-
 // La versión 002 está guardada y sin enviar: se puede enviar (con permiso).
 const APROBACIONES = {
   rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
@@ -106,11 +83,6 @@ const APROBACIONES = {
 // Un insumo cotizado: con permiso se ofrece «Retirar una cotización…» además de «Registrar…».
 const PRECIOS = preciosRespuesta();
 PRECIOS.filas[0]!["cotizacion"] = "Ferretería Demo, C.A., COT-001, 2026-10-05";
-
-// El objetivo de mercado de AF-LLAVE (ficticio): la columna lo muestra también a quien revisa.
-const OBJETIVOS = {
-  objetivos: [{ codigo: "AF-LLAVE", precio: "15.00", moneda: "USD", margen: "13.6", equivalencia: null, sin_tasa: null }],
-};
 
 // Las acciones sobre la versión GUARDADA: su regla es solo el permiso, no la base del borrador (Eugenio, 2026-10-31).
 // Restaurar se mudó a Versiones con la baja 24 (Tarea 6): lo prueba `paginas/versiones/Versiones.test.tsx`.
@@ -130,13 +102,11 @@ function servidor(soloLectura = false) {
     if (url.startsWith("/v1/hoja/versiones")) return json(VERSIONES);
     if (url === "/v1/hoja/borradores" && metodo === "GET") return json({ borradores: [] });
     if (url === "/v1/hoja/borradores" && metodo === "POST") return json(borrador(soloLectura), 201);
-    if (url.includes("/vistas/presupuesto")) return json(PRESUPUESTO);
     if (url.includes("/vistas/")) return json(cuerpoDeVista(url));
     if (url.startsWith("/v1/hoja/precios/atipicos")) return json({ disponible: false, mensaje: "", variaciones: [] });
     if (url.startsWith("/v1/hoja/precios")) return json(PRECIOS);
     if (url.startsWith("/v1/hoja/cadena")) return json({ integra: true, mensaje: "La cadena está íntegra.", declaracion: null });
     if (url.startsWith("/v1/aprobaciones")) return json(APROBACIONES);
-    if (url.startsWith("/v1/mercado/objetivos")) return json(OBJETIVOS);
     if (metodo === "DELETE") return new Response(null, { status: 204 });
     return json({ detalle: "ruta inesperada" }, 500);
   });
@@ -195,11 +165,9 @@ function camposQueEscriben(): HTMLElement[] {
 // Lo que cada pestaña muestra cuando ya cargó (para no mirar antes de tiempo).
 const CARGADA: Record<string, string> = {
   "Espacio y metrajes": "Cantidades derivadas",
-  Partidas: "Total del presupuesto",
   "Análisis de precio (APU)": "Cierre de partida",
   "Plan y equilibrio": "Punto de equilibrio",
   Precios: "Evaluada al",
-  Revisión: "Resultado:",
   "Ajustes de costo": "Utilidad",
 };
 
@@ -236,16 +204,10 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     expect(ofertaDe(ACCIONES_REVISA, false).secciones.map((s) => s.titulo)).toContain("Presupuesto");
   });
 
-  test("la nota de solo lectura y la tabla con sus cifras en es-VE", async () => {
+  test("la nota de solo lectura se muestra al abrir la subvista", async () => {
     servidor();
     montar(ACCIONES_REVISA);
     expect(await screen.findByRole("note")).toHaveTextContent("Está viendo este presupuesto en solo lectura.");
-    await screen.findByRole("region", { name: "Estado del borrador" }); // las pestañas aparecen con el borrador abierto
-    await irA("Partidas");
-    const tabla = screen.getByRole("table", { name: "Presupuesto" });
-    expect(within(tabla).getByText("1.234,5")).toBeInTheDocument();
-    expect(within(tabla).getByText("15.431,25")).toBeInTheDocument();
-    expect(screen.getByText(/Total del presupuesto/)).toHaveTextContent("2.703,86");
   });
 
   test("en ninguna pestaña hay un control que escriba", async () => {
@@ -262,25 +224,12 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     expect(screen.queryByRole("button", { name: /Enviar a aprobación/ })).toBeNull();
   });
 
-  test("sí están «Descargar Excel», «Ver en Revisión» y la búsqueda de partida del APU", async () => {
+  test("sí están «Descargar Excel» y la búsqueda de partida del APU", async () => {
     servidor();
     montar(ACCIONES_REVISA);
     expect(await screen.findByRole("button", { name: "Descargar Excel" })).toBeInTheDocument();
-    await irA("Partidas");
-    expect(screen.getAllByRole("button", { name: /^Ver en Revisión/ }).length).toBeGreaterThan(0);
     await irA("Análisis de precio (APU)");
     expect(screen.getByRole("searchbox", { name: "Buscar partida" })).toBeInTheDocument();
-  });
-
-  test("ve la columna «Objetivo de mercado» (Eugenio, 2026-10-31)", async () => {
-    servidor();
-    montar(ACCIONES_REVISA);
-    await screen.findByRole("region", { name: "Estado del borrador" });
-    await irA("Partidas");
-    const tabla = screen.getByRole("table", { name: "Presupuesto" });
-    expect(within(tabla).getByRole("columnheader", { name: /Objetivo de mercado/ })).toBeInTheDocument();
-    expect(await within(tabla).findByText(/15,00/)).toBeInTheDocument();
-    expect(fetchFalso.mock.calls.map(([r]) => String(r)).some((r) => r.startsWith("/v1/mercado/objetivos"))).toBe(true);
   });
 
   test("tampoco ve las acciones sobre la versión guardada", async () => {
@@ -338,11 +287,6 @@ describe("Quien arma conserva sus controles", () => {
     // F4, Tarea 11: el plano se importa en Archivos y planos; aquí queda el enlace (solo dentro de una obra).
     expect(screen.queryByRole("button", { name: "Importar plano (DXF o IFC)" })).toBeNull();
     expect(screen.getAllByRole("button", { name: /^Agregar fila/ }).length).toBeGreaterThan(0);
-    await irA("Partidas");
-    expect(screen.getByRole("button", { name: "Agregar partida" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Quitar OC-EXC/ })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /^Volver a la calculada/ }).length).toBeGreaterThan(0);
-    expect(camposQueEscriben().length).toBeGreaterThan(0);
     await irA("Análisis de precio (APU)");
     expect(screen.getByRole("button", { name: "Agregar línea" })).toBeInTheDocument();
     await irA("Plan y equilibrio");
@@ -356,7 +300,7 @@ describe("Quien arma conserva sus controles", () => {
     servidor(true);
     montar(ACCIONES_ARMA);
     expect(await screen.findByRole("note")).toHaveTextContent("Está viendo este presupuesto en solo lectura.");
-    await irA("Partidas");
+    await irA("Análisis de precio (APU)");
     expect(botonesQueEscriben().filter((n) => !DE_LA_VERSION.includes(n))).toEqual([]);
     expect(camposQueEscriben()).toEqual([]);
   });

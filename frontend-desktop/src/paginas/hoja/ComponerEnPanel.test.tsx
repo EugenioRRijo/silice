@@ -1,6 +1,8 @@
+import { fileURLToPath } from "node:url";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import * as sass from "sass";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -290,5 +292,19 @@ describe("Componer en el panel: Esc en «Código» tras elegir una partida exist
     await userEvent.keyboard("{Escape}");
     esDeLaPartidaElegida(panel, codigo);
     expect(alCerrar).toHaveBeenCalledTimes(1);
+  });
+
+  test("estructura: el fondo del panel queda por debajo de los diálogos del marco (> 8000)", () => {
+    const compilar = (ruta: string) => sass.compile(fileURLToPath(new URL(ruta, import.meta.url))).css;
+    const hoja = compilar("./hoja.scss");
+    expect(hoja).not.toMatch(/\.silice-hoja__dialogo-fondo--con-panel\s*>\s*\.silice-panel-lateral/);
+    const conPanel = /\.silice-hoja__dialogo-fondo--con-panel\s*\{([^}]*)\}/.exec(hoja)?.[1] ?? "";
+    const capa = Number(/z-index:\s*(\d+)/.exec(conPanel)?.[1] ?? "NaN");
+    const marco = compilar("../../shell/carpetas/MarcoDeDialogo.scss");
+    const fondoDelMarco = /\.silice-dialogo__fondo\s*\{([^}]*)\}/.exec(marco)?.[1] ?? "";
+    const capaDelMarco = Number(/z-index:\s*(\d+)/.exec(fondoDelMarco)?.[1] ?? "NaN");
+    expect(capaDelMarco).toBeGreaterThan(8000);
+    expect(capa).toBeLessThan(capaDelMarco);
+    expect(capa).toBeGreaterThan(8000);
   });
 });

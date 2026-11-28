@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { informeAuditoria, vistaEquilibrio, vistaEspacio, vistaParametros, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
+import { informeAuditoria, vistaEquilibrio, vistaEspacio, vistaParametros, vistaPlan } from "./datosDePrueba";
 import PaginaHoja from "./pestanas";
-import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaParametros, VistaPlan, VistaPresupuesto } from "./logica";
+import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaParametros, VistaPlan } from "./logica";
 
 // Rebanada 3c-2: cantidades, parámetros y plan se editan. El servidor se simula con respuestas ficticias con la forma del
 // contrato (docs/bitacora/2026-10-19-hoja-3c2-contrato-rutas.md, diseño §4.4): E2 `PUT …/cantidades`, E3 `PUT …/parametros`,
@@ -69,14 +69,13 @@ function borrador(extra: Partial<Resumen> = {}): BorradorAbierto {
   };
 }
 
-type Seccion = "cantidades" | "parametros" | "plan";
+type Seccion = "parametros" | "plan";
 type Cuerpo = Record<string, unknown> & { rev: number };
 
-describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () => {
+describe("Hoja de la obra: parámetros y plan editables (3c-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let abierto: BorradorAbierto;
-  let presupuesto: VistaPresupuesto;
   let parametros: VistaParametros;
   let plan: VistaPlan;
   // Lo que el servidor simulado contesta a cada escritura; cada prueba lo cambia.
@@ -86,13 +85,11 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     json({
       rev: cuerpo.rev + 1,
       resumen: resumen({ rev: cuerpo.rev + 1, cambios: 1, total: { texto: "2800.50", exacto: "2800.5" }, ...extra }),
-      presupuesto,
       parametros,
       plan,
     });
 
   const URL_DE: Record<Seccion, string> = {
-    cantidades: `/v1/hoja/borradores/${ID}/cantidades`,
     parametros: `/v1/hoja/borradores/${ID}/parametros`,
     plan: `/v1/hoja/borradores/${ID}/plan`,
   };
@@ -104,10 +101,9 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     localStorage.clear();
     sessionStorage.clear();
     abierto = borrador();
-    presupuesto = vistaPresupuesto();
     parametros = vistaParametros();
     plan = vistaPlan();
-    alPoner = { cantidades: acepta, parametros: acepta, plan: acepta };
+    alPoner = { parametros: acepta, plan: acepta };
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = String(ruta);
       const metodo = init?.method ?? "GET";
@@ -122,7 +118,6 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
         }
       }
       if (url.endsWith("/vistas/espacio")) return json(vistaEspacio());
-      if (url.endsWith("/vistas/presupuesto")) return json(presupuesto);
       if (url.endsWith("/vistas/parametros")) return json(parametros);
       if (url.endsWith("/vistas/plan")) return json(plan);
       if (url.endsWith("/vistas/equilibrio")) return json(vistaEquilibrio()); // el bloque de debajo del plan (baja 23)
@@ -240,22 +235,6 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       },
     },
     {
-      nombre: "Presupuesto (cantidades)",
-      pestana: "Presupuesto",
-      seccion: "cantidades",
-      frase: "La hoja sigue con las últimas cantidades válidas.",
-      abrir: async () => {
-        await irA("Partidas");
-        await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
-      },
-      campo: () => campo("Cantidad, Presupuesto fila 1"),
-      sembrado: "3",
-      enCuerpo: (c) => (c.filas as Array<{ cantidad: string }>)[0]!.cantidad,
-      otroValorEnElServidor: (valor) => {
-        presupuesto = vistaPresupuesto({ filas: presupuesto.filas.map((f, i) => (i === 0 ? { ...f, cantidad: valor } : f)) });
-      },
-    },
-    {
       nombre: "Plan y equilibrio",
       pestana: "Plan y equilibrio",
       seccion: "plan",
@@ -344,7 +323,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       await abrirConRelojFalso();
       fireEvent.change(e.campo(), { target: { value: "8" } });
       await act(async () => {
-        fireEvent.click(screen.getByRole("tab", { name: "Revisión" }));
+        fireEvent.click(screen.getByRole("tab", { name: "Precios" }));
       });
       expect(escrituras(e.seccion)).toHaveLength(1);
       expect(e.enCuerpo(escrituras(e.seccion)[0]!)).toBe("8");
@@ -573,153 +552,6 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
   });
 
-  // --- Cantidades (E2) ------------------------------------------------------------------------------------------------------
-
-  describe("Presupuesto: cantidades (E2)", () => {
-    test("3c-F8: solo la columna Cantidad es editable; la escrita a mano dice cuál era la calculada y ofrece volver a ella", async () => {
-      await irA("Partidas");
-      const tabla = await screen.findByRole("table", { name: "Presupuesto" });
-      expect(within(tabla).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
-        "Partida",
-        "Descripción",
-        "Unidad",
-        "Cantidad",
-        "Cómo se midió",
-        "Precio unitario",
-        "Objetivo de mercado",
-        "Total",
-        "Estado",
-        "Quitar",
-      ]);
-      // Dos renglones, dos campos: la cantidad. Lo demás es texto (los dos salen del espacio: ninguno tiene «Quitar»).
-      expect(within(tabla).queryByRole("button", { name: /^Quitar/ })).toBeNull();
-      expect(within(tabla).getAllByRole("textbox")).toHaveLength(2);
-      expect(campo("Cantidad, Presupuesto fila 1")).toHaveValue("3");
-      expect(campo("Cantidad, Presupuesto fila 2")).toHaveValue("5");
-      const filas = within(tabla).getAllByRole("row");
-      expect(within(filas[1]!).queryByText(/calculada/)).toBeNull();
-      expect(within(filas[1]!).queryByRole("button", { name: /Volver a la calculada/ })).toBeNull();
-      expect(within(filas[2]!).getByText("(calculada: 3)")).toBeInTheDocument();
-      expect(within(filas[2]!).getByRole("button", { name: /^Volver a la calculada/ })).toBeInTheDocument();
-      // Lo de la lectura sigue: precio unitario, total y Estado.
-      expect(within(filas[1]!).getByText("13,20")).toBeInTheDocument();
-      expect(within(filas[2]!).getAllByText("Pendiente")).toHaveLength(2);
-      expect(within(filas[2]!).getByText("Error")).toBeInTheDocument();
-      await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
-      expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
-    });
-
-    test("3c-B3 (P15): escribir 5 en AF-LLAVE manda solo esa fila; la vista nueva la marca como escrita y sube el total", async () => {
-      await irA("Partidas");
-      await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
-      relojFalso();
-      // Cuando el servidor acepte, la vista trae la fila escrita y el total nuevo (oráculo de mano: 2.703,86 + 26,40 = 2.730,26).
-      presupuesto = vistaPresupuesto({
-        filas: vistaPresupuesto().filas.map((f, i) => (i === 0 ? { ...f, cantidad: "5", cantidad_calculada: "3", escrita: true } : f)),
-        total: { texto: "2730.26", exacto: "2730.2577124" },
-      });
-      alPoner.cantidades = (c) => acepta(c, { total: { texto: "2730.26", exacto: "2730.2577124" } });
-      fireEvent.change(campo("Cantidad, Presupuesto fila 1"), { target: { value: "5" } });
-      await pausa(400);
-      expect(escrituras("cantidades")).toEqual([{ rev: 0, filas: [{ clave: "AF-LLAVE|esp_puntos:P1", cantidad: "5" }] }]);
-      const fila1 = () => within(screen.getByRole("table", { name: "Presupuesto" })).getAllByRole("row")[1]!;
-      expect(await esperar(() => within(fila1()).getByText("(calculada: 3)"))).toBeInTheDocument();
-      // El estado del borrador (Toggletip, sin `title`) y el total de la pestaña (`title`, que sigue en `Cifra`).
-      expect(screen.getAllByTitle("2.730,2577124")).toHaveLength(1);
-      expect(screen.getByText("Valor exacto: 2.730,2577124 USD")).toBeInTheDocument();
-      expect(regionDeEstado().querySelector(".silice-hoja__total")).toHaveTextContent("2.730,26 USD");
-      expect(campo("Cantidad, Presupuesto fila 1")).toHaveValue("5");
-    });
-
-    test("las filas tocadas se acumulan, en el orden de la tabla, y las que no se tocaron no viajan", async () => {
-      await irA("Partidas");
-      await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
-      relojFalso();
-      fireEvent.change(campo("Cantidad, Presupuesto fila 2"), { target: { value: "6" } });
-      await pausa(400);
-      await esperar(() => expect(escrituras("cantidades")).toHaveLength(1));
-      expect(escrituras("cantidades")[0]!.filas).toEqual([{ clave: "AF-SALIDA|esp_puntos:P2", cantidad: "6" }]);
-      await esperar(() => within(regionDeEstado()).getByText(/· 1 cambio sin guardar/));
-      fireEvent.change(campo("Cantidad, Presupuesto fila 1"), { target: { value: "4" } });
-      await pausa(400);
-      await esperar(() => expect(escrituras("cantidades")).toHaveLength(2));
-      expect(escrituras("cantidades")[1]).toEqual({
-        rev: 1,
-        filas: [
-          { clave: "AF-LLAVE|esp_puntos:P1", cantidad: "4" },
-          { clave: "AF-SALIDA|esp_puntos:P2", cantidad: "6" },
-        ],
-      });
-    });
-
-    test("3c-B4: «Volver a la calculada» pone la cantidad calculada en el campo y la manda (el servidor deja de verla como escrita)", async () => {
-      await irA("Partidas");
-      await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 2" });
-      relojFalso();
-      fireEvent.click(screen.getByRole("button", { name: /^Volver a la calculada/ }));
-      expect(campo("Cantidad, Presupuesto fila 2")).toHaveValue("3");
-      await pausa(400);
-      expect(escrituras("cantidades")).toEqual([{ rev: 0, filas: [{ clave: "AF-SALIDA|esp_puntos:P2", cantidad: "3" }] }]);
-    });
-
-    test("3c-B5 (P16): una cantidad negativa se rechaza con el mensaje de la clásica; solo esa fila queda inválida", async () => {
-      await irA("Partidas");
-      await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
-      relojFalso();
-      const DETALLE =
-        "presupuesto, fila 1 (AF-LLAVE): la cantidad no puede ser negativa; escriba cero o una cantidad positiva";
-      alPoner.cantidades = () => json({ detalle: DETALLE }, 422);
-      fireEvent.change(campo("Cantidad, Presupuesto fila 1"), { target: { value: "-1" } });
-      await pausa(400);
-      expect(await esperar(() => aviso())).toHaveTextContent(`${DETALLE}. La hoja sigue con las últimas cantidades válidas.`);
-      await esperar(() => expect(campo("Cantidad, Presupuesto fila 1")).toHaveAttribute("aria-invalid", "true"));
-      expect(campo("Cantidad, Presupuesto fila 2")).not.toHaveAttribute("aria-invalid", "true");
-      expect(screen.getByText("Valor no válido")).toBeInTheDocument();
-      expect(document.getElementById(campo("Cantidad, Presupuesto fila 1").getAttribute("aria-describedby")!)).toHaveTextContent(DETALLE);
-      expect(campo("Cantidad, Presupuesto fila 1")).toHaveValue("-1");
-    });
-
-    test("el decimal con punto se manda tal cual y lo rechaza el servidor con la regla de la coma decimal", async () => {
-      await irA("Partidas");
-      await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 2" });
-      relojFalso();
-      alPoner.cantidades = () =>
-        json({ detalle: "presupuesto, fila 2 (AF-SALIDA): cantidad: «2.5» no se entiende como número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56." }, 422);
-      fireEvent.change(campo("Cantidad, Presupuesto fila 2"), { target: { value: "2.5" } });
-      await pausa(400);
-      expect(escrituras("cantidades")[0]!.filas).toEqual([{ clave: "AF-SALIDA|esp_puntos:P2", cantidad: "2.5" }]);
-      expect(await esperar(() => aviso())).toHaveTextContent("«2.5» no se entiende como número");
-      expect(campo("Cantidad, Presupuesto fila 2")).toHaveAttribute("aria-invalid", "true");
-    });
-
-    test("el Estado de cada renglón sigue con «Ver en Revisión» al lado del campo (3b-F6b)", async () => {
-      await irA("Partidas");
-      const tabla = await screen.findByRole("table", { name: "Presupuesto" });
-      expect(within(tabla).getByRole("button", { name: "Ver en Revisión: AF-SALIDA, Punto P2" })).toBeInTheDocument();
-    });
-
-    test("flechas arriba y abajo y Enter mueven entre renglones de la columna Cantidad", async () => {
-      await irA("Partidas");
-      await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
-      const u = userEvent.setup({ delay: null });
-      campo("Cantidad, Presupuesto fila 1").focus();
-      await u.keyboard("{ArrowDown}");
-      expect(campo("Cantidad, Presupuesto fila 2")).toHaveFocus();
-      await u.keyboard("{ArrowUp}");
-      expect(campo("Cantidad, Presupuesto fila 1")).toHaveFocus();
-      await u.keyboard("{Enter}");
-      expect(campo("Cantidad, Presupuesto fila 2")).toHaveFocus();
-    });
-
-    test("sin renglones sigue el mensaje del servidor y no hay campos", async () => {
-      const mensaje = "El presupuesto no tiene renglones todavía.";
-      presupuesto = vistaPresupuesto({ filas: [], vacio_mensaje: mensaje });
-      await irA("Partidas");
-      expect(await screen.findByText(mensaje)).toBeInTheDocument();
-      expect(screen.queryAllByRole("textbox")).toEqual([]);
-    });
-  });
-
   // --- Plan y equilibrio (E4, E5) ----------------------------------------------------------------------------------------------
 
   describe("Plan y equilibrio (E4 y E5)", () => {
@@ -842,7 +674,6 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       "./AvisoDeEdicion.tsx",
       "./CampoDeCelda.tsx",
       "./PestanaParametros.tsx",
-      "./PestanaPresupuesto.tsx",
       "./PestanaPlan.tsx",
     ]) {
       expect(Object.keys(fuentes), ruta).toContain(ruta);

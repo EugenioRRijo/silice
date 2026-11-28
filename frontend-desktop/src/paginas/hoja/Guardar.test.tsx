@@ -775,7 +775,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     fireEvent.change(campo, { target: { value: "0,20" } });
     // Dentro de la pausa de 400 ms se va a otra pestaña: la edición sale al desmontar.
-    fireEvent.click(screen.getByRole("tab", { name: "Revisión" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Precios" }));
     await esperar(() => expect(llamadas("PUT", "/parametros")).toHaveLength(1));
     const dialogo = await abrirModal();
     await escribirFuente(dialogo);

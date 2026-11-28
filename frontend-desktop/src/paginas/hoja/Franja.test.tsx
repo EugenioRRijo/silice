@@ -3,22 +3,21 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeAnuncios } from "../../comun/Anunciador";
+import { vaciarRecursosParaPruebas } from "../../comun/recurso";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import type { ReactNode } from "react";
+import { EstadoDelBorrador } from "./EstadoDelBorrador";
 import { FranjaDelPresupuesto } from "./FranjaDelPresupuesto";
-import PaginaHoja from "./pestanas";
+import PaginaHoja from "./index";
 import type { BorradorAbierto, Hallazgos, VersionesRespuesta } from "./logica";
 
-// Tarea 5 del plan F4: la franja «Te falta / Siguiente paso» del Presupuesto, con un solo botón principal por pantalla, y las
-// filas afectadas. Obra ficticia OF-001 con las versiones 001 y 002; la API es de mentira, con la forma de
-// `api/rutas/hoja.py` y `api/rutas/aprobaciones.py`. Los textos esperados se escribieron a mano desde el plan.
+// Tarea 5 del plan F4: la franja «Te falta / Siguiente paso» del Presupuesto, con un solo botón principal por pantalla.
+// Obra ficticia OF-001 con las versiones 001 y 002; la API es de mentira, con la forma de `api/rutas/hoja.py` y
+// `api/rutas/aprobaciones.py`. Los textos esperados se escribieron a mano desde el plan.
 configure({ asyncUtilTimeout: 5000 });
-
-vi.mock("../../comun/GraficoCarbon", () => ({
-  default: ({ datos }: { datos: unknown[] }) => <div data-testid="grafico" data-filas={datos.length} />,
-}));
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -106,6 +105,7 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
   let alLeerAprobaciones: () => Response | Promise<Response>;
 
   beforeEach(() => {
+    vaciarRecursosParaPruebas();
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
     localStorage.clear();
@@ -127,17 +127,21 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
       return new Response(null, { status: 204 });
     });
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vaciarRecursosParaPruebas();
+    vi.unstubAllGlobals();
+  });
 
   function aplicacion(sesion: SesionRespuesta): Aplicacion {
     return { sesion, proyecto: "OF-001", caso: { nombre: "obra", ruta_relativa: "data/obra.db" }, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
   }
-  // Dentro de un enrutador: el diálogo «Agregar partida» lo necesita (como en AgregarPartida.test.tsx).
   function montar(sesion: SesionRespuesta = ARMA) {
     return render(
       <MemoryRouter initialEntries={["/hoja"]}>
         <ContextoAplicacion.Provider value={aplicacion(sesion)}>
-          <PaginaHoja />
+          <ProveedorDeAnuncios>
+            <PaginaHoja />
+          </ProveedorDeAnuncios>
         </ContextoAplicacion.Provider>
       </MemoryRouter>,
     );
@@ -145,20 +149,20 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
 
   const franja = () => screen.findByRole("region", { name: "Siguiente paso" });
   const primarios = () => Array.from(document.querySelectorAll(".cds--btn--primary"));
-  // Lo que debe estar en pantalla antes de contar: el borrador abierto y la tabla de Partidas.
+  // Lo que debe estar en pantalla antes de contar: el borrador abierto y la grilla del Presupuesto.
   async function listo() {
     await screen.findByRole("region", { name: "Estado del borrador" });
-    await screen.findByRole("table", { name: "Presupuesto" });
+    await screen.findByRole("grid", { name: "Presupuesto" });
   }
 
-  test("borrador en blanco: «Falta: Agregue la primera partida» y su botón abre «Agregar partida»", async () => {
+  test("borrador en blanco: «Falta: Agregue la primera partida» y su botón enfoca «Partida» en la fila de alta", async () => {
     versiones = SIN_VERSIONES;
     abierto = borrador({ version: null, vigente: null });
     montar();
     const zona = await franja();
     expect(zona).toHaveTextContent("Falta: Agregue la primera partida");
     await userEvent.click(within(zona).getByRole("button", { name: "Agregar la primera partida" }));
-    expect(await screen.findByRole("dialog", { name: "Agregar partida" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Partida" })).toHaveFocus());
   });
 
   test("con 2 cambios: «Siguiente paso: Hay 2 cambios sin guardar» y «Guardar versión…» abre el diálogo de guardar", async () => {
@@ -185,10 +189,10 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     expect(within(zona).queryByRole("button", { name: rotulo === "Guardar versión…" ? "Guardar ajuste de desperdicio…" : "Guardar versión…" })).toBeNull();
   });
 
-  test("el estado del borrador conserva el total sin IVA y «Descartar cambios» (fantasma), sin el botón de guardar", async () => {
+  test("el estado del borrador conserva el total sin IVA y «Descartar cambios» (fantasma), sin el botón de guardar", () => {
     abierto = borrador({ cambios: 2 });
-    montar();
-    const estado = await screen.findByRole("region", { name: "Estado del borrador" });
+    render(<EstadoDelBorrador borrador={abierto} puedeEditar alDescartar={vi.fn()} />);
+    const estado = screen.getByRole("region", { name: "Estado del borrador" });
     expect(within(estado).queryByRole("button", { name: /^Guardar/ })).toBeNull();
     expect(within(estado).getByRole("button", { name: "Descartar cambios" })).toHaveClass("cds--btn--ghost");
     expect(estado).toHaveTextContent("Total sin IVA 2.703,86 USD");
@@ -279,34 +283,30 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
       expect(primarios()).toEqual([principal]);
     });
 
-    test("«Agregar partida» sobre la tabla es terciario", async () => {
+    test("«Agregar al presupuesto» en la fila de alta es terciario", async () => {
       montar();
       await listo();
-      expect(screen.getByRole("button", { name: "Agregar partida" })).toHaveClass("cds--btn--tertiary");
+      expect(screen.getByRole("button", { name: "Agregar al presupuesto" })).toHaveClass("cds--btn--tertiary");
     });
   });
 
-  test("con graves: «Falta: Hay 2 hallazgos graves…» e «Ir a Revisión» abre la pestaña «Revisión»", async () => {
+  test("con graves: «Falta: Hay 2 hallazgos graves…» e «Ir a Revisión» abre el inspector «Problemas»", async () => {
     abierto = borrador({ hallazgos: [{ severidad: "ERROR", total: 1 }, { severidad: "CRITICO", total: 1 }, { severidad: "ADVERTENCIA", total: 4 }] });
     montar();
     const zona = await franja();
     expect(zona).toHaveTextContent("Falta: Hay 2 hallazgos graves: revíselos antes de enviar");
     await userEvent.click(within(zona).getByRole("button", { name: "Ir a Revisión" }));
-    expect(await screen.findByRole("tab", { name: "Revisión", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("complementary", { name: "Problemas" })).toBeInTheDocument();
   });
 
-  test("devuelta: «Hacer una versión nueva» lleva a «Partidas» con el aviso de siempre", async () => {
+  test("devuelta: «Hacer una versión nueva» enfoca la grilla con el aviso de siempre", async () => {
     alLeerAprobaciones = () => json(aprobacionesCon({ "001": "devuelta" }));
     montar();
     await listo();
-    await userEvent.click(screen.getByRole("tab", { name: "Revisión" }));
     const zona = await franja();
     expect(zona).toHaveTextContent("Falta: La versión 001 fue devuelta: corrija lo observado");
     await userEvent.click(within(zona).getByRole("button", { name: "Hacer una versión nueva" }));
-    const partidas = await screen.findByRole("tab", { name: "Partidas", selected: true });
-    // Pasada de navegador del cierre de F4 (H8): ya en «Partidas» el botón no daba respuesta (el foco se quedaba en él y la
-    // tabla seguía bajo el pliegue). El foco va a la pestaña «Partidas», que queda a la vista con la tabla debajo.
-    await waitFor(() => expect(partidas).toHaveFocus());
+    await waitFor(() => expect(document.activeElement?.closest("[role='grid']")).not.toBeNull());
     const aprobacion = screen.getByRole("region", { name: "Aprobación de la versión" });
     expect(within(aprobacion).getByRole("status")).toHaveTextContent("Corrija y guarde: será una versión nueva.");
     expect(aprobacion).toHaveTextContent("Notas de Rita Gómez: Falta el acero de la losa.");
@@ -404,25 +404,6 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
       const zona = await franja();
       expect(zona).toHaveTextContent("Falta: Hay 1 hallazgo grave: revíselo antes de enviar");
       expect(within(zona).getByRole("button", { name: "Ir a Revisión" })).toBeInTheDocument();
-    });
-  });
-
-  describe("filas afectadas", () => {
-    test("un renglón con un hallazgo ERROR lleva la clase y dice «Error»; uno sin hallazgos no la lleva", async () => {
-      montar();
-      const tabla = await screen.findByRole("table", { name: "Presupuesto" });
-      const conError = within(tabla).getByRole("row", { name: /AF-SALIDA/ });
-      const sinHallazgos = within(tabla).getByRole("row", { name: /AF-LLAVE/ });
-      expect(conError).toHaveClass("silice-fila--afectada");
-      expect(within(conError).getByText("Error")).toBeInTheDocument();
-      expect(within(conError).getByRole("button", { name: /^Ver en Revisión/ })).toBeInTheDocument();
-      expect(sinHallazgos).not.toHaveClass("silice-fila--afectada");
-    });
-
-    test("quien revisa ve las mismas filas afectadas (es lectura)", async () => {
-      montar(REVISA);
-      const tabla = await screen.findByRole("table", { name: "Presupuesto" });
-      expect(within(tabla).getByRole("row", { name: /AF-SALIDA/ })).toHaveClass("silice-fila--afectada");
     });
   });
 });

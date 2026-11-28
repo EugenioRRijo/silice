@@ -2,7 +2,7 @@ import { useContext, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { FranjaDelPaso } from "../../comun/FranjaDelPaso";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
-import { useFocoAlCerrar } from "./AgregarPartida";
+import { useFocoAlCerrar } from "./useFocoAlCerrar";
 import type { Impuestos } from "../control/logica";
 import { AprobacionDeVersion } from "./AprobacionDeVersion";
 import { BotonExcel } from "./BotonExcel";

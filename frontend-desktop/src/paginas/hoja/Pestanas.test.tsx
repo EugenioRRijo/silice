@@ -62,11 +62,9 @@ function borrador(espacioVacio: boolean): BorradorAbierto {
 }
 
 const TITULOS_DE_UNA_OBRA_CIVIL = [
-  "Partidas",
   "Análisis de precio (APU)",
   "Plan y equilibrio",
   "Precios",
-  "Revisión",
   "Ajustes de costo",
 ];
 
@@ -123,12 +121,34 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     await screen.findByRole("region", { name: "Estado del borrador" });
   });
 
-  test("una obra civil ve seis pestañas, con los títulos del plan y en su orden", async () => {
+  test("una obra civil ve cuatro pestañas, con los títulos del plan y en su orden", async () => {
     servidor(true);
     montar();
     const lista = await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
     expect(within(lista).getAllByRole("tab").map((t) => t.textContent)).toEqual(TITULOS_DE_UNA_OBRA_CIVIL);
-    expect(await screen.findByRole("tab", { name: "Partidas", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Análisis de precio (APU)", selected: true })).toBeInTheDocument();
+  });
+
+  test("B1-11: la subvista «Espacio, plan y ajustes» no tiene las pestañas «Partidas» ni «Revisión»", async () => {
+    servidor(false);
+    const { unmount } = montar();
+    const listaConEspacio = await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
+    expect(within(listaConEspacio).queryByRole("tab", { name: "Partidas" })).toBeNull();
+    expect(within(listaConEspacio).queryByRole("tab", { name: "Revisión" })).toBeNull();
+    expect(within(listaConEspacio).getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      "Espacio y metrajes",
+      "Análisis de precio (APU)",
+      "Plan y equilibrio",
+      "Precios",
+      "Ajustes de costo",
+    ]);
+    unmount();
+
+    servidor(true);
+    montar();
+    const listaSinEspacio = await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
+    expect(within(listaSinEspacio).queryByRole("tab", { name: "Partidas" })).toBeNull();
+    expect(within(listaSinEspacio).queryByRole("tab", { name: "Revisión" })).toBeNull();
   });
 
   test("una obra con espacio ve además «Espacio y metrajes», primera y abierta", async () => {
@@ -200,9 +220,6 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toBeInTheDocument();
     expect(screen.queryByText(/Total del presupuesto/)).toBeNull();
     expect(screen.queryByText(/Moneda de la obra/)).toBeNull();
-    // El total sigue en un solo lugar: bajo la tabla de «Partidas».
-    await userEvent.click(screen.getByRole("tab", { name: "Partidas" }));
-    expect(await screen.findByText(/Total del presupuesto/)).toBeInTheDocument();
   });
 
   test("baja 12: «Ajustes de costo» conserva «Convertir la moneda…» para quien puede convertir", async () => {
@@ -213,20 +230,8 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     expect(await screen.findByRole("button", { name: /Convertir la moneda/ })).toBeInTheDocument();
   });
 
-  test("baja 25: el texto largo de «Partidas» solo aparece tras «¿Qué es esto?»", async () => {
-    servidor(true);
-    montar();
-    await screen.findByRole("table", { name: "Presupuesto" });
-    const frase = /se aplican al borrador cuando deja de escribir/;
-    expect(screen.queryByText(frase)).toBeNull();
-    const boton = screen.getByRole("button", { name: "¿Qué es esto?" });
-    expect(boton).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(boton);
-    expect(await screen.findByText(frase)).toBeInTheDocument();
-  });
-
   test.each([
-    ["Partidas", /se aplican al borrador cuando deja de escribir/],
+    ["Análisis de precio (APU)", /Se edita la cantidad de cada línea/],
     ["Plan y equilibrio", /Reparta cada partida entre los períodos/],
     ["Ajustes de costo", /Cambiarlos recalcula todos los APU/],
     ["Precios", /erosión/],
@@ -240,25 +245,8 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     expect(within(screen.getByRole("region", { name: titulo as string })).getByText(frase as RegExp)).toBeInTheDocument();
   });
 
-  test("«Ver en Revisión» de una fila lleva a la pestaña «Revisión» con el filtro de la fila", async () => {
-    servidor(false);
-    montar();
-    const tabla = await screen.findByRole("table", { name: "Fuentes" });
-    expect(within(tabla).queryByRole("button", { name: /Ver en Auditoría/ })).toBeNull();
-    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Revisión: Fuente F1" }));
-    expect(await screen.findByRole("tab", { name: "Revisión", selected: true })).toBeInTheDocument();
-    expect(await screen.findByText("Hallazgos de Fuente F1")).toBeInTheDocument();
-  });
-
-  test("«Revisión» es la pestaña del informe, sin filtro cuando se llega a mano", async () => {
-    servidor(true);
-    montar();
-    await irA("Revisión");
-    expect(await screen.findByRole("region", { name: "Informe de auditoría" })).toBeInTheDocument();
-  });
-
   // Menor de la Tarea 4 (decisión 8), resuelto en la Tarea 5: la regla de la coma decimal no se pliega para quien escribe.
-  test.each(["Partidas", "Análisis de precio (APU)", "Plan y equilibrio", "Ajustes de costo"])(
+  test.each(["Análisis de precio (APU)", "Plan y equilibrio", "Ajustes de costo"])(
     "quien edita ve sin plegar cómo se escriben las cifras en «%s»",
     async (titulo) => {
       servidor(true);
@@ -272,7 +260,7 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
   test("quien revisa no ve cómo se escriben las cifras, ni plegado ni a la vista", async () => {
     servidor(true);
     montar(REVISA);
-    await screen.findByRole("table", { name: "Presupuesto" });
+    await screen.findByRole("heading", { level: 3, name: "Cierre de partida" });
     expect(screen.queryByText(AYUDA_CIFRAS, { exact: false })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" }));
     expect(screen.queryByText(AYUDA_CIFRAS, { exact: false })).toBeNull();
@@ -282,21 +270,21 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
   test("quien revisa lee la explicación general de «¿Qué es esto?», sin la parte de cómo se edita", async () => {
     servidor(true);
     montar(REVISA);
-    await screen.findByRole("table", { name: "Presupuesto" });
+    await screen.findByRole("heading", { level: 3, name: "Cierre de partida" });
     await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" }));
-    expect(await screen.findByText(/Las cantidades salen del espacio o de las partidas/)).toBeInTheDocument();
-    expect(screen.queryByText(/Aquí se edita la cantidad/)).toBeNull();
+    expect(await screen.findByText(/El análisis de precio de la partida elegida/)).toBeInTheDocument();
+    expect(screen.queryByText(/Se edita la cantidad de cada línea/)).toBeNull();
     expect(screen.queryByText(/se aplican al borrador cuando deja de escribir/)).toBeNull();
   });
 
-  test("cuenta que revisa: ve las siete pestañas y cada «¿Qué es esto?», y ningún control que escriba", async () => {
+  test("cuenta que revisa: ve las pestañas restantes y cada «¿Qué es esto?», y ningún control que escriba", async () => {
     servidor(true);
     montar(REVISA);
     const lista = await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
     expect(within(lista).getAllByRole("tab").map((t) => t.textContent)).toEqual(TITULOS_DE_UNA_OBRA_CIVIL);
-    await screen.findByRole("table", { name: "Presupuesto" });
+    await screen.findByRole("heading", { level: 3, name: "Cierre de partida" });
     expect(screen.getByRole("button", { name: "¿Qué es esto?" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Agregar partida" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Agregar línea" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Guardar/ })).toBeNull();
   });
 
@@ -345,7 +333,7 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     montar();
     const lista = await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
     expect(within(lista).queryByRole("tab", { name: "Trazabilidad" })).toBeNull();
-    expect(within(lista).getAllByRole("tab")).toHaveLength(7); // con «Espacio y metrajes»
+    expect(within(lista).getAllByRole("tab")).toHaveLength(5); // con «Espacio y metrajes», sin Partidas ni Revisión
     expect(fetchFalso.mock.calls.map(([r]) => String(r)).some((r) => r.startsWith("/v1/hoja/trazabilidad"))).toBe(false);
   });
 });

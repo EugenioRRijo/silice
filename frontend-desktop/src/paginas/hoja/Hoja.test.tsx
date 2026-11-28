@@ -150,20 +150,20 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(JSON.parse(String(init?.body))).toEqual({ proyecto: "Nuevo", version: null });
   });
 
-  test("3b-F3: las siete pestañas del plan de F4 (Tareas 4 y 6), en su orden, con las flechas", async () => {
+  test("3b-F3: las cinco pestañas de «Espacio, plan y ajustes» (B1-11), en su orden, con las flechas", async () => {
     servidor();
     montar();
     const lista = await screen.findByRole("tablist");
     const pestanas = within(lista).getAllByRole("tab");
     expect(pestanas.map((p) => p.textContent)).toEqual([
       "Espacio y metrajes",
-      "Partidas",
       "Análisis de precio (APU)",
       "Plan y equilibrio",
       "Precios",
-      "Revisión",
       "Ajustes de costo",
     ]);
+    expect(within(lista).queryByRole("tab", { name: "Partidas" })).toBeNull();
+    expect(within(lista).queryByRole("tab", { name: "Revisión" })).toBeNull();
     expect(screen.getAllByRole("tabpanel").length).toBeGreaterThan(0);
     pestanas[0]!.focus();
     await userEvent.keyboard("{ArrowRight}");
@@ -172,27 +172,25 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
 
   // Plan vial T19 en el modelo por id de la Tarea 4 de F4: con edificación apagada «Espacio y metrajes» no se ve aunque la
   // obra tenga espacio (los datos de prueba no traen `espacio_vacio`: obra con espacio, que abriría en «espacio»).
-  test("plan vial T19: con edificación apagada no hay «Espacio y metrajes» y la hoja abre en Partidas", async () => {
+  test("plan vial T19: con edificación apagada no hay «Espacio y metrajes» y la hoja abre en «Análisis de precio (APU)»", async () => {
     servidor();
     montar("OF-001", ["edificacion"]);
     const lista = await screen.findByRole("tablist");
     const nombres = within(lista).getAllByRole("tab").map((p) => p.textContent);
     expect(nombres).toEqual([
-      "Partidas",
       "Análisis de precio (APU)",
       "Plan y equilibrio",
       "Precios",
-      "Revisión",
       "Ajustes de costo",
     ]);
-    expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Partidas");
+    expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Análisis de precio (APU)");
   });
 
-  test("plan vial T19: con otro módulo apagado, la hoja conserva sus siete pestañas y abre en Espacio y metrajes", async () => {
+  test("plan vial T19: con otro módulo apagado, la subvista conserva sus cinco pestañas y abre en Espacio y metrajes", async () => {
     servidor();
     montar("OF-001", ["vial", "riesgo"]);
     const lista = await screen.findByRole("tablist");
-    expect(within(lista).getAllByRole("tab")).toHaveLength(7);
+    expect(within(lista).getAllByRole("tab")).toHaveLength(5);
     expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Espacio y metrajes");
   });
 

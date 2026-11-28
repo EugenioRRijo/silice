@@ -120,7 +120,7 @@ function crearHojaDeRespaldo(
   alReabrir: () => void,
 ): HojaDeLaObra {
   return {
-    pestana: "partidas",
+    pestana: "apu",
     irAPestana: sinAccion,
     visibles: PESTANAS,
     espacioPedido: false,

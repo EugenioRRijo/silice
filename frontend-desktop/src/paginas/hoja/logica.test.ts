@@ -31,31 +31,29 @@ function version(codigo: string, extra: Partial<VersionFila> = {}): VersionFila 
 }
 
 describe("lógica de la hoja del proyecto", () => {
-  test("las siete pestañas, con su id y su título, van en el orden del plan de F4 (Tareas 4 y 6)", () => {
+  test("las cinco pestañas de «Espacio, plan y ajustes» van en su orden, sin «Partidas» ni «Revisión» (B1-11)", () => {
     expect(PESTANAS.map((p) => [p.id, p.titulo])).toEqual([
       ["espacio", "Espacio y metrajes"],
-      ["partidas", "Partidas"],
       ["apu", "Análisis de precio (APU)"],
       ["plan", "Plan y equilibrio"],
       ["precios", "Precios"],
-      ["revision", "Revisión"],
       ["ajustes", "Ajustes de costo"],
     ]);
   });
 
   test("«Espacio y metrajes» se ve si el espacio no está vacío o si se pidió describirlo", () => {
     const ids = (r: { espacio_vacio?: boolean }, pedido: boolean) => pestanasVisibles(r, pedido).map((p) => p.id);
-    expect(ids({ espacio_vacio: true }, false)).toEqual(["partidas", "apu", "plan", "precios", "revision", "ajustes"]);
+    expect(ids({ espacio_vacio: true }, false)).toEqual(["apu", "plan", "precios", "ajustes"]);
     expect(ids({ espacio_vacio: false }, false)[0]).toBe("espacio");
     expect(ids({ espacio_vacio: true }, true)[0]).toBe("espacio");
     // Los datos de prueba anteriores no traen la marca: se tratan como obra con espacio.
     expect(ids({}, false)[0]).toBe("espacio");
-    expect(ids({ espacio_vacio: false }, false)).toHaveLength(7);
+    expect(ids({ espacio_vacio: false }, false)).toHaveLength(5);
   });
 
   test("plan vial T19: con edificación apagada «Espacio y metrajes» no se ve nunca, ni pedido", () => {
     const ids = (r: { espacio_vacio?: boolean }, pedido: boolean) => pestanasVisibles(r, pedido, true).map((p) => p.id);
-    const sinEspacio = ["partidas", "apu", "plan", "precios", "revision", "ajustes"];
+    const sinEspacio = ["apu", "plan", "precios", "ajustes"];
     expect(ids({ espacio_vacio: false }, false)).toEqual(sinEspacio);
     expect(ids({ espacio_vacio: true }, true)).toEqual(sinEspacio);
     expect(ids({}, true)).toEqual(sinEspacio);
@@ -98,8 +96,8 @@ describe("lógica de la hoja del proyecto", () => {
 
   // --- Tarea 11: agregar y quitar partidas ---
 
-  test("una obra sin espacio abre en «Partidas»; con espacio, en «Espacio y metrajes»", () => {
-    expect(pestanaInicial({ espacio_vacio: true })).toBe("partidas");
+  test("una obra sin espacio abre en «Análisis de precio (APU)»; con espacio, en «Espacio y metrajes»", () => {
+    expect(pestanaInicial({ espacio_vacio: true })).toBe("apu");
     expect(pestanaInicial({ espacio_vacio: false })).toBe("espacio");
     expect(pestanaInicial({})).toBe("espacio");
   });
