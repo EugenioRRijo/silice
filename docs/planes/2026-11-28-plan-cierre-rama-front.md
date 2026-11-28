@@ -62,7 +62,7 @@ corridas pesadas (suites completas y recorrido) van **de una en una**.
   lote por separado.
 - Prueba en rojo antes del código.
 - No se tocan `core/`, `aplicacion/hoja.py` ni lo sellado por `reglas-congeladas-2026-11-24`.
-- Nada de datos reales.
+- Ningún libro de la empresa ni nada derivado de él entra al repositorio (NORMAS §1); las pruebas usan casos construidos.
 - Un gancho de hookify que bloquea se reintenta una vez y, si vuelve, se para.
 - No se corre prettier.
 - Antes de cerrar, `npm run muerto` en local, porque la CI lo pide.
