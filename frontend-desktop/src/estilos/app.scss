@@ -1,6 +1,7 @@
 // Estilos propios de la aplicacion. Carbon pone la gramatica visual; editorial.scss aplica el sistema Swiss-industrial.
 @use "./fuentes";
 @use "./tokens";
+@use "./botones";
 @use "./editorial";
 @use "../indicadores/indicadores";
 @use "../visor/visor";
@@ -15,14 +16,20 @@ html {
   font-size: calc(116.6667% * var(--silice-escala-letra));
   // Barras de desplazamiento y seleccion con la paleta, no con los valores del navegador.
   scrollbar-color: var(--cds-border-strong) var(--cds-layer);
-  color-scheme: light;
 }
 
 body {
   margin: 0;
+  font-family: "Instrument Sans", system-ui, sans-serif;
   background: var(--silice-fondo);
   color: var(--silice-texto);
   caret-color: var(--silice-interactivo);
+}
+
+// Los componentes de Carbon declaran su propia familia en sus clases; heredan la del cuerpo sin tocar los iconos SVG.
+body *:not(svg, svg *),
+body [class*="cds--"]:not(svg, svg *) {
+  font-family: inherit;
 }
 
 ::selection {
@@ -30,14 +37,15 @@ body {
   color: var(--silice-texto);
 }
 
-// Cifras: tabulares y alineadas a la derecha donde se usen. Referencias de celda y reglas en Plex Mono.
+// Cifras y codigos: tabulares y alineadas a la derecha donde se usen.
 .silice-cifra {
   font-variant-numeric: tabular-nums;
   text-align: end;
 }
 
 .silice-codigo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .silice-entrada {
@@ -47,6 +55,8 @@ body {
   max-inline-size: 38rem;
   padding: 2rem 1.25rem;
   margin-block-start: 3rem;
+  // Centrada en la ventana (T3, 2026-11-28): «Crear una cuenta» y «Tengo un código» quedaban pegadas al borde izquierdo.
+  margin-inline: auto;
 }
 
 .silice-entrada--dividida {
@@ -89,7 +99,8 @@ body {
 
 .silice-entrada__etiqueta {
   margin: 0;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
   letter-spacing: 0;
   color: var(--silice-gold);
@@ -169,6 +180,12 @@ body {
   margin-block-start: 0.25rem;
 }
 
+// «Volver» es un botón fantasma de Carbon con 14 px de relleno a cada lado: sin compensarlo, su texto arranca sangrado
+// frente al borde izquierdo de los campos (T3, 2026-11-28).
+.silice-entrada__acciones > .cds--btn--ghost {
+  margin-inline-start: -0.875rem;
+}
+
 .silice-entrada__enviar {
   inline-size: 100%;
   max-inline-size: 100%;
@@ -214,6 +231,14 @@ header.cds--header.silice-marco-barra {
   }
 }
 
+// El sello y la palabra: el gap va aquí y no en `.cds--header__name`, porque Carbon envuelve el contenido de HeaderName en
+// un solo <span> (CabeceraSinMarco.tsx).
+.silice-sin-marco__marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .silice-sin-marco__sello {
   display: inline-flex;
   align-items: center;
@@ -243,14 +268,19 @@ header.cds--header.silice-marco-barra {
   max-inline-size: 65ch;
 }
 
-// Sin animacion decorativa (DESIGN.md, Movimiento). Con prefers-reduced-motion se quitan tambien las
-// transiciones de estado propias de los componentes Carbon.
+// DESIGN.md › Movimiento (enmienda del 2026-11-26) y guía motion: bajo prefers-reduced-motion se conservan
+// las transiciones de color (quitando las espaciales y de tamaño) y se anulan las animaciones salvo el spinner.
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    transition: none !important;
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+
+  // Se usa una regla más específica (.cds--loading:not(.cds--loading--stop)) para restituir el giro del spinner a 8 s.
+  .cds--loading:not(.cds--loading--stop) {
+    animation: cds--rotate 8s linear infinite forwards !important;
   }
 }

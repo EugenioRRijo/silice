@@ -13,9 +13,10 @@ import { BarraDeEspacio, pestanasUsables } from "./BarraDeEspacio";
 import { CabeceraDeObra } from "./CabeceraDeObra";
 import { SUBVISTAS, vistaDeLaSeccion } from "./espacios";
 import { enfocarElTitulo } from "./focoAlTitulo";
+import { seccionConSubvistasPropias } from "./herramientas";
 import { ContextoDeLaObra } from "./obraAbierta";
 import type { ObraAbierta } from "./obraAbierta";
-import { seccionesDeLaObra, useOferta } from "./oferta";
+import { useOferta } from "./oferta";
 import { RUTA_DE_PENDIENTES, SECCIONES_CON_HOJA, carpetaDeLaRuta, rutaDeObra, seccionPorId } from "./secciones";
 import type { SeccionDef } from "./secciones";
 import { useFichaDeLaObra } from "./useFichaDeLaObra";
@@ -143,7 +144,7 @@ interface ObraDeLaRutaProps {
 }
 
 // La obra lista: lee su ficha una vez, la comparte con las secciones (ContextoDeLaObra) y pinta la cabecera encima de la
-// sección, con la barra de las secciones de la obra justo debajo (F6, T5; diseño visual 2.2). Dentro de la sección, si tiene
+// sección. La barra del lugar (nombre, herramientas y opciones, lote C4) es la de la propia cabecera: una obra tiene una sola. Dentro de la sección, si tiene
 // 2 o más vistas usables, el conmutador de subvistas va a la cabeza del lienzo (adenda A.2). La sección lee la obra y la
 // carpeta de la ruta desde el primer dibujo (no las del marco, que se ponen al día un momento después).
 //
@@ -163,7 +164,7 @@ function ObraDeLaRuta({ carpeta, obraId, obra, casos, seccion: def, subvista, pa
   const seccion = def.id;
   const base = useContext(ContextoAplicacion);
   const { search } = useLocation();
-  const { acciones, oferta } = useOferta();
+  const { acciones } = useOferta();
   const modoEntrega = base?.sesion.modo_entrega ?? false;
   const apagados = base?.modulosApagados ?? [];
   const { recargar, ...ficha } = useFichaDeLaObra(obraId, carpeta);
@@ -191,22 +192,18 @@ function ObraDeLaRuta({ carpeta, obraId, obra, casos, seccion: def, subvista, pa
   if (vista.redirigeA !== null) {
     return <Navigate to={`${rutaDeObra(carpeta, obraId, seccion, vista.redirigeA)}${search}`} replace />;
   }
-  const secciones = seccionesDeLaObra(oferta).map((s) => ({ id: s.id, titulo: s.titulo, ruta: rutaDeObra(carpeta, obraId, s.id) }));
   const subvistas = pestanasUsables(SUBVISTAS[seccion] ?? [], (h) => rutaDeObra(carpeta, obraId, seccion, h.id), acciones, modoEntrega, apagados);
   const subvistaActiva = (SUBVISTAS[seccion] ?? []).find((v) => v.pagina === vista.pagina)?.id ?? "";
   // F7, A1: el «¿Qué es esto?» de la pantalla, solo si la cuenta puede usarla (si no, la pantalla dice «Sin permiso»).
   const paginaDeLaVista = vista.pagina === null ? undefined : paginaPorId(vista.pagina);
   const conAyuda = paginaDeLaVista !== undefined && usable(paginaDeLaVista, acciones, modoEntrega, apagados);
-  const cabecera = (
-    <>
-      <CabeceraDeObra carpeta={carpeta} obraId={obraId} nombre={obra?.obra} version={obra?.version_codigo} ficha={abierta.ficha} />
-      {/* Sin ninguna sección usable no hay barra que ofrecer (la pantalla dice por qué). */}
-      {secciones.length > 0 && <BarraDeEspacio etiqueta="Secciones de la obra" pestanas={secciones} activa={seccion} nivel="espacio" />}
-    </>
-  );
+  const cabecera = <CabeceraDeObra carpeta={carpeta} obraId={obraId} nombre={obra?.obra} version={obra?.version_codigo} ficha={abierta.ficha} />;
   const pantalla = (
     <>
-      <BarraDeEspacio etiqueta={`Vistas de ${def.titulo}`} pestanas={subvistas} activa={subvistaActiva} nivel="subvista" />
+      {/* C4: la segunda fila de la obra ya lleva las subvistas; esta barra queda solo donde no las cubre (Mercado). */}
+      {seccionConSubvistasPropias(seccion) && (
+        <BarraDeEspacio etiqueta={`Vistas de ${def.titulo}`} pestanas={subvistas} activa={subvistaActiva} nivel="subvista" />
+      )}
       {conAyuda && <AyudaDeLaPantalla pagina={paginaDeLaVista.id} />}
       <LimiteDeError key={`${seccion}|${vista.pagina}`}>
         <Suspense fallback={<EsqueletoPagina />}>{vista.pagina !== null && montar(vista.pagina)}</Suspense>

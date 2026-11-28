@@ -6,7 +6,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaEspacio } from "../hoja/datosDePrueba";
-import PaginaHoja from "../hoja/index";
+import PaginaHoja from "../hoja/pestanas";
 import type { BorradorAbierto, VersionesRespuesta } from "../hoja/logica";
 import { ProveedorDeLaHoja } from "../hoja/ProveedorDeLaHoja";
 import { importada, respuestaDeFusion } from "./datosDePlano";
@@ -139,7 +139,8 @@ describe("el plano importado en Archivos y planos entra en la Hoja (3e-2)", () =
     await usuario.click(within(dialogo).getByRole("button", { name: "Cerrar" }));
     await usuario.click(screen.getByRole("button", { name: "Ir al Presupuesto" }));
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    expect(await within(estado).findByText(/Total 3\.000,50 USD/)).toBeInTheDocument();
+    // B1-3: el total sale con `MontoExacto` (sin title ni región viva): se lee en la línea del total de la región.
+    await waitFor(() => expect(estado.querySelector(".silice-hoja__total")).toHaveTextContent("3.000,50 USD"));
     expect(within(estado).getByText(/3 cambios sin guardar/)).toBeInTheDocument();
     const tabla = await screen.findByRole("table", { name: /Ambientes/ });
     expect(await within(tabla).findByDisplayValue("PLN-01")).toBeInTheDocument();

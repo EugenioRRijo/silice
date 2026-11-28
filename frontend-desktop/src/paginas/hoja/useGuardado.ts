@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { useNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { esperarEnvios } from "./envioPendiente";
 import {
   cambiosDeRespuesta,
@@ -29,6 +31,9 @@ interface Opciones {
 // El estado del modal «Guardar versión»: si está abierto, la fuente escrita (que sobrevive a un cierre o a un error), la lista de
 // cambios (E9) y el guardado (S1). Hay una sola petición de guardado en vuelo a la vez.
 export function useGuardado({ id, rev, proyecto, alExpirar, alGuardada, alVaciarseLaCuenta }: Opciones) {
+  const { notificar } = useNotificaciones();
+  const obra = useContext(ContextoDeLaObra);
+  const nombreObra = obra?.ficha.estado === "lista" ? obra.ficha.obra.nombre : proyecto;
   const [abierto, setAbierto] = useState(false);
   const [escrita, setEscrita] = useState<{ proyecto: string; texto: string }>({ proyecto, texto: "" });
   const [enviando, setEnviando] = useState(false);
@@ -113,9 +118,16 @@ export function useGuardado({ id, rev, proyecto, alExpirar, alGuardada, alVaciar
       setAbierto(false);
       setLeidos(null);
       setEscrita({ proyecto, texto: "" });
+      if (respuesta.version_nueva !== false) {
+        notificar({
+          gravedad: "listo",
+          titulo: `Versión ${respuesta.codigo} guardada`,
+          detalle: nombreObra,
+        });
+      }
       await alGuardada(respuesta);
     },
-    [alExpirar, alGuardada, alVaciarseLaCuenta, proyecto],
+    [alExpirar, alGuardada, alVaciarseLaCuenta, nombreObra, notificar, proyecto],
   );
 
   return { abierto: visible, abrir, cerrar, fuente, escribir, enviando, error, limpiarError, cambios, guardar };

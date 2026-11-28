@@ -1,0 +1,91 @@
+@use "./base";
+
+// Pila de notificaciones emergentes abajo a la derecha (C11: 340 px = 21,25 rem, sobre la barra de estado).
+// Solo tokens --silice-* y unidades rem.
+
+.silice-notificaciones-region {
+  position: fixed;
+  inset-inline-end: 1rem;
+  inset-block-end: 2.5rem;
+  z-index: var(--silice-z-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  inline-size: min(21.25rem, calc(100vw - 2rem));
+  max-block-size: calc(100dvh - 6rem);
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.silice-notificacion-tarjeta {
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--silice-linea);
+  border-radius: 0.75rem;
+  background-color: var(--silice-hoja);
+  color: var(--silice-t1);
+  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, var(--silice-marco) 14%, transparent);
+  pointer-events: auto;
+}
+
+.silice-notificacion-tarjeta__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-notificacion-tarjeta__titulo {
+  min-inline-size: 0;
+  color: var(--silice-t1);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.silice-notificacion-tarjeta__detalle {
+  margin: 0.25rem 0 0;
+  color: var(--silice-t2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.silice-notificacion-tarjeta__enlace {
+  display: inline-block;
+  margin-block-start: 0.5rem;
+  color: var(--silice-complementario);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 0.1875rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .silice-notificacion-tarjeta {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity 180ms ease-out,
+      transform 180ms ease-out;
+
+    @starting-style {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .silice-notificacion-tarjeta {
+    transform: none;
+    transition: none;
+  }
+}

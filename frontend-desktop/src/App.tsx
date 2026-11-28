@@ -1,4 +1,4 @@
-import { Header, HeaderGlobalBar, HeaderName, Theme } from "@carbon/react";
+import { Theme } from "@carbon/react";
 import { useState } from "react";
 import { HashRouter } from "react-router";
 import { Bienvenida } from "./bienvenida/Bienvenida";
@@ -6,43 +6,27 @@ import type { CuerpoDeReclamo } from "./bienvenida/FormularioDeReclamo";
 import { RecuperarAcceso } from "./bienvenida/RecuperarAcceso";
 import { usePrimerArranque } from "./bienvenida/usePrimerArranque";
 import type { ConsultaPrimerArranque } from "./bienvenida/usePrimerArranque";
+import { CabeceraSinMarco } from "./sesion/CabeceraSinMarco";
 import { CambiarContrasena } from "./sesion/CambiarContrasena";
 import { Entrar } from "./sesion/Entrar";
 import { useSesion } from "./sesion/useSesion";
+import { ProveedorDeAnuncios } from "./comun/Anunciador";
 import { Marco } from "./marco/Marco";
 import { ProveedorDelTema } from "./marco/useTema";
-import { MenuCuenta } from "./shell/MenuCuenta";
+import type { PaginaDef } from "./shell/rutas";
 import { crearAlmacen } from "./visor/almacen";
 import type { AlmacenDelVisor } from "./visor/almacen";
 import type { CrearHojaVisor } from "./visor/hojaVisor";
 
 // El enrutador es de hash (`/app/#/inicio/general`): el servidor de /app es estatico y no devuelve index.html para
 // /app/libros al recargar, y asi tampoco hace falta tocarlo cuando la interfaz vaya dentro de Tauri.
-// Cabecera de las pantallas sin el marco (entrar, bienvenida, recuperar, cambio de contrasena obligatorio): «Sílice» y, con
-// una sesión provisional, su cuenta para poder salir. El tamaño de letra vive solo en Cuenta › Configuración
-// (Eugenio, 2026-11-22). Sin navegacion: todavia no hay pantallas a las que ir.
-function CabeceraSinMarco({ nombre, alSalir }: { nombre?: string; alSalir: () => void }) {
-  return (
-    <Header aria-label="Sílice" className="silice-marco-barra silice-sin-marco">
-      <HeaderName href="#/" prefix="">
-        <span className="silice-sin-marco__sello" aria-hidden="true">
-          S
-        </span>
-        Sílice
-      </HeaderName>
-      <HeaderGlobalBar>
-        {nombre && <MenuCuenta nombre={nombre} alSalir={alSalir} />}
-      </HeaderGlobalBar>
-    </Header>
-  );
-}
-
 interface Props {
-  // Solo en pruebas: el visor de hojas (por omision, Univer).
+  // Solo en pruebas: el visor de hojas (por omision, Univer) y el registro de pantallas.
   crearHoja?: CrearHojaVisor;
+  paginas?: readonly PaginaDef[];
 }
 
-export function App({ crearHoja }: Props = {}) {
+export function App({ crearHoja, paginas }: Props = {}) {
   const { estado, entrar, reclamar, cambiarContrasena, salir, expirar } = useSesion();
   // Sin sesion se pregunta si la instalacion aun no tiene cuentas; si no tiene, la entrada es la bienvenida (BCP-4). Cualquier
   // fallo de la consulta es «Entrar». Una sesion vencida supone que ya hay cuentas: ahi no se pregunta.
@@ -78,14 +62,17 @@ export function App({ crearHoja }: Props = {}) {
       <ProveedorDelTema>
         {estado.tipo === "activa" && !estado.sesion.debe_cambiar_clave ? (
           <HashRouter>
-            <Marco
-              sesion={estado.sesion}
-              alSalir={alSalir}
-              alExpirar={expirar}
-              alCambiarContrasena={cambiarContrasena}
-              almacen={almacen}
-              crearHoja={crearHoja}
-            />
+            <ProveedorDeAnuncios>
+              <Marco
+                sesion={estado.sesion}
+                alSalir={alSalir}
+                alExpirar={expirar}
+                alCambiarContrasena={cambiarContrasena}
+                paginas={paginas}
+                almacen={almacen}
+                crearHoja={crearHoja}
+              />
+            </ProveedorDeAnuncios>
           </HashRouter>
         ) : (
           <>

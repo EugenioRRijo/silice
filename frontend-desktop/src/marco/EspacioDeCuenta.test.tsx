@@ -22,6 +22,8 @@ const SUR = "Carpeta Sur.db";
 const TITULOS = {
   preferencias: "Configuración",
   contrasena: "Contraseña",
+  // C11b: qué notificaciones recibe; toda cuenta la tiene, como Configuración y Contraseña.
+  notificaciones: "Notificaciones",
   cuentas: "Cuentas y permisos",
   empresa: "Empresa y tema",
   carpetas: "Carpetas",
@@ -30,7 +32,7 @@ const TITULOS = {
 } as const;
 const TODAS = Object.values(TITULOS);
 const RUTAS = Object.keys(TITULOS).map((id) => `/cuenta/${id}`);
-const SOLO_DOS = [TITULOS.preferencias, TITULOS.contrasena, TITULOS.ayuda];
+const SOLO_DOS = [TITULOS.preferencias, TITULOS.contrasena, TITULOS.notificaciones, TITULOS.ayuda];
 const MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta pantalla o acción.";
 const CONTENIDO = "Contenido de administración";
 const JERGA = /módulo|área|página|carpeta de trabajo|streamlit/i;
@@ -243,5 +245,85 @@ describe("la Cuenta: al cambiar de carpeta se vuelve a Carpetas", () => {
     expect(ruta()).toBe("/cuenta/carpetas");
     expect(await screen.findByRole("button", { name: "Abrir la otra" })).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+});
+
+// C10: la actividad de una cuenta (`/cuenta/actividad?usuario=<login>`). No es una pestaña: la barra sigue siendo la de siempre.
+describe("la Cuenta: la actividad de una persona", () => {
+  const ACTIVIDAD = {
+    usuario: "ana",
+    desde: "2026-10-01",
+    hasta: "2026-10-31",
+    dias: [{ fecha: "2026-10-19", cuantos: 1 }],
+    cifras: { versiones_guardadas: 1, versiones_enviadas: 0, dictamenes: 0, auditorias: 0 },
+    eventos: [{ fecha: "2026-10-19T09:00:00", tipo: "version_guardada", obra: "Vivienda Demo", archivo: "", texto: "guardó la versión V1 de Vivienda Demo" }],
+    recortado: false,
+  };
+  let pedidas: string[];
+  let contestar: () => Response;
+
+  beforeEach(() => {
+    pedidas = [];
+    contestar = () => new Response(JSON.stringify(ACTIVIDAD), { status: 200, headers: { "Content-Type": "application/json" } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(entrada);
+        if (!url.startsWith("/v1/actividad")) return servidor.fetchFalso(entrada, init);
+        pedidas.push(url);
+        return contestar();
+      }),
+    );
+  });
+
+  test("abre con su h1, el calendario y la barra de la Cuenta con «Configuración» marcada", async () => {
+    montar({ sesion: sesionDe("ana"), en: "/cuenta/actividad?usuario=ana" });
+    expect(await screen.findByRole("heading", { level: 1, name: "Actividad de ana" })).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: /Calendario de actividad/ })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    const enlaces = within(await barra()).getAllByRole("link");
+    expect(enlaces.map((e) => e.textContent)).toEqual(SOLO_DOS);
+    expect(enlaces.filter((e) => e.getAttribute("aria-current") === "page").map((e) => e.textContent)).toEqual([TITULOS.preferencias]);
+    expect(pedidas).toEqual(["/v1/actividad?usuario=ana"]);
+  });
+
+  test("sin usuario en la consulta es la propia cuenta", async () => {
+    montar({ sesion: sesionDe("rita"), en: "/cuenta/actividad" });
+    expect(await screen.findByRole("heading", { level: 1, name: "Actividad de rita" })).toBeInTheDocument();
+    await screen.findByRole("group", { name: /Calendario de actividad/ });
+    expect(pedidas).toEqual(["/v1/actividad?usuario=rita"]);
+    expect(ruta()).toBe("/cuenta/actividad");
+  });
+
+  test("quien administra y mira a otra persona tiene marcada «Cuentas y permisos»", async () => {
+    montar({ en: "/cuenta/actividad?usuario=ana" });
+    expect(await screen.findByRole("heading", { level: 1, name: "Actividad de ana" })).toBeInTheDocument();
+    const enlaces = within(await barra()).getAllByRole("link");
+    expect(enlaces.filter((e) => e.getAttribute("aria-current") === "page").map((e) => e.textContent)).toEqual([TITULOS.cuentas]);
+  });
+
+  test("quien administra y mira la suya tiene marcada «Configuración»", async () => {
+    montar({ en: "/cuenta/actividad?usuario=admin" });
+    await screen.findByRole("heading", { level: 1, name: "Actividad de admin" });
+    const enlaces = within(await barra()).getAllByRole("link");
+    expect(enlaces.filter((e) => e.getAttribute("aria-current") === "page").map((e) => e.textContent)).toEqual([TITULOS.preferencias]);
+  });
+
+  test("si el servidor no deja ver esa cuenta, la pantalla dice el motivo y no pinta el calendario", async () => {
+    contestar = () => new Response(JSON.stringify({ detalle: "Solo puede ver su propia actividad, o la de todos si administra las cuentas." }), { status: 403, headers: { "Content-Type": "application/json" } });
+    montar({ sesion: sesionDe("ana"), en: "/cuenta/actividad?usuario=rita" });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Solo puede ver su propia actividad, o la de todos si administra las cuentas.");
+    expect(screen.queryByRole("group", { name: /Calendario de actividad/ })).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  test("«Configuración» ofrece «Ver mi actividad», que lleva a la propia", async () => {
+    const u = userEvent.setup();
+    montar({ sesion: sesionDe("ana"), en: "/cuenta/preferencias" });
+    const enlace = await screen.findByRole("link", { name: "Ver mi actividad" });
+    expect(enlace).toHaveAttribute("href", "/cuenta/actividad?usuario=ana");
+    await u.click(enlace);
+    expect(await screen.findByRole("heading", { level: 1, name: "Actividad de ana" })).toBeInTheDocument();
+    expect(ruta()).toBe("/cuenta/actividad?usuario=ana");
   });
 });

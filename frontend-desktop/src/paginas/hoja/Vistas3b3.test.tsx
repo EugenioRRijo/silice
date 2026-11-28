@@ -11,7 +11,7 @@ import {
   preciosRespuesta,
   vistaEquilibrio,
 } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import { PESTANAS } from "./logica";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 

@@ -40,7 +40,86 @@ describe("la barra superior del marco ocupa el hueco que reserva el cuerpo", () 
     expect(barra).toMatch(/position:\s*fixed/);
     expect(barra).toMatch(/inset-block-start:\s*0/);
     expect(barra).toMatch(/inset-inline:\s*0/);
-    expect(reglaDe(marco, ".silice-marco")).toMatch(/min-block-size:\s*calc\(100vh - 3rem\)/);
+    expect(reglaDe(marco, ".silice-marco")).toMatch(/block-size:\s*calc\(100vh - 3rem\)/);
+  });
+});
+
+// Recorrido funcional del 2026-11-27 (1366×768): la barra de estado era `sticky` al pie de la ventana y tapaba el final de la
+// barra lateral y del contenido; la barra lateral (alto de la ventana, con la lista de obras en una caja que podía encogerse
+// a 0) escondía todas las obras. El marco mide el alto de la ventana bajo la barra de arriba: el cuerpo ocupa lo que queda y
+// se desplaza por dentro (la lateral y el contenido, cada uno con el suyo) y la barra de estado es su última fila, en el
+// flujo, sin tapar nada.
+describe("el marco mide el alto de la ventana: cuerpo con su desplazamiento y barra de estado como última fila", () => {
+  const marco = () => leer("marco/marco.scss");
+
+  test("el marco es una columna de alto fijo que no desplaza la página", () => {
+    const regla = reglaDe(marco(), ".silice-marco") ?? "(no hay regla)";
+    expect(regla).toMatch(/display:\s*flex/);
+    expect(regla).toMatch(/flex-direction:\s*column/);
+    expect(regla).toMatch(/(^|[\s;])block-size:\s*calc\(100vh - 3rem\)/);
+    expect(regla).toMatch(/overflow:\s*clip/);
+  });
+
+  // Recorrido funcional del 2026-11-27 (reajuste, escenarios, revisar…): lo que Carbon coloca en `position: absolute` (el texto
+  // `cds--visually-hidden`, p. ej.) tomaba el documento como bloque contenedor y se salía del contenido que se desplaza: el
+  // documento crecía a 1123 px en una ventana de 768, el `focus()` lo desplazaba 56 px y la barra lateral y el contenido
+  // quedaban corridos con una franja vacía abajo. El marco, la lateral y el contenido son su propio bloque contenedor, y el
+  // marco recorta (`clip`, no `hidden`: `hidden` también se desplaza por programa).
+  test("el marco, la barra lateral y el contenido contienen lo absoluto de su interior", () => {
+    const fuente = marco();
+    expect(reglaDe(fuente, ".silice-marco") ?? "").toMatch(/(^|[\s;])position:\s*relative/);
+    expect(reglaDe(fuente, "  > .silice-marco-lateral") ?? "").toMatch(/position:\s*relative/);
+    expect(reglaDe(fuente, "\n.silice-contenido") ?? "").toMatch(/position:\s*relative/);
+  });
+
+  test("el cuerpo toma el alto que queda y puede encogerse; la lateral y el contenido se desplazan por dentro", () => {
+    const fuente = marco();
+    const cuerpo = reglaDe(fuente, ".silice-marco__cuerpo") ?? "(no hay regla)";
+    expect(cuerpo).toMatch(/flex:\s*1\s+1\s+0/);
+    expect(cuerpo).toMatch(/min-block-size:\s*0/);
+    const lateral = reglaDe(fuente, "  > .silice-marco-lateral") ?? "(no hay regla)";
+    expect(lateral).toMatch(/overflow-y:\s*auto/);
+    expect(lateral).not.toMatch(/position:\s*sticky|block-size:\s*calc/);
+    const contenido = reglaDe(fuente, "\n.silice-contenido") ?? "(no hay regla)";
+    expect(contenido).toMatch(/overflow-y:\s*auto/);
+    expect(contenido).toMatch(/min-block-size:\s*0/);
+  });
+
+  test("la barra de estado no es sticky ni flota: es la última fila del marco y no se encoge", () => {
+    const regla = reglaDe(leer("marco/BarraDeEstado.scss"), ".silice-barra-estado") ?? "(no hay regla)";
+    expect(regla).not.toMatch(/position:\s*(sticky|fixed|absolute)/);
+    expect(regla).toMatch(/flex:\s*none/);
+  });
+
+  test("la cabecera fija de la Hoja se pega al borde del contenido que se desplaza, no a 3 rem de él", () => {
+    expect(reglaDe(marco(), "\n.silice-contenido") ?? "").toMatch(/--silice-alto-marco-fijo:\s*0/);
+  });
+
+  test("las pantallas de alto completo miden lo que queda sin la barra de estado", () => {
+    expect(marco()).toMatch(/--silice-alto-util:\s*calc\(100vh - 3rem - var\(--silice-alto-estado\)\)/);
+    for (const ruta of ["paginas/pendientes/Bandeja.scss", "visor/visor.scss"]) {
+      expect(leer(ruta)).toMatch(/block-size:\s*var\(--silice-alto-util,\s*calc\(100vh - 3rem\)\)/);
+      expect(leer(ruta)).not.toMatch(/block-size:\s*calc\(100vh - 3rem\)/);
+    }
+  });
+});
+
+// La lista de obras de la barra lateral nunca se encoge a cero: con poco alto, la barra se desplaza y la lista conserva un
+// mínimo a la vista (en 1366×768 las ocho obras de la siembra desaparecían: `min-block-size: 0` + `overflow-y: auto`).
+describe("la lista de obras de la barra lateral no se encoge a cero", () => {
+  const lateral = () => leer("marco/BarraLateral.scss");
+
+  test("el árbol de obras tiene un alto mínimo y la caja que lo contiene no lo comprime", () => {
+    const arbol = reglaDe(lateral(), ".silice-marco-lateral__arbol") ?? "(no hay regla)";
+    expect(arbol).toMatch(/min-block-size:\s*[1-9][\d.]*rem/);
+    const obras = reglaDe(lateral(), ".silice-marco-lateral__obras") ?? "(no hay regla)";
+    expect(arbol).toMatch(/overflow-y:\s*auto/);
+    expect(obras).not.toMatch(/min-block-size:\s*0/);
+  });
+
+  test("ni la caja de obras ni la zona de navegación declaran un mínimo de 0 (el automático suma el del árbol)", () => {
+    const nav = reglaDe(lateral(), ".silice-marco-lateral__nav") ?? "(no hay regla)";
+    expect(nav).not.toMatch(/min-block-size:\s*0/);
   });
 });
 
@@ -60,31 +139,63 @@ describe("la barra superior cabe en 1366 px con letra Normal", () => {
     expect(barra()).not.toMatch(/silice-letra/);
   });
 
-  test("el buscador cede antes que nada y, encogido, deja ver su ícono sin desbordar", () => {
-    const buscar = regla(".silice-marco-barra__buscar");
-    expect(encoger(buscar)).toBeGreaterThanOrEqual(100);
-    expect(buscar).toMatch(/overflow:\s*hidden/);
-    expect(buscar).toMatch(/min-inline-size:\s*2\.5rem/);
+  // T3 (2026-11-28), recorrido de medición a 1366 px con letra Normal: se leía «Carpeta activa: of…» y el buscador cortaba su
+  // atajo «(…». La carpeta se recortaba a la vez que la miga porque ambas encogían con el mismo factor, y el buscador encogía
+  // poco a poco hasta cortar el texto. Ahora: el buscador es una ranura que recibe lo que sobra, y si no cabe su texto
+  // completo (consulta de contenedor) queda en su ícono; después cede la miga y solo al final la carpeta.
+  test("«Nueva obra» y el buscador viven en una ranura que recibe el espacio sobrante y mide su propio ancho (consulta de contenedor)", () => {
+    const ranura = regla(".silice-marco-barra__buscar-ranura");
+    expect(ranura).toMatch(/container-type:\s*inline-size/);
+    expect(ranura).toMatch(/flex:\s*1\s+1\s+0/);
+    expect(ranura).toMatch(/min-inline-size:\s*[\d.]+rem/);
+    expect(ranura).toMatch(/max-inline-size:\s*[\d.]+rem/);
+    expect(ranura).toMatch(/justify-content:\s*flex-end/);
   });
 
-  test("el contexto ocupa el hueco flexible, cede después del buscador y se recorta con puntos suspensivos", () => {
+  test("la izquierda no crece (el sobrante es de la ranura) y la derecha no cede: el buscador pasa a ícono antes que la miga", () => {
+    expect(regla(".silice-marco-barra__izq")).toMatch(/flex:\s*0\s+1\s+auto/);
+    expect(regla(".silice-marco-barra__der")).toMatch(/flex:\s*1\s+0\s+auto/);
+  });
+
+  test("si el texto completo no cabe en la ranura, el buscador queda en su ícono (no corta el texto)", () => {
+    const consulta = bloqueDe(barra(), "@container (max-width:") ?? "(no hay @container)";
+    expect(consulta).toMatch(/@container \(max-width:\s*[\d.]+rem\)/);
+    const buscar = bloqueDe(consulta, ".silice-marco-barra__buscar {") ?? "(no hay regla del buscador)";
+    expect(buscar).toMatch(/inline-size:\s*2rem/);
+    const texto = bloqueDe(consulta, ".silice-marco-barra__buscar-texto {") ?? "(no hay regla del texto)";
+    expect(texto).toMatch(/position:\s*absolute/);
+    expect(texto).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(texto).not.toMatch(/display:\s*none/);
+  });
+
+  test("el texto del buscador no se corta con puntos suspensivos: o se ve entero o el buscador es solo su ícono", () => {
+    const texto = regla(".silice-marco-barra__buscar-texto");
+    expect(texto).not.toMatch(/text-overflow/);
+    expect(texto).toMatch(/white-space:\s*nowrap/);
+  });
+
+  test("la miga cede antes que la carpeta, y las dos antes que la marca y la persona", () => {
     const contexto = regla(".silice-marco-barra__contexto");
     expect(contexto).toMatch(/flex:\s*1\s+\d+\s+auto/);
     expect(contexto).toMatch(/min-inline-size:\s*0/);
     expect(contexto).toMatch(/overflow:\s*hidden/);
     expect(contexto).toMatch(/text-overflow:\s*ellipsis/);
     expect(contexto).toMatch(/white-space:\s*nowrap/);
-    expect(encoger(regla(".silice-marco-barra__buscar"))).toBeGreaterThan(encoger(contexto));
+    expect(encoger(contexto)).toBeGreaterThan(encoger(regla(".silice-marco-barra__carpeta")));
+    // Si ni la miga cabe, lo que sobra de la izquierda se recorta en su caja: no se monta sobre «Nueva obra».
+    expect(regla(".silice-marco-barra__izq")).toMatch(/overflow:\s*hidden/);
   });
 
-  test("la carpeta activa cede después del buscador y se recorta con puntos suspensivos", () => {
+  // Con un factor de encogimiento (aunque fuera 1) frente al 100 de la miga, la carpeta cedia fracciones de pixel mientras la miga
+  // cedia el resto, y un texto 0,3 px mas ancho que su caja ya se pinta con «…» (la medicion lo vio: «Carpeta activa: of0…»).
+  test("la carpeta activa no encoge: se recorta con puntos suspensivos solo en su tope, y la miga cede antes", () => {
     const carpeta = regla(".silice-marco-barra__carpeta");
-    expect(carpeta).toMatch(/flex:\s*0\s+\d+\s+auto/);
+    expect(carpeta).toMatch(/flex:\s*0\s+0\s+auto/);
+    expect(carpeta).toMatch(/max-inline-size:\s*[\d.]+rem/);
     expect(carpeta).toMatch(/min-inline-size:\s*0/);
     expect(carpeta).toMatch(/overflow:\s*hidden/);
     expect(carpeta).toMatch(/text-overflow:\s*ellipsis/);
     expect(carpeta).toMatch(/white-space:\s*nowrap/);
-    expect(encoger(regla(".silice-marco-barra__buscar"))).toBeGreaterThan(encoger(carpeta));
   });
 
   test("ya no hay reglas de migas", () => {

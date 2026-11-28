@@ -2,11 +2,16 @@ import { WarningAltFilled } from "@carbon/icons-react";
 import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import type { FormEvent, KeyboardEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { Dialogo } from "../../comun/Dialogo";
 import { TablaDensa } from "../../comun/TablaDensa";
+import type { FilaDensa } from "../../comun/TablaDensa";
 import { mensajeDeError } from "../../comun/errores";
+import { fechaEsVe } from "../../indicadores/formatoEsVe";
+import { rutaDeActividad } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AVISO_TEMPORAL,
@@ -31,7 +36,71 @@ type Resultado =
 
 type Pendiente = { tipo: "desactivar" | "restablecer"; id: number; login: string; propia: boolean };
 
+type PapelDeSolicitud = "arma" | "revisa";
+
+interface SolicitudDeCuenta {
+  id: number;
+  nombre: string;
+  login: string;
+  correo: string;
+  creada: string;
+  estado: string;
+  papel: string | null;
+  vence: string | null;
+}
+
+interface SolicitudesRespuesta {
+  solicitudes: SolicitudDeCuenta[];
+}
+
+interface AprobacionRespuesta {
+  codigo: string;
+  vence: string;
+  mailto: string;
+}
+
+interface MensajeRespuesta {
+  mensaje: string;
+}
+
+interface CodigoMostrado {
+  nombre: string;
+  login: string;
+  codigo: string;
+  vence: string;
+  mailto: string;
+}
+
 const AVISO_SIN_ROL = "Sin ningún rol la cuenta no podría hacer nada: marque al menos uno para crearla.";
+
+const ESTADOS_DE_SOLICITUD: Record<string, string> = {
+  pendiente: "Pendiente",
+  aprobada: "Aprobada",
+  rechazada: "Rechazada",
+  usada: "Usada",
+  vencida: "Vencida",
+};
+
+function fechaSolicitudEsVe(iso: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso.trim());
+  return m ? fechaEsVe(m[1]!) : iso;
+}
+
+function vencimientoEsVe(iso: string): string {
+  return fechaEsVe(iso.trim().replace(" ", "T"));
+}
+
+function filasDeSolicitudes(solicitudes: readonly SolicitudDeCuenta[]): FilaDensa[] {
+  return solicitudes.map((s) => ({
+    id: String(s.id),
+    nombre: s.nombre,
+    usuario: s.login,
+    correo: s.correo,
+    fecha: fechaSolicitudEsVe(s.creada),
+    estado: ESTADOS_DE_SOLICITUD[s.estado] ?? s.estado,
+    accion: "",
+  }));
+}
 
 function SelectorDeRoles({
   idBase,
@@ -140,13 +209,17 @@ function Confirmacion({
   );
 }
 
-// Pestana «Cuentas» (accion ADMINISTRAR_CUENTAS): lista, alta, roles, desactivar/reactivar, desbloquear y
-// restablecer la contrasena. Las contrasenas viven solo en el estado de este componente y se vacian al enviar
-// (con exito o sin el) o al cancelar, como los formularios de Streamlit; la API nunca las devuelve. Al cambiar de
-// pestana el componente se desmonta y no queda nada. El resultado se anuncia con el foco (no con aria-live).
+// Pestana «Cuentas» (accion ADMINISTRAR_CUENTAS): solicitudes con código de un solo uso (C9), lista, alta, roles,
+// desactivar/reactivar, desbloquear y restablecer la contrasena. Las contrasenas y códigos viven solo en el estado de
+// este componente y se vacian al enviar o al cerrar el diálogo; la API nunca los guarda en claro.
 export default function Cuentas() {
   const { alExpirar, sesion } = useAplicacion();
   const [lista, setLista] = useState<CuentasRespuesta | null>(null);
+  const [solicitudes, setSolicitudes] = useState<SolicitudDeCuenta[]>([]);
+  const [papelesElegidos, setPapelesElegidos] = useState<Record<number, PapelDeSolicitud>>({});
+  const [aprobada, setAprobada] = useState<CodigoMostrado | null>(null);
+  const [estadoCopia, setEstadoCopia] = useState<"ok" | "error" | null>(null);
+  const [solicitudARechazar, setSolicitudARechazar] = useState<SolicitudDeCuenta | null>(null);
   const [errorDeLista, setErrorDeLista] = useState<unknown>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -167,6 +240,7 @@ export default function Cuentas() {
 
   const cuentas = lista?.cuentas ?? [];
   const elegida: Cuenta | undefined = cuentas.find((c) => c.id === elegidaId);
+  const solicitudPorId = new Map(solicitudes.map((s) => [String(s.id), s]));
 
   useEffect(() => {
     montado.current = true;
@@ -191,6 +265,19 @@ export default function Cuentas() {
     }
   }, [alExpirar]);
 
+  const cargarSolicitudes = useCallback(async (): Promise<boolean> => {
+    try {
+      const r = await pedir<SolicitudesRespuesta>("/v1/solicitudes");
+      if (!montado.current) return true;
+      setSolicitudes(r.solicitudes);
+      return true;
+    } catch (e) {
+      if (!montado.current) return false;
+      if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+      return false;
+    }
+  }, [alExpirar]);
+
   useEffect(() => {
     let vigente = true;
     pedir<CuentasRespuesta>("/v1/cuentas").then(
@@ -201,6 +288,15 @@ export default function Cuentas() {
         if (!vigente) return;
         if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
         setErrorDeLista(e);
+      },
+    );
+    pedir<SolicitudesRespuesta>("/v1/solicitudes").then(
+      (r) => {
+        if (vigente) setSolicitudes(r.solicitudes);
+      },
+      (e: unknown) => {
+        if (!vigente) return;
+        if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
       },
     );
     return () => {
@@ -227,6 +323,87 @@ export default function Cuentas() {
       if (previo.isConnected) previo.focus();
     }
   }, [pendiente]);
+
+  const papelDe = (s: SolicitudDeCuenta): PapelDeSolicitud =>
+    papelesElegidos[s.id] ?? (s.papel === "revisa" ? "revisa" : "arma");
+
+  const aprobarSolicitud = async (s: SolicitudDeCuenta) => {
+    setOcupado(true);
+    setResultado(null);
+    try {
+      const r = await pedir<AprobacionRespuesta>(`/v1/solicitudes/${s.id}/aprobar`, {
+        metodo: "POST",
+        cuerpo: { papel: papelDe(s) },
+      });
+      if (!montado.current) return;
+      await cargarSolicitudes();
+      if (!montado.current) return;
+      setEstadoCopia(null);
+      setAprobada({
+        nombre: s.nombre,
+        login: s.login,
+        codigo: r.codigo,
+        vence: r.vence,
+        mailto: r.mailto,
+      });
+    } catch (e) {
+      if (!montado.current) return;
+      if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+      setResultado({ tipo: "error", error: e });
+    } finally {
+      if (montado.current) setOcupado(false);
+    }
+  };
+
+  const cerrarDialogoCodigo = useCallback(() => {
+    setAprobada(null);
+    setEstadoCopia(null);
+  }, []);
+
+  const copiarCodigo = async () => {
+    if (!aprobada) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Sin portapapeles");
+      await navigator.clipboard.writeText(aprobada.codigo);
+      if (montado.current) setEstadoCopia("ok");
+    } catch {
+      if (montado.current) setEstadoCopia("error");
+    }
+  };
+
+  const cerrarRechazo = useCallback(() => {
+    setSolicitudARechazar(null);
+  }, []);
+
+  const confirmarRechazo = async () => {
+    if (!solicitudARechazar) return;
+    const objetivo = solicitudARechazar;
+    setOcupado(true);
+    setResultado(null);
+    try {
+      const r = await pedir<MensajeRespuesta>(`/v1/solicitudes/${objetivo.id}/rechazar`, {
+        metodo: "POST",
+        cuerpo: {},
+      });
+      if (!montado.current) return;
+      setSolicitudARechazar(null);
+      const recargo = await cargarSolicitudes();
+      if (!montado.current) return;
+      setResultado({
+        tipo: "ok",
+        mensaje: r.mensaje,
+        aviso: null,
+        nota: recargo ? null : "La solicitud se rechazó, pero no se pudo recargar la lista de solicitudes.",
+      });
+    } catch (e) {
+      if (!montado.current) return;
+      setSolicitudARechazar(null);
+      if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+      setResultado({ tipo: "error", error: e });
+    } finally {
+      if (montado.current) setOcupado(false);
+    }
+  };
 
   // Manda una accion; devuelve true si la API la acepto. Recarga la lista despues.
   const ejecutar = async (ruta: string, cuerpo: object): Promise<boolean> => {
@@ -300,6 +477,82 @@ export default function Cuentas() {
 
   return (
     <div className="silice-adm__secciones">
+      {solicitudes.length > 0 && (
+        <section aria-labelledby="adm-solicitudes" className="silice-adm__tabla" inert={abierta}>
+          <h2 id="adm-solicitudes" className="cds--type-heading-compact-02">
+            Solicitudes
+          </h2>
+          <TablaDensa
+            etiqueta="Solicitudes de cuenta"
+            columnas={[
+              { clave: "nombre", titulo: "Nombre" },
+              { clave: "usuario", titulo: "Usuario" },
+              { clave: "correo", titulo: "Correo" },
+              { clave: "fecha", titulo: "Fecha" },
+              { clave: "estado", titulo: "Estado" },
+              {
+                clave: "accion",
+                titulo: "Acción",
+                ordenable: false,
+                celda: (f) => {
+                  const s = solicitudPorId.get(f.id);
+                  // Las mismas que el servidor puede resolver (`RESOLUBLES` en seguridad/solicitudes.py): una aprobada también, para
+                  // volver a aprobarla con un código nuevo (el anterior deja de valer) o rechazarla.
+                  if (!s || (s.estado !== "pendiente" && s.estado !== "vencida" && s.estado !== "aprobada")) return "—";
+                  const idQuien = `adm-sol-quien-${s.id}`;
+                  return (
+                    <div className="silice-adm__acciones-solicitud">
+                      <span id={idQuien} className="cds--visually-hidden">
+                        {`${s.nombre} (${s.login})`}
+                      </span>
+                      <div className="silice-adm__selector-papel">
+                        <Select
+                          id={`adm-sol-papel-${s.id}`}
+                          labelText="Papel"
+                          hideLabel
+                          size="sm"
+                          aria-describedby={idQuien}
+                          value={papelDe(s)}
+                          disabled={ocupado}
+                          onChange={(e) => {
+                            const valor: PapelDeSolicitud = e.target.value === "revisa" ? "revisa" : "arma";
+                            setPapelesElegidos((prev) => ({ ...prev, [s.id]: valor }));
+                          }}
+                        >
+                          <SelectItem value="arma" text="Arma presupuestos" />
+                          <SelectItem value="revisa" text="Revisa" />
+                        </Select>
+                      </div>
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        type="button"
+                        disabled={ocupado}
+                        aria-describedby={idQuien}
+                        onClick={() => void aprobarSolicitud(s)}
+                      >
+                        Aprobar y generar el código
+                      </Button>
+                      <Button
+                        kind="danger--tertiary"
+                        size="sm"
+                        type="button"
+                        disabled={ocupado}
+                        aria-describedby={idQuien}
+                        onClick={() => setSolicitudARechazar(s)}
+                      >
+                        Rechazar
+                      </Button>
+                    </div>
+                  );
+                },
+              },
+            ]}
+            filas={filasDeSolicitudes(solicitudes)}
+          />
+        </section>
+      )}
+
       <section aria-labelledby="adm-cuentas" className="silice-adm__tabla" inert={abierta}>
         <h2 id="adm-cuentas" className="cds--type-heading-compact-02">
           Cuentas
@@ -308,7 +561,6 @@ export default function Cuentas() {
           <div className="silice-adm__reintento">
             <InlineNotification
               kind="error"
-             
               title="No se pudieron leer las cuentas"
               subtitle={mensajeDeError(errorDeLista)}
               lowContrast
@@ -334,17 +586,22 @@ export default function Cuentas() {
                 ordenable: false,
                 // Cada fila dice de qué cuenta es (WCAG 2.4.6) y elige por su id; el foco pasa al selector de abajo.
                 celda: (f) => (
-                  <Button
-                    kind="ghost"
-                    size="sm"
-                    aria-label={`Elegir la cuenta ${String(f.usuario)}`}
-                    onClick={() => {
-                      setElegidaId(Number(f.id));
-                      selectorDeCuenta.current?.focus();
-                    }}
-                  >
-                    Elegir
-                  </Button>
+                  <div className="silice-adm__acciones">
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      aria-label={`Elegir la cuenta ${String(f.usuario)}`}
+                      onClick={() => {
+                        setElegidaId(Number(f.id));
+                        selectorDeCuenta.current?.focus();
+                      }}
+                    >
+                      Elegir
+                    </Button>
+                    <Link to={rutaDeActividad(String(f.usuario))} aria-label={`Ver su actividad: ${String(f.usuario)}`} className="cds--link">
+                      Ver su actividad
+                    </Link>
+                  </div>
                 ),
               },
             ]}
@@ -369,7 +626,6 @@ export default function Cuentas() {
         {resultado?.tipo === "error" && (
           <InlineNotification
             kind="error"
-           
             title="No se pudo completar la acción"
             subtitle={mensajeDeError(resultado.error)}
             lowContrast
@@ -555,6 +811,87 @@ export default function Cuentas() {
           {pendiente && <Confirmacion pendiente={pendiente} alConfirmar={() => void confirmar()} alCancelar={cancelar} />}
         </section>
       )}
+
+      <Dialogo
+        abierto={solicitudARechazar !== null}
+        titulo="Rechazar la solicitud"
+        alCerrar={cerrarRechazo}
+        enviando={ocupado}
+        destructivo
+        pie={[
+          <Button key="cancelar" kind="secondary" size="md" type="button" disabled={ocupado} onClick={cerrarRechazo}>
+            Cancelar
+          </Button>,
+          <Button
+            key="rechazar"
+            kind="danger"
+            size="md"
+            type="button"
+            disabled={ocupado}
+            onClick={() => void confirmarRechazo()}
+          >
+            Rechazar la solicitud
+          </Button>,
+        ]}
+      >
+        {solicitudARechazar && (
+          <p className="cds--type-body-compact-01">
+            Advertencia: se rechazará la solicitud de {solicitudARechazar.nombre} ({solicitudARechazar.login}). Si ya
+            tenía un código sin usar, dejará de valer.
+          </p>
+        )}
+      </Dialogo>
+
+      <Dialogo
+        abierto={aprobada !== null}
+        titulo="Código de activación"
+        alCerrar={cerrarDialogoCodigo}
+        pie={
+          <Button key="cerrar" kind="primary" size="md" type="button" onClick={cerrarDialogoCodigo}>
+            Cerrar
+          </Button>
+        }
+      >
+        {aprobada && (
+          <div className="silice-adm__dialogo-codigo">
+            <p className="cds--type-body-compact-01">
+              Entregue este código a <strong>{aprobada.nombre}</strong> ({aprobada.login}):
+            </p>
+            <p className="silice-adm__codigo-unico">{aprobada.codigo}</p>
+            <p className="cds--type-body-compact-01">Vence el {vencimientoEsVe(aprobada.vence)}.</p>
+            <p className="silice-adm__nota cds--type-body-compact-01">Este código no se vuelve a mostrar</p>
+            <div className="silice-adm__acciones">
+              <Button
+                kind="secondary"
+                size="md"
+                type="button"
+                data-autofocus
+                onClick={() => void copiarCodigo()}
+              >
+                Copiar el código
+              </Button>
+              <a href={aprobada.mailto} className="cds--btn cds--btn--secondary cds--btn--md silice-adm__enlace-correo">
+                Enviarlo por correo
+              </a>
+            </div>
+            {estadoCopia === "ok" && (
+              <p role="status" className="cds--type-label-01">
+                Información: Código copiado al portapapeles.
+              </p>
+            )}
+            {estadoCopia === "error" && (
+              <InlineNotification
+                kind="warning"
+                role="alert"
+                title="Advertencia: no se pudo copiar el código"
+                subtitle="Seleccione el código de arriba y cópielo manualmente."
+                lowContrast
+                hideCloseButton
+              />
+            )}
+          </div>
+        )}
+      </Dialogo>
     </div>
   );
 }

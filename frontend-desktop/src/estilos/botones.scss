@@ -1,0 +1,293 @@
+// Botones «contorno de papel» (cara Papel y resaltador, aprobada el 2026-11-26) sobre los botones de Carbon 1.117.
+// Los colores vienen de tokens.scss; las alturas, rellenos y anchos van en rem para escalar con el tamaño de letra.
+
+:root .cds--btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-inline-size: 4.5rem;
+  block-size: 2rem;
+  min-block-size: 2rem;
+  padding-block: 0;
+  padding-inline: 0.875rem;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  font-weight: 500;
+  text-align: center;
+  transition: none;
+
+  .cds--btn__icon {
+    position: static;
+    inset: auto;
+    margin: 0;
+    block-size: 1rem;
+    inline-size: 1rem;
+    flex-shrink: 0;
+    fill: currentcolor;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: 2px;
+  }
+}
+
+// Escala en rem: compacto 28 px (1.75rem), normal 32 px (2rem), grande 40 px (2.5rem).
+:root .cds--btn.cds--btn--xs,
+:root .cds--btn.cds--btn--sm {
+  block-size: 1.75rem;
+  min-block-size: 1.75rem;
+  padding-inline: 0.75rem;
+  border-radius: 6px;
+}
+
+:root .cds--btn.cds--btn--md {
+  block-size: 2rem;
+  min-block-size: 2rem;
+  padding-inline: 0.875rem;
+  border-radius: 6px;
+}
+
+:root .cds--btn.cds--btn--lg,
+:root .cds--btn.cds--btn--xl,
+:root .cds--btn.cds--btn--2xl {
+  block-size: 2.5rem;
+  min-block-size: 2.5rem;
+  padding-inline: 1.125rem;
+  border-radius: 6px;
+}
+
+:root .cds--btn.cds--btn--icon-only {
+  min-inline-size: 0;
+  inline-size: 2rem;
+  padding-inline: 0;
+
+  &.cds--btn--xs,
+  &.cds--btn--sm {
+    inline-size: 1.75rem;
+  }
+
+  &.cds--btn--md {
+    inline-size: 2rem;
+  }
+
+  &.cds--btn--lg,
+  &.cds--btn--xl,
+  &.cds--btn--2xl {
+    inline-size: 2.5rem;
+  }
+}
+
+// Principal (uno por zona): tinta del complementario, encima hover-tinta, al presionar baja 1 px.
+:root .cds--btn.cds--btn--primary {
+  background-color: var(--silice-complementario);
+  color: var(--silice-hoja);
+  border-radius: 6px;
+  font-weight: 500;
+  box-shadow: none;
+
+  &:focus {
+    background-color: var(--silice-complementario);
+    color: var(--silice-hoja);
+    box-shadow: none;
+  }
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--silice-hover-tinta);
+    color: var(--silice-hoja);
+  }
+
+  &:active:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--silice-hover-tinta);
+    color: var(--silice-hoja);
+    transform: translateY(1px);
+  }
+}
+
+// Secundario y terciario de Carbon: contorno interior de 1,5 px en t1; encima se rellenan con t1 y texto en hoja.
+:root .cds--btn.cds--btn--secondary,
+:root .cds--btn.cds--btn--tertiary {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--silice-t1);
+  color: var(--silice-t1);
+
+  &:focus {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--silice-t1);
+    color: var(--silice-t1);
+  }
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--silice-t1);
+    color: var(--silice-hoja);
+    box-shadow: inset 0 0 0 1.5px var(--silice-t1);
+  }
+
+  &:active:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--silice-t1);
+    color: var(--silice-hoja);
+    box-shadow: inset 0 0 0 1.5px var(--silice-t1);
+    transform: translateY(1px);
+  }
+}
+
+// Fantasma: texto subrayado con desfase de 4 px y peso 500; encima subrayado de 2 px.
+:root .cds--btn.cds--btn--ghost {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--silice-t1);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+
+  &.cds--btn--icon-only {
+    text-decoration: none;
+  }
+
+  &:focus {
+    background-color: transparent;
+    color: var(--silice-t1);
+    box-shadow: none;
+  }
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: transparent;
+    color: var(--silice-t1);
+    text-decoration-thickness: 2px;
+  }
+
+  &:active:not(:disabled):not([aria-disabled="true"]) {
+    background-color: transparent;
+    color: var(--silice-t1);
+  }
+}
+
+// Destructivos: trazo de 1,5 px y texto en gravedad de error; el relleno rojo queda solo en la confirmación primaria.
+:root .cds--btn.cds--btn--danger--tertiary,
+:root .cds--btn.cds--btn--danger--ghost {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--silice-gravedad-error);
+  color: var(--silice-gravedad-error);
+  text-decoration: none;
+
+  &:focus,
+  &:hover:not(:disabled):not([aria-disabled="true"]),
+  &:active:not(:disabled):not([aria-disabled="true"]) {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--silice-gravedad-error);
+    color: var(--silice-gravedad-error);
+  }
+}
+
+:root .cds--btn.cds--btn--danger,
+:root .cds--btn.cds--btn--danger--primary {
+  background-color: var(--silice-gravedad-error);
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--silice-hoja);
+
+  &:focus,
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--silice-gravedad-error);
+    color: var(--silice-hoja);
+    box-shadow: none;
+  }
+
+  &:active:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--silice-gravedad-error);
+    color: var(--silice-hoja);
+    transform: translateY(1px);
+  }
+}
+
+// «Nueva obra» en la barra de la empresa: amarillo acento con texto oscuro y borde dorado.
+.silice-boton-nueva-obra,
+:root .cds--btn.silice-boton-nueva-obra {
+  background-color: var(--silice-acento);
+  color: #1F1B16;
+  border: 1px solid #C9A227;
+  border-radius: 6px;
+  box-shadow: none;
+  font-weight: 500;
+
+  &:focus {
+    outline: none;
+    border-color: #C9A227;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: 2px;
+  }
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: #F9E07F;
+    color: #1F1B16;
+    border-color: #C9A227;
+  }
+
+  &:active:not(:disabled):not([aria-disabled="true"]) {
+    background-color: #F9E07F;
+    color: #1F1B16;
+    border-color: #C9A227;
+    transform: translateY(1px);
+  }
+}
+
+// Botón inactivo (BotonInactivo): conserva el foco por teclado, se ve apagado y explica el motivo en su globo anclado.
+:root .cds--btn[aria-disabled="true"] {
+  background-color: var(--silice-hoja);
+  color: color-mix(in srgb, var(--silice-t1) 55%, var(--silice-hoja));
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--silice-linea);
+  text-decoration: none;
+  cursor: not-allowed;
+  transform: none;
+
+  &:focus {
+    background-color: var(--silice-hoja);
+    color: color-mix(in srgb, var(--silice-t1) 55%, var(--silice-hoja));
+    box-shadow: inset 0 0 0 1px var(--silice-linea);
+  }
+}
+
+.cds--popover-container.silice-boton-inactivo > .cds--popover > .cds--popover-content.silice-boton-inactivo__globo {
+  padding: 0.5rem 0.75rem;
+  max-inline-size: 20rem;
+  border: 1px solid var(--silice-linea);
+  border-radius: 6px;
+  background-color: var(--silice-hoja);
+  color: var(--silice-t1);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root .cds--btn,
+  .silice-boton-nueva-obra {
+    transition:
+      background-color 120ms cubic-bezier(.22, 1, .36, 1),
+      color 120ms cubic-bezier(.22, 1, .36, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root .cds--btn:active,
+  .silice-boton-nueva-obra:active {
+    transform: none;
+  }
+}

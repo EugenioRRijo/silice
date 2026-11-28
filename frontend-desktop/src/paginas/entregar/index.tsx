@@ -1,7 +1,7 @@
 import { Button, Callout, Form, Select, SelectItem } from "@carbon/react";
 import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { Download } from "@carbon/icons-react";
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedirBinario } from "../../api/cliente";
 import { ESTADOS_APROBADOS, versionConEstado } from "../../comun/aprobacion";
@@ -9,7 +9,10 @@ import { AvisoError } from "../../comun/AvisoError";
 import { guardarBlob } from "../../comun/DescargaArchivo";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { useNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { rutaOPendientes } from "../../marco/espacios";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../../comun/useCarga";
 import type { Carga } from "../../comun/useCarga";
@@ -224,6 +227,8 @@ function Entrega({
   version: string;
   alExpirar: () => void;
 }) {
+  const obra = useContext(ContextoDeLaObra);
+  const { notificar } = useNotificaciones();
   const resumen = useCarga<ResumenEntrega>(
     `/v1/entregas/resumen?proyecto=${encodeURIComponent(proyecto)}&version=${encodeURIComponent(version)}`,
     alExpirar,
@@ -241,6 +246,7 @@ function Entrega({
 
   async function generar(evento: FormEvent) {
     evento.preventDefault();
+    if (generando) return;
     const cuerpo: Record<string, string> = { proyecto, version };
     const para = destinatario.trim();
     if (para) cuerpo.destinatario = para;
@@ -257,11 +263,21 @@ function Entrega({
         cuerpo,
         respaldo: `${proyecto}-${version}.silice`,
       });
+      const firmado = cabeceras.get("X-Silice-Firmado") === "1";
       setListo({
         blob,
         nombre,
         sha256: cabeceras.get("X-Silice-SHA256") ?? "",
-        firmado: cabeceras.get("X-Silice-Firmado") === "1",
+        firmado,
+      });
+      notificar({
+        gravedad: "listo",
+        titulo: `Paquete ${version} generado`,
+        detalle: firmado ? `${proyecto} · firmado` : `${proyecto} · sin firma`,
+        enlace: {
+          texto: "Ir a Entregar paquete",
+          ruta: rutaOPendientes("entregar", obra ?? undefined),
+        },
       });
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();

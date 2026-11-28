@@ -52,6 +52,7 @@ import type {
   PresupuestoResumen,
 } from "./tipos";
 import "./escenarios.scss";
+import { GraficoEscenarios } from "./GraficoEscenarios";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { CampoConBusqueda } from "../../comun/CampoConBusqueda";
 import { buscadorDeInsumosYOficios, descripcionDeInsumo } from "../../comun/buscadorDeInsumos";
@@ -383,6 +384,7 @@ export default function PaginaEscenarios() {
               <InlineNotification kind="info" role="status" title="Sin escenarios" subtitle={SIN_ESCENARIOS} lowContrast hideCloseButton />
             ) : (
               <section className="silice-escenarios__resultados" aria-labelledby="escenarios-comparacion">
+                <GraficoEscenarios resultado={resultado} moneda={base.moneda} />
                 <h2 id="escenarios-comparacion" className="cds--type-heading-compact-02">
                   {TITULO_COMPARACION}
                 </h2>

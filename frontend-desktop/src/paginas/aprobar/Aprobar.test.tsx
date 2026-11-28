@@ -4,6 +4,9 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import type { AlmacenDeNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { RegionDeNotificaciones } from "../../comun/notificaciones/RegionDeNotificaciones";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
@@ -121,7 +124,12 @@ function Ubicacion() {
   return <p data-testid="ubicacion">{`${pathname}${search}`}</p>;
 }
 
-function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}, recargarFicha?: () => void) {
+function montar(
+  ruta = "/aprobar?envio=12",
+  parcial: Partial<Aplicacion> = {},
+  recargarFicha?: () => void,
+  almacen?: AlmacenDeNotificaciones,
+) {
   const aplicacion: Aplicacion = {
     sesion: SESION,
     proyecto: null,
@@ -138,6 +146,7 @@ function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}, r
           element={
             <>
               <PaginaAprobar />
+              {almacen !== undefined && <RegionDeNotificaciones />}
               <Ubicacion />
             </>
           }
@@ -145,14 +154,19 @@ function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}, r
       </Routes>
     </MemoryRouter>
   );
+  const conObra = recargarFicha ? (
+    <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha }}>
+      {pagina}
+    </ContextoDeLaObra.Provider>
+  ) : (
+    pagina
+  );
   return render(
     <ContextoAplicacion.Provider value={aplicacion}>
-      {recargarFicha ? (
-        <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha }}>
-          {pagina}
-        </ContextoDeLaObra.Provider>
+      {almacen !== undefined ? (
+        <ProveedorDeNotificaciones almacen={almacen}>{conObra}</ProveedorDeNotificaciones>
       ) : (
-        pagina
+        conObra
       )}
     </ContextoAplicacion.Provider>,
   );
@@ -592,5 +606,75 @@ describe("Rastro de la obra (Tarea 6 del plan F4)", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByRole("heading", { name: "Historial de aprobaciones" })).toBeNull();
     expect(fetchFalso.mock.calls.map(([e]) => String(e))).not.toContain("/v1/aprobaciones?proyecto=3");
+  });
+});
+
+describe("notificaciones de confirmación al dictaminar (G2)", () => {
+  test("aprobar una versión notifica una sola vez «V3 aprobada» con la obra en el detalle y su enlace", async () => {
+    const u = userEvent.setup();
+    detalleDe = () => json(detalle({ version: "V3", obra: "Galpón Sur" }));
+    const almacen = crearAlmacenEnMemoria();
+    montar("/aprobar?envio=12", {}, vi.fn(), almacen);
+
+    const caja = await panel();
+    await u.click(within(caja).getByRole("radio", { name: "Aprobada" }));
+    await u.click(within(caja).getByRole("button", { name: "Registrar el dictamen…" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar el dictamen" });
+    await u.click(within(dialogo).getByRole("button", { name: "Registrar el dictamen" }));
+
+    await waitFor(() => expect(dictamenes()).toHaveLength(1));
+    const guardadas = await Promise.resolve(almacen.cargar());
+    expect(guardadas).toHaveLength(1);
+    expect(guardadas[0]).toMatchObject({
+      gravedad: "listo",
+      titulo: "V3 aprobada",
+      detalle: "Galpón Sur",
+      enlace: { texto: "Ver el dictamen", ruta: "/obra/empresa/3/aprobaciones?envio=12" },
+    });
+    const region = screen.getByRole("region", { name: "Notificaciones nuevas" });
+    expect(await within(region).findByText("V3 aprobada")).toBeInTheDocument();
+    expect(within(region).getByText("Listo")).toBeInTheDocument();
+    expect(within(region).getByText("Galpón Sur")).toBeInTheDocument();
+  });
+
+  test("devolver una versión notifica una sola vez «V3 devuelta» con la obra en el detalle", async () => {
+    const u = userEvent.setup();
+    detalleDe = () => json(detalle({ version: "V3", obra: "Galpón Sur" }));
+    const almacen = crearAlmacenEnMemoria();
+    montar("/aprobar?envio=12", {}, undefined, almacen);
+
+    const caja = await panel();
+    await u.click(within(caja).getByRole("radio", { name: "Devuelta" }));
+    await u.type(within(caja).getByRole("textbox", { name: /Notas/ }), "Ajustar metraje de concreto.");
+    await u.click(within(caja).getByRole("button", { name: "Registrar el dictamen…" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar el dictamen" });
+    await u.click(within(dialogo).getByRole("button", { name: "Registrar el dictamen" }));
+
+    await waitFor(() => expect(dictamenes()).toHaveLength(1));
+    const guardadas = await Promise.resolve(almacen.cargar());
+    expect(guardadas).toHaveLength(1);
+    expect(guardadas[0]).toMatchObject({
+      gravedad: "listo",
+      titulo: "V3 devuelta",
+      detalle: "Galpón Sur",
+      enlace: { texto: "Ver el dictamen", ruta: "/aprobar?envio=12" },
+    });
+  });
+
+  test("un fallo del servidor al dictaminar muestra el error en el panel y no notifica", async () => {
+    const u = userEvent.setup();
+    alDictaminar = () => json({ detalle: "Este envío ya tiene dictamen." }, 409);
+    const almacen = crearAlmacenEnMemoria();
+    montar("/aprobar?envio=12", {}, undefined, almacen);
+
+    const caja = await panel();
+    await u.click(within(caja).getByRole("radio", { name: "Aprobada" }));
+    await u.click(within(caja).getByRole("button", { name: "Registrar el dictamen…" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar el dictamen" });
+    await u.click(within(dialogo).getByRole("button", { name: "Registrar el dictamen" }));
+
+    expect(await within(caja).findByText("Este envío ya tiene dictamen.")).toBeInTheDocument();
+    expect(await Promise.resolve(almacen.cargar())).toEqual([]);
+    expect(within(screen.getByRole("region", { name: "Notificaciones nuevas" })).queryByRole("article")).toBeNull();
   });
 });

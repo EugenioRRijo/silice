@@ -2,11 +2,14 @@ import { act, configure, fireEvent, render, screen, within } from "@testing-libr
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import type { Notificacion } from "../../comun/notificaciones/modelo";
+import type { ObraFilaRespuesta } from "../../api/tipos";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
@@ -381,6 +384,68 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       expect(await within(dialogo).findByRole("alert")).toHaveTextContent(CADENA_ROTA);
       expect(screen.getByRole("dialog", { name: "Enviar a aprobación" })).toBeInTheDocument();
       expect(await textoDeEtiqueta()).toBe("Guardada");
+    });
+
+    test("al enviar a aprobación emite una confirmación «listo» una sola vez con versión y obra; si falla no emite", async () => {
+      const u = userEvent.setup();
+      const base = crearAlmacenEnMemoria();
+      const emitidas: Notificacion[] = [];
+      const almacen = {
+        cargar: () => base.cargar(),
+        guardar: (lista: readonly Notificacion[]) => {
+          emitidas.splice(0, emitidas.length, ...lista);
+          base.guardar(lista);
+        },
+      };
+      render(
+        <ProveedorDeNotificaciones almacen={almacen}>
+          <ContextoAplicacion.Provider value={valor()}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>
+        </ProveedorDeNotificaciones>,
+      );
+
+      alEnviar = () => json({ detalle: CADENA_ROTA }, 409);
+      await u.click(await screen.findByRole("button", { name: "Enviar a aprobación…" }));
+      let dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
+      await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
+      await within(dialogo).findByRole("alert");
+      expect(emitidas).toHaveLength(0);
+
+      alEnviar = (c) => {
+        aprobaciones = { ...aprobaciones, [String(c["version"])]: { ...EN_APROBACION, el: "2026-10-26T08:00:00" } };
+        return json({ id: 7, estado: "en_aprobacion", retirada: null }, 201);
+      };
+      dialogo = screen.getByRole("dialog", { name: "Enviar a aprobación" });
+      await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
+      await esperar(() => expect(emitidas).toHaveLength(1));
+      expect(emitidas[0]).toMatchObject({
+        gravedad: "listo",
+        titulo: "VIV-001 enviada a aprobación",
+        detalle: "OF-001",
+      });
+    });
+
+    // T4 (mutante AV2): con la obra abierta y su ficha leída, la confirmación dice la obra por su nombre y no por el código.
+    test("dentro de una obra con ficha leída, la confirmación nombra la obra por su nombre", async () => {
+      const u = userEvent.setup();
+      const base = crearAlmacenEnMemoria();
+      const obra = { codigo: "1", nombre: "Vialidad Tramo 3", etapa: "en_elaboracion", etapa_texto: "En elaboración" } as ObraFilaRespuesta;
+      render(
+        <ProveedorDeNotificaciones almacen={base}>
+          <ContextoAplicacion.Provider value={valor()}>
+            <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 1, ficha: { estado: "lista", obra }, recargarFicha: vi.fn() }}>
+              {conEnrutador(<PaginaHoja />)}
+            </ContextoDeLaObra.Provider>
+          </ContextoAplicacion.Provider>
+        </ProveedorDeNotificaciones>,
+      );
+      await u.click(await screen.findByRole("button", { name: "Enviar a aprobación…" }));
+      const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
+      await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
+      await esperar(() => {
+        const guardadas = base.cargar() as readonly Notificacion[];
+        expect(guardadas).toHaveLength(1);
+        expect(guardadas[0]).toMatchObject({ titulo: "VIV-001 enviada a aprobación", detalle: "Vialidad Tramo 3" });
+      });
     });
 
     test("un 401 al enviar avisa al marco", async () => {

@@ -27,7 +27,7 @@ El total de cada envío es Σ `partida_presupuestada.total` de su versión, suma
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -41,6 +41,7 @@ from core import models
 
 __all__ = [
     "LIMITE_MIAS",
+    "AlReflejar",
     "FilaIndice",
     "Reflejo",
     "de_quien",
@@ -128,17 +129,30 @@ def leer_reflejo(caso: str, sesion_caso: Session) -> Reflejo:
     return Reflejo(caso, tuple(filas))
 
 
-def escribir_reflejo(sesion_ins: Session, reflejo: Reflejo, *, forzar: bool = False) -> bool:
+#: El gancho de `escribir_reflejo` (C11b): recibe las filas de la carpeta antes y después.
+AlReflejar = Callable[[Sequence[FilaIndice], Sequence[FilaIndice]], None]
+
+
+def escribir_reflejo(
+    sesion_ins: Session,
+    reflejo: Reflejo,
+    *,
+    forzar: bool = False,
+    al_reflejar: AlReflejar | None = None,
+) -> bool:
     """Reescribe las filas de `reflejo.caso` con las de `reflejo` (solo `flush`) y dice si lo hizo.
     Sin `forzar`, no escribe si el índice ya refleja más eventos de esa carpeta: es un reflejo
     viejo que llegó tarde. Quien llama toma antes el bloqueo de la instalación, para que la
-    comparación y la escritura no se separen."""
-    if not forzar:
-        actuales = sesion_ins.scalars(
+    comparación y la escritura no se separen. Si escribe, llama a `al_reflejar(antes, después)`
+    con las filas de la carpeta (C11b: los avisos por evento, `aplicacion.avisos_por_evento`)."""
+    antes = tuple(
+        _fila(f)
+        for f in sesion_ins.scalars(
             select(FilaIndiceAprobacion).where(FilaIndiceAprobacion.caso == reflejo.caso)
         )
-        if _eventos(_fila(f) for f in actuales) > reflejo.eventos:
-            return False
+    )
+    if not forzar and _eventos(antes) > reflejo.eventos:
+        return False
     sesion_ins.execute(
         delete(FilaIndiceAprobacion).where(FilaIndiceAprobacion.caso == reflejo.caso)
     )
@@ -163,13 +177,19 @@ def escribir_reflejo(sesion_ins: Session, reflejo: Reflejo, *, forzar: bool = Fa
             )
         )
     sesion_ins.flush()
+    if al_reflejar is not None:
+        al_reflejar(antes, reflejo.filas)
     return True
 
 
-def reflejar(sesion_ins: Session, caso: str, sesion_caso: Session) -> None:
+def reflejar(
+    sesion_ins: Session, caso: str, sesion_caso: Session, *, al_reflejar: AlReflejar | None = None
+) -> None:
     """Reescribe las filas de la carpeta `caso` con los envíos de `sesion_caso`, sin guarda de
     frescura (la reposición de las lecturas; solo `flush`)."""
-    escribir_reflejo(sesion_ins, leer_reflejo(caso, sesion_caso), forzar=True)
+    escribir_reflejo(
+        sesion_ins, leer_reflejo(caso, sesion_caso), forzar=True, al_reflejar=al_reflejar
+    )
 
 
 def pendientes(sesion_ins: Session) -> list[FilaIndice]:

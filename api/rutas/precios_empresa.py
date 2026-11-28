@@ -23,6 +23,10 @@ una cuenta: la clave recibe 403.
   Markdown) y los hallazgos, por partes, en `variaciones`.
 
 Los mensajes son los de la pagina clasica. Un error de base no sale con su texto (lleva el SQL).
+
+C11b: cargar la referencia o crear una lista, ya confirmada la carpeta, avisa a quienes arman
+(`aplicacion.avisos_por_evento.lista_cargada`) en una transacción propia de la instalación
+(`api.avisos.avisar`); un fallo al avisar no cambia la respuesta.
 """
 
 from __future__ import annotations
@@ -34,24 +38,33 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.admin_acceso import administrar
 from api.archivos import guardar_subida, nombre_seguro
-from api.dependencias import SesionDeEscrituraDep, SesionDep, sin_culpar_a_la_entrada
+from api.avisos import avisar
+from api.dependencias import (
+    SesionDeEscrituraDep,
+    SesionDep,
+    carpeta_de_la_empresa,
+    carpeta_de_la_peticion,
+    sin_culpar_a_la_entrada,
+)
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.presentacion import exacto
 from api.redaccion import pulir
 from api.rutas.listas import comprobar_libro_legible
-from api.sesion_web import exigir_clave_o_sesion
+from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import atipicos as busqueda_atipica
+from aplicacion import avisos_por_evento
 from aplicacion import precios_empresa as logica
 from aplicacion.listas_para_armar import moneda_de_la_carpeta
 from aplicacion.plural import plural
 from seguridad.permisos import Accion
+from seguridad.sesiones import SesionActiva
 
 MENSAJE_INVALIDO = "Los datos enviados no son válidos."
 MENSAJE_CASO = "No se pudo leer o escribir la carpeta abierta."
@@ -70,6 +83,8 @@ LARGO_MAXIMO_DEL_MOTIVO = 500
 
 #: Escribir es de una persona con rol: la clave de API recibe 403 (MEDIO-1).
 SOLO_CUENTA = Depends(administrar(Accion.ADMINISTRAR_PRECIOS))
+#: La persona que escribe (la misma dependencia: FastAPI la resuelve una vez por petición).
+Administra = Annotated[SesionActiva, SOLO_CUENTA]
 
 router = APIRouter(
     prefix="/v1/precios-empresa",
@@ -146,6 +161,22 @@ def _motivo(error: Exception) -> str:
     return str(error)[:LARGO_MAXIMO_DEL_MOTIVO]
 
 
+def _avisar_lista(request: Request, quien: SesionActiva, lista_id: int, nombre: str) -> None:
+    """C11b: la lista ya está confirmada en la carpeta; avisa a quienes arman."""
+    caso, empresa, momento = carpeta_de_la_peticion(request), carpeta_de_la_empresa(), ahora()
+    avisar(
+        lambda instalacion: avisos_por_evento.lista_cargada(
+            instalacion,
+            caso=caso,
+            carpeta_empresa=empresa,
+            lista_id=lista_id,
+            nombre=nombre,
+            quien=quien,
+            ahora=momento,
+        )
+    )
+
+
 def _exigir_lista_de_empresa(sesion, lista_id: int) -> None:
     """La pagina clasica solo ofrece las listas de empresa: otra lista es un 404."""
     if lista_id not in {i for i, _ in logica.listas_de_empresa(sesion)}:
@@ -165,13 +196,21 @@ def estado(sesion: SesionDep) -> EstadoRespuesta:
     )
 
 
-@router.post("/referencia", response_model=MensajeRespuesta, dependencies=[SOLO_CUENTA])
+@router.post("/referencia", response_model=MensajeRespuesta)
 @sin_eco(MENSAJE_INVALIDO)
-def cargar_referencia(sesion: SesionDeEscrituraDep) -> MensajeRespuesta:
+def cargar_referencia(
+    request: Request, sesion: SesionDeEscrituraDep, quien: Administra
+) -> MensajeRespuesta:
     """Carga la referencia MaPreX en Bs; una ya cargada no se duplica."""
+
+    def al_cargar(lista_id: int, nombre: str) -> None:
+        _avisar_lista(request, quien, lista_id, nombre)
+
     with _caso_legible():
         try:
-            return MensajeRespuesta(mensaje=logica.cargar_referencia_maprex(sesion))
+            return MensajeRespuesta(
+                mensaje=logica.cargar_referencia_maprex(sesion, al_cargar=al_cargar)
+            )
         except OSError:
             # El texto de un OSError lleva la ruta del servidor.
             raise HTTPException(422, MENSAJE_REFERENCIA_ILEGIBLE) from None
@@ -183,11 +222,12 @@ def cargar_referencia(sesion: SesionDeEscrituraDep) -> MensajeRespuesta:
     "/listas",
     response_model=ListaCreadaRespuesta,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[SOLO_CUENTA],
 )
 @sin_eco(MENSAJE_INVALIDO)
 def crear_lista(
+    request: Request,
     sesion: SesionDeEscrituraDep,
+    quien: Administra,
     base_id: Annotated[int, Form()],
     fecha: Annotated[date, Form()],
     empresa: Annotated[str, Form(max_length=200)] = "",
@@ -234,6 +274,7 @@ def crear_lista(
         except ValueError as error:
             raise HTTPException(422, f"No se creó la lista: {_motivo(error)}") from None
     assert resumen.lista_id is not None  # `crear_lista` siempre la da
+    _avisar_lista(request, quien, resumen.lista_id, resumen.nombre)
     return ListaCreadaRespuesta(
         id=resumen.lista_id,
         nombre=resumen.nombre,

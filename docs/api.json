@@ -1680,6 +1680,30 @@
         }
       }
     },
+    "/v1/libros/que-hacer": {
+      "get": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Que Hacer De Los Hallazgos",
+        "description": "La guía por código de regla (`reglas`), por tipo de alerta (`alertas`) y la genérica.",
+        "operationId": "que_hacer_de_los_hallazgos_v1_libros_que_hacer_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Que Hacer De Los Hallazgos V1 Libros Que Hacer Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/simulador": {
       "post": {
         "tags": [
@@ -3490,6 +3514,587 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AccesosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/solicitudes": {
+      "get": {
+        "tags": [
+          "solicitudes"
+        ],
+        "summary": "Listar Solicitudes",
+        "description": "Las solicitudes, las más nuevas primero (solo lectura; `vencida` se calcula al responder).",
+        "operationId": "listar_solicitudes_v1_solicitudes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitudesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "solicitudes"
+        ],
+        "summary": "Pedir Cuenta",
+        "description": "Pide una cuenta: guarda una solicitud (no una cuenta) que el administrador aprobará.",
+        "operationId": "pedir_cuenta_v1_solicitudes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudNueva"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensaje"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Un `Origin` presente y ajeno.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El usuario ya está en uso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos (no repite lo enviado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas solicitudes pendientes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/solicitudes/{solicitud_id}/aprobar": {
+      "post": {
+        "tags": [
+          "solicitudes"
+        ],
+        "summary": "Aprobar Solicitud",
+        "description": "Aprueba con el papel elegido y devuelve el código, la única vez que viaja.",
+        "operationId": "aprobar_solicitud_v1_solicitudes__solicitud_id__aprobar_post",
+        "parameters": [
+          {
+            "name": "solicitud_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Solicitud Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Papel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AprobacionRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin sesión de administrador, CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una solicitud con ese id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya se resolvió, o su usuario ya es una cuenta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Papel distinto de arma o revisa; sin eco.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/solicitudes/{solicitud_id}/rechazar": {
+      "post": {
+        "tags": [
+          "solicitudes"
+        ],
+        "summary": "Rechazar Solicitud",
+        "operationId": "rechazar_solicitud_v1_solicitudes__solicitud_id__rechazar_post",
+        "parameters": [
+          {
+            "name": "solicitud_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Solicitud Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mensaje"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin sesión de administrador, CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una solicitud con ese id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya se resolvió, o su usuario ya es una cuenta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Papel distinto de arma o revisa; sin eco.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/solicitudes/canjear": {
+      "post": {
+        "tags": [
+          "solicitudes"
+        ],
+        "summary": "Canjear Codigo",
+        "description": "Canjea el código: crea la cuenta con su papel y abre la sesión como `POST /v1/sesion`.",
+        "operationId": "canjear_codigo_v1_solicitudes_canjear_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Canje"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SesionRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Usuario, contraseña o código no válidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Un `Origin` presente y ajeno.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Cuerpo inválido (no repite lo enviado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Usuario bloqueado por intentos fallidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Freno global: reintentar tras `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/actividad": {
+      "get": {
+        "tags": [
+          "actividad"
+        ],
+        "summary": "Ver Actividad",
+        "description": "La actividad de la cuenta `usuario` entre `desde` y `hasta` (por omisión, el último año).",
+        "operationId": "ver_actividad_v1_actividad_get",
+        "parameters": [
+          {
+            "name": "usuario",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Usuario"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActividadRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notificaciones": {
+      "get": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Listar Notificaciones",
+        "description": "Las notificaciones vigentes (últimos 30 días) de la cuenta actual, más nuevas primero,\ndespués de crear las que vencen hoy para ella (recordatorios y compras, C11b).",
+        "operationId": "listar_notificaciones_v1_notificaciones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacionesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Crear Notificacion",
+        "description": "Guarda una notificación para la cuenta actual.",
+        "operationId": "crear_notificacion_v1_notificaciones_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificacionNueva"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notificaciones/leidas": {
+      "post": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Marcar Notificaciones Leidas",
+        "description": "Marca como leídas las notificaciones indicadas por `ids` o todas las de la cuenta actual.",
+        "operationId": "marcar_notificaciones_leidas_v1_notificaciones_leidas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarcarLeidasEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarcarLeidasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notificaciones/preferencias": {
+      "get": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Leer Preferencias",
+        "description": "Qué categorías de notificaciones recibe la cuenta actual (C11b).",
+        "operationId": "leer_preferencias_v1_notificaciones_preferencias_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenciasDeNotificacionRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "notificaciones"
+        ],
+        "summary": "Fijar Preferencias",
+        "description": "Enciende o apaga categorías de la cuenta actual; las que no nombra quedan como estaban.",
+        "operationId": "fijar_preferencias_v1_notificaciones_preferencias_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenciasDeNotificacionCambio"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenciasDeNotificacionRespuesta"
                 }
               }
             }
@@ -11514,6 +12119,104 @@
         }
       }
     },
+    "/v1/obras/{codigo}/entrega": {
+      "get": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Obtener Entrega De La Obra",
+        "description": "Lee la fecha de entrega al cliente de la obra `codigo` en la carpeta abierta.",
+        "operationId": "obtener_entrega_de_la_obra_v1_obras__codigo__entrega_get",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Codigo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntregaDeObraRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Actualizar Entrega De La Obra",
+        "description": "Fija o quita (`null`) la fecha de entrega al cliente de la obra `codigo` y deja el rastro.",
+        "operationId": "actualizar_entrega_de_la_obra_v1_obras__codigo__entrega_put",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Codigo"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntregaDeObraPeticion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntregaDeObraRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/mercado/objetivos": {
       "get": {
         "tags": [
@@ -12437,7 +13140,7 @@
           },
           "eventos": {
             "items": {
-              "$ref": "#/components/schemas/EventoRespuesta"
+              "$ref": "#/components/schemas/api__rutas__cuentas__EventoRespuesta"
             },
             "type": "array",
             "title": "Eventos"
@@ -12507,6 +13210,54 @@
           "modulos"
         ],
         "title": "AcercaRespuesta"
+      },
+      "ActividadRespuesta": {
+        "properties": {
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "title": "Hasta"
+          },
+          "dias": {
+            "items": {
+              "$ref": "#/components/schemas/DiaRespuesta"
+            },
+            "type": "array",
+            "title": "Dias"
+          },
+          "cifras": {
+            "$ref": "#/components/schemas/CifrasRespuesta"
+          },
+          "eventos": {
+            "items": {
+              "$ref": "#/components/schemas/api__rutas__actividad__EventoRespuesta"
+            },
+            "type": "array",
+            "title": "Eventos"
+          },
+          "recortado": {
+            "type": "boolean",
+            "title": "Recortado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "usuario",
+          "desde",
+          "hasta",
+          "dias",
+          "cifras",
+          "eventos",
+          "recortado"
+        ],
+        "title": "ActividadRespuesta"
       },
       "ActualizacionPeticion": {
         "properties": {
@@ -13770,6 +14521,32 @@
         ],
         "title": "AprobacionRastroRespuesta"
       },
+      "AprobacionRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "description": "XXXX-XXXX-XXXX-XXXX-XXXX; solo viaja en esta respuesta"
+          },
+          "vence": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Vence"
+          },
+          "mailto": {
+            "type": "string",
+            "title": "Mailto",
+            "description": "Enlace para el programa de correo del equipo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "vence",
+          "mailto"
+        ],
+        "title": "AprobacionRespuesta"
+      },
       "ApuPorHojaRespuesta": {
         "properties": {
           "hoja": {
@@ -14210,6 +14987,10 @@
           "advertencias": {
             "type": "integer",
             "title": "Advertencias"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
           }
         },
         "type": "object",
@@ -14219,7 +15000,8 @@
           "fecha",
           "tipo",
           "errores",
-          "advertencias"
+          "advertencias",
+          "usuario"
         ],
         "title": "AuditoriaResumenRespuesta"
       },
@@ -16189,6 +16971,32 @@
         ],
         "title": "CampoParametroRespuesta"
       },
+      "Canje": {
+        "properties": {
+          "login": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Login"
+          },
+          "contrasena": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Contrasena"
+          },
+          "codigo": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Codigo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "login",
+          "contrasena",
+          "codigo"
+        ],
+        "title": "Canje"
+      },
       "CantidadDerivadaRespuesta": {
         "properties": {
           "partida": {
@@ -16865,6 +17673,34 @@
           "detalle"
         ],
         "title": "CifraRespuesta"
+      },
+      "CifrasRespuesta": {
+        "properties": {
+          "versiones_guardadas": {
+            "type": "integer",
+            "title": "Versiones Guardadas"
+          },
+          "versiones_enviadas": {
+            "type": "integer",
+            "title": "Versiones Enviadas"
+          },
+          "dictamenes": {
+            "type": "integer",
+            "title": "Dictamenes"
+          },
+          "auditorias": {
+            "type": "integer",
+            "title": "Auditorias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "versiones_guardadas",
+          "versiones_enviadas",
+          "dictamenes",
+          "auditorias"
+        ],
+        "title": "CifrasRespuesta"
       },
       "CircuitoSupuestoRespuesta": {
         "properties": {
@@ -18911,6 +19747,24 @@
         ],
         "title": "DetalleApuRespuesta"
       },
+      "DiaRespuesta": {
+        "properties": {
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "cuantos": {
+            "type": "integer",
+            "title": "Cuantos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha",
+          "cuantos"
+        ],
+        "title": "DiaRespuesta"
+      },
       "DiasDelPlanRespuesta": {
         "properties": {
           "dias": {
@@ -19866,6 +20720,94 @@
         ],
         "title": "EnUsdRespuesta"
       },
+      "EnlaceNotificacion": {
+        "properties": {
+          "texto": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Texto",
+            "default": ""
+          },
+          "ruta": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Ruta",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "EnlaceNotificacion"
+      },
+      "EntregaDeObraPeticion": {
+        "properties": {
+          "fecha_entrega": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Entrega",
+            "description": "Fecha de entrega al cliente (aaaa-mm-dd), o null para quitarla"
+          }
+        },
+        "type": "object",
+        "title": "EntregaDeObraPeticion"
+      },
+      "EntregaDeObraRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto",
+            "description": "El código de la obra"
+          },
+          "fecha_entrega": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Entrega",
+            "description": "La fecha de entrega al cliente (aaaa-mm-dd), o null si no tiene"
+          },
+          "actualizada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualizada",
+            "description": "Cuándo se actualizó por última vez (ISO), o null"
+          },
+          "actualizada_por": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualizada Por",
+            "description": "Quién fijó o quitó la fecha, o null"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "fecha_entrega"
+        ],
+        "title": "EntregaDeObraRespuesta"
+      },
       "EntregaPeticion": {
         "properties": {
           "proyecto": {
@@ -20794,44 +21736,6 @@
           "contraste"
         ],
         "title": "EvaluacionRespuesta"
-      },
-      "EventoRespuesta": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "fecha_hora": {
-            "type": "string",
-            "title": "Fecha Hora"
-          },
-          "tipo": {
-            "type": "string",
-            "title": "Tipo"
-          },
-          "usuario": {
-            "type": "string",
-            "title": "Usuario"
-          },
-          "ip": {
-            "type": "string",
-            "title": "Ip"
-          },
-          "detalle": {
-            "type": "string",
-            "title": "Detalle"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "fecha_hora",
-          "tipo",
-          "usuario",
-          "ip",
-          "detalle"
-        ],
-        "title": "EventoRespuesta"
       },
       "ExcelExternoRespuesta": {
         "properties": {
@@ -23939,6 +24843,52 @@
         ],
         "title": "MapaRecordadoRespuesta"
       },
+      "MarcarLeidasEntrada": {
+        "properties": {
+          "ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer",
+                  "maximum": 9.223372036854776e+18,
+                  "exclusiveMinimum": 0.0
+                },
+                "type": "array",
+                "maxItems": 400
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ids"
+          },
+          "todas": {
+            "type": "boolean",
+            "title": "Todas",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "MarcarLeidasEntrada"
+      },
+      "MarcarLeidasRespuesta": {
+        "properties": {
+          "marcadas": {
+            "type": "integer",
+            "title": "Marcadas"
+          },
+          "sin_leer": {
+            "type": "integer",
+            "title": "Sin Leer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "marcadas",
+          "sin_leer"
+        ],
+        "title": "MarcarLeidasRespuesta"
+      },
       "MaterialEntrada": {
         "properties": {
           "codigo": {
@@ -24073,6 +25023,19 @@
           "mejora_pp"
         ],
         "title": "MejoraRespuesta"
+      },
+      "Mensaje": {
+        "properties": {
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mensaje"
+        ],
+        "title": "Mensaje"
       },
       "MensajeRespuesta": {
         "properties": {
@@ -24491,6 +25454,122 @@
           "recibida"
         ],
         "title": "NecesidadRespuesta"
+      },
+      "NotificacionNueva": {
+        "properties": {
+          "gravedad": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Gravedad"
+          },
+          "titulo": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Titulo"
+          },
+          "detalle": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Detalle",
+            "default": ""
+          },
+          "enlace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnlaceNotificacion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "gravedad",
+          "titulo"
+        ],
+        "title": "NotificacionNueva"
+      },
+      "NotificacionRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "gravedad": {
+            "type": "string",
+            "title": "Gravedad"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "detalle": {
+            "type": "string",
+            "title": "Detalle"
+          },
+          "enlace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnlaceNotificacion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "creada": {
+            "type": "string",
+            "title": "Creada"
+          },
+          "leida": {
+            "type": "boolean",
+            "title": "Leida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "gravedad",
+          "titulo",
+          "detalle",
+          "enlace",
+          "creada",
+          "leida"
+        ],
+        "title": "NotificacionRespuesta"
+      },
+      "NotificacionesRespuesta": {
+        "properties": {
+          "notificaciones": {
+            "items": {
+              "$ref": "#/components/schemas/NotificacionRespuesta"
+            },
+            "type": "array",
+            "title": "Notificaciones"
+          },
+          "sin_leer": {
+            "type": "integer",
+            "title": "Sin Leer"
+          },
+          "retencion_dias": {
+            "type": "integer",
+            "title": "Retencion Dias"
+          },
+          "maximo": {
+            "type": "integer",
+            "title": "Maximo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "notificaciones",
+          "sin_leer",
+          "retencion_dias",
+          "maximo"
+        ],
+        "title": "NotificacionesRespuesta"
       },
       "NuevaCarpeta": {
         "properties": {
@@ -25220,6 +26299,21 @@
           "lado_por_omision"
         ],
         "title": "OrigenesRespuesta"
+      },
+      "Papel": {
+        "properties": {
+          "papel": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Papel",
+            "description": "arma (arma presupuestos) o revisa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "papel"
+        ],
+        "title": "Papel"
       },
       "ParametroRespuesta": {
         "properties": {
@@ -26695,6 +27789,65 @@
         ],
         "title": "PreciosHojaRespuesta"
       },
+      "PreferenciaDeNotificacionCambio": {
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Categoria"
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categoria",
+          "activa"
+        ],
+        "title": "PreferenciaDeNotificacionCambio"
+      },
+      "PreferenciaDeNotificacionRespuesta": {
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "title": "Categoria"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa"
+          },
+          "aplica": {
+            "type": "boolean",
+            "title": "Aplica",
+            "description": "Si a la cuenta le llega esta categoría por su rol"
+          },
+          "obligatoria": {
+            "type": "boolean",
+            "title": "Obligatoria",
+            "description": "Si su rol no la deja apagar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categoria",
+          "titulo",
+          "descripcion",
+          "activa",
+          "aplica",
+          "obligatoria"
+        ],
+        "title": "PreferenciaDeNotificacionRespuesta"
+      },
       "Preferencias": {
         "properties": {
           "modulo": {
@@ -26723,6 +27876,39 @@
         },
         "type": "object",
         "title": "Preferencias"
+      },
+      "PreferenciasDeNotificacionCambio": {
+        "properties": {
+          "categorias": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenciaDeNotificacionCambio"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Categorias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categorias"
+        ],
+        "title": "PreferenciasDeNotificacionCambio"
+      },
+      "PreferenciasDeNotificacionRespuesta": {
+        "properties": {
+          "categorias": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenciaDeNotificacionRespuesta"
+            },
+            "type": "array",
+            "title": "Categorias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categorias"
+        ],
+        "title": "PreferenciasDeNotificacionRespuesta"
       },
       "PreferenciasRespuesta": {
         "properties": {
@@ -29474,6 +30660,111 @@
         ],
         "title": "SimulacionRespuesta"
       },
+      "SolicitudNueva": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Nombre"
+          },
+          "correo": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Correo"
+          },
+          "login": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Login"
+          },
+          "contrasena": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Contrasena"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "correo",
+          "login",
+          "contrasena"
+        ],
+        "title": "SolicitudNueva"
+      },
+      "SolicitudRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "login": {
+            "type": "string",
+            "title": "Login"
+          },
+          "correo": {
+            "type": "string",
+            "title": "Correo"
+          },
+          "creada": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creada"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado",
+            "description": "pendiente, aprobada, rechazada, usada o vencida"
+          },
+          "papel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Papel",
+            "description": "arma o revisa; lo fija el administrador al aprobar"
+          },
+          "vence": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vence",
+            "description": "Cuándo deja de valer el código de una aprobada"
+          },
+          "reutilizada": {
+            "type": "boolean",
+            "title": "Reutilizada",
+            "description": "True si este usuario ya se había pedido antes y se rechazó o venció"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "login",
+          "correo",
+          "creada",
+          "estado",
+          "papel",
+          "vence",
+          "reutilizada"
+        ],
+        "title": "SolicitudRespuesta"
+      },
       "SolicitudSimilares": {
         "properties": {
           "descripcion": {
@@ -29486,6 +30777,22 @@
           "descripcion"
         ],
         "title": "SolicitudSimilares"
+      },
+      "SolicitudesRespuesta": {
+        "properties": {
+          "solicitudes": {
+            "items": {
+              "$ref": "#/components/schemas/SolicitudRespuesta"
+            },
+            "type": "array",
+            "title": "Solicitudes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "solicitudes"
+        ],
+        "title": "SolicitudesRespuesta"
       },
       "SospechosoRespuesta": {
         "properties": {
@@ -31848,6 +33155,39 @@
         ],
         "title": "CalculoRespuesta"
       },
+      "api__rutas__actividad__EventoRespuesta": {
+        "properties": {
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "obra": {
+            "type": "string",
+            "title": "Obra"
+          },
+          "archivo": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha",
+          "tipo",
+          "obra",
+          "archivo",
+          "texto"
+        ],
+        "title": "EventoRespuesta"
+      },
       "api__rutas__admin_asistente__NuevaClave": {
         "properties": {
           "clave": {
@@ -32218,6 +33558,44 @@
           "version"
         ],
         "title": "VersionRespuesta"
+      },
+      "api__rutas__cuentas__EventoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "title": "Fecha Hora"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "ip": {
+            "type": "string",
+            "title": "Ip"
+          },
+          "detalle": {
+            "type": "string",
+            "title": "Detalle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fecha_hora",
+          "tipo",
+          "usuario",
+          "ip",
+          "detalle"
+        ],
+        "title": "EventoRespuesta"
       },
       "api__rutas__entregas__ResumenRespuesta": {
         "properties": {

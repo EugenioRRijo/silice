@@ -1,14 +1,15 @@
 @use "umbrales" as u;
 @use "@carbon/styles/scss/type";
 
-// Barra lateral colapsable (16 rem expandida <-> riel compacto de 3 rem). Fondo, hover y fila activa en los colores del
-// tema de la empresa (--silice-lateral, --silice-lateral-activo y el borde del activo en --silice-marco), que el servidor
-// mide contra el texto (aplicacion/tema.py). Solo variables --silice-* y --cds-* (sin hexadecimales sueltos) y todo en rem.
+// Barra lateral «riel de iconos» de la cara «Papel y resaltador»: 14,75 rem abierta <-> 3,5 rem reducida a iconos
+// (RielLateral.tsx). Fondo en --silice-lateral (el tema de la empresa puede cambiarlo; el servidor mide el texto contra él,
+// aplicacion/tema.py), filete en --silice-linea y la opción actual en el resaltador y en peso 500. Solo variables
+// --silice-* y --cds-* (sin hexadecimales sueltos) y la letra y el espaciado en rem.
 .silice-marco-lateral {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  inline-size: 16rem;
+  inline-size: 14.75rem;
   flex: none;
   min-block-size: 0;
   overflow: hidden;
@@ -24,7 +25,7 @@
 }
 
 .silice-marco-lateral--colapsada {
-  inline-size: 3rem;
+  inline-size: 3.5rem;
 }
 
 .silice-marco-lateral__cabecera {
@@ -79,7 +80,7 @@
 }
 
 .silice-marco-lateral__conteo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   color: var(--silice-muted-soft);
@@ -89,16 +90,18 @@
   padding: 0 0.75rem 0.5rem;
 }
 
+// La lista de obras se desplaza en su caja, pero no se encoge a cero (en 1366×768 las ocho obras de la siembra desaparecían:
+// `min-block-size: 0` + `overflow-y: auto`). Con poco alto toma el que sobra y conserva un mínimo a la vista; si ni el
+// mínimo cabe, la barra lateral se desplaza (marco.scss). `obras` y `nav` no declaran mínimo: el automático suma el de la lista.
 .silice-marco-lateral__obras {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  min-block-size: 0;
 }
 
 .silice-marco-lateral__arbol {
   flex: 1 1 auto;
-  min-block-size: 0;
+  min-block-size: 8rem;
   padding: 0 0.75rem 0.75rem;
   overflow-y: auto;
   display: grid;
@@ -274,7 +277,7 @@
   border: none;
   border-radius: var(--silice-radio-md);
   background-color: var(--cds-button-primary);
-  color: var(--cds-text-on-color);
+  color: var(--silice-hoja);
   font-family: inherit;
   font-weight: 600;
   text-align: center;
@@ -295,98 +298,297 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--cds-text-on-color);
+    outline: 2px solid var(--silice-hoja);
     outline-offset: -4px;
   }
 }
 
-// Riel compacto anclado de 48px cuando la barra esta colapsada.
-.silice-marco-lateral__riel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  block-size: 100%;
-  padding-block: 0.75rem;
+// ---- El riel de iconos (cara «Papel y resaltador», RielLateral.tsx) -------------------------------------------------------
+// Estas reglas pisan a las de arriba solo dentro de `--riel`: la fila de obra y la de espacio son las mismas piezas, con el
+// aspecto de la cara (fila de 2,25 rem, radio de 6 px, la actual en el resaltador y en peso 500: no solo color).
+
+// Más específica que el filete que marco.scss pone a `.silice-marco__cuerpo > .silice-marco-lateral`.
+.silice-marco__cuerpo > .silice-marco-lateral.silice-marco-lateral--riel {
+  border-inline-end: 1px solid var(--silice-linea);
 }
 
-.silice-marco-lateral__riel-arriba,
-.silice-marco-lateral__riel-abajo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
+.silice-marco-lateral--riel {
+  gap: 1rem;
+  padding: 1.25rem 0.75rem 1rem;
+  color: var(--silice-t1);
 
-.silice-marco-lateral__riel-abajo {
-  inline-size: 100%;
-  padding-block-start: 0.5rem;
-  border-block-start: 1px solid var(--silice-border);
-}
-
-.silice-marco-lateral__riel-sep {
-  inline-size: 1.5rem;
-  border-block-start: 1px solid var(--silice-border);
-  margin-block: 0.25rem;
-}
-
-.silice-marco-lateral__riel-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 2rem;
-  block-size: 2rem;
-  border: 1px solid transparent;
-  border-radius: var(--silice-radio-md);
-  background-color: transparent;
-  color: var(--silice-muted);
-  text-decoration: none;
-  cursor: pointer;
-
-  svg {
-    fill: currentcolor;
+  .silice-marco-lateral__cabecera {
+    justify-content: space-between;
+    padding: 0 0.625rem;
+    border: 0;
+    color: var(--silice-t2);
+    font-size: 0.75rem;
+    line-height: 1rem;
   }
+
+  .silice-marco-lateral__plegar {
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: 0.375rem;
+    color: var(--silice-t2);
+
+    &:hover {
+      background-color: var(--silice-hoja);
+      border-color: transparent;
+      color: var(--silice-t1);
+    }
+  }
+}
+
+.silice-marco-lateral--riel.silice-marco-lateral--colapsada {
+  padding-inline: 0.75rem;
+
+  .silice-marco-lateral__cabecera {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+.silice-marco-lateral__lugar {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.silice-marco-lateral__nav {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.silice-marco-lateral__opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.silice-marco-lateral--riel .silice-marco-lateral__fila {
+  gap: 0.625rem;
+  min-block-size: 2.25rem;
+  padding: 0 0.625rem;
+  border-color: transparent;
+  border-radius: 0.375rem;
+  background-color: transparent;
+  color: var(--silice-t2);
+  font-weight: 400;
+  inline-size: 100%;
+  box-sizing: border-box;
 
   &:hover {
-    background-color: var(--silice-lateral-activo);
-    color: var(--cds-text-primary);
-  }
-
-  &[aria-current="page"] {
-    background-color: var(--silice-lateral-activo);
-    border-color: var(--silice-marco);
-    color: var(--cds-text-primary);
+    background-color: var(--silice-hoja);
+    color: var(--silice-t1);
   }
 
   &:focus-visible {
     outline: 2px solid var(--cds-focus);
     outline-offset: -2px;
   }
-}
 
-.silice-marco-lateral__riel-btn--toggle {
-  background-color: var(--silice-surface);
-  border-color: var(--silice-border-strong);
-  color: var(--cds-text-primary);
-
-  &:hover {
-    border-color: var(--cds-text-primary);
+  &[aria-current="page"] {
+    background-color: var(--silice-resaltador);
+    border-color: transparent;
+    color: var(--silice-t1);
+    font-weight: 500;
   }
 }
 
-// «Nueva obra» en el riel: el boton principal (complementario con texto blanco, 7:1 que mide el servidor).
-.silice-marco-lateral__riel-btn--primario {
-  background-color: var(--cds-button-primary);
-  color: var(--cds-text-on-color);
+button.silice-marco-lateral__fila {
+  font-family: inherit;
+  text-align: start;
+  cursor: pointer;
+}
 
-  &:hover {
-    background-color: var(--cds-button-primary-hover);
-    color: var(--cds-text-on-color);
+.silice-marco-lateral__opcion--reducida {
+  justify-content: center;
+  padding: 0;
+}
+
+// El icono con su contador encima (barra reducida): un número pequeño en la esquina, nunca solo color.
+.silice-marco-lateral__icono {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.silice-marco-lateral__insignia {
+  position: absolute;
+  inset-block-start: -0.5rem;
+  inset-inline-start: 0.5rem;
+  min-inline-size: 0.875rem;
+  padding-inline: 0.1875rem;
+  border-radius: 0.25rem;
+  background-color: var(--silice-hoja);
+  color: var(--silice-t1);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  line-height: 0.875rem;
+  text-align: center;
+}
+
+.silice-marco-lateral__opciones--desplazable {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+.silice-marco-lateral__rotulo {
+  padding-inline: 0.625rem;
+  color: var(--silice-t2);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.silice-marco-lateral__inicial {
+  inline-size: 1rem;
+  block-size: 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1rem;
+  text-align: center;
+}
+
+.silice-marco-lateral__gravedad {
+  font-size: 0.75rem;
+  line-height: 1rem;
+
+  &[data-gravedad="error"] {
+    color: var(--silice-gravedad-error);
+  }
+
+  &[data-gravedad="advertencia"] {
+    color: var(--silice-gravedad-advertencia);
   }
 }
 
-.silice-marco-lateral__riel-btn--oro {
-  color: var(--cds-text-primary);
+.silice-marco-lateral__grupo-reducido {
+  padding-block-start: 0.5rem;
+  border-block-start: 1px solid var(--silice-linea);
+}
+
+// «La obra en cifras»: tarjeta sobre la hoja, con su filete.
+.silice-marco-lateral__cifras {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--silice-linea);
+  border-radius: 0.75rem;
+  background-color: var(--silice-hoja);
+}
+
+.silice-marco-lateral__cifras-titulo {
+  margin: 0 0 0.25rem;
+  color: var(--silice-t2);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1rem;
+}
+
+.silice-marco-lateral__cifra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-inline: -0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--silice-t1);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  text-decoration: none;
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  &:hover {
+    background-color: var(--silice-alzado);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  &[data-gravedad="error"] {
+    color: var(--silice-gravedad-error);
+  }
+
+  &[data-gravedad="advertencia"] {
+    color: var(--silice-gravedad-advertencia);
+  }
+}
+
+.silice-marco-lateral__cifras-reducidas [data-gravedad="error"] {
+  color: var(--silice-gravedad-error);
+}
+
+.silice-marco-lateral__cifras-reducidas [data-gravedad="advertencia"] {
+  color: var(--silice-gravedad-advertencia);
+}
+
+.silice-marco-lateral__avance {
+  margin: 0.25rem 0 0;
+  color: var(--silice-t2);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1rem;
+}
+
+// La carpeta abierta al pie.
+.silice-marco-lateral__carpeta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.625rem;
+  margin-block-start: auto;
+  padding: 0.75rem 0.625rem 0;
+  border-block-start: 1px solid var(--silice-linea);
+  color: var(--silice-t1);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  a {
+    margin-inline-start: auto;
+    color: var(--silice-t1);
+    text-decoration: underline;
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.silice-marco-lateral__carpeta--reducida {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.silice-marco-lateral__carpeta-nombre {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.silice-marco-lateral__carpeta-rotulo {
+  color: var(--silice-t2);
+  font-size: 0.75rem;
+  line-height: 1rem;
 }
 
 @include u.con-letra-grande {

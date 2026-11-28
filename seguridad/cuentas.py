@@ -34,6 +34,7 @@ from sqlalchemy.orm import Session
 from seguridad import eventos, sesiones
 from seguridad.modelo import CodigoInstalacion, IntentoAcceso, Usuario
 from seguridad.permisos import Accion, PermisoDenegado, Rol, exigir, roles_de, texto_de_roles
+from seguridad.retencion import retiene_login
 from seguridad.secretos import CONTRASENAS_COMUNES
 
 MENSAJE_FALLO = "Usuario o contraseña incorrectos."
@@ -420,6 +421,12 @@ def formato_codigo(codigo: str) -> str:
     return "-".join(codigo[i : i + 4] for i in range(0, len(codigo), 4))
 
 
+def codigo_nuevo() -> str:
+    """Un código de 20 caracteres base32 (100 bits) de `secrets`: el de instalación y el de una
+    solicitud de cuenta (`seguridad.solicitudes`)."""
+    return "".join(secrets.choice(ALFABETO_CODIGO) for _ in range(LONGITUD_CODIGO))
+
+
 def emitir_codigo(
     session: Session, carpeta: Path, ahora: datetime, *, motivo: str = "primera vez"
 ) -> str:
@@ -434,7 +441,7 @@ def emitir_codigo(
     reemplazados = session.execute(
         update(CodigoInstalacion).where(CodigoInstalacion.usado.is_(None)).values(usado=ahora)
     ).rowcount
-    codigo = "".join(secrets.choice(ALFABETO_CODIGO) for _ in range(LONGITUD_CODIGO))
+    codigo = codigo_nuevo()
     session.add(CodigoInstalacion(huella=_huella_codigo(codigo), creado=ahora, motivo=motivo))
     detalle = motivo if not reemplazados else f"{motivo}; reemplaza {reemplazados} pendiente(s)"
     eventos.registrar(session, "codigo de instalacion", ahora, detalle=detalle)
@@ -649,11 +656,13 @@ def crear_usuario(
     contrasena_temporal: str,
     ahora: datetime,
 ) -> Usuario:
-    """Alta por el administrador, con contraseña temporal que obliga a cambiarla al entrar."""
+    """Alta por el administrador, con contraseña temporal que obliga a cambiarla al entrar. Un
+    login que ya es una cuenta o que retiene una solicitud viva (C9a) da el mismo `ValueError`."""
     _exigir_administrador(actor)
     login_normal = validar_login(login)
     validar_contrasena(contrasena_temporal, login_normal)
-    if session.scalar(select(Usuario.id).where(Usuario.login == login_normal)) is not None:
+    existe = session.scalar(select(Usuario.id).where(Usuario.login == login_normal)) is not None
+    if existe or retiene_login(session, login_normal, ahora):  # el mismo mensaje en los dos
         raise ValueError(f"Ya existe una cuenta con el usuario {login_normal!r}.")
     usuario = Usuario(
         login=login_normal,

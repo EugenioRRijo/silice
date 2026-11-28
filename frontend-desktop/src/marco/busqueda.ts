@@ -1,7 +1,7 @@
 import { ESPACIOS, espacioDeLaPagina, rutaDeCuenta, rutaOPendientes } from "./espacios";
 import { seccionesDeLaObra } from "./oferta";
 import type { Oferta } from "./oferta";
-import { rutaDeObra } from "./secciones";
+import { SECCION_DE_ENTRADA, rutaDeObra } from "./secciones";
 import type { ObraDeCarpeta } from "./useObras";
 
 export interface Resultado {
@@ -42,7 +42,7 @@ export function resultadosDe(
   const deLaObra = (o: ObraDeCarpeta): Resultado => ({
     texto: o.obra,
     detalle: o.carpeta_titulo,
-    ruta: rutaDeObra(o.carpeta, o.obra_id, "resumen"),
+    ruta: rutaDeObra(o.carpeta, o.obra_id, SECCION_DE_ENTRADA),
   });
   if (palabras.length === 0) return obras.slice(0, OBRAS_SIN_TEXTO).map(deLaObra);
 

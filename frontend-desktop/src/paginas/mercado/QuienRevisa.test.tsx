@@ -13,6 +13,11 @@ import { preciosRespuesta } from "../hoja/datosDePrueba";
 import type { PreciosRespuesta, VersionesRespuesta } from "../hoja/logica";
 import PaginaMercado from "./index";
 
+// Carbon Charts en jsdom no tiene el SVG que mide (`baseVal`): esta prueba no mira el gráfico (ver Mercado.test).
+vi.mock("../../comun/GraficoCarbon", () => ({
+  default: ({ opciones }: { opciones: { title?: string } }) => <div role="img" aria-label={opciones.title ?? "Gráfico"} />,
+}));
+
 // Ronda 2 de la Tarea 13 del plan F4. Antes del traslado, la pantalla suelta del histórico pedía `leer_proyecto` y quien
 // revisa la veía; ahora vive en Mercado. Estas pruebas pasan por el PERMISO REAL (las acciones de cada rol escritas a mano
 // desde seguridad/permisos.py, `ACCIONES` de datosDePrueba; el registro de `shell/rutas.ts`; la oferta del árbol y del
@@ -75,8 +80,9 @@ describe("Mercado para quien revisa (ronda 2 de la Tarea 13)", () => {
 
   test("quien revisa abre Mercado desde la barra de la obra y solo ve las pestañas que leen", async () => {
     montar("rita");
-    const barra = await screen.findByRole("navigation", { name: "Secciones de la obra" });
-    expect(await within(barra).findByRole("link", { name: "Mercado" })).toBeInTheDocument();
+    // Cara nueva (C4): Mercado es «Precios de mercado», opción de la herramienta Presupuestar en la segunda fila de la obra.
+    const barra = await screen.findByRole("navigation", { name: "Opciones de Presupuestar" });
+    expect(await within(barra).findByRole("link", { name: "Precios de mercado" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 1, name: "Estudio de mercado" })).toBeInTheDocument();
     expect(pestanas()).toEqual(["Histórico de precios", "Cotizaciones de la obra"]);
     // «Lo que compramos» y «Lo que cobramos» anotan y usan precios (y su estudio exige `editar_hoja`): no se pintan.

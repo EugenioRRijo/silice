@@ -6,6 +6,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
+import { catalogoDePrueba } from "../auditoria/datosDePrueba";
 import PaginaHistorial from "./index";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -79,14 +80,17 @@ describe("Historial de auditorías", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let lista: () => Response;
   let detalle: (id: string) => Response;
+  let queHacer: () => Response;
 
   beforeEach(() => {
+    queHacer = () => json({ detalle: "no" }, 404);
     vi.stubGlobal("fetch", fetchFalso);
     lista = () => json(LISTA);
     detalle = (id) => json(id === "1" ? DETALLE_LIBRO : DETALLE_PDF);
     fetchFalso.mockImplementation(async (entrada) => {
       const ruta = typeof entrada === "string" ? entrada : entrada instanceof URL ? entrada.pathname : entrada.url;
       if (ruta === "/v1/auditorias-libro?limite=100") return lista();
+      if (ruta === "/v1/libros/que-hacer") return queHacer();
       const m = /^\/v1\/auditorias-libro\/(\d+)$/.exec(ruta);
       if (m) return detalle(m[1]!);
       return json({ detalle: "no" }, 404);
@@ -214,7 +218,9 @@ describe("Historial de auditorías", () => {
     await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
     const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
     expect(within(panel).getByRole("heading", { level: 2, name: "Detalle de la auditoría" })).toBeInTheDocument();
-    expect(within(panel).getByText("Ana Pérez <ana>")).toBeInTheDocument();
+    const enlace = within(panel).getByRole("link", { name: "Ver la actividad de Ana Pérez" });
+    expect(enlace).toHaveTextContent("Ana Pérez");
+    expect(enlace).toHaveAttribute("href", "/cuenta/actividad?usuario=ana");
     expect(within(panel).getByText("Código de verificación del archivo (SHA-256)")).toBeInTheDocument();
     expect(within(panel).getByText("Sirve para comprobar que corresponde al mismo archivo original")).toBeInTheDocument();
     expect(within(panel).getByText("ab".repeat(32))).toBeInTheDocument();
@@ -264,6 +270,7 @@ describe("Historial de auditorías", () => {
     await u.click(screen.getByRole("button", { name: "Ver el detalle de revision.pdf" }));
     const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
     expect(await within(panel).findByText("api (clave de API)")).toBeInTheDocument();
+    expect(within(panel).queryByRole("link")).toBeNull();
     expect(within(panel).queryByText("Fecha del libro")).not.toBeInTheDocument();
     expect(within(panel).queryByText("Total del libro")).not.toBeInTheDocument();
     expect(within(panel).getByText("Esta auditoría no dejó hallazgos guardados")).toBeInTheDocument();
@@ -317,7 +324,7 @@ describe("Historial de auditorías", () => {
         hallazgos: [
           {
             regla: "L4",
-            nombre_regla: "Costo directo incompleto",
+            nombre_regla: "Componente fuera del total",
             hoja: "APU-02",
             celda: "G7",
             severidad: "ADVERTENCIA",
@@ -332,7 +339,7 @@ describe("Historial de auditorías", () => {
     await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
     const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
     const tabla = within(panel).getByRole("table", { name: "Hallazgos guardados" });
-    expect(within(tabla).getByText("Costo directo incompleto (L4)")).toBeInTheDocument();
+    expect(within(tabla).getByText("Componente fuera del total (L4)")).toBeInTheDocument();
     expect(within(tabla).getByText("R2")).toBeInTheDocument();
   });
 
@@ -342,4 +349,126 @@ describe("Historial de auditorías", () => {
     expect(screen.queryByRole("button", { name: /descargar/i })).not.toBeInTheDocument();
     expect(screen.getByText(/El libro y el PDF no se guardan/)).toBeInTheDocument();
   });
+
+  describe("«Qué hacer» en el detalle (B2)", () => {
+    test("cada hallazgo guardado trae su «Qué hacer», cerrado, con la guía del servidor", async () => {
+      queHacer = () => json(catalogoDePrueba());
+      const u = userEvent.setup();
+      dibujar();
+      await screen.findByText("presupuesto-a.xlsx");
+      await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
+      const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+      const tabla = within(panel).getByRole("table", { name: "Hallazgos guardados" });
+      const boton = await within(tabla).findByRole("button", { name: "Qué hacer con «Componente fuera del total»" });
+      expect(boton).toHaveAttribute("aria-expanded", "false");
+      expect(within(tabla).queryByText("Corrija el rango de la suma.")).not.toBeInTheDocument();
+      await u.click(boton);
+      expect(within(tabla).getByText("Corrija el rango de la suma.")).toBeInTheDocument();
+      expect(within(tabla).getByRole("button", { name: "Qué hacer con «Cierre de la curva de inversión»" })).toBeInTheDocument();
+    });
+
+    test("sin catálogo (el servidor no lo tiene) el detalle se ve igual, sin botones", async () => {
+      const u = userEvent.setup();
+      dibujar();
+      await screen.findByText("presupuesto-a.xlsx");
+      await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
+      const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+      expect(await within(panel).findByText("El CD no cuadra con la suma.")).toBeInTheDocument();
+      expect(within(panel).queryByRole("button", { name: /Qué hacer/ })).not.toBeInTheDocument();
+    });
+
+    test("un detalle sin hallazgos no pide el catálogo en vano ni pinta botones", async () => {
+      queHacer = () => json(catalogoDePrueba());
+      const u = userEvent.setup();
+      dibujar();
+      await screen.findByText("revision.pdf");
+      await u.click(screen.getByRole("button", { name: "Ver el detalle de revision.pdf" }));
+      const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+      expect(await within(panel).findByText("Esta auditoría no dejó hallazgos guardados")).toBeInTheDocument();
+      expect(within(panel).queryByRole("button", { name: /Qué hacer/ })).not.toBeInTheDocument();
+    });
+  });
+});
+
+// C10b: filtro «Por persona» y enlaces a la actividad de quien auditó.
+describe("Historial: filtro «Por persona» y enlaces a la actividad", () => {
+  const fetchFalso = vi.fn<typeof fetch>();
+  const CON_PERSONAS = [
+    { id: 3, archivo: "presupuesto-c.xlsx", fecha: "2026-10-19T09:05:00", tipo: "libro", errores: 0, advertencias: 0, usuario: "Ana Pérez <ana>" },
+    { id: 2, archivo: "revision.pdf", fecha: "2026-10-18T14:32:07", tipo: "pdf", errores: 1, advertencias: 4, usuario: "Luis Torres <luis>" },
+    { id: 1, archivo: "presupuesto-a.xlsx", fecha: "2026-10-17T08:00:00", tipo: "libro", errores: 0, advertencias: 2, usuario: "api (clave de API)" },
+  ];
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchFalso);
+    fetchFalso.mockImplementation(async (entrada) => {
+      const ruta = typeof entrada === "string" ? entrada : entrada instanceof URL ? entrada.pathname : entrada.url;
+      if (ruta === "/v1/auditorias-libro?limite=100") return json(CON_PERSONAS);
+      return json({ detalle: "no" }, 404);
+    });
+  });
+
+  afterEach(() => {
+    fetchFalso.mockReset();
+    vi.unstubAllGlobals();
+  });
+
+  test("filtra por persona, actualiza el contador y «Todas las personas» devuelve la lista", async () => {
+    const u = userEvent.setup();
+    dibujar();
+    await screen.findByText("presupuesto-c.xlsx");
+    const selector = screen.getByRole("combobox", { name: "Por persona" });
+    expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Todas las personas",
+      "Ana Pérez",
+      "api (clave de API)",
+      "Luis Torres",
+    ]);
+    expect(screen.getByText("Mostrando 3 de 3 auditorías guardadas.")).toBeInTheDocument();
+
+    await u.selectOptions(selector, "Ana Pérez");
+    expect(screen.getByText("presupuesto-c.xlsx")).toBeInTheDocument();
+    expect(screen.queryByText("revision.pdf")).not.toBeInTheDocument();
+    expect(screen.queryByText("presupuesto-a.xlsx")).not.toBeInTheDocument();
+    expect(screen.getByText("Mostrando 1 de 3 auditorías guardadas.")).toBeInTheDocument();
+
+    await u.selectOptions(selector, "Todas las personas");
+    expect(screen.getByText("revision.pdf")).toBeInTheDocument();
+    expect(screen.getByText("presupuesto-a.xlsx")).toBeInTheDocument();
+    expect(screen.getByText("Mostrando 3 de 3 auditorías guardadas.")).toBeInTheDocument();
+  });
+
+  test("sin coincidencias al combinar filtros dice qué filtro está puesto y cómo quitarlo", async () => {
+    const u = userEvent.setup();
+    dibujar();
+    await screen.findByText("presupuesto-c.xlsx");
+    await u.selectOptions(screen.getByRole("combobox", { name: "Por persona" }), "Ana Pérez");
+    await u.selectOptions(screen.getByRole("combobox", { name: "Tipo" }), "pdf");
+
+    expect(screen.getByText("Ninguna auditoría coincide con esos filtros")).toBeInTheDocument();
+    expect(screen.getByText(/Por persona: Ana Pérez/)).toBeInTheDocument();
+    expect(screen.getByText(/Tipo: PDF/)).toBeInTheDocument();
+
+    await u.click(screen.getByRole("button", { name: "Quitar los filtros" }));
+    expect(screen.getByText("revision.pdf")).toBeInTheDocument();
+    expect(screen.getByText("Mostrando 3 de 3 auditorías guardadas.")).toBeInTheDocument();
+  });
+
+  test("en la tabla, quien tiene usuario enlaza a su actividad y sin usuario queda como texto", async () => {
+    dibujar();
+    const tabla = await screen.findByRole("table", { name: "Auditorías guardadas" });
+    const filas = within(tabla).getAllByRole("row");
+
+    const enlaceAna = within(filas[1]!).getByRole("link", { name: "Ver la actividad de Ana Pérez" });
+    expect(enlaceAna).toHaveTextContent("Ana Pérez");
+    expect(enlaceAna).toHaveAttribute("href", "/cuenta/actividad?usuario=ana");
+
+    const enlaceLuis = within(filas[2]!).getByRole("link", { name: "Ver la actividad de Luis Torres" });
+    expect(enlaceLuis).toHaveTextContent("Luis Torres");
+    expect(enlaceLuis).toHaveAttribute("href", "/cuenta/actividad?usuario=luis");
+
+    expect(within(filas[3]!).getByText("api (clave de API)")).toBeInTheDocument();
+    expect(within(filas[3]!).queryByRole("link")).toBeNull();
+  });
+
 });

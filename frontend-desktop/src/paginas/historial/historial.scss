@@ -14,7 +14,7 @@
 
 .silice-historial__filtros {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 14rem));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 14rem));
   gap: 1rem;
   align-items: start;
 }

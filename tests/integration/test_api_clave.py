@@ -54,11 +54,18 @@ SIN_CLAVE = frozenset(
         "/v1/tema/logo",
     }
 )
+#: C9a: pedir una cuenta y canjear el código son públicas por diseño (las protegen el `Origin`, los
+#: topes, el freno y el código; `test_api_solicitudes.py`). Por método: `GET /v1/solicitudes`, del
+#: administrador, sigue dando 401 sin clave ni sesión.
+SIN_CLAVE_POR_METODO = frozenset(
+    {("POST", "/v1/solicitudes"), ("POST", "/v1/solicitudes/canjear")}
+)
 PROTEGIDAS = [
     (ruta, metodo)
     for ruta in RUTAS
     if ruta.path not in SIN_CLAVE
     for metodo in sorted(ruta.methods - {"HEAD", "OPTIONS"})
+    if (metodo, ruta.path) not in SIN_CLAVE_POR_METODO
 ]
 
 

@@ -1831,3 +1831,80 @@ IP explícita). Rulings de este plan: `docs/bitacora/2026-10-silice-100.md`.
   escritor (XlsxWriter) → descarga. No hay tablas nuevas.
 - **Decisión.** Las reglas de la plantilla que el mapeo y el escritor comparten (factores literales, destajo,
   divisor de equipos) viven en una sola fuente, `adapters/hoja_empresa/plantilla.py` (revisión de arquitectura V5).
+
+## Enmienda (2026-11-28): reestructuración del front (rama `feature/front-b1`)
+
+Fuente: la [enmienda del 2026-11-28 de la ERS](ERS.md) (RF-215 a RF-224), las especificaciones
+[registro con código](especificaciones/2026-11-26-registro-con-codigo.md) y
+[notificaciones por evento](especificaciones/2026-11-26-notificaciones-por-evento.md) y la
+[ficha B2](especificaciones/2026-11-26-cara-papel-y-resaltador/b2/ficha-b2.md). La rama **aún no está fusionada en
+`main`**. `core/` no cambia: los módulos nuevos leen del núcleo (`core.models`, `core.budget.calendario`,
+`core.budget.valuaciones`) y el núcleo no los importa. Tampoco cambian los archivos sellados por la etiqueta
+`reglas-congeladas-2026-11-24` (las reglas del libro, `aplicacion/causas_raiz.py` y `api/rutas/libros.py`) ni
+`aplicacion/hoja.py`. Las tablas nuevas están en el [modelo de datos](modelo_datos.md) §12 a §14.
+
+### Vista lógica y de desarrollo
+
+| Módulo | Qué hace | Importa (fuera de la biblioteca estándar y SQLAlchemy) |
+|---|---|---|
+| `seguridad/solicitudes.py` | registro con código (RF-215 a RF-217): `solicitar`, `listar`, `aprobar`, `rechazar`, `canjear`, `enlace_de_correo`, el cupo por equipo en memoria `CupoPorEquipo` (`CUPO`) y su contraparte en la base `_exigir_cupo` | `seguridad.cuentas` (política, Argon2, contador `IntentoAcceso`, freno global, bloqueo de escritura y el código de 20 caracteres), `seguridad.eventos`, `seguridad.modelo`, `seguridad.permisos`, `seguridad.retencion` |
+| `seguridad/retencion.py` | qué solicitud retiene un usuario (`vigente`, `estado_efectivo`, `viva`, `retiene_login`); aparte de `solicitudes` para que `cuentas.crear_usuario` lo consulte sin un ciclo de importaciones | `seguridad.modelo` |
+| `aplicacion/notificaciones.py` | notificaciones por persona (RF-218): `listar`, `agregar`, `marcar_leidas`, `contar_sin_leer`, `existe_clave`, `validar_ruta`; retención de 30 días y tope de 200 (salen primero las que creó la interfaz) | `seguridad.modelo` (`Notificacion`) |
+| `aplicacion/avisos_por_evento.py` | notificaciones por evento y qué recibir (RF-219 y RF-220): `CATEGORIAS`, `preferencias`, `fijar_preferencias`, `emitir`, los ganchos `de_aprobaciones` y `lista_cargada`, y el barrido `barrer` | `aplicacion` (`aprobaciones`, `entrega_de_obra`, `indice_aprobaciones`, `notificaciones`, `procura`, `mesa`, `plural`, `revision`), `core.models`, `core.budget.calendario`, `core.budget.valuaciones`, `core.models.cadena`, `seguridad.modelo`, `seguridad.permisos`, `seguridad.sesiones` |
+| `aplicacion/actividad.py` | actividad por persona (RF-221), solo lectura: `actividad_de`, `armar` (pura), `cuenta_existe` | `aplicacion.revision`, `aplicacion.tablas_indice_aprobacion`, `core.models`, `core.models.cadena`, `seguridad.cuentas`, `seguridad.modelo` |
+| `aplicacion/entrega_de_obra.py` y `aplicacion/tablas_entrega.py` | fecha de entrega al cliente (RF-222): `leer_entrega`, `fijar_entrega`, `entregas_de_la_carpeta`; el modelo `EntregaDeObra` (`METADATA_ENTREGA`) sin clave foránea a `core.models` | `aplicacion.listas_para_armar`, `aplicacion.proyectos`, `core.models` |
+| `aplicacion/que_hacer.py` | el «Qué hacer» de cada regla y alerta (RF-223), capa de presentación: `que_hacer_de_regla`, `que_hacer_de_alerta`, `catalogo`, `GENERICO`. Repite como texto los tipos de alerta de `fusion/alertas.py` porque `aplicacion/` no importa `fusion/`; `tests/unit/test_que_hacer.py` los compara | `aplicacion.nombres_reglas` |
+| `api/avisos.py` | `avisar`: corre un aviso en una transacción corta y propia de la instalación después de que la ruta confirmó su carpeta; un fallo se registra y no cambia la respuesta | `operacion.instalacion` |
+| `api/rutas/solicitudes.py` | `POST /v1/solicitudes`, `GET /v1/solicitudes`, `POST /v1/solicitudes/{id}/aprobar`, `POST /v1/solicitudes/{id}/rechazar`, `POST /v1/solicitudes/canjear` (rechaza un `Origin` ajeno antes de leer el cuerpo; el canje abre la sesión con `abrir_sesion_web`) | `seguridad.solicitudes`, `seguridad.cuentas`, `api.rutas.sesion`, `api.rutas.cuentas`, `operacion.instalacion` |
+| `api/rutas/notificaciones.py` | `GET` y `POST /v1/notificaciones`, `POST /v1/notificaciones/leidas`, `GET` y `PUT /v1/notificaciones/preferencias` | `aplicacion.notificaciones`, `aplicacion.avisos_por_evento`, `api.dependencias` |
+| `api/rutas/actividad.py` | `GET /v1/actividad` | `aplicacion.actividad`, `seguridad.cuentas`, `seguridad.permisos` |
+| `api/rutas/obras_entrega.py` | `GET` y `PUT /v1/obras/{codigo}/entrega` | `aplicacion.entrega_de_obra`, `api.acceso` |
+| `api/rutas/libros_que_hacer.py` | `GET /v1/libros/que-hacer`, aparte de `api/rutas/libros.py` (sellado); `api.main` le pone el mismo acceso que a las rutas de libros (`libros.ACCESO_LIBROS`) | `aplicacion.que_hacer` |
+
+Cambios en módulos que ya existían: `aplicacion/indice_aprobaciones.py` (`escribir_reflejo` recibe el gancho
+`al_reflejar`, con el que `api/rutas/aprobaciones.py` llama a `avisos_por_evento.de_aprobaciones`),
+`api/rutas/precios_empresa.py` (avisa la lista cargada con `api.avisos.avisar`), `api/rutas/auditorias_libro.py` (la
+lista dice `usuario`), `seguridad/modelo.py` (`SolicitudCuenta`, `Notificacion`, `PreferenciaNotificacion` y
+`Usuario.correo`, dentro de la metadata de seguridad que ya está en `METADATAS_INSTALACION`), `seguridad/cuentas.py`
+(`crear_usuario` consulta `retencion.retiene_login`) y `migraciones/metadatos.py` (agrega `METADATA_ENTREGA` a
+`METADATAS_CASO`). La matriz `DEPENDENCIAS_PERMITIDAS` de `tests/unit/test_arquitectura.py` sigue siendo
+la fuente de las dependencias entre paquetes (nota del 2026-11-17 en §4).
+
+**Interfaz (`frontend-desktop/src/`).** `sesion/CrearCuenta.tsx` y `sesion/TengoUnCodigo.tsx` (desde «Crear una cuenta»
+y «Tengo un código» en `sesion/Entrar.tsx`); la sección «Solicitudes» de `paginas/administracion/Cuentas.tsx`;
+`comun/notificaciones/` (`ProveedorDeNotificaciones`, montado en `marco/Marco.tsx`, con su almacén en la API
+`almacenDeLaApi.ts`; `Campanita`, `RegionDeNotificaciones` para los avisos emergentes, `PanelDeNotificaciones` y el
+modelo puro `modelo.ts`); `marco/BarraDeEstado.tsx` (la carpeta y la campanita); `paginas/notificaciones/`
+(Cuenta › Notificaciones); `paginas/actividad/` (Cuenta › Actividad) y `comun/EnlaceDePersona.tsx`;
+`comun/fechaEscrita.ts` (la fecha dd/mm/aaaa escrita a mano, en `shell/obras/DialogoNuevaObra.tsx` y
+`paginas/obras/index.tsx`); `paginas/auditoria/AuditarUnLibro.tsx` con `ProblemasDelLibro`, `AlertasDePrecio`,
+`ConclusionDelLibro`, `logicaDelLibro.ts` y `useAuditoriaDelLibro.ts` (B2), y `comun/QueHacer.tsx` con
+`comun/catalogoQueHacer.ts`, usados también en `paginas/historial/Detalle.tsx`.
+
+### Vista de procesos
+
+- **Pedir, aprobar y canjear una cuenta.** `POST /v1/solicitudes` comprueba el cupo en memoria antes de calcular
+  Argon2 y después el de la base, y guarda la solicitud. Al aprobar, el código sale solo en esa respuesta; en la base
+  queda su SHA-256. El canje hace sus comprobaciones en un orden fijo (estado, vencimiento, aprobador vigente, huella y
+  contraseña); Argon2 corre solo si las anteriores valen, y todo pasa en una transacción con el bloqueo de escritura de
+  la instalación.
+- **Avisos de un momento.** Al escribir el índice de aprobaciones (en la transacción de la instalación que lo escribe)
+  y al cargar una lista de precios (en una transacción propia, tras confirmar la carpeta), se crean las notificaciones
+  de quienes les corresponden. Cada inserción va en su propio `SAVEPOINT`: un fallo se registra y lo avisado sigue
+  igual.
+- **Avisos que dependen de la fecha.** No hay hilo de fondo. `GET /v1/notificaciones` hace primero el barrido perezoso
+  (`avisos_por_evento.barrer`) solo para quien lista: el recordatorio de lo que espera su dictamen y, en la carpeta que
+  tiene abierta, las compras por pedir y las entregas al cliente. Primero lee la carpeta y las preferencias con la
+  sesión diferida de `instalacion.db`, sin cerrojo; solo después, ya cerrada la carpeta, toma la sesión de escritura
+  (`BEGIN IMMEDIATE`) para crear los avisos y listar. Así un barrido largo no frena los inicios de sesión ni los
+  guardados de las demás personas. Un error del barrido se registra y el listado sigue.
+- **Auditar un libro (B2).** La página manda una sola `POST /v1/libros/auditoria` y pide `GET /v1/libros/que-hacer`
+  aparte. Junta las dos respuestas en el navegador por código de regla y por tipo de alerta. La réplica
+  (`POST /v1/libros/replica`) se pide solo al pulsar «Ver la hoja marcada».
+
+### Vista física
+
+Sin cambios: el mismo proceso Uvicorn y las mismas dos bases. `instalacion.db` gana `solicitud_cuenta`, `notificacion`
+y `preferencia_notificacion` y la columna `usuario.correo` (`ins_0013` a `ins_0016`); cada carpeta de obra gana
+`entrega_de_obra` (`caso_0025`). Sílice no envía correo: «Enviarlo por correo» es un enlace `mailto:` que abre el
+programa de correo del equipo, así que las excepciones de red de RNF-08 no cambian.

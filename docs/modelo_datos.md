@@ -933,3 +933,82 @@ Solo inserción: al leer manda el último guardado de la versión (`id` descende
 inserción del caso; no depende del reloj del equipo); sin uno propio, el último de otra versión de la misma obra. Un guardado sin filas en `riesgo_mapa_serie` es un mapa vacío. Guardar
 el mismo mapa que ya era el último de la versión no escribe nada. Al guardar se validan las series contra las que admite
 la moneda y el largo de cada insumo (de 1 a 500 caracteres); los insumos que la versión ya no tiene se filtran al leer.
+
+## 12. Solicitudes de cuenta (base de la instalación, revisión `ins_0013_solicitud_cuenta`)
+
+C9a, registro con código de 20 caracteres (especificación
+[2026-11-26-registro-con-codigo](especificaciones/2026-11-26-registro-con-codigo.md)). Una persona pide una cuenta y
+Sílice guarda una solicitud, no una cuenta: no hay sesión hasta canjear el código que genera el administrador al
+aprobarla. El modelo está en `seguridad/modelo.py` (`SolicitudCuenta`) y solo lo lee y escribe
+`seguridad/solicitudes.py`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `solicitud_cuenta` | `id` PK, `login` (60, normalizado), `nombre` (120), `correo` (254), `huella_clave` (200, Argon2), `creada`, `estado` (`pendiente` \| `aprobada` \| `rechazada` \| `usada` \| `vencida`), `papel` (`arma` \| `revisa`; nulo hasta aprobar), `huella_codigo` (64, SHA-256 del código normalizado; nulo sin código vigente), `vence` (nulo; aprobada + 7 días), `resuelta_por` (120), `resuelta_por_id` (FK → `usuario.id`, nulo; agregado en `ins_0016_solicitud_resuelta_por`) | `login` UK: una solicitud rechazada o vencida se reutiliza si se pide de nuevo; `fk_solicitud_cuenta_resuelta_por_id`: al canjear se exige que esa cuenta siga activa y administradora |
+
+La misma revisión agrega `usuario.correo` (254, nulo, `''` por omisión para las cuentas anteriores). Ni la contraseña ni
+el código se guardan en claro; el código solo viaja una vez, en la respuesta de la aprobación.
+
+## 13. Notificaciones por persona (base de la instalación, revisión `ins_0014_notificacion`)
+
+C11 (2026-11-26): notificaciones persistentes por persona durante 30 días, mostradas en la campanita de la barra de
+estado y en su panel lateral derecho. Cada cuenta ve y marca solo las suyas. El modelo vive en `seguridad/modelo.py`
+(`Notificacion`, registrado en `METADATAS_INSTALACION`) y solo lo lee y escribe `aplicacion/notificaciones.py`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `notificacion` | `id` PK, `usuario_id` FK → `usuario.id`, `gravedad` (12: `listo` \| `info` \| `advertencia` \| `error`), `titulo` (200), `detalle` (1000), `enlace_texto` (120), `enlace_ruta` (300, ruta interna que empieza por `/`, sin `//` ni esquema), `creada`, `leida` (bool) | `CHECK gravedad IN ('listo', 'info', 'advertencia', 'error')` (`ck_notificacion_gravedad`); índice compuesto `ix_notificacion_usuario_creada (usuario_id, creada)` |
+
+Las filas estrictamente anteriores a `ahora − 30 días` se descartan y borran por persona al consultar o agregar; cada
+cuenta conserva como máximo 200 notificaciones, ordenadas de más reciente a más antigua (`creada` descendente, `id`
+descendente).
+
+### 13.1 Notificaciones por evento y qué recibir (revisión `ins_0015_notificacion_por_evento`)
+
+C11b (2026-11-26, [notificaciones por evento](especificaciones/2026-11-26-notificaciones-por-evento.md)): el servidor
+crea notificaciones cuando pasa algo (un envío a aprobación, su dictamen o retiro, una lista de precios nueva) o cuando
+vence una fecha (el recordatorio de dictamen a los 2 días hábiles y las compras por pedir, calculados al listar). La
+revisión agrega a `notificacion` la columna `clave_evento` y crea la tabla de preferencias. Las reglas viven en
+`aplicacion/avisos_por_evento.py`, que es el único que lee y escribe `preferencia_notificacion`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `notificacion` (agregado) | `clave_evento` (255, nula; nula en las que crea el front) | índice único `ux_notificacion_usuario_clave (usuario_id, clave_evento)`: un evento no se repite para una persona (las nulas no chocan) |
+| `preferencia_notificacion` | `usuario_id` FK → `usuario.id`, `categoria` (40: `por_dictaminar` \| `dictamen` \| `compras` \| `listas_de_precios` \| `entregas`), `activa` (bool) | PK `(usuario_id, categoria)`; sin fila, la categoría está encendida; `por_dictaminar` no se apaga para quien revisa (lo decide la aplicación) |
+
+Como la retención es de 30 días, la clave de un evento vuelve a quedar libre a los 30 días: un recordatorio, una compra
+vencida o una entrega vencida que siguen igual se repiten una vez al mes.
+
+## 14. Fecha de entrega al cliente de una obra (base del caso, revisión `caso_0025_entrega_de_obra`)
+
+> Hasta el 2026-11-28 esta sección era la §13.2. Sube de nivel porque su tabla vive en la base de cada carpeta de obra,
+> no en la de la instalación como las de §13.
+
+Lote G5 (decisión de Eugenio del 2026-11-26, [notificaciones por evento](especificaciones/2026-11-26-notificaciones-por-evento.md) §4):
+la fecha en que hay que entregarle el presupuesto al cliente vive en la carpeta de la obra, fuera de `core/`. El modelo
+está en `aplicacion/tablas_entrega.py` (`METADATA_ENTREGA`), sin clave foránea a `core.models`, y solo lo lee y escribe
+`aplicacion/entrega_de_obra.py`. Alimenta la categoría `entregas` del barrido perezoso de `aplicacion/avisos_por_evento.py`
+(Advertencia desde 3 días hábiles antes y Error desde el día de la entrega mientras la obra siga sin entregar, para quien
+arma y trabajó en ella).
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `entrega_de_obra` | `proyecto_codigo` PK (40, el código de la obra como texto: su `proyecto.id`, el mismo que da `GET /v1/proyectos`; la ruta también acepta el nombre y lo resuelve con `aplicacion.proyectos.resolver_proyecto`), `fecha_entrega` (`date`, nula si se quitó), `actualizada` (`datetime`), `actualizada_por` (200, el responsable `Nombre <login>` o la clave de API) | una fila por obra; `fecha_entrega` no puede estar en el pasado al fijarla (lo valida la aplicación) |
+
+Una obra cuenta como entregada para el aviso cuando la instalación registra un paquete exportado de alguna de sus
+versiones (`evento_acceso.tipo` igual a «paquete exportado», con el sello de la versión en su detalle) desde la última vez que se fijó la
+fecha (`actualizada`): esa lectura no agrega columnas.
+
+## 15. Lo que la reestructuración del front construyó sin tablas nuevas (2026-11-28)
+
+Enmienda del 2026-11-28 de la [ERS](ERS.md) (RF-215 a RF-224), rama `feature/front-b1`, aún sin fusionar en `main`.
+Lo nuevo en tablas son las §12 a §14. El resto **no crea tablas ni columnas**:
+
+- **Actividad por persona (RF-221).** `aplicacion/actividad.py` solo lee lo que ya se guarda:
+  `eslabon_version.usuario` y `eslabon_version.fecha_hora` de la carpeta abierta;
+  `mp_indice_aprobacion.enviado_por` y `.enviado_el`, `.dictamen_por` y `.dictamen_el`, y `auditoria_libro.usuario` y
+  `.fecha_hora` (§10), de `instalacion.db`; y `proyecto.nombre` y `presupuesto.codigo` para el texto. La persona se
+  reconoce por el `<login>` de esos textos.
+- **«Qué hacer» de cada hallazgo y alerta (RF-223).** Es un catálogo en el código (`aplicacion/que_hacer.py`) que se
+  sirve por `GET /v1/libros/que-hacer`; nada se guarda. El historial de auditorías (§10) no cambia de forma.
+- **Auditar un libro (RF-224).** Usa las rutas de libros de siempre y el mismo historial de §10.

@@ -85,12 +85,12 @@ describe("logica de Revisar un paquete", () => {
   test("las filas de hallazgos muestran el nombre de la regla junto al código, o solo el código si viene vacío", () => {
     expect(
       filasDeHallazgos([
-        { regla: "R11", nombre_regla: "Precio fuera de rango", severidad: "INFO", descripcion: "3 insumos no contrastables" },
+        { regla: "R11", nombre_regla: "Precio fuera de rango frente a MaPreX", severidad: "INFO", descripcion: "3 insumos no contrastables" },
         { regla: "R2", nombre_regla: "", severidad: "ERROR", descripcion: "Sin nombre" },
         { regla: "R3", severidad: "ADVERTENCIA", descripcion: "Sin campo" },
       ]),
     ).toEqual([
-      { id: "0", regla: "Precio fuera de rango (R11)", severidad: "INFO", descripcion: "3 insumos no contrastables" },
+      { id: "0", regla: "Precio fuera de rango frente a MaPreX (R11)", severidad: "INFO", descripcion: "3 insumos no contrastables" },
       { id: "1", regla: "R2", severidad: "ERROR", descripcion: "Sin nombre" },
       { id: "2", regla: "R3", severidad: "ADVERTENCIA", descripcion: "Sin campo" },
     ]);

@@ -50,7 +50,7 @@
 }
 
 .silice-radial__cifra {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 0.875rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -150,7 +150,7 @@
 }
 
 .silice-donut__centro-valor {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 1rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -160,7 +160,7 @@
 }
 
 .silice-donut__centro-unidad {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 0.75rem;
   color: var(--silice-muted);
   font-variant-numeric: tabular-nums;
@@ -238,7 +238,7 @@
   display: grid;
   text-align: end;
   flex: none;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-variant-numeric: tabular-nums;
 }
 
@@ -318,7 +318,7 @@
   inline-size: 3.5rem;
   flex: none;
   text-align: end;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 0.75rem;
   color: var(--silice-muted-soft);
   font-variant-numeric: tabular-nums;
@@ -373,7 +373,7 @@
 }
 
 .silice-barras-v__cifra {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -420,7 +420,7 @@
 }
 
 .silice-barras-v__rotulo-principal {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--silice-ink);
@@ -459,7 +459,7 @@
 }
 
 .silice-riesgo-medidor__valor {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--silice-ink);

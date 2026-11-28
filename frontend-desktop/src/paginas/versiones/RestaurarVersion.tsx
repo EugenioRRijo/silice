@@ -1,6 +1,9 @@
 import { Button, Select, SelectItem } from "@carbon/react";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { useNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { rutaOPendientes } from "../../marco/espacios";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { DialogoDeOperacion } from "../hoja/DialogoDeOperacion";
 import { usuarioDeSesion } from "../hoja/logicaGuardar";
@@ -26,14 +29,29 @@ interface PropsDeFormulario {
 }
 
 function FormularioDeRestaurar({ proyecto, versiones, inicial, anfitrion, alCancelar, alCrearVersion }: PropsDeFormulario) {
-  const { alExpirar, sesion } = useAplicacion();
+  const { alExpirar, sesion, nombreProyecto } = useAplicacion();
+  const obra = useContext(ContextoDeLaObra);
+  const { notificar } = useNotificaciones();
   const [elegida, setElegida] = useState(inicial);
   const [fuente, setFuente] = useState("");
   const operacion = useOperacion({
     ruta: RUTA_DE_RESTAURAR,
     alExpirar,
-    alCrear: (r: VersionCreada) =>
-      alCrearVersion(r.codigo, textoDeVersionCreada(r, `La versión ${elegida} se restauró como la versión ${r.codigo} (la vigente).`)),
+    alCrear: async (r: VersionCreada) => {
+      notificar({
+        gravedad: "listo",
+        titulo: `Versión ${elegida} restaurada como ${r.codigo}`,
+        ...(nombreProyecto ? { detalle: nombreProyecto } : {}),
+        enlace: {
+          texto: "Ver en Presupuesto",
+          ruta: `${rutaOPendientes("hoja", obra ?? undefined)}?${new URLSearchParams({ version: r.codigo }).toString()}`,
+        },
+      });
+      await alCrearVersion(
+        r.codigo,
+        textoDeVersionCreada(r, `La versión ${elegida} se restauró como la versión ${r.codigo} (la vigente).`),
+      );
+    },
   });
   return (
     <DialogoDeOperacion

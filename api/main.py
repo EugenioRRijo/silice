@@ -19,6 +19,7 @@ from api import interfaz
 from api.proteccion import opciones_documentacion, proteger
 from api.rutas import (
     acerca,
+    actividad,
     admin_asistente,
     admin_claves_api,
     admin_empresa,
@@ -49,10 +50,13 @@ from api.rutas import (
     indices,
     libros,
     libros_informe,
+    libros_que_hacer,
     listas,
     mercado,
     modulos,
+    notificaciones,
     obras,
+    obras_entrega,
     precios_empresa,
     presupuestos,
     presupuestos_calculo,
@@ -69,6 +73,7 @@ from api.rutas import (
     sesion,
     similares,
     simulador,
+    solicitudes,
     tablero,
     tema,
     vial,
@@ -143,6 +148,8 @@ app.include_router(auditorias.router)  # S3 §10: POST /v1/auditorias
 app.include_router(libros.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
 # el informe de hallazgos de un libro en PDF (P2): el mismo acceso que las demás rutas de libros
 app.include_router(libros_informe.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
+# B2: el «Qué hacer» de cada hallazgo y alerta (solo lectura; aparte de `libros.py`, sellado)
+app.include_router(libros_que_hacer.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
 # Migracion: el simulador de listas (no escribe en la base); clave o sesion con EDITAR_HOJA
 app.include_router(
     simulador.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
@@ -167,6 +174,12 @@ app.include_router(casos.router)
 app.include_router(proyectos.router)
 # Migracion: Administracion, pestañas Cuentas y Accesos (ADMINISTRAR_CUENTAS, solo sesion)
 app.include_router(cuentas.router)
+# C9a: el registro con código (pedir una cuenta, aprobarla y canjear el código)
+app.include_router(solicitudes.router)
+# C10: la actividad por persona (solo lectura; la propia cuenta o quien administra las cuentas)
+app.include_router(actividad.router)
+# C11: notificaciones por persona (30 días; cada cuenta ve y toca solo las suyas)
+app.include_router(notificaciones.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
 app.include_router(composicion.router)
 # Ola 4 (S2-C): el tablero de la obra (UC-13)
@@ -234,6 +247,7 @@ app.include_router(consulta.router)
 # MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),
 # los datos de la mesa de control; el acceso va en cada ruta
 app.include_router(obras.router)
+app.include_router(obras_entrega.router)
 # T14 (montar un presupuesto): /v1/mercado, estudio de mercado y «Usar este precio»
 # (EDITAR_HOJA en la ruta)
 app.include_router(mercado.router)

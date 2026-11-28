@@ -131,8 +131,10 @@ describe("BarraLateral: lista sin carpetas (D-F3-3)", () => {
     ]);
     expect(screen.queryByRole("group", { name: "Carpeta Norte" })).toBeNull();
     expect(screen.queryByRole("group", { name: "Carpeta Sur" })).toBeNull();
-    expect(document.body.textContent).not.toContain("Carpeta Norte");
-    expect(document.body.textContent).not.toContain("Carpeta Sur");
+    // Cara «riel de iconos» (2026-11-26): la barra nombra la carpeta abierta al pie, así que ya no se afirma sobre todo el documento
+    // que «Carpeta Norte» no aparece: solo que la lista de obras no la repite por grupos.
+    expect(lista.textContent).not.toContain("Carpeta Norte");
+    expect(lista.textContent).not.toContain("Carpeta Sur");
   });
 
   it("con una sola carpeta no hay grupos ni se nombra la carpeta", async () => {
@@ -141,7 +143,7 @@ describe("BarraLateral: lista sin carpetas (D-F3-3)", () => {
     const lista = await listaDeObras();
     expect(within(lista).getAllByRole("link")).toHaveLength(2);
     expect(screen.queryByRole("group", { name: "Carpeta Norte" })).toBeNull();
-    expect(document.body.textContent).not.toContain("Carpeta Norte");
+    expect(lista.textContent).not.toContain("Carpeta Norte");
   });
 
   it("las obras van por nombre aunque la API las traiga por carpeta: una de la carpeta Sur que empieza por A queda primera", async () => {
@@ -210,12 +212,12 @@ describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () 
     }
   });
 
-  it("cada obra enlaza a su Resumen, aunque la persona esté en otra sección o subvista de otra obra (no se conserva la sección)", async () => {
+  it("cada obra enlaza a su Presupuesto (D1 de B1), aunque la persona esté en otra sección o subvista de otra obra (no se conserva la sección)", async () => {
     pintar({ abierta, ruta: RUTA_DE_CLINICA });
     const lista = await listaDeObras();
-    expect(within(lista).getByRole("link", { name: "Clínica Las Mercedes" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/resumen");
-    expect(within(lista).getByRole("link", { name: "Torre B" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/2/resumen");
-    expect(within(lista).getByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/resumen");
+    expect(within(lista).getByRole("link", { name: "Clínica Las Mercedes" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/presupuesto");
+    expect(within(lista).getByRole("link", { name: "Torre B" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/2/presupuesto");
+    expect(within(lista).getByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/presupuesto");
   });
 
   it("la obra de la ruta lleva aria-current=page en cualquier sección o subvista; las demás no", async () => {
@@ -250,21 +252,21 @@ describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () 
   });
 });
 
-describe("BarraLateral: Vista general y «Costos y producción»", () => {
-  // F6, T8 (diseño visual 3.1, punto 1): la primera entrada es «Vista general», que lleva a Inicio; las dos vistas de Inicio
+describe("BarraLateral: Inicio y «Costos y producción»", () => {
+  // F6, T8 (diseño visual 3.1, punto 1) y lote C4 (la entrada se llama «Inicio», la ruta no cambia): la primera entrada lleva a Inicio; las dos vistas de Inicio
   // (Vista general y Pendientes) son del mismo espacio, así que la entrada está activa en cualquiera de ellas.
-  it.each(["/inicio/general", "/inicio/pendientes"])("«Vista general» es un enlace a #/inicio/general y está activo en %s", async (ruta) => {
+  it.each(["/inicio/general", "/inicio/pendientes"])("«Inicio» es un enlace a #/inicio/general y está activo en %s", async (ruta) => {
     pintar({ ruta });
     await listaDeObras();
-    const enlace = screen.getByRole("link", { name: "Vista general" });
+    const enlace = screen.getByRole("link", { name: "Inicio" });
     expect(enlace).toHaveAttribute("href", "/inicio/general");
     expect(enlace).toHaveAttribute("aria-current", "page");
   });
 
-  it("«Vista general» no está activa fuera de Inicio, y ya no hay un enlace llamado «Pendientes» en la barra", async () => {
+  it("«Inicio» no está activa fuera de Inicio, y ya no hay un enlace llamado «Pendientes» en la barra", async () => {
     pintar({ ruta: "/obra/empresa/7/resumen" });
     await listaDeObras();
-    expect(screen.getByRole("link", { name: "Vista general" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Inicio" })).not.toHaveAttribute("aria-current");
     expect(screen.queryByRole("link", { name: "Pendientes" })).toBeNull();
   });
 
@@ -295,7 +297,8 @@ describe("BarraLateral: Vista general y «Costos y producción»", () => {
     expect(within(lateral).queryByRole("link", { name: "Ayuda" })).toBeNull();
     expect(within(lateral).queryByRole("navigation", { name: "Empresa" })).toBeNull();
     expect(within(lateral).queryByRole("heading", { name: "Empresa" })).toBeNull();
-    expect(lateral.querySelectorAll("a[href^='/empresa'], a[href^='/cuenta']")).toHaveLength(0);
+    // «Cambiar» de la carpeta abierta (pie del riel) es el único enlace a la Cuenta que la barra ofrece.
+    expect(lateral.querySelectorAll("a[href^='/empresa'], a[href^='/cuenta']:not([href='/cuenta/carpetas'])")).toHaveLength(0);
   });
 
   it("quien arma entra a Precios por el Catálogo; el grupo lleva a la primera herramienta usable de cada espacio", async () => {
@@ -371,14 +374,20 @@ describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
     expect(lista.querySelectorAll('[tabindex="-1"]')).toHaveLength(0);
   });
 
-  it("Tab recorre Vista general, el boton de plegado, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
+  // Riel de iconos: el botón de reducir va en la cabecera, antes de las opciones (antes iba junto a «Inicio»).
+  it("Tab recorre el boton de plegado, Inicio, los espacios, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
     const u = userEvent.setup();
     pintar({ ruta: "/inicio/pendientes" });
     await listaDeObras();
     await u.tab();
-    expect(screen.getByRole("link", { name: "Vista general" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Reducir a iconos" })).toHaveFocus();
     await u.tab();
-    expect(screen.getByRole("button", { name: "Ocultar barra lateral" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Inicio" })).toHaveFocus();
+    // Los espacios de la empresa van arriba, antes que las obras (el grupo «Espacios de la empresa»).
+    for (const espacio of ["Auditar un presupuesto", "Precios y catálogo", "Costos de producción"]) {
+      await u.tab();
+      expect(screen.getByRole("link", { name: espacio })).toHaveFocus();
+    }
     await u.tab();
     expect(screen.getByRole("button", { name: "Nueva obra" })).toHaveFocus();
     await u.tab();
@@ -386,7 +395,7 @@ describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
     await u.tab();
     expect(screen.getByRole("link", { name: "Galpón Sur" })).toHaveFocus();
     await u.keyboard("{Enter}");
-    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Sur.db/3/resumen");
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Sur.db/3/presupuesto");
   });
 
   it("las flechas no mueven el foco entre obras: no hay patrón de árbol", async () => {
@@ -514,17 +523,20 @@ describe("BarraLateral: Nueva obra", () => {
     const activo = /&:active\s*\{([^}]*)\}/.exec(estilos.slice(estilos.indexOf(".silice-marco-boton-principal")))?.[1] ?? "";
     expect(activo).toContain("background-color: var(--cds-button-primary-active)");
     expect(regla).not.toMatch(/color-mix/);
-    expect(regla).toMatch(/(^|[\s;])color: var\(--cds-text-on-color\)/);
+    // El texto va en la hoja, como el botón principal de Carbon (botones.scss): el relleno es el complementario, que en
+    // oscuro es casi blanco, y --cds-text-on-color (blanco fijo) daba 1,2:1 (T3, 2026-11-28).
+    expect(regla).toMatch(/(^|[\s;])color: var\(--silice-hoja\)/);
+    expect(regla).not.toContain("--cds-text-on-color");
     expect(regla).toMatch(/font-weight: 600/);
     expect(regla).toMatch(/block-size: 2\.5rem/);
     expect(regla).toMatch(/inline-size: 100%/);
     // Foco: contorno blanco hacia dentro; el del marco no se vería sobre el complementario (en el neutro es el mismo color).
     const foco = /&:focus-visible\s*\{([^}]*)\}/.exec(estilos.slice(estilos.indexOf(".silice-marco-boton-principal")))?.[1] ?? "";
-    expect(foco).toContain("outline: 2px solid var(--cds-text-on-color)");
+    expect(foco).toContain("outline: 2px solid var(--silice-hoja)");
     expect(foco).toContain("outline-offset: -4px");
     expect(foco).not.toContain("--silice-marco");
     expect(estilos).toContain("background-color: var(--silice-lateral)");
-    expect(estilos).toMatch(/inline-size: 16rem/);
+    expect(estilos).toMatch(/inline-size: 14.75rem/);
     expect(estilos).toContain("var(--silice-lateral-activo)");
     // El borde del activo es del color del marco (8,83:1 sobre el fondo del activo en el tema neutro), no del acento.
     expect(estilos).toMatch(/&\[aria-current="page"\]\s*\{[^}]*border-color:\s*var\(--silice-marco\)/);
@@ -532,10 +544,11 @@ describe("BarraLateral: Nueva obra", () => {
   });
 
   it("el tema neutro da al texto sobre el acento un contraste de al menos 4,5:1", () => {
-    // Los alias neutros de tokens.scss: acento = yellow-20 de Carbon, marco = background-inverse de g10 (gray-80).
+    // Los tokens de la cara «Papel y resaltador» (tokens.scss, C0): el acento amarillo y el marco en tinta; en la cara
+    // anterior eran alias de Carbon.
     const tokens = leer("estilos/tokens.scss");
-    expect(tokens).toContain("--silice-acento: #{colors.$yellow-20}");
-    expect(tokens).toContain("--silice-marco: var(--cds-background-inverse)");
+    expect(tokens).toContain("--silice-acento: #F6D55C");
+    expect(tokens).toContain("--silice-marco: light-dark(#1F1B16,");
     const luminancia = (hex: string) => {
       const [r, g, b] = [1, 3, 5].map((i) => {
         const c = parseInt(hex.slice(i, i + 2), 16) / 255;
@@ -543,7 +556,7 @@ describe("BarraLateral: Nueva obra", () => {
       });
       return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
     };
-    const [claro, oscuro] = [luminancia("#fddc69"), luminancia("#393939")];
+    const [claro, oscuro] = [luminancia("#f6d55c"), luminancia("#1f1b16")];
     expect((claro + 0.05) / (oscuro + 0.05)).toBeGreaterThanOrEqual(4.5);
   });
 });
@@ -728,30 +741,30 @@ describe("BarraLateral: contadores (rediseño F3)", () => {
     pendiente(SUR, 3, "d"),
   ];
 
-  it("Vista general lleva una píldora con el total y su nombre accesible dice «Vista general, 4 por hacer»", async () => {
+  it("Inicio lleva una píldora con el total y su nombre accesible dice «Inicio, 4 por hacer»", async () => {
     pintar({ pendientes: conPendientes(CUATRO) });
     await listaDeObras();
-    const enlace = enlacePendientes("Vista general, 4 por hacer");
+    const enlace = enlacePendientes("Inicio, 4 por hacer");
     expect(enlace).toHaveAttribute("href", "/inicio/general");
     expect(within(enlace).getByText("4")).toHaveClass("silice-pildora");
   });
 
-  it("con un solo pendiente dice «Vista general, 1 por hacer»", async () => {
+  it("con un solo pendiente dice «Inicio, 1 por hacer»", async () => {
     pintar({ pendientes: conPendientes([CUATRO[0]!]) });
     await listaDeObras();
-    expect(enlacePendientes("Vista general, 1 por hacer")).toBeInTheDocument();
+    expect(enlacePendientes("Inicio, 1 por hacer")).toBeInTheDocument();
   });
 
   it.each([
     ["sin ninguno", conPendientes([])],
     ["mientras carga", { estado: "cargando", recargar: vi.fn() } as PendientesDelMarco],
     ["con error", { estado: "error", mensaje: "falló", recargar: vi.fn() } as PendientesDelMarco],
-  ])("%s no hay píldora ni número, y el enlace se llama solo «Vista general»", async (_caso, pendientes) => {
+  ])("%s no hay píldora ni número, y el enlace se llama solo «Inicio»", async (_caso, pendientes) => {
     pintar({ pendientes });
     await listaDeObras();
-    const enlace = enlacePendientes("Vista general");
+    const enlace = enlacePendientes("Inicio");
     expect(enlace.querySelector(".silice-pildora")).toBeNull();
-    expect(enlace.textContent).toBe("Vista general");
+    expect(enlace.textContent).toBe("Inicio");
   });
 
   it("cada obra con pendientes lleva la suya (carpeta y número); la de 0 no lleva ninguna", async () => {
@@ -1041,7 +1054,7 @@ describe("BarraLateral: el nav «Obras y espacios» (A5)", () => {
     expect(within(nav).getByRole("list", { name: "Obras" })).toBe(lista);
   });
 
-  it("con la barra plegada existe y contiene la Vista general", async () => {
+  it("con la barra plegada existe y contiene Inicio", async () => {
     render(
       <MemoryRouter initialEntries={["/inicio/pendientes"]}>
         <ContextoAplicacion.Provider value={{ sesion: sesionDe("ana"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}>
@@ -1056,7 +1069,72 @@ describe("BarraLateral: el nav «Obras y espacios» (A5)", () => {
       </MemoryRouter>,
     );
     const nav = await screen.findByRole("navigation", { name: "Obras y espacios" });
-    expect(within(nav).getByRole("link", { name: "Vista general" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Mostrar barra lateral" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Inicio" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ampliar la barra" })).toBeInTheDocument();
+  });
+});
+
+// Riel de iconos (2026-11-26): la barra muestra los lugares (espacios arriba, todas las obras debajo), «En cifras» y la carpeta.
+describe("BarraLateral: el riel de iconos", () => {
+  const aviso = (carpeta: string, id: number, texto: string): PendienteDeObra => ({ ...pendiente(carpeta, id, texto), urgencia: "aviso" });
+
+  it("arriba el grupo «Espacios de la empresa» con Inicio, y debajo las obras", async () => {
+    pintar({ ruta: "/inicio/pendientes" });
+    const lista = await listaDeObras();
+    const rotulo = screen.getByText("Espacios de la empresa");
+    expect(rotulo.compareDocumentPosition(lista) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Inicio" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("cada obra con problemas los dice con su palabra, en la descripción y a la vista, sin cambiar su nombre", async () => {
+    pintar({
+      pendientes: conPendientes([pendiente(NORTE, 1, "a"), pendiente(NORTE, 1, "b"), aviso(NORTE, 1, "c")]),
+    });
+    const lista = await listaDeObras();
+    const enlace = within(lista).getByRole("link", { name: "Clínica Las Mercedes, 3 por hacer" });
+    expect(enlace).toHaveAccessibleDescription("2 bloquean · 1 aviso");
+    expect(within(enlace).getByText("2 bloquean · 1 aviso")).toHaveAttribute("data-gravedad", "error");
+  });
+
+  it("la obra abierta lleva aria-current=page y «En cifras» dice los problemas de esa obra con su palabra", async () => {
+    pintar({
+      abierta: { carpeta: NORTE, obraId: 1 },
+      ruta: "/obra/Carpeta%20Norte.db/1/resumen",
+      pendientes: conPendientes([pendiente(NORTE, 1, "a"), aviso(NORTE, 1, "b"), pendiente(NORTE, 2, "c")]),
+    });
+    const lista = await listaDeObras();
+    expect(within(lista).getByRole("link", { name: "Clínica Las Mercedes, 2 por hacer" })).toHaveAttribute("aria-current", "page");
+    const tarjeta = screen.getByRole("region", { name: "En cifras" });
+    expect(within(tarjeta).getAllByRole("link").map((e) => e.textContent)).toEqual(["1 bloquea", "1 aviso"]);
+  });
+
+  it("al pie dice la carpeta abierta y ofrece Cambiar a quien puede", async () => {
+    pintar();
+    await listaDeObras();
+    const pie = screen.getByRole("group", { name: "Carpeta abierta" });
+    expect(within(pie).getByText("Carpeta Norte")).toBeVisible();
+  });
+
+  it("reducida, cada obra es un enlace con su inicial, su nombre accesible y su title; la actual lleva aria-current", async () => {
+    render(
+      <MemoryRouter initialEntries={["/obra/Carpeta%20Norte.db/1/resumen"]}>
+        <ContextoAplicacion.Provider value={{ sesion: sesionDe("ana"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}>
+          <ContextoPendientes.Provider value={conPendientes([pendiente(NORTE, 1, "a")])}>
+            <ContextoLayoutDelMarco.Provider value={{ sidebarCollapsed: true, toggleSidebar: vi.fn() }}>
+              <ConObras>
+                <BarraLateral obraAbierta={{ carpeta: NORTE, obraId: 1 }} />
+              </ConObras>
+            </ContextoLayoutDelMarco.Provider>
+          </ContextoPendientes.Provider>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+    const clinica = await screen.findByRole("link", { name: "Clínica Las Mercedes, 1 por hacer" });
+    expect(clinica).toHaveAttribute("aria-current", "page");
+    expect(clinica).toHaveAttribute("title", "Clínica Las Mercedes (1 por hacer)");
+    expect(clinica).toHaveTextContent("C1");
+    expect(screen.getByRole("link", { name: "Torre B" })).toHaveTextContent("T");
+    expect(screen.getByRole("list", { name: "En cifras" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "1 bloquea" })).toBeInTheDocument();
   });
 });

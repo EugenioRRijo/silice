@@ -1,20 +1,524 @@
-// Vista general e inicios de Auditoria y Produccion en estetica editorial Swiss-industrial.
+// Inicio › Resumen e inicios de Auditoría y Producción en la cara «Papel y resaltador».
+// Todos los tamaños de letra van en rem y todos los colores salen de los tokens --silice-*.
 
 .silice-inicio {
+  --silice-grafico-etapa-en-elaboracion: var(--silice-t3);
+  --silice-grafico-etapa-en-aprobacion: var(--silice-resaltador-borde);
+  --silice-grafico-etapa-aprobada: var(--silice-serie-2);
+  --silice-grafico-etapa-en-ejecucion: var(--silice-serie-1);
+  --silice-grafico-etapa-otra: var(--silice-t2);
+
   display: grid;
-  gap: 1.5rem;
+  gap: 1.75rem;
+  min-inline-size: 0;
 }
 
+.silice-inicio__encabezado {
+  display: grid;
+  gap: 0.25rem;
+  min-inline-size: 0;
+}
+
+.silice-inicio__sobre {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--silice-t2);
+}
+
+.silice-marco .silice-inicio .silice-inicio__h1 {
+  margin: 0.125rem 0 0;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-variant-numeric: normal;
+  color: var(--silice-t1);
+}
+
+.silice-inicio__nota {
+  margin: 0.25rem 0 0;
+  max-inline-size: 65ch;
+  line-height: 1.45;
+  color: var(--silice-t2);
+}
+
+.silice-inicio__datos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.25rem;
+  margin-block-start: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--silice-t2);
+}
+
+// Bloques compartidos con Auditoría y Producción (PaginaAuditoria, PanelArenera).
 .silice-inicio__bloque {
   display: grid;
   gap: 0.75rem;
   padding: 1.25rem;
-  background-color: var(--silice-surface);
-  border: 1px solid var(--silice-border);
-  border-radius: var(--silice-radio-lg);
+  background-color: var(--silice-hoja);
+  border: 1px solid var(--silice-linea);
+  border-radius: 0.75rem;
+  min-inline-size: 0;
 }
 
-// Lanzador de herramientas dedicadas en una sola elevacion con divisores finos.
+.silice-inicio__seccion {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.silice-inicio__seccion--compacta {
+  max-inline-size: 38rem;
+}
+
+.silice-inicio__cabecera-seccion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.silice-inicio__titulo-seccion {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--silice-t1);
+}
+
+.silice-inicio__subtitulo-seccion {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--silice-t1);
+}
+
+.silice-inicio__explicacion {
+  margin: 0.25rem 0 0;
+  max-inline-size: 68ch;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--silice-t2);
+}
+
+.silice-inicio__pie {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--silice-t2);
+}
+
+// Gráfico principal de la cartera (barras horizontales comparativas por obra y moneda).
+.silice-cartera-rejilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+.silice-cartera-moneda {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+  padding: 1.25rem;
+  background-color: var(--silice-hoja);
+  border: 1px solid var(--silice-linea);
+  border-radius: 0.75rem;
+}
+
+.silice-cartera-moneda__titulo {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--silice-t1);
+}
+
+.silice-cartera-grafico {
+  container-type: inline-size;
+  min-inline-size: 0;
+  max-inline-size: 52rem;
+}
+
+.silice-cartera-grafico__filas {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-cartera-grafico__fila,
+.silice-cartera-grafico__eje-fila {
+  display: grid;
+  grid-template-columns: minmax(8rem, 13rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.silice-cartera-grafico__obra {
+  min-inline-size: 0;
+  text-align: end;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--silice-t1);
+  overflow-wrap: break-word;
+}
+
+.silice-cartera-grafico__zona-barras {
+  position: relative;
+  min-inline-size: 0;
+  // Reserva espacio a la derecha del 100 % para que la cifra del extremo nunca se recorte.
+  padding-inline-end: 13ch;
+}
+
+.silice-cartera-grafico__cuadricula {
+  position: absolute;
+  inset-block: -0.25rem;
+  inset-inline-start: 0;
+  inset-inline-end: 13ch;
+  pointer-events: none;
+}
+
+.silice-cartera-grafico__linea {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 1px;
+  background-color: var(--silice-linea);
+}
+
+.silice-cartera-grafico__linea--base {
+  background-color: var(--silice-t3);
+}
+
+.silice-cartera-grafico__par {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.silice-cartera-grafico__carril {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-block-size: 1.125rem;
+  min-inline-size: 0;
+}
+
+// Barras <= 24 px (0,875 rem = 14 px en escala base), 4 px redondeado en el extremo del dato y recto en la base.
+.silice-cartera-grafico__barra {
+  display: block;
+  block-size: 0.875rem;
+  max-block-size: 1.5rem;
+  min-inline-size: 2px;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: 4px;
+  border-end-end-radius: 4px;
+}
+
+.silice-cartera-grafico__barra--presupuesto {
+  background-color: var(--silice-t3);
+}
+
+.silice-cartera-grafico__barra--ejecutado {
+  background-color: var(--silice-serie-1);
+}
+
+.silice-cartera-grafico__cifra {
+  position: absolute;
+  padding-inline-start: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.silice-cartera-grafico__cifra--sec {
+  color: var(--silice-t2);
+}
+
+.silice-cartera-grafico__cifra--fuerte {
+  font-weight: 500;
+  color: var(--silice-t1);
+}
+
+.silice-cartera-grafico__marcas {
+  position: relative;
+  block-size: 1.25rem;
+  border-block-start: 1px solid var(--silice-linea);
+}
+
+.silice-cartera-grafico__marca {
+  position: absolute;
+  inset-block-start: 0.25rem;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  color: var(--silice-t2);
+  white-space: nowrap;
+
+  &:first-child {
+    transform: none;
+  }
+}
+
+.silice-cartera-grafico__unidad {
+  display: block;
+  margin-block-start: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--silice-t2);
+}
+
+@container (max-inline-size: 32rem) {
+  .silice-cartera-grafico__fila {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .silice-cartera-grafico__obra {
+    text-align: start;
+  }
+
+  .silice-cartera-grafico__eje-fila {
+    grid-template-columns: minmax(0, 1fr);
+
+    .silice-cartera-grafico__obra {
+      display: none;
+    }
+  }
+}
+
+// Leyendas y desplegable «Ver como tabla».
+.silice-inicio__leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--silice-t2);
+}
+
+.silice-inicio__leyenda--lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.silice-inicio__leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.silice-inicio__muestra {
+  display: inline-block;
+  inline-size: 0.75rem;
+  block-size: 0.5rem;
+  border-radius: 2px;
+  flex: none;
+}
+
+.silice-inicio__muestra--presupuesto {
+  background-color: var(--silice-t3);
+}
+
+.silice-inicio__muestra--ejecutado {
+  background-color: var(--silice-serie-1);
+}
+
+.silice-inicio__vertabla {
+  min-inline-size: 0;
+
+  summary {
+    cursor: pointer;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--silice-t2);
+    inline-size: fit-content;
+  }
+}
+
+.silice-inicio__tabla-detalle {
+  margin-block-start: 0.5rem;
+
+  tfoot td {
+    padding: 0.5rem 1rem;
+    border-block-start: 1px solid var(--silice-linea);
+    background-color: var(--silice-hoja);
+    font-weight: 500;
+    color: var(--silice-t1);
+  }
+}
+
+// Bloque secundario «Avance de la cartera» (barra segmentada + medidores compactos).
+.silice-avance-segmentos {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  block-size: 0.75rem;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background-color: var(--silice-alzado);
+}
+
+.silice-avance-segmentos__parte {
+  display: block;
+  min-inline-size: 0.25rem;
+  block-size: 100%;
+}
+
+.silice-avance-medidores {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  list-style: none;
+  display: grid;
+  gap: 0.625rem;
+  background-color: var(--silice-hoja);
+  border: 1px solid var(--silice-linea);
+  border-radius: 0.75rem;
+}
+
+.silice-avance-medidores__fila {
+  display: grid;
+  gap: 0.25rem;
+  min-inline-size: 0;
+}
+
+.silice-avance-medidores__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.silice-avance-medidores__obra {
+  font-weight: 500;
+  color: var(--silice-t1);
+}
+
+.silice-avance-medidores__cifra {
+  color: var(--silice-t2);
+}
+
+.silice-inicio__prog {
+  position: relative;
+  block-size: 0.375rem;
+  border-radius: 0.25rem;
+  background-color: var(--silice-alzado);
+  overflow: hidden;
+}
+
+.silice-inicio__prog-real {
+  display: block;
+  block-size: 100%;
+  background-color: var(--silice-resaltador-borde);
+}
+
+.silice-inicio__prog-plan {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 2px;
+  background-color: var(--silice-t1);
+}
+
+// Gravedad con su palabra («Problemas abiertos por obra» y encabezado).
+.silice-inicio__marco-compacto {
+  min-inline-size: 0;
+}
+
+.silice-inicio__gravedades {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.375rem;
+}
+
+.silice-inicio__gravedad {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+
+  svg {
+    fill: currentcolor;
+    flex: none;
+  }
+}
+
+.silice-inicio__gravedad--error {
+  color: var(--silice-gravedad-error);
+}
+
+.silice-inicio__gravedad--adv {
+  color: var(--silice-gravedad-advertencia);
+}
+
+.silice-inicio__ninguno {
+  color: var(--silice-t2);
+}
+
+// Tarjetas de «Lo que hay cargado» (cifras proporcionales, sin tabular-nums en el valor grande).
+.silice-inicio__tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.75rem;
+}
+
+.silice-inicio__tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-inline-size: 0;
+  padding: 1rem;
+  background-color: var(--silice-hoja);
+  border: 1px solid var(--silice-linea);
+  border-radius: 0.75rem;
+}
+
+.silice-inicio__tarjeta-etiqueta {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--silice-t2);
+}
+
+.silice-inicio__tarjeta-cifra {
+  margin-block-start: 0.25rem;
+  font-size: 1.375rem;
+  line-height: 1.3;
+  font-weight: 500;
+  font-variant-numeric: normal;
+  color: var(--silice-t1);
+  overflow-wrap: break-word;
+}
+
+.silice-inicio__tarjeta-detalle {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--silice-t2);
+}
+
+.silice-inicio__tarjeta-enlace {
+  margin-block-start: auto;
+  padding-block-start: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  inline-size: fit-content;
+}
+
+// Lanzador de herramientas para cuentas de administración sin cartera de obras.
 .silice-lanzador__rejilla {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
@@ -25,40 +529,22 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 1rem 1.25rem;
-  border-inline-end: 1px solid var(--silice-hairline);
-  border-block-end: 1px solid var(--silice-hairline);
-  background-color: var(--silice-surface);
-  color: var(--silice-ink);
+  border-inline-end: 1px solid var(--silice-linea);
+  border-block-end: 1px solid var(--silice-linea);
+  background-color: var(--silice-hoja);
+  color: var(--silice-t1);
   text-decoration: none;
-  transition: background-color 150ms ease, color 150ms ease;
 
   &:last-child {
     border-inline-end: 0;
   }
 
   &:hover {
-    background-color: var(--silice-charcoal);
-    color: var(--cds-text-on-color);
-
-    .silice-lanzador__accion {
-      color: var(--silice-gold);
-    }
-
-    .silice-lanzador__arriba svg {
-      fill: var(--silice-gold);
-    }
-
-    .silice-lanzador__titulo {
-      color: var(--cds-text-on-color);
-    }
-
-    .silice-lanzador__desc {
-      color: rgba(255, 255, 255, 0.78);
-    }
+    background-color: var(--silice-alzado);
   }
 
   &:focus-visible {
-    outline: 2px solid var(--cds-focus);
+    outline: 2px solid var(--silice-foco);
     outline-offset: -2px;
   }
 }
@@ -67,7 +553,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--silice-muted-soft);
+  color: var(--silice-t2);
 
   svg {
     fill: currentcolor;
@@ -78,15 +564,16 @@
 .silice-lanzador__titulo {
   margin: 0;
   font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--silice-ink);
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--silice-t1);
 }
 
 .silice-lanzador__desc {
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.45;
-  color: var(--silice-muted);
+  color: var(--silice-t2);
   flex: 1 1 auto;
 }
 
@@ -96,46 +583,16 @@
   gap: 0.25rem;
   margin-block-start: 0.5rem;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--silice-ink);
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--silice-t1);
 
   svg {
     fill: currentcolor;
   }
 }
 
-// Banda de graficos animados de cartera (barras + donut circular).
-// Los tokens del anillo por estado (CarteraYAvance.tsx), uno fijo por etapa: los grises y el verde azulado de Carbon de
-// los graficos (como paletaGraficos.ts), ni el verde ni el rojo IBCS (son de las variaciones) ni el ambar de la marca.
-// Cada uno llega a 3:1 sobre la superficie. «Atrasada» no tiene token aqui: lleva --silice-sev-error, el de su icono.
-// Pendiente de la direccion de diseno: los grises 50, 70 y 100 se parecen entre si (banda de claridad y croma).
-.silice-inicio__visuales {
-  --silice-grafico-etapa-en-elaboracion: #8d8d8d; // gray-50
-  --silice-grafico-etapa-en-aprobacion: #525252; // gray-70
-  --silice-grafico-etapa-aprobada: #009d9a; // teal-50
-  --silice-grafico-etapa-en-ejecucion: #161616; // gray-100
-  --silice-grafico-etapa-otra: #6f6f6f; // gray-60, una etapa que la pantalla no conoce
-
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-  gap: 1.25rem;
-}
-
-.silice-inicio__grafico-card {
-  display: grid;
-  align-content: start;
-  gap: 0.75rem;
-
-  h3 {
-    margin: 0;
-  }
-}
-
-.silice-inicio__nota {
-  max-inline-size: 65ch;
-  color: var(--silice-texto-secundario);
-}
-
+// Utilidades de tablas e indicadores compartidos con PanelArenera y UltimasAuditorias.
 .silice-inicio__acciones {
   display: flex;
   flex-wrap: wrap;
@@ -161,60 +618,9 @@
   white-space: nowrap;
 }
 
-.silice-inicio__resumen {
-  margin: 0;
-  color: var(--silice-muted);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.silice-inicio__urgentes {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-block-start: 1px solid var(--silice-hairline);
-}
-
-.silice-inicio__urgente {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 1rem;
-  padding: 0.5rem 0;
-  border-block-end: 1px solid var(--silice-hairline);
-
-  &:last-child {
-    border-block-end: 0;
-  }
-}
-
-.silice-inicio__urgencia {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  min-inline-size: 6rem;
-  font-weight: 600;
-}
-
-.silice-inicio__obra {
-  flex: none;
-  font-weight: 600;
-}
-
 .silice-inicio__carpeta {
   font-weight: 400;
   color: var(--silice-texto-secundario);
-}
-
-.silice-inicio__texto {
-  flex: 1 1 14rem;
-  min-inline-size: 0;
-}
-
-.silice-inicio__paso {
-  flex: none;
-  margin-inline-start: auto;
 }
 
 .silice-inicio__avance {
@@ -231,7 +637,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--cds-focus);
+    outline: 2px solid var(--silice-foco);
     outline-offset: -2px;
   }
 }
@@ -296,45 +702,4 @@
 
 .silice-inicio__sin-avance {
   color: var(--silice-texto-secundario);
-}
-
-// Cartera por moneda en banda unificada plana.
-.silice-cartera-rejilla {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-  gap: 1rem;
-}
-
-.silice-cartera-moneda {
-  min-inline-size: 0;
-  background: var(--silice-surface-warm);
-  border: 1px solid var(--silice-border);
-  border-radius: var(--silice-radio-md);
-  overflow: hidden;
-}
-
-.silice-cartera-moneda__titulo {
-  margin: 0;
-  padding: 0.5rem 1rem;
-  background-color: var(--silice-surface-muted);
-  border-block-end: 1px solid var(--silice-hairline);
-  font-weight: 600;
-  color: var(--silice-ink);
-}
-
-.silice-cartera-moneda .franja-indicadores {
-  background: var(--silice-surface);
-  border-block-end: 0;
-}
-
-.silice-cartera-moneda .franja-indicadores__lista {
-  flex-wrap: wrap;
-}
-
-.silice-cartera-moneda .fiori-kpi__actual {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
 }

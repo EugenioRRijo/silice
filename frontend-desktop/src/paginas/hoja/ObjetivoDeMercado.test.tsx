@@ -9,7 +9,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
 import type { BorradorAbierto, FilaPresupuesto, VersionesRespuesta, VistaPresupuesto } from "./logica";
 

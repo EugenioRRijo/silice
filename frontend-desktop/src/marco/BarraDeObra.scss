@@ -1,0 +1,153 @@
+@use "sass:map";
+@use "umbrales" as u;
+@use "@carbon/styles/scss/type";
+
+// Barra del lugar dentro de una obra: hoja de papel, filete inferior y la herramienta actual con una raya de 2 px en el
+// color complementario. Solo tokens --silice-* y unidades rem (nada de px en letras ni hexadecimales).
+.silice-barra-obra {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--silice-hoja);
+  border-block-end: 1px solid var(--silice-linea);
+  color: var(--silice-t1);
+}
+
+// Fila 1: nombre, herramientas, versión y acción.
+.silice-barra-obra__fila {
+  display: flex;
+  align-items: stretch;
+  gap: 1.5rem;
+  box-sizing: border-box;
+  block-size: 3.25rem;
+  padding-inline: 1.5rem;
+}
+
+// Fila 2: las opciones de la herramienta activa, como pestañas secundarias.
+.silice-barra-obra__opciones {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  block-size: 2.5rem;
+  padding-inline: 1.5rem;
+  border-block-start: 1px solid var(--silice-linea);
+  overflow-x: auto;
+}
+
+.silice-barra-obra__opcion {
+  display: flex;
+  align-items: center;
+  padding-inline: 0.75rem;
+  border-block-end: 2px solid transparent;
+  color: var(--silice-t2);
+  text-decoration: none;
+  white-space: nowrap;
+  @include type.type-style("label-01");
+
+  &:hover {
+    color: var(--silice-t1);
+  }
+
+  &[aria-current="page"] {
+    border-block-end: 2px solid var(--silice-resaltador-borde);
+    color: var(--silice-t1);
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: -2px;
+  }
+}
+
+.silice-barra-obra__nombre {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: 20rem;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover .silice-barra-obra__titulo {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: -2px;
+  }
+}
+
+.silice-barra-obra__titulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  @include type.type-style("body-compact-02");
+}
+
+.silice-barra-obra__linea {
+  color: var(--silice-t2);
+  white-space: nowrap;
+  @include type.type-style("label-01");
+}
+
+.silice-barra-obra__herramientas {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.silice-barra-obra__herramienta {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding-inline: 0.75rem;
+  border-block-end: 2px solid transparent;
+  color: var(--silice-t2);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  @include type.type-style("body-compact-01");
+
+  &:hover {
+    color: var(--silice-t1);
+  }
+
+  &[aria-current="page"] {
+    border-block-end: 2px solid var(--silice-complementario);
+    color: var(--silice-t1);
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: -2px;
+  }
+}
+
+.silice-barra-obra__acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: none;
+}
+
+// Con letra grande los nombres largos ceden antes que las herramientas.
+@each $escala in map.keys(u.$umbrales-por-escala) {
+  @include u.por-debajo-del-umbral($escala) {
+    .silice-barra-obra__fila,
+    .silice-barra-obra__opciones {
+      gap: 0.75rem;
+      padding-inline: 1rem;
+    }
+
+    .silice-barra-obra__nombre {
+      max-inline-size: 10rem;
+    }
+  }
+}

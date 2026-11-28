@@ -1,0 +1,45 @@
+// Cuenta › Notificaciones (C11b): una lista de interruptores con su frase. Solo tokens --silice-* y unidades rem.
+
+.silice-pref-notificaciones {
+  display: grid;
+  gap: 1.5rem;
+  max-inline-size: 40rem;
+  min-inline-size: 0;
+}
+
+.silice-pref-notificaciones__lista {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.silice-pref-notificaciones__item {
+  display: grid;
+  gap: 0.25rem;
+  padding-block: 1rem;
+  border-block-end: 1px solid var(--silice-linea);
+
+  &:first-child {
+    border-block-start: 1px solid var(--silice-linea);
+  }
+}
+
+.silice-pref-notificaciones__descripcion,
+.silice-pref-notificaciones__razon {
+  margin: 0;
+  color: var(--silice-t2);
+}
+
+.silice-pref-notificaciones__estado {
+  margin: 0;
+  color: var(--silice-t2);
+}
+
+.silice-pref-notificaciones__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}

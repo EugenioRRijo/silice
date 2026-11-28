@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaEspacio } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 
 // 3e-F4 en la página: el botón aparece cuando el borrador está abierto, descarga el del id que abrió el servidor y la
 // descarga no cambia el borrador (ninguna otra petición que no sea el GET del libro).

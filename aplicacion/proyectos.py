@@ -193,20 +193,29 @@ def proyecto_por_nombre(sesion: Session, nombre: str) -> models.Proyecto | None:
     ).one_or_none()
 
 
+#: Los digitos de un `id` que siempre cabe en el INTEGER de SQLite (64 bits con signo: 19 digitos,
+#: pero no todo numero de 19 cabe; con 18 no hay desborde posible).
+MAX_DIGITOS_CODIGO = 18
+
+
 def resolver_proyecto(sesion: Session, referencia: str) -> models.Proyecto | None:
     """El proyecto al que apunta `referencia`, o `None` si no existe (V-11).
 
     La interfaz nueva guarda en la cabecera el `codigo` que da `GET /v1/proyectos` (el `id` como
     texto), pero las rutas historicas reciben el nombre. Se acepta cualquiera de los dos:
 
-    1. si `referencia` son solo digitos ASCII y hay un proyecto con ese `id`, es ese proyecto;
+    1. si `referencia` son solo digitos ASCII (hasta `MAX_DIGITOS_CODIGO`, lo que cabe en el
+       INTEGER de SQLite) y hay un proyecto con ese `id`, es ese proyecto;
     2. si no, el proyecto cuyo nombre es **exactamente** `referencia`.
+
+    Un codigo de mas digitos no es un `id` posible: se busca como nombre y, si no lo hay, `None`
+    (la ruta responde 404), en vez de desbordar al consultar (revision de seguridad T5, n.o 3).
 
     Si un nombre es un numero que coincide con el `id` de otro proyecto, **el codigo gana**: es
     la unica lectura sin ambiguedad (el codigo es el que ofrece `GET /v1/proyectos`); ese proyecto
     sigue alcanzable por su propio codigo. No escribe.
     """
-    if referencia.isascii() and referencia.isdigit():
+    if referencia.isascii() and referencia.isdigit() and len(referencia) <= MAX_DIGITOS_CODIGO:
         porcodigo = sesion.get(models.Proyecto, int(referencia))
         if porcodigo is not None:
             return porcodigo

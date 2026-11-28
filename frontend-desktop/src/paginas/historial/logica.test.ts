@@ -1,6 +1,17 @@
 import { describe, expect, test } from "vitest";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
-import { FILTROS_VACIOS, clasificar, fechaEsVe, filtrar, filtrosInvalidos } from "./logica";
+import {
+  FILTROS_VACIOS,
+  clasificar,
+  extraerPersona,
+  fechaEsVe,
+  filtrar,
+  filtrosInvalidos,
+  listarPersonasDeAuditorias,
+  personaDeAuditoria,
+  textoDeFiltrosActivos,
+} from "./logica";
+import type { AuditoriaEnHistorial } from "./logica";
 
 function a(id: number, parcial: Partial<AuditoriaGuardadaRespuesta> = {}): AuditoriaGuardadaRespuesta {
   return {
@@ -95,5 +106,48 @@ describe("filtrosInvalidos", () => {
   test("vacios o correctos no avisan", () => {
     expect(filtrosInvalidos(FILTROS_VACIOS)).toBeNull();
     expect(filtrosInvalidos({ ...FILTROS_VACIOS, desde: "2026-10-19", hasta: "2026-10-19" })).toBeNull();
+  });
+});
+
+describe("C10b: personas y filtro en Historial", () => {
+  test("extraerPersona y personaDeAuditoria leen nombre y usuario", () => {
+    expect(extraerPersona("Ana Pérez <ana>")).toEqual({ clave: "u:ana", nombre: "Ana Pérez", usuario: "ana" });
+    expect(extraerPersona("api (clave de API)")).toEqual({
+      clave: "t:api (clave de api)",
+      nombre: "api (clave de API)",
+      usuario: null,
+    });
+    expect(personaDeAuditoria({ usuario: "Luis Torres <luis>" })).toEqual({
+      clave: "u:luis",
+      nombre: "Luis Torres",
+      usuario: "luis",
+    });
+    expect(personaDeAuditoria({ responsable: "Sin Cuenta", usuario: null })).toEqual({
+      clave: "t:sin cuenta",
+      nombre: "Sin Cuenta",
+      usuario: null,
+    });
+    expect(personaDeAuditoria({})).toBeNull();
+  });
+
+  test("listarPersonasDeAuditorias reúne personas únicas ordenadas y filtrarPorPersona filtra", () => {
+    const lista: AuditoriaEnHistorial[] = [
+      a(3, { usuario: "Luis Torres <luis>" } as Partial<AuditoriaEnHistorial>),
+      a(2, { usuario: "Ana Pérez <ana>" } as Partial<AuditoriaEnHistorial>),
+      a(1, { usuario: "api (clave de API)" } as Partial<AuditoriaEnHistorial>),
+      a(0),
+    ];
+    const personas = listarPersonasDeAuditorias(lista);
+    expect(personas).toEqual([
+      { clave: "u:ana", nombre: "Ana Pérez", etiqueta: "Ana Pérez" },
+      { clave: "t:api (clave de api)", nombre: "api (clave de API)", etiqueta: "api (clave de API)" },
+      { clave: "u:luis", nombre: "Luis Torres", etiqueta: "Luis Torres" },
+    ]);
+    expect(filtrar(lista, { ...FILTROS_VACIOS, persona: "u:ana" }).map((x) => x.id)).toEqual([2]);
+    expect(filtrar(lista, { ...FILTROS_VACIOS, persona: "" }).map((x) => x.id)).toEqual([3, 2, 1, 0]);
+    expect(textoDeFiltrosActivos({ ...FILTROS_VACIOS, tipo: "pdf", persona: "u:ana" }, personas)).toEqual([
+      "Tipo: PDF",
+      "Por persona: Ana Pérez",
+    ]);
   });
 });

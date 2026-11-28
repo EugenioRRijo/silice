@@ -1,0 +1,52 @@
+// Barra de estado fina al pie del marco (C11: 28 px = 1,75 rem).
+// Solo tokens --silice-* y unidades rem.
+
+.silice-barra-estado {
+  // Última fila del marco (marco.scss): en el flujo, sin flotar sobre lo que desplaza el cuerpo.
+  flex: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: var(--silice-alto-estado, 1.75rem);
+  padding: 0 1rem;
+  background-color: var(--silice-lateral);
+  border-block-start: 1px solid var(--silice-linea);
+  color: var(--silice-t2);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.silice-barra-estado__carpeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.silice-barra-estado__icono {
+  flex: none;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  fill: currentcolor;
+}
+
+.silice-barra-estado__sep {
+  flex: none;
+  color: var(--silice-t3);
+}
+
+.silice-barra-estado__guardado {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-barra-estado__espacio {
+  flex: 1 1 auto;
+}

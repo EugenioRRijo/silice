@@ -24,6 +24,7 @@ from operacion.base_datos import (
 
 REVISION = "ins_0012_conteo_anulado"
 ANTERIOR = "ins_0011_receta_ligante"
+CABEZA = "ins_0016_solicitud_resuelta_por"  # la cabeza (G4 #5)
 TABLA = "prod_movimiento"
 ANTES = [
     "id",
@@ -88,8 +89,8 @@ def _indices(conexion: sqlite3.Connection) -> set[str]:
     return {f[1] for f in conexion.execute(f"PRAGMA index_list({TABLA})")}
 
 
-def test_es_la_cabeza_de_la_instalacion() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+def test_cuelga_de_ella_la_cabeza_de_la_instalacion() -> None:
+    assert revision_head(Destino.INSTALACION) == CABEZA
 
 
 def test_agrega_las_columnas_al_final_y_lo_anterior_queda_sin_anular(tmp_path: Path) -> None:
@@ -169,7 +170,7 @@ def test_una_base_que_ya_trae_las_columnas_se_adopta(tmp_path: Path) -> None:
     with closing(sqlite3.connect(base)) as conexion:
         assert _columnas(conexion).count("anula_id") == 1
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            (REVISION,)
+            (CABEZA,)
         ]
 
 

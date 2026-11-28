@@ -70,3 +70,30 @@ describe("el medidor del rango de la proyección", () => {
     expect(p80!.style.inlineSize).toBe("100%");
   });
 });
+
+describe("el rango de la proyección como tabla", () => {
+  test("«Ver como tabla» trae el presupuesto, el P50, el P80 y la reserva con los mismos montos del medidor", () => {
+    montar();
+    expect(screen.getByText("Ver como tabla")).toBeInTheDocument();
+    const tabla = screen.getByRole("table", { name: "Rango de la proyección en cifras" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    expect(filas.map((f) => within(f).getAllByRole("cell").map((c) => c.textContent))).toEqual([
+      ["Presupuesto base vigente", "1.000,00 USD"],
+      ["Costo probable (P50)", "1.248,72 USD"],
+      ["Costo conservador (P80)", "1.302,46 USD"],
+      ["Reserva recomendada para cubrir el P80", "302,46 USD"],
+    ]);
+  });
+
+  test("la tabla no inventa el P10 ni el P90: la API no los manda", () => {
+    montar();
+    const tabla = screen.getByRole("table", { name: "Rango de la proyección en cifras" });
+    expect(tabla.textContent).not.toMatch(/P10|P90/);
+  });
+
+  test("la tabla se escribe igual que el medidor: sin variación contra la base", () => {
+    montar();
+    const tabla = screen.getByRole("table", { name: "Rango de la proyección en cifras" });
+    expect(tabla.textContent).not.toMatch(/%/);
+  });
+});

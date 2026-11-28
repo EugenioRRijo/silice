@@ -10,7 +10,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, FilaPresupuesto, Resumen, VersionesRespuesta, VistaPresupuesto } from "./logica";
 
 // Tarea 11 del plan de montar un presupuesto: la Hoja agrega y quita partidas (rutas de la Tarea 9) y una obra sin
@@ -1063,7 +1063,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     abierto = borradorEnBlanco({ total: { texto: "17913.00", exacto: "17913" } });
     montar();
     await screen.findByRole("table", { name: "Presupuesto" });
-    expect(within(screen.getByRole("region", { name: "Estado del borrador" })).getByText(/Total 17\.913,00 Bs/)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Estado del borrador" })).toHaveTextContent(/Total sin IVA 17\.913,00 Bs/);
     expect(screen.getByText("Total del presupuesto").closest("p")).toHaveTextContent("Total del presupuesto 17.913,00 Bs");
   });
 

@@ -5,8 +5,9 @@ hallazgos compactos (`fusion.historial`); el libro y el PDF no se guardan nunca 
 escribe es `POST /v1/libros/auditoria` y `/pdf`, no esta ruta.
 
 - `GET /v1/auditorias-libro?limite=N`: las `N` mas recientes (1 a 100; 20 por omision), la ultima
-  primero, como lista de `{id, archivo, fecha, tipo, errores, advertencias}`. Es el contrato que
-  consume el Inicio de la interfaz nueva; `fecha` es ISO con hora (`2026-10-18T14:03:05`).
+  primero, como lista de `{id, archivo, fecha, tipo, errores, advertencias, usuario}`. Es el
+  contrato que consume el Inicio de la interfaz nueva; `fecha` es ISO con hora
+  (`2026-10-18T14:03:05`).
 - `GET /v1/auditorias-libro/{id}`: el resumen completo y los hallazgos compactos
   (`regla`, `hoja`, `celda`, `severidad`, `mensaje`); 404 si no existe.
 
@@ -50,6 +51,7 @@ class AuditoriaResumenRespuesta(BaseModel):
     tipo: Literal["libro", "pdf"]
     errores: int
     advertencias: int
+    usuario: str
 
 
 class HallazgoGuardadoRespuesta(BaseModel):
@@ -62,7 +64,6 @@ class HallazgoGuardadoRespuesta(BaseModel):
 
 
 class AuditoriaDetalleRespuesta(AuditoriaResumenRespuesta):
-    usuario: str
     sha256: str
     fecha_libro: str | None
     total_libro: str | None
@@ -89,6 +90,7 @@ def _resumen(r: ResumenAuditoria) -> AuditoriaResumenRespuesta:
         tipo=r.tipo,  # type: ignore[arg-type]  # la tabla solo admite 'libro' o 'pdf'
         errores=r.errores,
         advertencias=r.advertencias,
+        usuario=r.usuario,
     )
 
 

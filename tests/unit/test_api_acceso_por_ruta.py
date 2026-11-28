@@ -15,7 +15,8 @@ también (`seguridad.permisos.PERMISOS` es lo que se prueba, no la fuente):
 
 Tres pruebas: (1) la tabla cubre exactamente las rutas de la aplicación; (2) por rol, cada ruta deja
 pasar o rechaza con 403 según la tabla; (3) ninguna ruta queda abierta salvo `/salud`, la entrada
-(`POST /v1/sesion`) y el tema de la empresa, y fuera de las rutas de la API solo están la
+(`POST /v1/sesion`), el tema de la empresa y el registro con código (`POST /v1/solicitudes` y
+`POST /v1/solicitudes/canjear`, C9a), y fuera de las rutas de la API solo están la
 documentación y `/app`. La
 regresión «con clave, igual que antes» se mide contra una aplicación de referencia que monta los
 mismos puntos finales con solo `exigir_clave_api` (el `CON_CLAVE` de antes de la ola 0a).
@@ -150,6 +151,7 @@ TABLA = {
     ("POST", "/v1/libros/auditoria/pdf"): LEER,  # el informe de hallazgos en PDF
     ("POST", "/v1/libros/pdf"): LEER,
     ("POST", "/v1/libros/replica"): LEER,
+    ("GET", "/v1/libros/que-hacer"): LEER,  # B2: el «Qué hacer» de cada hallazgo y alerta
     ("POST", "/v1/libros/apu-por-hoja"): LEER,  # F5 vial, tarea 6
     ("GET", "/v1/libros/perfiles-apu-por-hoja"): LEER,  # E2E-2: elegir el perfil
     ("POST", "/v1/libros/hojas"): LEER,  # libro por frentes: elegir las hojas del presupuesto
@@ -195,6 +197,8 @@ TABLA = {
     ("GET", "/v1/obras/todas"): LEER,  # rediseño del marco, T3; con la clave, solo el proceso
     ("GET", "/v1/obras/pendientes/todas"): LEER,  # rediseño F3, T1; el alcance lo da el rol
     ("GET", "/v1/obras/resumen/todas"): LEER,  # rediseño F6, T7; con la clave, solo el proceso
+    ("GET", "/v1/obras/{codigo}/entrega"): LEER,  # Lote G5: fecha de entrega al cliente
+    ("PUT", "/v1/obras/{codigo}/entrega"): EDITAR,
     ("GET", "/v1/mercado/{lado}/{codigo:path}"): EDITAR,  # T14: estudio de mercado
     ("POST", "/v1/mercado/observaciones"): EDITAR,
     ("POST", "/v1/mercado/observaciones/{observacion_id}/anular"): EDITAR,
@@ -211,6 +215,16 @@ TABLA = {
     ("GET", "/v1/aprobaciones"): LEER,
     ("GET", "/v1/aprobaciones/pendientes"): APROBAR,
     ("GET", "/v1/aprobaciones/mias"): EDITAR,
+    # C10: cada cuenta ve la suya; la de otra, solo con administrar_cuentas (403 en la ruta).
+    ("GET", "/v1/actividad"): CUALQUIERA,
+    # C11: notificaciones por persona (30 días); cada cuenta ve y toca solo las suyas
+    # (clave -> 403).
+    ("GET", "/v1/notificaciones"): CUALQUIERA,
+    ("POST", "/v1/notificaciones"): CUALQUIERA,
+    ("POST", "/v1/notificaciones/leidas"): CUALQUIERA,
+    # C11b: qué categorías recibe cada cuenta; solo las propias (clave -> 403).
+    ("GET", "/v1/notificaciones/preferencias"): CUALQUIERA,
+    ("PUT", "/v1/notificaciones/preferencias"): CUALQUIERA,
     ("GET", "/v1/aprobaciones/resumen"): APROBAR,
     ("POST", "/v1/aprobaciones/abrir"): APROBAR,
     ("GET", "/v1/aprobaciones/{envio_id}"): APROBAR,
@@ -226,6 +240,10 @@ TABLA = {
     ("POST", "/v1/cuentas/{usuario_id}/reactivar"): CUENTAS_ADM,
     ("POST", "/v1/cuentas/{usuario_id}/desbloquear"): CUENTAS_ADM,
     ("POST", "/v1/cuentas/{usuario_id}/restablecer"): CUENTAS_ADM,
+    # C9a: las solicitudes de cuenta; las resuelve el administrador (spec registro con código)
+    ("GET", "/v1/solicitudes"): CUENTAS_ADM,
+    ("POST", "/v1/solicitudes/{solicitud_id}/aprobar"): CUENTAS_ADM,
+    ("POST", "/v1/solicitudes/{solicitud_id}/rechazar"): CUENTAS_ADM,
     ("GET", "/v1/accesos"): CUENTAS_ADM,
     # Ola 3 (S2-B): «Componer una partida» es de quien arma (`ui/paginas/componer.py`)
     ("GET", "/v1/composicion/opciones"): EDITAR,
@@ -401,6 +419,10 @@ DE_LA_SESION = {
     # de que haya sesión (lo prueba `test_api_tema.py`: colores, logo y archivos rotos)
     ("GET", "/v1/tema"),
     ("GET", "/v1/tema/logo"),
+    # C9a: pedir una cuenta y canjear el código; públicas, las protegen el `Origin`, los
+    # límites, el freno y el código (las prueba `tests/integration/test_api_solicitudes.py`)
+    ("POST", "/v1/solicitudes"),
+    ("POST", "/v1/solicitudes/canjear"),
 }
 SIN_NADA = {  # las únicas abiertas
     ("GET", "/salud"),
@@ -409,6 +431,8 @@ SIN_NADA = {  # las únicas abiertas
     ("POST", "/v1/primer-arranque/reclamo"),
     ("GET", "/v1/tema"),
     ("GET", "/v1/tema/logo"),
+    ("POST", "/v1/solicitudes"),
+    ("POST", "/v1/solicitudes/canjear"),
 }
 
 

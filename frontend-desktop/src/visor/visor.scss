@@ -19,7 +19,7 @@ body {
   box-sizing: border-box;
   inline-size: 100%;
   max-inline-size: 100vw;
-  block-size: calc(100vh - 3rem);
+  block-size: var(--silice-alto-util, calc(100vh - 3rem));
   min-block-size: 0;
 }
 
@@ -40,27 +40,31 @@ body {
   flex: none;
 }
 
+// Fecha de la revision, nombre del libro y «Cambiar libro»: 48 px como minimo y, si no caben en un renglon (la ayuda de la
+// fecha es larga), parten en dos: antes la barra era de 48 px exactos y la ayuda se salia y se montaba sobre lo de arriba.
 .visor__barra {
   display: flex;
   flex: none;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
-  block-size: 3rem;
+  gap: 0.25rem 1rem;
+  min-block-size: 3rem;
   box-sizing: border-box;
-  padding: 0 1rem;
+  padding: 0.25rem 1rem;
   background: var(--cds-layer);
   border-block-end: 1px solid var(--silice-divisor);
 }
 
 // El boton «Descargar PDF» (hallazgos), a la derecha y debajo de la franja; su aviso de error ocupa el ancho entero.
+// El boton y su explicacion van en un solo renglon (la explicacion a la izquierda): la lista de hallazgos sube.
 .visor__descarga {
   display: flex;
   flex: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem 0;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 1.75rem 0;
 
   // el aviso de error baja debajo del boton y ocupa el ancho entero, sin apretarlo
   .silice-descarga {
@@ -74,15 +78,30 @@ body {
   margin: 0;
   max-inline-size: 40rem;
   color: var(--cds-text-secondary);
+  order: -1;
   text-align: end;
 }
 
+// El campo en linea de Carbon limita su ayuda a una columna de 142 px: aqui la ayuda toma el hueco que queda al lado del
+// campo y, si no cabe, la barra parte en dos renglones.
 .visor__fecha {
-  flex: none;
-  inline-size: 20rem;
+  flex: 1 1 28rem;
+  inline-size: auto;
+  min-inline-size: 0;
 
   label {
     white-space: nowrap;
+  }
+
+  .cds--text-input__label-helper-wrapper:last-of-type {
+    flex: 1 1 0;
+    max-inline-size: none;
+    min-inline-size: 0;
+  }
+
+  .cds--text-input__field-outer-wrapper--inline {
+    flex: 0 0 auto;
+    inline-size: auto;
   }
 }
 
@@ -569,13 +588,20 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  block-size: calc(100vh - 3rem);
+  block-size: var(--silice-alto-util, calc(100vh - 3rem));
   min-block-size: 0;
 
   > h1 {
     flex: none;
     margin: 0;
-    padding: 1.5rem 1rem 0.75rem;
+    padding: 0.5rem 1.75rem 0.75rem;
+  }
+
+  > p {
+    flex: none;
+    margin: 0;
+    padding-block-end: 0.5rem;
+    padding-inline: 1.75rem;
   }
 
   .visor {
@@ -584,7 +610,7 @@ body {
   }
 
   .visor__barra {
-    margin-inline: 1rem;
+    margin-inline: 1.75rem;
   }
 }
 

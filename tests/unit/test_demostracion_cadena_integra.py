@@ -124,3 +124,24 @@ def test_los_sellos_son_retroactivos_de_script_start(datos: Path) -> None:
         motor.dispose()
     assert eslabones
     assert {(e.tipo, e.usuario) for e in eslabones} == {("retroactivo", "script:start")}
+
+
+def test_start_prepara_la_carpeta_de_la_empresa_antes_de_servir(
+    datos: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T6 (2026-11-28): `start.py` arranca Uvicorn sin `operacion.lanzador`, que prepara la
+    carpeta de la empresa antes de servir. Sin eso, la primera petición la creaba en su sitio
+    mientras `/v1/obras/resumen/todas` la leía a medio migrar («no such table: ficha_obra») y la
+    Vista general decía «No se pudo leer 1 carpeta». Debe estar en `head` antes de Uvicorn."""
+    from operacion import base_datos, config
+
+    al_servir: list[base_datos.EstadoBase] = []
+
+    def uvicorn(orden: list[str], **_kwargs: object) -> int:
+        assert "api.main:app" in orden
+        al_servir.append(base_datos.leer_estado(config.ruta_caso_por_defecto()))
+        return 0
+
+    monkeypatch.setattr(start.subprocess, "call", uvicorn)
+    assert start.main(["--sin-demo", "--sin-navegador"]) == 0
+    assert [e.revision for e in al_servir] == [base_datos.revision_head(base_datos.Destino.CASO)]

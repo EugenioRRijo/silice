@@ -68,7 +68,7 @@ ERRORES_ESPERADOS = (
 )
 
 
-class _RutaCuentas(RutaSinEco):
+class RutaCuentas(RutaSinEco):
     """`RutaSinEco` (el 422 sin eco) y, además, `Cache-Control: no-store` en TODA respuesta de
     estas rutas, también en las de error (401, 403, 404, 409, 422, 503): el `HTTPException` se
     vuelve la misma respuesta `{"detalle": ...}` de la aplicación, con la cabecera."""
@@ -109,7 +109,7 @@ def _administrador(
 
 Administrador = Annotated[SesionActiva, Depends(_administrador)]
 
-router = APIRouter(tags=["cuentas"], route_class=_RutaCuentas)
+router = APIRouter(tags=["cuentas"], route_class=RutaCuentas)
 
 
 class CuentaRespuesta(BaseModel):

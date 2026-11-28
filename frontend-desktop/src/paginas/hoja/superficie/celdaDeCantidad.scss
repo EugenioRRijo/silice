@@ -1,0 +1,28 @@
+// La celda de cantidad de la grilla del Presupuesto (lote B1-5). Solo tokens y variables de Carbon, ningún color suelto.
+// La grilla corta el texto de cada celda a una línea (guía `single-line-overflow`); el campo abierto sí necesita su error
+// completo, así que el aviso de debajo del campo se parte en líneas.
+
+.silice-celda-cantidad {
+  display: block;
+  inline-size: 100%;
+}
+
+.silice-celda-cantidad__valor {
+  display: block;
+  cursor: text;
+}
+
+.silice-celda-cantidad__campo {
+  inline-size: 100%;
+
+  // La cifra va a la derecha y con cifras de igual ancho, como el resto de la columna.
+  .cds--text-input {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cds--form-requirement {
+    white-space: normal;
+    text-align: start;
+  }
+}

@@ -4,6 +4,8 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 import { nombreDeEstado } from "../../comun/aprobacion";
 import { AreaTexto } from "../../comun/AreaTexto";
 import { AvisoError } from "../../comun/AvisoError";
+import { useNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { rutaOPendientes } from "../../marco/espacios";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
 import { useAplicacion } from "../../shell/contexto";
@@ -26,7 +28,9 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
   const { alExpirar } = useAplicacion();
   // Tras el dictamen la etapa de la obra cambió y la cabecera ya no se monta de nuevo al cambiar de sección (Tarea 3 del
   // plan F4): se vuelve a leer su ficha. Sin obra abierta (la pantalla sola) no hay ficha.
-  const recargarFicha = useContext(ContextoDeLaObra)?.recargarFicha;
+  const obra = useContext(ContextoDeLaObra);
+  const recargarFicha = obra?.recargarFicha;
+  const { notificar } = useNotificaciones();
   const titulo = useId();
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [notas, setNotas] = useState("");
@@ -71,6 +75,15 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
       setConfirmando(false);
       setEnviando(false);
       setNotas("");
+      notificar({
+        gravedad: "listo",
+        titulo: `${detalle.version} ${frase(elegido)}`,
+        detalle: detalle.obra,
+        enlace: {
+          texto: "Ver el dictamen",
+          ruta: `${rutaOPendientes("aprobar", obra ?? undefined)}?envio=${detalle.envio_id}`,
+        },
+      });
       recargarFicha?.();
       alRegistrar(elegido);
     } catch (e) {

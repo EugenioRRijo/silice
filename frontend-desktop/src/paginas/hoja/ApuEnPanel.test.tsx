@@ -7,7 +7,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { vistaApu, vistaPresupuesto } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, DetalleApu, Resumen, VersionesRespuesta, VistaApu, VistaPresupuesto } from "./logica";
 
 // Tarea 7 del plan F4: el APU de una partida se abre en un panel lateral desde su código en «Partidas», sin cambiar de

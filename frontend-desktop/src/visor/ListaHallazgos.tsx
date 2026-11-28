@@ -343,7 +343,8 @@ export function ListaHallazgos({
         )}
       </div>
 
-      <div className="lista-hallazgos__cuerpo">
+      {/* Se desplaza: con nombre y en el orden de Tab para leerla con el teclado aunque no traiga filas (axe). */}
+      <div className="lista-hallazgos__cuerpo" role="region" aria-label="Lista de hallazgos" tabIndex={0}>
         {aplicablesIndices.length === 0 && (
           <p className="lista-hallazgos__vacio cds--type-body-compact-01">
             La auditoría terminó y el libro no tiene hallazgos.

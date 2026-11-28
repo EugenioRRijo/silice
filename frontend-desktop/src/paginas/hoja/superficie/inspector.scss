@@ -1,0 +1,92 @@
+// Estilos del inspector lateral de la partida (lote B1-6, ficha-b1 §1.6 y §4).
+// Reglas: solo tokens --silice-* (claro y oscuro), tamaños en rem y rejillas con minmax(0, 1fr).
+
+.silice-inspector {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-content: start;
+  min-inline-size: 0;
+}
+
+.silice-inspector__resumen {
+  margin: 0;
+  color: var(--silice-t2);
+  line-height: 1.45;
+}
+
+.silice-inspector__datos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.75rem 0;
+  border-block: 1px solid var(--silice-linea);
+  min-inline-size: 0;
+}
+
+.silice-inspector__campo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.25rem;
+  min-inline-size: 0;
+}
+
+.silice-inspector__rotulo {
+  color: var(--silice-t2);
+  line-height: 1.4;
+}
+
+.silice-inspector__valor {
+  margin: 0;
+  color: var(--silice-t1);
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.silice-inspector__medicion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.25rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.silice-inspector__calculada {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-inspector__ayuda {
+  margin: 0;
+  color: var(--silice-t2);
+  line-height: 1.45;
+}
+
+.silice-inspector__apu {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.silice-inspector__apu-titulo {
+  margin: 0;
+  color: var(--silice-t1);
+  line-height: 1.4;
+}
+
+.silice-inspector__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--silice-linea);
+  min-inline-size: 0;
+}

@@ -83,3 +83,65 @@
 .silice-escenarios__cabecera {
   color: var(--silice-texto-secundario);
 }
+
+.silice-escenarios__grafica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--silice-linea);
+  border-radius: 0.75rem;
+  background: var(--silice-hoja);
+  min-inline-size: 0;
+}
+
+.silice-escenarios__lienzo {
+  min-inline-size: 0;
+}
+
+.silice-escenarios__rotulos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--silice-t1);
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-escenarios__rotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.silice-escenarios__muestra {
+  display: inline-block;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 0.25rem;
+  flex: none;
+}
+
+.silice-escenarios__lectura {
+  margin: 0;
+  max-inline-size: 68ch;
+  color: var(--silice-t2);
+  line-height: 1.45;
+}
+
+.silice-escenarios__vertabla {
+  min-inline-size: 0;
+
+  summary {
+    cursor: pointer;
+    color: var(--silice-t2);
+  }
+
+  > .silice-tabla {
+    margin-block-start: 0.5rem;
+    overflow-x: auto;
+  }
+}

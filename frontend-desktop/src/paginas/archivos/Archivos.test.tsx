@@ -5,12 +5,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { Marco } from "../../marco/Marco";
+import { irASeccion } from "../../marco/irASeccion";
 import { estadoInicial, json, ligeras, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
 import { ContextoAplicacion } from "../../shell/contexto";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
 import { cuerpoDeVista } from "../hoja/datosDePrueba";
 import PaginaHoja from "../hoja/index";
+import PaginaHojaPestanas from "../hoja/pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "../hoja/logica";
 import { importada, respuestaDeFusion } from "./datosDePlano";
 import PaginaArchivos from "./index";
@@ -167,7 +169,7 @@ function Ubicacion() {
 function montar(en = "/obra/empresa/7/archivos", sesion: SesionRespuesta = sesionDe("ana")) {
   render(
     <MemoryRouter initialEntries={[en]}>
-      <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PaginaHoja, archivos: PaginaArchivos })} />
+      <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PaginaHoja, hoja_pestanas: PaginaHojaPestanas, archivos: PaginaArchivos })} />
       <Ubicacion />
     </MemoryRouter>,
   );
@@ -175,10 +177,9 @@ function montar(en = "/obra/empresa/7/archivos", sesion: SesionRespuesta = sesio
 }
 
 const ruta = () => screen.getByTestId("ruta").textContent;
-// F6, T5: las secciones de la obra están en su barra, bajo la cabecera (ya no cuelgan de la barra lateral).
-const barraDeLaObra = () => screen.findByRole("navigation", { name: "Secciones de la obra" });
-const irA = async (u: ReturnType<typeof userEvent.setup>, seccion: string) =>
-  u.click(await within(await barraDeLaObra()).findByRole("link", { name: seccion }));
+// Lote C4: las secciones de la obra están en su barra del lugar (herramientas y opciones, dentro de la cabecera); `irASeccion` las alcanza como una persona.
+const opcionesDePresupuestar = () => screen.findByRole("navigation", { name: "Opciones de Presupuestar" });
+const irA = irASeccion;
 const tablaDelRegistro = () => screen.findByRole("table", { name: "Registro de importaciones" });
 const filas = (tabla: HTMLElement) =>
   within(tabla)
@@ -343,19 +344,19 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
     await pausa();
     expect(screen.queryByRole("button", { name: "Subir plano o cómputo" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Describir el espacio a mano" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Te falta" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Siguiente paso" })).toBeNull();
     expect(principales()).toEqual([]);
   });
 
-  test("«Describir el espacio a mano» lleva a Presupuesto con «Espacio y metrajes» a la vista y elegida", async () => {
+  test("«Describir el espacio a mano» lleva a «Espacio, plan y ajustes» con «Espacio y metrajes» a la vista y elegida", async () => {
     const u = montar();
     await u.click(await screen.findByRole("link", { name: "Describir el espacio a mano" }));
-    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto/pestanas"));
     const pestana = await screen.findByRole("tab", { name: "Espacio y metrajes" });
     expect(pestana).toHaveAttribute("aria-selected", "true");
   });
 
-  test("con el espacio pedido y aún vacío, la franja «Te falta» lleva el único botón principal, que abre el diálogo", async () => {
+  test("con el espacio pedido y aún vacío, la franja «Falta:» lleva el único botón principal, que abre el diálogo", async () => {
     const u = montar();
     await u.click(await screen.findByRole("link", { name: "Describir el espacio a mano" }));
     await screen.findByRole("tab", { name: "Espacio y metrajes" });
@@ -377,7 +378,7 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
 
   test("en «Espacio y metrajes» ya no está el bloque «Importar plano (DXF o IFC)» y sí el enlace a Archivos y planos", async () => {
     espacioVacio = false;
-    const u = montar("/obra/empresa/7/presupuesto");
+    const u = montar("/obra/empresa/7/presupuesto/pestanas");
     expect(await screen.findByRole("tab", { name: "Espacio y metrajes" })).toHaveAttribute("aria-selected", "true");
     await screen.findByText("Cantidades derivadas");
     expect(screen.queryByRole("button", { name: "Importar plano (DXF o IFC)" })).toBeNull();
@@ -389,20 +390,20 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
 
   // Tarea 12 (decisión del orquestador): edificación apaga los planos y el espacio, no los cómputos. La sección se sigue
   // ofreciendo; lo que cambia dentro lo prueba `CargarComputo.test.tsx`.
-  test("con «edificación» apagada, «Archivos y planos» sigue en la barra de la obra y se abre", async () => {
+  test("con «edificación» apagada, «Plano o cómputo» sigue en la barra de la obra y se abre", async () => {
     apagados = ["edificacion"];
     const u = montar("/obra/empresa/7/presupuesto");
-    const barra = await barraDeLaObra();
-    await within(barra).findByRole("link", { name: "Presupuesto" });
+    const barra = await opcionesDePresupuestar();
+    await within(barra).findByRole("link", { name: "Partidas" });
     await pausa();
-    await u.click(await within(barra).findByRole("link", { name: "Archivos y planos" }));
+    await u.click(await within(barra).findByRole("link", { name: "Plano o cómputo" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/archivos"));
     expect(await screen.findByRole("heading", { level: 1, name: "Archivos y planos" })).toBeInTheDocument();
   });
 
-  test("con «edificación» encendida, «Archivos y planos» está en la barra de la obra", async () => {
+  test("con «edificación» encendida, «Plano o cómputo» está en la barra de la obra", async () => {
     montar("/obra/empresa/7/presupuesto");
-    const barra = await barraDeLaObra();
-    expect(await within(barra).findByRole("link", { name: "Archivos y planos" })).toBeInTheDocument();
+    const barra = await opcionesDePresupuestar();
+    expect(await within(barra).findByRole("link", { name: "Plano o cómputo" })).toBeInTheDocument();
   });
 });

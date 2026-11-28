@@ -37,6 +37,11 @@ import { EspacioDeObra } from "./EspacioDeObra";
 import { ESPACIOS, SECCIONES_DE_CUENTA, esEspacio, espacioDeLaPagina, rutaDeCuenta, subvistaDeLaPagina } from "./espacios";
 import type { EspacioId } from "./espacios";
 import { enfocarElTitulo, nombrarLaVentana } from "./focoAlTitulo";
+import { almacenDeLaApi } from "../comun/notificaciones/almacenDeLaApi";
+import { PanelDeNotificaciones } from "../comun/notificaciones/PanelDeNotificaciones";
+import { ProveedorDeNotificaciones } from "../comun/notificaciones/ProveedorDeNotificaciones";
+import { RegionDeNotificaciones } from "../comun/notificaciones/RegionDeNotificaciones";
+import { BarraDeEstado } from "./BarraDeEstado";
 import "./marco.scss";
 import { ModeTransitionOverlay } from "./ModeTransitionOverlay";
 import type { EstacionMayor } from "./ModeTransitionOverlay";
@@ -356,6 +361,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // La carpeta abierta, con el título que da el servidor («Carpeta de la empresa» la de la empresa); mientras no llega, el
   // nombre de su archivo sin la extensión. Sin nada que decir (cuenta sin lectura de obras y sin lista de carpetas), null.
   const carpetaActiva = obras.tituloActual || casos?.actual.nombre.replace(/\.db$/, "") || null;
+  // C11: las notificaciones de esta persona se guardan en el servidor 30 días (f7520d3b); un almacén por sesión.
+  const almacenDeNotificaciones = useMemo(() => almacenDeLaApi(), []);
   const nombreProyecto = obras.obras.find((o) => o.carpeta === carpetaActual && String(o.obra_id) === proyecto)?.obra ?? null;
   const aplicacion = useMemo<Aplicacion>(
     () => ({
@@ -396,7 +403,9 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const columnaOculta = useColumnaOculta();
   const conRecorrido = recorrido !== null && !columnaOculta;
 
-  // Ventana dedicada a pantalla completa para las 3 herramientas mayores (Auditoria, Precios, Produccion).
+  // Los 3 espacios de la empresa (Auditoria, Precios, Produccion). Desde el lote C4 (2026-11-26) no tienen ventana aparte: la barra
+  // lateral se ve también dentro de ellos (es la que lleva de un espacio a otro y a cada obra); `enVentanaDedicada` solo sirve
+  // para que la barra de arriba no repita el contexto, que ya dice el espacio.
   const primerSegmento = ubicacion.pathname.split("/")[1] ?? "";
   const espacioActivo: EspacioId | null = esEspacio(primerSegmento) ? primerSegmento : null;
   const enVentanaDedicada = espacioActivo !== null;
@@ -414,7 +423,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 
   useEffect(() => {
     function alTeclearCtrlB(e: KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "b" || enVentanaDedicada) return;
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "b") return;
       const destino = e.target as HTMLElement | null;
       if (
         destino instanceof HTMLInputElement ||
@@ -429,7 +438,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     }
     window.addEventListener("keydown", alTeclearCtrlB);
     return () => window.removeEventListener("keydown", alTeclearCtrlB);
-  }, [enVentanaDedicada, toggleSidebar]);
+  }, [toggleSidebar]);
 
   // Transicion rapida al cambiar entre estaciones mayores (Obras <-> Auditoria / Precios / Produccion).
   const estacionActual: EstacionMayor = espacioActivo ?? "obras";
@@ -458,16 +467,17 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   }, [enVentanaDedicada, ubicacion.pathname, obraActualRuta, obras.obras]);
 
   const layoutDelMarco = useMemo(
-    () => ({ sidebarCollapsed: enVentanaDedicada || sidebarCollapsed, toggleSidebar }),
-    [enVentanaDedicada, sidebarCollapsed, toggleSidebar],
+    () => ({ sidebarCollapsed, toggleSidebar }),
+    [sidebarCollapsed, toggleSidebar],
   );
-  const contenidoExpandido = enVentanaDedicada || sidebarCollapsed;
+  const contenidoExpandido = sidebarCollapsed;
 
   return (
     <ContextoAplicacion.Provider value={aplicacion}>
       <ContextoPendientes.Provider value={pendientes}>
         <ContextoObras.Provider value={obras}>
           <ContextoLayoutDelMarco.Provider value={layoutDelMarco}>
+            <ProveedorDeNotificaciones almacen={almacenDeNotificaciones}>
             <div className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`} onClickCapture={alClicAntes}>
               {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
               <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => contenido.current?.focus()}>
@@ -489,7 +499,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                 }
               />
               <div className="silice-marco__cuerpo">
-                {!enVentanaDedicada && <BarraLateral obraAbierta={obraActualRuta} />}
+                <BarraLateral obraAbierta={obraActualRuta} />
                 <main
                   id="contenido"
                   ref={contenido}
@@ -583,12 +593,17 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                 </LimiteDeError>
               </main>
             </div>
+              {/* C11: barra de estado con la campanita, la pila de notificaciones nuevas y el panel a la derecha. */}
+              <BarraDeEstado carpeta={carpetaActiva} />
+              <RegionDeNotificaciones />
+              <PanelDeNotificaciones />
               <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
               <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
               {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
               <DialogoSalida paginas={paginas} />
               <ModeTransitionOverlay destino={transicion} alTerminar={alTerminarTransicion} />
             </div>
+            </ProveedorDeNotificaciones>
           </ContextoLayoutDelMarco.Provider>
         </ContextoObras.Provider>
       </ContextoPendientes.Provider>

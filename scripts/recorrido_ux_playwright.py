@@ -35,6 +35,7 @@ Cuenta › Carpetas):
 
     uv run --no-sync --with playwright python scripts/recorrido_ux_playwright.py --funcional \\
         --salida <carpeta> [--acciones scripts/recorrido_funcional.toml] [--solo componer,catalogo]
+        [--alto 768]
 
 No usa `data/` del árbol ni datos reales; solo libros ficticios (`tests/fixtures/`). Cierra el
 servidor por su PID y el navegador que lanzó; nunca cierra Chrome/Edge por nombre.
@@ -44,7 +45,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import functools
 import json
 import os
 import re
@@ -78,11 +78,46 @@ from scripts.recorrido_carga import (  # noqa: E402, F401
     veredicto_de_carga,
 )
 
-RUTAS_TS = RAIZ / "frontend-desktop" / "src" / "shell" / "rutas.ts"
-# Dónde vive cada pantalla desde F6 (contrato de rutas 2026-11-04): los espacios, las subvistas y la
-# Cuenta en `espacios.ts`; las secciones de la obra y la Vista general en `secciones.ts`.
-ESPACIOS_TS = RAIZ / "frontend-desktop" / "src" / "marco" / "espacios.ts"
-SECCIONES_TS = RAIZ / "frontend-desktop" / "src" / "marco" / "secciones.ts"
+# La capa que conoce el marco vive en recorrido_marco.py (2026-11-27) y se reexporta:
+# las pruebas la toman de aquí.
+from scripts.recorrido_marco import (  # noqa: E402, F401
+    _ENTRADA_DEL_MARCO,
+    BARRA_DE_HERRAMIENTAS,
+    ESPACIOS_TS,
+    HERRAMIENTAS_TS,
+    MENU_DE_VERSION,
+    NOMBRE_DE_INICIO,
+    OPCION_VERSIONES,
+    OPCIONES_DE,
+    OPCIONES_DE_LA_PORTADA,
+    PAGINA_DE_LA_VISTA_GENERAL,
+    PORTADA_DE_LA_OBRA,
+    ROTULOS_DEL_MARCO,
+    RUTAS_TS,
+    SECCION_DEL_MENU_DE_VERSION,
+    SECCIONES_DE_LA_CUENTA,
+    SECCIONES_TS,
+    SEGMENTO_DE_LA_EMPRESA,
+    VISTAS_DE,
+    _bloque_ts,
+    _camino_en_la_obra,
+    _grupo_de_la_seccion,
+    _segmento_de_carpeta,
+    camino_por_el_marco,
+    es_de_la_obra,
+    hash_de,
+    mapa_del_marco,
+    obra_de_la_direccion,
+    obra_para,
+    pagina_de_entrada_de_la_obra,
+    pagina_de_la_ruta,
+    patron_de_hash,
+    ruta_canonica,
+    ruta_de_entrada,
+    rutas_de_la_interfaz,
+    umbral_medido,
+)
+
 AXE_URL = "https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js"
 ALTO = 768
 ROLES = {"admin": "administra", "ana": "arma", "rita": "revisa"}
@@ -106,280 +141,6 @@ AXE_DE_REFERENCIA = {
 }
 
 
-def rutas_de_la_interfaz() -> list[dict[str, str | None]]:
-    """Las páginas de `rutas.ts` (id, título, sección de permisos, acción y módulo activable),
-    leídas del texto: es la única lista."""
-    texto = RUTAS_TS.read_text(encoding="utf-8")
-    bloque = texto.split("export const PAGINAS", 1)[1].split("export function paginaPorId", 1)[0]
-    paginas: list[dict[str, str | None]] = []
-    # Cada entrada se lee campo a campo: el orden de los campos no importa.
-    for entrada in re.findall(r"\{([^{}]*?\bid:\s*\"[^\"]+\"[^{}]*?)\}", bloque):
-        campos = dict(re.findall(r'(\w+):\s*"([^"]*)"', entrada))
-        accion = re.search(r"\baccion:\s*(null|\"[^\"]*\")", entrada)
-        if "id" not in campos or "titulo" not in campos or accion is None:
-            continue
-        paginas.append(
-            {
-                "id": campos["id"],
-                "titulo": campos["titulo"],
-                "seccion": campos.get("seccion"),
-                "accion": None if accion[1] == "null" else accion[1].strip('"'),
-                "modulo": campos.get("modulo"),
-            }
-        )
-    return paginas
-
-
-# --------------------------- rutas canónicas (F6) -----------------------------------------------
-#
-# El espejo de `rutaCanonica` (`marco/espacios.ts`): la ruta de cada pantalla se lee de las tablas
-# del marco como texto (como `PAGINAS`) y no se escribe a mano en el recorrido.
-
-# Una entrada `{ id: "…", titulo: "…", pagina: "…" | null` de las tablas de `espacios.ts` y de
-# `secciones.ts`.
-_ENTRADA_DEL_MARCO = r'\{\s*id:\s*"([^"]*)",\s*titulo:\s*"([^"]*)",\s*pagina:\s*(?:"([^"]*)"|null)'
-# La pantalla de la Vista general (`rutaCanonica`: `paginaId === "inicio"`).
-PAGINA_DE_LA_VISTA_GENERAL = "inicio"
-# Así se escribe la carpeta de la empresa en `/obra/<carpeta>/…` (`secciones.ts`).
-SEGMENTO_DE_LA_EMPRESA = "empresa"
-
-
-def _bloque_ts(texto: str, desde: str, hasta: str, archivo: Path) -> str:
-    if desde not in texto or hasta not in texto.split(desde, 1)[1]:
-        raise ValueError(f"{archivo.name}: no se encuentra «{desde}» … «{hasta}»")
-    return texto.split(desde, 1)[1].split(hasta, 1)[0]
-
-
-@functools.cache
-def mapa_del_marco() -> dict[str, Any]:
-    """Dónde vive cada pantalla: `obra` (pantalla → sección), `subvista` (pantalla → sección y
-    segmento), `espacio` (pantalla → espacio y segmento), `cuenta` (pantalla → su primera sección
-    de la Cuenta), la ruta de la Vista general y los títulos con que se ven en las barras."""
-    espacios = ESPACIOS_TS.read_text(encoding="utf-8")
-    secciones = SECCIONES_TS.read_text(encoding="utf-8")
-    vista = re.search(r'RUTA_DE_VISTA_GENERAL\s*=\s*"([^"]+)"', secciones)
-    if vista is None:
-        raise ValueError(f"{SECCIONES_TS.name}: no se encuentra RUTA_DE_VISTA_GENERAL")
-    de_obra = _bloque_ts(
-        secciones, "export const SECCIONES_DE_OBRA", "export function seccionPorId", SECCIONES_TS
-    )
-    entradas_de_obra = re.findall(_ENTRADA_DEL_MARCO, de_obra)
-    obra = {pagina: id_ for id_, _, pagina in entradas_de_obra if pagina}
-    titulo_de_seccion = {id_: titulo for id_, titulo, _ in entradas_de_obra}
-    subvista: dict[str, tuple[str, str]] = {}
-    titulo_de_subvista: dict[tuple[str, str], str] = {}
-    bloque = _bloque_ts(
-        espacios, "export const SUBVISTAS", "export function subvistaDeLaPagina", ESPACIOS_TS
-    )
-    for seccion, vistas in re.findall(r"(\w+):\s*\[(.*?)\]", bloque, flags=re.DOTALL):
-        for id_, titulo, pagina in re.findall(_ENTRADA_DEL_MARCO, vistas):
-            titulo_de_subvista[(seccion, id_)] = titulo
-            if id_ and pagina:
-                subvista[pagina] = (seccion, id_)
-    espacio: dict[str, tuple[str, str]] = {}
-    titulo_de_espacio: dict[str, str] = {}
-    titulo_de_herramienta: dict[tuple[str, str], str] = {}
-    bloque = _bloque_ts(espacios, "export const ESPACIOS:", "export const SUBVISTAS", ESPACIOS_TS)
-    patron = r'(\w+):\s*\{\s*titulo:\s*"([^"]*)",\s*herramientas:\s*\[(.*?)\]'
-    for nombre, titulo_espacio, herramientas in re.findall(patron, bloque, flags=re.DOTALL):
-        titulo_de_espacio[nombre] = titulo_espacio
-        for id_, titulo, pagina in re.findall(_ENTRADA_DEL_MARCO, herramientas):
-            espacio[pagina] = (nombre, id_)
-            titulo_de_herramienta[(nombre, id_)] = titulo
-    bloque = _bloque_ts(
-        espacios, "export const SECCIONES_DE_CUENTA", "export function esCuenta", ESPACIOS_TS
-    )
-    secciones_de_cuenta = re.findall(_ENTRADA_DEL_MARCO, bloque)
-    cuenta: dict[str, str] = {}
-    for id_, _, pagina in secciones_de_cuenta:
-        if pagina:
-            cuenta.setdefault(pagina, id_)
-    return {
-        "vista_general": vista[1],
-        "obra": obra,
-        "subvista": subvista,
-        "espacio": espacio,
-        "cuenta": cuenta,
-        "secciones_de_cuenta": {id_: pagina for id_, _, pagina in secciones_de_cuenta},
-        "titulos": {
-            "seccion": titulo_de_seccion,
-            "subvista": titulo_de_subvista,
-            "espacio": titulo_de_espacio,
-            "herramienta": titulo_de_herramienta,
-            "cuenta": {id_: titulo for id_, titulo, _ in secciones_de_cuenta},
-        },
-    }
-
-
-def _segmento_de_carpeta(carpeta: str | None) -> str:
-    if carpeta is None:
-        return SEGMENTO_DE_LA_EMPRESA
-    return urllib.parse.quote(carpeta, safe="!~*'()")  # como encodeURIComponent
-
-
-def ruta_canonica(id_: str, obra: tuple[str | None, int] | None = None) -> str:
-    """La ruta de la pantalla (sin «#»), como `rutaCanonica(id, obra)`: una sección o subvista de la
-    obra va a `/obra/<carpeta>/<obra>/<sección>[/<subvista>]` y, sin obra, a su dirección corta
-    (`/<id>`), que el marco lleva a la obra de la sesión; una herramienta de Producción, Auditoría
-    o Precios, a `/<espacio>/<segmento>`; Administración y Acerca de, a la Cuenta; la Vista general,
-    a `/inicio/general`. `obra` es (carpeta, id); carpeta `None` es la de la empresa."""
-    if id_ not in {r["id"] for r in rutas_de_la_interfaz()}:
-        raise ValueError(f"no hay pantalla «{id_}» en rutas.ts")
-    mapa = mapa_del_marco()
-    if id_ == PAGINA_DE_LA_VISTA_GENERAL:
-        return mapa["vista_general"]
-    seccion, subvista = mapa["obra"].get(id_), None
-    if seccion is None and id_ in mapa["subvista"]:
-        seccion, subvista = mapa["subvista"][id_]
-    if seccion is not None:
-        if obra is None:
-            return f"/{id_}"
-        carpeta, obra_id = obra
-        base = f"/obra/{_segmento_de_carpeta(carpeta)}/{obra_id}/{seccion}"
-        return f"{base}/{subvista}" if subvista else base
-    if id_ in mapa["espacio"]:
-        nombre, herramienta = mapa["espacio"][id_]
-        return f"/{nombre}/{herramienta}"
-    if id_ in mapa["cuenta"]:
-        return f"/cuenta/{mapa['cuenta'][id_]}"
-    return f"/{id_}"
-
-
-def es_de_la_obra(id_: str) -> bool:
-    mapa = mapa_del_marco()
-    return id_ in mapa["obra"] or id_ in mapa["subvista"]
-
-
-def hash_de(id_: str, obra: tuple[str | None, int] | None = None) -> str:
-    """El `location.hash` con que se abre la pantalla (sin obra: la de la sesión)."""
-    return "#" + ruta_canonica(id_, obra)
-
-
-def patron_de_hash(id_: str) -> str:
-    """La expresión (vale para `re` y para `RegExp`) del `location.hash` en que queda la pantalla
-    abierta, con o sin consulta: la de la obra, con cualquier carpeta y obra (su dirección corta
-    redirige a la obra de la sesión)."""
-    consulta = r"(?:\?.*)?$"
-    if es_de_la_obra(id_):
-        cola = ruta_canonica(id_, ("x", 0)).split("/", 4)[4]
-        return r"^#/obra/[^/?#]+/\d+/" + re.escape(cola) + consulta
-    return "^" + re.escape(hash_de(id_)) + consulta
-
-
-def pagina_de_la_ruta(enlace: str) -> str | None:
-    """La pantalla a la que lleva un enlace (`href` o `location.hash`), o `None` si no lleva a una
-    pantalla del registro (Pendientes, «Configuración», un segmento desconocido o una
-    dirección vieja que F8 retiró, como `#/catalogo`)."""
-    ruta = enlace.split("#", 1)[1] if "#" in enlace else enlace
-    partes = [p for p in ruta.split("?", 1)[0].split("/") if p]
-    mapa = mapa_del_marco()
-    if "/" + "/".join(partes) == mapa["vista_general"]:
-        return PAGINA_DE_LA_VISTA_GENERAL
-    if len(partes) in (4, 5) and partes[0] == "obra":
-        seccion = partes[3]
-        if len(partes) == 4:
-            return next((p for p, s in mapa["obra"].items() if s == seccion), None)
-        return next((p for p, sv in mapa["subvista"].items() if sv == (seccion, partes[4])), None)
-    if len(partes) == 2 and partes[0] == "cuenta":
-        return mapa["secciones_de_cuenta"].get(partes[1]) or None
-    if len(partes) == 2:
-        return next((p for p, e in mapa["espacio"].items() if e == tuple(partes)), None)
-    # Solo las pantallas de la obra conservan su dirección corta (contrato 2.4, enmienda de F8).
-    if len(partes) == 1 and es_de_la_obra(partes[0]):
-        return partes[0]
-    return None
-
-
-def obra_de_la_direccion(enlace: str) -> tuple[str | None, int] | None:
-    """La obra (carpeta, id) de una dirección `#/obra/<carpeta>/<obra>/…`, o `None`."""
-    ruta = enlace.split("#", 1)[1] if "#" in enlace else enlace
-    partes = [p for p in ruta.split("?", 1)[0].split("/") if p]
-    if len(partes) < 3 or partes[0] != "obra" or not partes[2].isdigit():
-        return None
-    carpeta = urllib.parse.unquote(partes[1])
-    return (None if carpeta == SEGMENTO_DE_LA_EMPRESA else carpeta, int(partes[2]))
-
-
-# --------------------------- cómo llega una persona (F6) ----------------------------------------
-
-
-def camino_por_el_marco(id_: str) -> list[dict[str, str]]:
-    """Los clics con que una persona llega a la pantalla en el marco de F6. Cada paso dice dónde se
-    pulsa: `lateral` (la barra lateral: «Vista general», la obra elegida —`nombre` «obra»— o un
-    espacio de «Costos y producción»), `cuenta` (el botón de la persona en la barra de arriba) o
-    `barra` (la barra de pestañas cuyo nombre accesible es `barra`), y el texto del enlace. La obra
-    abre su Resumen y la Cuenta su primera sección; un espacio, su primera herramienta usable, y se
-    pulsa siempre su pestaña."""
-    if id_ not in {r["id"] for r in rutas_de_la_interfaz()}:
-        raise ValueError(f"no hay pantalla «{id_}» en rutas.ts")
-    mapa = mapa_del_marco()
-    titulos = mapa["titulos"]
-    if id_ == PAGINA_DE_LA_VISTA_GENERAL:
-        return [{"donde": "lateral", "nombre": "Vista general"}]
-    if es_de_la_obra(id_):
-        camino = [{"donde": "lateral", "nombre": "obra"}]
-        seccion, subvista = mapa["obra"].get(id_), None
-        if seccion is None:
-            seccion, subvista = mapa["subvista"][id_]
-        titulo = titulos["seccion"][seccion]
-        if seccion != "resumen":
-            camino.append({"donde": "barra", "barra": "Secciones de la obra", "nombre": titulo})
-        if subvista:
-            nombre = titulos["subvista"][(seccion, subvista)]
-            camino.append({"donde": "barra", "barra": f"Vistas de {titulo}", "nombre": nombre})
-        return camino
-    if id_ in mapa["espacio"]:
-        espacio, herramienta = mapa["espacio"][id_]
-        titulo = titulos["espacio"][espacio]
-        return [
-            {"donde": "lateral", "nombre": titulo},
-            {
-                "donde": "barra",
-                "barra": titulo,
-                "nombre": titulos["herramienta"][(espacio, herramienta)],
-            },
-        ]
-    seccion = mapa["cuenta"][id_]
-    return [
-        {"donde": "cuenta", "nombre": "Cuenta"},
-        {
-            "donde": "barra",
-            "barra": "Secciones de la cuenta",
-            "nombre": titulos["cuenta"][seccion],
-        },
-    ]
-
-
-def obra_para(
-    obras: list[dict[str, Any]], carpeta: str | None, nombre: str | None
-) -> dict[str, Any] | None:
-    """La obra de `GET /v1/obras/todas` con que se recorre: la de esa carpeta (None, la de la
-    empresa) cuyo nombre es `nombre` o, si ninguna se llama así, la primera cuyo nombre lo contiene
-    (como el selector de obra de antes); sin nombre, la primera de la carpeta. Un nombre que no
-    está en la carpeta da `None`: no se cambia por otra obra."""
-    de_la_carpeta = [o for o in obras if o.get("carpeta") == carpeta]
-    if nombre is None:
-        return de_la_carpeta[0] if de_la_carpeta else None
-    exacta = next((o for o in de_la_carpeta if o.get("obra") == nombre), None)
-    return exacta or next((o for o in de_la_carpeta if nombre in str(o.get("obra", ""))), None)
-
-
-def umbral_medido(caben: dict[int, bool]) -> float | None:
-    """El umbral de `_umbrales.scss` (max-width) que sale de la medida: la barra debe ceder sus
-    áreas por debajo del menor ancho desde el que cabe en TODOS los anchos medidos (una media
-    consulta puede hacerla caber en un ancho y no en otro mayor). `None` si no cabe ni en el
-    mayor."""
-    anchos = sorted(caben)
-    if not anchos or not caben[anchos[-1]]:
-        return None
-    desde = anchos[-1]
-    for ancho in reversed(anchos):
-        if not caben[ancho]:
-            break
-        desde = ancho
-    return round(desde - 0.02, 2)
-
-
 def puerto_libre() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -388,15 +149,15 @@ def puerto_libre() -> int:
 
 def sembrar_datos(datos: Path) -> dict[str, str]:
     """Carpeta temporal con instalación (admin, ana, rita) y los casos de demostración."""
-    os.environ["SILICE_DATOS"] = str(datos)
-    os.environ["SILICE_USUARIO"] = str(datos / "usuario")
+    os.environ.update(SILICE_DATOS=str(datos), SILICE_USUARIO=str(datos / "usuario"))
     os.environ.pop("SILICE_INSTALACION", None)
     datos.mkdir(parents=True, exist_ok=True)
-    from start import preparar_demo
+    from start import preparar_demo, preparar_empresa
     from tests.fixtures.instalacion import CONTRASENA
     from tests.fixtures.sesion_web import NUEVA, plantilla_con_cuentas
 
     plantilla_con_cuentas(datos)
+    preparar_empresa()  # como el lanzador y `start.py`: antes de servir (T6)
     preparar_demo()
     return {"admin": CONTRASENA, "ana": NUEVA, "rita": NUEVA}
 
@@ -700,9 +461,10 @@ def oferta_del_marco(contexto: Any, base: str, obra: tuple[str | None, int] | No
         pagina.goto(f"{base}/app/{hash_}", wait_until="domcontentloaded")
         with contextlib.suppress(Exception):
             pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
+        # La barra de la obra (C4) va en `div.silice-barra-obra`: sus herramientas y opciones.
         hrefs = pagina.eval_on_selector_all(
             "aside.silice-marco-lateral a[href], header.silice-marco-barra a[href],"
-            " nav.silice-barra-espacio a[href]",
+            " nav.silice-barra-espacio a[href], div.silice-barra-obra a[href]",
             "els => els.map(a => a.getAttribute('href') || '')",
         )
         return [h for h in hrefs if h]
@@ -710,7 +472,7 @@ def oferta_del_marco(contexto: Any, base: str, obra: tuple[str | None, int] | No
     vistos: set[str] = set()
     pendientes = [hash_de(PAGINA_DE_LA_VISTA_GENERAL)]
     if obra is not None:
-        pendientes.append("#" + f"/obra/{_segmento_de_carpeta(obra[0])}/{obra[1]}/resumen")
+        pendientes.append(ruta_de_entrada(obra))
     pendientes.append("#/cuenta/preferencias")
     pendientes += ["#/produccion", "#/auditoria", "#/precios"]
     try:
@@ -817,9 +579,8 @@ def medir_con_recorrido(
     axe: str | None,
     letra: str,
 ) -> list[dict[str, Any]]:
-    """Inicio de Auditoría → soltar el libro → «Auditar con recorrido guiado»: mide Libro con el
-    recorrido en curso y vuelve al inicio sin recargar (el recorrido vive en la memoria de la
-    interfaz)."""
+    """Auditoría → libro → «Más opciones» › «Auditar con recorrido guiado»: mide Libro con el
+    recorrido en curso y vuelve al inicio sin recargar (vive en la memoria de la interfaz)."""
     pagina = contexto.new_page()
     pagina.set_viewport_size({"width": ancho, "height": ALTO})
     fijar_letra(pagina, letra)
@@ -832,6 +593,7 @@ def medir_con_recorrido(
         pagina.goto(f"{base}/app/{hash_de('auditoria')}", wait_until="domcontentloaded")
         pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
         pagina.locator("main input[type=file]").first.set_input_files(str(libro))
+        pagina.locator("main details summary", has_text="Más opciones").click()
         pagina.get_by_role("button", name="Auditar con recorrido guiado").click()
         pagina.wait_for_function(
             "p => new RegExp(p).test(location.hash) && document.querySelector('main h1') !== null",
@@ -1563,9 +1325,8 @@ def _abrir_costos(lateral: Any) -> None:
 
 
 def _enlace_de_la_obra(pagina: Any, obra: tuple[str | None, int]) -> Any:
-    """La fila de la obra en la barra lateral (su enlace lleva a su Resumen)."""
-    destino = f"#/obra/{_segmento_de_carpeta(obra[0])}/{obra[1]}/resumen"
-    return pagina.locator(f'aside.silice-marco-lateral a[href="{destino}"]').first
+    """La fila de la obra en la barra lateral (su enlace lleva a su sección de entrada)."""
+    return pagina.locator(f'aside.silice-marco-lateral a[href="{ruta_de_entrada(obra)}"]').first
 
 
 def ir_por_el_marco(pagina: Any, ruta: str, obra: tuple[str | None, int] | None = None) -> str:
@@ -1587,9 +1348,13 @@ def ir_por_el_marco(pagina: Any, ruta: str, obra: tuple[str | None, int] | None 
                 arg=f"#/obra/{_segmento_de_carpeta(obra[0])}/{obra[1]}/",
                 timeout=LIMITE_CARGA_MS,
             )
+        elif paso["donde"] == "lateral" and paso["nombre"] == NOMBRE_DE_INICIO:
+            # Por su dirección: su nombre accesible suma lo pendiente («Inicio, 4 por hacer»).
+            vista = "#" + mapa_del_marco()["vista_general"]
+            lateral.locator(f'a[href="{vista}"]').first.click(timeout=LIMITE_PASO_MS)
+            pasos.append(f"barra lateral › {paso['nombre']}")
         elif paso["donde"] == "lateral":
-            if paso["nombre"] != "Vista general":
-                _abrir_costos(lateral)
+            _abrir_costos(lateral)
             lateral.get_by_role("link", name=paso["nombre"], exact=False).first.click(
                 timeout=LIMITE_PASO_MS
             )
@@ -1599,6 +1364,21 @@ def ir_por_el_marco(pagina: Any, ruta: str, obra: tuple[str | None, int] | None 
                 timeout=LIMITE_PASO_MS
             )
             pasos.append("Cuenta")
+        elif paso["donde"] == "portada":
+            # El nombre de la obra en su barra: su nombre accesible es «<obra> Portada de la obra».
+            _principal(pagina).get_by_role("link", name=paso["nombre"], exact=False).first.click(
+                timeout=LIMITE_PASO_MS
+            )
+            pasos.append(f"barra de la obra › {paso['nombre']}")
+        elif paso["donde"] == "menu":
+            zona = _principal(pagina)
+            zona.get_by_role("button", name=paso["menu"], exact=True).first.click(
+                timeout=LIMITE_PASO_MS
+            )
+            pagina.get_by_role("menuitem", name=paso["nombre"], exact=True).first.click(
+                timeout=LIMITE_PASO_MS
+            )
+            pasos.append(f"{paso['menu']} › {paso['nombre']}")
         else:
             barra = pagina.get_by_role("navigation", name=paso["barra"], exact=True)
             barra.get_by_role("link", name=paso["nombre"], exact=True).click(timeout=LIMITE_PASO_MS)
@@ -1607,6 +1387,14 @@ def ir_por_el_marco(pagina: Any, ruta: str, obra: tuple[str | None, int] | None 
             pagina.wait_for_load_state("networkidle", timeout=3000)
     esperar_ruta(pagina, ruta)
     return " / ".join(pasos)
+
+
+def reponer_pagina(pagina: Any) -> None:
+    """Recarga la página en su dirección (la sesión sigue: es una cookie) tras una fila fallida."""
+    with contextlib.suppress(Exception):
+        pagina.keyboard.press("Escape")
+        pagina.reload(wait_until="domcontentloaded", timeout=LIMITE_CARGA_MS)
+        pagina.wait_for_selector("main h1:not([data-esqueleto])", timeout=LIMITE_CARGA_MS)
 
 
 def caso_de_la_sesion(pagina: Any) -> str | None:
@@ -1645,14 +1433,16 @@ def elegir_contexto(
     obra elegida (None si no hace falta ninguna). Se comprueba contra la API."""
     if not carpeta and not proyecto:
         return None
-    respuesta = api(pagina, "GET", "/v1/obras/todas")
-    obras = respuesta["datos"].get("obras", []) if respuesta["estado"] == 200 else []
+    # Por el canal de peticiones del contexto (la misma cookie): un 403 a quien no lee obras es
+    # de la preparación, no de la pantalla, y no debe llegar a los escuchas de la fila.
+    respuesta = pagina.request.get(pagina.url.split("/app/", 1)[0] + "/v1/obras/todas")
+    obras = respuesta.json().get("obras", []) if respuesta.status == 200 else []
     elegida = obra_para(obras, carpeta, proyecto)
     if elegida is not None:
         obra = (elegida.get("carpeta"), int(elegida["obra_id"]))
         ir_por_hash(pagina, PAGINA_DE_LA_VISTA_GENERAL)
         _enlace_de_la_obra(pagina, obra).click(timeout=LIMITE_PASO_MS)
-        esperar_ruta(pagina, "obras")
+        esperar_ruta(pagina, pagina_de_entrada_de_la_obra())
     elif proyecto:
         raise RuntimeError(f"no hay obra «{proyecto}» en la carpeta «{carpeta}»")
     else:
@@ -1816,6 +1606,55 @@ def comprobar_espera(
     return ok, "; ".join(detalle)
 
 
+# Los diálogos del DOM al fallar una fila: dónde están y si se ven (un velo sin caja es un defecto).
+DIALOGOS_JS = """() => [...document.querySelectorAll('[role=dialog], dialog')].map(d => {
+  const r = d.getBoundingClientRect(), c = getComputedStyle(d);
+  return {clase: d.className, caja: [r.x, r.y, r.width, r.height].map(Math.round),
+          display: c.display, visibilidad: c.visibility, opacidad: c.opacity,
+          ventana: [innerWidth, innerHeight]};
+})"""
+
+
+# El marco no desplaza la página: el documento mide la ventana y ni él ni el marco están desplazados
+# (un marco movido por un `focus()` o un `scrollIntoView` esconde la barra lateral o el contenido
+# arriba y deja una franja vacía abajo). `el_que_alarga` nombra lo más bajo que no es fijo.
+MARCO_JS = """() => {
+  const de = document.documentElement, marco = document.querySelector('.silice-marco');
+  const caja = (s) => {
+    const e = document.querySelector(s);
+    return e ? Math.round(e.scrollTop) : null;
+  };
+  const masBajos = () => [...document.body.querySelectorAll('*')]
+    .filter((e) => getComputedStyle(e).position !== 'fixed')
+    .map((e) => ({e, abajo: Math.round(e.getBoundingClientRect().bottom + scrollY)}))
+    .sort((a, b) => b.abajo - a.abajo).slice(0, 3)
+    .map(({e, abajo}) => ({etiqueta: e.tagName, clase: String(e.className).slice(0, 80), abajo,
+                           posicion: getComputedStyle(e).position}));
+  return {documento_alto: de.scrollHeight, ventana_alto: innerHeight, scroll_y: Math.round(scrollY),
+          marco_scroll: marco ? Math.round(marco.scrollTop) : null,
+          lateral_scroll: caja('aside.silice-marco-lateral'), contenido_scroll: caja('#contenido'),
+          el_que_alarga: de.scrollHeight <= innerHeight ? null : masBajos()};
+}"""
+
+
+def desborde_del_marco(marco: dict[str, Any] | None) -> str | None:
+    """Dice si el marco se salió de la ventana (documento más alto que ella, o la página o el marco
+    corridos), según `MARCO_JS`; `None` si está quieto o si no hay medida."""
+    if not marco:
+        return None
+    alto, ventana = marco.get("documento_alto"), marco.get("ventana_alto")
+    corridas = {
+        "la página": marco.get("scroll_y"),
+        "el marco": marco.get("marco_scroll"),
+    }
+    corrido = [f"{donde} {px} px" for donde, px in corridas.items() if px]
+    if isinstance(alto, int) and isinstance(ventana, int) and alto > ventana + 1:
+        corrido.insert(0, f"el documento mide {alto} px en una ventana de {ventana} px")
+    if not corrido:
+        return None
+    return "el marco se salió de la ventana: " + "; ".join(corrido)
+
+
 def ejecutar_fila(
     pagina: Any,
     fila: dict[str, Any],
@@ -1859,13 +1698,24 @@ def ejecutar_fila(
         resultado["salida"] = detalle
     except Exception as error:
         resultado["paso"] = False
-        resultado["salida"] = f"error en el paso {len(resultado['pasos']) + 1}: {str(error)[:400]}"
+        resultado["salida"] = f"error en el paso {len(resultado['pasos']) + 1}: {str(error)[:1500]}"
     resultado["segundos"] = round(time.monotonic() - inicio, 1)
+    # Lo que anotó la página antes del control de la carpeta: ese control pide `/v1/obras/todas`
+    # por su cuenta (403 a quien no lee obras) y su fallo no es de la pantalla.
+    resultado["consola"] = consola[:6]
+    resultado["red"] = red[:6]
     with contextlib.suppress(Exception):
         resultado.update(carpeta_mostrada_y_real(pagina))
     resultado["avisos"] = aviso_visible(pagina)[:600]
-    resultado["consola"] = consola[:6]
-    resultado["red"] = red[:6]
+    with contextlib.suppress(Exception):
+        resultado["marco"] = pagina.evaluate(MARCO_JS)
+    desborde = desborde_del_marco(resultado.get("marco"))
+    if desborde:
+        resultado["paso"] = False
+        resultado["salida"] = f"{resultado['salida']} | {desborde}"
+    if not resultado["paso"]:
+        with contextlib.suppress(Exception):
+            resultado["dialogos"] = pagina.evaluate(DIALOGOS_JS)
     captura = salida / "capturas" / f"{etiqueta}.png"
     with contextlib.suppress(Exception):
         pagina.screenshot(path=str(captura), full_page=True)
@@ -1882,7 +1732,9 @@ def ejecutar_fila(
     return resultado
 
 
-def main_funcional(salida: Path, acciones: Path, solo: list[str] | None) -> int:
+def main_funcional(
+    salida: Path, acciones: Path, solo: list[str] | None, alto: int = ALTO
+) -> int:
     """Siembra, ejecuta las filas en orden y escribe `funcional.json`; 1 si alguna falla."""
     filas = cargar_filas_funcionales(acciones)
     try:
@@ -1907,6 +1759,7 @@ def main_funcional(salida: Path, acciones: Path, solo: list[str] | None) -> int:
         "rutas_de_la_interfaz": len(rutas),
         "sin_fila": sin_fila,
         "solo": solo,
+        "alto": alto,
         "agregadas_por_requiere": agregadas,
         "siembra": [],
         "pantallas": [],
@@ -1923,7 +1776,7 @@ def main_funcional(salida: Path, acciones: Path, solo: list[str] | None) -> int:
                 def pagina_de(cuenta: str) -> Any:
                     if cuenta not in paginas:
                         contexto = navegador.new_context(
-                            viewport={"width": 1366, "height": ALTO}, accept_downloads=True
+                            viewport={"width": 1366, "height": alto}, accept_downloads=True
                         )
                         pagina = contexto.new_page()
                         pagina.set_default_timeout(LIMITE_PASO_MS)
@@ -1931,15 +1784,29 @@ def main_funcional(salida: Path, acciones: Path, solo: list[str] | None) -> int:
                         paginas[cuenta] = pagina
                     return paginas[cuenta]
 
+                # Una fila que falla puede dejar su página a medias (un diálogo abierto, un velo
+                # encima): antes de la siguiente fila de esa cuenta se recarga en su dirección, para
+                # que un defecto no tumbe en cascada las filas que no tienen que ver con él.
+                fallo_en: set[str] = set()
+
+                def ejecutar(fila: dict[str, Any], etiqueta: str) -> dict[str, Any]:
+                    pagina = pagina_de(fila["cuenta"])
+                    if fila["cuenta"] in fallo_en:
+                        reponer_pagina(pagina)
+                    r = ejecutar_fila(pagina, fila, archivos, salida, etiqueta)
+                    if r["paso"]:
+                        fallo_en.discard(fila["cuenta"])
+                    else:
+                        fallo_en.add(fila["cuenta"])
+                    return r
+
                 for n, fila in enumerate(filas["siembra"], 1):
-                    r = ejecutar_fila(
-                        pagina_de(fila["cuenta"]), fila, archivos, salida, f"siembra{n:02}"
-                    )
+                    r = ejecutar(fila, f"siembra{n:02}")
                     informe["siembra"].append(r)
                     print(f"siembra {n:2} {fila['ruta']:15} {'ok' if r['paso'] else 'FALLA'}")
                 for n, fila in enumerate(pantallas, 1):
                     etiqueta = f"{n:02}_{fila['ruta']}"
-                    r = ejecutar_fila(pagina_de(fila["cuenta"]), fila, archivos, salida, etiqueta)
+                    r = ejecutar(fila, etiqueta)
                     informe["pantallas"].append(r)
                     print(
                         f"{n:2} {fila['ruta']:15} {fila['cuenta']:5} "
@@ -2187,13 +2054,26 @@ def analizador() -> argparse.ArgumentParser:
         help="modo funcional: solo estas rutas (con espacios o comas), las que requieren y la "
         "siembra; un nombre desconocido o ninguna ruta sale con 1",
     )
+    a.add_argument(
+        "--alto",
+        type=_alto_positivo,
+        default=ALTO,
+        help=f"modo funcional: alto de la ventana en px (por omisión {ALTO}, el del portátil); "
+        "otro alto sirve para mirar detrás de un defecto de ventanas bajas",
+    )
     return a
+
+
+def _alto_positivo(valor: str) -> int:
+    if not valor.isdigit() or int(valor) <= 0:
+        raise argparse.ArgumentTypeError(f"el alto debe ser un entero positivo: {valor!r}")
+    return int(valor)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = analizador().parse_args(argv)
     if args.funcional:
-        return main_funcional(args.salida, args.acciones, args.solo)
+        return main_funcional(args.salida, args.acciones, args.solo, args.alto)
 
     letras = letras_pedidas(args.letras + ([LETRA_DE_CARGA] if args.medir_carga else []))
     anchos = anchos_pedidos(args.anchos + ([str(ANCHO_DE_CARGA)] if args.medir_carga else []))

@@ -102,6 +102,8 @@ export interface EstadoDelServidor {
   // La moneda de trabajo de la carpeta abierta (`GET /v1/carpeta`).
   moneda: string | null;
   borradores: { id: string; proyecto: string; version: string | null; cambios: number; rev: number; tocado: string }[];
+  // Lote G5: fecha de entrega al cliente por código de obra (`aaaa-mm-dd` o null).
+  entregas?: Record<string, string | null>;
 }
 
 export type Respondedor = (metodo: string, ruta: string, cuerpo: unknown) => Response | Promise<Response> | undefined;
@@ -225,6 +227,23 @@ export function servidorFalso(estado: EstadoDelServidor = estadoInicial(), antes
     }
     if ((ruta === "/v1/sesion/proyecto" || ruta === "/v1/sesion/preferencias") && metodo === "PUT") {
       return new Response(null, { status: 204 });
+    }
+    const mEntrega = /^\/v1\/obras\/([^/]+)\/entrega$/.exec(ruta);
+    if (mEntrega && metodo === "GET") {
+      const codigo = decodeURIComponent(mEntrega[1]!);
+      const fecha = estado.entregas?.[codigo] ?? null;
+      return json({ proyecto: codigo, fecha_entrega: fecha, actualizada: null, actualizada_por: null });
+    }
+    if (mEntrega && metodo === "PUT") {
+      const codigo = decodeURIComponent(mEntrega[1]!);
+      const fecha = typeof datos["fecha_entrega"] === "string" ? datos["fecha_entrega"] : null;
+      estado.entregas = { ...(estado.entregas ?? {}), [codigo]: fecha };
+      return json({
+        proyecto: codigo,
+        fecha_entrega: fecha,
+        actualizada: "2026-11-27T10:00:00",
+        actualizada_por: "Ana <ana>",
+      });
     }
     return json({ detalle: "No encontrado." }, 404);
   };

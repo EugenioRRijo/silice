@@ -67,9 +67,11 @@
   gap: 0.5rem;
 }
 
-// Detalles e IP largos (un detalle puede traer una cadena sin espacios) no ensanchan la pagina.
+// Detalles e IP largos (un detalle puede traer una cadena sin espacios) no ensanchan la pagina: la tabla desplaza dentro
+// de su caja. `break-word` y no `anywhere`: con `anywhere` el ancho minimo de una celda es una letra y el navegador
+// partia «Pendiente» en «Pendient / e» y las fechas en dos renglones (revision visual T3, 2026-11-28).
 .silice-adm__tabla td {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 // Confirmacion con comportamiento de dialogo. Solo desactivar es rojo (DESIGN.md: dos semanticas de color).
@@ -94,4 +96,47 @@
 .silice-adm__nota .silice-sev {
   display: inline-flex;
   align-items: center;
+}
+
+// Acciones por fila en la tabla de Solicitudes (C9): selector compacto y botones alineados sin desbordar.
+.silice-adm__acciones-solicitud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-adm__selector-papel {
+  min-inline-size: 10.5rem;
+}
+
+.silice-adm__dialogo-codigo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-inline-size: 0;
+  line-height: 1.45;
+
+  p {
+    margin: 0;
+  }
+}
+
+.silice-adm__codigo-unico {
+  padding: 0.75rem 1rem;
+  background-color: var(--silice-alzado);
+  border: 1px solid var(--silice-linea);
+  color: var(--silice-t1);
+  font-family: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.silice-adm__enlace-correo {
+  text-decoration: none;
 }

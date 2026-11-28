@@ -57,6 +57,8 @@ recuerda entre sesiones y reinicios vive en `mp_eleccion` de la instalación (`a
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -64,6 +66,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, StrictBool, StrictStr
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from api import caso_web
 from api.dependencias import (
@@ -100,6 +103,8 @@ from core.catalog import abrir_sesion
 from operacion.base_datos import ErrorDeBase, RutaDeCasoRechazada, listar_casos, resolver_caso
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, eventos, sesiones
+from seguridad.cuentas import Dormir
+from seguridad.modelo import Usuario
 from seguridad.permisos import Accion, PermisoDenegado, Rol, exigir, permitido
 from seguridad.sesiones import SesionActiva
 
@@ -331,20 +336,36 @@ def entrar(
 ) -> SesionRespuesta | JSONResponse:
     """Entra con la cuenta de la instalación y deja la cookie de sesión. Con la contraseña
     temporal la ficha queda restringida hasta `POST /v1/sesion/contrasena`."""
+
+    def verificar(sesion: Session, momento: datetime, ip: str, dormir: Dormir) -> Usuario:
+        return cuentas.autenticar(
+            sesion, datos.login, datos.contrasena, momento, ip=ip, dormir=dormir
+        )
+
+    return abrir_sesion_web(request, response, datos.login, verificar)
+
+
+#: Comprueba quién entra con la sesión de la instalación, el momento, la IP y el `dormir` del
+#: freno; devuelve la cuenta o lanza `cuentas.ErrorDeAcceso` (401) o `cuentas.CuentaBloqueada`
+#: (423), con su propio mensaje.
+Verificar = Callable[[Session, datetime, str, Dormir], Usuario]
+
+
+def abrir_sesion_web(
+    request: Request, response: Response, login: str, verificar: Verificar
+) -> SesionRespuesta | JSONResponse:
+    """La puerta de entrada de la interfaz: la de `POST /v1/sesion` y la del canje del código
+    (`POST /v1/solicitudes/canjear`), que abre la sesión igual. 403 con un `Origin` presente y
+    ajeno; 429 con `Retry-After` si el freno global pide esperar (`login` es lo tecleado, para el
+    registro); 401 y 423 con el mensaje de `verificar`; si el navegador trae la cookie de una
+    ficha anterior, se cierra (y se olvida su caso); y deja la cookie de la ficha nueva."""
     if "origin" in request.headers and not origen_propio(request):
         raise HTTPException(status_code=403, detail=MENSAJE_ORIGEN)
     momento = ahora()
     try:
         with sesion_de_instalacion() as sesion:
             try:
-                usuario = cuentas.autenticar(
-                    sesion,
-                    datos.login,
-                    datos.contrasena,
-                    momento,
-                    ip=_ip(request),
-                    dormir=_no_dormir,
-                )
+                usuario = verificar(sesion, momento, _ip(request), _no_dormir)
             except _Frenado as frenado:
                 eventos.registrar(
                     sesion,
@@ -352,7 +373,7 @@ def entrar(
                     momento,
                     ip=_ip(request),
                     detalle="freno global",
-                    login=cuentas.clave_de_intento(datos.login),
+                    login=cuentas.clave_de_intento(login),
                 )
                 sesion.commit()
                 return JSONResponse(
@@ -362,8 +383,8 @@ def entrar(
                 )
             except cuentas.CuentaBloqueada:
                 raise HTTPException(status_code=423, detail=cuentas.MENSAJE_BLOQUEO) from None
-            except cuentas.ErrorDeAcceso:
-                raise HTTPException(status_code=401, detail=cuentas.MENSAJE_FALLO) from None
+            except cuentas.ErrorDeAcceso as error:  # el mensaje fijo de quien verifica
+                raise HTTPException(status_code=401, detail=str(error)) from None
             anterior = request.cookies.get(COOKIE)
             if anterior:  # volver a entrar desde el mismo navegador cierra la ficha anterior
                 sesiones.cerrar(sesion, anterior, "salida", momento)

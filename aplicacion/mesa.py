@@ -227,7 +227,14 @@ FuentePendientes = Callable[[Session, date], list[Pendiente]]
 
 
 def dias_habiles_entre(desde: date, hasta: date) -> int:
-    """Los días de lunes a viernes `d` con `desde < d <= hasta` (0 si `hasta <= desde`)."""
+    """Los días de lunes a viernes `d` con `desde < d <= hasta` (0 si `hasta <= desde`).
+
+    Sin feriados, a propósito: el recordatorio de dictamen y la mesa la usan para aprobaciones, que
+    no tienen línea base de la que leer el calendario de la obra (los feriados viven en el
+    calendario de la línea base; las compras y las entregas sí los cuentan con `es_habil`). Un
+    feriado nacional adelanta el recordatorio un día; anotado en la §2 de
+    `docs/especificaciones/2026-11-26-notificaciones-por-evento.md` (auditoría antes de
+    medicion-v1, #8)."""
     dias = 0
     dia = desde + timedelta(days=1)
     while dia <= hasta:

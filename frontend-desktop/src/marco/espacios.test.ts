@@ -26,10 +26,11 @@ describe("rutaCanonica", () => {
     expect(rutaCanonica("mercado")).toBe("/mercado");
   });
 
-  // F6, T5. Contrato 2.1: las siete pantallas que son subvistas viven en /obra/<c>/<o>/<seccion>/<subvista>. Tabla a mano.
+  // F6, T5. Contrato 2.1 (y B1-10): las ocho pantallas que son subvistas viven en /obra/<c>/<o>/<seccion>/<subvista>. Tabla a mano.
   const SUBVISTAS_DEL_CONTRATO: readonly (readonly [string, string])[] = [
     ["tablero", "resumen/tablero"],
     ["componer", "presupuesto/componer"],
+    ["hoja_pestanas", "presupuesto/pestanas"],
     ["revisar", "aprobaciones/revisar"],
     ["entregar", "aprobaciones/entregar"],
     ["actualizacion", "mercado/actualizar"],
@@ -137,6 +138,7 @@ const TABLA_DEL_CONTRATO: readonly Fila[] = [
   ["tablero", "leer_proyecto", undefined, ["obra/resumen/tablero"]],
   ["hoja", "leer_proyecto", undefined, ["obra/presupuesto"]],
   ["componer", "editar_hoja", undefined, ["obra/presupuesto/componer"]],
+  ["hoja_pestanas", "leer_proyecto", undefined, ["obra/presupuesto/pestanas"]], // B1-10: las pestañas de antes, subvista «Espacio, plan y ajustes»
   ["tramos", "editar_hoja", "vial", ["obra/tramos"]],
   ["archivos", "leer_proyecto", undefined, ["obra/archivos"]],
   ["versiones", "leer_proyecto", undefined, ["obra/versiones"]],
@@ -187,12 +189,13 @@ function lugaresExportados(): Map<string, string[]> {
   return lugares;
 }
 
-describe("la tabla del contrato (F6, T2): 31 pantallas, cada una en su lugar", () => {
-  test("la tabla escrita a mano tiene 31 ids distintos, y son los de PAGINAS (ni uno más ni uno menos)", () => {
+describe("la tabla del contrato (F6, T2 y B1-10): 32 pantallas, cada una en su lugar", () => {
+  test("la tabla escrita a mano tiene 32 ids distintos, y son los de PAGINAS (ni uno más ni uno menos)", () => {
     const ids = TABLA_DEL_CONTRATO.map((f) => f[0]);
-    expect(ids).toHaveLength(31);
-    expect(new Set(ids).size).toBe(31);
-    // F6, T8: la Vista general («inicio», contrato 4) es la entrada de la app, aparte de las 31 del contrato.
+    expect(ids).toHaveLength(32);
+    expect(new Set(ids).size).toBe(32);
+    // F6, T8: la Vista general («inicio», contrato 4) es la entrada de la app, aparte de las del contrato. B1-10 suma
+    // «hoja_pestanas», la subvista «Espacio, plan y ajustes».
     expect([...ids].sort()).toEqual(PAGINAS.map((p) => p.id).filter((id) => id !== "inicio").sort());
   });
 
@@ -244,6 +247,7 @@ describe("SECCIONES_DE_OBRA y SUBVISTAS (contrato 2.1 y adenda A.1)", () => {
       presupuesto: [
         { id: "", titulo: "Presupuesto", pagina: "hoja" },
         { id: "componer", titulo: "Componer", pagina: "componer" },
+        { id: "pestanas", titulo: "Espacio, plan y ajustes", pagina: "hoja_pestanas" },
       ],
       aprobaciones: [
         { id: "", titulo: "Aprobar", pagina: "aprobar" },
@@ -305,10 +309,12 @@ describe("ESPACIOS (contrato 2.2) y SECCIONES_DE_CUENTA (contrato 3)", () => {
     });
   });
 
-  test("la Cuenta tiene sus siete secciones, con los títulos del contrato", () => {
+  // C11b (2026-11-26): «Notificaciones», qué avisos recibe, se suma a las siete del contrato.
+  test("la Cuenta tiene sus ocho secciones, con los títulos del contrato y Notificaciones", () => {
     expect(SECCIONES_DE_CUENTA.map((c) => [c.id, c.titulo])).toEqual([
       ["preferencias", "Configuración"],
       ["contrasena", "Contraseña"],
+      ["notificaciones", "Notificaciones"],
       ["cuentas", "Cuentas y permisos"],
       ["empresa", "Empresa y tema"],
       ["carpetas", "Carpetas"],

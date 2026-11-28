@@ -1,0 +1,39 @@
+<!--{"orden": 17, "titulo": "Precios y catálogo › Precios de la empresa", "area": "precios", "opcion": "Precios de la empresa", "accion": "Cargar una lista"}-->
+<span class="sobre">Lista de precios en uso</span>
+<h1>Lista de julio, vigente</h1>
+<div class="datos"><span>42 insumos</span><span>Vigente hasta 30/11/2026</span><span class="t-adv">1 insumo con precio vencido</span></div>
+<h2>Listas cargadas</h2>
+<div class="marco">
+  <table>
+    <caption class="oc">Listas de precios de la empresa</caption>
+    <thead><tr><th scope="col">Lista</th><th scope="col">Origen</th><th scope="col">Vigencia</th><th scope="col" class="num">Insumos</th><th scope="col">Estado</th></tr></thead>
+    <tbody>
+      <tr class="sel" aria-selected="true"><td>Lista de julio</td><td>Cargada por la empresa</td><td class="cod">01/07/2026 al 30/11/2026</td><td class="num">42</td><td><span class="estado ok">Vigente</span></td></tr>
+      <tr><td>Lista de junio</td><td>Cargada por la empresa</td><td class="cod">01/06/2026 al 30/06/2026</td><td class="num">40</td><td><span class="estado">Anterior</span></td></tr>
+      <tr><td>Lista de Proveedor Ejemplo, C.A.</td><td>Recibida el 12/11/2026</td><td class="cod">Sin fecha de vigencia</td><td class="num">18</td><td><span class="estado res">En revisión</span></td></tr>
+    </tbody>
+  </table>
+</div>
+<h2>Insumos de la lista de julio</h2>
+<div class="marco">
+  <table>
+    <caption class="oc">Seis de los 42 insumos de la lista de julio, comparados con la lista de junio</caption>
+    <thead><tr><th scope="col">Código</th><th scope="col">Insumo</th><th scope="col">Unidad</th><th scope="col" class="num">Precio</th><th scope="col">Frente a junio</th><th scope="col">Vigencia</th></tr></thead>
+    <tbody>
+      <tr><td class="cod">I-001</td><td>Cemento portland, saco de 42,5 kg</td><td>saco</td><td class="num">10,40</td><td>Subió 6,1 %<span class="ref">junio 9,80</span></td><td class="cod">30/11/2026</td></tr>
+      <tr><td class="cod">I-002</td><td>Cabilla de 1/2 pulgada</td><td>kg</td><td class="num">18,42</td><td>Subió 2,9 %<span class="ref">junio 17,90</span></td><td class="cod">30/11/2026</td></tr>
+      <tr><td class="cod">I-003</td><td>Arena lavada</td><td>m³</td><td class="num">21,50</td><td>Sin cambio<span class="ref">junio 21,50</span></td><td class="cod">30/11/2026</td></tr>
+      <tr><td class="cod">I-004</td><td>Piedra picada</td><td>m³</td><td class="num">28,00</td><td>Bajó 4,8 %<span class="ref">junio 29,40</span></td><td class="cod">30/11/2026</td></tr>
+      <tr><td class="cod">I-005</td><td>Tabla para encofrado</td><td>m</td><td class="num">6,30</td><td>Subió 3,3 %<span class="ref">junio 6,10</span></td><td class="cod">30/11/2026</td></tr>
+      <tr class="sel" aria-selected="true"><td class="cod">I-006</td><td>Aditivo plastificante</td><td>litro</td><td class="num">4,50</td><td>Subió 3,4 %<span class="ref">junio 4,35</span></td><td><span class="t-adv">Advertencia</span> <sup>1</sup><span class="ref adv">vencido el 31/10/2026</span></td></tr>
+    </tbody>
+  </table>
+</div>
+<span class="pie">Cada porcentaje compara el precio de julio con el de junio.</span>
+<!--MARGEN-->
+<article class="nota act" style="margin-top:590px">
+  <div class="cab"><span class="no">1</span><span class="sev adv">Advertencia</span><span>Precio vencido</span></div>
+  <p>El precio del aditivo plastificante venció el 31/10/2026, aunque la lista siga vigente. Las partidas que lo usan lo calculan con un precio de hace más de 90 días.</p>
+  <div class="acc"><a href="#">Pedir un precio nuevo</a><a href="#">Ver las partidas que lo usan</a></div>
+</article>
+<p class="ficticio">Datos de demostración, ficticios.</p>

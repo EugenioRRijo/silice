@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaEspacio, vistaParametros } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import { ID_DEL_TITULO } from "./useGuardadoDeLaPagina";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
@@ -244,7 +244,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     expect(llamadas("GET", `/v1/hoja/borradores/${ID}`)).toHaveLength(1);
     expect(aperturas()).toHaveLength(0); // se retoma, no se abre otro
     expect(within(estado()).getByText(/Versión 002 · 2 cambios sin guardar/)).toBeInTheDocument();
-    expect(within(estado()).getByTitle("2.800,5")).toBeInTheDocument();
+    expect(within(estado()).getByText("Valor exacto: 2.800,5 USD")).toBeInTheDocument();
     expect(versionAbierta()).toBe("002");
     // Hay cambios sin guardar. El aviso de `beforeunload` se registra en un efecto pasivo, que React vacía en un turno
     // posterior al commit que pintó el texto: con la máquina cargada `findByRole` ve el DOM antes de que corra. Se espera

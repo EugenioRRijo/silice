@@ -27,10 +27,11 @@ export function RaizDelEspacio({ espacio, acciones, modoEntrega, apagados }: Omi
   return <Navigate to={`${rutaDeHerramienta(espacio, destino.id)}${search}`} replace />;
 }
 
-// Producción, Auditoría o Precios como espacio de trabajo (plan F6, T4; diseño visual 2.1): su título arriba, sin h1 (el
-// único h1 es el de la pantalla), debajo la barra con sus herramientas y, en el lienzo, la pantalla de la herramienta. La
-// cabecera y la barra no se vuelven a montar al cambiar de herramienta (el marco da la misma clave a todo el espacio), así
-// que el enlace pulsado conserva el foco; el límite de error y la espera son de cada herramienta.
+// Producción, Auditoría o Precios como espacio de trabajo (plan F6, T4; diseño visual 2.1; lote C4 de la reestructuración): UNA
+// barra de lugar de dos filas (BarraDeEspacio con `titulo`): el nombre del espacio, sin h1 (el único h1 es el de la pantalla), y
+// debajo sus herramientas como pestañas; en el lienzo, la pantalla de la herramienta. La barra no se vuelve a montar al
+// cambiar de herramienta (el marco da la misma clave a todo el espacio), así que el enlace pulsado conserva el foco; el límite
+// de error y la espera son de cada herramienta.
 export function EspacioDeHerramientas({ espacio, pantalla, acciones, modoEntrega, apagados }: Props) {
   const { herramienta: id } = useParams();
   const { titulo, herramientas } = ESPACIOS[espacio];
@@ -44,11 +45,14 @@ export function EspacioDeHerramientas({ espacio, pantalla, acciones, modoEntrega
   const conAyuda = pagina !== undefined && usable(pagina, acciones, modoEntrega, apagados);
   return (
     <>
-      <section aria-label={titulo} className="silice-espacio-cabecera">
-        <p className="silice-espacio-cabecera__titulo">{titulo}</p>
-      </section>
-      {/* Sin ninguna herramienta usable no hay barra que ofrecer: la pantalla dice por qué (sin permiso o apagada). */}
-      {pestanas.length > 0 && <BarraDeEspacio etiqueta={titulo} pestanas={pestanas} activa={herramienta.id} nivel="espacio" />}
+      {/* Sin ninguna herramienta usable no hay pestañas que ofrecer: queda el nombre del espacio y la pantalla dice por qué (sin permiso o apagada). */}
+      {pestanas.length > 0 ? (
+        <BarraDeEspacio etiqueta={titulo} titulo={titulo} pestanas={pestanas} activa={herramienta.id} nivel="espacio" />
+      ) : (
+        <section aria-label={titulo} className="silice-espacio-cabecera">
+          <p className="silice-espacio-cabecera__titulo">{titulo}</p>
+        </section>
+      )}
       {conAyuda && <AyudaDeLaPantalla pagina={herramienta.pagina} />}
       <LimiteDeError key={herramienta.id}>
         <Suspense fallback={<EsqueletoPagina />}>{pantalla(herramienta.pagina)}</Suspense>

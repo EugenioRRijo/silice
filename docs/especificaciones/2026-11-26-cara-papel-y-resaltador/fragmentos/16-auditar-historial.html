@@ -1,0 +1,34 @@
+<!--{"orden": 16, "titulo": "Auditar un libro › Historial de auditorías", "area": "auditar", "opcion": "Historial de auditorías", "accion": "Subir otro libro"}-->
+<span class="sobre">Libros auditados por la empresa</span>
+<h1>7 auditorías en total</h1>
+<div class="datos"><span>3 con dictamen emitido</span><span>2 en revisión</span><span>2 archivadas</span><span>Última: 15/11/2026</span></div>
+<div class="filtros" role="group" aria-label="Mostrar auditorías">
+  <button type="button" aria-pressed="true">Todas<span class="n">7</span></button>
+  <button type="button" aria-pressed="false">Dictamen emitido<span class="n">3</span></button>
+  <button type="button" aria-pressed="false">En revisión<span class="n">2</span></button>
+  <button type="button" aria-pressed="false">Archivada<span class="n">2</span></button>
+  <span class="ayuda">Haga clic en una fila para abrir su informe</span>
+</div>
+<div class="marco">
+  <table>
+    <caption class="oc">Auditorías pasadas, de la más reciente a la más antigua</caption>
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Libro</th><th scope="col">Quién</th><th scope="col">Hallazgos</th><th scope="col">Estado</th></tr></thead>
+    <tbody>
+      <tr class="sel" aria-selected="true"><td class="cod">15/11/2026</td><td>Presupuesto cliente A.xlsx</td><td>Ana Ejemplo</td><td><span class="t-err">3 errores</span> · <span class="t-adv">3 advertencias</span> <sup>1</sup></td><td><span class="estado res">En revisión</span></td></tr>
+      <tr><td class="cod">06/11/2026</td><td>Presupuesto cliente B.xlsx</td><td>Luis Ejemplo</td><td><span class="t-err">1 error</span> · <span class="t-adv">2 advertencias</span></td><td><span class="estado ok">Dictamen emitido</span></td></tr>
+      <tr><td class="cod">29/10/2026</td><td>Libro de la planta.xlsx</td><td>Ana Ejemplo</td><td><span class="t-adv">1 advertencia</span></td><td><span class="estado ok">Dictamen emitido</span></td></tr>
+      <tr><td class="cod">21/10/2026</td><td>Presupuesto cliente C.xlsx</td><td>María Ejemplo</td><td><span class="t-err">4 errores</span> · <span class="t-adv">5 advertencias</span></td><td><span class="estado res">En revisión</span></td></tr>
+      <tr><td class="cod">02/10/2026</td><td>Presupuesto cliente A.xlsx</td><td>Luis Ejemplo</td><td><span class="t-err">2 errores</span></td><td><span class="estado ok">Dictamen emitido</span></td></tr>
+      <tr><td class="cod">18/09/2026</td><td>Presupuesto cliente D.xlsx</td><td>María Ejemplo</td><td><span class="t-adv">3 advertencias</span></td><td><span class="estado">Archivada</span></td></tr>
+      <tr><td class="cod">04/09/2026</td><td>Libro de la planta.xlsx</td><td>Ana Ejemplo</td><td class="t2">Sin hallazgos</td><td><span class="estado">Archivada</span></td></tr>
+    </tbody>
+  </table>
+</div>
+<span class="pie">Las auditorías archivadas no se borran: quedan como constancia.</span>
+<!--MARGEN-->
+<article class="nota act" style="margin-top:154px">
+  <div class="cab"><span class="no">1</span><span>La más reciente</span></div>
+  <p>Es la del libro que subió el 15/11/2026. Falta que alguien la revise para emitir el dictamen.</p>
+  <div class="acc"><a href="#">Abrir el informe</a></div>
+</article>
+<p class="ficticio">Datos de demostración, ficticios.</p>

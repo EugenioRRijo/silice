@@ -1,26 +1,23 @@
-import {
-  Add,
-  Catalog,
-  Dashboard,
-  DocumentView,
-  Industry,
-  SidePanelClose,
-  SidePanelOpen,
-} from "@carbon/icons-react";
-import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
+import { Add } from "@carbon/icons-react";
+import { useEffect, useId, useMemo } from "react";
 import { Link, useLocation } from "react-router";
 import { Pildora } from "../comun/Pildora";
-import { claveDeObra, contarPorObra } from "../paginas/pendientes/logica";
+import { claveDeObra, contarPorObra, contarUrgencias } from "../paginas/pendientes/logica";
 import { TEXTOS as TEXTOS_PENDIENTES } from "../paginas/pendientes/textos";
+import type { PendienteDeObra } from "../api/tipos";
 import { useNavegarSeguro } from "../shell/navegarSeguro";
 import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import type { DestinoDeNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import "./BarraLateral.scss";
+import { rutaDeCuenta } from "./espacios";
 import { obrasConMismoNombre } from "./homonimas";
 import { NombreDeObra } from "./NombreDeObra";
 import { abrirNuevaObra, cerrarNuevaObra, useNuevaObraAbierta } from "./nuevaObra";
 import { obrasAlcanzables, useOferta } from "./oferta";
-import { RUTA_DE_VISTA_GENERAL, esRutaDeInicio, rutaDeObra } from "./secciones";
+import { iconoDeOpcion } from "./riel";
+import { RielLateral } from "./RielLateral";
+import type { CifraDeRiel, CifrasDeRiel, OpcionDeRiel } from "./RielLateral";
+import { RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCION_DE_ENTRADA, esRutaDeInicio, rutaDeObra } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
 import { usePendientes } from "./usePendientes";
 import { useWorkspaceLayout } from "./useWorkspaceLayout";
@@ -30,26 +27,23 @@ interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
 }
 
-function iconoDeEspacio(id: string) {
-  if (id === "auditoria") return <DocumentView size={16} aria-hidden="true" />;
-  if (id === "precios") return <Catalog size={16} aria-hidden="true" />;
-  return <Industry size={16} aria-hidden="true" />;
+// Los pendientes de la obra abierta, contados por urgencia y dichos con las palabras de la bandeja (bloquea, aviso): la
+// gravedad va siempre con su palabra. Un grupo en cero no se nombra.
+function cifrasDeLaObra(pendientes: readonly PendienteDeObra[]): CifraDeRiel[] {
+  const { bloquea, aviso } = contarUrgencias(pendientes);
+  const filas: CifraDeRiel[] = [];
+  if (bloquea > 0) {
+    filas.push({ id: "bloquean", texto: TEXTOS_PENDIENTES.resumen(bloquea, 0), valor: bloquea, gravedad: "error", ruta: RUTA_DE_PENDIENTES });
+  }
+  if (aviso > 0) {
+    filas.push({ id: "avisos", texto: TEXTOS_PENDIENTES.resumen(0, aviso), valor: aviso, gravedad: "advertencia", ruta: RUTA_DE_PENDIENTES });
+  }
+  return filas;
 }
 
 export function BarraLateral({ obraAbierta }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
   const { sidebarCollapsed, toggleSidebar } = useWorkspaceLayout();
-  // Plegar o desplegar desmonta una rama y monta la otra: el botón pulsado (o la obra enfocada, con Ctrl+B) desaparece y el
-  // foco caería en el cuerpo del documento. Si se perdió, pasa al botón equivalente de la rama nueva (WCAG 2.4.3); si lo
-  // tiene otro control (el contenido, con Ctrl+B), no se toca.
-  const alternador = useRef<HTMLButtonElement>(null);
-  const plegadaAntes = useRef(sidebarCollapsed);
-  useLayoutEffect(() => {
-    if (plegadaAntes.current === sidebarCollapsed) return;
-    plegadaAntes.current = sidebarCollapsed;
-    const activo = document.activeElement;
-    if (activo === null || activo === document.body) alternador.current?.focus();
-  }, [sidebarCollapsed]);
   const navegar = useNavegarSeguro();
   const base = useId();
   const { obras, carpetaActual, tituloActual, estado, recargar } = useObras();
@@ -88,22 +82,35 @@ export function BarraLateral({ obraAbierta }: Props) {
 
   const claveAbierta = obraAbierta === null ? null : claveDeObra(obraAbierta.carpeta, obraAbierta.obraId);
 
+  const pendientesDe = (clave: string) =>
+    carga.estado === "listo" ? carga.pendientes.filter((p) => claveDeObra(p.carpeta, p.obra_id) === clave) : [];
+
   function filaDeObra(o: ObraDeCarpeta) {
     const clave = claveDeObra(o.carpeta, o.obra_id);
     const carpeta = carpetaDeHomonimas.get(clave);
     const cuenta = porObra.get(clave) ?? 0;
+    const urgencias = contarUrgencias(pendientesDe(clave));
+    const gravedad = TEXTOS_PENDIENTES.resumen(urgencias.bloquea, urgencias.aviso);
+    // El id no puede llevar espacios ni «|»: la clave de la obra trae el nombre del archivo de la carpeta.
+    const idDeGravedad = `${base}-g-${clave.replace(/[^A-Za-z0-9_-]/g, "_")}`;
     const nombre = [o.obra, carpeta, cuenta > 0 ? TEXTOS_PENDIENTES.porHacer(cuenta) : undefined].filter(Boolean).join(", ");
     return (
       <li key={clave}>
         <Link
-          to={rutaDeObra(o.carpeta, o.obra_id, "resumen")}
+          to={rutaDeObra(o.carpeta, o.obra_id, SECCION_DE_ENTRADA)}
           aria-label={nombre === o.obra ? undefined : nombre}
           aria-current={clave === claveAbierta ? "page" : undefined}
+          aria-describedby={gravedad === "" ? undefined : idDeGravedad}
           className="silice-marco-lateral__fila silice-marco-lateral__obra"
         >
           <span className="silice-marco-lateral__nombre">
             <NombreDeObra nombre={o.obra} />
             {carpeta !== undefined && <span className="silice-marco-lateral__de-carpeta">{carpeta}</span>}
+            {gravedad !== "" && (
+              <span id={idDeGravedad} className="silice-marco-lateral__gravedad" data-gravedad={urgencias.bloquea > 0 ? "error" : "advertencia"}>
+                {gravedad}
+              </span>
+            )}
           </span>
           {cuenta > 0 && <Pildora valor={cuenta} />}
         </Link>
@@ -138,130 +145,119 @@ export function BarraLateral({ obraAbierta }: Props) {
     );
   }
 
+  const cuentaDeCarpetas = oferta.cuenta.some((c) => c.id === "carpetas");
+  const carpetaAbierta =
+    estado !== "sin_permiso" && tituloActual !== ""
+      ? { nombre: tituloActual, rutaDeCambio: puedeCambiarDeCarpeta && cuentaDeCarpetas ? rutaDeCuenta("carpetas") : undefined }
+      : undefined;
+
+  const opciones: OpcionDeRiel[] = [
+    {
+      id: "vista-general",
+      texto: "Inicio",
+      icono: iconoDeOpcion("vista-general"),
+      ruta: RUTA_DE_VISTA_GENERAL,
+      actual: enInicio,
+      cuenta: total,
+      detalle: total > 0 ? TEXTOS_PENDIENTES.porHacer(total) : undefined,
+    },
+  ];
+  const obrasReducidas: OpcionDeRiel[] = visibles.map((o) => {
+    const clave = claveDeObra(o.carpeta, o.obra_id);
+    const cuenta = porObra.get(clave) ?? 0;
+    return {
+      id: `obra-${clave}`,
+      texto: o.obra,
+      icono: iconoDeOpcion("resumen"),
+      inicial: o.obra.trim().charAt(0).toLocaleUpperCase("es"),
+      ruta: rutaDeObra(o.carpeta, o.obra_id, SECCION_DE_ENTRADA),
+      actual: clave === claveAbierta,
+      cuenta,
+      detalle: cuenta > 0 ? TEXTOS_PENDIENTES.porHacer(cuenta) : undefined,
+    };
+  });
+  const soloReducida: OpcionDeRiel[] = [
+    ...(estado !== "sin_permiso" && puedeCrear
+      ? [{ id: "nueva-obra", texto: "Nueva obra", icono: iconoDeOpcion("nueva-obra"), alPulsar: abrirNuevaObra }]
+      : []),
+    ...(estado !== "sin_permiso" ? obrasReducidas : []),
+  ];
+  const espaciosReducidos: OpcionDeRiel[] = espacios.map((e) => ({
+    id: e.id,
+    texto: e.titulo,
+    icono: iconoDeOpcion(e.id),
+    ruta: e.ruta,
+    actual: espacioActivo === e.id,
+  }));
+
+  // «En cifras»: con una obra abierta, las de esa obra; sin ella, las de todas. Solo lo que la aplicación ya sabe: los
+  // pendientes con su palabra (bloquea / aviso, las de la bandeja). El avance no va: pedirlo repetiría la lectura de la ficha
+  // de la obra, que el marco ya hace una sola vez (Marco.test lo vigila). Nada se calcula aquí.
+  const pendientesDelBloque =
+    carga.estado !== "listo" ? [] : claveAbierta === null ? carga.pendientes : pendientesDe(claveAbierta);
+  const filasDeCifras = cifrasDeLaObra(pendientesDelBloque);
+  const cifras: CifrasDeRiel | undefined =
+    obraAbierta === null && filasDeCifras.length === 0
+      ? undefined
+      : {
+          titulo: "En cifras",
+          filas: filasDeCifras,
+          extra: (
+            <>
+              {obraAbierta !== null && carga.estado === "listo" && filasDeCifras.length === 0 && (
+                <p className="silice-marco-lateral__avance">Sin pendientes en esta obra</p>
+              )}
+            </>
+          ),
+        };
+
   return (
-    <aside
-      className={`silice-marco-lateral${sidebarCollapsed ? " silice-marco-lateral--colapsada" : ""}`}
-      data-collapsed={sidebarCollapsed ? "true" : "false"}
-      aria-label="Barra lateral"
+    <RielLateral
+      lugar={obraAbierta !== null ? "Obra abierta" : enInicio ? "Inicio" : (oferta.espacios.find((e) => e.id === espacioActivo)?.titulo ?? "Obras y espacios")}
+      reducida={sidebarCollapsed}
+      alAlternar={toggleSidebar}
+      rotuloDeOpciones="Espacios de la empresa"
+      opciones={opciones}
+      soloReducida={soloReducida}
+      grupoReducido={{ rotulo: "Costos y producción", opciones: espaciosReducidos }}
+      cifras={cifras}
+      carpeta={carpetaAbierta}
+      fuera={
+        <DialogoNuevaObra
+          abierto={nuevaAbierta}
+          alCerrar={cerrarNuevaObra}
+          destino={destino}
+          alCrear={(obra) => {
+            cerrarNuevaObra();
+            recargar();
+            if (/^\d+$/.test(obra.codigo)) void navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
+          }}
+        />
+      }
     >
-      {/* El landmark de toda la barra, plegada o desplegada. `display: contents` para que no sea una caja más del flex. */}
-      <nav aria-label="Obras y espacios" style={{ display: "contents" }}>
-      {sidebarCollapsed ? (
-        <div className="silice-marco-lateral__riel">
-          <div className="silice-marco-lateral__riel-arriba">
-            <button
-              ref={alternador}
-              type="button"
-              className="silice-marco-lateral__riel-btn silice-marco-lateral__riel-btn--toggle"
-              onClick={toggleSidebar}
-              aria-label="Mostrar barra lateral"
-              aria-expanded={false}
-              title="Mostrar barra lateral (Ctrl+B)"
-            >
-              <SidePanelOpen size={16} aria-hidden="true" />
-            </button>
-            <div className="silice-marco-lateral__riel-sep" aria-hidden="true" />
-            <Link
-              to={RUTA_DE_VISTA_GENERAL}
-              aria-current={enInicio ? "page" : undefined}
-              aria-label={total > 0 ? `Vista general, ${TEXTOS_PENDIENTES.porHacer(total)}` : "Vista general"}
-              title={total > 0 ? `Vista general (${total})` : "Vista general"}
-              className="silice-marco-lateral__riel-btn"
-            >
-              <Dashboard size={16} aria-hidden="true" />
-            </Link>
-            {estado !== "sin_permiso" && puedeCrear && (
-              <button
-                type="button"
-                className="silice-marco-lateral__riel-btn silice-marco-lateral__riel-btn--primario"
-                onClick={abrirNuevaObra}
-                aria-label="Nueva obra"
-                title="Nueva obra"
-              >
-                <Add size={16} aria-hidden="true" />
-              </button>
+      <ZonaDeCostos espacios={espacios} espacioActivo={espacioActivo} idBase={base} />
+
+      {estado !== "sin_permiso" && (
+        <div className="silice-marco-lateral__obras">
+          <div className="silice-marco-lateral__obras-cabecera">
+            <h2 className="silice-marco-lateral__titulo">Obras</h2>
+            {visibles.length > 0 && (
+              <span className="silice-marco-lateral__conteo" aria-hidden="true">
+                {visibles.length}
+              </span>
             )}
           </div>
-          {espacios.length > 0 && (
-            <nav aria-label="Costos y producción" className="silice-marco-lateral__riel-abajo">
-              {espacios.map((e) => (
-                <Link
-                  key={e.id}
-                  to={e.ruta}
-                  aria-current={espacioActivo === e.id ? "page" : undefined}
-                  aria-label={e.titulo}
-                  title={e.titulo}
-                  className="silice-marco-lateral__riel-btn silice-marco-lateral__riel-btn--oro"
-                >
-                  {iconoDeEspacio(e.id)}
-                </Link>
-              ))}
-            </nav>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="silice-marco-lateral__cabecera">
-            <Link
-              to={RUTA_DE_VISTA_GENERAL}
-              aria-current={enInicio ? "page" : undefined}
-              aria-label={total > 0 ? `Vista general, ${TEXTOS_PENDIENTES.porHacer(total)}` : undefined}
-              className="silice-marco-lateral__fila silice-marco-lateral__pendientes"
-            >
-              <Dashboard size={16} aria-hidden="true" />
-              <span>Vista general</span>
-              {total > 0 && <Pildora valor={total} />}
-            </Link>
-            <button
-              ref={alternador}
-              type="button"
-              className="silice-marco-lateral__plegar"
-              onClick={toggleSidebar}
-              aria-label="Ocultar barra lateral"
-              aria-expanded={true}
-              title="Ocultar barra lateral (Ctrl+B)"
-            >
-              <SidePanelClose size={16} aria-hidden="true" />
-            </button>
-          </div>
-
-          {estado !== "sin_permiso" && (
-            <div className="silice-marco-lateral__obras">
-              <div className="silice-marco-lateral__obras-cabecera">
-                <h2 className="silice-marco-lateral__titulo">Obras</h2>
-                {visibles.length > 0 && (
-                  <span className="silice-marco-lateral__conteo" aria-hidden="true">
-                    {visibles.length}
-                  </span>
-                )}
-              </div>
-              {puedeCrear && (
-                <div className="silice-marco-lateral__accion">
-                  <button type="button" className="silice-marco-boton-principal" onClick={abrirNuevaObra}>
-                    <Add size={16} aria-hidden="true" />
-                    Nueva obra
-                  </button>
-                </div>
-              )}
-              {zonaDeObras()}
+          {puedeCrear && (
+            <div className="silice-marco-lateral__accion">
+              <button type="button" className="silice-marco-boton-principal" onClick={abrirNuevaObra}>
+                <Add size={16} aria-hidden="true" />
+                Nueva obra
+              </button>
             </div>
           )}
-
-          <ZonaDeCostos espacios={espacios} espacioActivo={espacioActivo} idBase={base} />
-        </>
+          {zonaDeObras()}
+        </div>
       )}
-      </nav>
-
-      <DialogoNuevaObra
-        abierto={nuevaAbierta}
-        alCerrar={cerrarNuevaObra}
-        destino={destino}
-        alCrear={(obra) => {
-          cerrarNuevaObra();
-          recargar();
-          if (/^\d+$/.test(obra.codigo)) void navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
-        }}
-      />
-    </aside>
+    </RielLateral>
   );
 }

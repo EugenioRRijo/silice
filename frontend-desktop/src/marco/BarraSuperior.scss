@@ -7,8 +7,12 @@
 // servidor mide (aplicacion/tema.py: texto-del-marco/marco, acento/marco, borde/marco, marco/acento). Sin hexadecimales ni
 // tamanos en px: solo tokens --silice-* y --cds-* y unidades rem.
 // Cuando no cabe todo (1366 px con letra Normal en una obra, hallazgo 7 del recorrido del 01-11-2026) cede primero el
-// buscador, hasta su icono; luego la carpeta activa y el contexto, que se recortan con puntos suspensivos. La marca y la
-// persona no ceden: la cuenta, al ceder su envoltorio, sacaba el boton por el borde derecho.
+// buscador, hasta su icono (nunca con el texto cortado: o se ve entero o es solo el icono); luego el contexto y, al
+// final, la carpeta activa, que se recortan con puntos suspensivos. La marca y la persona no ceden: la cuenta, al ceder
+// su envoltorio, sacaba el boton por el borde derecho. El recorrido de medicion del 2026-11-28 vio «Carpeta activa: de…»
+// y el atajo del buscador cortado «(…» a 1366 px: la carpeta y el contexto encogian con el mismo factor y el buscador
+// encogia poco a poco. Ahora la izquierda no crece, la derecha recibe todo el sobrante y la ranura del buscador, que
+// mide su propio ancho, decide entre el texto entero y el icono.
 .silice-marco-barra {
   display: flex;
   align-items: center;
@@ -22,19 +26,39 @@
   color: var(--cds-text-inverse);
 }
 
+// Si ni la miga cabe, lo que sobra de la izquierda se recorta en su caja y no se monta sobre «Nueva obra».
 .silice-marco-barra__izq {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   min-inline-size: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  overflow: hidden;
 }
 
+// A la derecha: Nueva obra, el buscador y la cuenta. No cede (solo la izquierda encoge) y se lleva todo el sobrante, que
+// pasa a la ranura del buscador: el buscador es lo primero que se reduce a su icono, no la cuenta.
 .silice-marco-barra__der {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
-  flex: none;
+  flex: 1 0 auto;
+  min-inline-size: 0;
+}
+
+// La ranura de «Nueva obra» y el buscador: toma el sobrante (hasta un tope), deja las dos piezas pegadas a la derecha y mide
+// su propio ancho; si no caben «Nueva obra» y el texto completo del buscador, este queda en su icono (`@container` más
+// abajo). Su minimo es «Nueva obra» (unos 7,7 rem) mas el icono.
+.silice-marco-barra__buscar-ranura {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-inline-size: 11rem;
+  max-inline-size: 32rem;
+  container-type: inline-size;
 }
 
 .silice-marco-barra__logo {
@@ -117,10 +141,13 @@
   }
 }
 
-// La carpeta abierta, junto a la marca: cede despues del buscador y, si no cabe, se recorta con puntos suspensivos.
+// La carpeta abierta, junto a la marca: no encoge (cede el buscador y el contexto, no ella) y solo se recorta con puntos
+// suspensivos en su tope. Con un factor de encogimiento, aunque fuera 1, cedia fracciones de pixel junto con el contexto y
+// un texto 0,3 px mas ancho que su caja ya se pinta con «…» («Carpeta activa: of0…» a 1056 px).
 .silice-marco-barra__carpeta {
   position: relative;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  max-inline-size: 18rem;
   min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -129,12 +156,13 @@
   @include type.type-style("label-01");
 }
 
-// El contexto de texto dentro de la carpeta («Obras / Galpon Sur»): ocupa el hueco flexible y es lo primero que se oculta.
+// El contexto de texto dentro de la carpeta («Obras / Galpon Sur»): cede antes que la carpeta (que no encoge) y se
+// recorta con puntos suspensivos.
 .silice-marco-barra__contexto {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 1 1 auto;
+  flex: 1 100 auto;
   min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -155,16 +183,15 @@
   white-space: nowrap;
 }
 
-// Selector centrado de las 3 ventanas dedicadas (01 / 02 / 03).
+// Los espacios de la empresa (Obras, Auditar un libro, Precios y catálogo, Producción), siempre a la vista, junto a la marca.
+// El actual va con el acento sobre el color del marco (par que mide el servidor: marco/acento). Con letra grande y poco
+// ancho parten en renglones antes de salirse de la barra.
 .silice-marco-barra__modos {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: var(--silice-radio-md);
-  background-color: transparent;
-  border: 1px solid var(--cds-border-strong-01);
-  flex: none;
+  margin-inline-start: 0.5rem;
+  flex: 0 0 auto;
 }
 
 .silice-marco-barra__modo {
@@ -196,14 +223,22 @@
   }
 }
 
-// Buscador global (Ctrl+K): cede antes que el contexto y en modo dedicado pasa a boton compacto.
+// «Nueva obra»: el amarillo de la capa de botones (estilos/botones.scss); aquí solo que no ceda ni parta su rótulo.
+.silice-marco-barra .silice-boton-nueva-obra {
+  flex: none;
+  white-space: nowrap;
+}
+
+// Buscador global (Ctrl+K): con el texto entero cuando cabe en su ranura y, si no, solo su icono. Su nombre accesible es
+// siempre el texto completo.
 .silice-marco-barra__buscar {
   display: flex;
-  flex: 0 1000 24rem;
+  flex: 0 1 auto;
   align-items: center;
   gap: 0.5rem;
   box-sizing: border-box;
-  min-inline-size: 2.5rem;
+  min-inline-size: 2rem;
+  max-inline-size: 100%;
   overflow: hidden;
   block-size: 2rem;
   padding-inline: 0.75rem;
@@ -232,14 +267,21 @@
   }
 }
 
-.silice-marco-barra__buscar--compacto {
-  flex: none;
-  inline-size: 2rem;
-  min-inline-size: 2rem;
-  padding-inline: 0;
-  justify-content: center;
-  border-color: transparent;
-  background-color: transparent;
+.silice-marco-barra__buscar-texto {
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+// Por debajo del ancho de «Nueva obra» (unos 7,7 rem) mas el texto completo del buscador («Buscar una obra, sección o
+// pantalla… (Ctrl+K)» mide unos 21,3 rem con letra Normal y 20,8 con Muy grande) y el hueco entre las dos (0,5 rem), la ranura
+// no lo deja cortado: el buscador queda en su icono, con el texto solo para lectores de pantalla.
+@container (max-width: 30rem) {
+  .silice-marco-barra__buscar {
+    flex: none;
+    inline-size: 2rem;
+    padding-inline: 0;
+    justify-content: center;
+  }
 
   .silice-marco-barra__buscar-texto {
     position: absolute;
@@ -252,13 +294,6 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-}
-
-.silice-marco-barra__buscar-texto {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.85;
 }
 
 .silice-marco-barra .silice-cuenta {
@@ -310,6 +345,10 @@
 
     .silice-marco-barra__contexto {
       display: none;
+    }
+
+    .silice-marco-barra__modo {
+      padding-inline: 0.5rem;
     }
   }
 }

@@ -360,9 +360,9 @@ def test_con_tasas_en_la_base_usd_bs_calculado_a_mano(cliente, sesion, limpio) -
     assert Decimal(mt01["tasa"]) == Decimal("110")
     assert Decimal(mt01["precio_bs"]) == Decimal("1100")  # 10 USD × 110
     assert Decimal(mt01["variacion"]) == Decimal("0.1")  # (1100 − 1000) ÷ 1000
-    assert "1000 Bs al 2026-07-31 (tasa 100)" in mt01["mensaje"]
-    assert "1100 Bs al 2026-10-13 (tasa 110)" in mt01["mensaje"]
-    assert "+10.00 %, pasa del umbral de 5.00 %" in mt01["mensaje"]
+    assert "1.000,00 Bs al 2026-07-31 (tasa 100)" in mt01["mensaje"]
+    assert "1.100,00 Bs al 2026-10-13 (tasa 110)" in mt01["mensaje"]
+    assert "+10,00 %, pasa del umbral de 5,00 %" in mt01["mensaje"]
     for i in INSUMOS:
         a = bs[i.codigo]
         assert Decimal(a["precio_bs"]) == i.precio * 110
@@ -372,7 +372,7 @@ def test_con_tasas_en_la_base_usd_bs_calculado_a_mano(cliente, sesion, limpio) -
 
 @pytest.mark.parametrize(
     ("umbral", "juicio"),
-    [("0.1", "pasa del umbral de 10.00 %"), ("0.1000001", "dentro del umbral de 10.00 %")],
+    [("0.1", "pasa del umbral de 10,00 %"), ("0.1000001", "dentro del umbral de 10,00 %")],
 )
 def test_umbral_de_la_peticion_frontera_en_la_variacion(cliente, sesion, limpio, umbral, juicio):
     _sembrar_tasas(sesion)

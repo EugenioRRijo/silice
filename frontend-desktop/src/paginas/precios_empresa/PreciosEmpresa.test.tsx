@@ -2,6 +2,9 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import type { AlmacenDeNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { RegionDeNotificaciones } from "../../comun/notificaciones/RegionDeNotificaciones";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaPreciosEmpresa from "./index";
@@ -124,7 +127,7 @@ describe("Precios de la empresa", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  function montar(alExpirar = vi.fn(), sesion: SesionRespuesta = SESION) {
+  function montar(alExpirar = vi.fn(), sesion: SesionRespuesta = SESION, almacen?: AlmacenDeNotificaciones) {
     const valor: Aplicacion = {
       sesion,
       proyecto: null,
@@ -134,7 +137,14 @@ describe("Precios de la empresa", () => {
     };
     render(
       <ContextoAplicacion.Provider value={valor}>
-        <PaginaPreciosEmpresa />
+        {almacen !== undefined ? (
+          <ProveedorDeNotificaciones almacen={almacen}>
+            <PaginaPreciosEmpresa />
+            <RegionDeNotificaciones />
+          </ProveedorDeNotificaciones>
+        ) : (
+          <PaginaPreciosEmpresa />
+        )}
       </ContextoAplicacion.Provider>,
     );
     return alExpirar;
@@ -532,5 +542,86 @@ describe("Precios de la empresa", () => {
     await usuario.click(screen.getByRole("button", { name: "Abrir la calculadora del FCAS" }));
     await screen.findByLabelText("Días calendario del período");
     expect(llamadas("/v1/fcas/componentes")).toHaveLength(1);
+  });
+
+  describe("notificaciones de confirmación (G2)", () => {
+    test("cargar la referencia MaPreX notifica una sola vez «Referencia MaPreX cargada»", async () => {
+      const almacen = crearAlmacenEnMemoria();
+      montar(vi.fn(), SESION, almacen);
+      const usuario = userEvent.setup();
+
+      await usuario.click(await screen.findByRole("button", { name: "Cargar la referencia MaPreX en Bs" }));
+      await screen.findByText("Referencia «MaPreX julio 2026 en Bs» cargada con 111 precios.");
+
+      const guardadas = await Promise.resolve(almacen.cargar());
+      expect(guardadas).toHaveLength(1);
+      expect(guardadas[0]).toMatchObject({
+        gravedad: "listo",
+        titulo: "Referencia MaPreX cargada",
+        enlace: { texto: "Ver precios de la empresa", ruta: "/precios/listas" },
+      });
+      const region = screen.getByRole("region", { name: "Notificaciones nuevas" });
+      expect(within(region).getByText("Listo")).toBeInTheDocument();
+      expect(within(region).getByText("Referencia MaPreX cargada")).toBeInTheDocument();
+    });
+
+    test("un fallo al cargar la referencia muestra el error donde siempre y no notifica", async () => {
+      referencia = () => json({ detalle: "No se cargó la referencia: algo ficticio." }, 422);
+      const almacen = crearAlmacenEnMemoria();
+      montar(vi.fn(), SESION, almacen);
+      const usuario = userEvent.setup();
+
+      await usuario.click(await screen.findByRole("button", { name: "Cargar la referencia MaPreX en Bs" }));
+      expect(await screen.findByText("No se cargó la referencia: algo ficticio.")).toBeInTheDocument();
+      expect(await Promise.resolve(almacen.cargar())).toEqual([]);
+      expect(within(screen.getByRole("region", { name: "Notificaciones nuevas" })).queryByRole("article")).toBeNull();
+    });
+
+    test("crear la lista de precios de la empresa notifica una sola vez con su detalle, y la revisión previa no notifica", async () => {
+      const almacen = crearAlmacenEnMemoria();
+      montar(vi.fn(), SESION, almacen);
+      estado = () => json(CON_LISTA);
+
+      await llenarYEnviar();
+      await screen.findByText(CREADA.mensaje);
+
+      const guardadas = await Promise.resolve(almacen.cargar());
+      expect(guardadas).toHaveLength(1);
+      expect(guardadas[0]).toMatchObject({
+        gravedad: "listo",
+        titulo: "Lista de precios cargada",
+        detalle: "Contratista Demo, C.A. 2026-09-20 · 10 precios propios",
+        enlace: { texto: "Ver precios de la empresa", ruta: "/precios/listas" },
+      });
+      const region = screen.getByRole("region", { name: "Notificaciones nuevas" });
+      expect(within(region).getByText("Lista de precios cargada")).toBeInTheDocument();
+      expect(within(region).getByText("Contratista Demo, C.A. 2026-09-20 · 10 precios propios")).toBeInTheDocument();
+    });
+
+    // T4 (mutante PE3): un solo precio propio se dice en singular.
+    test("con un solo precio propio la notificación lo dice en singular", async () => {
+      crear = () => json({ ...CREADA, propios: 1, mensaje: "Lista «X» creada con 1 precio propio." }, 201);
+      const almacen = crearAlmacenEnMemoria();
+      montar(vi.fn(), SESION, almacen);
+      estado = () => json(CON_LISTA);
+
+      await llenarYEnviar();
+      await screen.findByText("Lista «X» creada con 1 precio propio.");
+
+      const guardadas = await Promise.resolve(almacen.cargar());
+      expect(guardadas).toHaveLength(1);
+      expect(guardadas[0]).toMatchObject({ detalle: "Contratista Demo, C.A. 2026-09-20 · 1 precio propio" });
+    });
+
+    test("un fallo al crear la lista muestra el error donde siempre y no notifica", async () => {
+      crear = () => json({ detalle: "No se creó la lista: archivo inválido." }, 422);
+      const almacen = crearAlmacenEnMemoria();
+      montar(vi.fn(), SESION, almacen);
+
+      await llenarYEnviar();
+      expect(await screen.findByText("No se creó la lista: archivo inválido.")).toBeInTheDocument();
+      expect(await Promise.resolve(almacen.cargar())).toEqual([]);
+      expect(within(screen.getByRole("region", { name: "Notificaciones nuevas" })).queryByRole("article")).toBeNull();
+    });
   });
 });

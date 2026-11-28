@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -6,6 +6,30 @@ import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import CostosDelPeriodo from "./CostosDelPeriodo";
+
+interface OpcionesCostos {
+  title?: string;
+  axes?: { left?: { title?: string; ticks?: { formatter?: (v: number) => string } }; right?: unknown };
+  color?: { scale: Record<string, string> };
+  tooltip?: { customHTML?: (data: unknown, html: string, datum: unknown) => string };
+}
+
+vi.mock("../../comun/GraficoCarbon", () => ({
+  default: ({ tipo, datos, opciones }: { tipo: string; datos: { group?: string; key?: string }[]; opciones: OpcionesCostos }) => {
+    const primero = datos[0];
+    return (
+      <div
+        role="img"
+        aria-label={opciones.title ?? "Gráfico"}
+        data-tipo={tipo}
+        data-doble-eje={String(Boolean(opciones.axes?.right))}
+        data-eje-formato={opciones.axes?.left?.ticks?.formatter?.(1550.5) ?? ""}
+        data-colores={JSON.stringify(opciones.color?.scale ?? null)}
+        data-globo={primero ? opciones.tooltip?.customHTML?.([primero], "", primero) ?? "" : ""}
+      />
+    );
+  },
+}));
 
 // Datos ficticios. La API manda los montos como texto con punto; la pantalla los muestra con coma.
 const SESION: SesionRespuesta = {
@@ -393,5 +417,38 @@ describe("Costos del período", () => {
     lista = () => json({ detalle: "Forbidden" }, 403);
     montar();
     expect(await screen.findByText("Su cuenta no tiene permiso para registrar costos.")).toBeInTheDocument();
+  });
+
+  test("separa los gráficos de totales por moneda sin doble eje, conserva el color por centro e incluye lectura y tabla", async () => {
+    montar();
+    const enUsd = await screen.findByRole("img", { name: "Costos vigentes por centro en noviembre de 2026 (USD)" });
+    const enBs = await screen.findByRole("img", { name: "Costos vigentes por centro en noviembre de 2026 (Bs)" });
+    expect(enUsd).toHaveAttribute("data-tipo", "barras");
+    expect(enUsd).toHaveAttribute("data-doble-eje", "false");
+    expect(enBs).toHaveAttribute("data-doble-eje", "false");
+    expect(enUsd).toHaveAttribute("data-eje-formato", "1.550,5");
+    // Cantera es serie 1 y Planta conserva serie 2 aunque sea la única barra en Bs.
+    expect(JSON.parse(enUsd.getAttribute("data-colores")!)).toEqual({ Cantera: "#2A78D6" });
+    expect(JSON.parse(enBs.getAttribute("data-colores")!)).toEqual({ Planta: "#1BAF7A" });
+    expect(enUsd.getAttribute("data-globo")).toContain("1.550,50 USD");
+    expect(enBs.getAttribute("data-globo")).toContain("800,00 Bs");
+
+    expect(screen.getByText(/Qué muestra:.*separados por moneda.*Qué leer:/)).toBeInTheDocument();
+    expect(screen.getByText("Ver como tabla")).toBeInTheDocument();
+    const tabla = screen.getByRole("table", { name: "Totales por centro de noviembre de 2026" });
+    expect(within(tabla).getAllByRole("row")).toHaveLength(3);
+  });
+
+  // T4 (mutante CP3): con dos monedas los gráficos van lado a lado en su rejilla; con una sola no hay rejilla.
+  test("con dos monedas los gráficos van en la rejilla de monedas y con una sola no", async () => {
+    montar();
+    const enUsd = await screen.findByRole("img", { name: "Costos vigentes por centro en noviembre de 2026 (USD)" });
+    expect(enUsd.closest(".prod-graficas-monedas")).not.toBeNull();
+    cleanup();
+
+    totales = () => json([{ centro: "cantera", moneda: "USD", total: "1550.50" }]);
+    montar();
+    const solo = await screen.findByRole("img", { name: "Costos vigentes por centro en noviembre de 2026 (USD)" });
+    expect(solo.closest(".prod-graficas-monedas")).toBeNull();
   });
 });

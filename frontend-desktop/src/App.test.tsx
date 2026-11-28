@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "./api/cliente";
 import { App } from "./App";
+import { useAnunciar } from "./comun/Anunciador";
+import { PAGINAS } from "./shell/rutas";
 import oraculo from "../../tests/fixtures/replica/libro_minimo.json";
 import type { LibroAuditadoRespuesta, LibroVisualRespuesta } from "./api/tipos";
 import { crearHojaFalsa } from "./visor/hojaFalsa";
@@ -52,11 +54,16 @@ describe("App", () => {
       if (ruta === "/v1/obras/todas") return json({ carpeta_actual: null, obras: [] });
       if (ruta === "/v1/obras/pendientes/todas") return json({ pendientes: [], carpetas_omitidas: 0 });
       if (ruta === "/v1/tema") return json({ acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] });
+      // C11: el marco pide las notificaciones de la persona; sin esto caerían en el 401 y la sesión se daría por perdida.
+      if (ruta === "/v1/notificaciones" && metodo === "GET") return json({ notificaciones: [], sin_leer: 0, retencion_dias: 30, maximo: 200 });
       if (metodo === "GET" && (ruta.startsWith("/v1/obras/") || ruta.startsWith("/v1/aprobaciones"))) {
         return json({ detalle: "No encontrado." }, 404);
       }
       if (ruta.startsWith("/v1/auditorias-libro")) return json([]);
       if (ruta === "/v1/acerca") return json({ detalle: "No encontrado." }, 404);
+      // Lo que pide Inicio (C8) al aterrizar: la carpeta y el catálogo. Un 404 lo deja sin esas tarjetas; el 401 de
+      // abajo daría la sesión por perdida.
+      if (ruta === "/v1/carpeta" || ruta === "/partidas" || ruta === "/insumos") return json({ detalle: "No encontrado." }, 404);
       if (ruta === "/v1/sesion/preferencias" && metodo === "PUT") return new Response(null, { status: 204 });
       // El servidor real contesta estas dos con sesión: con el 401 de abajo, el cliente daría la sesión por perdida
       // y borraría el token anti-CSRF (alPerderSesion, B0), y el DELETE de «Salir» saldría sin él.
@@ -118,7 +125,7 @@ describe("App", () => {
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    expect(within(lateral).getByRole("link", { name: "Vista general" })).toHaveAttribute("href", "#/inicio/general");
+    expect(within(lateral).getByRole("link", { name: "Inicio" })).toHaveAttribute("href", "#/inicio/general");
     expect(within(lateral).getByRole("navigation", { name: "Costos y producción" })).toBeInTheDocument();
     // Con la suite entera en marcha el marco tarda mas que el plazo por omision.
     // F6, T8: la app abre en la Vista general (ruta índice → #/inicio/general).
@@ -515,5 +522,38 @@ describe("App", () => {
       expect(espia).not.toHaveBeenCalled();
       espia.mockRestore();
     });
+  });
+
+  test("monta un solo anunciador y un componente bajo App escribe en la región polite con useAnunciar", async () => {
+    const usuario = userEvent.setup();
+    function EmisorBajoApp() {
+      const anunciar = useAnunciar();
+      return (
+        <div>
+          <h1>Vista general</h1>
+          <button type="button" onClick={() => anunciar("Se agregó FRI-01 al presupuesto")}>
+            Probar anuncio
+          </button>
+        </div>
+      );
+    }
+    const paginasDePrueba = PAGINAS.map((p) => (p.id === "inicio" ? { ...p, cargar: async () => ({ default: EmisorBajoApp }) } : p));
+
+    const { container } = render(<App paginas={paginasDePrueba} />);
+    const boton = await screen.findByRole("button", { name: "Probar anuncio" }, { timeout: 5000 });
+    await screen.findByText("Todavía no hay obras");
+
+    const regionesCortes = container.querySelectorAll('[aria-live="polite"]');
+    const regionesUrgentes = container.querySelectorAll('[aria-live="assertive"]');
+    expect(regionesCortes).toHaveLength(1);
+    expect(regionesUrgentes).toHaveLength(1);
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(regionesCortes[0]).toHaveTextContent("");
+
+    await usuario.click(boton);
+
+    expect(regionesCortes[0]).toHaveTextContent("Se agregó FRI-01 al presupuesto");
+    expect(container.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+    expect(regionesUrgentes[0]).toHaveTextContent("");
   });
 });

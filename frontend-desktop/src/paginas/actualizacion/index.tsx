@@ -1,6 +1,6 @@
 import { Button, Checkbox, CheckboxGroup, Select, SelectItem } from "@carbon/react";
 import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -11,7 +11,10 @@ import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { Variacion } from "../../comun/Variacion";
+import { useNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
 import { cifrasEnTextoEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import { rutaOPendientes } from "../../marco/espacios";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 // AC4: las monedas de la Hoja (Bs y USD); se elige una, no se escribe (pedido de Eugenio del 2026-10-21).
 import { MONEDAS } from "../../comun/monedas";
@@ -64,7 +67,9 @@ type Descarte = { tipo: "no" } | { tipo: "confirmar" } | { tipo: "enCurso" } | {
 // «Actualizar precios» (UC-02): una lista de precios nueva revalora un presupuesto guardado, registra que cambio y
 // audita la version nueva. La interfaz no calcula nada: los montos y el resumen llegan de la API como texto.
 export default function PaginaActualizacion() {
-  const { alExpirar } = useAplicacion();
+  const { alExpirar, nombreProyecto } = useAplicacion();
+  const obra = useContext(ContextoDeLaObra);
+  const { notificar } = useNotificaciones();
   const [presupuestos, setPresupuestos] = useState<Presupuestos>({ tipo: "cargando" });
   const [elegido, setElegido] = useState("0");
   const [codigoNuevo, setCodigoNuevo] = useState(CODIGO_NUEVO_POR_DEFECTO);
@@ -160,8 +165,27 @@ export default function PaginaActualizacion() {
     setResultado({ tipo: "revalorando" });
     pedir<Revaloracion>("/presupuestos/revalorar", { metodo: "POST", cuerpo }).then(
       (respuesta) => {
-        if (numero === consultaRevalorar.current)
-          setResultado({ tipo: "listo", respuesta, proyecto: base.proyecto });
+        if (numero !== consultaRevalorar.current) return;
+        setResultado({ tipo: "listo", respuesta, proyecto: base.proyecto });
+        const guardada = respuesta.version_guardada;
+        const enlace =
+          obra !== null &&
+          guardada !== null &&
+          (nombreProyecto === null || nombreProyecto === undefined || nombreProyecto === base.proyecto)
+            ? {
+                texto: "Ver en Presupuesto",
+                ruta: `${rutaOPendientes("hoja", obra)}?${new URLSearchParams({ version: guardada }).toString()}`,
+              }
+            : {
+                texto: "Ir a Actualizar precios",
+                ruta: rutaOPendientes("actualizacion", obra ?? undefined),
+              };
+        notificar({
+          gravedad: "listo",
+          titulo: guardada !== null ? `Versión ${guardada} revalorada` : "Presupuesto revalorado",
+          detalle: `${base.proyecto} · ${formatoEsVe(respuesta.total_nuevo)} ${respuesta.moneda}`,
+          enlace,
+        });
       },
       (error: unknown) => {
         if (numero !== consultaRevalorar.current) return;

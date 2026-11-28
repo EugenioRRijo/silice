@@ -1,0 +1,46 @@
+<!--{"orden": 6, "titulo": "Presupuestar › Plano o cómputo", "area": "obra", "herramienta": "presupuestar", "opcion": "Plano o cómputo", "accion": "Agregar 4 partidas", "meta": "1 no se agrega"}-->
+<span class="sobre">Traer partidas desde un cómputo métrico · versión V2</span>
+<h1>4 partidas nuevas para agregar</h1>
+<div class="datos"><span>Archivo computo_ampliacion.xlsx · hoja «Cómputo» · 5 filas leídas</span><span>1 ya está en el presupuesto</span></div>
+<div class="zona" style="margin-top:24px">
+  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></svg>
+  <span>Suelte aquí el cómputo en Excel</span>
+  <button type="button" class="btn2">Elegir otro archivo</button>
+</div>
+<h2>Lo que se va a agregar</h2>
+<div class="marco">
+  <table>
+    <caption class="oc">Vista previa de las partidas del cómputo</caption>
+    <thead><tr><th scope="col">Código</th><th scope="col">Descripción</th><th scope="col" class="num">Cantidad</th><th scope="col">Qué pasa</th></tr></thead>
+    <tbody>
+      <tr><td class="cod">P-06</td><td>Friso de pared</td><td class="num">50,00<span class="ud">m²</span></td><td><span class="estado ok">Se agrega</span></td></tr>
+      <tr><td class="cod">P-07</td><td>Pintura de caucho en paredes</td><td class="num">120,00<span class="ud">m²</span></td><td><span class="estado ok">Se agrega</span></td></tr>
+      <tr><td class="cod">P-08</td><td>Junta de dilatación en el pavimento</td><td class="num">36,00<span class="ud">m</span></td><td><span class="estado ok">Se agrega</span></td></tr>
+      <tr><td class="cod">P-09</td><td>Tubería de drenaje de 24 pulgadas</td><td class="num">80,00<span class="ud">m</span></td><td><span class="estado ok">Se agrega</span></td></tr>
+      <tr class="sel" aria-selected="true"><td class="cod">P-05</td><td>Encofrado de madera</td><td class="num">420,00<span class="ud">m²</span></td><td><span class="estado adv">No se agrega</span><span class="ref adv">Ya está en el presupuesto <sup>1</sup></span></td></tr>
+    </tbody>
+  </table>
+</div>
+<h2>Lo importado antes</h2>
+<div class="marco">
+  <table>
+    <caption class="oc">Registro de cómputos importados</caption>
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Archivo</th><th scope="col" class="num">Partidas</th><th scope="col">Cuáles</th></tr></thead>
+    <tbody>
+      <tr><td class="num">22/09/2026</td><td>computo_concreto.xlsx</td><td class="num">3</td><td>P-03, P-04 y P-05</td></tr>
+      <tr><td class="num">14/09/2026</td><td>computo_movimiento_tierra.xlsx</td><td class="num">2</td><td>P-01 y P-02</td></tr>
+    </tbody>
+  </table>
+</div>
+<span class="pie">Entre las dos importaciones están las 5 partidas actuales del presupuesto.</span>
+<!--MARGEN-->
+<article class="nota act" style="margin-top:430px">
+  <div class="cab"><span class="no">1</span><span>Por qué no se agrega</span></div>
+  <p>El encofrado del cómputo es el mismo P-05 del presupuesto, con la misma cantidad de 420,00 m². Se deja como está para no duplicarlo.</p>
+  <div class="acc"><a href="#">Agregarlo de todos modos</a></div>
+</article>
+<article class="nota" style="margin-top:12px">
+  <div class="cab"><span class="no">2</span><span>Qué ocurre al agregar</span></div>
+  <p>Las 4 partidas nuevas entran con el precio del catálogo de la empresa y quedan marcadas hasta que usted las revise.</p>
+</article>
+<p class="ficticio">Obra de demostración, con datos ficticios.</p>

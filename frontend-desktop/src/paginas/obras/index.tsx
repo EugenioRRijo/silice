@@ -1,8 +1,12 @@
 import { Button, SkeletonText } from "@carbon/react";
-import { useId } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useId, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
+import { CampoTexto } from "../../comun/CampoTexto";
+import { leerFechaEscrita } from "../../comun/fechaEscrita";
 import { FranjaDelPaso } from "../../comun/FranjaDelPaso";
+import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { EtapaDeObra } from "../../marco/EtapaDeObra";
 import { useObraAbierta } from "../../marco/obraAbierta";
 import type { ObraAbierta } from "../../marco/obraAbierta";
@@ -74,7 +78,113 @@ function Cuerpo({ ficha, carpeta, obraId }: Pick<ObraAbierta, "ficha" | "carpeta
           </Cifra>
         </dl>
       </div>
+      <EntregaAlCliente key={`${carpeta ?? "empresa"}:${obraId}`} obraId={obraId} />
     </>
+  );
+}
+
+interface EntregaRespuesta {
+  proyecto?: string;
+  fecha_entrega?: string | null;
+}
+
+function EntregaAlCliente({ obraId }: Pick<ObraAbierta, "obraId">) {
+  const { sesion, alExpirar } = useAplicacion();
+  const puedeEditar = sesion.acciones.includes("editar_hoja");
+  const idCampo = useId();
+  const [fechaTexto, setFechaTexto] = useState("");
+  const [errorCampo, setErrorCampo] = useState<string | null>(null);
+  const [errorGeneral, setErrorGeneral] = useState<unknown>(null);
+  const [estadoGuardado, setEstadoGuardado] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  // El 422 llega con el campo aún deshabilitado: el foco se pide aquí y se da cuando el campo vuelve a estar activo.
+  const [pedirFoco, setPedirFoco] = useState(0);
+  useEffect(() => {
+    if (pedirFoco > 0 && !guardando) document.getElementById(idCampo)?.focus();
+  }, [pedirFoco, guardando, idCampo]);
+
+  useEffect(() => {
+    let vigente = true;
+    pedir<EntregaRespuesta>(`/v1/obras/${encodeURIComponent(String(obraId))}/entrega`)
+      .then((r) => {
+        if (!vigente) return;
+        setFechaTexto(typeof r?.fecha_entrega === "string" ? fechaEsVe(r.fecha_entrega) : "");
+      })
+      .catch((e: unknown) => {
+        if (!vigente) return;
+        if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [obraId, alExpirar]);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    setErrorCampo(null);
+    setErrorGeneral(null);
+    setEstadoGuardado("");
+    const lectura = leerFechaEscrita(fechaTexto);
+    if (!lectura.ok) {
+      setErrorCampo(lectura.error);
+      document.getElementById(idCampo)?.focus();
+      return;
+    }
+    setGuardando(true);
+    try {
+      const r = await pedir<EntregaRespuesta>(`/v1/obras/${encodeURIComponent(String(obraId))}/entrega`, {
+        metodo: "PUT",
+        cuerpo: { fecha_entrega: lectura.iso },
+      });
+      setFechaTexto(typeof r?.fecha_entrega === "string" ? fechaEsVe(r.fecha_entrega) : "");
+      setEstadoGuardado(lectura.iso === null ? TEXTOS.entregaEliminada : TEXTOS.entregaGuardada);
+    } catch (err) {
+      if (err instanceof ErrorDeApi && err.estado === 401) {
+        alExpirar();
+      } else if (err instanceof ErrorDeApi && err.estado === 422) {
+        setErrorCampo(err.detalle);
+        setPedirFoco((n) => n + 1);
+      } else {
+        setErrorGeneral(err);
+      }
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <form className="silice-resumen__entrega" onSubmit={(e) => void guardar(e)} noValidate>
+      <div className="silice-resumen__entrega-fila">
+        <CampoTexto
+          id={idCampo}
+          labelText={TEXTOS.entrega}
+          placeholder="dd/mm/aaaa"
+          helperText={TEXTOS.entregaAyuda}
+          value={fechaTexto}
+          maxLength={10}
+          invalid={errorCampo !== null}
+          invalidText={errorCampo ?? ""}
+          disabled={guardando}
+          readOnly={!puedeEditar}
+          onChange={(e) => {
+            setFechaTexto(e.target.value);
+            setErrorCampo(null);
+            setEstadoGuardado("");
+          }}
+        />
+        {puedeEditar && (
+          <Button kind="tertiary" size="md" type="submit" disabled={guardando}>
+            {guardando ? TEXTOS.guardandoEntrega : TEXTOS.guardarEntrega}
+          </Button>
+        )}
+      </div>
+      {estadoGuardado && (
+        <p className="cds--type-body-compact-01" role="status">
+          {estadoGuardado}
+        </p>
+      )}
+      <AvisoError error={errorGeneral} titulo={TEXTOS.errorEntrega} />
+    </form>
   );
 }
 

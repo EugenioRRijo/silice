@@ -1,0 +1,174 @@
+// Actividad de una cuenta (C10): el calendario del último año al estilo de GitHub. Una sola tinta (--silice-serie-1) en cinco
+// niveles, de claro a oscuro, mezclada con el papel de la hoja para que valga en claro y en oscuro. Todo en rem: nada de
+// font-size en píxeles. Sin tarjetas con sombra ni animaciones.
+
+.silice-actividad {
+  --silice-actividad-celda: 0.875rem;
+  --silice-actividad-hueco: 0.1875rem;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.silice-actividad__bloque {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-content: start;
+}
+
+.silice-actividad__cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.silice-actividad__cifra {
+  display: grid;
+  gap: 0.25rem;
+  padding-block-start: 0.5rem;
+  border-block-start: 2px solid var(--silice-linea);
+
+  dt {
+    color: var(--silice-texto-secundario);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--silice-texto);
+  }
+}
+
+// Un año ocupa unas 53 columnas. La caja es un contenedor de tamaño en línea y la celda se ajusta a su ancho (entre 0,625 rem
+// y 0,875 rem), con lo que el año cabe sin cortar la última columna; solo si ni al mínimo cabe se desplaza dentro de su caja
+// (la pantalla no se desplaza de lado). `--silice-actividad-columnas` la pone Actividad.tsx; la leyenda, fuera de la caja,
+// conserva los 0,875 rem.
+.silice-actividad__calendario {
+  --silice-actividad-celda: clamp(
+    0.625rem,
+    calc((100cqw - (var(--silice-actividad-columnas, 53) - 1) * var(--silice-actividad-hueco)) / var(--silice-actividad-columnas, 53)),
+    0.875rem
+  );
+
+  container-type: inline-size;
+  overflow-x: auto;
+  padding-block-end: 0.5rem;
+}
+
+.silice-actividad__meses {
+  display: grid;
+  column-gap: var(--silice-actividad-hueco);
+  min-block-size: 1.25rem;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-actividad__mes {
+  white-space: nowrap;
+}
+
+.silice-actividad__semanas {
+  display: flex;
+  gap: var(--silice-actividad-hueco);
+}
+
+.silice-actividad__semana {
+  display: grid;
+  grid-template-rows: repeat(7, var(--silice-actividad-celda));
+  gap: var(--silice-actividad-hueco);
+}
+
+.silice-actividad__hueco {
+  inline-size: var(--silice-actividad-celda);
+  block-size: var(--silice-actividad-celda);
+}
+
+.silice-actividad__dia {
+  display: block;
+  inline-size: var(--silice-actividad-celda);
+  block-size: var(--silice-actividad-celda);
+  padding: 0;
+  // Contraste no textual de 3:1 (WCAG 1.4.11) frente al fondo, en claro y en oscuro: la línea tenue del 10 % no lo daba.
+  border: 1px solid var(--silice-borde-fuerte);
+  border-radius: 0.125rem;
+  background-color: var(--silice-hoja);
+  cursor: default;
+
+  &[data-nivel="1"] {
+    background-color: color-mix(in srgb, var(--silice-serie-1) 25%, var(--silice-hoja));
+  }
+
+  &[data-nivel="2"] {
+    background-color: color-mix(in srgb, var(--silice-serie-1) 45%, var(--silice-hoja));
+  }
+
+  &[data-nivel="3"] {
+    background-color: color-mix(in srgb, var(--silice-serie-1) 70%, var(--silice-hoja));
+  }
+
+  &[data-nivel="4"] {
+    background-color: var(--silice-serie-1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus, currentColor);
+    outline-offset: 1px;
+  }
+}
+
+.silice-actividad__detalle {
+  min-block-size: 3.5rem;
+  color: var(--silice-texto);
+
+  ul {
+    margin: 0.25rem 0 0;
+    padding-inline-start: 1.25rem;
+    list-style: disc;
+  }
+}
+
+.silice-actividad__leyenda {
+  display: flex;
+  align-items: center;
+  gap: var(--silice-actividad-hueco);
+  color: var(--silice-texto-secundario);
+
+  > span:first-child {
+    margin-inline-end: 0.25rem;
+  }
+
+  > span:last-child {
+    margin-inline-start: 0.25rem;
+  }
+}
+
+.silice-actividad__filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.silice-actividad__lista {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    padding-block: 0.5rem;
+    border-block-end: 1px solid var(--silice-linea);
+  }
+}
+
+.silice-actividad__cuando {
+  min-inline-size: 9rem;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-actividad__nota {
+  color: var(--silice-texto-secundario);
+}

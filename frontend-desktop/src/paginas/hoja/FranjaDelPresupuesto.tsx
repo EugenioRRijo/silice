@@ -1,7 +1,9 @@
 import { useContext, useId, useState } from "react";
+import type { ReactNode } from "react";
 import { FranjaDelPaso } from "../../comun/FranjaDelPaso";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useFocoAlCerrar } from "./AgregarPartida";
+import type { Impuestos } from "../control/logica";
 import { AprobacionDeVersion } from "./AprobacionDeVersion";
 import { BotonExcel } from "./BotonExcel";
 import { EstadoDelBorrador } from "./EstadoDelBorrador";
@@ -44,8 +46,15 @@ interface Props {
   alGuardar: () => void;
   alVerRevision: () => void;
   alHacerVersionNueva: () => void;
-  // «Descartar cambios» de la línea de estado.
-  alDescartar: () => void;
+  // «Descartar cambios» de la línea de estado. Opcional (B1-3): la superficie nueva lo lleva a «Más acciones».
+  alDescartar?: () => void;
+  // B1-3 (ficha-b1 §1.6): los dos lugares de la cabecera fija de la superficie nueva. `problemas` («Problemas (n)») va antes
+  // del principal y `masAcciones` («Más acciones del presupuesto») después: así el orden de tabulación es el visual. Con
+  // `masAcciones` puesto, «Descargar Excel» y «PDF» salen de la vista (los lleva el menú); sin él, la vista por pestañas
+  // sigue como hoy.
+  problemas?: ReactNode;
+  masAcciones?: ReactNode;
+  impuestos?: Impuestos;
 }
 
 export function FranjaDelPresupuesto({
@@ -57,6 +66,9 @@ export function FranjaDelPresupuesto({
   alVerRevision,
   alHacerVersionNueva,
   alDescartar,
+  problemas,
+  masAcciones,
+  impuestos,
 }: Props) {
   const { base, resumen } = borrador;
   const version = base.version;
@@ -108,12 +120,15 @@ export function FranjaDelPresupuesto({
     enfocarAlCerrar(ID_ENVIAR);
   };
 
+  // Cabecera fija (guía `state-aware-sticky-headers`): el contenedor es el elemento `sticky` y consulta su propio estado de
+  // desplazamiento (ver `hoja.scss`); lo que cambia al pegarse lo estilan sus descendientes.
   return (
-    <>
+    <div className="silice-hoja__cabecera-fija">
       <EstadoDelBorrador
         borrador={borrador}
         alDescartar={alDescartar}
         puedeEditar={puedeEditar}
+        impuestos={impuestos}
         aprobacion={
           version !== null && (
             <AprobacionDeVersion
@@ -132,6 +147,7 @@ export function FranjaDelPresupuesto({
       />
       {/* El botón de Excel no se vuelve a montar cuando el paso aparece o desaparece (cambia la lectura de la aprobación). */}
       <div className="silice-hoja__acciones-del-paso">
+        {problemas}
         {paso !== null && (
           <FranjaDelPaso
             tipo={paso.tipo}
@@ -143,8 +159,8 @@ export function FranjaDelPresupuesto({
             }
           />
         )}
-        <BotonExcel id={borrador.id} />
+        {masAcciones ?? <BotonExcel id={borrador.id} />}
       </div>
-    </>
+    </div>
   );
 }

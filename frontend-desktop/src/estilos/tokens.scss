@@ -1,5 +1,5 @@
-// Tema Carbon g10 (claro) y alias --silice-* (DESIGN.md). Los alias solo apuntan a colores y tokens de
-// Carbon: ningun valor hexadecimal se escribe a mano aqui.
+// Cara «Papel y resaltador» (claro y oscuro) sobre la base Carbon g10.
+// Los tokens no reasignados conservan su valor de g10; Carbon lee superficies, tintas, foco y acciones desde --silice-*.
 @use "@carbon/styles/scss/config" with (
   $css--font-face: false,
   $use-akamai-cdn: false
@@ -16,8 +16,47 @@
 @include type.type-classes();
 
 :root {
-  // Tema g10 en la raiz: el fondo del body y los alias --silice-* leen --cds-* fuera del componente Theme.
+  // Base g10 en la raiz para los tokens de Carbon que la cara no toca.
   @include theme.theme();
+
+  color-scheme: light dark;
+
+  // Superficies, marco y tintas de la cara «Papel y resaltador» (claro, oscuro).
+  // El tema de la empresa (GET /v1/tema, marco/tema.ts) puede sobrescribir en la raiz --silice-acento, --silice-marco,
+  // --silice-lateral, --silice-complementario, --silice-contador-numero y --silice-contador-fondo.
+  --silice-fondo: light-dark(#F7F4EE, #161513);
+  --silice-hoja: light-dark(#FDFBF7, #1C1A18);
+  --silice-alzado: light-dark(#EFE9DF, #262421);
+  --silice-lateral: light-dark(#EFE9DF, #12110F);
+  --silice-marco: light-dark(#1F1B16, #12110F);
+  --silice-complementario: light-dark(#1F1B16, #EFE9DE);
+  --silice-t1: light-dark(#1F1B16, #EFE9DE);
+  --silice-t2: light-dark(#5E554A, #AAA398);
+  --silice-t3: light-dark(#9A9184, #8A847A);
+  --silice-resaltador: light-dark(#FFF4C2, #2E2919);
+  --silice-resaltador-borde: #C9A227;
+  // El anillo de foco (WCAG 1.4.11, 3:1): el dorado del resaltador da 2,0-2,3:1 sobre el papel claro; en claro va más
+  // oscuro (4,2-4,9:1) y en oscuro es el mismo dorado (6,0-7,8:1). Lo mide caraPapel.test.ts.
+  --silice-foco: light-dark(#8A6A00, #C9A227);
+  --silice-acento: #F6D55C;
+  --silice-linea: light-dark(rgba(31,27,22,.10), rgba(239,233,222,.09));
+  --silice-hover-tinta: light-dark(#3A342C, #FFFFFF);
+  --silice-gravedad-error: light-dark(#B42318, #F0857C);
+  --silice-gravedad-advertencia: light-dark(#8A5A00, #DDB25E);
+  --silice-gravedad-ok: light-dark(#2F6B3F, #7FBF8E);
+  --silice-gravedad-ok-fondo: light-dark(#EAF4EC, #17261C);
+  --silice-gravedad-ok-borde: light-dark(#568A65, #4D8B5E);
+  --silice-gravedad-advertencia-fondo: light-dark(#FDF3DC, #2B2212);
+  --silice-gravedad-advertencia-borde: light-dark(#A67308, #B08428);
+  --silice-gravedad-error-fondo: light-dark(#FDF0EE, #2D1917);
+  --silice-gravedad-error-borde: light-dark(#C65347, #C86057);
+  --silice-gravedad-info-fondo: light-dark(#EDF5FF, #141F2E);
+  --silice-borde-fuerte: light-dark(#766D61, #8A847A);
+  --silice-carbon-profundo: light-dark(#171410, #0E0D0B);
+  --silice-tinta-sobre-acento: light-dark(#1F1B16, #1F1B16);
+  --silice-serie-1: light-dark(#2A78D6, #3987E5);
+  --silice-serie-2: light-dark(#1BAF7A, #199E70);
+  --silice-serie-3: light-dark(#EB6834, #D95926);
 
   // Severidad: halos de la hoja y etiquetas de la lista de hallazgos.
   --silice-sev-critico: #{colors.$red-60};
@@ -43,24 +82,35 @@
   // Escala del texto (control «Tamaño de letra»): 1 normal, 1.25 grande, 1.5 muy grande. La fija preferenciaDeLetra.ts.
   --silice-escala-letra: 1;
 
-  // Marco de la empresa (rediseño del marco, Tarea 1): valores neutros del repositorio. El tema de la empresa los
-  // reemplaza en la raiz desde GET /v1/tema (marco/tema.ts); aqui nunca va un color de la empresa.
-  --silice-marco: var(--cds-background-inverse);
-  --silice-acento: #{colors.$yellow-20};
-  --silice-lateral: #{colors.$warm-gray-10};
-  --silice-lateral-activo: #{colors.$warm-gray-20};
-  // Color complementario (enlaces, bordes interactivos y raya de la pestana activa) y contador de la barra lateral: la
-  // empresa puede darles su color; sin el, siguen al marco y al lateral.
-  --silice-complementario: var(--silice-marco);
-  --silice-contador-numero: var(--silice-marco);
-  --silice-contador-fondo: var(--silice-lateral);
+  // Escala de z-index (guía «Define z-index scale system»): de lo más bajo a lo más alto. Nada fuera de ella.
+  --silice-z-celda-fija: 1;
+  --silice-z-cabecera-grilla: 2;
+  --silice-z-esquina-grilla: 3;
+  --silice-z-cabecera-obra: 10;
+  --silice-z-panel: 6000;
 
-  // Aliases de tokens de tema Carbon, para que el resto del CSS propio no repita var(--cds-*).
-  --silice-fondo: var(--cds-background);
-  --silice-texto: var(--cds-text-primary);
-  --silice-texto-secundario: var(--cds-text-secondary);
-  --silice-divisor: var(--cds-border-subtle);
-  --silice-interactivo: var(--cds-interactive);
+  // Alias propios de un solo salto hacia tokens primarios de la cara (cero ciclos con --cds-*).
+  --silice-lateral-activo: var(--silice-alzado);
+  // La tinta del texto: en oscuro el marco es del color del lateral y el numero de cada obra no se veia (T3, 2026-11-28).
+  --silice-contador-numero: var(--silice-t1);
+  --silice-contador-fondo: var(--silice-lateral);
+  --silice-texto: var(--silice-t1);
+  --silice-texto-secundario: var(--silice-t2);
+  --silice-divisor: var(--silice-linea);
+  --silice-interactivo: var(--silice-complementario);
+}
+
+:root[data-modo="claro"] {
+  color-scheme: light;
+}
+
+:root[data-modo="oscuro"] {
+  color-scheme: dark;
+}
+
+// El contenedor <Theme theme="g10"> hereda el esquema claro u oscuro elegido en la raiz.
+.cds--g10 {
+  color-scheme: inherit;
 }
 
 // Cuanto del complementario queda en el boton principal al oscurecerlo con negro (en porcentaje). El servidor mide el
@@ -68,32 +118,54 @@
 $oscurecido-hover: 85%;
 $oscurecido-pulsado: 70%;
 
-// Color de accion de la empresa (Tarea 4c): el boton principal, los enlaces, los bordes interactivos y la raya de la
-// pestana activa (Carbon la pinta con --cds-border-interactive) van en el color complementario. El boton lleva texto
-// blanco (el de Carbon, sin reasignar); al pasar el raton se oscurece al 85 % con negro y al pulsar, al 70 %. El acento
-// (amarillo/ambar) es la marca y no se usa como relleno de una accion; el amarillo de aviso de Carbon queda como esta.
-// Dos zonas: :root (los dialogos se montan en el body) y .cds--g10 (App.tsx envuelve la app en <Theme theme="g10">, que
-// Carbon llena con el azul: los descendientes heredan de ese div y no de :root). Va DESPUES del tema de Carbon para
-// ganarle a igual especificidad, y en un bloque aparte para no repetir los --silice-* en el div. El foco no se toca. El
-// servidor mide estos pares (aplicacion/tema.py).
+// Carbon lee de la cara tanto en :root (portales y dialogos en body) como en .cds--g10 (el Theme que envuelve App.tsx),
+// despues del @include theme.theme() de g10.
 :root, .cds--g10 {
+  --cds-background: var(--silice-fondo);
+  --cds-layer-01: var(--silice-hoja);
+  --cds-layer-02: var(--silice-alzado);
+  --cds-text-primary: var(--silice-t1);
+  --cds-text-secondary: var(--silice-t2);
+  --cds-text-placeholder: var(--silice-t3);
+  --cds-icon-primary: var(--silice-t1);
+  --cds-icon-secondary: var(--silice-t2);
+  --cds-border-subtle-00: var(--silice-linea);
+  --cds-border-subtle-01: var(--silice-linea);
+  --cds-focus: var(--silice-foco);
   --cds-button-primary: var(--silice-complementario);
   --cds-button-primary-hover: color-mix(in srgb, var(--silice-complementario) #{$oscurecido-hover}, black);
   --cds-button-primary-active: color-mix(in srgb, var(--silice-complementario) #{$oscurecido-pulsado}, black);
   --cds-link-primary: var(--silice-complementario);
   --cds-link-primary-hover: var(--silice-complementario);
+  --cds-background-hover: var(--silice-alzado);
+  --cds-layer-hover-01: var(--silice-alzado);
+  // Carbon trae grises y pasteles fijos para las cabeceras de tabla y las pestanas con fondo (layer-accent), las filas
+  // elegidas, los avisos, el texto de ayuda y el desactivado: en oscuro daban texto claro sobre #e0e0e0 o sobre un pastel
+  // (1,1:1). Cada uno sigue a un token de la cara con su par claro y oscuro (T3, 2026-11-28).
+  --cds-layer-accent-01: var(--silice-alzado);
+  --cds-layer-accent-hover-01: color-mix(in srgb, var(--silice-alzado) 90%, var(--silice-t1));
+  --cds-layer-accent-active-01: color-mix(in srgb, var(--silice-alzado) 80%, var(--silice-t1));
+  --cds-layer-selected-01: var(--silice-resaltador);
+  --cds-layer-accent-02: color-mix(in srgb, var(--silice-alzado) 92%, var(--silice-t1));
+  --cds-layer-accent-03: color-mix(in srgb, var(--silice-alzado) 92%, var(--silice-t1));
+  --cds-layer-selected-02: color-mix(in srgb, var(--silice-resaltador) 92%, var(--silice-t1));
+  --cds-layer-selected-03: color-mix(in srgb, var(--silice-resaltador) 92%, var(--silice-t1));
+  --cds-link-secondary: var(--silice-complementario);
+  --cds-layer-selected-hover-01: color-mix(in srgb, var(--silice-resaltador) 90%, var(--silice-t1));
+  --cds-text-helper: var(--silice-t2);
+  --cds-text-disabled: light-dark(rgba(31, 27, 22, 0.4), rgba(239, 233, 222, 0.4));
+  --cds-notification-background-error: var(--silice-gravedad-error-fondo);
+  --cds-notification-background-success: var(--silice-gravedad-ok-fondo);
+  --cds-notification-background-warning: var(--silice-gravedad-advertencia-fondo);
+  --cds-notification-background-info: var(--silice-gravedad-info-fondo);
   --cds-border-interactive: var(--silice-complementario);
-  // Boton terciario (borde y texto): azul en g10, pasa al complementario. Al pasar el raton Carbon lo llena con el hover y
-  // pone el texto blanco: el complementario sobre el blanco ya lo mide el servidor (4,5:1); al pulsar, el mismo mas
-  // oscuro (el blanco se lee aun mejor). El secundario de g10 es gris (#393939), no azul: no se reasigna.
   --cds-button-tertiary: var(--silice-complementario);
   --cds-button-tertiary-hover: var(--silice-complementario);
   --cds-button-tertiary-active: color-mix(in srgb, var(--silice-complementario) 75%, black);
 }
 
-// WCAG 1.4.1: el enlace en el complementario puede quedar muy cerca del texto (en el tema neutro, donde sigue al marco,
-// ~1,6:1) y solo se distinguiria por el color; Carbon pone text-decoration: none en .cds--link, asi que se subraya
-// siempre, sea cual sea el complementario.
+// WCAG 1.4.1: el enlace en el complementario puede quedar muy cerca del texto y solo se distinguiria por el color;
+// Carbon pone text-decoration: none en .cds--link, asi que se subraya siempre, sea cual sea el complementario.
 .cds--link {
   text-decoration: underline;
 }

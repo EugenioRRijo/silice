@@ -78,6 +78,7 @@ class ResumenAuditoria:
 
     id: int
     fecha_hora: datetime
+    usuario: str
     tipo: str
     nombre_archivo: str
     errores: int
@@ -306,6 +307,7 @@ def listar(sesion: Session, limite: int) -> list[ResumenAuditoria]:
         select(
             AuditoriaLibro.id,
             AuditoriaLibro.fecha_hora,
+            AuditoriaLibro.usuario,
             AuditoriaLibro.tipo,
             AuditoriaLibro.nombre_archivo,
             AuditoriaLibro.errores,

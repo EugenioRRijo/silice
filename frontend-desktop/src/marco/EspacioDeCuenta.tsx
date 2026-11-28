@@ -1,10 +1,11 @@
 import { Button } from "@carbon/react";
 import { Logout, User } from "@carbon/icons-react";
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import type { ReactNode } from "react";
-import { Navigate, useLocation, useParams } from "react-router";
+import { Link, Navigate, useLocation, useParams } from "react-router";
 import type { SesionRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
+import { SelectorDeModo } from "../comun/SelectorDeModo";
 import { TamanoLetra } from "../comun/TamanoLetra";
 import { rolesConEtiqueta } from "../paginas/administracion/logica";
 import { ContrasenaDeLaCuenta } from "../sesion/ContrasenaDeLaCuenta";
@@ -13,10 +14,14 @@ import { LimiteDeError } from "../shell/LimiteDeError";
 import { AvisoSinPermiso } from "./avisos";
 import { BarraDeEspacio } from "./BarraDeEspacio";
 import type { PestanaDeEspacio } from "./BarraDeEspacio";
-import { SECCIONES_DE_CUENTA, esCuenta, rutaDeCuenta } from "./espacios";
+import { SECCIONES_DE_CUENTA, SECCION_DE_ACTIVIDAD, esCuenta, rutaDeActividad, rutaDeCuenta } from "./espacios";
 import type { CuentaDef } from "./espacios";
 import { useOferta } from "./oferta";
 import { RecorridosGuiados } from "./RecorridosGuiados";
+
+// La actividad se carga a demanda: pesa lo que pesa su calendario y casi nadie la abre en cada sesión.
+const Actividad = lazy(() => import("../paginas/actividad/Actividad"));
+const PreferenciasDeNotificaciones = lazy(() => import("../paginas/notificaciones/PreferenciasDeNotificaciones"));
 
 interface Props {
   sesion: SesionRespuesta;
@@ -71,6 +76,9 @@ function Preferencias({ sesion }: { sesion: SesionRespuesta }) {
           <span className="silice-codigo silice-cuenta-preferencias__cifra">242,64 USD/m³</span>
         </p>
       </section>
+      <section className="silice-cuenta-preferencias__bloque">
+        <SelectorDeModo />
+      </section>
       <section aria-labelledby="pref-sesion-titulo" className="silice-cuenta-preferencias__bloque">
         <h2 id="pref-sesion-titulo" className="cds--type-heading-compact-02">
           Datos de la cuenta
@@ -83,6 +91,11 @@ function Preferencias({ sesion }: { sesion: SesionRespuesta }) {
           <dt>Rol</dt>
           <dd>{rolesConEtiqueta(sesion.roles)}</dd>
         </dl>
+        <p className="cds--type-body-compact-01">
+          <Link to={rutaDeActividad(sesion.login)} className="cds--link">
+            Ver mi actividad
+          </Link>
+        </p>
       </section>
     </div>
   );
@@ -93,6 +106,7 @@ function Preferencias({ sesion }: { sesion: SesionRespuesta }) {
 function Contenido({ def, sesion, pantalla }: { def: CuentaDef; sesion: SesionRespuesta; pantalla: Props["pantalla"] }) {
   if (def.id === "preferencias") return <Preferencias sesion={sesion} />;
   if (def.id === "contrasena") return <ContrasenaDeLaCuenta />;
+  if (def.id === "notificaciones") return <PreferenciasDeNotificaciones />;
   const montada = def.pagina === null ? null : pantalla(def.pagina);
   if (def.id !== "ayuda") return <>{montada}</>;
   return (
@@ -101,6 +115,29 @@ function Contenido({ def, sesion, pantalla }: { def: CuentaDef; sesion: SesionRe
       <div className="silice-pagina">
         <RecorridosGuiados />
       </div>
+    </>
+  );
+}
+
+// La actividad de una cuenta (`/cuenta/actividad?usuario=<login>`): la cabecera y la barra de la Cuenta de siempre, con la
+// pestaña de «Cuentas y permisos» marcada cuando quien administra mira a otra persona y la de «Configuración» en los demás
+// casos. Si la consulta no trae usuario, es la propia cuenta. Quién puede ver a quién lo decide el servidor (403).
+function ActividadDeUnaCuenta({ sesion, alSalir, usuario }: Pick<Props, "sesion" | "alSalir"> & { usuario: string }) {
+  const { oferta } = useOferta();
+  const pestanas: PestanaDeEspacio[] = oferta.cuenta.map((c) => ({ id: c.id, titulo: c.titulo, ruta: rutaDeCuenta(c.id) }));
+  const deOtra = usuario !== sesion.login && oferta.cuenta.some((c) => c.id === "cuentas");
+  return (
+    <>
+      <CabeceraDeCuenta sesion={sesion} alSalir={alSalir} />
+      <BarraDeEspacio etiqueta="Secciones de la cuenta" pestanas={pestanas} activa={deOtra ? "cuentas" : "preferencias"} nivel="espacio" />
+      <LimiteDeError key={usuario}>
+        <Suspense fallback={<EsqueletoPagina />}>
+          <div className="silice-pagina silice-cuenta-seccion">
+            <h1 className="cds--type-heading-04">{`Actividad de ${usuario}`}</h1>
+            <Actividad usuario={usuario} />
+          </div>
+        </Suspense>
+      </LimiteDeError>
     </>
   );
 }
@@ -114,6 +151,10 @@ export function EspacioDeCuenta({ sesion, pantalla, alSalir }: Props) {
   const { seccion } = useParams();
   const { search } = useLocation();
   const { oferta } = useOferta();
+  if (seccion === SECCION_DE_ACTIVIDAD) {
+    const usuario = new URLSearchParams(search).get("usuario")?.trim() || sesion.login;
+    return <ActividadDeUnaCuenta sesion={sesion} alSalir={alSalir} usuario={usuario} />;
+  }
   const def = seccion !== undefined && esCuenta(seccion) ? SECCIONES_DE_CUENTA.find((c) => c.id === seccion) : undefined;
   if (def === undefined) return <Navigate to={`${rutaDeCuenta("preferencias")}${search}`} replace />;
   const pestanas: PestanaDeEspacio[] = oferta.cuenta.map((c) => ({ id: c.id, titulo: c.titulo, ruta: rutaDeCuenta(c.id) }));
@@ -126,7 +167,8 @@ export function EspacioDeCuenta({ sesion, pantalla, alSalir }: Props) {
         <Suspense fallback={<EsqueletoPagina />}>
           {puede ? (
             <div className={def.id === "ayuda" ? undefined : "silice-pagina silice-cuenta-seccion"}>
-              {def.id !== "ayuda" && <h1 className="cds--type-heading-04">{def.titulo}</h1>}
+              {/* La Ayuda y Notificaciones ponen su propio h1: la pantalla tiene uno solo. */}
+              {def.id !== "ayuda" && def.id !== "notificaciones" && <h1 className="cds--type-heading-04">{def.titulo}</h1>}
               <Contenido def={def} sesion={sesion} pantalla={pantalla} />
             </div>
           ) : (

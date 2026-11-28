@@ -8,7 +8,7 @@ import type { ObraAbierta } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { atipicosRespuesta, cuerpoDeVista, preciosRespuesta } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto } from "./logica";
 
 // F4, Tarea 13: «Registrar / Retirar una cotización…» salieron de Presupuesto › Precios y viven en Mercado

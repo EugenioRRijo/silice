@@ -5,12 +5,13 @@ import { MemoryRouter, useLocation, useParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import { Marco } from "../../marco/Marco";
+import { irASeccion } from "../../marco/irASeccion";
 import { estadoInicial, json, ligeras, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
 import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
 import { cuerpoDeVista } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 import { ContextoDelBorradorAbierto } from "../../comun/borradorAbierto";
 import { ContextoDeLaHoja, useHojaDeLaObra } from "./ProveedorDeLaHoja";
@@ -179,10 +180,8 @@ const textoDelBorrador = () => screen.queryByTestId("borrador")?.textContent ?? 
 const fichas = () => servidor.de("GET", "/v1/obras/resumen").length;
 const aperturas = () => servidor.de("POST", "/v1/hoja/borradores").map((l) => l.cuerpo as { proyecto: string; version: string | null });
 const descartes = () => servidor.llamadas.filter((l) => l.metodo === "DELETE" && l.ruta.startsWith("/v1/hoja/borradores/")).map((l) => l.ruta);
-// F6, T5: las secciones de la obra están en su barra, bajo la cabecera (ya no cuelgan de la barra lateral).
-const barraDeLaObra = () => screen.findByRole("navigation", { name: "Secciones de la obra" });
-const irA = async (u: ReturnType<typeof userEvent.setup>, seccion: string) =>
-  u.click(await within(await barraDeLaObra()).findByRole("link", { name: seccion }));
+// Lote C4: las secciones de la obra están en su barra del lugar (herramientas y opciones, dentro de la cabecera); `irASeccion` las alcanza como una persona.
+const irA = irASeccion;
 const pausa = () =>
   act(async () => {
     await new Promise((r) => setTimeout(r, 30));
@@ -249,11 +248,11 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     expect(aperturas()).toHaveLength(1);
   });
 
-  test("en Resumen y Mercado no se abre ningún borrador", async () => {
-    const u = montar("/obra/empresa/7/resumen");
-    expect(await screen.findByRole("heading", { level: 1, name: "Resumen de la obra" })).toBeInTheDocument();
-    await irA(u, "Mercado");
-    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/mercado"));
+  // Desde el Resumen ya no se llega a Mercado de un clic (es una opción de Presupuestar, y pasar por Presupuestar sí abre el
+  // borrador): cada sección se abre por su propia ruta, que es lo que la prueba vigila.
+  test.each(["resumen", "mercado"])("en %s no se abre ningún borrador", async (seccion) => {
+    montar(`/obra/empresa/7/${seccion}`);
+    expect(await screen.findByRole("heading", { level: 1 })).toBeInTheDocument();
     await pausa();
     expect(aperturas()).toEqual([]);
     expect(servidor.llamadas.filter((l) => l.ruta.startsWith("/v1/hoja/versiones"))).toEqual([]);
@@ -286,15 +285,16 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     const u = montar("/obra/empresa/7/presupuesto");
     await borradorListoEnLaHoja();
     fireEvent.change(await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" }), { target: { value: "5" } });
-    const conmutador = await screen.findByRole("navigation", { name: "Vistas de Presupuesto" });
-    await u.click(within(conmutador).getByRole("link", { name: "Componer" }));
+    // Integración C3-C5: Componer un APU es una opción de la segunda fila de la obra.
+    const conmutador = await screen.findByRole("navigation", { name: "Opciones de Presupuestar" });
+    await u.click(within(conmutador).getByRole("link", { name: "Componer un APU" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto/componer"));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
     await borradorListoEnElRelleno();
     // Componer lee el borrador de la obra sin importar de la Hoja (`comun/borradorAbierto.ts`, ronda 1 de la ola 2).
     expect(screen.getByTestId("borrador-abierto").textContent).toBe("b-1");
     await waitFor(() => expect(servidor.de("PUT", "/v1/hoja/borradores/b-1/cantidades")).toHaveLength(1));
-    await u.click(within(screen.getByRole("navigation", { name: "Vistas de Presupuesto" })).getByRole("link", { name: "Presupuesto" }));
+    await u.click(within(screen.getByRole("navigation", { name: "Opciones de Presupuestar" })).getByRole("link", { name: "Partidas" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
     await borradorListoEnLaHoja();
     await pausa();

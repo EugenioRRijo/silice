@@ -45,7 +45,7 @@ export const TEXTO_RENDIMIENTOS =
   "Estas partidas no tienen rendimiento estimado vigente a la fecha de la lista de precios: se propone el del " +
   "histórico con su dispersión. Declare si es estimado o medido para registrarlo y vuelva a pulsar «Llevar al " +
   "presupuesto».";
-// Va tras «Te falta:» en la franja del cómputo: sin moneda o sin lista en la carpeta no hay con qué valorar.
+// Va tras «Falta:» en la franja del cómputo: sin moneda o sin lista en la carpeta no hay con qué valorar.
 export const FALTA_LA_LISTA = "la carpeta no tiene lista de precios para armar";
 export const SIN_NADA_QUE_LLEVAR = "Ningún ítem del cómputo tiene partida en el catálogo: no hay nada que llevar.";
 

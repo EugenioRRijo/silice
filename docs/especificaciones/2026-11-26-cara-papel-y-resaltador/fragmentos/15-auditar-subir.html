@@ -1,0 +1,40 @@
+<!--{"orden": 15, "titulo": "Auditar un libro › Subir y auditar Excel", "area": "auditar", "opcion": "Subir y auditar Excel", "accion": "Subir otro libro", "meta": "Último libro: 15/11/2026"}-->
+<span class="sobre">Último libro auditado · Presupuesto cliente A.xlsx</span>
+<h1>6 hallazgos en el libro</h1>
+<div class="datos"><span class="t-err">3 errores</span><span class="t-adv">3 advertencias</span><span>4 hojas y 38 partidas revisadas</span><span>Total del libro 2.418.730,00 Bs</span></div>
+<div class="zona" style="margin-top:24px;padding:20px">
+  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></svg>
+  <span>Suelte aquí un libro de Excel (.xlsx) o <a href="#">elija un archivo</a></span>
+  <span class="meta">El archivo original no se modifica <sup>2</sup></span>
+</div>
+<h2>Qué se encontró</h2>
+<div class="marco">
+  <table>
+    <caption class="oc">Hallazgos del libro Presupuesto cliente A.xlsx</caption>
+    <thead><tr><th scope="col">Gravedad</th><th scope="col">Hoja</th><th scope="col">Celda</th><th scope="col">Qué pasa</th><th scope="col" class="num">Efecto en el total</th></tr></thead>
+    <tbody>
+      <tr class="sel" aria-selected="true"><td><span class="t-err">Error</span> <sup>1</sup></td><td>Presupuesto</td><td class="cod">F14</td><td>El precio del concreto f'c 210 no sale de ninguna lista</td><td class="num">−38.280,00</td></tr>
+      <tr><td><span class="t-err">Error</span></td><td>APU P-03</td><td class="cod">F18</td><td>El aditivo plastificante no suma al precio</td><td class="num">+6.090,00</td></tr>
+      <tr><td><span class="t-err">Error</span></td><td>Presupuesto</td><td class="cod">G22</td><td>El total de la fila no es cantidad por precio: 420,00 × 119,90 da 50.358,00 y el libro dice 50.538,00</td><td class="num">−180,00</td></tr>
+      <tr><td><span class="t-adv">Advertencia</span></td><td>APU P-04</td><td class="cod">D9</td><td>El acero supera la base de la empresa en 15,8 %</td><td class="num">−24.598,00</td></tr>
+      <tr><td><span class="t-adv">Advertencia</span></td><td>Resumen</td><td class="cod">C6</td><td>La unidad dice «m3» y en el resto del libro es «m³»</td><td class="num t2">Sin efecto</td></tr>
+      <tr><td><span class="t-adv">Advertencia</span></td><td>Insumos</td><td class="cod">B31</td><td>El precio del aditivo tiene más de 90 días</td><td class="num t2">Sin efecto</td></tr>
+    </tbody>
+  </table>
+</div>
+<span class="pie">Si se corrigen los cuatro hallazgos con efecto, el total del libro baja 56.968,00 Bs (2,4 %). <sup>3</sup></span>
+<!--MARGEN-->
+<article class="nota act" style="margin-top:316px">
+  <div class="cab"><span class="no">1</span><span class="sev err">Error</span><span>Precio sin fuente</span></div>
+  <p>El 3.120,00 de la celda F14 no sale de ninguna lista cargada. La más cercana dice 2.856,00.</p>
+  <div class="acc"><a href="#">Usar 2.856,00</a><a href="#">Anotar la fuente</a></div>
+</article>
+<article class="nota" style="margin-top:-8px">
+  <div class="cab"><span class="no">2</span><span>El original queda igual</span></div>
+  <p>El archivo que usted sube nunca se modifica. Los cambios que acepte se guardan aparte, y siempre puede volver al libro tal como llegó.</p>
+</article>
+<article class="nota">
+  <div class="cab"><span class="no">3</span><span>Cómo se calcula</span></div>
+  <p>Se suman los cuatro efectos: −38.280,00 + 6.090,00 − 180,00 − 24.598,00 = −56.968,00. Frente al total de 2.418.730,00 es 2,4 %.</p>
+</article>
+<p class="ficticio">Datos de demostración, ficticios.</p>

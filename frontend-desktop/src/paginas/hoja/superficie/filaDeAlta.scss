@@ -1,0 +1,165 @@
+// Estilos de la fila de alta de partidas (lote B1-8).
+// Reglas: solo tokens --silice-* (claro y oscuro), tamaños en rem y adaptación por @container sin @media ni font-size en px.
+
+.silice-fila-alta {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-inline-size: 0;
+  padding: 0.75rem 1rem;
+  background: var(--silice-hoja);
+  border: 1px solid var(--silice-linea);
+}
+
+.silice-fila-alta__formulario {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.silice-fila-alta__principal {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(10rem, 13rem) auto;
+  gap: 0.75rem 1rem;
+  align-items: start;
+  min-inline-size: 0;
+}
+
+.silice-fila-alta__partida,
+.silice-fila-alta__cantidad {
+  min-inline-size: 0;
+}
+
+.silice-fila-alta__accion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  // Alinea el botón con la caja de entrada (debajo del rótulo de 1,5 rem).
+  padding-block-start: 1.5rem;
+  min-inline-size: 0;
+}
+
+.silice-fila-alta__enviando {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--silice-t2);
+  line-height: 1.35;
+}
+
+// Indicador de envío sin región viva (guías `spinner` y `accessibility`).
+.silice-fila-alta__progreso:indeterminate {
+  --_tamano: 1rem;
+  --_grosor: 0.125rem;
+  --_color: var(--silice-complementario);
+  --_pista: var(--silice-linea);
+  --_duracion: 1.5s;
+
+  inline-size: var(--_tamano);
+  block-size: var(--_tamano);
+  border-radius: 50%;
+  appearance: none;
+  background: conic-gradient(from 90deg, var(--_color) 158deg, transparent 0) var(--_pista);
+  animation: silice-fila-alta-giro var(--_duracion) linear infinite;
+
+  &::-webkit-progress-bar,
+  &::-webkit-progress-value {
+    display: none;
+    background: none;
+  }
+
+  &::-moz-progress-bar {
+    display: none;
+    background: none;
+  }
+
+  @supports (background-clip: border-area) {
+    background-clip: border-area;
+    border: var(--_grosor) solid transparent;
+    background-origin: border-box;
+  }
+
+  @supports not (background-clip: border-area) {
+    mask-image: radial-gradient(
+      farthest-side,
+      transparent calc(100% - var(--_grosor)),
+      black calc(100% - var(--_grosor))
+    );
+    border: 0;
+  }
+
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+    --_color: CanvasText;
+    --_pista: Canvas;
+  }
+}
+
+.silice-fila-alta__pliegue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-inline-size: 0;
+  padding-block-start: 0.25rem;
+  border-block-start: 1px solid var(--silice-linea);
+
+  > summary {
+    cursor: pointer;
+    color: var(--silice-t2);
+    line-height: 1.4;
+    padding-block: 0.25rem;
+
+    &:focus-visible {
+      outline: 2px solid var(--silice-foco);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.silice-fila-alta__opcionales {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem 1rem;
+  align-items: start;
+  min-inline-size: 0;
+}
+
+.silice-fila-alta__error-general {
+  min-inline-size: 0;
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-foco);
+    outline-offset: 2px;
+  }
+}
+
+.silice-fila-alta__parecidas {
+  min-inline-size: 0;
+  padding-block-start: 0.5rem;
+  border-block-start: 1px solid var(--silice-linea);
+}
+
+@container (inline-size < 42rem) {
+  .silice-fila-alta__principal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .silice-fila-alta__accion {
+    padding-block-start: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .silice-fila-alta__progreso:indeterminate {
+    --_duracion: 6s;
+  }
+}
+
+@keyframes silice-fila-alta-giro {
+  to {
+    rotate: 1turn;
+  }
+}

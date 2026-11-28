@@ -90,6 +90,7 @@ describe("Administracion: Cuentas y Accesos", () => {
           ? json({ detalle: "La base no responde." }, 503)
           : json({ cuentas, aviso_arma_y_revisa: AVISO } satisfies CuentasRespuesta);
       }
+      if (url === "/v1/solicitudes") return json({ solicitudes: [] });
       if (url === "/v1/accesos") return json(accesos);
       if (url === "/v1/admin/empresas-registradas") return json({ registradas: [], metodos: [] });
       if (url === "/v1/admin/asistente") return json(ASISTENTE_DE_FABRICA);
@@ -137,6 +138,22 @@ describe("Administracion: Cuentas y Accesos", () => {
     expect(await screen.findByRole("table", { name: "Eventos de acceso" }, PIDE)).toBeInTheDocument();
     // El h1 y la barra son del marco; el contenido no pone otro.
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+  });
+
+  test("cada cuenta de la tabla ofrece «Ver su actividad», con el usuario en la dirección", async () => {
+    montar();
+    const tabla = await cargada();
+    const enlaces = within(tabla).getAllByRole("link", { name: /^Ver su actividad: / });
+    expect(enlaces.map((e) => [e.textContent, e.getAttribute("href")])).toEqual([
+      ["Ver su actividad", "/cuenta/actividad?usuario=admin"],
+      ["Ver su actividad", "/cuenta/actividad?usuario=ana"],
+      ["Ver su actividad", "/cuenta/actividad?usuario=luis"],
+    ]);
+    expect(enlaces.map((e) => e.getAttribute("aria-label"))).toEqual([
+      "Ver su actividad: admin",
+      "Ver su actividad: ana",
+      "Ver su actividad: luis",
+    ]);
   });
 
   test("«cuentas» no monta lo de las otras secciones: ni la empresa, ni el asistente", async () => {

@@ -9,12 +9,15 @@ export type EstadoDeSesion =
   | { tipo: "sin_sesion"; expirada: boolean }
   | { tipo: "activa"; sesion: SesionRespuesta };
 
+type SesionBruta = Partial<SesionRespuesta> & Pick<SesionRespuesta, "login" | "nombre" | "roles" | "csrf">;
+
 // La sesion termino en este navegador (la persona salio o el servidor la dio por vencida): ya no hay con que pedirle nada. Lo
 // que las pantallas pedirian al irse (descartar el borrador de la Hoja, `DELETE /v1/hoja/borradores/{id}`) volveria con un
 // 401 que no dice nada, y no hace falta: al cerrar la sesion el servidor ya descarta los borradores sin cambios
 // (api/caso_web.py). La bandera vive fuera del estado de React porque la lee el desmontaje de las pantallas, que ocurre
 // despues de que el estado cambia; se baja al abrir una sesion. Solo en memoria (RT-9).
 let terminada = false;
+const oyentesDeApertura = new Set<(sesion: SesionRespuesta) => void>();
 
 export function sesionTerminada(): boolean {
   return terminada;
@@ -23,7 +26,7 @@ export function sesionTerminada(): boolean {
 // Una API anterior a la ola 0a no trae estos campos: sin ellos, nadie debe cambiar clave, no hay acciones (el
 // menu queda vacio) y no hay modo entrega. Sin los de MOD-0, no hay eleccion recordada y las preferencias son las
 // de omision (ningun modulo, sidebar oculto).
-function normalizar(bruta: Partial<SesionRespuesta> & Pick<SesionRespuesta, "login" | "nombre" | "roles" | "csrf">): SesionRespuesta {
+function normalizar(bruta: SesionBruta): SesionRespuesta {
   return {
     ...bruta,
     debe_cambiar_clave: bruta.debe_cambiar_clave === true,
@@ -34,19 +37,49 @@ function normalizar(bruta: Partial<SesionRespuesta> & Pick<SesionRespuesta, "log
   };
 }
 
+// Puerta única en el cliente para activar una sesión devuelta por la API (`GET/POST /v1/sesion`, reclamo del primer
+// arranque, cambio de contraseña y canje de código en `POST /v1/solicitudes/canjear`): normaliza el cuerpo, guarda el
+// token anti-CSRF en memoria, baja la marca de sesión terminada y actualiza las instancias montadas de `useSesion`.
+function activarSesion(bruta: SesionBruta): SesionRespuesta {
+  const sesion = normalizar(bruta);
+  fijarCsrf(sesion.csrf);
+  terminada = false;
+  for (const oyente of [...oyentesDeApertura]) {
+    oyente(sesion);
+  }
+  return sesion;
+}
+
+export async function canjearCodigo(login: string, contrasena: string, codigo: string): Promise<void> {
+  activarSesion(
+    await pedir<SesionRespuesta>("/v1/solicitudes/canjear", {
+      metodo: "POST",
+      cuerpo: { login, contrasena, codigo },
+    }),
+  );
+}
+
 // La sesion vive en una cookie HttpOnly que pone la API. Aqui solo se guarda en memoria lo que la API devuelve
 // (nombre, roles, acciones y el token anti-CSRF); nada va a localStorage ni a sessionStorage (RT-9).
 export function useSesion() {
   const [estado, setEstado] = useState<EstadoDeSesion>({ tipo: "cargando" });
 
   useEffect(() => {
+    const alAbrir = (sesion: SesionRespuesta) => {
+      setEstado({ tipo: "activa", sesion });
+    };
+    oyentesDeApertura.add(alAbrir);
+    return () => {
+      oyentesDeApertura.delete(alAbrir);
+    };
+  }, []);
+
+  useEffect(() => {
     let vigente = true;
     pedir<SesionRespuesta>("/v1/sesion")
       .then((bruta) => {
         if (!vigente) return;
-        const sesion = normalizar(bruta);
-        fijarCsrf(sesion.csrf);
-        terminada = false;
+        const sesion = activarSesion(bruta);
         setEstado({ tipo: "activa", sesion });
       })
       .catch(() => {
@@ -58,20 +91,22 @@ export function useSesion() {
   }, []);
 
   const entrar = useCallback(async (login: string, contrasena: string) => {
-    const sesion = normalizar(await pedir<SesionRespuesta>("/v1/sesion", { metodo: "POST", cuerpo: { login, contrasena } }));
-    fijarCsrf(sesion.csrf);
-    terminada = false;
+    const sesion = activarSesion(
+      await pedir<SesionRespuesta>("/v1/sesion", { metodo: "POST", cuerpo: { login, contrasena } }),
+    );
     setEstado({ tipo: "activa", sesion });
+  }, []);
+
+  const canjear = useCallback(async (login: string, contrasena: string, codigo: string) => {
+    await canjearCodigo(login, contrasena, codigo);
   }, []);
 
   // Primer arranque y restablecimiento (BCP-4): el código de un solo uso crea (o recupera) la cuenta administradora y la API
   // abre la sesión con el mismo cuerpo que POST /v1/sesion (201). El cuerpo no se guarda aquí: pasa de largo a la API.
   const reclamar = useCallback(async (cuerpo: CuerpoDeReclamo) => {
-    const sesion = normalizar(
+    const sesion = activarSesion(
       await pedir<SesionRespuesta>("/v1/primer-arranque/reclamo", { metodo: "POST", cuerpo }),
     );
-    fijarCsrf(sesion.csrf);
-    terminada = false;
     setEstado({ tipo: "activa", sesion });
   }, []);
 
@@ -91,11 +126,9 @@ export function useSesion() {
       }
       throw error;
     }
-    const trae = (r: unknown): r is Parameters<typeof normalizar>[0] =>
+    const trae = (r: unknown): r is SesionBruta =>
       typeof r === "object" && r !== null && "login" in r && "csrf" in r;
-    const sesion = normalizar(trae(respuesta) ? respuesta : await pedir<SesionRespuesta>("/v1/sesion"));
-    fijarCsrf(sesion.csrf);
-    terminada = false;
+    const sesion = activarSesion(trae(respuesta) ? respuesta : await pedir<SesionRespuesta>("/v1/sesion"));
     setEstado({ tipo: "activa", sesion });
   }, []);
 
@@ -121,5 +154,5 @@ export function useSesion() {
     setEstado({ tipo: "sin_sesion", expirada: true });
   }, []);
 
-  return { estado, entrar, reclamar, cambiarContrasena, salir, expirar };
+  return { estado, entrar, canjear, reclamar, cambiarContrasena, salir, expirar };
 }

@@ -142,6 +142,8 @@ export const SUBVISTAS: Partial<Record<SeccionId, readonly HerramientaDef[]>> = 
   presupuesto: [
     { id: "", titulo: "Presupuesto", pagina: "hoja" },
     { id: "componer", titulo: "Componer", pagina: "componer" },
+    // B1-10: las pestañas de antes (espacio, APU, plan, precios y ajustes), a un clic de la superficie.
+    { id: "pestanas", titulo: "Espacio, plan y ajustes", pagina: "hoja_pestanas" },
   ],
   aprobaciones: [
     { id: "", titulo: "Aprobar", pagina: "aprobar" },
@@ -190,7 +192,7 @@ export function vistaDeLaSeccion(
   return { pagina: destino.pagina, redirigeA: segmento === undefined && destino.id === "" ? null : destino.id };
 }
 
-export type CuentaId = "preferencias" | "contrasena" | "cuentas" | "empresa" | "carpetas" | "sistema" | "ayuda";
+export type CuentaId = "preferencias" | "contrasena" | "notificaciones" | "cuentas" | "empresa" | "carpetas" | "sistema" | "ayuda";
 
 // `pagina` es la pantalla que monta la sección (null: la sección no tiene pantalla en `PAGINAS`, como el tamaño de
 // letra). «Administración» se reparte en cuatro secciones: las cuatro nombran su pantalla para que `usable` aplique
@@ -208,6 +210,8 @@ export interface CuentaDef {
 export const SECCIONES_DE_CUENTA: readonly CuentaDef[] = [
   { id: "preferencias", titulo: "Configuración", pagina: null, ayuda: "El tamaño de letra de la pantalla y los datos de su cuenta." },
   { id: "contrasena", titulo: "Contraseña", pagina: null, ayuda: "Cambiar la contraseña de su cuenta." },
+  // C11b: qué notificaciones recibe (2026-11-26); como Configuración y Contraseña, toda cuenta la tiene.
+  { id: "notificaciones", titulo: "Notificaciones", pagina: null, ayuda: "Qué avisos le llegan a la campanita." },
   { id: "cuentas", titulo: "Cuentas y permisos", pagina: "administracion", ayuda: "Las cuentas de las personas, sus permisos y los accesos." },
   { id: "empresa", titulo: "Empresa y tema", pagina: "administracion", ayuda: "Los datos de la empresa, su clave de firma y los colores del programa." },
   { id: "carpetas", titulo: "Carpetas", pagina: "administracion", ademas: "cambiar_caso", ayuda: "Las carpetas de la instalación: abrir, crear, subir y la demostración." },
@@ -221,6 +225,14 @@ export function esCuenta(segmento: string): segmento is CuentaId {
 
 export function rutaDeCuenta(id: CuentaId): string {
   return `/cuenta/${id}`;
+}
+
+// La actividad de una cuenta (C10) no es una pestaña de la Cuenta: es la pantalla a la que llevan «Ver su actividad» (en
+// Cuentas y permisos) y «Ver mi actividad» (en Configuración). El usuario va en la consulta: `/cuenta/actividad?usuario=ana`.
+export const SECCION_DE_ACTIVIDAD = "actividad";
+
+export function rutaDeActividad(login: string): string {
+  return `/cuenta/${SECCION_DE_ACTIVIDAD}?usuario=${encodeURIComponent(login)}`;
 }
 
 // Si la cuenta puede usar la sección: la regla de su pantalla (`usable`: permiso, modo entrega y módulos apagados) y, si

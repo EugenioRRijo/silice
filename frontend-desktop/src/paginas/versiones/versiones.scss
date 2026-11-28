@@ -48,3 +48,30 @@
   flex-wrap: nowrap;
   gap: 0.25rem;
 }
+
+.silice-versiones__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  min-inline-size: 0;
+
+  > * {
+    min-inline-size: 0;
+  }
+}
+
+.silice-versiones__filtro {
+  inline-size: min(100%, 16rem);
+}
+
+.silice-versiones__cuenta {
+  margin: 0;
+  color: var(--silice-t2);
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-versiones__por {
+  color: var(--silice-t2);
+}

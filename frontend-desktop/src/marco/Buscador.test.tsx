@@ -163,7 +163,7 @@ describe("Buscador", () => {
     await campo();
     await waitFor(() => expect(opciones()).toHaveLength(3));
     await userEvent.keyboard("{ArrowDown}{Enter}");
-    expect(screen.getByTestId("ruta").textContent).toBe("/obra/Carpeta%20Norte.db/2/resumen");
+    expect(screen.getByTestId("ruta").textContent).toBe("/obra/Carpeta%20Norte.db/2/presupuesto");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -172,7 +172,7 @@ describe("Buscador", () => {
     await campo();
     await waitFor(() => expect(opciones()).toHaveLength(3));
     await userEvent.click(screen.getByRole("option", { name: /Galpón Sur/ }));
-    expect(screen.getByTestId("ruta").textContent).toBe("/obra/Carpeta%20Sur.db/3/resumen");
+    expect(screen.getByTestId("ruta").textContent).toBe("/obra/Carpeta%20Sur.db/3/presupuesto");
   });
 
   it("Esc cierra y devuelve el foco al botón que lo abrió", async () => {

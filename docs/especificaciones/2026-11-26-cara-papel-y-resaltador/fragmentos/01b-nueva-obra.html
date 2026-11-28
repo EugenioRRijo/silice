@@ -1,0 +1,39 @@
+<!--{"orden": 1.5, "titulo": "Nueva obra › Componer la obra", "area": "nueva", "opcion": "Datos de la obra", "meta": "Los datos se pueden cambiar después"}-->
+<span class="sobre">Nueva obra · en la carpeta Obras 2026</span>
+<h1>Pavimentación Calle Real</h1>
+<div class="datos"><span>Vial</span><span>Moneda Bs</span><span>Empieza en blanco</span></div>
+<h2>Datos de la obra</h2>
+<div class="form" style="margin-top:0;max-width:640px">
+  <label class="campo"><span>Nombre de la obra</span><input type="text" value="Pavimentación Calle Real"><small>Así se verá en la lista de obras y en el presupuesto que se entrega</small></label>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <label class="campo"><span>Cliente (opcional)</span><input type="text" value="Alcaldía de Ejemplo"></label>
+    <label class="campo"><span>Ubicación (opcional)</span><input type="text" value="Sector Centro, Municipio Ejemplo"></label>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <label class="campo"><span>Tipo de obra</span><select><option selected>Vial</option><option>Edificación</option><option>Obra hidráulica</option></select><small>Decide qué catálogo y qué reglas de auditoría se usan</small></label>
+    <label class="campo"><span>Moneda <sup>1</sup></span><select><option selected>Bs</option><option>USD</option></select><small>Es la moneda de esta carpeta (Bs)</small></label>
+  </div>
+</div>
+<h2>Cómo empezar <sup>2</sup></h2>
+<div role="radiogroup" aria-label="Cómo empezar" class="tarjetas" style="margin-top:0;grid-template-columns:repeat(3,minmax(0,1fr))">
+  <label class="tarjeta" style="cursor:pointer;background:var(--sel);border-color:var(--sel-borde)"><input type="radio" name="inicio" checked style="accent-color:var(--t1)"> <b style="font-weight:500">En blanco</b><span class="cmp" style="font-size:13px;line-height:20px">Agrega las partidas una a una desde el catálogo</span></label>
+  <label class="tarjeta" style="cursor:pointer"><input type="radio" name="inicio" style="accent-color:var(--t1)"> <b style="font-weight:500">Desde un cómputo en Excel</b><span class="cmp" style="font-size:13px;line-height:20px">Trae las partidas y cantidades de un cómputo métrico</span></label>
+  <label class="tarjeta" style="cursor:pointer"><input type="radio" name="inicio" style="accent-color:var(--t1)"> <b style="font-weight:500">Copiar de otra obra</b><span class="cmp" style="font-size:13px;line-height:20px">Usa las partidas de una obra parecida, sin sus cantidades</span></label>
+</div>
+<h2>Dónde se guarda</h2>
+<dl class="pares">
+  <dt>Carpeta</dt><dd>Obras 2026 <a href="#" style="margin-left:8px">Cambiar</a></dd>
+  <dt>Primera versión</dt><dd>V1 · en elaboración</dd>
+  <dt>Quién la crea</dt><dd>Eugenio Pérez</dd>
+</dl>
+<div class="fila-acc"><button type="button" class="btn1">Crear la obra</button><button type="button" class="btn2">Cancelar</button><span class="meta">Después de crearla se abre Presupuestar › Partidas</span></div>
+<!--MARGEN-->
+<article class="nota act suelta" style="margin-top:236px">
+  <div class="cab"><span class="no">1</span><span>Si elige otra moneda</span></div>
+  <p>La obra se valorará convirtiendo los precios de la carpeta con la tasa del BCV del día. La tasa usada queda anotada en cada versión.</p>
+</article>
+<article class="nota" style="margin-top:96px">
+  <div class="cab"><span class="no">2</span><span>Lo puede cambiar después</span></div>
+  <p>Empezar en blanco no cierra nada: desde Presupuestar › Plano o cómputo puede traer partidas cuando quiera.</p>
+</article>
+<p class="ficticio">Datos de demostración, ficticios.</p>

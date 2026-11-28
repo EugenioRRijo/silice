@@ -1,7 +1,16 @@
 import { describe, expect, test } from "vitest";
 import type { EstadoDeAprobacion } from "../../comun/aprobacion";
 import type { VersionFila, VersionesRespuesta } from "../hoja/logica";
-import { filasDeVersiones, motivoDeVersion, pasoDeVersiones } from "./logica";
+import {
+  extraerPersona,
+  filasDeVersiones,
+  filtrarVersionesPorPersona,
+  listarPersonasDeVersiones,
+  motivoDeVersion,
+  pasoDeVersiones,
+  personasDeVersion,
+  textoDeConteoDeVersiones,
+} from "./logica";
 import type { FilaDeVersion } from "./logica";
 
 // Tarea 6 del plan F4: la lógica pura de la sección Versiones. Datos ficticios (obra 3, VIV-001 y VIV-002); los resultados
@@ -132,5 +141,72 @@ describe("pasoDeVersiones", () => {
 
   test("las cifras van en es-VE: 1234 cambios se dicen con punto de miles", () => {
     expect(pasoDeVersiones({ cambios: 1234, puedeGuardar: true, filas: [] })?.texto).toBe("Hay 1.234 cambios sin guardar");
+  });
+});
+
+describe("C10b: personas y filtro en Versiones", () => {
+  test("extraerPersona separa nombre y usuario cuando viene «Nombre <login>», y deja usuario null sin login", () => {
+    expect(extraerPersona("Ana Pérez <ana>")).toEqual({ clave: "u:ana", nombre: "Ana Pérez", usuario: "ana" });
+    expect(extraerPersona("Rita <rita> (tras restablecimiento)")).toEqual({ clave: "u:rita", nombre: "Rita", usuario: "rita" });
+    expect(extraerPersona("api (clave de API)")).toEqual({
+      clave: "t:api (clave de api)",
+      nombre: "api (clave de API)",
+      usuario: null,
+    });
+    expect(extraerPersona("Ana Pérez", null)).toEqual({ clave: "t:ana pérez", nombre: "Ana Pérez", usuario: null });
+    expect(extraerPersona("Ana Pérez", "ana")).toEqual({ clave: "u:ana", nombre: "Ana Pérez", usuario: "ana" });
+    expect(extraerPersona(null)).toBeNull();
+    expect(extraerPersona("   ")).toBeNull();
+  });
+
+  test("listarPersonasDeVersiones reúne personas únicas de por y responsable, ordenadas por nombre", () => {
+    const lista: FilaDeVersion[] = [
+      { ...fila("VIV-003", true), estado: "aprobada", por: "Rita Gómez <rita>", abierta: true, seAbre: true },
+      {
+        ...fila("VIV-002", false),
+        estado: "devuelta",
+        por: "Rita Gómez <rita> (tras restablecimiento)",
+        responsable: "Ana Pérez <ana>",
+        abierta: false,
+        seAbre: true,
+      },
+      { ...fila("VIV-001", false), estado: "guardada", por: null, abierta: false, seAbre: true },
+    ];
+    expect(listarPersonasDeVersiones(lista)).toEqual([
+      { clave: "u:ana", nombre: "Ana Pérez", etiqueta: "Ana Pérez" },
+      { clave: "u:rita", nombre: "Rita Gómez", etiqueta: "Rita Gómez" },
+    ]);
+  });
+
+  test("filtrarVersionesPorPersona reduce la lista y con «» la devuelve completa", () => {
+    const lista: FilaDeVersion[] = [
+      { ...fila("VIV-003", true), estado: "aprobada", por: "Rita Gómez <rita>", abierta: true, seAbre: true },
+      { ...fila("VIV-002", false), estado: "en_aprobacion", por: "Ana Pérez <ana>", abierta: false, seAbre: true },
+      { ...fila("VIV-001", false), estado: "guardada", por: null, abierta: false, seAbre: true },
+    ];
+    expect(filtrarVersionesPorPersona(lista, "u:rita").map((f) => f.codigo)).toEqual(["VIV-003"]);
+    expect(filtrarVersionesPorPersona(lista, "").map((f) => f.codigo)).toEqual(["VIV-003", "VIV-002", "VIV-001"]);
+  });
+
+  test("textoDeConteoDeVersiones usa singular, plural y punto de miles", () => {
+    expect(textoDeConteoDeVersiones(1, 1)).toBe("1 de 1 versión");
+    expect(textoDeConteoDeVersiones(3, 12)).toBe("3 de 12 versiones");
+    expect(textoDeConteoDeVersiones(1200, 1500)).toBe("1.200 de 1.500 versiones");
+  });
+
+  // T4 (mutante V3): sin versiones también va en plural.
+  test("textoDeConteoDeVersiones dice «versiones» con cero", () => {
+    expect(textoDeConteoDeVersiones(0, 0)).toBe("0 de 0 versiones");
+  });
+
+  // T4 (mutante V1): quien guardó y quien dictaminó, si es la misma persona, cuenta una vez; si son dos, las dos.
+  test("personasDeVersion no repite a la misma persona y suma a la otra", () => {
+    expect(personasDeVersion({ responsable: "Ana Pérez <ana>", usuario: null, por: "Ana Pérez <ana>" })).toEqual([
+      { clave: "u:ana", nombre: "Ana Pérez", usuario: "ana" },
+    ]);
+    expect(personasDeVersion({ responsable: "Ana Pérez <ana>", usuario: null, por: "Rita Gómez <rita>" }).map((p) => p.clave)).toEqual([
+      "u:ana",
+      "u:rita",
+    ]);
   });
 });

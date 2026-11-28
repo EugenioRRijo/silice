@@ -9,6 +9,9 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { MONEDAS } from "../../comun/monedas";
+import { useNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { avisarCambioDeLaCarpeta } from "../../shell/ListaDeLaCarpeta";
 import {
@@ -162,13 +165,23 @@ interface PropsSeccion {
 }
 
 function SeccionReferencia({ alCargada, alExpirar }: PropsSeccion & { alCargada: () => void }) {
+  const { notificar } = useNotificaciones();
   const [referencia, setReferencia] = useState<Referencia>({ tipo: "ninguna" });
 
   const cargar = () => {
+    if (referencia.tipo === "cargando") return;
     setReferencia({ tipo: "cargando" });
     pedir<{ mensaje: string }>("/v1/precios-empresa/referencia", { metodo: "POST" }).then(
       (respuesta) => {
         setReferencia({ tipo: "listo", mensaje: respuesta.mensaje });
+        notificar({
+          gravedad: "listo",
+          titulo: "Referencia MaPreX cargada",
+          enlace: {
+            texto: "Ver precios de la empresa",
+            ruta: rutaOPendientes("precios_empresa"),
+          },
+        });
         alCargada();
       },
       (error: unknown) => {
@@ -203,6 +216,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
   // Crear la lista para armar exige `editar_hoja` (quien arma); el administrador sin ese papel no ve el botón (árbitro
   // 13/11, M4), como la Barra lateral.
   const puedeArmar = useAplicacion().sesion.acciones.includes("editar_hoja");
+  const { notificar } = useNotificaciones();
   const [empresa, setEmpresa] = useState("");
   const [rif, setRif] = useState("");
   const [baseElegida, setBaseElegida] = useState("");
@@ -257,6 +271,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
 
   const crear = (evento: FormEvent) => {
     evento.preventDefault();
+    if (creacion.tipo === "enviando") return;
     const datos = { empresa, rif, baseId, moneda, fecha, fuente, nombre, archivo, darDeAlta };
     if (faltaAlgo(datos)) {
       setCreacion({ tipo: "falta" });
@@ -267,6 +282,16 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
     pedir<ListaCreada>("/v1/precios-empresa/listas", { metodo: "POST", cuerpo: formularioLista(datos) }).then(
       (creada) => {
         setCreacion({ tipo: "listo", creada });
+        const textoPropios = `${formatoEsVe(String(creada.propios))} ${creada.propios === 1 ? "precio propio" : "precios propios"}`;
+        notificar({
+          gravedad: "listo",
+          titulo: "Lista de precios cargada",
+          detalle: `${creada.nombre} · ${textoPropios}`,
+          enlace: {
+            texto: "Ver precios de la empresa",
+            ruta: rutaOPendientes("precios_empresa"),
+          },
+        });
         alCreada();
       },
       (error: unknown) => {

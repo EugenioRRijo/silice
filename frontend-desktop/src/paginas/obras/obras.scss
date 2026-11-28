@@ -40,7 +40,7 @@
 
   dd {
     margin: 0;
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-family: inherit;
     font-size: 1.125rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -57,10 +57,29 @@
 }
 
 .silice-resumen__sin-dato {
-  font-family: "IBM Plex Sans", sans-serif;
+  font-family: inherit;
   font-size: 1rem;
   color: var(--silice-muted-soft);
   font-weight: 500;
+}
+
+.silice-resumen__entrega {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-inline-size: 0;
+  padding: 1.25rem;
+  background-color: var(--silice-surface);
+  border: 1px solid var(--silice-border);
+  border-radius: var(--silice-radio-lg);
+}
+
+.silice-resumen__entrega-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  min-inline-size: 0;
 }
 
 .silice-resumen__pendientes {

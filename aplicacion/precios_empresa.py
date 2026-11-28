@@ -101,8 +101,12 @@ def _confirmar[T](
     return resultado
 
 
-def cargar_referencia_maprex(sesion) -> str:
-    """Carga la lista MaPreX julio 2026 en Bs (S1 §6.2). Una referencia ya cargada no se duplica."""
+def cargar_referencia_maprex(
+    sesion, al_cargar: Callable[[int, str], None] | None = None
+) -> str:
+    """Carga la lista MaPreX julio 2026 en Bs (S1 §6.2). Una referencia ya cargada no se duplica.
+    Si la carga, y ya confirmada, llama a `al_cargar(id, nombre)` (C11b: el aviso de lista
+    nueva)."""
     existente = lista_de_referencia(sesion)
     if existente is not None:
         return f"La referencia «{existente.nombre}» ya estaba cargada: no se escribio nada."
@@ -113,6 +117,8 @@ def cargar_referencia_maprex(sesion) -> str:
             sesion, RUTA_REFERENCIA_MAPREX, nombre=NOMBRE_REFERENCIA, moneda="Bs", tasa=tasa
         ),
     )
+    if al_cargar is not None:
+        al_cargar(lista.id, lista.nombre)
     return (
         f"Referencia «{lista.nombre}» cargada con "
         f"{plural(len(lista.precios), 'precio', 'precios')}."

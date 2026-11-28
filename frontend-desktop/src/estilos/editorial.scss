@@ -1,63 +1,64 @@
-// Sistema visual editorial Swiss-industrial de Silice (unslop + frontend-design).
-// Capas sobre tokens.scss sin alterar los tokens de Carbon que vigilan temaNeutro/colorDeAccion.
+// Capa de compatibilidad editorial sobre la cara «Papel y resaltador» (tokens.scss, claro y oscuro).
+// Cada token viejo de color apunta a su par en tokens.scss sin alterar los tokens que vigilan temaNeutro/colorDeAccion.
 // Regla estricta: todos los tamanos de fuente en rem (estilosLetra.test.ts).
 
 :root {
-  --silice-stone: #f7f6f3;
-  --silice-surface: #ffffff;
-  --silice-surface-muted: #f4f3ee;
-  --silice-surface-warm: #faf9f6;
-  --silice-rail: #f3f2ed;
-  --silice-rail-hover: #eae8e1;
-  --silice-rail-band: #efece5;
-  --silice-border: #e4e2da;
-  --silice-border-strong: #d6d3c7;
-  --silice-hairline: #eceae2;
-  --silice-charcoal: #1e2125;
-  --silice-charcoal-btn: #222427;
-  --silice-charcoal-hover: #31353b;
-  --silice-charcoal-deep: #14171a;
-  --silice-charcoal-ink: #181a1d;
-  --silice-gold: #f5c842;
-  --silice-gold-strong: #e5b21a;
-  --silice-gold-soft: #fdf5d7;
-  --silice-gold-ink: #9a6b00;
-  --silice-ink: #1c1d1f;
-  --silice-muted: #5c6066;
-  --silice-muted-soft: #6e737a;
-  --silice-ok: #168a4c;
-  --silice-ok-ink: #166534;
-  --silice-ok-bg: #ecfbf2;
-  --silice-ok-border: #bbf7d0;
-  --silice-warn: #b45309;
-  --silice-warn-bg: #fffbeb;
-  --silice-warn-border: #fde68a;
-  --silice-err: #b91c1c;
-  --silice-err-bg: #fef2f2;
-  --silice-err-border: #fecaca;
+  --silice-stone: var(--silice-fondo);
+  --silice-surface: var(--silice-hoja);
+  --silice-surface-muted: var(--silice-alzado);
+  --silice-surface-warm: var(--silice-alzado);
+  --silice-rail: var(--silice-lateral);
+  --silice-rail-hover: var(--silice-alzado);
+  --silice-rail-band: var(--silice-alzado);
+  --silice-border: var(--silice-linea);
+  --silice-border-strong: var(--silice-borde-fuerte);
+  --silice-hairline: var(--silice-linea);
+  --silice-charcoal: var(--silice-marco);
+  --silice-charcoal-btn: var(--silice-complementario);
+  --silice-charcoal-hover: var(--silice-hover-tinta);
+  --silice-charcoal-deep: var(--silice-carbon-profundo);
+  --silice-charcoal-ink: var(--silice-tinta-sobre-acento);
+  --silice-gold: var(--silice-acento);
+  --silice-gold-strong: var(--silice-resaltador-borde);
+  --silice-gold-soft: var(--silice-resaltador);
+  --silice-gold-ink: var(--silice-gravedad-advertencia);
+  --silice-ink: var(--silice-t1);
+  --silice-muted: var(--silice-t2);
+  --silice-muted-soft: var(--silice-t2);
+  --silice-ok: var(--silice-gravedad-ok);
+  --silice-ok-ink: var(--silice-gravedad-ok);
+  --silice-ok-bg: var(--silice-gravedad-ok-fondo);
+  --silice-ok-border: var(--silice-gravedad-ok-borde);
+  --silice-warn: var(--silice-gravedad-advertencia);
+  --silice-warn-bg: var(--silice-gravedad-advertencia-fondo);
+  --silice-warn-border: var(--silice-gravedad-advertencia-borde);
+  --silice-err: var(--silice-gravedad-error);
+  --silice-err-bg: var(--silice-gravedad-error-fondo);
+  --silice-err-border: var(--silice-gravedad-error-borde);
   --silice-radio-sm: 0.25rem;
   --silice-radio-md: 0.5rem;
   --silice-radio-lg: 0.75rem;
 }
 
 body {
-  background-color: var(--silice-stone);
-  color: var(--silice-ink);
+  background-color: var(--silice-fondo);
+  color: var(--silice-t1);
   -webkit-font-smoothing: antialiased;
 }
 
+:root,
 .cds--g10 {
-  --cds-background: var(--silice-stone);
-  --cds-layer-01: var(--silice-surface);
-  --cds-layer: var(--silice-surface);
-  --cds-border-subtle: var(--silice-border);
-  --cds-border-subtle-01: var(--silice-hairline);
-  --cds-border-strong-01: var(--silice-border-strong);
-  --cds-text-primary: var(--silice-ink);
-  --cds-text-secondary: var(--silice-muted);
-  --cds-field-01: var(--silice-surface);
-  background-color: var(--silice-stone);
-  color: var(--silice-ink);
+  --cds-layer: var(--silice-hoja);
+  --cds-border-subtle: var(--silice-linea);
+  --cds-border-strong: var(--silice-borde-fuerte);
+  --cds-border-strong-01: var(--silice-borde-fuerte);
+  --cds-field: var(--silice-hoja);
+  --cds-field-01: var(--silice-hoja);
+}
+
+.cds--g10 {
+  background-color: var(--silice-fondo);
+  color: var(--silice-t1);
 }
 
 .silice-marco,
@@ -170,7 +171,7 @@ body {
 
 .silice-banda-kpi__valor {
   margin: 0;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
   font-size: 1.375rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;

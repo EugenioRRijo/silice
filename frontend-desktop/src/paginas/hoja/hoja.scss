@@ -55,8 +55,123 @@
   flex-basis: 100%;
 }
 
+// La cabecera fija (B1-3; guía `state-aware-sticky-headers`): el estado y las acciones se quedan arriba mientras se baja por la
+// obra, para que el total y los problemas nunca salgan de la vista (UX-01). El elemento `sticky` es el contenedor de la
+// consulta (`container-type: scroll-state`, con nombre) y lo que cambia al pegarse lo estilan sus descendientes: un
+// contenedor no se estila con su propia consulta. Es mejora progresiva: sin soporte (Firefox, Safari) la cabecera sigue
+// pegada y solo pierde la línea inferior. Se pega bajo lo que el marco ya fija arriba (`--silice-alto-marco-fijo`, 3 rem
+// la barra superior hoy). El fondo es opaco: lo que pasa por debajo no debe leerse a través de ella.
+.silice-hoja__cabecera-fija {
+  position: sticky;
+  inset-block-start: var(--silice-alto-marco-fijo, 3rem);
+  container-type: scroll-state;
+  container-name: cabecera-de-obra;
+  // Por encima de la grilla y de sus celdas fijas, por debajo del panel; la escala común vive en `tokens.scss`.
+  z-index: var(--silice-z-cabecera-obra, 20);
+  display: grid;
+  gap: 0.75rem;
+  padding-block: 0.5rem;
+  background: var(--silice-fondo);
+}
+
+// `overflow-anchor: none` va en el padre directo del elemento `sticky`, no en `:root` ni en `body` (la guía lo pide así).
+:has(> .silice-hoja__cabecera-fija) {
+  overflow-anchor: none;
+}
+
+// El foco de lo que queda bajo la cabecera no se tapa (WCAG 2.4.11): el margen es el alto de la cabecera de dos filas, con
+// la barra fija del marco. El viewport es quien se desplaza.
+:root:has(.silice-hoja__cabecera-fija) {
+  scroll-padding-top: 11rem;
+}
+
+// La línea inferior solo aparece cuando la cabecera está pegada y algo pasa por debajo. Va en un descendiente.
+@container cabecera-de-obra scroll-state(stuck: top) {
+  .silice-hoja__acciones-del-paso {
+    box-shadow: 0 1px 0 var(--silice-divisor);
+  }
+}
+
+.silice-hoja__total-bloque {
+  display: grid;
+  gap: 0.125rem;
+}
+
 .silice-hoja__total {
   font-variant-numeric: tabular-nums;
+
+  // La cifra y el botón del valor exacto no se parten en dos líneas.
+  .silice-cifra {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
+.silice-hoja__total-iva {
+  color: var(--silice-texto-secundario);
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-hoja__frentes,
+.silice-hoja__frentes-edicion {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.silice-hoja__frentes-edicion {
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+// «Más acciones del presupuesto» (B1-3): el botón y su menú `popover`. El menú se ancla al botón con el posicionamiento por
+// ancla; sin soporte cae debajo del botón, pegado a la derecha del contenedor. Aparece con un fundido corto, solo `opacity`
+// (movimiento funcional, DESIGN.md › Movimiento; un elemento animado, 150 ms, `ease-out`) y solo con movimiento permitido.
+.silice-hoja__mas-acciones {
+  position: relative;
+  anchor-name: --silice-mas-acciones;
+}
+
+.silice-hoja__mas-acciones-menu {
+  position-anchor: --silice-mas-acciones;
+  position-area: block-end span-inline-start;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 0;
+  min-inline-size: 14rem;
+  list-style: none;
+  color: var(--silice-texto);
+  background: var(--silice-hoja);
+  border: 1px solid var(--silice-linea);
+
+  > li {
+    display: grid;
+
+    // Las opciones llenan el ancho del menú y se leen una por fila.
+    .cds--btn {
+      inline-size: 100%;
+      max-inline-size: none;
+      justify-content: flex-start;
+    }
+    .silice-hoja__acciones {
+      display: grid;
+    }
+  }
+
+  &[hidden] {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    &:popover-open {
+      animation: silice-mas-acciones-entra 150ms ease-out;
+    }
+  }
+}
+
+@keyframes silice-mas-acciones-entra {
+  from {
+    opacity: 0;
+  }
 }
 
 // Una región viva (`role="status"`, `aria-live`) está siempre en el DOM para que el lector de pantalla anuncie lo que llegue,

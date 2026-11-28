@@ -59,13 +59,17 @@ describe("color de acción de la empresa en toda la aplicación", () => {
   });
 
   test("los tokens nuevos del tema tienen su neutro en la raíz", () => {
-    expect(tokens).toMatch(/--silice-complementario:\s*var\(--silice-marco\)/);
-    expect(tokens).toMatch(/--silice-contador-numero:\s*var\(--silice-marco\)/);
+    // Cara «Papel y resaltador» (2026-11-26): el complementario ya no sigue al marco; tiene su propio par claro/oscuro
+    // (tinta en claro, blanco roto en oscuro), que exige caraPapel.test.ts. El tema de la empresa lo sigue pudiendo cambiar.
+    expect(tokens).toMatch(/--silice-complementario:\s*light-dark\(/);
+    // T3 (2026-11-28): la tinta del texto y no el marco: en oscuro el marco es del color del lateral y el número no se veía.
+    expect(tokens).toMatch(/--silice-contador-numero:\s*var\(--silice-t1\)/);
     expect(tokens).toMatch(/--silice-contador-fondo:\s*var\(--silice-lateral\)/);
   });
 
-  test("el foco no se reasigna", () => {
-    expect(tokens).not.toMatch(/--cds-focus(-inverse)?\s*:/);
+  // Cara «Papel y resaltador» (2026-11-26): el foco pasa al dorado de las notas, en un solo lugar (tokens.scss).
+  test("el foco se reasigna solo en tokens.scss, a su token de foco (3:1 en claro y oscuro, WCAG 1.4.11)", () => {
+    expect(tokens).toMatch(/--cds-focus:\s*var\(--silice-foco\)/);
     expect(leer("marco/marco.scss")).not.toMatch(/--cds-focus(-inverse)?\s*:/);
   });
 

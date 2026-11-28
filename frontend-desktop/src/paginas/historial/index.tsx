@@ -8,17 +8,23 @@ import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { fechaValida } from "../../comun/porcentaje";
-import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { resultadoEnUnaLinea } from "../inicio/UltimasAuditorias";
 import { useCarga } from "../../comun/useCarga";
 import { Detalle } from "./Detalle";
+import { EnlaceDePersona } from "../../comun/EnlaceDePersona";
 import "./historial.scss";
 import {
   FILTROS_VACIOS,
   fechaEsVe,
   filtrar,
   filtrosInvalidos,
+  listarPersonasDeAuditorias,
+  personaDeAuditoria,
+  textoDeFiltrosActivos,
+  type AuditoriaEnHistorial,
   type FiltrosHistorial,
+  type OpcionDePersona,
   type ResultadoFiltro,
   type TipoFiltro,
 } from "./logica";
@@ -31,16 +37,17 @@ const MAXIMO = 100;
 const fechaMala = (t: string) => t !== "" && !fechaValida(t);
 
 // «Historial de auditorías» (UC-30, solo lectura): las auditorias de «Libro de la empresa» y las revisiones de PDF
-// que quedaron guardadas, con filtros por fecha, tipo y resultado, y el detalle de cada una. El libro y el PDF no se
+// que quedaron guardadas, con filtros por fecha, tipo, resultado y persona, y el detalle de cada una. El libro y el PDF no se
 // guardan (RNF-28): lo que hay es el resumen y los hallazgos, y por eso no hay nada que descargar.
 export default function PaginaHistorial() {
   const { alExpirar } = useAplicacion();
   const navegar = useNavegarSeguro();
-  const carga = useCarga<AuditoriaGuardadaRespuesta[]>(RUTA_LISTA, alExpirar);
+  const carga = useCarga<AuditoriaEnHistorial[]>(RUTA_LISTA, alExpirar);
   const [filtros, setFiltros] = useState<FiltrosHistorial>(FILTROS_VACIOS);
   const [abierta, setAbierta] = useState<number | null>(null);
   const aviso = filtrosInvalidos(filtros);
   const irALibros = () => void navegar(rutaOPendientes("libros"));
+  const personas = carga.estado === "listo" ? listarPersonasDeAuditorias(carga.datos) : [];
 
   return (
     <section className="silice-pagina silice-historial" aria-labelledby="historial-titulo">
@@ -119,13 +126,31 @@ export default function PaginaHistorial() {
               <SelectItem value="solo_advertencias" text="Solo advertencias" />
               <SelectItem value="limpia" text="Sin errores ni advertencias" />
             </Select>
+            <Select
+              id="historial-persona"
+              size="sm"
+              labelText="Por persona"
+              value={filtros.persona}
+              onChange={(e) => setFiltros({ ...filtros, persona: e.target.value })}
+            >
+              <SelectItem value="" text="Todas las personas" />
+              {personas.map((p) => (
+                <SelectItem key={p.clave} value={p.clave} text={p.etiqueta} />
+              ))}
+            </Select>
           </form>
           {aviso !== null && (
             <p className="cds--type-body-compact-01" role="status">
               {aviso}
             </p>
           )}
-          <Lista datos={carga.datos} filtros={filtros} alQuitar={() => setFiltros(FILTROS_VACIOS)} alVer={setAbierta} />
+          <Lista
+            datos={carga.datos}
+            filtros={filtros}
+            personas={personas}
+            alQuitar={() => setFiltros(FILTROS_VACIOS)}
+            alVer={setAbierta}
+          />
         </>
       )}
 
@@ -140,6 +165,11 @@ const COLUMNAS: ColumnaDensa[] = [
   { clave: "archivo", titulo: "Archivo" },
   { clave: "tipo", titulo: "Tipo" },
   { clave: "fecha", titulo: "Fecha y hora", celda: (f) => fechaEsVe(f["fecha"] ?? "") },
+  {
+    clave: "quien",
+    titulo: "Quién",
+    celda: (f) => <EnlaceDePersona dato={f["quienDato"]} usuarioExplicito={f["quienUsuario"] || undefined} />,
+  },
   { clave: "resultado", titulo: "Resultado", ordenable: false },
   { clave: "ver", titulo: "Detalle", ordenable: false },
 ];
@@ -147,11 +177,13 @@ const COLUMNAS: ColumnaDensa[] = [
 function Lista({
   datos,
   filtros,
+  personas,
   alQuitar,
   alVer,
 }: {
-  datos: AuditoriaGuardadaRespuesta[];
+  datos: AuditoriaEnHistorial[];
   filtros: FiltrosHistorial;
+  personas: readonly OpcionDePersona[];
   alQuitar: () => void;
   alVer: (id: number) => void;
 }) {
@@ -159,12 +191,17 @@ function Lista({
   const cuenta =
     datos.length === 1
       ? "Mostrando 1 de 1 auditoría guardada."
-      : `Mostrando ${visibles.length} de ${datos.length} auditorías guardadas.`;
+      : `Mostrando ${formatoEsVe(String(visibles.length))} de ${formatoEsVe(String(datos.length))} auditorías guardadas.`;
   if (visibles.length === 0) {
+    const activos = textoDeFiltrosActivos(filtros, personas);
     return (
       <EstadoVacio
         titulo="Ninguna auditoría coincide con esos filtros"
-        descripcion="Cambie las fechas, el tipo o el resultado, o quite los filtros para ver todas."
+        descripcion={
+          activos.length > 0
+            ? `Filtros activos: ${activos.join(" · ")}. Cambie alguno o pulse «Quitar los filtros» para ver todas.`
+            : "Cambie los filtros o pulse «Quitar los filtros» para ver todas."
+        }
       >
         <Button kind="tertiary" size="sm" onClick={alQuitar}>
           Quitar los filtros
@@ -197,14 +234,20 @@ function Lista({
               }
             : c,
         )}
-        filas={visibles.map((a) => ({
-          id: String(a.id),
-          archivo: a.archivo,
-          tipo: a.tipo === "pdf" ? "PDF" : "Libro",
-          fecha: a.fecha,
-          resultado: resultadoEnUnaLinea(a.errores, a.advertencias),
-          ver: "",
-        }))}
+        filas={visibles.map((a) => {
+          const persona = personaDeAuditoria(a);
+          return {
+            id: String(a.id),
+            archivo: a.archivo,
+            tipo: a.tipo === "pdf" ? "PDF" : "Libro",
+            fecha: a.fecha,
+            quien: persona?.nombre ?? "",
+            quienDato: a.responsable ?? a.usuario ?? "",
+            quienUsuario: persona?.usuario ?? "",
+            resultado: resultadoEnUnaLinea(a.errores, a.advertencias),
+            ver: "",
+          };
+        })}
       />
     </>
   );

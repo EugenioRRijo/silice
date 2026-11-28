@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaApu, vistaEspacio, vistaParametros } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, DetalleApu, Resumen, VersionesRespuesta, VistaApu, VistaParametros } from "./logica";
 import type { InsumoCandidato, InsumosRespuesta } from "./logicaApu";
 

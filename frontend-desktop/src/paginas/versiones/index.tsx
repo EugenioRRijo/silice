@@ -1,4 +1,4 @@
-import { Button } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
 import { useContext, useState } from "react";
 import { nombreDeEstado } from "../../comun/aprobacion";
 import { AvisoError } from "../../comun/AvisoError";
@@ -21,10 +21,19 @@ import { usePuedeEditarLaHoja } from "../hoja/puedeEditar";
 import { textoDelBoton } from "../hoja/textos";
 import { useEstadosDeAprobacion } from "../hoja/useAprobacionDeVersion";
 import { ID_DEL_TITULO } from "../hoja/useGuardadoDeLaPagina";
+import { EnlaceDePersona } from "../../comun/EnlaceDePersona";
 import { EstadoDeLaCadena } from "./EstadoDeLaCadena";
 import { RegistroDeCambios } from "./RegistroDeCambios";
 import { RestaurarVersion } from "./RestaurarVersion";
-import { filasDeVersiones, motivoDeVersion, pasoDeVersiones } from "./logica";
+import {
+  extraerPersona,
+  filasDeVersiones,
+  filtrarVersionesPorPersona,
+  listarPersonasDeVersiones,
+  motivoDeVersion,
+  pasoDeVersiones,
+  textoDeConteoDeVersiones,
+} from "./logica";
 import type { FilaDeVersion } from "./logica";
 import { TEXTOS_DE_VERSIONES as T } from "./textos";
 import "./versiones.scss";
@@ -62,6 +71,9 @@ function CuerpoDeVersiones() {
   const navegar = useNavegarSeguro();
   const [enPanel, setEnPanel] = useState<string | null>(null);
   const [refresco, setRefresco] = useState(0);
+  const [persona, setPersona] = useState("");
+  // El nombre de quien se eligió: si sus versiones desaparecen (una restauración), el vacío lo sigue nombrando.
+  const [nombreElegido, setNombreElegido] = useState("");
   const alCrearYRefrescar: AlCrearVersion = async (...args) => {
     await alCrearVersion(...args);
     estados.recargar();
@@ -74,6 +86,9 @@ function CuerpoDeVersiones() {
   const abierta = estado.estado === "listo" ? estado.borrador.base.version : (codigo ?? null);
   const cambios = estado.estado === "listo" ? estado.borrador.resumen.cambios : 0;
   const filas = filasDeVersiones(versiones.datos, estados.estado === "listo" ? estados.datos : null, abierta);
+  const personas = listarPersonasDeVersiones(filas);
+  const visibles = filtrarVersionesPorPersona(filas, persona);
+  const personaElegida = personas.find((p) => p.clave === persona)?.etiqueta ?? nombreElegido;
   const paso = pasoDeVersiones({ cambios, puedeGuardar: puedeEditar, filas });
   // Anexo A.6: el mismo rótulo que la franja del Presupuesto; lo decide `esSoloDesglose`, como el diálogo.
   const desgloses = estado.estado === "listo" ? (estado.borrador.resumen.desgloses ?? 0) : 0;
@@ -98,14 +113,45 @@ function CuerpoDeVersiones() {
           <>
             <EstadoDeLaCadena key={`${proyecto}-${refresco}`} proyecto={proyecto} />
             {puedeRestaurar && cambios > 0 && <p className="cds--type-helper-text-01">{avisoDeCambiosPendientes("restaurar", cambios)}</p>}
-            <TablaDeVersiones
-              proyecto={proyecto}
-              filas={filas}
-              restaurar={puedeRestaurar && cambios === 0}
-              alAbrir={abrir}
-              alVerCambios={setEnPanel}
-              alCrearVersion={alCrearYRefrescar}
-            />
+            <div className="silice-versiones__barra">
+              <div className="silice-versiones__filtro">
+                <Select
+                  id="versiones-persona"
+                  size="sm"
+                  labelText={T.filtroPersona}
+                  value={persona}
+                  onChange={(e) => {
+                    setPersona(e.target.value);
+                    setNombreElegido(personas.find((p) => p.clave === e.target.value)?.etiqueta ?? "");
+                  }}
+                >
+                  <SelectItem value="" text={T.todasLasPersonas} />
+                  {personas.map((p) => (
+                    <SelectItem key={p.clave} value={p.clave} text={p.etiqueta} />
+                  ))}
+                </Select>
+              </div>
+              <p className="cds--type-label-01 silice-versiones__cuenta" role="status">
+                {textoDeConteoDeVersiones(visibles.length, filas.length)}
+              </p>
+            </div>
+            {visibles.length === 0 ? (
+              <EstadoVacio titulo={T.sinCoincidencias} descripcion={T.sinCoincidenciasDescripcion(personaElegida)}>
+                <Button kind="tertiary" size="sm" onClick={() => setPersona("")}>
+                  {T.quitarFiltro}
+                </Button>
+              </EstadoVacio>
+            ) : (
+              <TablaDeVersiones
+                proyecto={proyecto}
+                filas={visibles}
+                todosLosCodigos={filas.map((f) => f.codigo)}
+                restaurar={puedeRestaurar && cambios === 0}
+                alAbrir={abrir}
+                alVerCambios={setEnPanel}
+                alCrearVersion={alCrearYRefrescar}
+              />
+            )}
             {estados.estado === "fallo" && <p className="cds--type-helper-text-01">{T.sinEstados}</p>}
           </>
         )}
@@ -127,6 +173,7 @@ function CuerpoDeVersiones() {
 interface PropsDeLaTabla {
   proyecto: string;
   filas: FilaDeVersion[];
+  todosLosCodigos: string[];
   // Se ofrece «Restaurar…» en cada fila (el permiso y sin cambios sin guardar).
   restaurar: boolean;
   alAbrir: (version: string) => void;
@@ -137,9 +184,8 @@ interface PropsDeLaTabla {
 // Las siete columnas del plan y las acciones de cada fila. La abierta lleva la palabra «abierta» (Foco 5) y la descartada la
 // palabra «descartada»: no solo un color. La descartada no tiene «Abrir» (salvo que todas lo estén, `seAbre`), pero sí «Ver
 // cambios» y, con permiso, «Restaurar…»; el diálogo de restaurar ofrece todo el historial, descartadas incluidas.
-function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, alCrearVersion }: PropsDeLaTabla) {
+function TablaDeVersiones({ proyecto, filas, todosLosCodigos, restaurar, alAbrir, alVerCambios, alCrearVersion }: PropsDeLaTabla) {
   const C = T.columnas;
-  const codigos = filas.map((f) => f.codigo);
   return (
     <TablaDensa
       etiqueta={T.tabla}
@@ -157,10 +203,45 @@ function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, a
           ),
         },
         { clave: "fecha", titulo: C.fecha, ordenable: false },
-        { clave: "motivo", titulo: C.motivo, ordenable: false },
+        {
+          clave: "motivo",
+          titulo: C.motivo,
+          ordenable: false,
+          celda: (f) => {
+            const autor = extraerPersona(f["responsable"], f["usuario"]);
+            if (autor === null) return f["motivo"];
+            return (
+              <span>
+                {f["motivo"]}
+                <span className="silice-versiones__por">
+                  {" · por "}
+                  <EnlaceDePersona dato={f["responsable"]} usuarioExplicito={f["usuario"]} />
+                </span>
+              </span>
+            );
+          },
+        },
         { clave: "origen", titulo: C.origen, ordenable: false },
         { clave: "cambios", titulo: C.cambios, numerica: true, ordenable: false },
-        { clave: "estado", titulo: C.estado, ordenable: false },
+        {
+          clave: "estado",
+          titulo: C.estado,
+          ordenable: false,
+          celda: (f) => {
+            if (f["estado"] === "") return "";
+            const quien = extraerPersona(f["por"]);
+            if (quien === null) return f["estado"];
+            return (
+              <span>
+                {f["estado"]}
+                <span className="silice-versiones__por">
+                  {" por "}
+                  <EnlaceDePersona dato={f["por"]} />
+                </span>
+              </span>
+            );
+          },
+        },
         { clave: "vigente", titulo: C.vigente, ordenable: false },
         {
           clave: "acciones",
@@ -176,7 +257,7 @@ function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, a
               <Button kind="ghost" size="sm" aria-label={T.verCambiosDe(f.codigo!)} onClick={() => alVerCambios(f.codigo!)}>
                 {T.verCambios}
               </Button>
-              {restaurar && <RestaurarVersion proyecto={proyecto} versiones={codigos} inicial={f.codigo!} alCrearVersion={alCrearVersion} />}
+              {restaurar && <RestaurarVersion proyecto={proyecto} versiones={todosLosCodigos} inicial={f.codigo!} alCrearVersion={alCrearVersion} />}
             </span>
           ),
         },
@@ -189,6 +270,9 @@ function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, a
         origen: f.origen,
         cambios: formatoEsVe(String(f.cambios)),
         estado: f.estado === null ? "" : nombreDeEstado(f.estado),
+        por: f.por ?? "",
+        responsable: f.responsable ?? "",
+        usuario: f.usuario ?? "",
         vigente: f.vigente ? T.vigente : "",
         abierta: f.abierta ? "sí" : "",
         descartada: f.descartada ? "sí" : "",

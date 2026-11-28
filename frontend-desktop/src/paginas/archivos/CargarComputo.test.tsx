@@ -466,7 +466,7 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     await waitFor(() => expect(registros()).toBeGreaterThan(antes.registro));
     // El llevar es un solo paso: no se ofrece repetirlo sobre el mismo cómputo.
     expect(within(dialogo).queryByRole("button", { name: "Llevar al presupuesto" })).toBeNull();
-    expect(within(dialogo).getByRole("link", { name: "Ver en Partidas" })).toBeInTheDocument();
+    expect(within(dialogo).getByRole("link", { name: "Ver en el presupuesto" })).toBeInTheDocument();
     expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(1);
   });
 
@@ -484,14 +484,16 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     expect(screen.queryByRole("button", { name: "Elaborar presupuesto" })).toBeNull();
   });
 
-  test("«Ver en Partidas» lleva a Presupuesto con la pestaña «Partidas» elegida, sobre el mismo borrador", async () => {
+  test("«Ver en el presupuesto» lleva a la superficie del Presupuesto, con el foco en la grilla y sobre el mismo borrador (B1-10)", async () => {
     const u = montar();
     const dialogo = await elegirElComputo(u);
     await extraerTelecom(u, dialogo);
     await u.click(botonLlevar(dialogo));
-    await u.click(await within(dialogo).findByRole("link", { name: "Ver en Partidas" }));
+    await u.click(await within(dialogo).findByRole("link", { name: "Ver en el presupuesto" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
-    expect(await screen.findByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "true");
+    const grilla = await screen.findByRole("grid", { name: "Presupuesto" });
+    expect(screen.queryByRole("tab")).toBeNull();
+    await waitFor(() => expect(grilla.contains(document.activeElement)).toBe(true));
     await pausa();
     expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(1);
   });

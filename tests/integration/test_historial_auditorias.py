@@ -280,6 +280,35 @@ def test_listar_sin_auditorias_da_lista_vacia(sesion) -> None:
     assert listar(sesion, 5) == []
 
 
+def test_listar_trae_el_usuario_de_cada_auditoria(sesion) -> None:
+    _registrar(
+        sesion,
+        usuario="Ana <ana>",
+        tipo="libro",
+        nombre_archivo="obra-a.xlsx",
+        ahora=datetime(2026, 10, 18, 9, 0, 0),
+    )
+    _registrar(
+        sesion,
+        usuario="Luis <luis>",
+        tipo="pdf",
+        nombre_archivo="obra-b.pdf",
+        fecha_libro=None,
+        total_libro=None,
+        total_silice=None,
+        ahora=datetime(2026, 10, 18, 10, 0, 0),
+    )
+    sesion.commit()
+
+    resumenes = listar(sesion, 10)
+    assert [(r.nombre_archivo, r.usuario) for r in resumenes] == [
+        ("obra-b.pdf", "Luis <luis>"),
+        ("obra-a.xlsx", "Ana <ana>"),
+    ]
+    for r in resumenes:
+        assert r.usuario == detalle(sesion, r.id).usuario
+
+
 def test_detalle_devuelve_el_resumen_y_los_hallazgos(sesion) -> None:
     _registrar(sesion)
     sesion.commit()

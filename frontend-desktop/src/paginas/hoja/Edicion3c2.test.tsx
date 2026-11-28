@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaEquilibrio, vistaEspacio, vistaParametros, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaParametros, VistaPlan, VistaPresupuesto } from "./logica";
 
 // Rebanada 3c-2: cantidades, parámetros y plan se editan. El servidor se simula con respuestas ficticias con la forma del
@@ -459,7 +459,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(await esperar(() => aviso())).toHaveTextContent(`El detalle de la clásica. ${e.frase}`);
       expect(e.campo()).toHaveValue("x");
       // El borrador no avanzó: el total y los cambios son los de antes.
-      expect(within(regionDeEstado()).getByTitle("2.703,860232344044033333333333")).toBeInTheDocument();
+      expect(within(regionDeEstado()).getByText("Valor exacto: 2.703,860232344044033333333333 USD")).toBeInTheDocument();
       expect(within(regionDeEstado()).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
       alPoner[e.seccion] = acepta;
       fireEvent.change(e.campo(), { target: { value: "2" } });
@@ -519,8 +519,9 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(escrituras("parametros")).toEqual([
         { rev: 0, fcas: "6,00", bono_alimentacion: "5,8100", administracion: "0,20", utilidad: "0,10" },
       ]);
-      await esperar(() => expect(screen.getAllByTitle("2.821,4208")).toHaveLength(1)); // solo el estado del borrador
-      expect(screen.getByTitle("2.821,4208")).toHaveTextContent("2.821,42 USD");
+      // Solo el estado del borrador dice el exacto (en su Toggletip; la pestaña ya no repite el total).
+      await esperar(() => expect(screen.getAllByText("Valor exacto: 2.821,4208 USD")).toHaveLength(1));
+      expect(regionDeEstado().querySelector(".silice-hoja__total")).toHaveTextContent("2.821,42 USD");
       expect(lecturas("parametros")).toBe(antes + 1);
       expect(within(regionDeEstado()).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
       expect(campo(/^Administración/)).toHaveValue("0,20");
@@ -543,7 +544,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(screen.getByText("'mucho' no es un numero decimal valido")).toBeInTheDocument();
       expect(document.getElementById(campo(/^Utilidad/).getAttribute("aria-describedby")!)).toHaveTextContent(DETALLE);
       expect(campo(/^Utilidad/)).toHaveValue("mucho"); // se queda lo escrito para corregirlo
-      expect(within(regionDeEstado()).getByTitle("2.703,860232344044033333333333")).toBeInTheDocument();
+      expect(within(regionDeEstado()).getByText("Valor exacto: 2.703,860232344044033333333333 USD")).toBeInTheDocument();
     });
 
     test("D-8 resuelta (Eugenio, 2026-10-25): el decimal con punto se manda tal cual y lo rechaza el servidor con la regla", async () => {
@@ -623,8 +624,10 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(escrituras("cantidades")).toEqual([{ rev: 0, filas: [{ clave: "AF-LLAVE|esp_puntos:P1", cantidad: "5" }] }]);
       const fila1 = () => within(screen.getByRole("table", { name: "Presupuesto" })).getAllByRole("row")[1]!;
       expect(await esperar(() => within(fila1()).getByText("(calculada: 3)"))).toBeInTheDocument();
-      expect(screen.getAllByTitle("2.730,2577124")).toHaveLength(2); // el estado del borrador y el total de la pestaña
-      expect(screen.getAllByTitle("2.730,2577124")[0]).toHaveTextContent("2.730,26 USD");
+      // El estado del borrador (Toggletip, sin `title`) y el total de la pestaña (`title`, que sigue en `Cifra`).
+      expect(screen.getAllByTitle("2.730,2577124")).toHaveLength(1);
+      expect(screen.getByText("Valor exacto: 2.730,2577124 USD")).toBeInTheDocument();
+      expect(regionDeEstado().querySelector(".silice-hoja__total")).toHaveTextContent("2.730,26 USD");
       expect(campo("Cantidad, Presupuesto fila 1")).toHaveValue("5");
     });
 

@@ -921,13 +921,15 @@ def main(argv: list[str] | None = None, *, recalculador=None) -> int:
             k.error("--libro-base solo sirve con --clave")
         if args.revision_experto and not args.libro:
             k.error("--revision-experto exige --libro (para ubicar las partidas)")
-    if args.funcion not in (_exportar, _calcular):
-        return args.funcion(args)
     from aplicacion.oraculo_hoja import LibreOfficeNoDisponibleError
 
     try:
+        if args.funcion not in (_exportar, _calcular):
+            return args.funcion(args)
         return args.funcion(args, recalculador)
-    except LibreOfficeNoDisponibleError as error:
+    # Negarse a sobrescribir una planilla es un aviso para la persona, no una traza de Python
+    # (auditoría antes de medicion-v1, #11).
+    except (FileExistsError, LibreOfficeNoDisponibleError) as error:
         print(error)
         return 2
 

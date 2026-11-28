@@ -5,7 +5,7 @@ export const TEXTOS = {
   subir: "Subir plano o cómputo",
   // Con la especialidad «edificación» apagada no hay planos: la misma puerta solo carga el cómputo (Tarea 12).
   cargarComputo: "Cargar cómputo",
-  // Va tras «Te falta:» en la franja (pregunta abierta 3 del plan: solo si se pidió describir el espacio y sigue vacío).
+  // Va tras «Falta:» en la franja (pregunta abierta 3 del plan: solo si se pidió describir el espacio y sigue vacío).
   falta: "subir el plano o describir el espacio",
   registro: "Registro de importaciones",
   vacio: "Todavía no se ha importado ningún archivo en esta obra.",

@@ -96,7 +96,8 @@
 }
 
 .silice-busqueda__codigo {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .silice-busqueda__ver-mas,

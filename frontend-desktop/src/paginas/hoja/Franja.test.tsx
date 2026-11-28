@@ -6,7 +6,9 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import type { ReactNode } from "react";
+import { FranjaDelPresupuesto } from "./FranjaDelPresupuesto";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Hallazgos, VersionesRespuesta } from "./logica";
 
 // Tarea 5 del plan F4: la franja «Te falta / Siguiente paso» del Presupuesto, con un solo botón principal por pantalla, y las
@@ -183,13 +185,68 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     expect(within(zona).queryByRole("button", { name: rotulo === "Guardar versión…" ? "Guardar ajuste de desperdicio…" : "Guardar versión…" })).toBeNull();
   });
 
-  test("el estado del borrador conserva el total y «Descartar cambios» (fantasma), sin el botón de guardar", async () => {
+  test("el estado del borrador conserva el total sin IVA y «Descartar cambios» (fantasma), sin el botón de guardar", async () => {
     abierto = borrador({ cambios: 2 });
     montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
     expect(within(estado).queryByRole("button", { name: /^Guardar/ })).toBeNull();
     expect(within(estado).getByRole("button", { name: "Descartar cambios" })).toHaveClass("cds--btn--ghost");
-    expect(estado).toHaveTextContent("Total 2.703,86 USD");
+    expect(estado).toHaveTextContent("Total sin IVA 2.703,86 USD");
+  });
+
+  // B1-3: la cabecera de la superficie nueva trae lugares para «Problemas (n)» y «Más acciones». La vista por pestañas no los
+  // usa (sigue con «Descargar Excel» a la vista), así que aquí se monta la franja sola con los dos lugares llenos.
+  describe("lugares de la cabecera fija: «Problemas (n)» y «Más acciones»", () => {
+    function montarFranja(extra: { problemas?: ReactNode; masAcciones?: ReactNode }) {
+      return render(
+        <MemoryRouter>
+          <ContextoAplicacion.Provider value={aplicacion(ARMA)}>
+            <FranjaDelPresupuesto
+              proyecto="OF-001"
+              borrador={abierto}
+              puedeEditar
+              alAgregarPartida={vi.fn()}
+              alGuardar={vi.fn()}
+              alVerRevision={vi.fn()}
+              alHacerVersionNueva={vi.fn()}
+              {...extra}
+            />
+          </ContextoAplicacion.Provider>
+        </MemoryRouter>,
+      );
+    }
+
+    test("el orden de lectura y de tabulación es Problemas, el principal y Más acciones; hay un solo principal", async () => {
+      montarFranja({
+        problemas: <button type="button">Problemas (3)</button>,
+        masAcciones: <button type="button">Más acciones del presupuesto</button>,
+      });
+      const principal = await screen.findByRole("button", { name: "Enviar a aprobación…" });
+      const problemas = screen.getByRole("button", { name: "Problemas (3)" });
+      const mas = screen.getByRole("button", { name: "Más acciones del presupuesto" });
+      const antes = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(antes(problemas, principal)).toBe(true);
+      expect(antes(principal, mas)).toBe(true);
+      expect(primarios()).toEqual([principal]);
+    });
+
+    test("con «Más acciones» puesto, «Descargar Excel» sale de la vista (va dentro del menú)", async () => {
+      montarFranja({ masAcciones: <button type="button">Más acciones del presupuesto</button> });
+      await screen.findByRole("button", { name: "Enviar a aprobación…" });
+      expect(screen.queryByRole("button", { name: /Descargar Excel/ })).toBeNull();
+    });
+
+    test("sin esos lugares, «Descargar Excel» sigue a la vista", async () => {
+      montarFranja({});
+      await screen.findByRole("button", { name: "Enviar a aprobación…" });
+      expect(screen.getByRole("button", { name: /Descargar Excel/ })).toBeInTheDocument();
+    });
+
+    test("la cabecera va dentro de un contenedor fijo que consulta su estado de desplazamiento", async () => {
+      montarFranja({});
+      const region = await screen.findByRole("region", { name: "Estado del borrador" });
+      expect(region.closest(".silice-hoja__cabecera-fija")).not.toBeNull();
+    });
   });
 
   describe("como mucho un botón principal en cada estado, y es el de la franja", () => {

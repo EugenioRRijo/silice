@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import threading
 from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
 from pathlib import Path
 from typing import Annotated
 
@@ -78,6 +79,18 @@ def url_de_la_peticion(request: Request) -> str:
     return url_del_proceso()
 
 
+def carpeta_de_la_peticion(request: Request) -> str | None:
+    """El nombre del archivo de la carpeta de esta petición (`None` si no es un archivo)."""
+    ruta = ruta_de_url(url_de_la_peticion(request))
+    return None if ruta is None else ruta.name
+
+
+def carpeta_de_la_empresa() -> str | None:
+    """El nombre del archivo de la carpeta del proceso, la de la empresa (`None` sin archivo)."""
+    ruta = ruta_de_url(url_del_proceso())
+    return None if ruta is None else ruta.name
+
+
 def obtener_motor(url: str) -> Engine:
     """El motor del caso `url`, uno por proceso: la primera vez prepara la base (503 si no se
     puede, sin guardar el motor)."""
@@ -106,6 +119,13 @@ def cerrar_motores() -> None:
 def sesion_api(request: Request) -> Iterator[Session]:
     with abrir_sesion(obtener_motor(url_de_la_peticion(request))) as sesion:
         yield sesion
+
+
+def abridor_de_la_carpeta(request: Request) -> Callable[[], AbstractContextManager[Session]]:
+    """Abre la sesión del caso de esta petición solo cuando se llama (C11b: el barrido de
+    `GET /v1/notificaciones` lee la carpeta solo si la persona recibe compras). Un caso que no se
+    puede preparar lanza aquí el 503 de `obtener_motor`; quien la llama decide qué hacer."""
+    return lambda: contextmanager(sesion_api)(request)
 
 
 def sesion_de_escritura_api(request: Request) -> Iterator[Session]:

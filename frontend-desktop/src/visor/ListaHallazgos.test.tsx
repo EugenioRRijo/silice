@@ -79,6 +79,15 @@ function fila(descripcion: string): HTMLElement {
 }
 
 describe("ListaHallazgos", () => {
+  // axe «scrollable-region-focusable» (recorrido de medición 2026-11-28, T2): sin hallazgos, el cuerpo se desplaza y no
+  // tiene nada enfocable; con el teclado no se podía leer. La región se nombra y entra en el orden de Tab.
+  test("el cuerpo desplazable es una región con nombre que se alcanza con Tab, también sin hallazgos", () => {
+    montar({ hallazgos: [] });
+    const region = screen.getByRole("region", { name: "Lista de hallazgos" });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(within(region).getByText("La auditoría terminó y el libro no tiene hallazgos.")).toBeInTheDocument();
+  });
+
   test("lista todos los hallazgos con el nombre de su severidad en texto", () => {
     montar();
     expect(within(fila("El total no coincide con la suma de las partidas")).getByText("Crítico")).toBeInTheDocument();

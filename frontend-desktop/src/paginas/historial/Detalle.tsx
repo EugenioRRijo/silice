@@ -1,9 +1,13 @@
 import { Button, SkeletonText, Tooltip } from "@carbon/react";
 import { useEffect, useRef } from "react";
 import { AvisoError } from "../../comun/AvisoError";
+import { guiaDeRegla, useCatalogoQueHacer } from "../../comun/catalogoQueHacer";
+import { QueHacer } from "../../comun/QueHacer";
 import { TablaDensa } from "../../comun/TablaDensa";
+import type { FilaDensa } from "../../comun/TablaDensa";
 import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useCarga } from "../../comun/useCarga";
+import { EnlaceDePersona } from "../../comun/EnlaceDePersona";
 import { fechaEsVe } from "./logica";
 
 // Una auditoria guardada completa (GET /v1/auditorias-libro/{id}). Los montos llegan como texto decimal exacto y
@@ -63,7 +67,9 @@ function Resumen({ a }: { a: AuditoriaDetalleRespuesta }) {
       <Dato rotulo="Archivo">{a.archivo}</Dato>
       <Dato rotulo="Tipo">{a.tipo === "pdf" ? "PDF" : "Libro"}</Dato>
       <Dato rotulo="Fecha y hora">{fechaEsVe(a.fecha)}</Dato>
-      <Dato rotulo="Realizada por">{a.usuario}</Dato>
+      <Dato rotulo="Realizada por">
+        <EnlaceDePersona dato={a.usuario} />
+      </Dato>
       {a.fecha_libro !== null && <Dato rotulo="Fecha del libro">{fechaEsVe(a.fecha_libro)}</Dato>}
       {a.total_libro !== null && (
         <Dato rotulo="Total del libro">
@@ -95,6 +101,9 @@ interface Props {
 
 export function Detalle({ id, alExpirar, alCerrar }: Props) {
   const carga = useCarga<AuditoriaDetalleRespuesta>(`/v1/auditorias-libro/${id}`, alExpirar);
+  // El «Qué hacer» de cada hallazgo (B2): el mismo catálogo del servidor que usa «Auditar un libro». Solo se pide si hay
+  // hallazgos guardados; sin él el detalle se ve igual.
+  const catalogo = useCatalogoQueHacer(alExpirar, carga.estado === "listo" && carga.datos.hallazgos.length > 0);
   const titulo = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     titulo.current?.focus(); // el teclado y el lector de pantalla caen en el detalle recien abierto
@@ -134,9 +143,20 @@ export function Detalle({ id, alExpirar, alCerrar }: Props) {
               { clave: "hoja", titulo: "Hoja" },
               { clave: "celda", titulo: "Celda" },
               { clave: "mensaje", titulo: "Qué se encontró" },
+              ...(catalogo
+                ? [
+                    {
+                      clave: "queHacer",
+                      titulo: "Qué hacer",
+                      ordenable: false,
+                      celda: (fila: FilaDensa) => <QueHacer guia={guiaDeRegla(catalogo, fila["codigo"] ?? "")} />,
+                    },
+                  ]
+                : []),
             ]}
             filas={carga.datos.hallazgos.map((h, i) => ({
               id: String(i),
+              codigo: h.regla,
               severidad: h.severidad,
               regla: h.nombre_regla ? `${h.nombre_regla} (${h.regla})` : h.regla,
               hoja: h.hoja,

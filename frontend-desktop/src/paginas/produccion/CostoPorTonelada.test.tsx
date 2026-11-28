@@ -7,6 +7,30 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import CostoPorTonelada from "./CostoPorTonelada";
 
+interface OpcionesPlanta {
+  title?: string;
+  axes?: { left?: { title?: string; ticks?: { formatter?: (v: number) => string } }; right?: unknown };
+  color?: { scale: Record<string, string> };
+  tooltip?: { customHTML?: (data: unknown, html: string, datum: unknown) => string };
+}
+
+vi.mock("../../comun/GraficoCarbon", () => ({
+  default: ({ tipo, datos, opciones }: { tipo: string; datos: { group?: string; key?: string }[]; opciones: OpcionesPlanta }) => {
+    const primero = datos[0];
+    return (
+      <div
+        role="img"
+        aria-label={opciones.title ?? "Gráfico"}
+        data-tipo={tipo}
+        data-doble-eje={String(Boolean(opciones.axes?.right))}
+        data-eje-formato={opciones.axes?.left?.ticks?.formatter?.(1212.5) ?? ""}
+        data-colores={JSON.stringify(opciones.color?.scale ?? null)}
+        data-globo={primero ? opciones.tooltip?.customHTML?.([primero], "", primero) ?? "" : ""}
+      />
+    );
+  },
+}));
+
 // Datos ficticios. El servidor manda los montos como texto con punto (exacto y presentado); la pantalla no calcula
 // ninguno: solo les da formato.
 const ANA: SesionRespuesta = {
@@ -381,5 +405,37 @@ describe("Costo por tonelada", () => {
     await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/produccion/calculos/7")).toBe(true));
     await act(() => new Promise((resolver) => setTimeout(resolver, 50)));
     expect(screen.queryByRole("region", { name: "Resultado del cálculo" })).not.toBeInTheDocument();
+  });
+
+  test("muestra el gráfico de toneladas producidas con una sola serie, lectura y Ver como tabla", async () => {
+    montar();
+    const grafico = await screen.findByRole("img", { name: "Toneladas producidas por producto en noviembre de 2026 (t)" });
+    expect(grafico).toHaveAttribute("data-tipo", "barras");
+    expect(grafico).toHaveAttribute("data-doble-eje", "false");
+    expect(grafico).toHaveAttribute("data-eje-formato", "1.212,5");
+    expect(JSON.parse(grafico.getAttribute("data-colores")!)).toEqual({ "Toneladas producidas": "#2A78D6" });
+    expect(grafico.getAttribute("data-globo")).toContain("AGR-12");
+    expect(grafico.getAttribute("data-globo")).toContain("150 t");
+
+    expect(screen.getByText(/Qué muestra:.*toneladas \(t\).*Qué leer:.*AGR-12 \(150 t\)/)).toBeInTheDocument();
+    expect(screen.getByText("Ver como tabla")).toBeInTheDocument();
+    const tabla = screen.getByRole("table", { name: "Toneladas producidas en noviembre de 2026" });
+    expect(within(tabla).getAllByRole("row")).toHaveLength(3);
+  });
+
+  // T4 (mutante PT2): con varios productos la lectura nombra el de mayor volumen; con uno solo dice que es el único.
+  test("la lectura de lo producido distingue un solo producto de varios", async () => {
+    montar();
+    await screen.findByRole("img", { name: "Toneladas producidas por producto en noviembre de 2026 (t)" });
+    expect(screen.getByText(/Qué leer: el mayor volumen del mes corresponde a AGR-12 \(150 t\)\./)).toBeInTheDocument();
+    expect(screen.queryByText(/solo se registró producción/)).toBeNull();
+  });
+
+  test("con un solo producto la lectura dice que solo se registró ese", async () => {
+    producido = () => json([{ codigo: "AGR-12", toneladas: "150" }]);
+    montar();
+    await screen.findByRole("img", { name: "Toneladas producidas por producto en noviembre de 2026 (t)" });
+    expect(screen.getByText(/Qué leer: solo se registró producción de AGR-12 \(150 t\)\./)).toBeInTheDocument();
+    expect(screen.queryByText(/el mayor volumen del mes/)).toBeNull();
   });
 });

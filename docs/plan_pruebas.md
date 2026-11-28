@@ -367,6 +367,25 @@ es el parche en `api/rutas/libros.py` (RM‑6), cuya prueba de RF‑144 queda en
 | RNF‑28 | `tests/integration/test_migracion_auditoria_libro.py::test_las_columnas_son_las_del_ddl_literal` (ninguna columna binaria), `tests/integration/test_historial_auditorias.py::test_un_mensaje_largo_se_corta_a_500_caracteres` y `::test_el_nombre_del_archivo_pierde_la_ruta` |
 | documentos | `tests/unit/test_documentos_historial_auditorias.py` (la ERS, el modelo de datos y este plan nombran lo construido) |
 
+### 8.0h Filas de la reestructuración del front (rama `feature/front-b1`, 2026‑11‑28): RF‑215 a RF‑224
+
+Fuente: la enmienda del 2026‑11‑28 de la ERS. Estado: **ejecutadas** en la rama, que aún no está fusionada en `main`.
+Las pruebas de la interfaz (`*.test.tsx`, `*.test.ts`) viven en `frontend-desktop/src/` y corren con Vitest; las demás,
+con pytest. Los nombres exactos de cada prueba están en la columna de criterio de aceptación de cada RF en la ERS.
+
+| RF | Prueba |
+|---|---|
+| RF‑215 | `tests/unit/test_seguridad_solicitudes.py` (solicitud y no cuenta, cupo por equipo antes de Argon2 con IPv6 por `/64`, 50 pendientes, usuario en uso, reutilización), `tests/integration/test_api_solicitudes.py` (201, 409, 422 sin eco, 429, `Origin` ajeno), `tests/integration/test_migracion_solicitud_cuenta.py`, `sesion/CrearCuenta.test.tsx` |
+| RF‑216 | `tests/unit/test_seguridad_solicitudes.py` (código de 20 con solo su huella, reaprobar, rechazar, vencida sin escribir, `resuelta_por_id`, `mailto` sin cabeceras inyectadas), `tests/integration/test_api_solicitudes.py` (código una vez con su vencimiento, 403 sin el rol, 422 por papel, 404), `tests/integration/test_migracion_solicitud_resuelta_por.py`, `paginas/administracion/Cuentas.test.tsx` |
+| RF‑217 | `tests/unit/test_seguridad_solicitudes.py` (canje con su papel, 7 días exactos, mismo mensaje, contador y freno, aprobador revocado, ningún secreto en los eventos), `tests/integration/test_api_solicitudes.py` (sesión como `POST /v1/sesion`, segundo canje 401, registro sin secretos), `sesion/TengoUnCodigo.test.tsx` |
+| RF‑218 | `tests/unit/test_aplicacion_notificaciones.py` (30 días exactos, tope de 200, solo las suyas, rutas inseguras), `tests/integration/test_api_notificaciones.py` (contrato, 401 y 403, CSRF y `Origin`, migración `ins_0014`), `comun/notificaciones/modelo.test.ts`, `RegionDeNotificaciones.test.tsx`, `PanelDeNotificaciones.test.tsx`, `Campanita.test.tsx`, `ProveedorDeNotificaciones.test.tsx`, `almacenDeLaApi.test.ts`, `marco/BarraDeEstado.test.tsx` |
+| RF‑219 | `tests/unit/test_avisos_por_evento.py` (una vez por clave y persona, envío, dictamen, retiro, recordatorio, compras, entregas, listas, un fallo no desdice el índice), `tests/integration/test_api_avisos_por_evento.py`, `tests/integration/test_migracion_notificacion_por_evento.py` |
+| RF‑220 | `tests/unit/test_avisos_por_evento.py` (apagar y encender por cuenta, la obligatoria de quien revisa, categoría desconocida o repetida), `tests/integration/test_api_avisos_por_evento.py` (422 sin cambios, CSRF y `Origin`), `paginas/notificaciones/PreferenciasDeNotificaciones.test.tsx` |
+| RF‑221 | `tests/unit/test_aplicacion_actividad.py`, `tests/integration/test_api_actividad.py` (contrato, último año, 403 y 404, 422, clave de API), `paginas/actividad/Actividad.test.tsx`, `paginas/actividad/logica.test.ts`, `paginas/versiones/Versiones.test.tsx`, `paginas/historial/Historial.test.tsx` |
+| RF‑222 | `tests/unit/test_entrega_de_obra.py`, `tests/integration/test_api_entrega_de_obra.py` (leer, fijar y quitar; 422 sin eco; 404; permisos y CSRF), `tests/integration/test_migracion_entrega_de_obra.py`, `comun/fechaEscrita.test.ts`, `shell/obras/NuevaObra.test.tsx`, `paginas/obras/Resumen.test.tsx` |
+| RF‑223 | `tests/unit/test_que_hacer.py` (cada regla con su guía, trato de usted, genérico marcado, los cuatro tipos de alerta de `fusion`, ninguna guía pide decidir), `tests/integration/test_api_libros_que_hacer.py` (catálogo, 401, solo lectura, fuera de la auditoría sellada), `comun/catalogoQueHacer.test.ts`, `paginas/auditoria/PiezasDelLibro.test.tsx`, `paginas/historial/Historial.test.tsx` |
+| RF‑224 | `paginas/auditoria/AuditarUnLibro.test.tsx` (una sola auditoría, alertas A1 a A3 y hallazgos A4 a A6, USD-Bs dentro del umbral oculta, réplica una vez, error con reintento), `paginas/auditoria/logicaDelLibro.test.ts`, `paginas/auditoria/PiezasDelLibro.test.tsx`, `paginas/auditoria/Auditoria.test.tsx` |
+
 ### 8.1 Trazabilidad por paso de todos los casos de uso
 
 Regla (metodología §3.4): cada paso numerado y cada flujo alternativo de un caso de uso cita la

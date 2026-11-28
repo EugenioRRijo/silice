@@ -95,7 +95,7 @@ def test_usd_bs_con_tasa_de_las_dos_fechas(libro, tasa_dev, variacion, juicio):
     assert mt01.precio_bs == D("10") * tasa_dev
     assert mt01.variacion == variacion
     assert juicio in mt01.mensaje
-    assert "1000 Bs al 2026-07-31 (tasa 100)" in mt01.mensaje
+    assert "1.000,00 Bs al 2026-07-31 (tasa 100)" in mt01.mensaje
 
 
 def test_falta_la_tasa_de_una_fecha(libro):
@@ -154,7 +154,7 @@ def test_precio_propio_de_la_empresa_con_umbral(libro, propio, umbral, hay):
         assert empresa == []
         return
     assert [(f.codigo, f.variacion) for f in empresa] == [("MT-01", D("0.25"))]
-    assert "precio propio de la instalación 8 USD del 2026-06-01" in empresa[0].mensaje
+    assert "precio propio de la instalación 8,00 USD del 2026-06-01" in empresa[0].mensaje
 
 
 def test_precio_propio_en_otra_moneda_se_convierte_con_la_tasa_de_su_fecha(libro):
@@ -166,7 +166,7 @@ def test_precio_propio_en_otra_moneda_se_convierte_con_la_tasa_de_su_fecha(libro
     empresa = [f for f in alertas_de_precios(libro, F_LIBRO, F_DEV, ctx) if f.tipo == TIPO_EMPRESA]
     assert len(empresa) == 1
     assert abs(empresa[0].variacion - (D("10") - D("9")) / D("9")) <= D("1e-20")
-    assert "(9 USD a la tasa 100)" in empresa[0].mensaje
+    assert "(9,00 USD a la tasa 100)" in empresa[0].mensaje
 
 
 def test_precio_propio_sin_tasa_para_convertir_no_es_contrastable(libro):
@@ -198,7 +198,7 @@ def test_otra_version_del_libro():
         ("EQ-02", None),
         ("MT-01", (D("10") - D("12")) / D("12")),
     ]
-    assert "costaba 12 USD; en esta (INSUMOS!E5) 10" in version[1].mensaje
+    assert "costaba 12,00 USD; en esta (INSUMOS!E5) 10,00" in version[1].mensaje
     assert version[0].mensaje == "EQ-02 no está en la otra versión (b1.xlsx)"
 
 
@@ -224,3 +224,63 @@ def test_umbral_negativo_se_rechaza_antes_de_abrir_la_base():
 
     with pytest.raises(ValueError, match="fracción no negativa"):
         servicios_desde_sesion(None, umbral=D("-0.0001"))  # type: ignore[arg-type]
+
+
+# --- Mensajes en es-VE (auditoría independiente antes de medicion-v1, hallazgo #1) -------------
+# Lo que lee la persona va con coma decimal y punto de miles (decisión de Eugenio del 2026-10-25):
+# los montos a dos decimales ROUND_HALF_UP (NORMAS §2.3, decisión del 2026-11-17), la tasa exacta
+# sin ceros finales y los porcentajes a dos decimales. Oráculo: aritmética a mano.
+
+
+@pytest.mark.parametrize(
+    ("tasa_dev", "mensaje"),
+    [
+        # 10 USD × 100 = 1 000 Bs; × 104,99 = 1 049,90 Bs; (1 049,9 − 1 000) ÷ 1 000 = 4,99 %
+        (
+            D("104.99"),
+            "1.000,00 Bs al 2026-07-31 (tasa 100) y 1.049,90 Bs al 2026-10-13 (tasa 104,99): "
+            "+4,99 %, dentro del umbral de 5,00 %",
+        ),
+        # × 100,125 = 1 001,25 Bs; 0,125 % se presenta 0,13 % (ROUND_HALF_UP, no 0,12 % HALF_EVEN)
+        (
+            D("100.125"),
+            "1.000,00 Bs al 2026-07-31 (tasa 100) y 1.001,25 Bs al 2026-10-13 (tasa 100,125): "
+            "+0,13 %, dentro del umbral de 5,00 %",
+        ),
+    ],
+)
+def test_mensaje_usd_bs_en_es_ve(libro, tasa_dev, mensaje):
+    ctx = ContextoPrecios(tasa_en=_tasas({F_LIBRO: D("100"), F_DEV: tasa_dev}))
+    mt01 = next(
+        f
+        for f in alertas_de_precios(libro, F_LIBRO, F_DEV, ctx)
+        if f.codigo == "MT-01" and f.tipo == TIPO_BS
+    )
+    assert mt01.mensaje == mensaje
+
+
+def test_mensaje_precio_propio_en_es_ve(libro):
+    """Propio 90 000 Bs del 01/06 a 10 000 Bs/USD = 9 USD; (10 − 9) ÷ 9 = 11,11 %."""
+    ctx = ContextoPrecios(
+        tasa_en=_tasas({date(2026, 6, 1): D("10000")}),
+        precio_propio=lambda c: (D("90000"), date(2026, 6, 1), "Bs") if c == "MT-01" else None,
+    )
+    empresa = [f for f in alertas_de_precios(libro, F_LIBRO, F_DEV, ctx) if f.tipo == TIPO_EMPRESA]
+    assert [f.mensaje for f in empresa] == [
+        "el libro usa 10,00 USD; precio propio de la instalación 90.000,00 Bs del 2026-06-01 "
+        "(9,00 USD a la tasa 10.000): +11,11 %, pasa del umbral de 5,00 %"
+    ]
+
+
+def test_mensaje_otra_version_en_es_ve():
+    """MT-01 pasa de 1 200 a 10 USD: (10 − 1 200) ÷ 1 200 = −99,17 %."""
+    insumos_b1 = tuple(replace(i, precio=D("1200")) if i.codigo == "MT-01" else i for i in INSUMOS)
+    otro = leer_libro(construir_libro(APUS_LIMPIOS, Siembra(insumos=insumos_b1)).datos, "b1.xlsx")
+    libro = leer_libro(libro_limpio().datos, "b2.xlsx")
+    version = [
+        f for f in alertas_de_precios(libro, F_LIBRO, F_DEV, None, otro) if f.tipo == TIPO_VERSION
+    ]
+    assert [f.mensaje for f in version] == [
+        "en la otra versión (b1.xlsx, INSUMOS!E5) costaba 1.200,00 USD; en esta (INSUMOS!E5) "
+        "10,00: -99,17 %"
+    ]

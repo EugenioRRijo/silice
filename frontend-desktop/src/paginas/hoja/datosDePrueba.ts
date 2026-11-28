@@ -295,13 +295,13 @@ export function informeAuditoria(extra: Partial<InformeAuditoriaRespuesta> = {})
       { severidad: "ADVERTENCIA", total: 1 },
     ],
     reglas_evaluadas: [
-      { regla: "R3", nombre: "Origen de la medida", hallazgos: 1 },
+      { regla: "R8", nombre: "Origen de la medida", hallazgos: 1 },
       { regla: "R17", nombre: "Conexión de cada punto", hallazgos: 1 },
     ],
     hallazgos: [
       {
         numero: 1,
-        regla: "R3",
+        regla: "R8",
         severidad: "ERROR",
         partida: null,
         descripcion: "Fuente F1: falta el origen ![x](http://ejemplo.invalid/a.png)",

@@ -3,9 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BarraSuperior } from "./BarraSuperior";
+import { abrirNuevaObra } from "./nuevaObra";
 
 const tema = vi.hoisted(() => ({ logo: null as string | null }));
 vi.mock("./useTema", () => ({ useTema: () => tema }));
+vi.mock("./nuevaObra", () => ({ abrirNuevaObra: vi.fn() }));
 
 const TEXTO_BUSCAR = "Buscar una obra, sección o pantalla… (Ctrl+K)";
 
@@ -21,6 +23,7 @@ function pintar({ alAbrirBuscador = vi.fn(), carpeta = null as string | null, en
 
 beforeEach(() => {
   tema.logo = null;
+  vi.mocked(abrirNuevaObra).mockClear();
 });
 
 describe("BarraSuperior: marca", () => {
@@ -78,32 +81,85 @@ describe("BarraSuperior: la carpeta activa, el contexto y el modo ventana dedica
     expect(screen.getByText("Obras / Galpón Sur")).toBeInTheDocument();
   });
 
-  it("en ventana dedicada muestra Volver a obras y el selector de espacios sin numeración", () => {
+  it("en ventana dedicada dice la carpeta y no trae el contexto de texto", () => {
     render(
       <MemoryRouter initialEntries={["/auditoria/subir"]}>
         <BarraSuperior
           alAbrirBuscador={vi.fn()}
           nombre="Ana"
           carpeta="Carpeta de la empresa"
+          migaContextual="Obras / Galpón Sur"
           enVentanaDedicada
           espacioActivo="auditoria"
-          espacios={[
-            { id: "auditoria", titulo: "Auditar un presupuesto", ruta: "/auditoria/subir" },
-            { id: "precios", titulo: "Precios y catálogo", ruta: "/precios/catalogo" },
-            { id: "produccion", titulo: "Costos de producción", ruta: "/produccion/resumen" },
-          ]}
+          espacios={ESPACIOS_OFRECIDOS}
         />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: "Volver a obras" })).toHaveAttribute("href", "/inicio/general");
     // Auditoría, Precios y Producción trabajan con la carpeta abierta: la ventana dedicada también la dice.
     expect(screen.getByTitle("Carpeta activa: Carpeta de la empresa")).toHaveTextContent("Carpeta activa: Carpeta de la empresa");
-    const selector = screen.getByRole("navigation", { name: "Selector de herramientas dedicadas" });
-    expect(selector).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Auditoría" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
-    expect(screen.getByRole("link", { name: "Producción" })).toHaveAttribute("href", "/produccion/resumen");
-    expect(selector.textContent).not.toMatch(/\b0[123]\s*·/);
+    expect(screen.queryByText("Obras / Galpón Sur")).toBeNull();
+  });
+});
+
+const ESPACIOS_OFRECIDOS = [
+  { id: "auditoria", titulo: "Auditar un presupuesto", ruta: "/auditoria/subir" },
+  { id: "precios", titulo: "Precios y catálogo", ruta: "/precios/catalogo" },
+  { id: "produccion", titulo: "Costos de producción", ruta: "/produccion/resumen" },
+] as const;
+
+// Lote C3 de la reestructuración (cara «Papel y resaltador», 2026-11-26): la barra de arriba es una franja global fina
+// (marca, buscador, «Nueva obra» y cuenta). Los espacios de la empresa (Obras, Auditar un libro, Precios y catálogo y
+// Producción) pasaron a la barra lateral, y «Volver a obras» y el selector de la cara anterior ya no existen aquí.
+describe("BarraSuperior: franja global, sin los espacios de la empresa", () => {
+  function conEspacios(propiedades: Partial<Parameters<typeof BarraSuperior>[0]> = {}, en = "/inicio/general") {
+    return render(
+      <MemoryRouter initialEntries={[en]}>
+        <BarraSuperior alAbrirBuscador={vi.fn()} nombre="Ana" carpeta={null} espacios={ESPACIOS_OFRECIDOS} {...propiedades} />
+      </MemoryRouter>,
+    );
+  }
+
+  it("no trae ninguna navegación de espacios, aunque se le pasen", () => {
+    conEspacios();
+    expect(screen.queryByRole("navigation")).toBeNull();
+    for (const nombre of ["Obras", "Auditar un libro", "Precios y catálogo", "Producción"]) {
+      expect(screen.queryByRole("link", { name: nombre })).toBeNull();
+    }
+  });
+
+  it("ya no trae «Volver a obras» ni el selector de herramientas dedicadas, tampoco en una ventana dedicada", () => {
+    conEspacios({ enVentanaDedicada: true, espacioActivo: "auditoria" }, "/auditoria/subir");
+    expect(screen.queryByRole("link", { name: "Volver a obras" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Selector de herramientas dedicadas" })).toBeNull();
+  });
+
+  it("la marca, el buscador, Nueva obra y la persona siguen en la barra, también en un espacio", () => {
+    conEspacios({ enVentanaDedicada: true, espacioActivo: "auditoria" }, "/auditoria/subir");
+    expect(screen.getByRole("link", { name: "Sílice" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: TEXTO_BUSCAR })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nueva obra" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cuenta de Ana" })).toBeInTheDocument();
+  });
+});
+
+describe("BarraSuperior: Nueva obra", () => {
+  it("es un botón amarillo con el icono de más (16 px) que abre el diálogo de nueva obra", async () => {
+    pintar();
+    const boton = screen.getByRole("button", { name: "Nueva obra" });
+    expect(boton).toHaveClass("silice-boton-nueva-obra");
+    const icono = boton.querySelector("svg");
+    expect(icono).not.toBeNull();
+    expect(icono).toHaveAttribute("width", "16");
+    expect(icono).toHaveAttribute("aria-hidden", "true");
+    await userEvent.click(boton);
+    expect(abrirNuevaObra).toHaveBeenCalledTimes(1);
+  });
+
+  it("va antes del buscador", () => {
+    pintar();
+    const nueva = screen.getByRole("button", { name: "Nueva obra" });
+    const buscar = screen.getByRole("button", { name: TEXTO_BUSCAR });
+    expect(nueva.compareDocumentPosition(buscar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 
@@ -169,6 +225,14 @@ describe("BarraSuperior: buscador", () => {
     expect(boton).toHaveClass("silice-marco-barra__buscar");
     expect(boton.querySelector(".silice-marco-barra__buscar-texto")).toHaveTextContent(TEXTO_BUSCAR);
     expect(boton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("el botón va en una ranura que mide su ancho: si no cabe el texto completo queda en su ícono (T3, 2026-11-28)", () => {
+    pintar();
+    const boton = screen.getByRole("button", { name: TEXTO_BUSCAR });
+    expect(boton.parentElement).toHaveClass("silice-marco-barra__buscar-ranura");
+    // «Nueva obra» comparte la ranura: las dos piezas quedan pegadas a la derecha y la consulta mide el conjunto.
+    expect(boton.parentElement).toContainElement(screen.getByRole("button", { name: "Nueva obra" }));
   });
 
   it.each(["plaintext-only", "", "true"])(

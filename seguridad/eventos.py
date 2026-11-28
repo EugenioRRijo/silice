@@ -16,6 +16,13 @@ TIPOS = (
     "empresa", "clave registrada",
     # S4 §8.3: la contraseña no abrió el respaldo cifrado de la clave de IA (ruta, sesión 1)
     "clave de ia no reactivada",
+    # C9a: el registro con código (spec 2026-11-26-registro-con-codigo §4)
+    "solicitud", "solicitud aprobada", "solicitud rechazada", "codigo canjeado",
+    "codigo rechazado",
+    # revisión de seguridad de C9a: el 409 (login en uso) deja rastro y gasta cupo
+    "solicitud fallida",
+    # revisión de seguridad T5: quién cambió la fecha de entrega al cliente de una obra
+    "fecha de entrega",
 )
 
 

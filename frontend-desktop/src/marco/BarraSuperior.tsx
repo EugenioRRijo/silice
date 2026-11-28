@@ -1,4 +1,5 @@
-import { ArrowLeft, Search, User } from "@carbon/icons-react";
+import { Add, Search, User } from "@carbon/icons-react";
+import { Button } from "@carbon/react";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router";
@@ -7,8 +8,9 @@ import "../shell/MenuCuenta.scss";
 import "./BarraSuperior.scss";
 import { rutaDeCuenta } from "./espacios";
 import type { EspacioId } from "./espacios";
+import { abrirNuevaObra } from "./nuevaObra";
 import type { EspacioOfrecido } from "./oferta";
-import { RUTA_DE_INICIO, RUTA_DE_VISTA_GENERAL } from "./secciones";
+import { RUTA_DE_INICIO } from "./secciones";
 import { useTema } from "./useTema";
 
 interface Props {
@@ -18,19 +20,14 @@ interface Props {
   carpeta: string | null;
   // Dónde se está dentro de la carpeta (ej. «Inicio / Vista general» u «Obras / Drenaje de la clínica»): texto, no enlaces.
   migaContextual?: string | null;
-  // Ventana dedicada a pantalla completa para Auditoria, Precios o Produccion.
+  // Ventana dedicada a pantalla completa para Auditoria, Precios o Produccion: sin el contexto de texto (lo dice el espacio).
   enVentanaDedicada?: boolean;
+  // Los pasa el marco, pero la barra de arriba ya no los pinta (los espacios viven en la barra lateral).
   espacioActivo?: EspacioId | null;
   espacios?: readonly EspacioOfrecido[];
   // Lo que el marco pone antes de la cuenta (la marca de la demostracion, «Recorrido»).
   extra?: ReactNode;
 }
-
-const ETIQUETA_MODO: Record<EspacioId, string> = {
-  auditoria: "Auditoría",
-  precios: "Precios y catálogo",
-  produccion: "Producción",
-};
 
 // Un campo donde Ctrl+K ya significa otra cosa (texto largo o contenido editable, tambien «plaintext-only»): ahi no se abre el
 // buscador. `closest` incluye al propio destino.
@@ -41,18 +38,19 @@ function usaCtrlK(destino: EventTarget | null): boolean {
   );
 }
 
-// Barra superior del marco (plan F6, T6; diseño visual §4): la marca, que lleva a la ruta índice; la carpeta activa y, fuera
-// de la ventana dedicada, el contexto de texto; el buscador (Ctrl+K); y la persona, que es un enlace a la Cuenta. Sin el
-// tamaño de letra, que vive solo en la Cuenta (decisión de Eugenio, 2026-11-04). En Auditoría, Precios y Producción
-// (ventana dedicada) lleva «Volver a obras» y el selector de las tres herramientas. La monta marco/Marco.
+// «Nueva obra» es kind="tertiary" (el amarillo lo da silice-boton-nueva-obra): el botón principal de la pantalla es otro (hay pruebas que cuentan .cds--btn--primary).
+// Barra de arriba, franja global fina (plan F6, T6; lote C3 de la reestructuración, cara «Papel y resaltador»): la marca,
+// que lleva a la ruta índice; la carpeta activa y, fuera de la ventana dedicada, el contexto de texto; «Nueva obra»; el
+// buscador (Ctrl+K); y la persona, que es un enlace a la Cuenta. Sin el tamaño de letra, que vive solo en la Cuenta
+// (decisión de Eugenio, 2026-11-04). Los espacios de la empresa viven en la barra lateral: `espacioActivo` y `espacios` los
+// sigue pasando el marco, pero esta barra ya no los pinta (tampoco «Volver a obras» ni el selector de la cara anterior).
+// La monta marco/Marco.
 export function BarraSuperior({
   alAbrirBuscador,
   nombre,
   carpeta,
   migaContextual = null,
   enVentanaDedicada = false,
-  espacioActivo = null,
-  espacios = [],
   extra,
 }: Props) {
   const { logo } = useTema();
@@ -73,12 +71,6 @@ export function BarraSuperior({
   return (
     <header className={`silice-marco-barra${enVentanaDedicada ? " silice-marco-barra--dedicada" : ""}`}>
       <div className="silice-marco-barra__izq">
-        {enVentanaDedicada && (
-          <Link to={RUTA_DE_VISTA_GENERAL} className="silice-marco-barra__volver">
-            <ArrowLeft size={16} aria-hidden="true" />
-            <span>Volver a obras</span>
-          </Link>
-        )}
         <Link to={RUTA_DE_INICIO} className="silice-marco-barra__marca">
           {logo ? (
             <img src={logo} alt="Sílice — Ir al inicio" className="silice-marco-barra__logo" />
@@ -114,43 +106,31 @@ export function BarraSuperior({
         )}
       </div>
 
-      {enVentanaDedicada && espacios.length > 0 ? (
-        <nav aria-label="Selector de herramientas dedicadas" className="silice-marco-barra__modos">
-          {espacios.map((e) => (
-            <Link
-              key={e.id}
-              to={e.ruta}
-              aria-current={espacioActivo === e.id ? "page" : undefined}
-              className="silice-marco-barra__modo"
-            >
-              {ETIQUETA_MODO[e.id]}
-            </Link>
-          ))}
-        </nav>
-      ) : (
-        <button
-          type="button"
-          className="silice-marco-barra__buscar"
-          aria-keyshortcuts="Control+K"
-          onClick={alAbrirBuscador}
-        >
-          <Search size={16} aria-hidden="true" />
-          <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
-        </button>
-      )}
-
       <div className="silice-marco-barra__der">
-        {enVentanaDedicada && (
+        {/* La ranura recibe lo que sobra de la barra y mide su propio ancho: si caben «Nueva obra» y el texto completo del
+            buscador, el buscador lo muestra; si no, queda en su ícono (consulta de contenedor en BarraSuperior.scss).
+            Nunca corta el texto. «Nueva obra» va dentro para que las dos piezas queden pegadas a la derecha. */}
+        <div className="silice-marco-barra__buscar-ranura">
+          <Button
+            type="button"
+            kind="tertiary"
+            size="sm"
+            renderIcon={Add}
+            className="silice-boton-nueva-obra"
+            onClick={abrirNuevaObra}
+          >
+            Nueva obra
+          </Button>
           <button
             type="button"
-            className="silice-marco-barra__buscar silice-marco-barra__buscar--compacto"
+            className="silice-marco-barra__buscar"
             aria-keyshortcuts="Control+K"
             onClick={alAbrirBuscador}
           >
             <Search size={16} aria-hidden="true" />
             <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
           </button>
-        )}
+        </div>
         {extra}
         <div className="silice-cuenta">
           <Link

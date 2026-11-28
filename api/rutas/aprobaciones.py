@@ -60,9 +60,10 @@ from api.dependencias import (
     SesionDeEscrituraDep,
     SesionDep,
     SesionInstalacionDep,
+    carpeta_de_la_empresa,
+    carpeta_de_la_peticion,
     obtener_motor,
     ruta_de_url,
-    url_de_la_peticion,
     url_de_ruta,
     url_del_proceso,
 )
@@ -70,7 +71,7 @@ from api.presentacion import exacto
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
-from aplicacion import aprobaciones, indice_aprobaciones
+from aplicacion import aprobaciones, avisos_por_evento, indice_aprobaciones
 from aplicacion.aprobaciones import (
     AprobacionInvalida,
     DatosInvalidos,
@@ -296,8 +297,7 @@ def _con_cuenta(activa: SesionActiva | None) -> SesionActiva:
 
 def _caso(request: Request) -> str | None:
     """El nombre del archivo de la carpeta de esta petición (`None` si no es un archivo)."""
-    ruta = ruta_de_url(url_de_la_peticion(request))
-    return None if ruta is None else ruta.name
+    return carpeta_de_la_peticion(request)
 
 
 #: Lo que espera la escritura del índice, ya confirmada la carpeta, si otro escribe en la
@@ -338,6 +338,19 @@ def _leer_el_reflejo(caso: str | None, sesion: Session) -> indice_aprobaciones.R
         return None
 
 
+def _avisar(instalacion: Session) -> indice_aprobaciones.AlReflejar:
+    """C11b: el gancho del índice que crea los avisos del envío, el dictamen y el retiro en la
+    misma transacción de la instalación que escribe el índice."""
+    momento, empresa = ahora(), carpeta_de_la_empresa()
+
+    def al_reflejar(antes, despues) -> None:
+        avisos_por_evento.de_aprobaciones(
+            instalacion, antes, despues, momento, carpeta_empresa=empresa
+        )
+
+    return al_reflejar
+
+
 def _escribir_el_reflejo(reflejo: indice_aprobaciones.Reflejo | None) -> None:
     """Ya confirmada la carpeta, escribe el reflejo en el índice en una transacción corta y propia
     de la instalación; uno más nuevo que ya esté escrito no se pisa. Un fallo no cambia la
@@ -346,7 +359,9 @@ def _escribir_el_reflejo(reflejo: indice_aprobaciones.Reflejo | None) -> None:
         return
     try:
         with _instalacion_inmediata(ESPERA_DEL_REFLEJO_MS) as instalacion:
-            if indice_aprobaciones.escribir_reflejo(instalacion, reflejo):
+            if indice_aprobaciones.escribir_reflejo(
+                instalacion, reflejo, al_reflejar=_avisar(instalacion)
+            ):
                 instalacion.commit()
     except Exception:  # noqa: BLE001 (la carpeta ya confirmó: ningún fallo aquí la desdice)
         _registro.warning(
@@ -365,7 +380,9 @@ def _reflejar(caso: str | None, sesion: Session) -> None:
         return
     try:
         with _instalacion_inmediata() as instalacion:
-            indice_aprobaciones.reflejar(instalacion, caso, sesion)
+            indice_aprobaciones.reflejar(
+                instalacion, caso, sesion, al_reflejar=_avisar(instalacion)
+            )
             instalacion.commit()
     except Exception:  # noqa: BLE001 (el índice es un reflejo: ningún fallo aquí desdice nada)
         _registro.warning(

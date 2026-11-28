@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { vistaEspacio, vistaPresupuesto } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaEspacio, VistaPresupuesto } from "./logica";
 
 // Rebanada 3c-1: las cinco tablas del espacio se editan. El servidor se simula con respuestas ficticias con la forma del
@@ -264,9 +264,13 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
       },
     });
     const estado = await esperar(() => screen.getByRole("region", { name: "Estado del borrador" }));
-    expect(await esperar(() => within(estado).getByTitle("2.800,5"))).toHaveTextContent("2.800,50 USD");
+    // B1-3: el exacto va en el Toggletip de `MontoExacto` (sin `title`) y el total ya no es región viva propia: el anuncio lo
+    // da el anunciador central.
+    expect(await esperar(() => within(estado).getByText("Valor exacto: 2.800,5 USD"))).toBeInTheDocument();
+    const total = estado.querySelector<HTMLElement>(".silice-hoja__total")!;
+    expect(total).toHaveTextContent("2.800,50 USD");
     expect(within(estado).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
-    expect(within(estado).getByTitle("2.800,5")).toHaveAttribute("aria-live", "polite");
+    expect(total).not.toHaveAttribute("aria-live");
     expect(lecturasDelEspacio()).toBe(antes + 1);
     const derivadas = await esperar(() => screen.getByRole("table", { name: "Cantidades derivadas" }));
     expect(await esperar(() => within(derivadas).getByText("4,00"))).toBeInTheDocument();
@@ -349,7 +353,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     expect(screen.getByText("Valor no válido")).toBeInTheDocument();
     // El total mostrado es el anterior y el borrador no avanzó.
     const estado = screen.getByRole("region", { name: "Estado del borrador" });
-    expect(within(estado).getByTitle("2.703,860232344044033333333333")).toBeInTheDocument();
+    expect(within(estado).getByText("Valor exacto: 2.703,860232344044033333333333 USD")).toBeInTheDocument();
     expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
     // Corregir y volver a mandar: sigue con el rev que el servidor no avanzó y el alert desaparece.
     alPonerse = ACEPTA;

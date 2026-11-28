@@ -4,6 +4,9 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ProveedorDeNotificaciones, crearAlmacenEnMemoria } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import type { AlmacenDeNotificaciones } from "../../comun/notificaciones/ProveedorDeNotificaciones";
+import { RegionDeNotificaciones } from "../../comun/notificaciones/RegionDeNotificaciones";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ofertaDe, seccionesDeLaObra } from "../../marco/oferta";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -147,26 +150,44 @@ function Ubicacion() {
 
 // La sección como la monta EspacioDeObra: dentro de la obra 3 de la empresa y del proveedor de la Hoja. Las demás rutas no
 // pintan nada: así «Abrir» deja ver adónde fue sin que otra pantalla consuma el `?version=`.
-function montar(sesion: SesionRespuesta = ARMA) {
-  const aplicacion: Aplicacion = { sesion, proyecto: "3", caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+function montar(
+  sesion: SesionRespuesta = ARMA,
+  opciones?: { almacen?: AlmacenDeNotificaciones; nombreProyecto?: string | null },
+) {
+  const aplicacion: Aplicacion = {
+    sesion,
+    proyecto: "3",
+    ...(opciones?.nombreProyecto !== undefined ? { nombreProyecto: opciones.nombreProyecto } : {}),
+    caso: null,
+    recargarProyectos: vi.fn(),
+    alExpirar: vi.fn(),
+  };
+  const contenido = (
+    <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
+      <MemoryRouter initialEntries={["/obra/empresa/3/versiones"]}>
+        <Routes>
+          <Route
+            path="/obra/:carpeta/:obraId/versiones"
+            element={
+              <ProveedorDeLaHoja>
+                <PaginaVersiones />
+              </ProveedorDeLaHoja>
+            }
+          />
+          <Route path="*" element={null} />
+        </Routes>
+        {opciones?.almacen !== undefined && <RegionDeNotificaciones />}
+        <Ubicacion />
+      </MemoryRouter>
+    </ContextoDeLaObra.Provider>
+  );
   render(
     <ContextoAplicacion.Provider value={aplicacion}>
-      <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
-        <MemoryRouter initialEntries={["/obra/empresa/3/versiones"]}>
-          <Routes>
-            <Route
-              path="/obra/:carpeta/:obraId/versiones"
-              element={
-                <ProveedorDeLaHoja>
-                  <PaginaVersiones />
-                </ProveedorDeLaHoja>
-              }
-            />
-            <Route path="*" element={null} />
-          </Routes>
-          <Ubicacion />
-        </MemoryRouter>
-      </ContextoDeLaObra.Provider>
+      {opciones?.almacen !== undefined ? (
+        <ProveedorDeNotificaciones almacen={opciones.almacen}>{contenido}</ProveedorDeNotificaciones>
+      ) : (
+        contenido
+      )}
     </ContextoAplicacion.Provider>,
   );
   return userEvent.setup();
@@ -316,8 +337,23 @@ describe("Versiones: el registro de cambios en el panel", () => {
     const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
-    expect(texto(filas[0]!)).toEqual(["04/11/2026 16:20", "Ana Pérez <ana>", "Parámetro", "Bono de alimentación", "Valor", "5,81", "6,00", "Convención colectiva"]);
-    expect(texto(filas[1]!).slice(0, 5)).toEqual(["04/11/2026 16:21", "Ana Pérez <ana>", "Precio", "INS-1", "Cotización"]);
+    expect(texto(filas[0]!)).toEqual(["04/11/2026 16:20", "Ana Pérez", "Parámetro", "Bono de alimentación", "Valor", "5,81", "6,00", "Convención colectiva"]);
+    expect(texto(filas[1]!).slice(0, 5)).toEqual(["04/11/2026 16:21", "Ana Pérez", "Precio", "INS-1", "Cotización"]);
+    const enlace = within(filas[0]!).getByRole("link", { name: "Ver la actividad de Ana Pérez" });
+    expect(enlace).toHaveTextContent("Ana Pérez");
+    expect(enlace).toHaveAttribute("href", "/cuenta/actividad?usuario=ana");
+  });
+
+  test("un responsable sin usuario en el registro queda como texto, sin enlace", async () => {
+    const registro = { ...trazabilidadRespuesta().registros[0]!, responsable: "api (clave de API)" };
+    trazabilidad = () => json(trazabilidadRespuesta({ registros: [registro] }));
+    const u = montar();
+    await listo();
+    await u.click(within(await renglon("VIV-002")).getByRole("button", { name: "Ver cambios de VIV-002" }));
+    const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
+    const filaRegistro = within(tabla).getAllByRole("row")[1]!;
+    expect(within(filaRegistro).getByText("api (clave de API)")).toBeInTheDocument();
+    expect(within(filaRegistro).queryByRole("link")).toBeNull();
   });
 
   test("D4 (ronda 1): control y metraje salen con rótulos en español y un valor que no es cifra queda intacto", async () => {
@@ -550,6 +586,53 @@ describe("Versiones: restaurar", () => {
     expect(within(await renglon("VIV-001")).getByRole("button", { name: "Restaurar VIV-001…" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Guardar/ })).toBeNull();
   });
+
+  test("G2: restaurar una versión notifica una sola vez con la versión nueva, la obra y el enlace al Presupuesto", async () => {
+    const almacen = crearAlmacenEnMemoria();
+    const u = montar(ARMA, { almacen, nombreProyecto: "Galpón Sur" });
+    await listo();
+    fireEvent.click(within(await renglon("VIV-001")).getByRole("button", { name: "Restaurar VIV-001…" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Fuente (por qué se restaura)" }), {
+      target: { value: "La VIV-002 salió con un error" },
+    });
+    versiones = {
+      ...versiones,
+      por_omision: "VIV-003",
+      versiones: [fila("VIV-003", "2026-10-22", "restauracion", "VIV-001", true, 0), { ...VIV_002, vigente: false }, VIV_001],
+    };
+    await u.click(within(dialogo).getByRole("button", { name: "Restaurar" }));
+    await screen.findByText("La versión VIV-001 se restauró como la versión VIV-003 (la vigente).");
+
+    const guardadas = await Promise.resolve(almacen.cargar());
+    expect(guardadas).toHaveLength(1);
+    expect(guardadas[0]).toMatchObject({
+      gravedad: "listo",
+      titulo: "Versión VIV-001 restaurada como VIV-003",
+      detalle: "Galpón Sur",
+      enlace: { texto: "Ver en Presupuesto", ruta: "/obra/empresa/3/presupuesto?version=VIV-003" },
+    });
+    const region = screen.getByRole("region", { name: "Notificaciones nuevas" });
+    expect(await within(region).findByText("Versión VIV-001 restaurada como VIV-003")).toBeInTheDocument();
+    expect(within(region).getByText("Listo")).toBeInTheDocument();
+  });
+
+  test("G2: si restaurar falla en el servidor, muestra el error en el diálogo y no notifica", async () => {
+    alRestaurar = () => json({ detalle: "No se pudo restaurar la versión pedida." }, 422);
+    const almacen = crearAlmacenEnMemoria();
+    const u = montar(ARMA, { almacen, nombreProyecto: "Galpón Sur" });
+    await listo();
+    fireEvent.click(within(await renglon("VIV-001")).getByRole("button", { name: "Restaurar VIV-001…" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Fuente (por qué se restaura)" }), {
+      target: { value: "Intento fallido" },
+    });
+    await u.click(within(dialogo).getByRole("button", { name: "Restaurar" }));
+
+    expect(await within(dialogo).findByText("No se pudo restaurar la versión pedida.")).toBeInTheDocument();
+    expect(await Promise.resolve(almacen.cargar())).toEqual([]);
+    expect(within(screen.getByRole("region", { name: "Notificaciones nuevas" })).queryByRole("article")).toBeNull();
+  });
 });
 
 // 3e-3 (de la pestaña «Trazabilidad» de la Hoja, que esta sección absorbe; se retiró de `hoja/Versiones.test.tsx` al
@@ -707,6 +790,102 @@ describe("Versiones: las descartadas siguen en el historial", () => {
     expect(within(viv000).getByRole("button", { name: "Ver cambios de VIV-000" })).toBeInTheDocument();
     expect(within(viv000).queryByRole("button", { name: /^Restaurar/ })).toBeNull();
     expect(within(viv000).queryByRole("button", { name: "Abrir VIV-000" })).toBeNull();
+  });
+});
+
+// C10b: filtro «Por persona» y enlaces a la actividad de quien guardó, envió o dictaminó.
+describe("Versiones: filtro «Por persona» y enlaces a la actividad", () => {
+  const VIV_003 = fila("VIV-003", "2026-10-22", "edicion", "VIV-002", true, 2);
+
+  beforeEach(() => {
+    versiones = { ...versiones, por_omision: "VIV-003", versiones: [VIV_003, { ...VIV_002, vigente: false }, VIV_001] };
+    aprobaciones = () =>
+      json({
+        rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
+        fases: "VIV-001 devuelta",
+        versiones: {
+          "VIV-003": { estado: "aprobada", por: "Rita Gómez <rita>", el: "2026-10-22T12:00:00", notas: "", armo: false },
+          "VIV-002": { estado: "en_aprobacion", por: "Ana Pérez <ana>", el: "2026-10-21T10:00:00", notas: "", armo: true },
+          "VIV-001": { estado: "devuelta", por: "api (clave de API)", el: "2026-10-20T09:00:00", notas: "Falta", armo: false },
+        },
+        eventos: [],
+        ultima_aprobada: "VIV-003",
+      });
+  });
+
+  test("el desplegable «Por persona» reduce la lista y el contador, y «Todas las personas» la devuelve", async () => {
+    const u = montar();
+    await listo();
+    const selector = await screen.findByRole("combobox", { name: "Por persona" });
+    expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Todas las personas",
+      "Ana Pérez",
+      "api (clave de API)",
+      "Rita Gómez",
+    ]);
+    expect(screen.getByText("3 de 3 versiones")).toBeInTheDocument();
+
+    await u.selectOptions(selector, "Rita Gómez");
+    expect(screen.getByText("1 de 3 versiones")).toBeInTheDocument();
+    expect((await celdas()).map((c) => c[0])).toEqual(["VIV-003 (abierta)"]);
+
+    await u.selectOptions(selector, "Todas las personas");
+    expect(screen.getByText("3 de 3 versiones")).toBeInTheDocument();
+    expect((await celdas()).map((c) => c[0])).toEqual(["VIV-003 (abierta)", "VIV-002", "VIV-001"]);
+  });
+
+  test("cuando el filtro no deja versiones muestra el estado vacío con el filtro puesto y cómo quitarlo", async () => {
+    const u = montar();
+    await listo();
+    const selector = await screen.findByRole("combobox", { name: "Por persona" });
+    await u.selectOptions(selector, "Rita Gómez");
+    expect(screen.getByText("1 de 3 versiones")).toBeInTheDocument();
+
+    // Tras restaurar VIV-001 como VIV-004, las aprobaciones ya no tienen a Rita Gómez; el filtro activo queda sin filas.
+    fireEvent.click(within(await renglon("VIV-003")).getByRole("button", { name: "Restaurar VIV-003…" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Fuente (por qué se restaura)" }), {
+      target: { value: "Nueva copia" },
+    });
+    versiones = {
+      ...versiones,
+      por_omision: "VIV-004",
+      versiones: [fila("VIV-004", "2026-10-23", "restauracion", "VIV-003", true, 0), { ...VIV_002, vigente: false }],
+    };
+    aprobaciones = () =>
+      json({
+        rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
+        fases: "",
+        versiones: {
+          "VIV-004": estado("guardada"),
+          "VIV-002": { estado: "en_aprobacion", por: "Ana Pérez <ana>", el: "2026-10-21T10:00:00", notas: "", armo: true },
+        },
+        eventos: [],
+        ultima_aprobada: null,
+      });
+    await u.click(within(dialogo).getByRole("button", { name: "Restaurar" }));
+
+    expect(await screen.findByText("Ninguna versión coincide con ese filtro")).toBeInTheDocument();
+    expect(screen.getByText(/Rita Gómez/)).toBeInTheDocument();
+    expect(screen.getByText("0 de 2 versiones")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Versiones de la obra" })).toBeNull();
+
+    await u.click(screen.getByRole("button", { name: "Quitar el filtro" }));
+    expect(await tabla()).toBeInTheDocument();
+    expect(screen.getByText("2 de 2 versiones")).toBeInTheDocument();
+  });
+
+  test("el nombre con usuario enlaza a su actividad y sin usuario queda como texto", async () => {
+    montar();
+    await listo();
+    const filaRita = await renglon("VIV-003");
+    const enlaceRita = within(filaRita).getByRole("link", { name: "Ver la actividad de Rita Gómez" });
+    expect(enlaceRita).toHaveTextContent("Rita Gómez");
+    expect(enlaceRita).toHaveAttribute("href", "/cuenta/actividad?usuario=rita");
+
+    const filaSinUsuario = await renglon("VIV-001");
+    expect(within(filaSinUsuario).getByText(/api \(clave de API\)/)).toBeInTheDocument();
+    expect(within(filaSinUsuario).queryByRole("link")).toBeNull();
   });
 });
 

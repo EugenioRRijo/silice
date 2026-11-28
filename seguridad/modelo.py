@@ -15,10 +15,12 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     LargeBinary,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -40,6 +42,39 @@ class Usuario(Base):
     restablecida_por_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     creado: Mapped[datetime] = mapped_column(DateTime)
     creado_por: Mapped[str] = mapped_column(String(120), default="")
+    #: C9a (`ins_0013`): el correo de quien pidió la cuenta; vacío en las cuentas anteriores.
+    correo: Mapped[str | None] = mapped_column(
+        String(254), default="", server_default=text("''")
+    )
+
+
+#: Con nombre: `ins_0016` la agrega recreando la tabla en lote, que lo exige.
+FK_SOLICITUD_RESUELTA_POR = "fk_solicitud_cuenta_resuelta_por_id"
+
+
+class SolicitudCuenta(Base):
+    """Una persona pide una cuenta (C9a, `ins_0013`): no es una cuenta ni da sesión hasta canjear
+    el código que genera el administrador al aprobarla. Ni la contraseña ni el código se guardan:
+    solo sus huellas (Argon2 y SHA-256)."""
+
+    __tablename__ = "solicitud_cuenta"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    login: Mapped[str] = mapped_column(String(60), unique=True)  # normalizado
+    nombre: Mapped[str] = mapped_column(String(120))
+    correo: Mapped[str] = mapped_column(String(254))
+    huella_clave: Mapped[str] = mapped_column(String(200))  # Argon2, nunca la contraseña
+    creada: Mapped[datetime] = mapped_column(DateTime)
+    estado: Mapped[str] = mapped_column(String(12))  # pendiente|aprobada|rechazada|usada|vencida
+    papel: Mapped[str | None] = mapped_column(String(20), default=None)  # arma | revisa
+    huella_codigo: Mapped[str | None] = mapped_column(String(64), default=None)  # SHA-256
+    vence: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    resuelta_por: Mapped[str] = mapped_column(String(120), default="")
+    #: G4 #5 (`ins_0016`): quién aprobó o rechazó, para comprobar al canjear que sigue activo y
+    #: administrador; nulo en pendientes o en filas anteriores a la migración.
+    resuelta_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuario.id", name=FK_SOLICITUD_RESUELTA_POR), nullable=True, default=None
+    )
 
 
 class IntentoAcceso(Base):
@@ -150,3 +185,42 @@ class ClaveApi(Base):
     creada_por: Mapped[str] = mapped_column(String(120), default="")
     ultimo_uso: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     revocada: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class Notificacion(Base):
+    """Notificaciones persistentes por persona durante 30 días (C11, `ins_0014`). C11b
+    (`ins_0015`): las que crea el servidor por un evento llevan `clave_evento`, única por persona
+    (las del front van sin clave)."""
+
+    __tablename__ = "notificacion"
+    __table_args__ = (
+        CheckConstraint(
+            "gravedad IN ('listo', 'info', 'advertencia', 'error')",
+            name="ck_notificacion_gravedad",
+        ),
+        Index("ix_notificacion_usuario_creada", "usuario_id", "creada"),
+        Index("ux_notificacion_usuario_clave", "usuario_id", "clave_evento", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id"))
+    gravedad: Mapped[str] = mapped_column(String(12))  # listo | info | advertencia | error
+    titulo: Mapped[str] = mapped_column(String(200))
+    detalle: Mapped[str] = mapped_column(String(1000), default="")
+    enlace_texto: Mapped[str] = mapped_column(String(120), default="")
+    enlace_ruta: Mapped[str] = mapped_column(String(300), default="")
+    creada: Mapped[datetime] = mapped_column(DateTime)
+    leida: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: C11b (`ins_0015`): la clave del evento que la creó; nula en las que crea el front.
+    clave_evento: Mapped[str | None] = mapped_column(String(255), default=None)
+
+
+class PreferenciaNotificacion(Base):
+    """Qué categorías de notificaciones por evento recibe cada persona (C11b, `ins_0015`). Sin
+    fila, la categoría está encendida; la lee y escribe `aplicacion/avisos_por_evento.py`."""
+
+    __tablename__ = "preferencia_notificacion"
+
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id"), primary_key=True)
+    categoria: Mapped[str] = mapped_column(String(40), primary_key=True)
+    activa: Mapped[bool] = mapped_column(Boolean)

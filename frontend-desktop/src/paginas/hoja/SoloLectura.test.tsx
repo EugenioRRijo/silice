@@ -7,7 +7,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
 import { cuerpoDeVista, preciosRespuesta, vistaPresupuesto } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import { PESTANAS } from "./logica";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 import { puedeEditarLaHoja } from "./puedeEditar";

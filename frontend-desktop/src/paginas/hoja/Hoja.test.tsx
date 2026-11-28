@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
@@ -220,13 +220,16 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     await waitFor(() => expect(llamadas("DELETE", "/v1/hoja/borradores/id-002-aaaaaaaaaa")).toHaveLength(1));
   });
 
-  test("3b-F5: el total sale en es-VE con el exacto en el title y en un texto accesible", async () => {
+  test("3b-F5: el total sale en es-VE con el exacto en el Toggletip, sin title ni región viva propia", async () => {
     servidor();
     montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    const total = await within(estado).findByTitle("2.703,856");
+    expect(await within(estado).findByText("Valor exacto: 2.703,856 USD")).toBeInTheDocument();
+    const total = estado.querySelector<HTMLElement>(".silice-hoja__total")!;
     expect(total).toHaveTextContent("2.703,86 USD");
-    expect(within(estado).getByText("Valor exacto 2.703,856")).toBeInTheDocument();
+    expect(total.hasAttribute("title")).toBe(false);
+    expect(total.querySelector("[title]")).toBeNull();
+    expect(total.hasAttribute("aria-live")).toBe(false);
     expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
   });
 
@@ -245,9 +248,8 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     });
     montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    expect(await within(estado).findByTitle("123.456.789.012.345.678.901.234.567.890,1234")).toHaveTextContent(
-      "123.456.789.012.345.678.901.234.567.890,12 USD",
-    );
+    expect(await within(estado).findByText("Valor exacto: 123.456.789.012.345.678.901.234.567.890,1234 USD")).toBeInTheDocument();
+    expect(estado.querySelector(".silice-hoja__total")).toHaveTextContent("123.456.789.012.345.678.901.234.567.890,12 USD");
   });
 
   test("3b-F5: el código de la página no convierte montos en números", () => {

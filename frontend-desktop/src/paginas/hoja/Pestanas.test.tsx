@@ -7,7 +7,7 @@ import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { atipicosRespuesta, cuerpoDeVista, preciosRespuesta, trazabilidadRespuesta, vistaPlan } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import PaginaHoja from "./pestanas";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 import { ProveedorDeLaHoja, useHojaDeLaObra } from "./ProveedorDeLaHoja";
 

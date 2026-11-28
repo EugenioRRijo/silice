@@ -1,173 +1,29 @@
-import { Button, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
-import { InlineNotification, TabList } from "../../comun/carbonEs";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useInRouterContext, useLocation, useNavigate } from "react-router";
-import type { PartidaCompuesta } from "../componer/ComponerPartida";
+import { Button } from "@carbon/react";
+import { useCallback, useContext, useState } from "react";
+import { useInRouterContext } from "react-router";
+import { AvisoDeGuardado } from "../../comun/AvisoDeGuardado";
 import { AvisoError } from "../../comun/AvisoError";
+import { InlineNotification } from "../../comun/carbonEs";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
-import { AvisoDeGuardado } from "../../comun/AvisoDeGuardado";
+import type { PartidaCompuesta } from "../componer/ComponerPartida";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
-import { SIN_VERSIONES, TITULO, esBorradorAusente, versionesOfrecidas } from "./logica";
-import type { BorradorAbierto, PestanaId, Resumen } from "./logica";
-import { CAUSA_SOLO_LECTURA } from "./logicaGuardar";
-import { FranjaDelPresupuesto } from "./FranjaDelPresupuesto";
-import { ContextoAuditoria } from "./ContextoAuditoria";
-import type { AlCrearVersion } from "./logicaVersiones";
-import type { FiltroDeAuditoria } from "./ContextoAuditoria";
-import { PestanaApu } from "./PestanaApu";
-import { PestanaAuditoria } from "./PestanaAuditoria";
-import { PestanaEquilibrio } from "./PestanaEquilibrio";
-import { PestanaEspacio } from "./PestanaEspacio";
-import { PestanaPrecios } from "./PestanaPrecios";
-import { PestanaParametros } from "./PestanaParametros";
-import { PestanaPlan } from "./PestanaPlan";
-import { PestanaPresupuesto } from "./PestanaPresupuesto";
 import { ContextoDeLaHoja, ProveedorDeLaHoja, useHojaDeLaObra } from "./ProveedorDeLaHoja";
+import { TITULO, esBorradorAusente } from "./logica";
+import { PedidoDeFocoEnLaGrilla, PedidoDesdeComponer } from "./pedidosDeLaRuta";
+import { SuperficiePresupuesto } from "./superficie/SuperficiePresupuesto";
 import { ID_DEL_TITULO } from "./useGuardadoDeLaPagina";
 import "./hoja.scss";
 
-// La Hoja de la obra (pantalla `hoja`, la sección Presupuesto): la cabecera (`FranjaDelPresupuesto`), el reparto de las
-// pestañas y el cuerpo que los junta. Desde la Tarea 3 del plan F4 el borrador es de `ProveedorDeLaHoja`, y desde la 4 también la pestaña
-// abierta. Desde la 5, la franja del paso (`FranjaDelPresupuesto`) va encima de todo y su botón es el único principal.
-// Pasa de 250 líneas porque junta tres piezas que solo se entienden juntas: la cabecera, el cuerpo con sus
-// avisos y el reparto de las pestañas (`ContenidoDePestana`); la Tarea 6 (Versiones) y la 11 (Archivos y planos) le
-// quitan lo que se va a sus secciones.
+// El Presupuesto de la obra (pantalla `hoja`, la sección Presupuesto): una sola superficie, sin pestañas (lote B1-10, ficha-b1
+// §1 y §3.4). Aquí solo se juntan el borrador y lo que lo rodea: las versiones, la oferta de retomar un borrador con cambios,
+// el aviso de «Versión guardada» y el borrador ausente. Todo lo demás (el total, las partidas, los problemas, la fila de alta)
+// es de `SuperficiePresupuesto`. Las pestañas de antes (Espacio y metrajes, APU, Plan y equilibrio, Precios y Ajustes de costo)
+// viven en la subvista «Espacio, plan y ajustes» (`pestanas.tsx`). El borrador, las versiones y los diálogos de guardar y de
+// cambiar de versión son de `ProveedorDeLaHoja`, que comparte la obra con Archivos y planos y Versiones.
 
-// Solo se monta la pestaña activa y solo cuando el borrador está abierto: así solo se pide su vista. Las que se editan no se
-// vuelven a montar con cada `rev` (perdería lo escrito; llevan `key` del borrador) y cada una vuelve a leer su vista; las de
-// solo lectura se vuelven a montar con cada cambio (llevan `llave`).
-function ContenidoDePestana({
-  pestana,
-  borrador,
-  alAusente,
-  alAceptar,
-  alRecargarBorrador,
-  alReabrir,
-  filtro,
-  alQuitarFiltro,
-  alCrearVersion,
-  pedirAgregar,
-  alAtenderAgregar,
-  partidaPedida,
-  alSoltarPartidaPedida,
-}: {
-  pestana: PestanaId;
-  borrador: BorradorAbierto | null;
-  alAusente: () => void;
-  alAceptar: (resumen: Resumen) => void;
-  alRecargarBorrador: () => Promise<void>;
-  alReabrir: () => void;
-  filtro: FiltroDeAuditoria | null;
-  alQuitarFiltro: () => void;
-  // Se creó una versión nueva (restaurar, cotizar, retirar, convertir): la página la abre.
-  alCrearVersion: AlCrearVersion;
-  // La franja pidió «Agregar la primera partida» (Tarea 5): Partidas abre su diálogo y avisa que lo atendió.
-  pedirAgregar: boolean;
-  alAtenderAgregar: () => void;
-  // La partida recién compuesta con la que se abre el diálogo (llega desde Componer), o null.
-  partidaPedida: PartidaCompuesta | null;
-  alSoltarPartidaPedida: () => void;
-}) {
-  if (borrador === null) return null;
-  const llave = `${borrador.id}-${borrador.resumen.rev}`;
-  const moneda = borrador.resumen.moneda;
-  const deEdicion = {
-    id: borrador.id,
-    base: borrador.base,
-    rev: borrador.resumen.rev,
-    alAusente,
-    alAceptar,
-    alRecargarBorrador,
-    alReabrir,
-  };
-  switch (pestana) {
-    case "espacio":
-      return <PestanaEspacio key={borrador.id} {...deEdicion} />;
-    case "partidas":
-      return (
-        <PestanaPresupuesto
-          key={borrador.id}
-          {...deEdicion}
-          pedirAgregar={pedirAgregar}
-          alAtenderAgregar={alAtenderAgregar}
-          partidaPedida={partidaPedida}
-          alSoltarPartidaPedida={alSoltarPartidaPedida}
-        />
-      );
-    case "apu":
-      return <PestanaApu key={borrador.id} {...deEdicion} moneda={moneda} />;
-    case "plan":
-      // «Plan y equilibrio» (baja 23): la matriz y la curva, y debajo el punto de equilibrio, que solo se lee.
-      return (
-        <>
-          <PestanaPlan key={borrador.id} {...deEdicion} />
-          <PestanaEquilibrio key={llave} id={borrador.id} alAusente={alAusente} />
-        </>
-      );
-    case "precios":
-      return (
-        <PestanaPrecios
-          key={llave}
-          proyecto={borrador.base.proyecto}
-          version={borrador.base.version}
-          alAusente={alAusente}
-        />
-      );
-    case "revision":
-      return <PestanaAuditoria key={llave} id={borrador.id} alAusente={alAusente} filtro={filtro} alQuitarFiltro={alQuitarFiltro} />;
-    case "ajustes":
-      return (
-        <PestanaParametros
-          key={borrador.id}
-          {...deEdicion}
-          conversion={{
-            proyecto: borrador.base.proyecto,
-            version: borrador.base.version,
-            cambios: borrador.resumen.cambios,
-            alCrearVersion,
-          }}
-        />
-      );
-  }
-}
-
-const NOTA_SOLO_LECTURA = "Está viendo este presupuesto en solo lectura.";
-
-// La partida que trae el estado de la ruta desde Componer (`{ agregarPartida: {codigo, descripcion, unidad} }`), o null si
-// el estado no la trae o no tiene esa forma.
-function partidaDelEstado(estado: unknown): PartidaCompuesta | null {
-  if (typeof estado !== "object" || estado === null || !("agregarPartida" in estado)) return null;
-  const p: unknown = estado.agregarPartida;
-  if (typeof p !== "object" || p === null) return null;
-  const { codigo, descripcion, unidad } = p as Record<string, unknown>;
-  if (typeof codigo !== "string" || codigo.trim() === "") return null;
-  return { codigo, descripcion: typeof descripcion === "string" ? descripcion : "", unidad: typeof unidad === "string" ? unidad : "" };
-}
-
-// Atiende «Agregar X al presupuesto» de Componer: lee la partida del estado de la ruta, la pasa a quien la pide y limpia el
-// estado (volver a montar la página o recargarla no vuelve a abrir el diálogo). Va aparte porque solo existe dentro de un
-// router: la Hoja también se monta sin él (pruebas de pestañas sueltas).
-function PedidoDesdeComponer({ alPedir }: { alPedir: (partida: PartidaCompuesta) => void }) {
-  const ubicacion = useLocation();
-  const navegar = useNavigate();
-  useEffect(() => {
-    const pedida = partidaDelEstado(ubicacion.state);
-    if (pedida === null) return;
-    void navegar(`${ubicacion.pathname}${ubicacion.search}`, { replace: true, state: null });
-    alPedir(pedida);
-  }, [ubicacion.state, ubicacion.pathname, ubicacion.search, navegar, alPedir]);
-  return null;
-}
-
-// El cuerpo de la Hoja: lo que se ve de la obra abierta (la oferta de retomar, la cabecera y las pestañas). La
-// versión se abre desde Versiones («Abrir», baja 9 de la Tarea 6) y el estado del borrador dice cuál es. El borrador, las
-// versiones y los diálogos de guardar y de cambiar de versión son de `ProveedorDeLaHoja` (Tarea 3 del plan F4), que comparte
-// la obra con Archivos y planos y Versiones.
-const SECCIONES = "Secciones del presupuesto";
-
-function CuerpoDeLaHoja() {
+function CuerpoDeLaSuperficie() {
   const {
     proyecto,
     nombreProyecto,
@@ -186,55 +42,16 @@ function CuerpoDeLaHoja() {
     reabrirNuevo,
     descartarCambios,
     abrirGuardado,
-    alCrearVersion,
     exito,
     quitarExito,
     inerte,
-    pestana,
-    irAPestana,
-    visibles,
   } = useHojaDeLaObra();
-  const ofrecidas = versiones.estado === "listo" ? versionesOfrecidas(versiones.datos.versiones) : [];
-
-  // «Ver en Revisión» desde el Estado de una fila: va a esa pestaña con el filtro de la fila. La pestaña abierta es del
-  // proveedor (Tarea 4): sobrevive al pasar a Archivos y planos o a Versiones.
-  const [filtro, setFiltro] = useState<FiltroDeAuditoria | null>(null);
-  const verEnRevision = (f: FiltroDeAuditoria) => {
-    setFiltro(f);
-    irAPestana("revision");
-  };
-  // La franja pidió agregar la primera partida: se va a «Partidas» y su pestaña abre el diálogo (Tarea 5).
-  const [pedirAgregar, setPedirAgregar] = useState(false);
-  const alAtenderAgregar = () => setPedirAgregar(false);
-  // La partida con la que se abre ese diálogo, si llegó desde Componer («Agregar X al presupuesto», ficha de Componer,
-  // lote 1). El diálogo la toma al abrirse y se suelta al cerrarlo.
+  // La partida con que se llega desde la subvista Componer («Agregar X al presupuesto»): la fila de alta la toma y avisa.
   const [partidaPedida, setPartidaPedida] = useState<PartidaCompuesta | null>(null);
-  const soltarPartidaPedida = () => setPartidaPedida(null);
-  const pedirDesdeComponer = useCallback(
-    (partida: PartidaCompuesta) => {
-      setPartidaPedida(partida);
-      setFiltro(null);
-      irAPestana("partidas");
-      setPedirAgregar(true);
-    },
-    [irAPestana],
-  );
+  // «Ver en el presupuesto» de Archivos y planos: el foco va a la grilla en cuanto llega la vista.
+  const [enfocarGrilla, setEnfocarGrilla] = useState(false);
+  const pedirFocoEnLaGrilla = useCallback(() => setEnfocarGrilla(true), []);
   const enUnRouter = useInRouterContext();
-  const irAPartidas = () => {
-    setFiltro(null);
-    irAPestana("partidas");
-  };
-  // «Hacer una versión nueva» (franja de una versión devuelta) lleva a «Partidas» y le pasa el foco: ya en ella, el botón no
-  // daba respuesta (pasada de navegador del cierre de F4, H8). La pestaña queda a la vista, con la tabla debajo.
-  const focoEnPartidas = useRef(false);
-  const [pedidoDeFoco, setPedidoDeFoco] = useState(0);
-  useEffect(() => {
-    if (!focoEnPartidas.current || pestana !== "partidas") return;
-    focoEnPartidas.current = false;
-    document
-      .querySelector<HTMLElement>(`[role="tablist"][aria-label="${SECCIONES}"] [role="tab"][aria-selected="true"]`)
-      ?.focus();
-  }, [pedidoDeFoco, pestana]);
 
   if (versiones.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las versiones" />;
   if (versiones.estado !== "listo") return <AvisoError error={versiones.error} />;
@@ -247,12 +64,12 @@ function CuerpoDeLaHoja() {
     );
   }
 
+  const borrador = estado.estado === "listo" ? estado.borrador : null;
   return (
     <div className="silice-hoja__contenido" inert={inerte}>
-      {enUnRouter && <PedidoDesdeComponer alPedir={pedirDesdeComponer} />}
-      {exito !== null && exito.proyecto === proyecto && (
-        <AvisoDeGuardado exito={exito} alCerrar={quitarExito} />
-      )}
+      {enUnRouter && <PedidoDesdeComponer alPedir={setPartidaPedida} />}
+      {enUnRouter && <PedidoDeFocoEnLaGrilla alPedir={pedirFocoEnLaGrilla} />}
+      {exito !== null && exito.proyecto === proyecto && <AvisoDeGuardado exito={exito} alCerrar={quitarExito} />}
       {ofrecidos.length > 0 && (
         <OfertaDeRetomarVista
           proyecto={nombreProyecto ?? proyecto}
@@ -263,14 +80,7 @@ function CuerpoDeLaHoja() {
         />
       )}
       {falloAlDescartar !== null && <AvisoError error={falloAlDescartar} titulo="No se pudo descartar el borrador" />}
-      {ofrecidos.length === 0 && ofrecidas.length === 0 && (
-        <EstadoVacio
-          titulo={SIN_VERSIONES}
-          descripcion="Agregue las partidas en la pestaña «Partidas» (o, en una obra de instalaciones, describa el espacio o importe un plano en «Archivos y planos») y guarde la primera versión con «Guardar primera versión…»."
-        />
-      )}
 
-      {estado.estado === "abriendo" && <EsqueletoPagina etiqueta="Abriendo el borrador" />}
       {estado.estado === "error" &&
         (esBorradorAusente(estado.error) ? (
           <div className="silice-hoja__ausente">
@@ -282,88 +92,26 @@ function CuerpoDeLaHoja() {
         ) : existente !== null && ofrecidos.length > 0 ? null : (
           <AvisoError error={estado.error} titulo="No se pudo abrir la hoja" />
         ))}
-      {estado.estado === "listo" && (
-        <>
-          {estado.borrador.instantanea.mensaje && (
-            <InlineNotification
-              kind="info"
-              lowContrast
-              hideCloseButton
-              title="Instantánea de la versión"
-              subtitle={estado.borrador.instantanea.mensaje}
-            />
-          )}
-          {/* Cabecera compacta: la línea de estado (con la aprobación de la versión abierta, Tarea 19) y la franja de acciones
-              (el paso, con el único botón principal, y «Descargar Excel»). */}
-          <FranjaDelPresupuesto
-            key={`${proyecto}|${estado.borrador.base.version ?? ""}`}
-            proyecto={proyecto}
-            borrador={estado.borrador}
-            puedeEditar={puedeEditar}
-            alAgregarPartida={() => {
-              irAPartidas();
-              setPedirAgregar(true);
-            }}
-            alGuardar={abrirGuardado}
-            alVerRevision={() => {
-              setFiltro(null);
-              irAPestana("revision");
-            }}
-            alHacerVersionNueva={() => {
-              irAPartidas();
-              focoEnPartidas.current = true;
-              setPedidoDeFoco((n) => n + 1);
-            }}
-            alDescartar={() => void descartarCambios()}
-          />
-        </>
-      )}
 
-      {!puedeEditar && (
-        <p role="note" className="silice-hoja__solo-lectura cds--type-body-compact-01">
-          {NOTA_SOLO_LECTURA}
-          {estado.estado === "listo" && estado.borrador.base.solo_lectura && ` Esta versión no se puede guardar: ${CAUSA_SOLO_LECTURA}.`}
-        </p>
+      {borrador?.instantanea.mensaje && (
+        <InlineNotification kind="info" lowContrast hideCloseButton title="Instantánea de la versión" subtitle={borrador.instantanea.mensaje} />
       )}
-      {estado.estado === "listo" && (
-        <ContextoAuditoria.Provider value={verEnRevision}>
-          <Tabs
-            selectedIndex={Math.max(0, visibles.findIndex((p) => p.id === pestana))}
-            onChange={({ selectedIndex }) => {
-              setFiltro(null);
-              irAPestana(visibles[selectedIndex]!.id);
-            }}
-          >
-            <TabList aria-label={SECCIONES} contained>
-              {visibles.map((p) => (
-                <Tab key={p.id}>{p.titulo}</Tab>
-              ))}
-            </TabList>
-            <TabPanels>
-              {visibles.map((p) => (
-                <TabPanel key={p.id}>
-                  {p.id === pestana && (
-                    <ContenidoDePestana
-                      pestana={p.id}
-                      borrador={estado.borrador}
-                      alAusente={refrescar}
-                      alAceptar={aplicar}
-                      alRecargarBorrador={refrescar}
-                      alReabrir={reabrirNuevo}
-                      filtro={filtro}
-                      alQuitarFiltro={() => setFiltro(null)}
-                      alCrearVersion={alCrearVersion}
-                      pedirAgregar={pedirAgregar}
-                      alAtenderAgregar={alAtenderAgregar}
-                      partidaPedida={partidaPedida}
-                      alSoltarPartidaPedida={soltarPartidaPedida}
-                    />
-                  )}
-                </TabPanel>
-              ))}
-            </TabPanels>
-          </Tabs>
-        </ContextoAuditoria.Provider>
+      {estado.estado !== "error" && (
+        <SuperficiePresupuesto
+          proyecto={proyecto}
+          borrador={borrador}
+          puedeEditar={puedeEditar}
+          alAusente={refrescar}
+          alAceptar={aplicar}
+          alRecargarBorrador={refrescar}
+          alGuardar={abrirGuardado}
+          alDescartar={() => void descartarCambios()}
+          alReabrir={reabrirNuevo}
+          partidaInicial={partidaPedida}
+          alConsumirPartidaInicial={() => setPartidaPedida(null)}
+          enfocarGrilla={enfocarGrilla}
+          alEnfocarGrilla={() => setEnfocarGrilla(false)}
+        />
       )}
       {/* Punto de acoplamiento del asistente de IA (diseño §2.10): vacío y oculto hasta que exista. */}
       <aside aria-label="Asistente de IA" hidden />
@@ -371,9 +119,9 @@ function CuerpoDeLaHoja() {
   );
 }
 
-// Dentro de una obra, EspacioDeObra ya montó `ProveedorDeLaHoja` alrededor de la sección y la Hoja usa ese: así el borrador
-// sigue abierto al pasar a Archivos y planos o a Versiones. Montada sola (las pruebas de la Hoja, o una ruta vieja sin
-// obra) no hay ninguno encima y monta el suyo. Nunca hay dos: si hay uno de la obra, manda.
+// Dentro de una obra, EspacioDeObra ya montó `ProveedorDeLaHoja` alrededor de la sección y la superficie usa ese: así el
+// borrador sigue abierto al pasar a Archivos y planos o a Versiones. Montada sola (las pruebas, o una ruta vieja sin obra) no
+// hay ninguno encima y monta el suyo. Nunca hay dos: si hay uno de la obra, manda.
 export default function PaginaHoja() {
   const { proyecto } = useAplicacion();
   const deLaObra = useContext(ContextoDeLaHoja);
@@ -385,10 +133,10 @@ export default function PaginaHoja() {
       {proyecto === null ? (
         <EstadoVacio titulo="Elija una obra" descripcion="Abra una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K." />
       ) : deLaObra !== null ? (
-        <CuerpoDeLaHoja />
+        <CuerpoDeLaSuperficie />
       ) : (
         <ProveedorDeLaHoja>
-          <CuerpoDeLaHoja />
+          <CuerpoDeLaSuperficie />
         </ProveedorDeLaHoja>
       )}
     </section>
