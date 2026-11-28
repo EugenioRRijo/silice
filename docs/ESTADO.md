@@ -119,7 +119,7 @@ instalador con huella SHA-256 firmada.
 
 | PR o rama | Qué trae | Estado |
 |---|---|---|
-| `feature/front-b1` | Reestructuración del front («Papel y resaltador», marco, Presupuesto nuevo B1, Auditar un libro B2, registro con código C9, notificaciones C11/C11b y entrega, actividad C10/C10b, gráficos C7/C7b y accesibilidad) y enmienda del ensayo de detección (§3) | **Aún no está en `main`**; en revisión en el navegador (2026-11-27); la fusión del PR la decide Eugenio |
+| `feature/front-b1` | Reestructuración del front («Papel y resaltador», marco, Presupuesto nuevo B1, Auditar un libro B2, registro con código C9, notificaciones C11/C11b y entrega, actividad C10/C10b, gráficos C7/C7b y accesibilidad) y enmienda del ensayo de detección (§3) | **Aún no está en `main`**; plan de cierre T1 a T12 hecho (2026-11-28), PR #163 listo para revisar; la fusión la decide Eugenio |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -428,6 +428,13 @@ subir nada.
       cita con el commit de las herramientas con que se obtuvo.
     - **Fusión del PR de `feature/front-b1` a `main`:** la rama no se fusiona hasta que Eugenio lo decida (`main` sigue
       sin cambios hasta el merge final).
+    - **Del plan de cierre (2026-11-28):**
+      - **Quién puede fijar o quitar la fecha de entrega de una obra:** hoy, cualquier cuenta que arma (quien solo revisa
+        no puede); desde T5 cada cambio deja rastro con el valor anterior. Recomendación: dejarlo así.
+      - **Tarjetas de la prueba de comprensión** ([T8](tesis/2026-11-28-tarjetas-comprension-alertas.md)): ratificar las
+        frases de introducción, la clave de corrección y las preguntas marcadas «propuesta».
+      - **Dónde se ve el cliente de la obra (E3) y si los avisos de 3 minutos se agrupan (E4):** en la revisión visual
+        los avisos apilados taparon la campanita.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
@@ -516,9 +523,32 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
       permite la ficha (§5, orden de recorte). Durante la medición conviven los dos caminos: la grilla nueva en
       `…/presupuesto` y las pestañas de antes en `…/presupuesto/pestanas`. Al retomarlo, la tabla de Gemini de qué
       prueba vieja cubre la superficie sirve de punto de partida.
-    - **Deuda del inspector de la partida (B1-6):** «Quitar» espera los envíos pendientes de cantidades
-      (`esperarEnvios`) pero no se cancela si el último cambio dio 422 ni se encola con las escrituras de
-      `useCantidadesDeLaSuperficie`, como hacía `accionarEnOrden` en la vista por pestañas.
+    - **Plan de cierre hecho (2026-11-28), T1 a T12, cada tarea en verde y con su commit:**
+      - T1 (`402b1846`): «Quitar» del inspector va en la cola de las cantidades (`accionarEnOrden`) y no cierra si la
+        cola falla. Queda: un 422 viejo, de una petición que ya no está pendiente, no cancela «Quitar» (arreglarlo pide
+        una marca en `useEdicionDeSeccion` para todas las secciones).
+      - T2 (`25e6a02a`, [acta](bitacora/2026-11-28-recorrido-medicion.md)): recorrido de medición completo sin
+        regresiones de axe; la lista de hallazgos vacía se alcanza con el teclado.
+      - T3 (`beaa5462` y siguientes): barra de arriba sin recortes de la carpeta ni del buscador, Libro de la empresa
+        sin solapes y 9 defectos de contraste del modo oscuro. Sin ver: los gráficos de Riesgo, Mercado histórico y
+        Producción (la demo no los alcanza); y el aspecto de «Costos y producción» en oscuro, que parece intencional.
+      - T4 (`149b950b`, `866c65a3`, [acta](bitacora/2026-11-28-mutantes-t4.md)): 103 mutantes; 45 sobrevivientes con
+        prueba nueva, 5 equivalentes y dos defectos arreglados (notificación perdida tras un corte de red, foco tras el
+        422 de la fecha de entrega).
+      - T5 (`8e73803e`): revisión de seguridad de las rutas nuevas, «aprobado con cambios»; los 5 cambios hechos (el
+        medio: `GET /v1/notificaciones` ya no bloquea la instalación mientras lee la carpeta). El 6 (texto de una
+        carpeta subida a mano en un aviso) queda aceptado como riesgo.
+      - T6 (`309a31b9`): «No se pudo leer 1 carpeta» era la siembra (Uvicorn sin el lanzador). Queda, de riesgo bajo:
+        si la carpeta de la empresa se borra con el servidor encendido, `obtener_motor` la crea en su sitio y la
+        cartera la omite unos segundos (arreglo de raíz: crear en un temporal y renombrar, en `operacion/base_datos.py`).
+      - T7 (`4d04e8d3`), T8 (`4d700d6c`, [tarjetas](tesis/2026-11-28-tarjetas-comprension-alertas.md)), T9
+        (`1af92e7a`, manual), T10 (`9fc3a214`, ERS RF-215 a RF-224, arquitectura y modelo de datos) y T11 (rama
+        `archivo/b1-11-intento` en GitHub, sin fusionar).
+      - T12 (2026-11-28): Python 14.536 aprobadas; front 392 archivos y 6.055 pruebas; `npm run lint`, `muerto`,
+        `duplicado`, `build` y `dist` con salida 0; recorrido funcional 33 de 33 sobre la compilación nueva. El PR #163
+        pasa a «listo para revisar».
+      - Lo que la lectura del manual dejó como deuda: las notificaciones del servidor se traen al entrar (o con F5), no
+        en vivo; y Sílice no avisa al administrador de una solicitud de cuenta nueva.
     - **B1-12 (medir y contener la grilla):** recortable; solo se aplica si la medición en Chromium con 500 filas supera
       los 200 ms al editar una celda
       ([ficha B1 §4 y §5](especificaciones/2026-11-26-cara-papel-y-resaltador/b1/ficha-b1.md)).

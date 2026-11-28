@@ -92,6 +92,15 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   lectores de pantalla. Backlog de UX en `docs/planes/2026-11-22-backlog-ux.md`.
 
 ### Corregido
+- **Cierre de la reestructuración del front (2026-11-28; plan de cierre T1 a T12).** «Quitar del presupuesto» del
+  inspector espera su turno con las cantidades; «Últimas auditorías guardadas» muestra la auditoría recién hecha; en
+  Cuenta › Solicitudes una solicitud «Aprobada» se puede volver a aprobar o rechazar; la lista de hallazgos vacía se
+  alcanza con el teclado; la barra de arriba ya no recorta la carpeta ni el atajo del buscador; en el Libro de la empresa
+  la ayuda de la fecha no se monta sobre otro texto; el modo oscuro corrige nueve contrastes (botón «Nueva obra»,
+  contadores, cabeceras, pestañas y avisos); una notificación que no se pudo enviar por un corte de red se vuelve a
+  enviar; el foco vuelve a la fecha de entrega cuando el servidor la rechaza. En el servidor, leer las notificaciones ya
+  no bloquea a las demás personas, cada cambio de la fecha de entrega deja rastro y la demostración prepara la carpeta de
+  la empresa antes de servir. El manual, la ERS (RF-215 a RF-224), la arquitectura y el modelo de datos quedan al día.
 - **Accesibilidad, contraste del foco a 3:1 en claro y oscuro y movimiento reducido** (2026-11-26; decisión de Eugenio
   sobre la guía de movimiento). Los tokens de la capa editorial anterior pasan a leer de la cara nueva con `light-dark()`
   para que el modo oscuro alcance toda la interfaz con contraste AA medido. El foco del teclado usa el token nuevo
