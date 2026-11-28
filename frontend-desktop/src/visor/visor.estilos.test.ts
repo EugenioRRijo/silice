@@ -88,11 +88,35 @@ describe("estilos del visor", () => {
     expect(textos).toMatch(/text-overflow:\s*ellipsis/);
   });
 
-  test("la barra de fecha y archivo es una sola de 48 px", () => {
+  // Recorrido de medición del 2026-11-28 (1366 px): el texto de ayuda de «Fecha de la revisión» quedaba en una columna de
+  // 142 px (la del campo en línea de Carbon), salía de la barra de 48 px y se montaba sobre la explicación del PDF; además
+  // la explicación del PDF tenía renglón propio y la lista de hallazgos bajaba a mitad de la ventana.
+  test("la barra de fecha y archivo mide 48 px como mínimo y parte en renglones (no recorta ni se monta sobre lo de arriba)", () => {
     const barra = regla(".visor__barra");
-    expect(barra).toMatch(/block-size:\s*3rem/);
-    expect(barra).toMatch(/flex-wrap:\s*nowrap/);
+    expect(barra).toMatch(/min-block-size:\s*3rem/);
+    expect(barra).not.toMatch(/(^|[\s;])block-size:\s*3rem/);
+    expect(barra).toMatch(/flex-wrap:\s*wrap/);
     expect(barra).toMatch(/align-items:\s*center/);
+  });
+
+  test("el texto de ayuda de la fecha ocupa el hueco que queda al lado del campo, no una columna de 142 px", () => {
+    const fecha = regla(".visor__fecha");
+    expect(fecha).toMatch(/inline-size:\s*auto/);
+    expect(fecha).toMatch(/min-inline-size:\s*0/);
+    const ayuda = regla(".visor__fecha .cds--text-input__label-helper-wrapper:last-of-type");
+    expect(ayuda).toMatch(/max-inline-size:\s*none/);
+    expect(ayuda).toMatch(/min-inline-size:\s*0/);
+  });
+
+  test("«Descargar PDF» y su explicación comparten renglón: la explicación a la izquierda del botón", () => {
+    expect(regla(".visor__descarga")).toMatch(/flex-direction:\s*row/);
+    expect(regla(".visor__descarga-nota")).toMatch(/order:\s*-1/);
+  });
+
+  test("el título, la explicación y la barra del Libro de la empresa llevan el margen lateral de las demás pantallas (1,75 rem)", () => {
+    expect(regla(".silice-pagina-libro > h1")).toMatch(/padding:\s*0\.5rem 1\.75rem 0\.75rem/);
+    expect(regla(".silice-pagina-libro > p")).toMatch(/padding-inline:\s*1\.75rem/);
+    expect(regla(".silice-pagina-libro .visor__barra")).toMatch(/margin-inline:\s*1\.75rem/);
   });
 
   test("solo el cuerpo de la lista desplaza: el encabezado y los filtros quedan fijos", () => {

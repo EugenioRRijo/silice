@@ -107,25 +107,30 @@ export function BarraSuperior({
       </div>
 
       <div className="silice-marco-barra__der">
-        <Button
-          type="button"
-          kind="tertiary"
-          size="sm"
-          renderIcon={Add}
-          className="silice-boton-nueva-obra"
-          onClick={abrirNuevaObra}
-        >
-          Nueva obra
-        </Button>
-        <button
-          type="button"
-          className="silice-marco-barra__buscar"
-          aria-keyshortcuts="Control+K"
-          onClick={alAbrirBuscador}
-        >
-          <Search size={16} aria-hidden="true" />
-          <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
-        </button>
+        {/* La ranura recibe lo que sobra de la barra y mide su propio ancho: si caben «Nueva obra» y el texto completo del
+            buscador, el buscador lo muestra; si no, queda en su ícono (consulta de contenedor en BarraSuperior.scss).
+            Nunca corta el texto. «Nueva obra» va dentro para que las dos piezas queden pegadas a la derecha. */}
+        <div className="silice-marco-barra__buscar-ranura">
+          <Button
+            type="button"
+            kind="tertiary"
+            size="sm"
+            renderIcon={Add}
+            className="silice-boton-nueva-obra"
+            onClick={abrirNuevaObra}
+          >
+            Nueva obra
+          </Button>
+          <button
+            type="button"
+            className="silice-marco-barra__buscar"
+            aria-keyshortcuts="Control+K"
+            onClick={alAbrirBuscador}
+          >
+            <Search size={16} aria-hidden="true" />
+            <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
+          </button>
+        </div>
         {extra}
         <div className="silice-cuenta">
           <Link

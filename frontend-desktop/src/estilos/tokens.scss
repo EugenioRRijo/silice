@@ -50,6 +50,7 @@
   --silice-gravedad-advertencia-borde: light-dark(#A67308, #B08428);
   --silice-gravedad-error-fondo: light-dark(#FDF0EE, #2D1917);
   --silice-gravedad-error-borde: light-dark(#C65347, #C86057);
+  --silice-gravedad-info-fondo: light-dark(#EDF5FF, #141F2E);
   --silice-borde-fuerte: light-dark(#766D61, #8A847A);
   --silice-carbon-profundo: light-dark(#171410, #0E0D0B);
   --silice-tinta-sobre-acento: light-dark(#1F1B16, #1F1B16);
@@ -90,7 +91,8 @@
 
   // Alias propios de un solo salto hacia tokens primarios de la cara (cero ciclos con --cds-*).
   --silice-lateral-activo: var(--silice-alzado);
-  --silice-contador-numero: var(--silice-marco);
+  // La tinta del texto: en oscuro el marco es del color del lateral y el numero de cada obra no se veia (T3, 2026-11-28).
+  --silice-contador-numero: var(--silice-t1);
   --silice-contador-fondo: var(--silice-lateral);
   --silice-texto: var(--silice-t1);
   --silice-texto-secundario: var(--silice-t2);
@@ -137,6 +139,25 @@ $oscurecido-pulsado: 70%;
   --cds-link-primary-hover: var(--silice-complementario);
   --cds-background-hover: var(--silice-alzado);
   --cds-layer-hover-01: var(--silice-alzado);
+  // Carbon trae grises y pasteles fijos para las cabeceras de tabla y las pestanas con fondo (layer-accent), las filas
+  // elegidas, los avisos, el texto de ayuda y el desactivado: en oscuro daban texto claro sobre #e0e0e0 o sobre un pastel
+  // (1,1:1). Cada uno sigue a un token de la cara con su par claro y oscuro (T3, 2026-11-28).
+  --cds-layer-accent-01: var(--silice-alzado);
+  --cds-layer-accent-hover-01: color-mix(in srgb, var(--silice-alzado) 90%, var(--silice-t1));
+  --cds-layer-accent-active-01: color-mix(in srgb, var(--silice-alzado) 80%, var(--silice-t1));
+  --cds-layer-selected-01: var(--silice-resaltador);
+  --cds-layer-accent-02: color-mix(in srgb, var(--silice-alzado) 92%, var(--silice-t1));
+  --cds-layer-accent-03: color-mix(in srgb, var(--silice-alzado) 92%, var(--silice-t1));
+  --cds-layer-selected-02: color-mix(in srgb, var(--silice-resaltador) 92%, var(--silice-t1));
+  --cds-layer-selected-03: color-mix(in srgb, var(--silice-resaltador) 92%, var(--silice-t1));
+  --cds-link-secondary: var(--silice-complementario);
+  --cds-layer-selected-hover-01: color-mix(in srgb, var(--silice-resaltador) 90%, var(--silice-t1));
+  --cds-text-helper: var(--silice-t2);
+  --cds-text-disabled: light-dark(rgba(31, 27, 22, 0.4), rgba(239, 233, 222, 0.4));
+  --cds-notification-background-error: var(--silice-gravedad-error-fondo);
+  --cds-notification-background-success: var(--silice-gravedad-ok-fondo);
+  --cds-notification-background-warning: var(--silice-gravedad-advertencia-fondo);
+  --cds-notification-background-info: var(--silice-gravedad-info-fondo);
   --cds-border-interactive: var(--silice-complementario);
   --cds-button-tertiary: var(--silice-complementario);
   --cds-button-tertiary-hover: var(--silice-complementario);

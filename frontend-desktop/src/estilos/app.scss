@@ -55,6 +55,8 @@ body [class*="cds--"]:not(svg, svg *) {
   max-inline-size: 38rem;
   padding: 2rem 1.25rem;
   margin-block-start: 3rem;
+  // Centrada en la ventana (T3, 2026-11-28): «Crear una cuenta» y «Tengo un código» quedaban pegadas al borde izquierdo.
+  margin-inline: auto;
 }
 
 .silice-entrada--dividida {

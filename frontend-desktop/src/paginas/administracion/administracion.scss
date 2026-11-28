@@ -67,9 +67,11 @@
   gap: 0.5rem;
 }
 
-// Detalles e IP largos (un detalle puede traer una cadena sin espacios) no ensanchan la pagina.
+// Detalles e IP largos (un detalle puede traer una cadena sin espacios) no ensanchan la pagina: la tabla desplaza dentro
+// de su caja. `break-word` y no `anywhere`: con `anywhere` el ancho minimo de una celda es una letra y el navegador
+// partia «Pendiente» en «Pendient / e» y las fechas en dos renglones (revision visual T3, 2026-11-28).
 .silice-adm__tabla td {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 // Confirmacion con comportamiento de dialogo. Solo desactivar es rojo (DESIGN.md: dos semanticas de color).

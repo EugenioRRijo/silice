@@ -227,6 +227,14 @@ describe("BarraSuperior: buscador", () => {
     expect(boton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
+  it("el botón va en una ranura que mide su ancho: si no cabe el texto completo queda en su ícono (T3, 2026-11-28)", () => {
+    pintar();
+    const boton = screen.getByRole("button", { name: TEXTO_BUSCAR });
+    expect(boton.parentElement).toHaveClass("silice-marco-barra__buscar-ranura");
+    // «Nueva obra» comparte la ranura: las dos piezas quedan pegadas a la derecha y la consulta mide el conjunto.
+    expect(boton.parentElement).toContainElement(screen.getByRole("button", { name: "Nueva obra" }));
+  });
+
   it.each(["plaintext-only", "", "true"])(
     "Ctrl+K sobre el propio destino con contenteditable=\"%s\" no lo llama",
     (valor) => {

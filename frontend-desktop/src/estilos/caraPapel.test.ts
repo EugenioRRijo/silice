@@ -140,3 +140,77 @@ describe("el foco del teclado se ve en claro y en oscuro", () => {
     expect(contraste(focoOscuro, fondoOscuro)).toBeGreaterThanOrEqual(3);
   });
 });
+
+// Revisión visual en claro y oscuro (T3 del plan de cierre, 2026-11-28): Carbon trae grises y pasteles fijos para sus
+// cabeceras de tabla, pestañas con fondo, filas elegidas, avisos y textos de ayuda. En oscuro daban texto claro sobre
+// #e0e0e0 (1,1:1) o sobre un pastel (1,1:1). Cada uno sigue ahora a un token de la cara, que tiene su par claro y oscuro.
+describe("Carbon no deja grises ni pasteles fijos en el modo oscuro", () => {
+  test.each([
+    ["--cds-layer-accent-01", "--silice-alzado"],
+    ["--cds-layer-selected-01", "--silice-resaltador"],
+    ["--cds-link-secondary", "--silice-complementario"],
+    ["--cds-text-helper", "--silice-t2"],
+    ["--cds-notification-background-error", "--silice-gravedad-error-fondo"],
+    ["--cds-notification-background-success", "--silice-gravedad-ok-fondo"],
+    ["--cds-notification-background-warning", "--silice-gravedad-advertencia-fondo"],
+    ["--cds-notification-background-info", "--silice-gravedad-info-fondo"],
+  ])("Carbon lee %s de %s", (carbon, silice) => {
+    expect(tokens()).toMatch(new RegExp(`${escapar(carbon)}:\\s*var\\(${escapar(silice)}\\)`));
+  });
+
+  // En una capa de nivel dos (la Cuenta, los diálogos) Carbon lee el sufijo -02 y -03: sin ellos las cabeceras de tabla y las
+  // pestañas con fondo de Cuentas y permisos, Empresa y Carpetas seguían en #e0e0e0.
+  test.each(["--cds-layer-accent-02", "--cds-layer-accent-03", "--cds-layer-selected-02", "--cds-layer-selected-03"])(
+    "%s también sigue a la cara (capas anidadas)",
+    (carbon) => {
+      expect(tokens()).toMatch(new RegExp(`${escapar(carbon)}:\\s*color-mix\\(in srgb, var\\(--silice-(alzado|resaltador)\\)`));
+    },
+  );
+
+  test("el texto desactivado tiene su par claro y oscuro (el rgba(22,22,22,.25) de Carbon no se lee sobre el papel oscuro)", () => {
+    expect(tokens()).toMatch(/--cds-text-disabled:\s*light-dark\(/);
+  });
+
+  test("el número del contador de la barra lateral es la tinta del texto, no el marco (que en oscuro es el color del lateral)", () => {
+    expect(tokens()).toMatch(/--silice-contador-numero:\s*var\(--silice-t1\)/);
+  });
+
+  describe("contraste del texto sobre esas superficies (WCAG 1.4.3, 4,5:1)", () => {
+    const par = (token: string): [string, string] => {
+      const m = new RegExp(`${escapar(token)}:\\s*light-dark\\((#[0-9a-fA-F]{6}),\\s*(#[0-9a-fA-F]{6})\\)`).exec(tokens());
+      expect(m, `${token} no es un light-dark(#claro, #oscuro)`).not.toBeNull();
+      return [m![1]!, m![2]!];
+    };
+    const lum = (hex: string) => {
+      const c = [0, 1, 2].map((i) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+    };
+    const contraste = (a: string, b: string) => {
+      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+      return (x! + 0.05) / (y! + 0.05);
+    };
+    test.each([
+      "--silice-gravedad-info-fondo",
+      "--silice-gravedad-error-fondo",
+      "--silice-gravedad-ok-fondo",
+      "--silice-gravedad-advertencia-fondo",
+      "--silice-alzado",
+      "--silice-resaltador",
+    ])("la tinta (--silice-t1) se lee sobre %s en claro y en oscuro", (fondo) => {
+      const [t1Claro, t1Oscuro] = par("--silice-t1");
+      const [fClaro, fOscuro] = par(fondo);
+      expect(contraste(t1Claro, fClaro)).toBeGreaterThanOrEqual(4.5);
+      expect(contraste(t1Oscuro, fOscuro)).toBeGreaterThanOrEqual(4.5);
+    });
+
+    test.each(["--silice-hoja", "--silice-alzado", "--silice-resaltador"])(
+      "el texto de ayuda (--silice-t2) se lee sobre %s en claro y en oscuro",
+      (fondo) => {
+        const [t2Claro, t2Oscuro] = par("--silice-t2");
+        const [fClaro, fOscuro] = par(fondo);
+        expect(contraste(t2Claro, fClaro)).toBeGreaterThanOrEqual(4.5);
+        expect(contraste(t2Oscuro, fOscuro)).toBeGreaterThanOrEqual(4.5);
+      },
+    );
+  });
+});

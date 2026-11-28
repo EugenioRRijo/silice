@@ -523,13 +523,16 @@ describe("BarraLateral: Nueva obra", () => {
     const activo = /&:active\s*\{([^}]*)\}/.exec(estilos.slice(estilos.indexOf(".silice-marco-boton-principal")))?.[1] ?? "";
     expect(activo).toContain("background-color: var(--cds-button-primary-active)");
     expect(regla).not.toMatch(/color-mix/);
-    expect(regla).toMatch(/(^|[\s;])color: var\(--cds-text-on-color\)/);
+    // El texto va en la hoja, como el botón principal de Carbon (botones.scss): el relleno es el complementario, que en
+    // oscuro es casi blanco, y --cds-text-on-color (blanco fijo) daba 1,2:1 (T3, 2026-11-28).
+    expect(regla).toMatch(/(^|[\s;])color: var\(--silice-hoja\)/);
+    expect(regla).not.toContain("--cds-text-on-color");
     expect(regla).toMatch(/font-weight: 600/);
     expect(regla).toMatch(/block-size: 2\.5rem/);
     expect(regla).toMatch(/inline-size: 100%/);
     // Foco: contorno blanco hacia dentro; el del marco no se vería sobre el complementario (en el neutro es el mismo color).
     const foco = /&:focus-visible\s*\{([^}]*)\}/.exec(estilos.slice(estilos.indexOf(".silice-marco-boton-principal")))?.[1] ?? "";
-    expect(foco).toContain("outline: 2px solid var(--cds-text-on-color)");
+    expect(foco).toContain("outline: 2px solid var(--silice-hoja)");
     expect(foco).toContain("outline-offset: -4px");
     expect(foco).not.toContain("--silice-marco");
     expect(estilos).toContain("background-color: var(--silice-lateral)");
