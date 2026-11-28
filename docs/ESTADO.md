@@ -500,11 +500,15 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
    (migración `caso_0023_riesgo_mapa`). Queda como mejora, si Eugenio quiere ver más movimiento en Riesgo, una obra aparte para él (hoy la reserva de la demo es pequeña, unos 74 USD, para no
    desequilibrar Control).
 10. **Cierre de `feature/front-b1` y camino a `medicion-v1` (2026-11-27):**
-    - **Revisión en el navegador y recorrido funcional de botones (en curso el 2026-11-27):** el recorrido funcional en
-      Playwright (`scripts/recorrido_ux_playwright.py --funcional`) ejecuta la acción principal de las 33 pantallas con la
-      siembra ficticia; el 2026-11-27 mostró tres defectos del marco (la lista de obras de la barra lateral no se ve, el
-      diálogo «Nueva obra» no aparece y la barra de estado corta el contenido), en corrección, y el guion se está poniendo
-      al día con el marco nuevo ([plan](planes/2026-11-26-plan-integracion-cara.md)).
+    - **Recorrido funcional de botones: 33 de 33 (2026-11-27).** `scripts/recorrido_ux_playwright.py --funcional`
+      ejecuta la acción principal de las 33 pantallas con la siembra ficticia. Encontró y se corrigieron tres defectos
+      del marco que las suites no veían (`5328ef0f`): la lista de obras de la barra lateral medía 0 de alto, el diálogo
+      «Nueva obra» quedaba oculto por una regla de `Dialogo.scss`, y el documento se desplazaba y crecía hasta 3.240 px.
+      Queda para decidir: dónde se ve el cliente de la obra (se guarda y ninguna pantalla lo muestra) y si los avisos de
+      3 minutos se agrupan (en Reajuste se apilaron 4 sobre la tabla).
+    - **PR [#163](https://github.com/EugenioRRijo/silice/pull/163) abierto en borrador, sin fusionar (2026-11-27).**
+      Trajo `main` (#157 a #162) sin más conflicto que la fecha de esta página. La CI de GitHub está toda en verde
+      (calidad, interfaz con knip, pruebas en Ubuntu y Windows 1/4 a 4/4, instalador). Lo fusiona Eugenio cuando decida.
     - **B1-11 recortado (2026-11-27):** retirar «Partidas» y «Revisión» de la vista por pestañas dejó 5 errores de
       tipos y más de 47 pruebas en rojo en 8 archivos de `paginas/hoja`; se deshizo y queda para después de medir, como
       permite la ficha (§5, orden de recorte). Durante la medición conviven los dos caminos: la grilla nueva en
