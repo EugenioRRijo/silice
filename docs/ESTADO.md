@@ -16,6 +16,10 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
 > [acta](bitacora/2026-11-25-acta-reestructuracion-front.md)). Fecha tope: 2026-12-16, con la etiqueta `medicion-v1`;
 > la prueba con personas se hace sobre esa versión y nada cambia entre sesiones. `core/`, los archivos sellados por
 > `reglas-congeladas-2026-11-24` y `aplicacion/hoja.py` no cambian. Para todo lo demás sigue el congelamiento.
+> **B0 está en `main`** (#161). **Cara nueva aprobada el 2026-11-26:** vista «HM» con la paleta «Papel y resaltador»,
+> en claro y oscuro (especificación en la rama `feature/front-b1`, donde sigue B1:
+> `docs/especificaciones/2026-11-26-cara-papel-y-resaltador/`); Eugenio eligió el mismo día los botones «contorno de papel» y la
+> barra lateral «riel de iconos» (220 px abierta, 56 px reducida a iconos).
 
 ## 1. Qué hay en `main`
 
@@ -85,9 +89,9 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
     Neon auditó ese trabajo en tres rondas: rechazó la primera y aprobó con observaciones las dos siguientes. Los
     comandos del día están en el [guion de la medición](tesis/2026-11-25-guion-dia-de-medicion.md).
   - **Front:** cinco auditorías de solo lectura (ub-mode y la guía *modern-web-guidance* de Google) dejaron unos 170
-    hallazgos y un [plan para después de medir](planes/2026-11-25-plan-front-tras-medir.md). Antes de la prueba con
-    personas conviene revisar a mano en el navegador dos posibles defectos: los filtros de Control al cambiar de
-    pestaña y el envío en Actualización mientras carga la vista previa.
+    hallazgos y un [plan para después de medir](planes/2026-11-25-plan-front-tras-medir.md). Los dos posibles
+    defectos que había que revisar en el navegador (los filtros de Control al cambiar de pestaña y el envío en
+    Actualización mientras carga la vista previa) eran reales y se corrigieron en #159.
 - **Ola 1121 y entrega del consejo** (PR #138 a #141): la depuración de Neon (#138) y el rediseño con su claridad
   (#139), fusionados por Eugenio; la carga cognitiva con el rótulo congelado de la Hoja (#140, opción A de Eugenio) y
   la herramienta de medición de la auditoría, el respaldo local, el guion de la demo del plan B, el ensayo de la
@@ -96,6 +100,15 @@ de pruebas y de requisitos no se repiten aquí: viven en su fuente ([metodologia
   auditoría agrupa los hallazgos por causa raíz y pone aparte R2 y R7) y #143 (Fase 1 del plan no circular: oráculo
   LibreOffice, manifiesto, inyector, trasplante de valores, medición una falla por vez, metamórficas, sensibilidad de
   umbrales, tasa de no interpretables y traza por causa). `main` queda en `2d757e2c`.
+- **Del 2026-11-25 al 26** (PR #157 a #161, fusionados por Claude con CI verde, autorización vigente de Eugenio):
+  los auxiliares de SQLite fuera del repositorio (#157); el [acta](bitacora/2026-11-25-acta-reestructuracion-front.md)
+  y la [propuesta de UX/UI](planes/2026-11-25-propuesta-ux-ui.md) de la reestructuración (#158); Control conserva el
+  corte al cambiar de pestaña y Actualización espera la vista previa antes de enviar (#159); los criterios de éxito
+  fijados antes de medir, el plan B con fecha 2026-12-10, el piloto y la comprobación de la instalación en el
+  [guion de la prueba con usuarios](tesis/2026-11-23-guion-prueba-con-usuarios.md) (#160); y la **fase B0** de la
+  reestructuración (#161): cliente de la API con un solo manejo de la sesión vencida, diálogo nativo, anunciador para
+  lectores de pantalla, foco y título al navegar, monto exacto en un globo y campo de cifra con coma decimal, con tres
+  auditorías de Opus. `main` queda en `e9d3603b`.
 
 Se probaron en vivo en Chromium con la siembra ficticia antes de fusionar. Contiene también la API FastAPI (`api/`) y
 la interfaz React (`frontend-desktop/`) en un solo proceso Uvicorn (Streamlit y el Visor 3D se retiraron el 2026-10-21,
