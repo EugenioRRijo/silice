@@ -579,9 +579,8 @@ def medir_con_recorrido(
     axe: str | None,
     letra: str,
 ) -> list[dict[str, Any]]:
-    """Inicio de Auditoría → soltar el libro → «Auditar con recorrido guiado»: mide Libro con el
-    recorrido en curso y vuelve al inicio sin recargar (el recorrido vive en la memoria de la
-    interfaz)."""
+    """Auditoría → libro → «Más opciones» › «Auditar con recorrido guiado»: mide Libro con el
+    recorrido en curso y vuelve al inicio sin recargar (vive en la memoria de la interfaz)."""
     pagina = contexto.new_page()
     pagina.set_viewport_size({"width": ancho, "height": ALTO})
     fijar_letra(pagina, letra)
@@ -594,6 +593,7 @@ def medir_con_recorrido(
         pagina.goto(f"{base}/app/{hash_de('auditoria')}", wait_until="domcontentloaded")
         pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
         pagina.locator("main input[type=file]").first.set_input_files(str(libro))
+        pagina.locator("main details summary", has_text="Más opciones").click()
         pagina.get_by_role("button", name="Auditar con recorrido guiado").click()
         pagina.wait_for_function(
             "p => new RegExp(p).test(location.hash) && document.querySelector('main h1') !== null",
