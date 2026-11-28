@@ -506,6 +506,8 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
       «Nueva obra» quedaba oculto por una regla de `Dialogo.scss`, y el documento se desplazaba y crecía hasta 3.240 px.
       Queda para decidir: dónde se ve el cliente de la obra (se guarda y ninguna pantalla lo muestra) y si los avisos de
       3 minutos se agrupan (en Reajuste se apilaron 4 sobre la tabla).
+    - **Plan de cierre de la rama (2026-11-28):** [docs/planes/2026-11-28-plan-cierre-rama-front.md](planes/2026-11-28-plan-cierre-rama-front.md),
+      con las tareas T1 a T12 de Claude (con Gemini) y las decisiones E1 a E5 de Eugenio.
     - **PR [#163](https://github.com/EugenioRRijo/silice/pull/163) abierto en borrador, sin fusionar (2026-11-27).**
       Trajo `main` (#157 a #162) sin más conflicto que la fecha de esta página. La CI de GitHub está toda en verde
       (calidad, interfaz con knip, pruebas en Ubuntu y Windows 1/4 a 4/4, instalador). Lo fusiona Eugenio cuando decida.
