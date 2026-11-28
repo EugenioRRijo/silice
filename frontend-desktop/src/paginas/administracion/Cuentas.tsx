@@ -496,7 +496,9 @@ export default function Cuentas() {
                 ordenable: false,
                 celda: (f) => {
                   const s = solicitudPorId.get(f.id);
-                  if (!s || (s.estado !== "pendiente" && s.estado !== "vencida")) return "—";
+                  // Las mismas que el servidor puede resolver (`RESOLUBLES` en seguridad/solicitudes.py): una aprobada también, para
+                  // volver a aprobarla con un código nuevo (el anterior deja de valer) o rechazarla.
+                  if (!s || (s.estado !== "pendiente" && s.estado !== "vencida" && s.estado !== "aprobada")) return "—";
                   const idQuien = `adm-sol-quien-${s.id}`;
                   return (
                     <div className="silice-adm__acciones-solicitud">

@@ -139,6 +139,11 @@ describe("Cuentas: sección Solicitudes (C9)", () => {
         );
         return json({ codigo: CODIGO_UNICO, vence: "2026-12-03T16:00:00", mailto: MAILTO_SERVIDOR });
       }
+      if (url === "/v1/solicitudes/12/aprobar" && metodo === "POST") {
+        const cuerpo = JSON.parse(String(init?.body ?? "{}")) as { papel: string };
+        solicitudes = solicitudes.map((s) => (s.id === 12 ? { ...s, papel: cuerpo.papel, vence: "2026-12-05T09:00:00" } : s));
+        return json({ codigo: CODIGO_UNICO, vence: "2026-12-05T09:00:00", mailto: MAILTO_SERVIDOR });
+      }
       if (url === "/v1/solicitudes/10/rechazar" && metodo === "POST") {
         solicitudes = solicitudes.map((s) => (s.id === 10 ? { ...s, estado: "rechazada" } : s));
         return json({ mensaje: "Solicitud rechazada." });
@@ -200,8 +205,10 @@ describe("Cuentas: sección Solicitudes (C9)", () => {
     const filas = within(tablaSolicitudes).getAllByRole("row").slice(1);
     expect(filas).toHaveLength(5);
 
-    // Fila pendiente (mrivas) y fila vencida (cmendez): tienen selector de papel, aprobar y rechazar.
-    for (const login of ["mrivas", "cmendez"]) {
+    // Filas pendiente (mrivas), vencida (cmendez) y aprobada (esoto): tienen selector de papel, aprobar y rechazar.
+    // La aprobada se puede volver a aprobar (código nuevo, el anterior deja de valer) o rechazar: el servidor lo admite
+    // (`RESOLUBLES` en seguridad/solicitudes.py) y sin esto, quien cerró el diálogo sin copiar el código no tenía salida.
+    for (const login of ["mrivas", "cmendez", "esoto"]) {
       const fila = filas.find((f) => within(f).queryByText(login) !== null)!;
       const selector = within(fila).getByRole("combobox", { name: "Papel" });
       expect(within(selector).getByRole("option", { name: "Arma presupuestos" })).toBeInTheDocument();
@@ -210,8 +217,8 @@ describe("Cuentas: sección Solicitudes (C9)", () => {
       expect(within(fila).getByRole("button", { name: "Rechazar" })).toBeInTheDocument();
     }
 
-    // Filas aprobada, rechazada y usada: no ofrecen aprobar ni rechazar.
-    for (const login of ["esoto", "plara", "lvega"]) {
+    // Filas rechazada y usada: no ofrecen aprobar ni rechazar (el servidor responde 409).
+    for (const login of ["plara", "lvega"]) {
       const fila = filas.find((f) => within(f).queryByText(login) !== null)!;
       expect(within(fila).queryByRole("button", { name: "Aprobar y generar el código" })).toBeNull();
       expect(within(fila).queryByRole("button", { name: "Rechazar" })).toBeNull();
@@ -254,6 +261,38 @@ describe("Cuentas: sección Solicitudes (C9)", () => {
     expect(document.body.textContent).not.toContain(CODIGO_UNICO);
     expect(document.body.innerHTML).not.toContain(CODIGO_UNICO);
     expect(document.body.innerHTML).not.toContain(MAILTO_SERVIDOR);
+  });
+
+  test("una solicitud ya aprobada se vuelve a aprobar: código nuevo con el papel de la fila, sin cambiar de estado", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Solicitudes de cuenta" });
+    const fila = within(tabla)
+      .getAllByRole("row")
+      .find((f) => within(f).queryByText("esoto") !== null)!;
+    // El papel que ya tenía la aprobación viene elegido en la lista.
+    expect(within(fila).getByRole("combobox", { name: "Papel" })).toHaveValue("arma");
+
+    await usuario.click(within(fila).getByRole("button", { name: "Aprobar y generar el código" }));
+
+    const dialogo = await screen.findByRole("dialog", { name: /Código/ });
+    const llamada = fetchFalso.mock.calls.find(([r]) => String(r) === "/v1/solicitudes/12/aprobar");
+    expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({ papel: "arma" });
+    expect(within(dialogo).getByText(CODIGO_UNICO)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/05\/12\/2026/)).toBeInTheDocument();
+  });
+
+  test("«Rechazar» en una solicitud aprobada abre el mismo diálogo y rechaza (el código sin usar deja de valer)", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Solicitudes de cuenta" });
+    const fila = within(tabla)
+      .getAllByRole("row")
+      .find((f) => within(f).queryByText("esoto") !== null)!;
+    await usuario.click(within(fila).getByRole("button", { name: "Rechazar" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Rechazar la solicitud" });
+    expect(dialogo).toHaveTextContent("esoto");
+    expect(dialogo).toHaveTextContent("dejará de valer");
   });
 
   test("si falla navigator.clipboard muestra un aviso con su palabra, y Escape cierra el diálogo borrando el código del DOM", async () => {

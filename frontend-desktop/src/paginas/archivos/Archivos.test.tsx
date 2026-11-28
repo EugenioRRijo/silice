@@ -344,7 +344,7 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
     await pausa();
     expect(screen.queryByRole("button", { name: "Subir plano o cómputo" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Describir el espacio a mano" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Te falta" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Siguiente paso" })).toBeNull();
     expect(principales()).toEqual([]);
   });
 
@@ -356,7 +356,7 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
     expect(pestana).toHaveAttribute("aria-selected", "true");
   });
 
-  test("con el espacio pedido y aún vacío, la franja «Te falta» lleva el único botón principal, que abre el diálogo", async () => {
+  test("con el espacio pedido y aún vacío, la franja «Falta:» lleva el único botón principal, que abre el diálogo", async () => {
     const u = montar();
     await u.click(await screen.findByRole("link", { name: "Describir el espacio a mano" }));
     await screen.findByRole("tab", { name: "Espacio y metrajes" });

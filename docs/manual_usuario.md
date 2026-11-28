@@ -16,10 +16,9 @@ Contenido:
 
 1. Qué es Sílice y quién hace qué
 2. Entrar por primera vez
-   - 2.3 Crear una cuenta y el código de 20 caracteres
 3. Moverse por Sílice
 4. Crear una obra y armar su presupuesto
-5. La franja del paso: «Te falta» y «Siguiente paso»
+5. La franja del paso: «Falta» y «Siguiente paso»
 6. Versiones y aprobación
 7. Archivos y planos
 8. Mercado
@@ -176,8 +175,8 @@ El código se borra al usarse y no sirve otra vez. Sílice entra con la cuenta n
 
 El administrador crea una cuenta para cada persona:
 
-1. Pulse el botón con su nombre, arriba a la derecha, y elija la sección «Cuentas y permisos». El bloque
-   «Cuentas» va primero.
+1. Pulse el botón con su nombre, arriba a la derecha, y elija la sección «Cuentas y permisos». Si hay solicitudes de cuenta
+   nueva (sección 2.3), el bloque «Solicitudes» va primero y después «Cuentas»; sin solicitudes, solo está «Cuentas».
 2. En «Crear una cuenta» escriba:
    - «Usuario»: minúsculas, sin espacios, de 3 a 40 caracteres (por ejemplo `ana`).
    - «Nombre de la persona».
@@ -204,6 +203,10 @@ activo.».
 En lugar de que el administrador cree la cuenta a mano con una contraseña temporal, una persona también puede
 pedir su cuenta desde la entrada y activarla con un código de 20 caracteres que aprueba el administrador.
 
+Esto no es el bloque «Crear una cuenta» de «Cuentas y permisos», con el que el administrador crea una cuenta a mano
+(sección 2.2), ni el código de instalación de la primera vez (sección 2.1): aquí la persona pide su propia cuenta desde
+«Entrar» y el administrador la aprueba.
+
 **Paso 1: la persona pide la cuenta.**
 
 1. En la pantalla «Entrar», pulse «Crear una cuenta».
@@ -213,23 +216,32 @@ pedir su cuenta desde la entrada y activarla con un código de 20 caracteres que
 3. Pulse «Enviar la solicitud».
 
 Sílice guarda una solicitud (la cuenta aún no existe ni puede entrar) y le avisa que, cuando el administrador
-la apruebe, recibirá un código de 20 caracteres en su correo. Debajo aparecen «Ya tengo el código» y «Volver».
+la apruebe, recibirá un código de 20 caracteres. Debajo aparecen «Ya tengo el código» y «Volver».
+
+**Sílice no avisa al administrador de que hay una solicitud nueva.** Avísele usted (en persona o por otro medio)
+para que revise su Cuenta, sección «Cuentas y permisos».
 
 **Paso 2: el administrador aprueba la solicitud y entrega el código.**
 
-1. Abra su Cuenta, sección «Cuentas y permisos». Arriba de la lista de cuentas aparece el bloque «Solicitudes»
-   con «Nombre», «Usuario», «Correo», «Fecha», «Estado» («Pendiente», «Aprobada», «Rechazada», «Usada» o
-   «Vencida») y «Acción».
-2. En la fila de la solicitud, elija el papel en «Papel»: «Arma presupuestos» o «Revisa».
+1. Abra su Cuenta, sección «Cuentas y permisos». Cuando hay alguna solicitud, aparece el bloque «Solicitudes»
+   arriba de la lista de cuentas, con «Nombre», «Usuario», «Correo», «Fecha», «Estado» («Pendiente», «Aprobada»,
+   «Rechazada», «Usada» o «Vencida») y «Acción». Si no hay ninguna, el bloque no aparece.
+2. En la fila de la solicitud, elija el papel en la lista desplegable («Arma presupuestos» o «Revisa»).
 3. Pulse «Aprobar y generar el código» (o «Rechazar» si no corresponde, y confirme en «Rechazar la solicitud»).
 4. Se abre el diálogo «Código de activación» con un código único de 20 caracteres en 5 grupos de 4 y su fecha
-   de vencimiento (vence a los 7 días). **Este código no se vuelve a mostrar** al pulsar «Cerrar».
+   de vencimiento (vence a los 7 días). **Este código no se vuelve a mostrar** cuando cierra el diálogo, sea con
+   «Cerrar» o con Esc.
 5. Pulse «Copiar el código» para copiarlo al portapapeles, o «Enviarlo por correo» para abrir el programa de
-   correo de su equipo con el mensaje ya preparado (Sílice no sale a la red).
+   correo de su equipo con el mensaje ya preparado (Sílice no sale a la red). Si el equipo no tiene programa de
+   correo, «Enviarlo por correo» no hace nada: use «Copiar el código».
 
-Si el código vence antes de usarse, la solicitud pasa a «Vencida» y el administrador puede volver a aprobarla
-para generar un código nuevo (el anterior deja de valer). Para dar permisos de administrador a una cuenta ya
-activa, use «Cambiar una cuenta» (sección 2.2).
+**Si cerró el diálogo sin copiar el código**, o si lo perdió, no hay que esperar a que venza: en la misma fila, que
+ahora dice «Aprobada», puede pulsar de nuevo «Aprobar y generar el código». Sílice genera un código nuevo y el
+anterior deja de valer. Lo mismo vale para una solicitud «Vencida» (el código no se usó en 7 días) y, si quien la
+aprobó dejó de ser administrador, para que otro administrador la apruebe otra vez. Una solicitud «Rechazada» o
+«Usada» ya no se puede aprobar.
+
+Para dar permisos de administrador a una cuenta ya activa, use «Cambiar una cuenta» (sección 2.2).
 
 **Paso 3: la persona activa su cuenta.**
 
@@ -240,6 +252,21 @@ activa, use «Cambiar una cuenta» (sección 2.2).
 
 Si los tres datos coinciden y el código sigue vigente, Sílice crea la cuenta con el papel que eligió el
 administrador y abre la sesión de inmediato. El código sirve una sola vez.
+
+**Si no entra.** Sílice responde siempre lo mismo, sin decir cuál dato falló: «El usuario, la contraseña o el código no
+son válidos.». Compruebe que el usuario y la contraseña son los que escribió al pedir la cuenta, que el código es el
+último que le dieron (uno nuevo anula el anterior), que no se usó ya ni pasaron 7 días desde que se aprobó, y que
+quien aprobó la solicitud sigue siendo un administrador activo: si ya no lo es, el código deja de servir y otro
+administrador debe volver a aprobar la solicitud para generar uno nuevo. Al quinto intento fallido seguido, Sílice
+bloquea el acceso con ese usuario durante 15 minutos (sección 15.1).
+
+**Si olvidó la contraseña que eligió al pedir la cuenta.** No puede volver a pedirla mientras la solicitud siga
+viva («Pendiente», o «Aprobada» con el código vigente): Sílice dice «Ese usuario ya está en uso; elija otro.». El
+administrador tiene tres salidas. La primera: pulsar «Rechazar» en la fila de la solicitud (Sílice lo admite también
+con la solicitud ya aprobada; un código sin usar deja de valer) y la persona vuelve a pedir su cuenta, con el mismo
+usuario y una contraseña nueva. La segunda: esperar a que la solicitud aprobada venza (7 días) y entonces la persona
+vuelve a pedirla; una solicitud «Pendiente» no vence. La tercera: crear la cuenta a mano, con una contraseña
+temporal (sección 2.2).
 
 ### 2.4 Entrar cada día
 
@@ -555,7 +582,7 @@ arriba abajo:
      «Aprobación:», **«Total sin IVA»** en la moneda de la obra (con el botón «Ver el valor exacto» para leer
      la cifra sin redondear) y debajo **«Con IVA (16 %)»** cuando la obra tiene partidas.
    - **Franja de acciones**: el botón **«Problemas (n)»** (abre el panel lateral con los hallazgos agrupados
-     por regla), la franja del paso («Te falta:» o «Siguiente paso:») con el único botón principal de la
+     por regla), la franja del paso («Falta:» o «Siguiente paso:») con el único botón principal de la
      pantalla y el menú **«Más acciones»** («Más acciones del presupuesto»).
 2. **El menú «Más acciones»**: reúne lo ocasional sin recargar la cabecera:
    - **«Subtotales por frente»**: abre el panel lateral con el subtotal de cada frente (sección 12.6);
@@ -895,11 +922,11 @@ En las tablas de insumos, un precio de la lista con más de dos decimales (por e
 de bolívares) se lee con dos, como en Excel; al entrar en la celda se ve y se edita el número completo,
 que es el que se guarda. Lo que usted escribe se ve siempre tal cual.
 
-## 5. La franja del paso: «Te falta» y «Siguiente paso»
+## 5. La franja del paso: «Falta» y «Siguiente paso»
 
 Arriba de cada sección, Sílice dice **un solo** paso a la vez. Hay dos tipos:
 
-- **«Te falta:»**, con fondo amarillo claro y un ícono de aviso: falta algo antes de seguir.
+- **«Falta:»**, con fondo amarillo claro y un ícono de aviso: falta algo antes de seguir.
 - **«Siguiente paso:»**, entre dos rayas finas: solo orienta.
 
 Su botón es el principal de la pantalla. Si su papel no puede dar ese paso, la franja solo informa, sin
@@ -911,10 +938,10 @@ Sílice revisa en este orden y muestra la primera que se cumple:
 
 | Mensaje | Qué significa | Qué hacer |
 |---|---|---|
-| «Te falta: Agregue la primera partida» | La obra no tiene partidas | Pulse «Agregar la primera partida» (sección 4.3) |
+| «Falta: Agregue la primera partida» | La obra no tiene partidas | Pulse «Agregar la primera partida» (sección 4.3) |
 | «Siguiente paso: Hay 3 cambios sin guardar» | Cambió algo y no lo guardó | Pulse «Guardar versión…», «Guardar primera versión…» o, si solo cambió el desglose del desperdicio, «Guardar el desglose…» (sección 4.8) |
-| «Te falta: Hay 2 hallazgos graves: revíselos antes de enviar» | La auditoría encontró errores o hallazgos críticos | Pulse «Ir a Revisión» (abre el panel «Problemas»), corrija y guarde |
-| «Te falta: La versión V-004 fue devuelta: corrija lo observado» | Quien revisa la devolvió | Pulse «Hacer una versión nueva», corrija y guarde (sección 6.7) |
+| «Falta: Hay 2 hallazgos graves: revíselos antes de enviar» | La auditoría encontró errores o hallazgos críticos | Pulse «Ir a Revisión» (abre el panel «Problemas»), corrija y guarde |
+| «Falta: La versión V-004 fue devuelta: corrija lo observado» | Quien revisa la devolvió | Pulse «Hacer una versión nueva», corrija y guarde (sección 6.7) |
 | «Siguiente paso: La versión V-004 espera dictamen» | Ya la envió | Nada: espere el dictamen |
 | «Siguiente paso: Envíe la versión V-004 a aprobación» | Todo listo | Pulse «Enviar a aprobación…» (sección 6.5) |
 
@@ -932,14 +959,14 @@ El Resumen dice el paso según la etapa de la obra:
 | En ejecución | «Registrar el avance» |
 | Atrasada | «Ver las alertas» |
 
-Si falta algo, dice «Te falta:» y la razón, por ejemplo «Sin avance registrado» o «Atrasada 5 días
+Si falta algo, dice «Falta:» y la razón, por ejemplo «Sin avance registrado» o «Atrasada 5 días
 hábiles (SPI 0,92)».
 
 ### 5.3 En otras secciones
 
-- **Archivos y planos:** «Te falta: subir el plano o describir el espacio», con el botón «Subir plano o
+- **Archivos y planos:** «Falta: subir el plano o describir el espacio», con el botón «Subir plano o
   cómputo». Aparece si pidió describir el espacio y todavía está vacío.
-- **Cargar cómputo:** «Te falta: la carpeta no tiene lista de precios para armar». No tiene botón: hay que
+- **Cargar cómputo:** «Falta: la carpeta no tiene lista de precios para armar». No tiene botón: hay que
   crear la lista (sección 4.3, camino 3, o sección 9.2).
 - **Versiones:** repite «Hay 3 cambios sin guardar» o «La versión V-004 espera dictamen».
 
@@ -1026,7 +1053,7 @@ envío», o «No hay versiones esperando dictamen.».
 
 ### 6.7 Si la versión vuelve devuelta (quien arma)
 
-1. La franja del Presupuesto dice «Te falta: La versión V-004 fue devuelta: corrija lo observado».
+1. La franja del Presupuesto dice «Falta: La versión V-004 fue devuelta: corrija lo observado».
 2. Lea las notas debajo de «Aprobación:» («Notas de …: …»).
 3. Pulse «Hacer una versión nueva». Sílice lo lleva a «Partidas» y dice «Corrija y guarde: será una
    versión nueva.».
@@ -1576,8 +1603,7 @@ solo quedan el resumen y los hallazgos.
 
 ### 12.1 Auditar un libro en tres pasos
 
-Todo el flujo ocurre en **«Auditar un libro»**, en una sola página con tres pasos seguidos (ya no existe el
-botón «Auditar por mi cuenta» ni hace falta saltar a otra pantalla para leer los hallazgos):
+Todo el flujo ocurre en **«Auditar un libro»**, en una sola página con tres pasos seguidos:
 
 **Paso 1: «Suba el libro».**
 
@@ -1587,7 +1613,7 @@ botón «Auditar por mi cuenta» ni hace falta saltar a otra pantalla para leer 
    - **«Fecha de la revisión»**: por omisión se revisa con la fecha de hoy («Se revisa con la fecha de hoy.»).
      Con la misma fecha, el mismo libro da siempre el mismo resultado.
    - **«Auditar con recorrido guiado»**: lleva el libro a «Libro de la empresa» con la columna de tres pasos
-     (sección 12.4).
+     (sección 12.4). Está inactivo hasta que elige un archivo: primero suelte el `.xlsx`.
 3. Pulse **«Auditar el libro»**. Mientras trabaja se lee «Auditando el libro…». Si ocurre un error, Sílice
    conserva el archivo elegido y ofrece «Reintentar».
 
@@ -1660,8 +1686,8 @@ Las últimas auditorías también aparecen al pie de «Auditar un libro», bajo 
 
 ### 12.4 El recorrido guiado
 
-En «Auditar un libro», abra «Más opciones» y pulse «Auditar con recorrido guiado». Aparece a la derecha la
-columna «Recorrido», con tres pasos: «Suba el libro», «Lea el resumen y los hallazgos» y «Compruebe que quedó
+En «Auditar un libro», suelte primero el `.xlsx` (sin archivo, el botón está inactivo), abra «Más opciones» y pulse
+«Auditar con recorrido guiado». Aparece a la derecha la columna «Recorrido en curso», con tres pasos: «Suba el libro», «Lea el resumen y los hallazgos» y «Compruebe que quedó
 guardada». Cada paso dice qué hacer y cuándo terminó. «Ocultar» la pliega y «Terminar recorrido» la quita.
 Si la plegó, el botón «Recorrido» de la barra de arriba la vuelve a mostrar.
 
@@ -1744,7 +1770,7 @@ marcadas las que lee el perfil. Marque las del frente de este libro de APU (o va
 todos los frentes). Si el perfil lee una hoja que el libro no tiene, lo dice: «El perfil lee la hoja PRESUPUESTO,
 que este libro no tiene: marque las hojas que quiere comparar.». Con varias hojas, el precio de cada renglón se
 compara en cada hoja (AH5 dice «hoja FRENTE B») y la cantidad del APU con la **suma** de las hojas («las hojas
-FRENTE A y FRENTE B del presupuesto suman una cantidad de 450 y su APU dice 500»). Dos reglas más:
+FRENTE A y FRENTE B del presupuesto suman una cantidad de 450 y su APU dice 500»). Una regla más:
 
 | Regla | Qué dice | Severidad |
 |---|---|---|
@@ -1753,7 +1779,7 @@ FRENTE A y FRENTE B del presupuesto suman una cantidad de 450 y su APU dice 500�
 Si el perfil declara «Otros impuestos», esa segunda fila del pie se suma al impuesto de la hoja y AH4 dice las dos
 partes («un impuesto del 18 % (16 % y otros impuestos del 2 %)»).
 
-**Poner el perfil de un libro de la empresa.** Quien administra lo hace en «Cuenta › Empresa», bloque «Perfiles de
+**Poner el perfil de un libro de la empresa.** Quien administra lo hace en «Cuenta › Empresa y tema», bloque «Perfiles de
 los libros de la empresa»: suelte el `.json` del perfil y pulse «Poner el perfil». Sílice lo revisa entero antes de
 guardarlo y dice el motivo si está mal escrito; si ya hay uno con ese nombre, pide marcar «Reemplazar el que ya
 está con ese nombre» (un archivo de otro tipo de perfil con ese nombre no se pisa nunca: póngale otro nombre). El patrón de la banda de distancia (`patron_banda`) no puede pasar de 300 caracteres, y Sílice rechaza las formas que con algunos textos tardarían sin fin: una repetición dentro de otra sin un separador fijo que marque dónde acaba cada vuelta («(a+)+», «(?:a?a)+», «(?:\d+\.?)+»; en cambio «(?:\.\d{3})*», las cifras con punto de miles, sí se acepta, porque el punto separa), una alternativa repetida («(a|aa)+»), una referencia hacia atrás y más de una parte variable que pueda quedarse con los mismos caracteres («.*de.*km», varios «[0-9]*» seguidos). Es un control de la forma, no una garantía: acepta las bandas bien escritas («de 1.000 a 1.250 km», «mayores de 8 km y hasta 10 km», «entre 8 y 10 kms») y, si rechaza la suya, el mensaje dice qué parte cambiar (un «.*» o un «.*?» al principio sobra: la banda se busca en cualquier parte de la descripción). Al terminar dice qué hojas del presupuesto lee: «Perfil «obra_local» puesto en esta
@@ -1780,8 +1806,8 @@ frente con otro precio), entra como variante «…-B». Llevar el mismo libro ot
 renglones de esas hojas.
 
 **El presupuesto por frente.** En el Presupuesto, abra el menú «Más acciones» y elija «Subtotales por frente»
-para abrir el panel lateral «Subtotales por frente» (también sigue disponible debajo del total en «Espacio,
-plan y ajustes»): la tabla «Presupuesto por frente» da cada frente, sus renglones (y cuántos están pendientes)
+para abrir el panel lateral «Subtotales por frente» (también sigue disponible en «Espacio, plan y ajustes» › «Partidas», debajo del total, con el botón «Ver el
+presupuesto por frente»): la tabla «Presupuesto por frente» da cada frente, sus renglones (y cuántos están pendientes)
 y su subtotal, y debajo el «Total general». Las cifras las calcula Sílice; los renglones sin frente van al
 final, en «(sin frente)», como en el PDF. Para poner el frente de un renglón a mano, elíjalo en «Renglón»,
 escriba el «Frente» y pulse «Poner el frente» (vacío lo quita). Un frente no puede llamarse «Sin frente» ni
@@ -1800,7 +1826,7 @@ avisos sin leer muestra la cantidad sobre el ícono.
 
 Cada vez que termina una acción importante (guardar una versión, enviarla a aprobación, registrar un dictamen,
 entregar un paquete al cliente, restaurar una versión, cargar una lista o referencia de precios o revalorar un
-presupuesto) o llega un aviso del servidor, aparece una tarjeta abajo a la derecha («Notificaciones nuevas»):
+presupuesto), aparece una tarjeta abajo a la derecha:
 
 - Los avisos de gravedad «Listo» e «Información» permanecen 3 minutos en pantalla y se cierran solos. El
   contador se pausa si coloca el ratón o el foco encima, o mientras haya un diálogo abierto.
@@ -1808,6 +1834,9 @@ presupuesto) o llega un aviso del servidor, aparece una tarjeta abajo a la derec
   de cierre.
 
 En todos los casos, el aviso queda guardado en la campanita.
+
+Los avisos que genera el servidor (sección 13.3) no llegan en vivo ni aparecen como tarjeta: Sílice los trae una vez,
+al entrar (o al recargar con F5), suben la cifra de la campanita y quedan en el panel.
 
 ### 13.2 El panel «Notificaciones»
 
@@ -1826,15 +1855,17 @@ con Esc). En él puede:
 
 Además de las confirmaciones de sus propias acciones, el servidor genera avisos automáticos por evento cuando
 algo pide actuar o cambia datos que usted usa. Cada evento avisa una sola vez y nunca le avisa a la misma
-persona que realizó la acción:
+persona que realizó la acción; si un recordatorio, una compra o una entrega vencidos siguen sin resolverse, el aviso se
+repite a los 30 días. Los que dependen de una fecha se calculan en el momento de traerlos, al entrar a Sílice. Llegan
+al panel de la campanita, sin tarjeta:
 
 | Categoría | Para quién | Qué avisa |
 |---|---|---|
 | «Versiones por dictaminar» | Quien revisa | Cuando una versión espera su dictamen, y un recordatorio de advertencia si lleva 2 días hábiles esperando |
 | «Dictamen de sus versiones» | Quien arma | Cuando una versión que usted envió fue aprobada, aprobada con observaciones, devuelta (advertencia) o retirada porque otra cuenta envió una versión nueva |
-| «Compras por pedir» | Quien arma (en obras donde trabajó y con línea base) | Advertencia desde 2 días hábiles antes de la fecha «pedir a más tardar» de un material sin pedir, y error desde ese día |
+| «Compras por pedir» | Quien arma (solo en obras de la carpeta abierta al entrar a Sílice donde trabajó, y con línea base) | Advertencia desde 2 días hábiles antes de la fecha «pedir a más tardar» de un material sin pedir, y error desde ese día |
 | «Listas de precios nuevas» | Quien arma | Cuando alguien carga una lista de precios de la empresa o la referencia MaPreX |
-| «Entregas al cliente» | Quien arma (en obras donde trabajó con «Fecha de entrega al cliente») | Advertencia desde 3 días hábiles antes de la fecha de entrega al cliente, y error desde ese día mientras la obra no se haya entregado (la fecha se anota en «Nueva obra» o en el «Resumen», secciones 3.7 y 4.1) |
+| «Entregas al cliente» | Quien arma (solo en obras de la carpeta abierta al entrar a Sílice donde trabajó, con «Fecha de entrega al cliente») | Advertencia desde 3 días hábiles antes de la fecha de entrega al cliente, y error desde ese día mientras la obra no se haya entregado (la fecha se anota en «Nueva obra» o en el «Resumen», secciones 3.7 y 4.1) |
 
 ### 13.4 Elegir qué recibir (Cuenta › «Notificaciones»)
 
@@ -1876,7 +1907,7 @@ manual lo explicará.
 |---|---|---|
 | «El código de instalación no es válido o ya se usó.» | El código está mal copiado, ya se usó o no existe | Cópielo otra vez del archivo `codigo_instalacion.txt`. Si ya se usó, entre con la cuenta creada |
 | «Usuario o contraseña incorrectos.» | Uno de los dos está mal | Revise mayúsculas y el teclado. Si la olvidó, pida al administrador que la restablezca |
-| «El usuario, la contraseña o el código no son válidos» | En «Tengo un código», alguno de los tres datos no coincide, el código ya se usó o venció (7 días) | Revise los datos y el código. Si venció, pida al administrador que vuelva a aprobar su solicitud en «Cuentas y permisos» (sección 2.3) |
+| «El usuario, la contraseña o el código no son válidos» | En «Tengo un código», alguno de los tres datos no coincide, el código ya se usó o venció (7 días) | Revise los datos y el código. Si venció, o si quien la aprobó ya no es administrador, pida que vuelvan a aprobar su solicitud en «Cuentas y permisos» (sección 2.3) |
 | «Demasiados intentos fallidos. Espere 15 minutos o pida al administrador que desbloquee la cuenta.» | La cuenta se bloqueó | Espere, o que el administrador pulse «Desbloquear» |
 | «Demasiados intentos fallidos en este equipo. Espere unos segundos y vuelva a probar.» | Muchos intentos seguidos | Espere los segundos que indica el botón |
 | «Esa contraseña es demasiado común; elija otra.» | La contraseña es muy conocida | Use una frase larga |
