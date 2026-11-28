@@ -560,6 +560,7 @@ function SuperficieAbierta({
           alCerrar={() => setPanel(null)}
           alAceptar={alAceptar}
           alVolverALaCalculada={cantidades.escribir}
+          alAccionarEnOrden={cantidades.accionarEnOrden}
           alQuitar={() => {
             pedidoDeFoco.current = { base: vistaFresca, clave: null };
           }}

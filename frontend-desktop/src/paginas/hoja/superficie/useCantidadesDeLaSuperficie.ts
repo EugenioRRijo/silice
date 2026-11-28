@@ -14,7 +14,7 @@ import {
 } from "../logicaSecciones";
 import type { EdicionDeCantidades } from "../logicaSecciones";
 import { useEdicionDeSeccion } from "../useEdicionDeSeccion";
-import type { EnvioDeSeccion, ErrorDeSeccion } from "../useEdicionDeSeccion";
+import type { EnvioDeSeccion, ErrorDeSeccion, Peticion } from "../useEdicionDeSeccion";
 import type { PropiedadesDeCeldaDeCantidad } from "./CeldaDeCantidad";
 import { rechazoDeLaCelda } from "./logicaDeCantidad";
 
@@ -56,6 +56,11 @@ export interface CantidadesDeLaSuperficie {
   readonly esperarEnvios: () => Promise<number>;
   // Escribe un texto en la cantidad de una partida desde fuera de la celda («Volver a la calculada» del inspector).
   readonly escribir: (clave: string, texto: string) => void;
+  // Una acción que no puede adelantarse a lo escrito ni pisar su `rev` («Quitar» del inspector): primero sale lo escrito que
+  // espera la pausa, se espera a lo que va en vuelo y entonces se manda `peticion(rev)` con el `rev` que dejó el servidor; lo
+  // que se escriba mientras ella va espera y sale después. Devuelve el resumen que contestó, o null si no salió: porque el
+  // servidor rechazó lo escrito antes (su aviso queda en `error`) o porque la propia acción falló (también en `error`).
+  readonly accionarEnOrden: (peticion: (rev: number) => Peticion) => Promise<Resumen | null>;
 }
 
 export function useCantidadesDeLaSuperficie({
@@ -85,7 +90,7 @@ export function useCantidadesDeLaSuperficie({
     alAusente,
     alExpirar,
   });
-  const { error, envio, estado, cambiar, aceptado, esperarEnvios, recargar, resembrar } = edicion;
+  const { error, envio, estado, cambiar, aceptado, esperarEnvios, accionarEnOrden, recargar, resembrar } = edicion;
 
   // Se agregó o se quitó un renglón (o llegó la vista): se vuelve a sembrar conservando lo escrito y no aceptado de las
   // demás filas. Volver a montar la grilla lo perdía.
@@ -123,5 +128,6 @@ export function useCantidadesDeLaSuperficie({
     recargar,
     esperarEnvios,
     escribir,
+    accionarEnOrden,
   };
 }

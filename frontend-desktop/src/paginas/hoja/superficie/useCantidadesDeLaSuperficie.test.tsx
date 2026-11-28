@@ -11,6 +11,7 @@ import type { FilaPresupuesto, Resumen, VistaPresupuesto } from "../logica";
 import { FRASES_DE_RECHAZO } from "../logicaSecciones";
 import { CeldaDeCantidad } from "./CeldaDeCantidad";
 import { useCantidadesDeLaSuperficie } from "./useCantidadesDeLaSuperficie";
+import type { CantidadesDeLaSuperficie } from "./useCantidadesDeLaSuperficie";
 
 // Lote B1-5 (ficha-b1 §1.10, pruebas 5 y 6): las celdas de cantidad dentro de la grilla real, con el motor de la edición
 // (`useEdicionDeSeccion`) y un servidor simulado con la forma del contrato de `PUT …/cantidades` (docs/bitacora/2026-10-19-
@@ -18,6 +19,7 @@ import { useCantidadesDeLaSuperficie } from "./useCantidadesDeLaSuperficie";
 
 const ID = "id-borrador-b1-5";
 const URL_PUT = `/v1/hoja/borradores/${ID}/cantidades`;
+const URL_QUITAR = `/v1/hoja/borradores/${ID}/partidas/quitar`;
 const CLAVE_1 = "AF-LLAVE|esp_puntos:P1";
 const CLAVE_2 = "AF-SALIDA|esp_puntos:P2";
 
@@ -50,7 +52,18 @@ interface Espias {
 }
 
 // La superficie en pequeño: una grilla con la columna Cantidad, el aviso de la sección y un control fuera de la grilla.
-function Superficie({ puedeEditar = true, espias, vista }: { puedeEditar?: boolean; espias: Espias; vista: VistaPresupuesto }) {
+function Superficie({
+  puedeEditar = true,
+  espias,
+  vista,
+  exponer,
+}: {
+  puedeEditar?: boolean;
+  espias: Espias;
+  vista: VistaPresupuesto;
+  // Entrega el motor a la prueba, para llamar a lo que la grilla no pinta (una acción que se encola con lo escrito).
+  exponer?: (cantidades: CantidadesDeLaSuperficie) => void;
+}) {
   const [rev, setRev] = useState(0);
   const cantidades = useCantidadesDeLaSuperficie({
     borrador: ID,
@@ -69,6 +82,7 @@ function Superficie({ puedeEditar = true, espias, vista }: { puedeEditar?: boole
     alAusente: vi.fn(),
     alExpirar: vi.fn(),
   });
+  exponer?.(cantidades);
   const columnas: ColumnaDeGrilla<FilaPresupuesto>[] = [
     { clave: "partida", titulo: "Partida", valor: (f) => f.partida },
     { clave: "descripcion", titulo: "Descripción", valor: (f) => f.descripcion },
@@ -100,6 +114,7 @@ describe("las celdas de cantidad en la grilla del Presupuesto", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let espias: Espias;
   let alPoner: (cuerpo: Cuerpo) => Response | Promise<Response>;
+  let alQuitar: (cuerpo: { rev: number; clave: string }) => Response | Promise<Response>;
   let vistaDelServidor: VistaPresupuesto;
   let u: ReturnType<typeof userEvent.setup>;
 
@@ -109,8 +124,10 @@ describe("las celdas de cantidad en la grilla del Presupuesto", () => {
     espias = { alRecargarBorrador: vi.fn(async () => {}), alRelectura: vi.fn(), alAceptar: vi.fn() };
     vistaDelServidor = vistaPresupuesto();
     alPoner = (cuerpo) => json({ rev: cuerpo.rev + 1, resumen: resumen(cuerpo.rev + 1) });
+    alQuitar = (cuerpo) => json({ rev: cuerpo.rev + 1, resumen: resumen(cuerpo.rev + 1) });
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = String(ruta);
+      if (url === URL_QUITAR && init?.method === "POST") return alQuitar(JSON.parse(String(init.body)) as { rev: number; clave: string });
       if (url === URL_PUT && init?.method === "PUT") return alPoner(JSON.parse(String(init.body)) as Cuerpo);
       if (url.endsWith("/vistas/presupuesto")) return json(vistaDelServidor);
       return new Response(null, { status: 204 });
@@ -125,7 +142,12 @@ describe("las celdas de cantidad en la grilla del Presupuesto", () => {
     vi.unstubAllGlobals();
   });
 
-  const montar = (puedeEditar = true) => render(<Superficie puedeEditar={puedeEditar} espias={espias} vista={vistaPresupuesto()} />);
+  const montar = (puedeEditar = true, exponer?: (cantidades: CantidadesDeLaSuperficie) => void) =>
+    render(<Superficie puedeEditar={puedeEditar} espias={espias} vista={vistaPresupuesto()} exponer={exponer} />);
+  const quitadas = (): Array<{ rev: number; clave: string }> =>
+    fetchFalso.mock.calls
+      .filter(([ruta, init]) => String(ruta) === URL_QUITAR && init?.method === "POST")
+      .map(([, init]) => JSON.parse(String(init?.body)) as { rev: number; clave: string });
   const escrituras = (): Cuerpo[] =>
     fetchFalso.mock.calls
       .filter(([ruta, init]) => String(ruta) === URL_PUT && init?.method === "PUT")
@@ -359,6 +381,84 @@ describe("las celdas de cantidad en la grilla del Presupuesto", () => {
       await pausa(400);
       await turnos();
       expect(escrituras()).toHaveLength(0);
+    });
+  });
+
+  // Defecto B1-6: «Quitar» del inspector tiene que entrar en la misma cola que las cantidades (como la vista por pestañas).
+  describe("una acción en orden con las cantidades (el «Quitar» del inspector)", () => {
+    const DETALLE = "presupuesto, fila 1 (AF-LLAVE): la cantidad no puede ser negativa; escriba cero o una cantidad positiva";
+    let motor: CantidadesDeLaSuperficie;
+    const exponer = (c: CantidadesDeLaSuperficie) => {
+      motor = c;
+    };
+    const quitar = (clave: string) =>
+      motor.accionarEnOrden((rev) => ({ ruta: URL_QUITAR, metodo: "POST", cuerpo: { rev, clave }, frase: "" }));
+
+    test("sin nada pendiente sale de inmediato con el rev vigente y su respuesta pasa a la página", async () => {
+      montar(true, exponer);
+      let resultado: Resumen | null = null;
+      await act(async () => {
+        resultado = await quitar(CLAVE_2);
+      });
+      expect(quitadas()).toEqual([{ rev: 0, clave: CLAVE_2 }]);
+      expect(escrituras()).toEqual([]);
+      expect(resultado).toEqual(resumen(1));
+      expect(espias.alAceptar).toHaveBeenCalledWith(resumen(1));
+    });
+
+    test("lo escrito que espera la pausa sale primero y la acción lleva el rev que contestó el servidor", async () => {
+      montar(true, exponer);
+      await escribirEn("AF-LLAVE", "12,5");
+      let resultado: Resumen | null = null;
+      await act(async () => {
+        resultado = await quitar(CLAVE_2);
+      });
+      expect(escrituras()).toEqual([{ rev: 0, filas: [{ clave: CLAVE_1, cantidad: "12,5" }] }]);
+      expect(quitadas()).toEqual([{ rev: 1, clave: CLAVE_2 }]);
+      expect(resultado).toEqual(resumen(2));
+    });
+
+    test("si el servidor rechaza lo escrito (422), la acción no sale, devuelve null y el aviso y lo escrito quedan", async () => {
+      alPoner = () => json({ detalle: DETALLE }, 422);
+      montar(true, exponer);
+      await escribirEn("AF-LLAVE", "-1");
+      let resultado: Resumen | null | undefined;
+      await act(async () => {
+        resultado = await quitar(CLAVE_2);
+      });
+      await turnos();
+      expect(escrituras()).toEqual([{ rev: 0, filas: [{ clave: CLAVE_1, cantidad: "-1" }] }]);
+      expect(resultado).toBeNull();
+      expect(quitadas()).toEqual([]);
+      expect(screen.getByRole("alert")).toHaveTextContent(DETALLE);
+      expect(campoDe("AF-LLAVE")).toHaveValue("-1");
+      expect(campoDe("AF-LLAVE")).toHaveAttribute("aria-invalid", "true");
+    });
+
+    test("mientras la acción va en vuelo, una cantidad nueva espera y sale después con el rev que dejó la acción", async () => {
+      let soltar: (r: Response) => void = () => {};
+      alQuitar = () => new Promise<Response>((resolver) => (soltar = resolver));
+      montar(true, exponer);
+      let resultado: Promise<Resumen | null> = Promise.resolve(null);
+      await act(async () => {
+        resultado = quitar(CLAVE_2);
+      });
+      await turnos();
+      expect(quitadas()).toEqual([{ rev: 0, clave: CLAVE_2 }]);
+      // Lo escrito entre tanto no puede salir con el rev viejo: la pausa se cumple y el PUT sigue esperando.
+      await act(async () => {
+        motor.escribir(CLAVE_1, "4");
+      });
+      await pausa(450);
+      await turnos();
+      expect(escrituras()).toEqual([]);
+      await act(async () => {
+        soltar(json({ rev: 1, resumen: resumen(1) }));
+        await resultado;
+      });
+      await turnos();
+      expect(escrituras()).toEqual([{ rev: 1, filas: [{ clave: CLAVE_1, cantidad: "4" }] }]);
+      expect(quitadas()).toHaveLength(1);
     });
   });
 

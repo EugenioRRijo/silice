@@ -1,4 +1,4 @@
-import { configure, render, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -126,6 +126,7 @@ describe("SuperficiePresupuesto conectada (B1-9 y B1-10)", () => {
   let revDelServidor: number;
   let alPoner: (cuerpo: { rev: number; filas: { clave: string; cantidad: string }[] }) => Response;
   let alAgregar: (cuerpo: { rev: number; codigo: string; cantidad: string }) => Response;
+  let alQuitar: (cuerpo: { rev: number; clave: string }) => Response | Promise<Response>;
   const alAceptar = vi.fn<(r: Resumen) => void>();
 
   beforeEach(() => {
@@ -144,6 +145,11 @@ describe("SuperficiePresupuesto conectada (B1-9 y B1-10)", () => {
       revDelServidor = cuerpo.rev + 1;
       return json({ rev: revDelServidor, resumen: resumen(revDelServidor), clave: `${cuerpo.codigo}|a-mano:1` });
     };
+    alQuitar = (cuerpo) => {
+      filasDelServidor = filasDelServidor.filter((f) => f.clave !== cuerpo.clave);
+      revDelServidor = cuerpo.rev + 1;
+      return json({ rev: revDelServidor, resumen: resumen(revDelServidor) });
+    };
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = new URL(String(ruta), "http://silice.local");
       const metodo = init?.method ?? "GET";
@@ -156,6 +162,7 @@ describe("SuperficiePresupuesto conectada (B1-9 y B1-10)", () => {
       if (url.pathname === RUTA && metodo === "GET") return json({ ...crearBorrador(revDelServidor), resumen: resumen(revDelServidor) });
       if (url.pathname === `${RUTA}/cantidades` && metodo === "PUT") return alPoner(cuerpo);
       if (url.pathname === `${RUTA}/partidas` && metodo === "POST") return alAgregar(cuerpo);
+      if (url.pathname === `${RUTA}/partidas/quitar` && metodo === "POST") return alQuitar(cuerpo);
       if (url.pathname === "/v1/buscar/partidas") {
         const q = url.searchParams.get("q") ?? "";
         return json(q.toLowerCase().includes("bloq") ? HALLADAS : { ...HALLADAS, resultados: [] });
@@ -342,6 +349,86 @@ describe("SuperficiePresupuesto conectada (B1-9 y B1-10)", () => {
     await u.keyboard("{Enter}");
     expect(await screen.findByRole("textbox", { name: "Cantidad, AF-LLAVE" })).toHaveFocus();
     expect(screen.queryByRole("complementary")).toBeNull();
+  });
+
+  // --- B1-6: «Quitar» del inspector entra en la misma cola que las cantidades ---
+
+  // Con las dos filas quitables, abre el inspector de AF-SALIDA (la cantidad escrita a mano, con «Volver a la calculada»).
+  async function abrirElInspectorDeSalida() {
+    filasDelServidor = filasDelServidor.map((f) => ({ ...f, quitable: true }));
+    const u = userEvent.setup();
+    montar();
+    const g = await grilla();
+    await u.dblClick(within(within(g).getByRole("row", { name: /AF-SALIDA/ })).getByRole("gridcell", { name: "Salida de agua" }));
+    return { u, panel: await screen.findByRole("complementary", { name: /AF-SALIDA/ }) };
+  }
+
+  test("B1-6 (3): quitar sin cambios pendientes manda el POST con el rev vigente, no escribe cantidades y cierra el inspector", async () => {
+    const { u, panel } = await abrirElInspectorDeSalida();
+    await u.click(within(panel).getByRole("button", { name: "Quitar del presupuesto" }));
+    await u.click(within(await screen.findByRole("dialog", { name: "Quitar partida" })).getByRole("button", { name: "Quitar" }));
+
+    await waitFor(() => expect(escrituras("POST", "/partidas/quitar")).toEqual([{ rev: 2, clave: "AF-SALIDA|esp_puntos:P2" }]));
+    await waitFor(() => expect(screen.queryByRole("complementary")).toBeNull());
+    expect(escrituras("PUT", "/cantidades")).toEqual([]);
+    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Presupuesto" })).queryByRole("row", { name: /AF-SALIDA/ })).toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("B1-6 (1): «Quitar» con lo escrito dentro de la pausa; si el servidor lo rechaza (422) no manda el POST y deja ver el aviso", async () => {
+    alPoner = () => json({ detalle: "presupuesto, fila 2 (AF-SALIDA): cantidad: no puede ser negativa." }, 422);
+    const { panel } = await abrirElInspectorDeSalida();
+    // Con el reloj de la pausa detenido, lo escrito sale porque «Quitar» lo saca, no porque pasen 400 ms.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(within(panel).getByRole("button", { name: "Volver a la calculada" }));
+      fireEvent.click(within(panel).getByRole("button", { name: "Quitar del presupuesto" }));
+      let confirmacion: HTMLElement | null = null;
+      for (let i = 0; i < 300 && confirmacion === null; i++) {
+        await act(async () => {
+          await new Promise<void>((resolver) => setImmediate(resolver));
+        });
+        confirmacion = screen.queryByRole("dialog", { name: "Quitar partida" });
+      }
+      fireEvent.click(within(confirmacion!).getByRole("button", { name: "Quitar" }));
+    } finally {
+      vi.useRealTimers();
+    }
+    await waitFor(() => expect(escrituras("PUT", "/cantidades")).toEqual([{ rev: 2, filas: [{ clave: "AF-SALIDA|esp_puntos:P2", cantidad: "3" }] }]));
+    await new Promise((r) => setTimeout(r, 300)); // tiempo de sobra para que saliera el quitar, si saliera
+    expect(escrituras("POST", "/partidas/quitar")).toEqual([]);
+    expect(await screen.findByText(/no puede ser negativa/, { selector: ".cds--inline-notification__subtitle" })).toBeInTheDocument();
+    // La partida sigue en la grilla y el inspector sigue abierto, sin el diálogo de confirmación.
+    expect(within(screen.getByRole("grid", { name: "Presupuesto" })).getByRole("row", { name: /AF-SALIDA/ })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Quitar partida" })).toBeNull();
+    expect(screen.getByRole("complementary", { name: /AF-SALIDA/ })).toBeInTheDocument();
+  });
+
+  test("B1-6 (2): mientras «Quitar» va en vuelo, una cantidad nueva espera y sale después con el rev que dejó el quitar, sin 409", async () => {
+    let soltar: (r: Response) => void = () => {};
+    const quitada = new Promise<Response>((resolver) => (soltar = resolver));
+    alQuitar = () => quitada;
+    // El servidor es estricto: una escritura con un rev que no es el suyo es un 409.
+    alPoner = (cuerpo) => {
+      if (cuerpo.rev !== revDelServidor) return json({ detalle: "El borrador cambió en otra ventana: vuelva a cargarlo." }, 409);
+      revDelServidor = cuerpo.rev + 1;
+      return json({ rev: revDelServidor, resumen: resumen(revDelServidor) });
+    };
+    const { u, panel } = await abrirElInspectorDeSalida();
+    await u.click(within(panel).getByRole("button", { name: "Quitar del presupuesto" }));
+    await u.click(within(await screen.findByRole("dialog", { name: "Quitar partida" })).getByRole("button", { name: "Quitar" }));
+    await waitFor(() => expect(escrituras("POST", "/partidas/quitar")).toHaveLength(1));
+
+    // Lo escrito entre tanto (aquí, «Volver a la calculada» del propio inspector) no sale con el rev viejo.
+    fireEvent.click(within(panel).getByRole("button", { name: "Volver a la calculada" }));
+    await new Promise((r) => setTimeout(r, 700)); // pasa la pausa de 400 ms con el quitar en vuelo
+    expect(escrituras("PUT", "/cantidades")).toEqual([]);
+
+    revDelServidor = 3;
+    soltar(json({ rev: 3, resumen: resumen(3) }));
+    await waitFor(() => expect(escrituras("PUT", "/cantidades")).toEqual([{ rev: 3, filas: [{ clave: "AF-SALIDA|esp_puntos:P2", cantidad: "3" }] }]));
+    expect(escrituras("POST", "/partidas/quitar")).toHaveLength(1);
+    expect(screen.queryByText(/El borrador cambió/)).toBeNull();
   });
 
   test("prueba 8 de §1.10: «Problemas (2)» abre la lista y «Ir a la partida» activa la fila y lleva el foco a ella", async () => {

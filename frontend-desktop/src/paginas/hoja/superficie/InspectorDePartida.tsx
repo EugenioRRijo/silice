@@ -23,11 +23,14 @@ import type { BorradorAbierto, FilaPresupuesto, RespuestaDeEdicion, Resumen } fr
 import { claseDeConflicto, rutaDeCantidades } from "../logicaSecciones";
 import { usePuedeEditarLaHoja } from "../puedeEditar";
 import type { FilaDeLaGrilla } from "./logica";
+import type { CantidadesDeLaSuperficie } from "./useCantidadesDeLaSuperficie";
 import "./inspector.scss";
 
 // Inspector lateral acoplado de una partida del Presupuesto (lote B1-6, ficha-b1 §1.6, §1.10 prueba 7 y §4).
 // Guías `dialog` («Use for … inspectors…», «DO include a visible close button in every non-modal dialog», «autofocus on
 // the safe action») y `html` (región `<aside>` con un encabezado de segundo nivel, sin trampa de foco cuando va acoplado).
+
+export type AccionarEnOrden = CantidadesDeLaSuperficie["accionarEnOrden"];
 
 export interface PropiedadesDeInspectorDePartida {
   readonly borrador: BorradorAbierto | null;
@@ -42,6 +45,10 @@ export interface PropiedadesDeInspectorDePartida {
   readonly alAceptar?: ((resumen: Resumen) => void) | undefined;
   readonly alVolverALaCalculada?: ((clave: string, cantidadCalculada: string) => void) | undefined;
   readonly alQuitar?: ((partida: string, resumen: Resumen, clave: string) => void) | undefined;
+  // La cola de las cantidades de la grilla (`useCantidadesDeLaSuperficie().accionarEnOrden`). Con ella, «Quitar» espera lo
+  // escrito, no sale si el servidor lo rechazó y no se pisa el `rev` con una cantidad nueva. Sin ella (el inspector suelto)
+  // se vacía lo pendiente con `esperarEnvios` y el POST sale solo.
+  readonly alAccionarEnOrden?: AccionarEnOrden | undefined;
   readonly alAusente?: (() => void) | undefined;
   readonly alRecargarBorrador?: (() => Promise<void>) | undefined;
   readonly alReabrir?: (() => void) | undefined;
@@ -167,6 +174,7 @@ export function InspectorDePartida({
   alAceptar,
   alVolverALaCalculada,
   alQuitar,
+  alAccionarEnOrden,
   alAusente,
   alRecargarBorrador,
   alReabrir,
@@ -358,10 +366,40 @@ export function InspectorDePartida({
     }
   }
 
+  // «Quitar» dentro de la cola de las cantidades (B1-6): lo escrito que espera la pausa sale antes, lo que se escriba mientras el
+  // POST va en vuelo espera a su `rev`, y si el servidor rechazó lo escrito el POST no sale. El error de cualquiera de las dos
+  // peticiones (409, 422…) lo deja el motor en el aviso de la grilla, igual que el de una celda; aquí solo se cierra el diálogo.
+  async function quitarEnLaCola(alAccionar: AccionarEnOrden, actual: BorradorAbierto, filaActual: FilaPresupuesto) {
+    const resumen = await alAccionar((rev) => ({
+      ruta: rutaDeQuitarPartida(actual.id),
+      metodo: "POST",
+      cuerpo: { rev, clave: filaActual.clave },
+      frase: "",
+    }));
+    setConfirmandoEnClave(null);
+    if (resumen === null) {
+      devolverFocoAQuitar.current = true;
+      return;
+    }
+    invalidarRecursos(rutaDeVista(actual.id, "presupuesto"));
+    invalidarRecursos(rutaDeVista(actual.id, "auditoria"));
+    alQuitar?.(filaActual.partida, resumen, filaActual.clave);
+    anunciar(`Se quitó ${filaActual.partida} del presupuesto.`);
+    manejarCerrar();
+  }
+
   async function confirmarQuitar() {
     if (borrador === null || fila === null || quitando) return;
     setErrorEnClave(null);
     setQuitando(true);
+    if (alAccionarEnOrden !== undefined) {
+      try {
+        await quitarEnLaCola(alAccionarEnOrden, borrador, fila);
+      } finally {
+        setQuitando(false);
+      }
+      return;
+    }
     try {
       const rev = await resolverRevActual(borrador);
       const respuesta = await pedir<RespuestaDeEdicion>(rutaDeQuitarPartida(borrador.id), {

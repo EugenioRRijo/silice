@@ -423,6 +423,51 @@ describe("InspectorDePartida (lote B1-6)", () => {
     expect(props.alCerrar).not.toHaveBeenCalled();
   });
 
+  describe("con la cola de las cantidades (alAccionarEnOrden, B1-6)", () => {
+    const quitarConfirmando = async (u: ReturnType<typeof userEvent.setup>) => {
+      const panel = screen.getByRole("complementary", { name: "AF-LLAVE · Llave de paso · unidad" });
+      await u.click(within(panel).getByRole("button", { name: "Quitar del presupuesto" }));
+      await u.click(within(screen.getByRole("dialog", { name: "Quitar partida" })).getByRole("button", { name: "Quitar" }));
+      return panel;
+    };
+    const postsDeQuitar = () =>
+      fetchFalso.mock.calls.filter(([r, init]) => String(r).endsWith("/partidas/quitar") && init?.method === "POST");
+
+    test("«Quitar» no manda su propio POST: pide la acción a la cola con la petición de quitar y el rev que ella le dé", async () => {
+      const u = userEvent.setup();
+      const alAccionarEnOrden = vi.fn(async (peticion: (rev: number) => unknown) => {
+        expect(peticion(9)).toEqual({
+          ruta: `/v1/hoja/borradores/${ID}/partidas/quitar`,
+          metodo: "POST",
+          cuerpo: { rev: 9, clave: "AF-LLAVE|a-mano:1" },
+          frase: "",
+        });
+        return crearResumen({ rev: 10, cambios: 1 });
+      });
+      const { props } = montar({ props: { alAccionarEnOrden } });
+      await quitarConfirmando(u);
+
+      await waitFor(() => expect(props.alCerrar).toHaveBeenCalledTimes(1));
+      expect(alAccionarEnOrden).toHaveBeenCalledTimes(1);
+      expect(postsDeQuitar()).toHaveLength(0);
+      expect(props.alQuitar).toHaveBeenCalledWith("AF-LLAVE", expect.objectContaining({ rev: 10 }), "AF-LLAVE|a-mano:1");
+    });
+
+    test("si la cola no la sacó (null: lo escrito antes fue rechazado o falló), el inspector sigue abierto, no avisa que quitó y el foco vuelve a «Quitar del presupuesto»", async () => {
+      const u = userEvent.setup();
+      const alAccionarEnOrden = vi.fn(async () => null);
+      const { props } = montar({ props: { alAccionarEnOrden } });
+      const panel = await quitarConfirmando(u);
+
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Quitar partida" })).toBeNull());
+      expect(props.alCerrar).not.toHaveBeenCalled();
+      expect(props.alQuitar).not.toHaveBeenCalled();
+      expect(postsDeQuitar()).toHaveLength(0);
+      expect(within(panel).getByRole("button", { name: "Quitar del presupuesto" })).toHaveFocus();
+      expect(within(panel).queryByRole("alert")).toBeNull();
+    });
+  });
+
   test("en solo lectura o para una fila del espacio (quitable: false) no ofrece «Volver a la calculada» ni «Quitar del presupuesto»", () => {
     const filaDelEspacio = vistaPresupuesto().filas[1]!; // escrita: true, quitable: false
     const { rerender, aplicacion, props } = montar({
