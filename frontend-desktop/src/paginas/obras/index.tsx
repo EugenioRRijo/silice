@@ -97,6 +97,11 @@ function EntregaAlCliente({ obraId }: Pick<ObraAbierta, "obraId">) {
   const [errorGeneral, setErrorGeneral] = useState<unknown>(null);
   const [estadoGuardado, setEstadoGuardado] = useState("");
   const [guardando, setGuardando] = useState(false);
+  // El 422 llega con el campo aún deshabilitado: el foco se pide aquí y se da cuando el campo vuelve a estar activo.
+  const [pedirFoco, setPedirFoco] = useState(0);
+  useEffect(() => {
+    if (pedirFoco > 0 && !guardando) document.getElementById(idCampo)?.focus();
+  }, [pedirFoco, guardando, idCampo]);
 
   useEffect(() => {
     let vigente = true;
@@ -138,7 +143,7 @@ function EntregaAlCliente({ obraId }: Pick<ObraAbierta, "obraId">) {
         alExpirar();
       } else if (err instanceof ErrorDeApi && err.estado === 422) {
         setErrorCampo(err.detalle);
-        document.getElementById(idCampo)?.focus();
+        setPedirFoco((n) => n + 1);
       } else {
         setErrorGeneral(err);
       }

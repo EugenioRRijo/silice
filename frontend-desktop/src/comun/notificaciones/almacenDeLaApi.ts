@@ -74,9 +74,13 @@ export function almacenDeLaApi(pedirApi: PedirNotificaciones = (ruta, opciones) 
       for (const n of lista) {
         if (enElServidor.has(n.id) || enviando.has(n.id)) continue;
         enviando.add(n.id);
-        const creada = (await pedirApi("/v1/notificaciones", { metodo: "POST", cuerpo: cuerpoNuevo(n) })) as NotificacionDelServidor;
-        enElServidor.set(n.id, creada.id);
-        enviando.delete(n.id);
+        try {
+          const creada = (await pedirApi("/v1/notificaciones", { metodo: "POST", cuerpo: cuerpoNuevo(n) })) as NotificacionDelServidor;
+          enElServidor.set(n.id, creada.id);
+        } finally {
+          // Si el envío falla, el guardado siguiente vuelve a intentarlo.
+          enviando.delete(n.id);
+        }
       }
       const porMarcar = lista
         .filter((n) => n.leida)

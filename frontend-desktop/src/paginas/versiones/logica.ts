@@ -74,7 +74,7 @@ export function textoDeConteoDeVersiones(visibles: number, total: number): strin
 }
 
 // Todo el historial de la obra, porque solo crece (RF-54): también las descartadas, que siguen guardadas, se pueden mirar y
-// restaurar (restaurar es la única manera de deshacer un descarte) y la cadena de sellos puede romperse en una ellas. La
+// restaurar (restaurar es la única manera de deshacer un descarte) y la cadena de sellos puede romperse en una de ellas. La
 // descartada lleva `descartada` (la tabla lo dice con la palabra) y no se abre: abrirla pediría una versión que el proveedor
 // cambiaría por otra sin decirlo. Cada fila lleva su estado de aprobación y la marca de la abierta.
 export function filasDeVersiones(

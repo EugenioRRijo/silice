@@ -130,4 +130,23 @@ describe("almacenDeLaApi", () => {
     await Promise.all([primera, segunda]);
     expect(pedir.mock.calls.filter(([, op]) => op?.metodo === "POST")).toHaveLength(1);
   });
+
+  // T4 (2026-11-28): si el POST fallaba, el id quedaba para siempre en «enviando» y esa notificación nunca llegaba.
+  test("si el envío falla, el guardado siguiente la vuelve a mandar", async () => {
+    let falla = true;
+    const pedir = vi.fn<PedirNotificaciones>(async (ruta, opciones) => {
+      if (ruta === "/v1/notificaciones" && (opciones?.metodo ?? "GET") === "GET") return { notificaciones: [] };
+      if (falla) {
+        falla = false;
+        throw new Error("sin red");
+      }
+      return { id: 9, gravedad: "listo", titulo: "x", detalle: "", enlace: null, creada: "2026-11-26T10:00:00", leida: false };
+    });
+    const almacen = almacenDeLaApi(pedir);
+    await almacen.cargar();
+    const nueva = local({});
+    await expect(almacen.guardar([nueva])).rejects.toThrow("sin red");
+    await almacen.guardar([nueva]);
+    expect(pedir.mock.calls.filter(([, op]) => op?.metodo === "POST")).toHaveLength(2);
+  });
 });

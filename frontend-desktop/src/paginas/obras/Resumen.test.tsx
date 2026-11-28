@@ -301,6 +301,8 @@ describe("Resumen de la obra abierta", () => {
     expect(await screen.findByText("La fecha de entrega al cliente no puede estar en el pasado.")).toBeInTheDocument();
     // T4 (mutante OB3): el 422 se dice junto al campo, que queda marcado como inválido, y no como un error general.
     expect(campo).toHaveAttribute("aria-invalid", "true");
+    // T4 (2026-11-28): el foco vuelve al campo; antes se pedía mientras seguía deshabilitado y no llegaba.
+    await waitFor(() => expect(campo).toHaveFocus());
 
     // Fecha válida: envía PUT con aaaa-mm-dd y confirma.
     await u.clear(campo);
