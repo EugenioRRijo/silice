@@ -277,3 +277,32 @@ describe("Actividad: actividad reciente", () => {
     expect(screen.queryByText(/Se muestran las/)).toBeNull();
   });
 });
+
+// T3 (2026-11-28): el calendario de un año salía cortado en la última columna. Ahora las celdas se ajustan al ancho de su
+// caja (container query en actividad.scss) y para eso la caja necesita saber cuántas columnas hay; si aun así no caben
+// (ventana muy angosta), se abre en la semana más reciente y no en la más antigua.
+describe("Actividad: el calendario cabe en su caja", () => {
+  test("la caja del calendario declara cuántas columnas (semanas) tiene", async () => {
+    montar();
+    const caja = (await calendario()).parentElement as HTMLElement;
+    // Del 1/10/2026 (jueves) al 31/10/2026 (sábado): cinco semanas, de lunes a lunes.
+    expect(caja.style.getPropertyValue("--silice-actividad-columnas")).toBe("5");
+  });
+
+  test("al abrir, la caja se desplaza hasta el final (lo más reciente a la vista)", async () => {
+    // jsdom no desplaza nada: se espera lo que el componente ASIGNA a scrollLeft.
+    const asignados: number[] = [];
+    const ancho = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(900);
+    const izquierda = vi.spyOn(Element.prototype, "scrollLeft", "set").mockImplementation((v: number) => {
+      asignados.push(v);
+    });
+    try {
+      montar();
+      await calendario();
+      expect(asignados).toContain(900);
+    } finally {
+      ancho.mockRestore();
+      izquierda.mockRestore();
+    }
+  });
+});

@@ -105,6 +105,32 @@ describe("rótulos de los meses", () => {
     expect(rotulosDeMeses(semanas("2026-10-01", "2026-11-02"))).toEqual([{ semana: 0, mes: "oct" }]);
   });
 
+  // T3 (2026-11-28): en el calendario de un año que empieza el 29/11/2025 «nov» (una sola columna) y «dic» (la siguiente)
+  // se dibujaban pegadas. Cada rótulo mide unas tres columnas: si el mes siguiente empieza antes, el mes que apenas
+  // asomaba cede su rótulo; y si al último no le quedan tres columnas, no se dibuja (se saldría de la caja).
+  test("el mes que asoma una sola columna al principio cede su rótulo al siguiente (nov y dic no se tocan)", () => {
+    expect(rotulosDeMeses(semanas("2025-11-29", "2026-01-31"))).toEqual([
+      { semana: 1, mes: "dic" },
+      { semana: 6, mes: "ene" },
+    ]);
+  });
+
+  test("un mes que empieza con menos de tres columnas hasta el final no lleva rótulo", () => {
+    // Del 1/10 al 12/11/2026: 7 columnas; «nov» empieza en la 6.ª (índice 5) y solo le quedan dos.
+    expect(rotulosDeMeses(semanas("2026-10-01", "2026-11-12"))).toEqual([{ semana: 0, mes: "oct" }]);
+  });
+
+  test("en un año entero, dos rótulos nunca están a menos de tres columnas y el último cabe", () => {
+    const columnas = semanas("2025-11-29", "2026-11-28");
+    const rotulos = rotulosDeMeses(columnas);
+    expect(columnas).toHaveLength(53);
+    expect(rotulos.map((r) => r.mes)).toEqual(["dic", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov"]);
+    rotulos.forEach((r, i) => {
+      if (i > 0) expect(r.semana - rotulos[i - 1]!.semana).toBeGreaterThanOrEqual(3);
+    });
+    expect(columnas.length - rotulos[rotulos.length - 1]!.semana).toBeGreaterThanOrEqual(3);
+  });
+
   test("sin semanas no hay rótulos", () => {
     expect(rotulosDeMeses([])).toEqual([]);
   });

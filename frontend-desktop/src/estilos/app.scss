@@ -180,6 +180,12 @@ body [class*="cds--"]:not(svg, svg *) {
   margin-block-start: 0.25rem;
 }
 
+// «Volver» es un botón fantasma de Carbon con 14 px de relleno a cada lado: sin compensarlo, su texto arranca sangrado
+// frente al borde izquierdo de los campos (T3, 2026-11-28).
+.silice-entrada__acciones > .cds--btn--ghost {
+  margin-inline-start: -0.875rem;
+}
+
 .silice-entrada__enviar {
   inline-size: 100%;
   max-inline-size: 100%;
@@ -223,6 +229,14 @@ header.cds--header.silice-marco-barra {
     gap: 0.5rem;
     font-weight: 600;
   }
+}
+
+// El sello y la palabra: el gap va aquí y no en `.cds--header__name`, porque Carbon envuelve el contenido de HeaderName en
+// un solo <span> (CabeceraSinMarco.tsx).
+.silice-sin-marco__marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .silice-sin-marco__sello {

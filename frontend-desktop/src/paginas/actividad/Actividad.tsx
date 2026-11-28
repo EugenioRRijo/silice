@@ -1,6 +1,6 @@
 import { Button, SkeletonText } from "@carbon/react";
-import { useMemo, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, KeyboardEvent } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
@@ -46,10 +46,20 @@ function Calendario({ datos }: { datos: ActividadRespuesta }) {
     contenedor.current?.querySelector<HTMLButtonElement>(`[data-fecha="${destino}"]`)?.focus();
   }
 
+  // Si aun con las celdas al mínimo no cabe un año, la caja se abre en la semana más reciente (como el calendario de GitHub).
+  useEffect(() => {
+    const caja = contenedor.current;
+    if (caja) caja.scrollLeft = caja.scrollWidth;
+  }, [columnas.length]);
+
   const delDia = detalle === null ? [] : eventosDelDia(datos.eventos, detalle);
   return (
     <>
-      <div className="silice-actividad__calendario" ref={contenedor}>
+      <div
+        className="silice-actividad__calendario"
+        ref={contenedor}
+        style={{ "--silice-actividad-columnas": columnas.length } as CSSProperties}
+      >
         <div className="silice-actividad__meses" style={{ gridTemplateColumns: `repeat(${columnas.length}, var(--silice-actividad-celda))` }} aria-hidden="true">
           {rotulos.map((r) => (
             <span key={r.semana} className="silice-actividad__mes cds--type-label-01" style={{ gridColumn: r.semana + 1 }}>

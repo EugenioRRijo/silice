@@ -41,8 +41,18 @@
   }
 }
 
-// El calendario se desplaza dentro de su caja (un año ocupa unas 53 columnas): la pantalla no se desplaza de lado.
+// Un año ocupa unas 53 columnas. La caja es un contenedor de tamaño en línea y la celda se ajusta a su ancho (entre 0,625 rem
+// y 0,875 rem), con lo que el año cabe sin cortar la última columna; solo si ni al mínimo cabe se desplaza dentro de su caja
+// (la pantalla no se desplaza de lado). `--silice-actividad-columnas` la pone Actividad.tsx; la leyenda, fuera de la caja,
+// conserva los 0,875 rem.
 .silice-actividad__calendario {
+  --silice-actividad-celda: clamp(
+    0.625rem,
+    calc((100cqw - (var(--silice-actividad-columnas, 53) - 1) * var(--silice-actividad-hueco)) / var(--silice-actividad-columnas, 53)),
+    0.875rem
+  );
+
+  container-type: inline-size;
   overflow-x: auto;
   padding-block-end: 0.5rem;
 }
@@ -79,9 +89,10 @@
   inline-size: var(--silice-actividad-celda);
   block-size: var(--silice-actividad-celda);
   padding: 0;
-  border: 1px solid var(--silice-linea);
+  // Contraste no textual de 3:1 (WCAG 1.4.11) frente al fondo, en claro y en oscuro: la línea tenue del 10 % no lo daba.
+  border: 1px solid var(--silice-borde-fuerte);
   border-radius: 0.125rem;
-  background-color: var(--silice-alzado);
+  background-color: var(--silice-hoja);
   cursor: default;
 
   &[data-nivel="1"] {

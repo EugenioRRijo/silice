@@ -120,8 +120,13 @@ export interface RotuloDeMes {
   mes: string;
 }
 
-// El rótulo de cada mes, sobre la primera semana que lo trae. Un mes que solo asoma en una semana al final (menos de
-// dos semanas antes del fin) se omite para que los rótulos no se pisen.
+// Un rótulo de tres letras ocupa unas tres columnas del calendario: más cerca que eso, dos rótulos se pisan, y menos de
+// eso hasta el final, el último se sale de la caja.
+export const COLUMNAS_POR_ROTULO = 3;
+
+// El rótulo de cada mes, sobre la primera semana que lo trae. Si el mes siguiente empieza a menos de tres columnas, el mes
+// que apenas asomaba (el primero del período, casi siempre) cede su rótulo; y un mes al que le quedan menos de tres
+// columnas hasta el final no lleva rótulo.
 export function rotulosDeMeses(columnas: readonly Semana[]): RotuloDeMes[] {
   const rotulos: RotuloDeMes[] = [];
   let anterior = -1;
@@ -131,7 +136,9 @@ export function rotulosDeMeses(columnas: readonly Semana[]): RotuloDeMes[] {
     const mes = Number(primero.slice(5, 7)) - 1;
     if (mes === anterior) return;
     anterior = mes;
-    if (columnas.length - i < 2 && rotulos.length > 0) return;
+    if (columnas.length - i < COLUMNAS_POR_ROTULO && rotulos.length > 0) return;
+    const previo = rotulos[rotulos.length - 1];
+    if (previo !== undefined && i - previo.semana < COLUMNAS_POR_ROTULO) rotulos.pop();
     rotulos.push({ semana: i, mes: MESES[mes] ?? "" });
   });
   return rotulos;
