@@ -979,15 +979,36 @@ revisión agrega a `notificacion` la columna `clave_evento` y crea la tabla de p
 Como la retención es de 30 días, la clave de un evento vuelve a quedar libre a los 30 días: un recordatorio, una compra
 vencida o una entrega vencida que siguen igual se repiten una vez al mes.
 
-### 13.2 Fecha de entrega al cliente de una obra (base del caso, revisión `caso_0025_entrega_de_obra`)
+## 14. Fecha de entrega al cliente de una obra (base del caso, revisión `caso_0025_entrega_de_obra`)
+
+> Hasta el 2026-11-28 esta sección era la §13.2. Sube de nivel porque su tabla vive en la base de cada carpeta de obra,
+> no en la de la instalación como las de §13.
 
 Lote G5 (decisión de Eugenio del 2026-11-26, [notificaciones por evento](especificaciones/2026-11-26-notificaciones-por-evento.md) §4):
 la fecha en que hay que entregarle el presupuesto al cliente vive en la carpeta de la obra, fuera de `core/`. El modelo
 está en `aplicacion/tablas_entrega.py` (`METADATA_ENTREGA`), sin clave foránea a `core.models`, y solo lo lee y escribe
 `aplicacion/entrega_de_obra.py`. Alimenta la categoría `entregas` del barrido perezoso de `aplicacion/avisos_por_evento.py`
 (Advertencia desde 3 días hábiles antes y Error desde el día de la entrega mientras la obra siga sin entregar, para quien
-trabajó en ella).
+arma y trabajó en ella).
 
 | Tabla | Columnas | Restricciones |
 |---|---|---|
-| `entrega_de_obra` | `proyecto_codigo` PK (40, el código de la obra como texto), `fecha_entrega` (`date`, nula si se quitó), `actualizada` (`datetime`), `actualizada_por` (200, el responsable `Nombre <login>` o la clave de API) | una fila por obra; `fecha_entrega` no puede estar en el pasado al fijarla (lo valida la aplicación) |
+| `entrega_de_obra` | `proyecto_codigo` PK (40, el código de la obra como texto: su `proyecto.id`, el mismo que da `GET /v1/proyectos`; la ruta también acepta el nombre y lo resuelve con `aplicacion.proyectos.resolver_proyecto`), `fecha_entrega` (`date`, nula si se quitó), `actualizada` (`datetime`), `actualizada_por` (200, el responsable `Nombre <login>` o la clave de API) | una fila por obra; `fecha_entrega` no puede estar en el pasado al fijarla (lo valida la aplicación) |
+
+Una obra cuenta como entregada para el aviso cuando la instalación registra un paquete exportado de alguna de sus
+versiones (`evento_acceso.tipo` igual a «paquete exportado», con el sello de la versión en su detalle) desde la última vez que se fijó la
+fecha (`actualizada`): esa lectura no agrega columnas.
+
+## 15. Lo que la reestructuración del front construyó sin tablas nuevas (2026-11-28)
+
+Enmienda del 2026-11-28 de la [ERS](ERS.md) (RF-215 a RF-224), rama `feature/front-b1`, aún sin fusionar en `main`.
+Lo nuevo en tablas son las §12 a §14. El resto **no crea tablas ni columnas**:
+
+- **Actividad por persona (RF-221).** `aplicacion/actividad.py` solo lee lo que ya se guarda:
+  `eslabon_version.usuario` y `eslabon_version.fecha_hora` de la carpeta abierta;
+  `mp_indice_aprobacion.enviado_por` y `.enviado_el`, `.dictamen_por` y `.dictamen_el`, y `auditoria_libro.usuario` y
+  `.fecha_hora` (§10), de `instalacion.db`; y `proyecto.nombre` y `presupuesto.codigo` para el texto. La persona se
+  reconoce por el `<login>` de esos textos.
+- **«Qué hacer» de cada hallazgo y alerta (RF-223).** Es un catálogo en el código (`aplicacion/que_hacer.py`) que se
+  sirve por `GET /v1/libros/que-hacer`; nada se guarda. El historial de auditorías (§10) no cambia de forma.
+- **Auditar un libro (RF-224).** Usa las rutas de libros de siempre y el mismo historial de §10.
